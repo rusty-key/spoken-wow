@@ -44,12 +44,20 @@ export function fishConfig(options: FishOptions = {}) {
  */
 export const FISH_MODELS = [
   { id: "s2.1-pro", label: "S2.1 Pro", usdPerMillionBytes: 15, preview: false },
-  // Free "for an initial period", with no latency guarantee. The same weights as s2.1-pro.
+  // "For development and testing", with no latency guarantee. The same model as s2.1-pro.
   { id: "s2.1-pro-free", label: "S2.1 Pro (free)", usdPerMillionBytes: 0, preview: false },
   { id: "s2-pro", label: "S2 Pro", usdPerMillionBytes: 15, preview: false },
-  // Documented only as "a preview model; its behavior and availability may change".
-  { id: "drama-3-preview", label: "Drama 3 (preview)", usdPerMillionBytes: null, preview: true },
+  // In the TTS request schema's list of models, but on no pricing page.
+  { id: "drama-3", label: "Drama 3", usdPerMillionBytes: null, preview: false },
 ] as const;
+
+/**
+ * Ids fish.audio no longer accepts, by what replaced them. A stored setting naming one is read as
+ * its replacement: sent as it is, fish.audio would quietly speak it with s2.1-pro and bill for it.
+ */
+export const RENAMED_FISH_MODELS: Readonly<Record<string, FishModelId>> = {
+  "drama-3-preview": "drama-3",
+};
 
 export type FishModelId = (typeof FISH_MODELS)[number]["id"];
 

@@ -34,8 +34,7 @@ end
 
 dofile(addons .. 'Spoken/Environment.lua')
 local E=SpokenEnv
-E.Version={IsLegacyVanilla=false,IsLegacyBurningCrusade=false,IsLegacyWrath=false,
-    IsCamelot=true,IsAnyLegacy=false,IsRetailOrAboveLegacyVersion=function() return true end}
+E.Version={Variant="forever"}
 dofile(addons .. 'Spoken/Core.lua')
 dofile(addons .. 'Spoken/Callbacks.lua')
 dofile(addons .. 'Spoken/SoundQueue.lua')
@@ -61,12 +60,16 @@ E.SoundUtils={WhyInaudible=function() end,IsMutedByPlayer=function() return fals
     MuteChannel=function() end,TestSound=function() return true end,
     PlaySound=function(_,clip) if clip.path=='missing' then return false end; clip.handle=1; return true end,
     StopSound=function(_,clip) clip.handle=nil end}
-E.StaticPortrait={Configure=function() return false end,Resolved=function() return false end}
+E.StaticPortrait={Configure=function() return false end,Release=function() end,Resolved=function() return false end}
 E.Portrait={Configure=function(_,frame) frame.active='mock-model' end}
 dofile(addons .. 'Spoken/UI/Actions.lua')
+dofile(addons .. 'Spoken/UI/Snap.lua')
+dofile(addons .. 'Spoken/UI/Face.lua')
 dofile(addons .. 'Spoken/UI/PlayerFrame.lua')
 dofile(addons .. 'Spoken/UI/MinimalPlayer.lua')
+dofile(addons .. 'Spoken/UI/Ellesmere.lua')
 dofile(addons .. 'Spoken/UI/DialogueUIPlayer.lua')
+dofile(addons .. 'Spoken/UI/DialogueUITransitions.lua')
 E.Minimap={Setup=function() end}; E.Options={Setup=function() end}
 -- The windows first, with the word lit: the subtitles a first install shows are switched to
 -- below, and the defaults themselves are pinned in defaults_test.
@@ -76,6 +79,9 @@ E.Addon.db.profile.Frame.Style='minimal'
 E.Addon.db.profile.Frame.MinimalBackground='dark'
 E.Addon.db.profile.Audio.LineGap=0
 E.Addon.db.profile.Transcript.HighlightWord=true
+-- The checks below follow the words typed in and the progress line, which are off by default.
+E.Addon.db.profile.Transcript.Typewriter=true
+E.Addon.db.profile.Transcript.SubtitleProgress=true
 E.Addon:Enable()
 local T,Q,M=E.Transcript,E.SoundQueue,E.MinimalPlayer
 local source=E.Sources:Register('quests',{interClipGap=.55})
@@ -186,6 +192,7 @@ T:SetEnabled(false); Advance(10)
 Check(not T.frame:IsShown() and Q:IsPlaying(a),'hiding captions leaves audio playing')
 T:SetEnabled(true)
 Check(T.frame:IsShown() and T:GetElapsed()==10 and HighlightCount()>=1,'reopening catches up to current narration')
+M.fader:Step(1)
 Q:Skip()
 Check(T.clip==a and T.held,'skip keeps the first line words while the window fades out')
 M.fader:Step(1)
@@ -276,15 +283,8 @@ Advance(1)
 local failed=Clip('failed','Not playable',10); failed.path='missing'
 source:Enqueue(failed)
 Check(not T.frame:IsShown(),'rejected audio leaves no stale captions')
-local delayed=Clip('delayed',long,10); delayed.delay=2
-source:Enqueue(delayed); Advance(1)
-Check(T:GetProgress()==0 and HighlightCount()==0,'initial silence is excluded from highlighting')
-Q:PauseQueue(); Advance(2)
-Check(HighlightCount()==0,'pausing during initial silence does not highlight a word')
-Q:ResumeQueue(); Advance(2)
-Check(T.activeWord==1 and HighlightCount()>=1,'first word appears when initial silence ends')
-Advance(5)
-Check(T:GetProgress()==.5 and HighlightCount()>=1,'duration starts after the delay')
+source:Enqueue(Clip('after',long,10)); Advance(1)
+Check(T.frame:IsShown(),'the next clip shows its words')
 SlashCmdList.SPOKEN('transcript off')
 Check(not cfg.Enabled,'slash command disables captions')
 SlashCmdList.SPOKEN('transcript on')
@@ -305,13 +305,13 @@ do
     Check(cfg.HighlightWord==d.HighlightWord and cfg.SubtitleShadow==d.SubtitleShadow and cfg.TypewriterBy==d.TypewriterBy,
         'resetting the words puts back the defaults a first install has')
 end
--- The window checks below follow the word being read.
-cfg.HighlightWord=true; T:RefreshConfig()
+-- The window checks below follow the word being read, typed in, with the progress line.
+cfg.HighlightWord=true; cfg.Typewriter=true; cfg.SubtitleProgress=true; T:RefreshConfig()
 local playerTop=M.frame:GetTop()
 local extra={}
 for i=1,6 do extra[i]=Clip('extra'..i,'Later dialogue',10); source:Enqueue(extra[i]) end
 M:UpdateControls()
-Check(M.count:IsShown() and M.count:GetText()=='• +6' and M.drawer==nil,'the title counts the lines waiting, with no list of them')
+Check(M.count:IsShown() and M.count:GetText()=='· +6' and M.drawer==nil,'the title counts the lines waiting, with no list of them')
 T.expand:Fire('OnClick')
 Check(T.frame:GetBottom()>M.panel:GetBottom() and M.progress.track:GetBottom()>M.panel:GetBottom(),
     'the panel encloses expanded captions and the progress line under them')
@@ -329,19 +329,23 @@ frameCfg.Style='minimal'; E.PlayerFrame:RefreshConfig()
 Check(T.frame:IsVisible(),'showing the player restores its attached captions')
 local movedTop=M.frame:GetTop()
 T:SetEnabled(false)
-Check(M.frame:GetHeight()==98 and M.frame:IsShown(),'disabling captions restores the original compact player height')
-Check(math.abs(M.frame:GetTop()-movedTop)<.001,'removing captions keeps the portrait in place')
+M.fader:Step(1)
+Check(not M.frame:IsShown() and not T.frame:IsVisible() and Q:IsPlaying(),'Show Narrator off puts the player away while audio continues')
 T:SetEnabled(true)
-Check(math.abs(M.frame:GetTop()-movedTop)<.001,'restoring captions keeps the portrait in place')
+M.fader:Step(1)
+Check(M.frame:IsShown() and math.abs(M.frame:GetTop()-movedTop)<.001,'Show Narrator on brings the player back where it was')
 T:TurnPage(-1); T.frame:Fire('OnClick','LeftButton')
 Check(not T.manualScroll,'clicking the caption text resumes following')
+local hadShift=IsShiftKeyDown; IsShiftKeyDown=function() return true end
 T.frame:Fire('OnClick','RightButton')
-Check(M.menu:IsShown(),'right-clicking captions opens the existing player menu')
+IsShiftKeyDown=hadShift
+Check(M.menu:IsShown(),'Shift-right-clicking captions opens the existing player menu')
 M.menu:Hide()
+GetCursorPosition=GetCursorPosition or function() return 0,0 end
 frameCfg.LockFrame=true; E.PlayerFrame:RefreshConfig(); M:StartDrag()
-Check(not M.frame.moving and not M.resizer:IsShown(),'the player lock controls the attached caption layout')
+Check(E.Snap.Active()==nil and not M.resizer:IsShown(),'the player lock controls the attached caption layout')
 frameCfg.LockFrame=false; E.PlayerFrame:RefreshConfig(); M.header:Fire('OnDragStart')
-Check(M.frame.moving,'the existing header still moves the whole player')
+Check(E.Snap.Active()==M.frame,'the existing header still moves the whole player')
 M.header:Fire('OnDragStop')
 frameCfg.Style='classic'; E.PlayerFrame:RefreshConfig()
 local original=E.PlayerFrame.frame
@@ -384,7 +388,7 @@ for _,size in ipairs({12,26}) do
             M.frame:SetWidth(width); T:RefreshConfig()
                         local displayed={}
             for page=1,T:PageCount() do
-                T:ScrollTo((page-1)*count+1)
+                T.manualScroll=true; T.topTarget=T:Snap((page-1)*count+1); T.top=T.topTarget; T:Update()
                 CheckLayout()
                 displayed[#displayed+1]=Plain(Captions())
             end
@@ -453,8 +457,6 @@ cfg.Typewriter=false
 cfg.ScrollMode='line'; T:Update()
 T.frame:Fire('OnMouseWheel',1)
 Check(T.manualScroll and T.topTarget<target,'the wheel scrolls back by lines, holding there')
-T:ScrollTo(1)
-Check(T.top==1 and T.manualScroll,'a scrollbar drag lands at once')
 T:Follow()
 Check(not T.manualScroll,'clicking the captions follows the voice again')
 Q:RemoveAllSoundsFromQueue()
@@ -509,7 +511,7 @@ do
     local _,_,_,nameX=S.title:GetPoint(1)
     Check(pictureX<nameX,'...before the name')
 end
-Check(S.dot:GetText()=='•' and select(2,S.dot:GetPoint(1))==S.title,'a dot follows the name')
+Check(S.dot:GetText()=='·' and select(2,S.dot:GetPoint(1))==S.title,'a dot follows the name')
 Check(S.label:GetText()=='Quest sub' and select(2,S.label:GetPoint(1))==S.dot,"...and the quest's title the dot")
 Check(S.frame:GetAlpha()==0 and Typed():gsub('%s','')=='','a new line fades in and types from nothing')
 Check(math.abs(S.frame:GetCenter()-UIParent:GetWidth()/2)<.001,'the subtitle is centred until moved')
@@ -598,15 +600,24 @@ Check(not S.controls:IsShown(),'once the pointer leaves they fade out, and go')
 
 local centre=UIParent:GetWidth()/2
 Check(math.abs(S.frame:GetTop()-336)<.001,'the subtitle starts at its default height')
+local shift=true
+IsShiftKeyDown=function() return shift end
 S.frame:Fire('OnDragStart')
-cursor[1],cursor[2]=300,80; S.frame:Fire('OnUpdate',.05)
-Check(math.abs(S.frame:GetTop()-416)<.001 and math.abs(S.frame:GetCenter()-centre)<.001,
-    'dragging moves the subtitle up with the cursor and never sideways')
-cursor[2]=164; S.frame:Fire('OnDragStop'); cursor[1],cursor[2]=0,0
-Check(math.abs(S.frame:GetTop()-500)<.001 and math.abs(S.frame:GetCenter()-centre)<.001
-    and E.Addon:Layout().Subtitle.top==500,'a dragged subtitle stays at the height it was dropped, on the centre line')
-S.frame:Fire('OnDragStart'); cursor[2]=5000; S.frame:Fire('OnDragStop'); cursor[2]=0
+cursor[1],cursor[2]=100,80; E.Snap.Move()
+Check(math.abs(S.frame:GetTop()-416)<.001 and math.abs(S.frame:GetCenter()-centre-100)<.001,
+    'dragging moves the subtitle with the cursor, up and sideways')
+cursor[2]=164; E.Snap.Move(); S.frame:Fire('OnDragStop'); cursor[1],cursor[2]=0,0
+Check(math.abs(S.frame:GetTop()-500)<.001 and math.abs(S.frame:GetCenter()-centre-100)<.001
+    and E.Addon:Layout().Subtitle.top==500 and math.abs(E.Addon:Layout().Subtitle.x-100)<.001,
+    'a dragged subtitle stays where it was dropped')
+S.frame:Fire('OnDragStart'); cursor[2]=5000; E.Snap.Move(); S.frame:Fire('OnDragStop'); cursor[2]=0
 Check(math.abs(S.frame:GetTop()-UIParent:GetHeight())<.001,'it cannot be dragged off the top of the screen')
+shift=false
+S:Reset(); S:Place()
+S.frame:Fire('OnDragStart'); cursor[1]=4; E.Snap.Move(); S.frame:Fire('OnDragStop'); cursor[1]=0
+Check(math.abs(S.frame:GetCenter()-centre)<.001 and E.Addon:Layout().Subtitle.x==0,
+    'a subtitle dropped near the middle of the screen holds on it')
+shift=true
 S:Reset(); E.Addon:Layout().Subtitle={top=500}; S:Place()
 local droppedCenter=S.frame:GetCenter()
 cfg.SubtitleScale=1.5; T:RefreshConfig()
@@ -687,6 +698,7 @@ dofile(addons .. 'Spoken_Quests/Environment.lua')
 dofile(addons .. 'Spoken_Quests/Strings.lua')
 VoiceOver.Version=E.Version
 dofile(addons .. 'Spoken_Quests/Enums.lua')
+dofile(addons .. 'Spoken_Quests/NPCModel.lua')
 dofile(addons .. 'Spoken_Quests/Contribute.lua')
 dofile(addons .. 'Spoken_Quests/Player.lua')
 local V=VoiceOver
@@ -853,6 +865,12 @@ do
     Q:RemoveAllSoundsFromQueue(); Play(.6)
     source:Enqueue(Timed('t6','aaaa bbbb cccc dddd',4,{0,0/0,.4,.6})); Play(.2)
     Check(not T.timed,'...and one with a time that is not a number')
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    source:Enqueue(Timed('t7','aaaa bbbb cccc dddd',4,'0 .2 .4 .6')); Play(1)
+    Check(T.timed and T:WordAt(T:GetProgress())==4,'times packed in one string, as the sound packs keep them, are followed too')
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    source:Enqueue(Timed('t8','aaaa bbbb cccc dddd',4,'0 .2 x .6')); Play(.2)
+    Check(not T.timed,'...but not a string with a word that is not a time')
     Q:RemoveAllSoundsFromQueue(); Play(.6)
     local style=E.Addon:PlayerStyle()
     E.Addon:SetPlayerStyle('subtitle'); E.PlayerFrame:RefreshConfig(); T:RefreshConfig()

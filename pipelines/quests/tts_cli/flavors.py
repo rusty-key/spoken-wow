@@ -22,7 +22,7 @@ import re
 from collections import Counter
 from typing import Iterable, Mapping
 
-from tts_cli.naming import FOLLOWUP, followup_stem
+from tts_cli.naming import BROADCAST_SOURCES, followup_stem
 
 # The sound entry names spell undead "Undead"; the corpus and the voice slots use the
 # client's internal race name.
@@ -121,10 +121,13 @@ def consensus_flavor(flavors: Iterable[str | None]) -> str | None:
     existing files and orphan the audio already generated for them. See tts_cli/naming.py
     for why a filename is not free to change.
     """
-    tally = Counter(f for f in flavors if f)
-    if not tally:
-        return None
-    return min(tally.items(), key=lambda kv: (-kv[1], kv[0]))[0]
+    return busiest(Counter(f for f in flavors if f))
+
+
+def busiest(tally: Mapping[str, float]) -> str | None:
+    """The flavor with the most weight, ties broken alphabetically so the choice does not drift
+    between runs; None for an empty tally."""
+    return min(tally.items(), key=lambda kv: (-kv[1], kv[0]))[0] if tally else None
 
 
 #: A voice keyed by the creature's model rather than by a humanoid race: `model-{ModelID}`.
@@ -193,7 +196,7 @@ def file_key(source: str, quest, text_hash: str, broadcast_text_id,
     on the text hash instead, a dwarf-male-grim ender would be recorded in the standard
     voice of whoever else says the line - the one thing its naming exists to prevent.
     """
-    if source == FOLLOWUP:
+    if source in BROADCAST_SOURCES:
         # rsplit: a model slot's race has a dash of its own (model-29-male).
         return followup_stem(broadcast_text_id, voice_name(*race_gender.rsplit("-", 1), flavor)), \
             race_gender

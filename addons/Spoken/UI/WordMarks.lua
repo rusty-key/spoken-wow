@@ -163,7 +163,13 @@ function Marks.Cut(caption, map, span, paragraphs)
         return span.first, 0
     end
     local at = map[index]
-    return at.p, paragraphs[at.p].words[at.w].last
+    local word = paragraphs[at.p].words[at.w]
+    if caption.typewriterBy == "letter" and caption.activeWord == index then
+        local count = Transcript.TypedChars(caption.progress, caption.totalWeight, caption.words[index], word.count)
+        -- Whole characters: a cut inside a multibyte one would leave the window's text invalid.
+        return at.p, word.first + #Transcript.Prefix(word.text, count) - 1
+    end
+    return at.p, word.last
 end
 
 --- `text` with the words at `spans` (sorted by position) wrapped in `color`.
@@ -202,6 +208,9 @@ function Marks.Want(para, p, span, cutP, cutByte, spans, color)
         for _, word in ipairs(spans[p]) do
             if word.last <= shown then
                 table.insert(kept, word)
+            elseif word.first <= shown then
+                -- By letter, the active word is partly typed: light only what is shown.
+                table.insert(kept, { first = word.first, last = shown })
             end
         end
         table.sort(kept, function(a, b) return a.first < b.first end)

@@ -1,0 +1,1340 @@
+-- A scrolling block of wrapped text, with a scrollbar: Spoken Places' stories, beside the map and in
+-- Azeroth's Compendium, and Spoken Readables' readables and Spoken Quests' quests there, so all of them
+-- scroll and wrap alike. The global SpokenTextView: Create, AddScrollBar and Unsnap. The words are
+-- the Compendium's Text Size (Spoken:CompendiumFontSize).
+--
+-- Not under setfenv(1, SpokenEnv): the client's mixins are looked up in the calling function's
+-- environment.
+--
+-- The scrollbar is built by hand from the game's minimal scroll bar art (MinimalScrollBar's
+-- track and small thumb, as the quest log and the settings draw them) rather than inherited:
+-- the template's ScrollBox plumbing cannot be checked without launching the game, and a track
+-- and a thumb are fully deterministic. A plain bar where the client has not got the art.
+--
+-- Where the text runs past the view it fades out at the cut edge rather than stopping on a
+-- clean line: a strip of the page's own background (TextView:SetFadeSource), drawn over the
+-- text, clear on the inside and solid at the edge.
+
+SpokenTextView = {}
+
+local SCROLL_STEP = 28
+-- Between the words (and a part's buttons) and the scroll bar, while the bar shows.
+local BAR_GAP = 14
+local BAR_WIDTH = 6
+local MIN_THUMB = 20
+-- The fade at each edge of the text, from the text outward: three strips easing from clear to
+-- solid, so it starts too faintly to show a line where it begins. A single straight fade did.
+local FADE_STEPS = { { 10, 0, .15 }, { 10, .15, .55 }, { 10, .55, 1 } } -- { height, inner, outer }
+local FADE = 30               -- their heights together
+local SOLID = 3               -- solid page between the fade and the edge
+local EDGE_OUT = 2            -- ...reaching past the edge, over the clip line: the view clips on whole pixels
+                              -- and the band, unsnapped, need not end on one, so a band ending at the
+                              -- edge left its last row half covered and text showed through it. 2 is
+                              -- the gap to the divider above, so the top band stops short of it.
+-- The top fade at half the height: it only shows once the text is scrolled, and at full
+-- height it left a wide gap between the divider and the first line.
+local TOP_SCALE = .5
+-- The text's room above and below, so at rest it is clear of both fades.
+local PAD_TOP, PAD_BOTTOM = FADE * TOP_SCALE + SOLID, FADE + SOLID
+-- Pictures are 2:1 and capped at PICTURE_MOST, so the wide lore window shows them only a little
+-- bigger, and drawn at PICTURE_ALPHA so the page's grain shows through. PICTURE_LIFT raises one
+-- into the text's top padding: its frayed edge is clear page, which left a wider gap above it.
+local PICTURE_MOST, PICTURE_GAP, PICTURE_ALPHA, PICTURE_LIFT = 400, 10, 0.95, 10
+-- A creature model above the words, MODEL_MOST high and MODEL_WIDE times as wide. A boss is framed for that
+-- shape, so a narrow page shrinks the whole frame rather than trimming its width.
+local MODEL_MOST, MODEL_GAP, MODEL_WIDE = 220, 10, 1.25
+-- The page's own parchment laid over the model's border, through one of Textures\ModelEdge1..4 (a
+-- frayed ring), so the square frame fades into the page. It reaches EDGE_OVER past the model, to cover
+-- the model's flat cut.
+local MODEL_EDGES, EDGE_OVER = 4, 6
+-- A brown (#66290A) at this opacity behind the model, so the figure stands out of the page. It is
+-- drawn only where the edge is, which is what frays its square corners away.
+local MODEL_SHADE = 0.20
+local MODEL_SHADE_RGB = { 0x66 / 255, 0x29 / 255, 0x0A / 255 }
+local EDGE_PATH = [[Interface\AddOns\Spoken\Textures\ModelEdge]]
+-- A clean picture, with straight edges, loses this share of each side: past it no pixel of
+-- any shipped picture is thinned toward the parchment by more than 1%, measured from the shipped
+-- masks (the worst, Mask14, needs 0.172: 44 of 256 rows). The same share off every side keeps it 2:1.
+local PICTURE_CROP = 0.175
+-- More room above and below a clean picture, in its box on a dark page, than the frayed one's.
+local CLEAN_ROOM = 9
+-- A part's heading (SetParts): the title's face, larger than the words and darker, on a line as
+-- tall as its round buttons; the words HEAD_GAP under it, PART_GAP between one part and the next.
+-- In near-black, as the quest frame's own headings on parchment are, set apart by room alone.
+local HEAD_SIZE, HEAD_LINE, HEAD_GAP, PART_GAP, BUTTON_GAP = 7, 26, 10, 34, 4
+-- No larger than HEAD_MOST, so a heading stays under the page's title (26) at any size of words.
+local HEAD_MOST = 20
+-- The first heading's line starts HEAD_LIFT into the text's top padding: its line is taller than
+-- its letters, which started lower than a page's first line of words does.
+local HEAD_LIFT = 4
+local HEAD_INK = { 0.06, 0.04, 0.02 }
+-- A part with a face (a speaker's portrait): the face at the left of the heading's line, which is
+-- as tall as it, and the heading FACE_GAP right of it under a caption (the speaker's name) in the
+-- words' face, CAPTION_LESS smaller than the words and no smaller than CAPTION_LEAST or larger
+-- than CAPTION_MOST, CAPTION_GAP above it.
+local FACE_GAP, CAPTION_GAP, CAPTION_LESS, CAPTION_LEAST, CAPTION_MOST = 8, 2, 1, 10, 14
+
+local TextView = {}
+TextView.__index = TextView
+
+local function Clamp(value, low, high)
+	if value < low then
+		return low
+	elseif value > high then
+		return high
+	end
+	return value
+end
+
+local function HasAtlas(name)
+	return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) ~= nil or false
+end
+
+local function FontSize()
+	return Spoken:CompendiumFontSize()
+end
+
+-- The file `fontObject`'s words are written in: where the view's owner reads a language other than
+-- the client's (only Places does, SpokenPlaces:FontFor), one that draws its script.
+local function FontFile(view, fontObject)
+	fontObject = view.faceObject or fontObject
+	local owner = view.owner
+	return owner and owner.FontFor and owner:FontFor(fontObject)
+		or (fontObject and fontObject.GetFont and fontObject:GetFont())
+end
+
+--------------------------------------------------------------------------------
+-- Scrollbar
+--------------------------------------------------------------------------------
+
+--- For a bar on a caller's scroll frame (AddScrollBar): stands it `side` in from the frame's right,
+--- `head` down and `foot` up, and ends the scroll child `room` short of it while it shows.
+function TextView:SetBarInsets(side, head, foot, room)
+	self.bar:ClearAllPoints()
+	self.bar:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -side, -head)
+	self.bar:SetPoint("BOTTOMRIGHT", self.frame, "BOTTOMRIGHT", -side, foot)
+	self.barRoom = side + room
+	self:UpdateScrollBar()
+end
+
+function TextView:UpdateScrollBar()
+	local viewHeight = self.frame:GetHeight() or 0
+	local contentHeight = self.child:GetHeight() or 0
+	local range = contentHeight - viewHeight
+	local scrollable = range > 1 and viewHeight > 0
+
+	-- Back inside the range where it has shrunk under the offset: closing a branch of the lore
+	-- window's tree left the list scrolled past its end, blank below the last row. Only when it
+	-- moves, as setting it calls back in here through OnVerticalScroll.
+	local limit = scrollable and range or 0
+	if (self.frame:GetVerticalScroll() or 0) > limit then
+		self.frame:SetVerticalScroll(limit)
+	end
+
+	-- A caller's scroll child (AddScrollBar) as wide as the frame, less the bar's room only while
+	-- there is something to scroll: rows reach the edge when the bar is not there.
+	if self.fitsChild then
+		local width = (self.frame:GetWidth() or 0) - (scrollable and (self.barWidth + self.barRoom) or 0)
+		if width > 0 and math.abs((self.child:GetWidth() or 0) - width) > 0.5 then self.child:SetWidth(width) end
+	end
+
+	-- Nothing to scroll: keep the bar out of the way entirely.
+	if not scrollable then
+		self.range = 0
+		self.bar:Hide()
+		self:UpdateFade()
+		return
+	end
+
+	self.range = range
+	self.bar:Show()
+
+	local barHeight = self.bar:GetHeight() or 0
+	local thumbHeight = Clamp((viewHeight / contentHeight) * barHeight, MIN_THUMB, barHeight)
+	self.thumb:SetHeight(thumbHeight)
+
+	local travel = barHeight - thumbHeight
+	local fraction = range > 0 and (self.frame:GetVerticalScroll() / range) or 0
+	self.thumb:ClearAllPoints()
+	self.thumb:SetPoint("TOP", self.bar, "TOP", 0, -Clamp(fraction * travel, 0, travel))
+	self:UpdateFade()
+end
+
+--- What the text leaves free on its right for the scroll bar: the words, and a part's buttons,
+--- end this far inside the view's right edge. None while they fit and the bar is not there; the
+--- bar's width and BAR_GAP while they run past the view.
+function TextView:BarRoom()
+	return self.room or 0
+end
+
+-- After laying the words out: room for the bar where they run past the view, none where they fit,
+-- and laid out once more (`again`) where that changed. `onRoom(room)` tells the page, whose
+-- header buttons stand over the words' right edge.
+function TextView:Settle(again)
+	local high = self.frame:GetHeight() or 0
+	local runsPast = high > 0 and (self.child:GetHeight() or 0) - high > 1
+	local need = runsPast and (self.barWidth + BAR_GAP) or 0
+	if need == (self.room or 0) or self.settling then return end
+	self.room = need
+	self.settling = true
+	again()
+	self.settling = false
+	if self.onRoom then self.onRoom(need) end
+end
+
+function TextView:ScrollTo(value)
+	local target = Clamp(value, 0, self.range or 0)
+	self.frame:SetVerticalScroll(target)
+end
+
+-- A texture in `atlas`, or nil where the client has not got it.
+local function AtlasTexture(frame, layer, atlas, useSize)
+	if not HasAtlas(atlas) then return nil end
+	local texture = frame:CreateTexture(nil, layer)
+	texture:SetAtlas(atlas, useSize)
+	return texture
+end
+
+-- The game's minimal scroll bar pieces: a cap at each end and a middle stretched between.
+local function ThreePiece(frame, layer, top, middle, bottom)
+	local first = AtlasTexture(frame, layer, top, true)
+	local last = AtlasTexture(frame, layer, bottom, true)
+	local mid = AtlasTexture(frame, layer, middle, false)
+	if not (first and last and mid) then return nil end
+	first:SetPoint("TOP", frame, "TOP", 0, 0)
+	last:SetPoint("BOTTOM", frame, "BOTTOM", 0, 0)
+	mid:SetPoint("TOPLEFT", first, "BOTTOMLEFT", 0, 0)
+	mid:SetPoint("BOTTOMRIGHT", last, "TOPRIGHT", 0, 0)
+	return { first, mid, last }
+end
+
+local function BuildScrollBar(view, parent)
+	local minimal = HasAtlas("minimal-scrollbar-track-top")
+	local width = minimal and 8 or BAR_WIDTH
+	view.barWidth = width
+
+	local bar = CreateFrame("Frame", nil, parent)
+	bar:SetWidth(width)
+	bar:SetPoint("TOPRIGHT", view.frame, "TOPRIGHT", 0, 0)
+	bar:SetPoint("BOTTOMRIGHT", view.frame, "BOTTOMRIGHT", 0, 0)
+	bar:SetFrameLevel(view.frame:GetFrameLevel() + 8)
+	bar:EnableMouse(true)
+
+	view.minimal = (minimal and ThreePiece(bar, "BACKGROUND", "minimal-scrollbar-track-top",
+		"!minimal-scrollbar-track-middle", "minimal-scrollbar-track-bottom")) and true or false
+	if not view.minimal then
+		local track = bar:CreateTexture(nil, "BACKGROUND")
+		track:SetAllPoints()
+		track:SetColorTexture(1, 1, 1, 0.06)
+	end
+
+	local thumb = CreateFrame("Button", nil, bar)
+	thumb:SetWidth(width)
+	thumb:SetHeight(MIN_THUMB)
+	thumb:SetPoint("TOP", bar, "TOP", 0, 0)
+
+	local pieces = view.minimal and ThreePiece(thumb, "ARTWORK", "minimal-scrollbar-small-thumb-top",
+		"minimal-scrollbar-small-thumb-middle", "minimal-scrollbar-small-thumb-bottom")
+	local thumbTex
+	if not pieces then
+		thumbTex = thumb:CreateTexture(nil, "ARTWORK")
+		thumbTex:SetAllPoints()
+	end
+	local over = false
+	-- Brighter under the pointer and while held, as the game's thumb is. The plain bar is gold on
+	-- a dark page and the page's own ink on parchment (TextView:SetThumbColor).
+	function view:PaintThumb()
+		local strong = self.dragging or over
+		if self.flatThumb then
+			self.flatThumb:SetColorTexture(1, 1, 1, strong and 0.5 or 0.3)
+			return
+		end
+		if pieces then
+			for _, piece in ipairs(pieces) do piece:SetAlpha(strong and 1 or 0.8) end
+		else
+			local c = self.thumbColor or { 1, 0.82, 0 }
+			thumbTex:SetColorTexture(c[1], c[2], c[3], strong and 0.75 or 0.45)
+		end
+	end
+	view:PaintThumb()
+
+	thumb:SetScript("OnEnter", function() over = true; view:PaintThumb() end)
+	thumb:SetScript("OnLeave", function() over = false; view:PaintThumb() end)
+
+	-- The cursor's height in the bar's own units: the map has a scale of its own.
+	local function CursorY()
+		local _, y = GetCursorPosition()
+		local scale = (bar.GetEffectiveScale and bar:GetEffectiveScale())
+			or (UIParent and UIParent:GetEffectiveScale()) or 1
+		return y / scale
+	end
+	-- Following the pointer every frame only while the thumb is held: the bar is shown whenever
+	-- the text overflows, and an OnUpdate left on it would run for nothing all that time.
+	local function Release()
+		view.dragging = false
+		bar:SetScript("OnUpdate", nil)
+		view:PaintThumb()
+	end
+	local function Follow()
+		-- Let go off the thumb, where its OnMouseUp never hears of it.
+		if IsMouseButtonDown and not IsMouseButtonDown("LeftButton") then
+			Release()
+			return
+		end
+		local barHeight = bar:GetHeight() or 0
+		local thumbHeight = thumb:GetHeight() or 0
+		local travel = barHeight - thumbHeight
+		if travel <= 0 then
+			return
+		end
+		local offset = (bar:GetTop() or 0) - CursorY() - (view.grab or thumbHeight / 2)
+		view:ScrollTo((Clamp(offset, 0, travel) / travel) * (view.range or 0))
+	end
+	-- Held from the press and where it was taken, so the thumb moves with the pointer rather than
+	-- jumping to centre on it.
+	thumb:SetScript("OnMouseDown", function(_, button)
+		if button and button ~= "LeftButton" then return end
+		view.grab = (thumb:GetTop() or 0) - CursorY()
+		view.dragging = true
+		bar:SetScript("OnUpdate", Follow)
+		view:PaintThumb()
+	end)
+	thumb:SetScript("OnMouseUp", Release)
+	-- A click on the track pages toward it, as the game's bar does.
+	bar:SetScript("OnMouseDown", function()
+		local page = (view.frame:GetHeight() or 0) - SCROLL_STEP
+		local step = CursorY() > (thumb:GetTop() or 0) and -page or page
+		view:ScrollTo(view.frame:GetVerticalScroll() + step)
+	end)
+
+	view.bar = bar
+	view.thumb = thumb
+	if SpokenLayout.dressScrollBar then
+		SpokenLayout.dressScrollBar(bar, thumb, function(strip) view.flatThumb = strip; view:PaintThumb() end)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- The fade at a cut edge
+--------------------------------------------------------------------------------
+
+-- Opacity running from `bottom` to `top` up the texture, with whichever call the client has.
+local function Gradient(texture, bottom, top)
+	if texture.SetGradient and CreateColor then
+		texture:SetGradient("VERTICAL", CreateColor(1, 1, 1, bottom), CreateColor(1, 1, 1, top))
+	elseif texture.SetGradientAlpha then
+		texture:SetGradientAlpha("VERTICAL", 1, 1, 1, bottom, 1, 1, 1, top)
+	end
+end
+
+--- Drawn where it lies, not nudged onto the screen's pixel grid: the fade and the page under it
+--- are two textures of one picture, and snapped separately they part by a pixel along the
+--- fade's solid edge.
+function SpokenTextView.Unsnap(texture)
+	if texture.SetSnapToPixelGrid then texture:SetSnapToPixelGrid(false) end
+	if texture.SetTexelSnappingBias then texture:SetTexelSnappingBias(0) end
+end
+
+-- At each edge of the view, always there: a few rows of solid page at the edge itself (and
+-- EDGE_OUT past it), then the fade above or below them. Solid, because a gradient never quite
+-- reaches full opacity in its last row of pixels, and text passing under that row showed
+-- through as a faint line. The text is padded by both (PAD_TOP, PAD_BOTTOM), so at rest it starts
+-- below the top fade and ends above the bottom one, and only text scrolled under an edge fades.
+local function BuildFade(view, parent)
+	local over = CreateFrame("Frame", nil, parent)
+	over:SetAllPoints(view.frame)
+	over:SetFrameLevel(view.frame:GetFrameLevel() + 6)
+	local right = -(view.barWidth + 4)
+	view.strips, view.ramps = {}, {}
+	local function Strip()
+		local strip = over:CreateTexture(nil, "OVERLAY")
+		SpokenTextView.Unsnap(strip)
+		strip:Hide()
+		table.insert(view.strips, strip)
+		return strip
+	end
+	local function Edge(edge, outward)
+		local solid = Strip()
+		solid.fadeEdge = edge
+		solid:SetHeight(SOLID + EDGE_OUT)
+		solid:SetPoint(edge .. "LEFT", view.frame, edge .. "LEFT", 0, outward * EDGE_OUT)
+		solid:SetPoint(edge .. "RIGHT", view.frame, edge .. "RIGHT", right, outward * EDGE_OUT)
+		-- From the solid band inward, the most solid step first, each under the last.
+		local far = edge == "TOP" and "BOTTOM" or "TOP"
+		local previous = solid
+		for i = #FADE_STEPS, 1, -1 do
+			local step = FADE_STEPS[i]
+			local ramp = Strip()
+			ramp.fadeEdge = edge
+			ramp:SetHeight(edge == "TOP" and step[1] * TOP_SCALE or step[1])
+			ramp:SetPoint(edge .. "LEFT", previous, far .. "LEFT", 0, 0)
+			ramp:SetPoint(edge .. "RIGHT", previous, far .. "RIGHT", 0, 0)
+			-- Opacity bottom to top: solid toward the edge, clear toward the text.
+			if edge == "TOP" then
+				table.insert(view.ramps, { ramp, step[2], step[3] })
+			else
+				table.insert(view.ramps, { ramp, step[3], step[2] })
+			end
+			previous = ramp
+		end
+		return solid
+	end
+	-- Outward is up from the top edge and down from the bottom one.
+	view.fadeTop = Edge("TOP", 1)
+	view.fadeBottom = Edge("BOTTOM", -1)
+	over:SetScript("OnSizeChanged", function() view:PaintFade() end)
+end
+
+--- What the fade is cut from: `file` with `coords` = { left, right, top, bottom } drawn over
+--- `under`, the frame that background fills. Each strip shows the part of it lying under the
+--- strip, so the text dissolves into the page. With no file there are no strips: the page is
+--- then see-through, and a strip of any one colour drew as a bar over whatever lay behind it.
+function TextView:SetFadeSource(under, file, coords)
+	self.fadeSource = file and { under = under, file = file, coords = coords } or nil
+	self:PaintFade()
+end
+
+--- The fade in a colour for each edge, { r, g, b }: the backdrop's there, on a page with no
+--- picture of its own under the words (EllesmereUI's look).
+function TextView:SetFadeColors(top, bottom)
+	self.fadeSource = { colors = { TOP = top, BOTTOM = bottom } }
+	self:PaintFade()
+end
+
+local function PaintStrip(strip, source)
+	if source.colors then
+		local c = source.colors[strip.fadeEdge or "TOP"]
+		strip:SetColorTexture(c[1], c[2], c[3], 1)
+		return true
+	end
+	local under = source.under
+	local left, top = under:GetLeft(), under:GetTop()
+	local width, height = under:GetWidth(), under:GetHeight()
+	local x0, x1, y0, y1 = strip:GetLeft(), strip:GetRight(), strip:GetTop(), strip:GetBottom()
+	-- Not laid out yet: painted when it is, from the strips' OnSizeChanged.
+	if not (left and top and x0 and x1 and y0 and y1 and width and width > 0 and height and height > 0) then
+		return false
+	end
+	local c = source.coords
+	local function U(x) return c[1] + (c[2] - c[1]) * (x - left) / width end
+	local function V(y) return c[3] + (c[4] - c[3]) * (top - y) / height end
+	strip:SetTexture(source.file)
+	strip:SetTexCoord(U(x0), U(x1), V(y0), V(y1))
+	return true
+end
+
+--- The model's edge: a copy of the page's picture under it, shown where the page has one. On a plain
+--- or dark page it stays off and the model shows square. It is held off with the rest of the page's
+--- fade layers (SetFadeShown), and the brown backing goes with it. It moves with the text, so it is
+--- cut again for each scroll position and size.
+function TextView:PaintModelEdge()
+	local edge = self.modelEdge
+	if not edge then return end
+	local source = self.fadeSource
+	local drawn = (self.modelDisplayID and self.modelEdgeMask and source and source.file
+		and not self.fadeHeld and self.modelEdgeFrame:IsShown()) and true or false
+	self.edgeScroll = self.frame:GetVerticalScroll()
+	-- Not laid out yet, the edge is not drawn, and the backing alone would show as a square.
+	drawn = drawn and PaintStrip(edge, source) and true or false
+	edge:SetShown(drawn)
+	self.modelShade:SetShown(drawn)
+end
+
+function TextView:HideModel()
+	self.model:Hide()
+	self.modelEdgeFrame:Hide()
+	self.modelShade:Hide()
+	self.modelBottom = nil
+end
+
+-- The scroll moves the model across the picture its edge is cut from. Cut again only for a new
+-- position, and not while the model is out of sight above the view.
+function TextView:ScrollModelEdge()
+	if not (self.modelDisplayID and self.modelBottom) then return end
+	local at = self.frame:GetVerticalScroll()
+	if at ~= self.edgeScroll and at <= self.modelBottom then self:PaintModelEdge() end
+end
+
+function TextView:PaintFade()
+	self:PaintModelEdge()
+	local source = self.fadeSource
+	if not (source and self.fadeTop) then
+		self:UpdateFade()
+		return
+	end
+	local painted = true
+	for _, strip in ipairs(self.strips) do
+		painted = PaintStrip(strip, source) and painted
+	end
+	self.fadePainted = painted
+	for _, ramp in ipairs(self.ramps) do Gradient(ramp[1], ramp[2], ramp[3]) end
+	self:UpdateFade()
+end
+
+-- Shown whenever the view is and the strips have been cut from the page under them, unless held
+-- off (TextView:SetFadeShown).
+function TextView:UpdateFade()
+	if not self.fadeTop then return end
+	local on = (self.fadeSource and self.fadePainted and self.frame:IsShown() and not self.fadeHeld)
+		and true or false
+	for _, strip in ipairs(self.strips) do
+		if on then strip:Show() else strip:Hide() end
+	end
+end
+
+--- Off while the view is faded as a whole: each strip fades on its own over the page under it,
+--- and the two showed through each other as darker bands.
+function TextView:SetFadeShown(shown)
+	local held = not shown
+	if self.fadeHeld == held then return end
+	self.fadeHeld = held
+	self:UpdateFade()
+	self:PaintModelEdge()
+end
+
+--------------------------------------------------------------------------------
+-- Models under another window's model
+--------------------------------------------------------------------------------
+
+-- Models in different windows share one depth buffer, so overlapping figures cut into each other. A larger
+-- near clip stores depth as nearer, so each model takes a near clip by its window's rank (strata, frame
+-- level, then who asked first), as a share of its distance to the model's nearest face. Every share is
+-- below 1, so nothing of the model is clipped; a fifth window shares the fourth's.
+local NEAR_BY_RANK = { 0.01, 0.3, 0.5, 0.7 }
+local FAR_CLIP = 500
+-- Windows are raised while shown, so ranks are looked at again while two or more shown views have a model.
+-- A shown model still loading is looked at every frame until it is framed.
+local WATCH_EVERY = 0.1
+local STRATA = { BACKGROUND = 1, LOW = 2, MEDIUM = 3, HIGH = 4, DIALOG = 5, FULLSCREEN = 6,
+	FULLSCREEN_DIALOG = 7, TOOLTIP = 8 }
+local wanting = setmetatable({}, { __mode = "k" })
+local framing = setmetatable({}, { __mode = "k" })
+local asked = 0
+local watcher
+local Refresh, FrameWaiting
+
+local function Watch(on)
+	if on and not watcher then
+		local waited = 0
+		watcher = CreateFrame("Frame")
+		watcher:SetScript("OnUpdate", function(_, elapsed)
+			if next(framing) then FrameWaiting(elapsed or 0) end
+			waited = waited + (elapsed or 0)
+			if waited < WATCH_EVERY then return end
+			waited = 0
+			Refresh()
+		end)
+	end
+	if watcher then watcher:SetShown(on) end
+end
+
+local function Window(view)
+	local window = view.frame
+	while true do
+		local parent = window:GetParent()
+		if not parent or parent == UIParent then return window end
+		window = parent
+	end
+end
+
+-- Whether a's window is underneath b's; on a tie the view that asked for its model earlier.
+local function Under(a, b)
+	local windowA, windowB = Window(a), Window(b)
+	local strataA = STRATA[windowA:GetFrameStrata() or ""] or STRATA.MEDIUM
+	local strataB = STRATA[windowB:GetFrameStrata() or ""] or STRATA.MEDIUM
+	if strataA ~= strataB then return strataA < strataB end
+	local levelA, levelB = windowA:GetFrameLevel() or 0, windowB:GetFrameLevel() or 0
+	if levelA ~= levelB then return levelA < levelB end
+	return a.modelAsked < b.modelAsked
+end
+
+local function Notify(view)
+	if view.onModel then pcall(view.onModel, view) end
+end
+
+local sceneFailureSaid = {}
+
+-- What the client rejects while a boss is drawn is said once in chat for each kind of call.
+local function SceneFailed(what, err)
+	if sceneFailureSaid[what] then return end
+	sceneFailureSaid[what] = true
+	print("Spoken: a boss's " .. what .. " could not be set: " .. tostring(err))
+end
+
+--- The near clip of this model's rank, from its camera's distance to the model's nearest face.
+function TextView:ApplyNearClip()
+	local scene, distance = self.model, self.modelDistance
+	if not (distance and scene and scene.SetCameraNearClip) then return end
+	local share = NEAR_BY_RANK[math.min(self.modelRank or 0, #NEAR_BY_RANK - 1) + 1]
+	local ok, err = pcall(scene.SetCameraNearClip, scene, distance * share)
+	if not ok then SceneFailed("near clip", err) end
+end
+
+local live = {}
+
+function Refresh()
+	for i = #live, 1, -1 do live[i] = nil end
+	for view in pairs(wanting) do
+		if view.modelBottom and view.frame:IsVisible() then live[#live + 1] = view end
+	end
+	for _, view in ipairs(live) do
+		local rank = 0
+		for _, other in ipairs(live) do
+			if other ~= view and Under(other, view) then rank = rank + 1 end
+		end
+		if rank ~= (view.modelRank or 0) then
+			view.modelRank = rank
+			view:ApplyNearClip()
+		end
+	end
+	-- A hidden page is not waited on, so it does not keep the frame running.
+	local loading = false
+	for view in pairs(framing) do
+		if view.frame:IsVisible() then
+			loading = true
+			break
+		end
+	end
+	Watch(#live >= 2 or loading)
+end
+
+--------------------------------------------------------------------------------
+-- Construction
+--------------------------------------------------------------------------------
+
+-- Anchor the returned view's `frame` yourself. Width is read at SetText time, so
+-- it copes with the frame being resized after creation. `owner` is the module whose words it shows,
+-- for the font its language is written in (FontFile).
+function SpokenTextView.Create(parent, owner)
+	local view = setmetatable({ owner = owner }, TextView)
+	view.range = 0
+
+	local scroll = CreateFrame("ScrollFrame", nil, parent)
+	if scroll.SetClipsChildren then
+		scroll:SetClipsChildren(true)
+	end
+	scroll:EnableMouseWheel(true)
+	scroll:SetScript("OnMouseWheel", function(_, delta)
+		view:ScrollTo(scroll:GetVerticalScroll() - (delta * SCROLL_STEP))
+	end)
+	scroll:SetScript("OnVerticalScroll", function()
+		view:UpdateScrollBar()
+		view:ScrollModelEdge()
+	end)
+
+	local child = CreateFrame("Frame", nil, scroll)
+	child:SetSize(1, 1)
+	scroll:SetScrollChild(child)
+
+	-- A ModelScene, not a PlayerModel: only a scene takes a near clip, which settles the shared depth buffer.
+	-- Without one, a plain frame stands in and no boss is drawn.
+	local made, model = pcall(CreateFrame, "ModelScene", nil, child)
+	if not made then
+		SceneFailed("model", model)
+		model = CreateFrame("Frame", nil, child)
+	end
+	view.hasScene = made and true or false
+	model:Hide()
+	-- The wheel and clicks belong to the page under it.
+	model:EnableMouse(false)
+	view.model = model
+	scroll:HookScript("OnShow", function() Refresh() end)
+	scroll:HookScript("OnHide", function() Refresh() end)
+	-- In the scroll child, so under the model.
+	local shade = child:CreateTexture(nil, "BACKGROUND")
+	shade:SetAllPoints(model)
+	shade:SetColorTexture(MODEL_SHADE_RGB[1], MODEL_SHADE_RGB[2], MODEL_SHADE_RGB[3], MODEL_SHADE)
+	shade:Hide()
+	view.modelShade = shade
+	-- A frame of its own above the model: a texture in the scroll child would draw under it.
+	local edgeFrame = CreateFrame("Frame", nil, child)
+	edgeFrame:SetFrameLevel(model:GetFrameLevel() + 2)
+	edgeFrame:Hide()
+	edgeFrame:SetPoint("TOPLEFT", model, "TOPLEFT", -EDGE_OVER, EDGE_OVER)
+	edgeFrame:SetPoint("BOTTOMRIGHT", model, "BOTTOMRIGHT", EDGE_OVER, -EDGE_OVER)
+	local edge = edgeFrame:CreateTexture(nil, "OVERLAY")
+	edge:SetAllPoints(edgeFrame)
+	SpokenTextView.Unsnap(edge)
+	edge:Hide()
+	view.modelEdgeFrame, view.modelEdge = edgeFrame, edge
+	if edgeFrame.CreateMaskTexture and edge.AddMaskTexture then
+		view.modelEdgeMask = edgeFrame:CreateMaskTexture()
+		view.modelEdgeMask:SetAllPoints(edge)
+		edge:AddMaskTexture(view.modelEdgeMask)
+	end
+	edgeFrame:SetScript("OnSizeChanged", function() view:PaintModelEdge() end)
+
+	local text = child:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+	text:SetPoint("TOPLEFT", child, "TOPLEFT", 0, -PAD_TOP)
+	text:SetJustifyH("LEFT")
+	text:SetJustifyV("TOP")
+	text:SetWordWrap(true)
+	text:SetSpacing(2)
+
+	view.frame = scroll
+	view.child = child
+	view.text = text
+
+	BuildScrollBar(view, parent)
+	BuildFade(view, parent)
+
+	-- Masked only where the client has mask textures.
+	local picture = child:CreateTexture(nil, "ARTWORK")
+	picture:SetAlpha(PICTURE_ALPHA)
+	picture:Hide()
+	view.picture = picture
+	if child.CreateMaskTexture and picture.AddMaskTexture then
+		view.pictureMask = child:CreateMaskTexture()
+		view.pictureMask:SetAllPoints(picture)
+		picture:AddMaskTexture(view.pictureMask)
+	end
+
+	-- An anchored frame has no resolved width until it has been laid out, so the
+	-- first SetText can arrive with width 0 and fail to wrap. Re-wrap whenever the
+	-- width actually changes. Setting the child/FontString width does not resize
+	-- the ScrollFrame, so this cannot recurse.
+	scroll:SetScript("OnSizeChanged", function(self)
+		local width = self:GetWidth() or 0
+		-- Taller or shorter too: the words may run past the view now, or fit.
+		if width > 0 and (width ~= view.wrappedAt or (self:GetHeight() or 0) ~= view.wrappedHigh) then
+			if view.lastParts then
+				view:SetParts(view.lastParts)
+			elseif view.lastText then
+				view:SetText(view.lastText)
+			end
+		end
+	end)
+
+	-- Set by a developer module to take part in each view's model.
+	if SpokenTextView.onCreate then pcall(SpokenTextView.onCreate, view) end
+	return view
+end
+
+--------------------------------------------------------------------------------
+-- Content
+--------------------------------------------------------------------------------
+
+function TextView:SetText(str)
+	self.lastText = str or ""
+	self.lastParts = nil
+	self:HideParts()
+	self.text:Show()
+
+	-- The scroll child does not inherit the ScrollFrame's width, so both it and
+	-- the FontString have to be told, or the text will not wrap. Room for the
+	-- scrollbar only where the words run past the view (Settle).
+	local width = (self.frame:GetWidth() or 0) - self:BarRoom()
+	if width > 0 then
+		self.child:SetWidth(width)
+		self.text:SetWidth(width)
+		self.wrappedAt, self.wrappedHigh = self.frame:GetWidth(), self.frame:GetHeight()
+	end
+
+	self.text:SetText(self.lastText)
+
+	local pictureRoom = 0
+	local modelRoom = 0
+	self.text:ClearAllPoints()
+	if self.modelDisplayID and width > 0 then
+		local wide = math.min(width, math.floor(MODEL_MOST * MODEL_WIDE))
+		local high = math.floor(wide / MODEL_WIDE)
+		self.model:SetSize(wide, high)
+		self.model:ClearAllPoints()
+		self.model:SetPoint("TOP", self.child, "TOP", 0, -(PAD_TOP - PICTURE_LIFT))
+		self.model:Show()
+		self.modelEdgeFrame:Show()
+		-- Scrolled past this, the model is out of sight and its edge is not cut again.
+		local placed = self.modelBottom ~= nil
+		self.modelBottom = PAD_TOP - PICTURE_LIFT + high + EDGE_OVER
+		self:PaintModelEdge()
+		-- A model laid out for the first time joins the ranking; a new size does not change a rank.
+		if not placed then Refresh() end
+		modelRoom = high + MODEL_GAP - PICTURE_LIFT
+	else
+		self:HideModel()
+	end
+	if self.pictureFile and width > 0 then
+		local w = math.min(width, PICTURE_MOST)
+		-- A clean picture shows only its middle: drawn smaller by as much, so each of its pixels
+		-- is as large on screen as on the parchment, not blurred by stretching.
+		if self.cleanPictures then w = math.floor(w * (1 - 2 * PICTURE_CROP)) end
+		local h = math.floor(w / 2)
+		self.picture:SetSize(w, h)
+		self.picture:ClearAllPoints()
+		local room = self.cleanPictures and CLEAN_ROOM or 0
+		self.picture:SetPoint("TOP", self.child, "TOP", 0, -(PAD_TOP + modelRoom - PICTURE_LIFT + room))
+		self.picture:Show()
+		pictureRoom = modelRoom + h + PICTURE_GAP - PICTURE_LIFT + 2 * room
+	else
+		self.picture:Hide()
+		pictureRoom = modelRoom
+	end
+	if self.pictureEdge then self.pictureEdge:SetShown(self.picture:IsShown()) end
+	self.text:SetPoint("TOPLEFT", self.child, "TOPLEFT", 0, -(PAD_TOP + pictureRoom))
+
+	-- Painted here, not once after SetText: a re-wrap (OnSizeChanged) comes back through this, and
+	-- would otherwise put full ink on words the page had faded, such as the line saying a place has
+	-- no story yet.
+	self:Paint(self.text)
+
+	self.child:SetHeight((self.text:GetStringHeight() or 0) + pictureRoom + PAD_TOP + PAD_BOTTOM)
+	self:Settle(function() self:SetText(self.lastText) end)
+	self.frame:SetVerticalScroll(0)
+	self:UpdateScrollBar()
+	self:UpdateFade()
+end
+
+--- The same scroll bar on a scroll frame of the caller's own (the lore window's list of places):
+--- `child` its scroll child, `parent` what the bar is drawn in. Leaves the bar's width plus a
+--- gap free on the right of `child`, so nothing in it runs under the bar.
+function SpokenTextView.AddScrollBar(scroll, child, parent)
+	local view = setmetatable({ frame = scroll, child = child, range = 0, barRoom = 6 }, TextView)
+	BuildScrollBar(view, parent)
+	-- The child as wide as the frame, but for the bar's room while the bar shows (UpdateScrollBar).
+	view.fitsChild = true
+	local function Fit()
+		view:UpdateScrollBar()
+	end
+	scroll:HookScript("OnSizeChanged", Fit)
+	child:HookScript("OnSizeChanged", function() view:UpdateScrollBar() end)
+	if scroll:GetScript("OnVerticalScroll") then
+		scroll:HookScript("OnVerticalScroll", function() view:UpdateScrollBar() end)
+	else
+		scroll:SetScript("OnVerticalScroll", function() view:UpdateScrollBar() end)
+	end
+	Fit()
+	return view
+end
+
+--- The words' face and size on `fontString`: the quest text's face on a parchment page, as a
+--- quest's own words are written there, in the caller's colour over the page's ink.
+function TextView:Paint(fontString)
+	local fontObject = self.ink and _G.QuestFont or GameFontHighlight
+	local fontPath = FontFile(self, fontObject)
+	if fontPath then fontString:SetFont(fontPath, FontSize() + (self.ink and 1 or 0), "") end
+	local colour = self.color or self.ink
+	if colour then fontString:SetTextColor(colour[1], colour[2], colour[3]) end
+	if self.ink then fontString:SetShadowColor(0, 0, 0, 0) end
+end
+
+--- A part's caption: the words' face, smaller, in the page's ink.
+function TextView:PaintCaption(fontString)
+	local fontObject = self.ink and _G.QuestFont or GameFontHighlight
+	local fontPath = FontFile(self, fontObject)
+	local size = Clamp(FontSize() - CAPTION_LESS, CAPTION_LEAST, CAPTION_MOST)
+	if fontPath then fontString:SetFont(fontPath, size, "") end
+	if self.ink then
+		fontString:SetTextColor(self.ink[1], self.ink[2], self.ink[3])
+		fontString:SetShadowColor(0, 0, 0, 0)
+	end
+end
+
+-- The parts' headings, captions and words hidden, and their buttons and faces but those in `keep`.
+function TextView:HideParts(keep)
+	for _, part in ipairs(self.parts or {}) do
+		part.heading:Hide()
+		part.caption:Hide()
+		part.words:Hide()
+	end
+	for _, button in ipairs(self.partButtons or {}) do
+		if not (keep and keep[button]) then button:Hide() end
+	end
+	self.partButtons = nil
+end
+
+--- Words in parts instead of one block: a quest's offer and hand-in. Each part is a heading, its
+--- `buttons` (round buttons the caller made on view.child, rightmost first) on the heading's line
+--- at the right, and its words under it. A part may have a `face`, a frame the caller made on
+--- view.child (Spoken:CreateSpeakerFace): it stands at the left of the heading's line, which is
+--- then as tall as it, with the heading right of it under its `caption`. A part with no heading,
+--- face or buttons is its words alone (a writing's words under where it is found).
+--- `parts` = { { heading, text, buttons, face, caption } }. Kept for re-wraps, as SetText's
+--- text is; SetText goes back to one block.
+function TextView:SetParts(parts)
+	local keep = {}
+	for _, part in ipairs(parts) do
+		for _, button in ipairs(part.buttons or {}) do keep[button] = true end
+		if part.face then keep[part.face] = true end
+	end
+	self:HideParts(keep)
+	self.lastParts = parts
+	self.lastText = nil
+	self.text:SetText("")
+	self.text:Hide()
+	self.picture:Hide()
+	if self.pictureEdge then self.pictureEdge:Hide() end
+	self:SetModel(nil)
+	self.parts = self.parts or {}
+
+	local width = (self.frame:GetWidth() or 0) - self:BarRoom()
+	if width > 0 then
+		self.child:SetWidth(width)
+		self.wrappedAt, self.wrappedHigh = self.frame:GetWidth(), self.frame:GetHeight()
+	end
+	local titleFace = _G.QuestTitleFont and _G.QuestTitleFont.GetFont and _G.QuestTitleFont:GetFont()
+	local shown = {}
+	local y = PAD_TOP
+	for i, part in ipairs(parts) do
+		local slot = self.parts[i]
+		if not slot then
+			slot = { heading = self.child:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge"),
+				caption = self.child:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall"),
+				words = self.child:CreateFontString(nil, "ARTWORK", "GameFontHighlight") }
+			for _, line in ipairs({ slot.heading, slot.caption }) do
+				line:SetJustifyH("LEFT")
+				if line.SetWordWrap then line:SetWordWrap(false) end
+			end
+			slot.words:SetJustifyH("LEFT")
+			slot.words:SetJustifyV("TOP")
+			slot.words:SetWordWrap(true)
+			slot.words:SetSpacing(2)
+			self.parts[i] = slot
+		end
+		local face = part.face
+		-- A part with no heading, face or buttons is its words alone, set apart by room.
+		local headless = part.heading == nil and not face and not (part.buttons and part.buttons[1])
+		if i > 1 then
+			y = y + PART_GAP
+		elseif not face and not headless then
+			y = y - HEAD_LIFT
+		end
+		if headless then
+			slot.heading:Hide()
+			slot.caption:Hide()
+		else
+			-- The buttons from the right, BUTTON_GAP apart, centred `middle` down; the leftmost shown.
+			local function PlaceButtons(middle)
+				local previous
+				for _, button in ipairs(part.buttons or {}) do
+					if button:IsShown() then
+						button:ClearAllPoints()
+						if previous then
+							button:SetPoint("RIGHT", previous, "LEFT", -BUTTON_GAP, 0)
+						else
+							button:SetPoint("RIGHT", self.child, "TOPLEFT", math.max(width, 1), -middle)
+						end
+						previous = button
+						table.insert(shown, button)
+					end
+				end
+				return previous
+			end
+			local font = _G.QuestTitleFont and FontFile(self, _G.QuestTitleFont) or titleFace
+			if font then slot.heading:SetFont(font, math.min(FontSize() + HEAD_SIZE, HEAD_MOST), "") end
+			local head = self.headInk or HEAD_INK
+			slot.heading:SetTextColor(head[1], head[2], head[3])
+			slot.heading:SetShadowColor(0, 0, 0, 0)
+			slot.heading:SetText(part.heading or "")
+			local caption = part.caption ~= "" and part.caption or nil
+			local block = slot.heading:GetStringHeight() or 0
+			if caption then
+				self:PaintCaption(slot.caption)
+				slot.caption:SetText(caption)
+				block = block + CAPTION_GAP + (slot.caption:GetStringHeight() or 0)
+			end
+			-- The heading's line: as tall as the face, or the caption and the heading where they are taller.
+			local line = math.max(HEAD_LINE, face and (face:GetHeight() or 0) or 0, caption and block or 0)
+			local middle = y + line / 2
+			local previous = PlaceButtons(middle)
+			local left = 0
+			if face then
+				face:ClearAllPoints()
+				face:SetPoint("LEFT", self.child, "TOPLEFT", 0, -middle)
+				face:Show()
+				table.insert(shown, face)
+				left = (face:GetWidth() or 0) + FACE_GAP
+			end
+			-- A line of text from `left` to the buttons, centred `at` down from the top.
+			local function Across(text, at)
+				text:ClearAllPoints()
+				text:SetPoint("LEFT", self.child, "TOPLEFT", left, -at)
+				if previous then
+					text:SetPoint("RIGHT", previous, "LEFT", -8, middle - at)
+				else
+					text:SetPoint("RIGHT", self.child, "TOPLEFT", math.max(width, 1), -at)
+				end
+				text:Show()
+			end
+			if caption then
+				-- The caption over the heading, the two centred on the line together.
+				local top = middle - block / 2
+				local captionHigh = slot.caption:GetStringHeight() or 0
+				Across(slot.caption, top + captionHigh / 2)
+				Across(slot.heading, top + captionHigh + CAPTION_GAP + (slot.heading:GetStringHeight() or 0) / 2)
+			else
+				slot.caption:Hide()
+				Across(slot.heading, middle)
+			end
+			y = y + line + HEAD_GAP
+		end
+
+		self:Paint(slot.words)
+		slot.words:ClearAllPoints()
+		slot.words:SetPoint("TOPLEFT", self.child, "TOPLEFT", 0, -y)
+		if width > 0 then slot.words:SetWidth(width) end
+		slot.words:SetText(part.text or "")
+		slot.words:Show()
+		y = y + (slot.words:GetStringHeight() or 0)
+	end
+	for i = #parts + 1, #self.parts do
+		self.parts[i].heading:Hide()
+		self.parts[i].caption:Hide()
+		self.parts[i].words:Hide()
+	end
+	self.partButtons = shown
+
+	-- The caller's own control under the last part (`extraBelow` high), told where that is.
+	if self.onPartsEnd then self.onPartsEnd(y) end
+	self.child:SetHeight(y + PAD_BOTTOM + (self.extraBelow or 0))
+	self:Settle(function() self:SetParts(parts) end)
+	self.frame:SetVerticalScroll(0)
+	self:UpdateScrollBar()
+	self:UpdateFade()
+end
+
+-- Without a light of its own a boss can come up almost black. These are the values DialogueUI sets on its
+-- portrait scenes on this client.
+local function SetSceneLight(scene)
+	scene:SetLightVisible(true)
+	scene:SetLightType(0)
+	scene:SetLightDirection(-0.707, -0.309, -0.636)
+	scene:SetLightDiffuseColor(0.66, 0.66, 0.66)
+	scene:SetLightAmbientColor(0.8, 0.8, 0.8)
+end
+
+-- The lens (full vertical field of view, in degrees) and pose every boss is drawn with, from
+-- SpokenBossCameraView; these stand in for a data file without it.
+local DEFAULT_FOV, DEFAULT_SEQUENCE = 27.78, 0
+
+local function CameraView()
+	local view = _G.SpokenBossCameraView
+	local fov = type(view) == "table" and tonumber(view.fov) or nil
+	local sequence = type(view) == "table" and tonumber(view.sequence) or nil
+	if not (fov and fov > 0 and fov < 180) then fov = DEFAULT_FOV end
+	return fov, sequence or DEFAULT_SEQUENCE
+end
+
+-- The frame's height one scene unit from the camera, through the lens: framing and nudges must agree on it.
+local function Span()
+	return 2 * math.tan(math.rad((CameraView())) / 2)
+end
+
+--- A creature model above the text from the next SetText on, by `displayID`; nil, or none without a
+--- displayID, for no model.
+function TextView:SetModel(model)
+	local displayID = self.hasScene and model and model.displayID or nil
+	-- Most pages have no model, and set none on every layout.
+	if not displayID and not self.modelDisplayID then return end
+	-- The boss already drawn is not loaded and framed again: it would blink out and back in. It is asked for
+	-- again, so it counts as the later model of two in windows on the same level, and takes a nudge that
+	-- has changed. A model out of sight is reloaded, since the client can drop it while hidden.
+	if displayID and displayID == self.modelDisplayID and self.model:IsVisible() then
+		asked = asked + 1
+		self.modelAsked = asked
+		if self.modelCamera then self:ApplyModelCamera() end
+		Refresh()
+		Notify(self)
+		return
+	end
+	self.modelDisplayID = displayID
+	if not self.modelDisplayID then
+		wanting[self] = nil
+		framing[self] = nil
+		self.modelRank = nil
+		if self.model then
+			self:HideModel()
+			local actor = self.modelActor
+			if actor and actor.ClearModel then pcall(actor.ClearModel, actor) end
+		end
+		self.model:SetAlpha(1)
+		Refresh()
+		self.modelCamera = nil
+		Notify(self)
+		return
+	end
+	asked = asked + 1
+	self.modelAsked = asked
+	self.modelRank = 0
+	wanting[self] = true
+	-- Each boss has the same edge every time, and neighbours in the list tend to differ.
+	if self.modelEdgeMask then
+		self.modelEdgeMask:SetTexture(EDGE_PATH .. (self.modelDisplayID % MODEL_EDGES + 1),
+			"CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	end
+	self.modelCamera = nil
+	self:DrawModel(select(2, CameraView()))
+	-- Not drawn until it is framed, so it does not show in the wrong place first.
+	self.model:SetAlpha(0)
+	self.modelWaited = 0
+	framing[self] = true
+	Refresh()
+	Notify(self)
+end
+
+--- The scene's one actor, standing at the scene's origin facing the camera's side of it (yaw 0 is the
+--- model's front), drawn from the display in the pose `sequence`.
+function TextView:DrawModel(sequence)
+	local scene = self.model
+	if not (scene and scene.CreateActor) then return end
+	local ok, err = pcall(function()
+		local actor = self.modelActor
+		if not actor then
+			-- The light is not worth losing the model over.
+			local lit, why = pcall(SetSceneLight, scene)
+			if not lit then SceneFailed("light", why) end
+			actor = scene:CreateActor()
+			actor:SetUseCenterForOrigin(false, false, false)
+			actor:SetPosition(0, 0, 0)
+			actor:SetYaw(0)
+			self.modelActor = actor
+		end
+		-- A reused actor answers for the boss before until the new model has loaded, which would be framed.
+		if actor.ClearModel then pcall(actor.ClearModel, actor) end
+		actor:SetModelByCreatureDisplayID(self.modelDisplayID)
+		-- The pose is not worth losing the model over.
+		pcall(actor.SetAnimation, actor, sequence)
+		actor:Show()
+	end)
+	if not ok then SceneFailed("model", err) end
+end
+
+local function Finite(v)
+	return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge
+end
+
+--- The row if it is { right, up, zoom, turn }, four finite numbers with a zoom above 0; else nil.
+local function ValidNudge(row)
+	if type(row) ~= "table" then return nil end
+	for i = 1, 4 do
+		if not Finite(row[i]) then return nil end
+	end
+	return row[3] > 0 and row or nil
+end
+
+--- Moves a camera { x, y, z of the camera, x, y, z of what it looks at } so the boss is turned `yaw` radians about
+--- the upright through what the camera looks at (its front towards the right for a positive angle), shows `right`
+--- and `up` frame heights further right and up (measured at the camera's own distance) and `zoom` times larger.
+local function Nudged(cam, right, up, zoom, yaw)
+	local px, py, pz, tx, ty, tz = cam[1], cam[2], cam[3], cam[4], cam[5], cam[6]
+	if yaw and yaw ~= 0 then
+		-- Turning the boss one way is turning the camera round it the other way.
+		local c, s = math.cos(-yaw), math.sin(-yaw)
+		local dx, dy = px - tx, py - ty
+		px, py = tx + dx * c - dy * s, ty + dx * s + dy * c
+	end
+	local fx, fy, fz = tx - px, ty - py, tz - pz
+	local dist = math.sqrt(fx * fx + fy * fy + fz * fz)
+	if dist < 1e-6 then return cam end
+	fx, fy, fz = fx / dist, fy / dist, fz / dist
+	-- right = forward x (0, 0, 1), up = right x forward.
+	local rx, ry = fy, -fx
+	local rl = math.sqrt(rx * rx + ry * ry)
+	if rl < 1e-6 then rx, ry, rl = 0, 1, 1 end
+	rx, ry = rx / rl, ry / rl
+	local ux, uy, uz = ry * fz, -rx * fz, rx * fy - ry * fx
+	local move = dist * Span()
+	tx = tx - (rx * right + ux * up) * move
+	ty = ty - (ry * right + uy * up) * move
+	tz = tz - uz * up * move
+	dist = dist / (zoom or 1)
+	return { tx - fx * dist, ty - fy * dist, tz - fz * dist, tx, ty, tz }
+end
+
+--- The key a change made by hand is kept under: bosses on the same model file share it.
+function TextView:CameraGroup()
+	local id = self.modelDisplayID
+	local groups = _G.SpokenBossCameraGroups
+	return id and ((groups and groups[id]) or id) or nil
+end
+
+--- Where a model is drawn: the Compendium's page and the boss's story on the map each have their own nudge.
+function TextView:CameraPlace()
+	return self.cameraPlace or "compendium"
+end
+
+--- The { right, up, zoom, turn } this model is moved by here: a developer module's edit, else the shipped
+--- row. The story page falls back to the Compendium's row. A malformed row is ignored.
+function TextView:CameraNudge()
+	local group, place = self:CameraGroup(), self:CameraPlace()
+	if not group then return nil end
+	local edits = SpokenTextView.cameraEdits
+	if type(edits) == "function" then
+		local ok, row = pcall(edits, place, group)
+		if ok and ValidNudge(row) then return row end
+	end
+	local kept = _G.SpokenBossCameraNudges
+	if not kept then return nil end
+	local row = ValidNudge(kept[place] and kept[place][group])
+	if not row and place ~= "compendium" then row = ValidNudge(kept.compendium and kept.compendium[group]) end
+	return row
+end
+
+--- The camera for this model: the one framed for it, moved by the nudge.
+function TextView:CurrentCamera()
+	local base, nudge = self.modelCamera, self:CameraNudge()
+	if base and nudge then return Nudged(base, nudge[1], nudge[2], nudge[3], nudge[4]) end
+	return base
+end
+
+-- How much of the frame's height, and of its width, the figure fills. The field of view is taken to be the
+-- vertical one, as a PlayerModel's is.
+local FIT, ASPECT = 0.85, MODEL_WIDE
+-- A model that has not loaded by now is framed as this box, in scene units, so the boss is not left unseen.
+-- It is framed again from its own box if that comes by FRAME_LAST, when it is no longer looked for.
+local FRAME_GIVE_UP, FRAME_LAST = 3, 30
+local PLAIN_BOX = { -0.5, -0.5, 0, 0.5, 0.5, 2 }
+local atan2 = math.atan2 or math.atan
+
+--- The actor's box, { x0, y0, z0, x1, y1, z1 }, once its model has loaded and the box has a height and a
+--- width; else nil. A model that has not loaded has no box, and may report an empty one just after it has.
+local function ModelBox(actor)
+	if not (actor and actor.GetActiveBoundingBox) then return nil end
+	if actor.IsLoaded then
+		local loaded, ready = pcall(actor.IsLoaded, actor)
+		if not (loaded and ready) then return nil end
+	end
+	local box = { pcall(actor.GetActiveBoundingBox, actor) }
+	if not table.remove(box, 1) or #box ~= 6 then return nil end
+	for i = 1, 6 do
+		if not Finite(box[i]) then return nil end
+	end
+	if not (box[6] > box[3] and box[5] > box[2] and box[4] >= box[1]) then return nil end
+	return box
+end
+
+--- Frames the whole of a box { x0, y0, z0, x1, y1, z1 } in the frame: the camera looks at its middle from the
+--- +x side, where a model at yaw 0 has its front, as far back as it takes for the figure to fill FIT of the
+--- frame's height or width, whichever is the larger.
+function TextView:FrameModel(box)
+	local x0, y0, z0, x1, y1, z1 = unpack(box)
+	local span = Span()
+	local far = math.max((z1 - z0) / (FIT * span), (y1 - y0) / (FIT * ASPECT * span))
+	local cx, cy, cz = (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2
+	-- How far the figure reaches from the camera's target in any turn: half the diagonal of its footprint.
+	self.modelReach = math.sqrt((x1 - x0) ^ 2 + (y1 - y0) ^ 2) / 2
+	self.modelCamera = { cx + far + (x1 - x0) / 2, cy, cz, cx, cy, cz }
+	self:ApplyModelCamera()
+	self.model:SetAlpha(1)
+	Notify(self)
+end
+
+--- Looks at every model waiting to be framed, `elapsed` seconds on: frames the ones that have loaded, the
+--- ones that have waited FRAME_GIVE_UP while shown as the plain box, and stops looking at FRAME_LAST.
+function FrameWaiting(elapsed)
+	for view in pairs(framing) do
+		-- A page that is hidden is not waited on: its model may only load once it is shown.
+		if view.frame:IsVisible() then
+			view.modelWaited = view.modelWaited + elapsed
+			local box = ModelBox(view.modelActor)
+			if box then
+				framing[view] = nil
+				view:FrameModel(box)
+			elseif view.modelWaited >= FRAME_LAST then
+				framing[view] = nil
+			elseif view.modelWaited >= FRAME_GIVE_UP and not view.modelCamera then
+				view:FrameModel(PLAIN_BOX)
+			end
+		end
+	end
+	if next(framing) == nil then Refresh() end
+end
+
+--- A camera { x, y, z of the camera, x, y, z of what it looks at } as a scene wants it: the position, the yaw
+--- and pitch of looking from it at the target, and its distance from the target.
+local function SceneCamera(cam)
+	local px, py, pz = cam[1], cam[2], cam[3]
+	local fx, fy, fz = cam[4] - px, cam[5] - py, cam[6] - pz
+	local length = math.sqrt(fx * fx + fy * fy + fz * fz)
+	return px, py, pz, atan2(fy, fx), length > 0 and math.asin(fz / length) or 0, length
+end
+
+--- The camera framed for this model, moved by its nudge; nothing while it has none. A call that fails is said
+--- once in chat.
+function TextView:ApplyModelCamera()
+	local scene = self.model
+	if not (self.modelDisplayID and scene and scene.SetCameraPosition and scene.SetCameraOrientationByYawPitchRoll) then
+		return
+	end
+	local ok, err = pcall(function()
+		local cam = self:CurrentCamera()
+		if not cam then return end
+		local px, py, pz, yaw, pitch, distance = SceneCamera(cam)
+		-- To the figure's nearest face, which a near clip must stay short of; a camera zoomed in among the
+		-- figure's reach keeps a tenth of its distance.
+		self.modelDistance = math.max(distance - (self.modelReach or 0), distance * 0.1)
+		scene:SetCameraPosition(px, py, pz)
+		scene:SetCameraOrientationByYawPitchRoll(yaw, pitch, 0)
+		scene:SetCameraFieldOfView(math.rad((CameraView())))
+		scene:SetCameraFarClip(FAR_CLIP)
+		self:ApplyNearClip()
+	end)
+	if not ok then SceneFailed("camera", err) end
+end
+
+--- A picture above the text from the next SetText on: `file` a texture, `mask` the one fraying its
+--- edge. nil for none.
+function TextView:SetPicture(file, mask)
+	self.pictureFile, self.pictureMaskFile = file, mask
+	if not file then return end
+	self.picture:SetTexture(file)
+	local crop = self.cleanPictures and PICTURE_CROP or 0
+	self.picture:SetTexCoord(crop, 1 - crop, crop, 1 - crop)
+	if self.pictureMask then
+		self.pictureMask:SetTexture(mask or [[Interface\Buttons\WHITE8X8]], "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+	end
+end
+
+--- Pictures with straight edges, from now on: no frayed mask, the painted edge cut off, and a
+--- 1 px edge in EllesmereUI's grey round them, which needs its look on.
+function TextView:SetCleanPictures()
+	if self.cleanPictures then return end
+	self.cleanPictures = true
+	-- No mask at all: a white 8 by 8 mask stretched over the picture and clamped to black would
+	-- shade its outer half-texel, some 16 px in from each side, dark.
+	if self.pictureMask and self.picture.RemoveMaskTexture then self.picture:RemoveMaskTexture(self.pictureMask) end
+	local frame = CreateFrame("Frame", nil, self.child)
+	frame:SetAllPoints(self.picture)
+	SpokenEnv.Ellesmere:Edges(frame, frame, SpokenLayout.Pixels(frame, 1, 1), 0)
+	frame:SetShown(self.picture:IsShown())
+	self.pictureEdge = frame
+	if self.pictureFile then self:SetPicture(self.pictureFile, self.pictureMaskFile) end
+end
+
+--- Dark words for a parchment page, without the shadow that smudges them there.
+function TextView:SetInk(r, g, b)
+	self.ink = r and { r, g, b } or nil
+end
+
+--- The parts' headings' colour in place of their near-black; nil goes back to it.
+function TextView:SetHeadInk(r, g, b)
+	self.headInk = r and { r, g, b } or nil
+end
+
+--- `fontObject`'s font in place of the quest text's and the game's for the words, the captions and
+--- the headings; nil goes back to those.
+function TextView:SetFace(fontObject)
+	self.faceObject = fontObject
+end
+
+--- The words' colour, kept across re-wraps; nil goes back to the ink, or the font's own.
+function TextView:SetColor(r, g, b)
+	self.color = r and { r, g, b } or nil
+	if self.color then self.text:SetTextColor(r, g, b) end
+end
+
+function TextView:SetThumbColor(r, g, b)
+	self.thumbColor = { r, g, b }
+	if self.PaintThumb then self:PaintThumb() end
+end
+
+function TextView:Show()
+	self.frame:Show()
+	self:UpdateScrollBar()
+	self:PaintFade()
+end
+
+function TextView:Hide()
+	self.frame:Hide()
+	self.bar:Hide()
+	self:UpdateFade()
+end

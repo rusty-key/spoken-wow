@@ -14,9 +14,11 @@ SourceMethods.__index = SourceMethods
 ---@field title string
 ---@field addon string
 ---@field icon? string
----@field order? number       -- minimap menu order only; never queue order
+---@field about? string       -- one line for its card on Spoken's page
+---@field order? number       -- its place on Spoken's page and the order of its settings page; never queue order
 ---@field queueLimit? number  -- clips of this source allowed behind the head; nil = unlimited
 ---@field interClipGap? number
+---@field noNarrator? boolean -- its words are shown elsewhere: the narrator never draws its lines
 ---@field channel? fun():string
 ---@field admit? fun(clip, queue):boolean, string?
 ---@field testBeforeQueue? boolean
@@ -33,11 +35,16 @@ function Sources:Register(key, info)
         title = info.title or key,
         addon = info.addon,
         icon = info.icon,
+        about = info.about,
         order = info.order or 100,
         queueLimit = info.queueLimit,
-        -- 0.55 is upstream's figure; it absorbs a duration that is slightly short.
+        -- Absorbs a recorded duration that is slightly short.
         interClipGap = info.interClipGap or 0.55,
         channel = info.channel,
+        -- Its lines have no recording: each shows in the narrator for its `length` and is not
+        -- refused for a sound channel that cannot be heard.
+        textOnly = info.textOnly,
+        noNarrator = info.noNarrator,
         admit = info.admit,
         testBeforeQueue = info.testBeforeQueue,
         onQueueEnter = info.onQueueEnter,
@@ -46,6 +53,8 @@ function Sources:Register(key, info)
         -- A part's settings kept in AceDB profiles: a function returning its AceDB object, so
         -- Spoken's own Profiles section switches it with the player's (Options:ProfileDBs).
         profiles = info.profiles,
+        -- What the module prints for a report, after Spoken's own (Options:ShowDiagnostics).
+        diagnostics = info.diagnostics,
         gates = {},
     }, SourceMethods)
     self.byKey[key] = source
@@ -66,8 +75,8 @@ end
 
 --- Whether the player has switched this part of Spoken off in the settings. Off, the addon
 --- stays installed and loaded and nothing it sends is played. The player's own switch, not the
---- client's addon list, which only changes at the next reload: this one needs none. `part` is a source or its key: the settings ask about a
---- part by key whether or not it is installed.
+--- client's addon list, which only changes at the next reload: this one needs none. `part` is a
+--- source or its key: the settings ask about a part by key whether or not it is installed.
 function Sources:IsTurnedOff(part)
     local key = type(part) == "table" and part.key or part
     local parts = Addon.db and Addon.db.profile.Parts
@@ -102,10 +111,9 @@ function Sources:Iterate()
     end
 end
 
---- The channel the player chose for Spoken's voices. Always Master on the legacy clients, whose
---- playback ignores the channel, so a choice saved elsewhere does not change what they mute.
+--- The channel the player chose for Spoken's voices.
 function Sources:PlayerChannel()
-    return Version.IsAnyLegacy and "Master" or Addon.db.profile.Audio.SoundChannel
+    return Addon.db.profile.Audio.SoundChannel
 end
 
 --- The channel a clip from this source plays on: its own if it names one, else the player's.
@@ -120,13 +128,18 @@ end
 -- (a duplicate, a file the probe did not find, a muted channel, a part turned off) are otherwise
 -- seen nowhere.
 local function Noted(clip, how, result, why)
-    if not result and why and Developer then
+    if not result and why then
         Developer:Log("player", "%s refused %s: %s", how, Developer.Describe(clip), tostring(why))
     end
     return result, why
 end
 
-function SourceMethods:Enqueue(clip)
+--- `asked`: the player asked for this line (a click, a command), so it is queued even where
+--- Spoken reads nothing by itself (Addon:ReadsHere).
+function SourceMethods:Enqueue(clip, asked)
+    if not asked and not Addon:ReadsHere() then
+        return Noted(clip, "queue", nil, "Read in Battlegrounds is off")
+    end
     return Noted(clip, "queue", SoundQueue:Add(clip, self, false))
 end
 

@@ -1,0 +1,409 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import { afterEach, describe, expect, it } from 'vitest'
+import { CHANNELS } from '../src/shared/api'
+import type { CatalogUpdate, JobProgress, Product } from '../src/shared/types'
+import { ManagerService } from '../src/main/service'
+import { loadCachedIndex } from '../src/main/packs-remote'
+import { loadPackState, savePackState } from '../src/main/packs-state'
+import { channelFixture, channelKeys, serveChannel, type PackSpec } from './channel-helpers'
+import { makeGame, serveBuffer, sha256, startServer, tmpDir, toc, write, yazlZip, type TestServer } from './helpers'
+
+let server: TestServer | null = null
+let extra: TestServer | null = null
+afterEach(async () => {
+  await server?.close()
+  await extra?.close()
+  server = null
+  extra = null
+})
+
+const keys = channelKeys()
+const PACK = 'SpokenPlacesAudio_deDE'
+const spec: PackSpec = { packId: PACK, rev: '20261018T000000Z', files: { [`${PACK}.toc`]: 'toc', 'Sounds/1.ogg': 'one' }, requires: '3.0.0' }
+
+/** A fetch whose GitHub API answers with `releases` and whose other requests go through. */
+function githubFetch(releases: unknown[] = []): typeof fetch {
+  return (async (url: string, init?: RequestInit) =>
+    String(url).startsWith('https://api.github.com/') ? new Response(JSON.stringify(releases), { status: 200, headers: { 'content-type': 'application/json' } }) : fetch(url, init)) as unknown as typeof fetch
+}
+
+async function setup(options: { spoken?: string; requires?: string; releases?: unknown[] } = {}) {
+  const game = await makeGame(tmpDir())
+  if (options.spoken) write(path.join(game.addOnsPath, 'Spoken', 'Spoken.toc'), toc('Spoken', options.spoken))
+  const s = await serveChannel(channelFixture(keys, [{ ...spec, ...(options.requires ? { requires: options.requires } : {}) }]))
+  server = s
+  const sent: { channel: string; payload: unknown }[] = []
+  const svc = new ManagerService({
+    dataPath: tmpDir(), appVersion: '0.1.0', send: (channel, payload) => sent.push({ channel, payload }),
+    fetchImpl: githubFetch(options.releases), autoPaths: [game.root], isRunning: async () => false, backoffMs: 1,
+    packsBaseUrl: s.base, packsPublicKey: keys.publicKey
+  })
+  await svc.init()
+  await svc.refreshCatalog(true)
+  return { svc, game, sent }
+}
+
+function waitFor(sent: { channel: string; payload: unknown }[], jobId: string): Promise<JobProgress> {
+  return new Promise((resolve, reject) => {
+    const started = Date.now()
+    const t = setInterval(() => {
+      const last = sent.filter((s) => s.channel === CHANNELS.jobProgress && (s.payload as JobProgress).jobId === jobId).map((s) => s.payload as JobProgress).at(-1)
+      if (last && ['done', 'error', 'cancelled'].includes(last.phase)) {
+        clearInterval(t)
+        resolve(last)
+      } else if (Date.now() - started > 10000) {
+        clearInterval(t)
+        reject(new Error('timeout'))
+      }
+    }, 10)
+  })
+}
+
+describe('the channel through the service', () => {
+  it('offers the window a pack only the channel has', async () => {
+    const { svc, sent } = await setup()
+    const told = (sent.filter((s) => s.channel === CHANNELS.catalogChanged).at(-1)?.payload as CatalogUpdate).catalog
+    expect(told.releases['places-audio-deDE']?.[0]?.tag).toBe(`channel/${spec.rev}`)
+    expect(svc.snapshot().catalog.releases['places-audio-deDE']?.[0]?.tag).toBe(`channel/${spec.rev}`)
+    expect((await svc.refreshCatalog()).releases['places-audio-deDE']?.[0]?.tag).toBe(`channel/${spec.rev}`)
+  })
+
+  it("installs a team's pack beside the language's, and removing it leaves the other alone", async () => {
+    const TEAM = 'SpokenPlacesAudio_deDE_stimmen'
+    const team: PackSpec = { packId: TEAM, rev: '20261019T000000Z', files: { [`${TEAM}.toc`]: 'toc', 'Sounds/1.ogg': 'stimmen' }, team: { slug: 'stimmen', name: 'Stimmen', official: false } }
+    const game = await makeGame(tmpDir())
+    write(path.join(game.addOnsPath, 'Spoken', 'Spoken.toc'), toc('Spoken', '3.0.0'))
+    const s = await serveChannel(channelFixture(keys, [spec, team]))
+    server = s
+    const sent: { channel: string; payload: unknown }[] = []
+    const svc = new ManagerService({
+      dataPath: tmpDir(), appVersion: '0.1.0', send: (channel, payload) => sent.push({ channel, payload }),
+      fetchImpl: githubFetch(), autoPaths: [game.root], isRunning: async () => false, backoffMs: 1, packsBaseUrl: s.base, packsPublicKey: keys.publicKey
+    })
+    await svc.init()
+    await svc.refreshCatalog(true)
+    expect(svc.snapshot().products.find((p) => p.id === 'places-audio-deDE-stimmen')?.team?.name).toBe('Stimmen')
+
+    expect((await waitFor(sent, svc.install(game.id, 'places-audio-deDE'))).phase).toBe('done')
+    expect((await waitFor(sent, svc.install(game.id, 'places-audio-deDE-stimmen'))).phase).toBe('done')
+    const states = async () => Object.fromEntries((await svc.statuses(game.id)).filter((s) => s.productId.startsWith('places-audio-deDE')).map((s) => [s.productId, s.state]))
+    expect(await states()).toEqual({ 'places-audio-deDE': 'up-to-date', 'places-audio-deDE-stimmen': 'up-to-date' })
+    expect(fs.readFileSync(path.join(game.addOnsPath, PACK, 'Sounds', '1.ogg'), 'utf8')).toBe('one')
+    expect(fs.readFileSync(path.join(game.addOnsPath, TEAM, 'Sounds', '1.ogg'), 'utf8')).toBe('stimmen')
+
+    const kept = loadPackState(game, PACK)
+    expect((await waitFor(sent, svc.uninstall(game.id, 'places-audio-deDE-stimmen'))).phase).toBe('done')
+    expect(fs.existsSync(path.join(game.addOnsPath, TEAM))).toBe(false)
+    expect(loadPackState(game, TEAM)).toBeNull()
+    expect(fs.readFileSync(path.join(game.addOnsPath, PACK, 'Sounds', '1.ogg'), 'utf8')).toBe('one')
+    expect(loadPackState(game, PACK)).toEqual(kept)
+    expect(await states()).toEqual({ 'places-audio-deDE': 'up-to-date', 'places-audio-deDE-stimmen': 'not-installed' })
+  })
+
+  for (const [name, v1Only] of [['index-v2.json drops them', false], ['the channel falls back to index.json', true]] as const) {
+    it(`still shows and removes team packs installed before ${name}`, async () => {
+      const TEAM = 'SpokenPlacesAudio_deDE_stimmen'
+      const JA = 'SpokenPlacesAudio_jaJP'
+      const packs: PackSpec[] = [
+        spec,
+        { packId: TEAM, rev: '20261019T000000Z', files: { [`${TEAM}.toc`]: 'toc', 'Sounds/1.ogg': 'stimmen' }, team: { slug: 'stimmen', name: 'Stimmen', official: false } },
+        { packId: JA, rev: '20261019T000000Z', files: { [`${JA}.toc`]: 'toc', 'Sounds/1.ogg': 'ja' } }
+      ]
+      const game = await makeGame(tmpDir())
+      write(path.join(game.addOnsPath, 'Spoken', 'Spoken.toc'), toc('Spoken', '3.0.0'))
+      const fx = channelFixture(keys, packs)
+      const s = await serveChannel(fx)
+      server = s
+      const sent: { channel: string; payload: unknown }[] = []
+      const svc = new ManagerService({
+        dataPath: tmpDir(), appVersion: '0.1.0', send: (channel, payload) => sent.push({ channel, payload }),
+        fetchImpl: githubFetch(), autoPaths: [game.root], isRunning: async () => false, backoffMs: 1, packsBaseUrl: s.base, packsPublicKey: keys.publicKey
+      })
+      await svc.init()
+      await svc.refreshCatalog(true)
+      for (const id of ['places-audio-deDE-stimmen', 'places-audio-jaJP']) expect((await waitFor(sent, svc.install(game.id, id))).phase).toBe('done')
+
+      fx.objects = (v1Only ? channelFixture(keys, packs, { v1Only: true, generatedAt: '2026-10-20T00:00:00.000Z' }) : channelFixture(keys, [spec], { generatedAt: '2026-10-20T00:00:00.000Z' })).objects
+      const before = sent.length
+      await svc.refreshChannel()
+      const told = sent.slice(before).filter((e) => e.channel === CHANNELS.catalogChanged).at(-1)?.payload as CatalogUpdate | undefined
+      const listed = (products: Product[] | undefined) => (products ?? []).filter((p) => p.id === 'places-audio-deDE-stimmen' || p.id === 'places-audio-jaJP').map((p) => [p.id, p.folders, p.team])
+      const rebuilt = [
+        ['places-audio-deDE-stimmen', [TEAM], { slug: 'stimmen', name: 'stimmen', official: false }],
+        ['places-audio-jaJP', [JA], null]
+      ]
+      expect(listed(svc.products())).toEqual(rebuilt)
+      expect(listed(told?.products)).toEqual(rebuilt)
+      const delisted = async () => (await svc.statuses(game.id)).filter((st) => st.productId === 'places-audio-deDE-stimmen' || st.productId === 'places-audio-jaJP')
+      expect((await delisted()).map((st) => [st.productId, st.installedFolders, st.latest])).toEqual([
+        ['places-audio-deDE-stimmen', [TEAM], undefined],
+        ['places-audio-jaJP', [JA], undefined]
+      ])
+
+      for (const id of ['places-audio-deDE-stimmen', 'places-audio-jaJP']) expect((await waitFor(sent, svc.uninstall(game.id, id))).phase).toBe('done')
+      expect(fs.existsSync(path.join(game.addOnsPath, TEAM))).toBe(false)
+      expect(fs.existsSync(path.join(game.addOnsPath, JA))).toBe(false)
+      expect(loadPackState(game, TEAM)).toBeNull()
+      expect(await delisted()).toEqual([])
+      expect(listed(svc.products())).toEqual([])
+    })
+  }
+
+  it("tells the window of a team's new pack when a refresh of the channel brings one", async () => {
+    const fx = channelFixture(keys, [spec])
+    const s = await serveChannel(fx)
+    server = s
+    const sent: { channel: string; payload: unknown }[] = []
+    const svc = new ManagerService({
+      dataPath: tmpDir(), appVersion: '0.1.0', send: (channel, payload) => sent.push({ channel, payload }),
+      fetchImpl: githubFetch(), autoPaths: [], isRunning: async () => false, packsBaseUrl: s.base, packsPublicKey: keys.publicKey
+    })
+    await svc.refreshChannel()
+    const TEAM = 'SpokenPlacesAudio_jaJP_kotoba'
+    const next = channelFixture(
+      keys,
+      [spec, { packId: TEAM, rev: '20261019T000000Z', files: { [`${TEAM}.toc`]: 'toc' }, team: { slug: 'kotoba', name: 'Kotoba', official: false } }],
+      { generatedAt: '2026-10-19T00:00:00.000Z', languages: { jaJP: { code: 'jaJP', name: 'Japanese', native: '日本語' } } }
+    )
+    fx.objects = next.objects
+    await svc.refreshChannel()
+    const told = sent.filter((e) => e.channel === CHANNELS.catalogChanged).at(-1)?.payload as CatalogUpdate
+    expect(told.products.find((p) => p.id === 'places-audio-jaJP-kotoba')).toMatchObject({ folders: [TEAM], team: { name: 'Kotoba' } })
+    expect(told.catalog.releases['places-audio-jaJP-kotoba']?.[0]?.tag).toBe('channel/20261019T000000Z')
+    expect(told.languages.at(-1)).toEqual({ code: 'jaJP', name: '日本語' })
+  })
+
+  it('tells the window when the channel gains index-v2.json with the same generatedAt', async () => {
+    const fx = channelFixture(keys, [spec], { v1Only: true })
+    const s = await serveChannel(fx)
+    server = s
+    const sent: { channel: string; payload: unknown }[] = []
+    const svc = new ManagerService({
+      dataPath: tmpDir(), appVersion: '0.1.0', send: (channel, payload) => sent.push({ channel, payload }),
+      fetchImpl: githubFetch(), autoPaths: [], isRunning: async () => false, packsBaseUrl: s.base, packsPublicKey: keys.publicKey
+    })
+    await svc.refreshChannel()
+    const TEAM = 'SpokenPlacesAudio_deDE_stimmen'
+    fx.objects = channelFixture(keys, [spec, { packId: TEAM, rev: '20261019T000000Z', files: { [`${TEAM}.toc`]: 'toc' }, team: { slug: 'stimmen', name: 'Stimmen', official: false } }]).objects
+    const before = sent.length
+    await svc.refreshChannel()
+    const told = sent.slice(before).filter((e) => e.channel === CHANNELS.catalogChanged).at(-1)?.payload as CatalogUpdate | undefined
+    expect(told?.products.find((p) => p.id === 'places-audio-deDE-stimmen')?.team?.name).toBe('Stimmen')
+  })
+
+  it('sends the latest catalog once a manifest warmed for an older channel arrives', async () => {
+    const own: PackSpec = { ...spec, rev: '20261017T120000Z' }
+    const fx = channelFixture(keys, [own])
+    const s = await serveChannel(fx)
+    server = s
+    const game = await makeGame(tmpDir())
+    savePackState(game, { packId: PACK, rev: '20261001T000000Z', files: {} })
+    // The first request for the manifest waits until the next channel is in; later ones go straight through.
+    let release: (() => void) | null = null
+    let requested: () => void = () => undefined
+    const asked = new Promise<void>((resolve) => (requested = resolve))
+    const fetchImpl = (async (url: string, init?: RequestInit) => {
+      if (String(url).includes(`/packs/${PACK}/${own.rev}.json`) && !release) {
+        await new Promise<void>((resolve) => {
+          release = resolve
+          requested()
+        })
+      }
+      return githubFetch()(url, init)
+    }) as unknown as typeof fetch
+    const sent: { channel: string; payload: unknown }[] = []
+    const svc = new ManagerService({
+      dataPath: tmpDir(), appVersion: '0.1.0', send: (channel, payload) => sent.push({ channel, payload }),
+      fetchImpl, autoPaths: [game.root], isRunning: async () => false, packsBaseUrl: s.base, packsPublicKey: keys.publicKey
+    })
+    await svc.init()
+    await svc.refreshChannel()
+    await asked
+
+    const TEAM = 'SpokenPlacesAudio_deDE_stimmen'
+    fx.objects = channelFixture(keys, [own, { packId: TEAM, rev: '20261019T000000Z', files: { [`${TEAM}.toc`]: 'toc' }, team: { slug: 'stimmen', name: 'Stimmen', official: false } }], {
+      generatedAt: '2026-10-19T00:00:00.000Z'
+    }).objects
+    await svc.refreshChannel()
+    const updates = () => sent.filter((e) => e.channel === CHANNELS.catalogChanged)
+    const told = async (count: number) => {
+      const deadline = Date.now() + 5000
+      while (updates().length < count && Date.now() < deadline) await new Promise((r) => setTimeout(r, 10))
+      expect(updates()).toHaveLength(count)
+    }
+    // The newer channel's own warm-up gets the manifest first and says so; then the held one finishes.
+    const after = updates().length
+    await told(after + 1)
+    release!()
+    await told(after + 2)
+    const last = updates().at(-1)?.payload as CatalogUpdate
+    expect(last.products.some((p) => p.id === 'places-audio-deDE-stimmen')).toBe(true)
+    expect(last.catalog.releases['places-audio-deDE-stimmen']?.[0]?.tag).toBe('channel/20261019T000000Z')
+  })
+
+  it.each([
+    ['gets an older index', '/index-v2.json'],
+    ['gets no answer', '/index-v2.json'],
+    ['has its index and still waits for GitHub', 'api.github.com']
+  ])('keeps the newer channel a refresh of it brought while a catalog refresh was out and %s', async (late, held) => {
+    const fx = channelFixture(keys, [spec])
+    const s = await serveChannel(fx)
+    server = s
+    const older = channelFixture(keys, [spec], { generatedAt: '2026-10-19T00:00:00.000Z' }).objects
+    // The catalog refresh's request for `held` waits until the channel refresh is in.
+    let hold = false
+    let release: () => void = () => undefined
+    let requested: () => void = () => undefined
+    const asked = new Promise<void>((resolve) => (requested = resolve))
+    const fetchImpl = (async (url: string, init?: RequestInit) => {
+      if (hold && String(url).includes(held)) {
+        hold = false
+        await new Promise<void>((resolve) => {
+          release = resolve
+          requested()
+        })
+        if (late === 'gets no answer') throw new Error('connection reset')
+        if (late === 'gets an older index') return new Response(older.get('/index-v2.json')!.toString('utf8'), { status: 200 })
+      }
+      return githubFetch()(url, init)
+    }) as unknown as typeof fetch
+    const dataPath = tmpDir()
+    const svc = new ManagerService({
+      dataPath, appVersion: '0.1.0', send: () => undefined, fetchImpl, autoPaths: [], isRunning: async () => false,
+      packsBaseUrl: s.base, packsPublicKey: keys.publicKey, backoffMs: 1
+    })
+    await svc.refreshChannel()
+    hold = true
+    fx.objects = older
+    const catalog = svc.refreshCatalog(true)
+    await asked
+    // Without GitHub's answer the catalog refresh has its index already: Oct 19, newer than the Oct 18 in use.
+    if (held === 'api.github.com') await expect.poll(() => loadCachedIndex(dataPath, keys.publicKey)?.generatedAt).toBe('2026-10-19T00:00:00.000Z')
+    fx.objects = channelFixture(keys, [spec], { generatedAt: '2026-10-20T00:00:00.000Z' }).objects
+    await svc.refreshChannel()
+    expect(svc.channel?.generatedAt).toBe('2026-10-20T00:00:00.000Z')
+    release()
+    await catalog
+    expect(svc.channel?.generatedAt).toBe('2026-10-20T00:00:00.000Z')
+    expect(loadCachedIndex(dataPath, keys.publicKey)?.generatedAt).toBe('2026-10-20T00:00:00.000Z')
+  })
+
+  it("keeps its products when a refresh finds the channel unchanged", async () => {
+    const s = await serveChannel(channelFixture(keys, [spec]))
+    server = s
+    const svc = new ManagerService({
+      dataPath: tmpDir(), appVersion: '0.1.0', send: () => undefined,
+      fetchImpl: githubFetch(), autoPaths: [], isRunning: async () => false, packsBaseUrl: s.base, packsPublicKey: keys.publicKey
+    })
+    await svc.refreshChannel()
+    const products = svc.products()
+    await svc.refreshChannel()
+    expect(svc.products()).toBe(products)
+  })
+
+  it('offers, installs and removes a channel pack', async () => {
+    const { svc, game, sent } = await setup({ spoken: '3.0.0' })
+    const before = (await svc.statuses(game.id)).find((s) => s.productId === 'places-audio-deDE')
+    expect(before?.state).toBe('not-installed')
+    expect(before?.latest?.tag).toBe(`channel/${spec.rev}`)
+
+    const done = await waitFor(sent, svc.install(game.id, 'places-audio-deDE'))
+    expect(done.phase).toBe('done')
+    expect(fs.readFileSync(path.join(game.addOnsPath, PACK, 'Sounds', '1.ogg'), 'utf8')).toBe('one')
+    expect((await svc.statuses(game.id)).find((s) => s.productId === 'places-audio-deDE')?.state).toBe('up-to-date')
+
+    const removed = await waitFor(sent, svc.uninstall(game.id, 'places-audio-deDE'))
+    expect(removed.phase).toBe('done')
+    expect(loadPackState(game, PACK)).toBeNull()
+  })
+
+  it('forgets the channel revs of a folder that GitHub content replaced', async () => {
+    const zip = await yazlZip([
+      { name: `${PACK}/${PACK}.toc`, data: toc(PACK, '1.0.0') },
+      { name: `${PACK}/Sounds/1.ogg`, data: 'github' }
+    ])
+    extra = await startServer((req, res) => serveBuffer(req, res, zip))
+    const releases = [
+      {
+        tag_name: 'places-audio-deDE/v1.0.0', draft: false, prerelease: false, published_at: '2026-10-01T00:00:00Z', body: '', html_url: '',
+        assets: [{ name: `${PACK}-1.0.0.zip`, size: zip.length, browser_download_url: `${extra.url}/zones.zip`, digest: `sha256:${sha256(zip)}`, state: 'uploaded' }]
+      }
+    ]
+    const { svc, game, sent } = await setup({ spoken: '3.0.0', releases })
+    expect((await waitFor(sent, svc.install(game.id, 'places-audio-deDE'))).phase).toBe('done')
+    expect(loadPackState(game, PACK)).not.toBeNull()
+
+    // The channel stops carrying the pack, so the same product is installed from GitHub.
+    svc.channel = null
+    expect((await waitFor(sent, svc.install(game.id, 'places-audio-deDE', { version: '1.0.0' }))).phase).toBe('done')
+    expect(fs.readFileSync(path.join(game.addOnsPath, PACK, 'Sounds', '1.ogg'), 'utf8')).toBe('github')
+    expect(loadPackState(game, PACK)).toBeNull()
+  })
+
+  it('says which Spoken a pack needs, and refuses when none is released', async () => {
+    const { svc, game, sent } = await setup({ spoken: '3.0.0', requires: '3.1.0' })
+    expect((await svc.statuses(game.id)).find((s) => s.productId === 'places-audio-deDE')?.needsSpoken).toBe('3.1.0')
+    const failed = await waitFor(sent, svc.install(game.id, 'places-audio-deDE'))
+    expect(failed.phase).toBe('error')
+    expect(failed.message).toMatch(/needs Spoken 3.1.0/)
+  })
+
+  it('keeps one job running through the Spoken install it needs', async () => {
+    const game = await makeGame(tmpDir())
+    write(path.join(game.addOnsPath, 'Spoken', 'Spoken.toc'), toc('Spoken', '3.0.0'))
+    const zip = await yazlZip([
+      { name: 'Spoken/Spoken.toc', data: toc('Spoken', '3.1.0') },
+      { name: 'Spoken/Spoken.lua', data: 'x' }
+    ])
+    extra = await startServer((req, res) => serveBuffer(req, res, zip))
+    const releases = [
+      {
+        tag_name: 'spoken/v3.1.0', draft: false, prerelease: false, published_at: '2026-10-01T00:00:00Z', body: '', html_url: '',
+        assets: [{ name: 'Spoken-3.1.0.zip', size: zip.length, browser_download_url: `${extra.url}/Spoken-3.1.0.zip`, digest: `sha256:${sha256(zip)}`, state: 'uploaded' }]
+      }
+    ]
+    const s = await serveChannel(channelFixture(keys, [{ ...spec, requires: '3.1.0' }]))
+    server = s
+    const clip = path.join(game.addOnsPath, PACK, 'Sounds', '1.ogg')
+    let clipAtDone: boolean | null = null
+    const sent: { channel: string; payload: unknown }[] = []
+    const svc = new ManagerService({
+      dataPath: tmpDir(), appVersion: '0.1.0',
+      send: (channel, payload) => {
+        sent.push({ channel, payload })
+        if (clipAtDone === null && channel === CHANNELS.jobProgress && (payload as JobProgress).phase === 'done') clipAtDone = fs.existsSync(clip)
+      },
+      fetchImpl: githubFetch(releases), autoPaths: [game.root], isRunning: async () => false, backoffMs: 1, packsBaseUrl: s.base, packsPublicKey: keys.publicKey
+    })
+    await svc.init()
+    await svc.refreshCatalog(true)
+    const jobId = svc.install(game.id, 'places-audio-deDE')
+    const done = await waitFor(sent, jobId)
+    expect(done.phase).toBe('done')
+    const events = sent.filter((e) => e.channel === CHANNELS.jobProgress && (e.payload as JobProgress).jobId === jobId).map((e) => e.payload as JobProgress)
+    expect(events.filter((e) => e.phase === 'done')).toHaveLength(1)
+    expect(events.at(-1)?.phase).toBe('done')
+    expect(events.every((e) => e.productId === 'places-audio-deDE')).toBe(true)
+    expect(fs.existsSync(clip)).toBe(true)
+    expect(clipAtDone).toBe(true)
+    expect(fs.readFileSync(path.join(game.addOnsPath, 'Spoken', 'Spoken.toc'), 'utf8')).toMatch(/3\.1\.0/)
+  })
+
+  it('gives up on a channel that never answers, and still updates the GitHub catalog', async () => {
+    const game = await makeGame(tmpDir())
+    server = await startServer(() => undefined)
+    const releases = [
+      { tag_name: 'spoken/v3.1.0', draft: false, prerelease: false, published_at: '2026-10-01T00:00:00Z', body: '', html_url: '', assets: [{ name: 'Spoken-3.1.0.zip', size: 1, browser_download_url: 'http://127.0.0.1:9/x.zip' }] }
+    ]
+    const svc = new ManagerService({
+      dataPath: tmpDir(), appVersion: '0.1.0', send: () => undefined, fetchImpl: githubFetch(releases), autoPaths: [game.root], isRunning: async () => false,
+      packsBaseUrl: `${server.url}/`, packsPublicKey: keys.publicKey, packsTimeoutMs: 200
+    })
+    await svc.init()
+    const started = Date.now()
+    const catalog = await svc.refreshCatalog(true)
+    expect(Date.now() - started).toBeLessThan(1000)
+    expect(catalog.releases['spoken']?.length).toBe(1)
+  })
+})

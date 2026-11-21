@@ -29,11 +29,17 @@ for _, player in ipairs(SUPERSEDED_PLAYERS) do
 end
 Addon = AceAddon:NewAddon("SpokenQuests", "AceEvent-3.0", "AceTimer-3.0")
 
-Addon.OnAddonLoad = {}
 local AUTO_POLL_INTERVAL = 0.1
+local QUEST_ACCEPT_GRACE = 0.5
 
 -- Store original function before EQL3 (Extended Quest Log 3) overrides it and starts prepending quest level
 local GetTitleText = GetTitleText
+
+-- The open quest's title, or "" where there is none or the game hides it from addons (in
+-- instances on the Forever client): it keys tables, which take no nil.
+local function QuestTitle()
+    return GetTitleText and NotSecret(GetTitleText()) or ""
+end
 
 local function IsFrameVisible(frame)
     if not frame then
@@ -54,47 +60,99 @@ local lastQuestEvent
 -- Defined with the handlers below, and asked by functions above them.
 local ResolveQuestID, NoteGossipPage
 
--- The quest globals as they stood when the client fired a quest event. An addon that
--- accepts or turns in the quest from its own handler - Leatrix Plus, and the auto-turn-in
--- addons beside it - closes the dialog in the same frame the event arrived in, so GetQuestID
+-- The quest globals as they stood when the client fired each quest event, oldest first. An
+-- addon that accepts or turns in the quest from its own handler - Leatrix Plus, Enhance QoL,
+-- RestedXP, Zygor - closes the dialog in the same frame the event arrived in, so GetQuestID
 -- is back to 0 by the time the 10 Hz watcher first polls and the interaction would never be
--- read at all. The watcher still owns dispatch: it replays this record only once the dialog
--- has closed with nothing dispatched for it.
-local questSnapshot
+-- read at all. An auto turn-in shows two pages before the watcher can read either, so each
+-- page keeps its own record. The watcher still owns dispatch: a page is replayed from here
+-- only once the dialog has closed, or the quest was accepted or turned in, with nothing read
+-- for it. A page whose event arrived with neither a quest ID nor a title names no quest, and
+-- no later event could tie it to one, so it is not recorded.
+local questSnapshots = {}
+
+-- Long enough for the server to answer an accept or a turn-in, short enough that a quest
+-- accepted later some other way (an escort a party member starts) does not read an old offer.
+local SNAPSHOT_LIFETIME = 10
 
 -- Set while a handler is being replayed from a snapshot, so it reads that instead of globals
 -- the client has already cleared.
 local questSnapshotInUse
 
+-- A quest page is read once whichever route finds it first: the key of the last page handled, and
+-- when. A quest the client reports again within this long is the same interaction.
+local HANDLED_AGAIN_AFTER = 5
+
+local function HandledRecently(state, key)
+    return key == state.lastHandledKey and GetTime() - state.lastHandledAt < HANDLED_AGAIN_AFTER
+end
+
+local function MarkHandled(state, key)
+    state.lastHandledKey = key
+    state.lastHandledAt = GetTime()
+end
+
+local function PageKey(event, questID, title)
+    return format("%s:%s:%s", event, tostring(questID), title or "")
+end
+
 -- Each quest event's line: the sound it is keyed by, the data module's name for the
 -- interaction, and the global its text is read from.
 local QUEST_EVENTS = {
     QUEST_DETAIL = { sound = Enums.SoundEvent.QuestAccept, source = "accept",
-        text = function() return GetQuestText and GetQuestText() or "" end },
+        text = function() return GetQuestText and NotSecret(GetQuestText()) or "" end },
     QUEST_PROGRESS = { sound = Enums.SoundEvent.QuestProgress, source = "progress",
-        text = function() return GetProgressText and GetProgressText() or "" end },
+        text = function() return GetProgressText and NotSecret(GetProgressText()) or "" end },
     QUEST_COMPLETE = { sound = Enums.SoundEvent.QuestComplete, source = "complete",
-        text = function() return GetRewardText and GetRewardText() or "" end },
+        text = function() return GetRewardText and NotSecret(GetRewardText()) or "" end },
 }
 
---- GetQuestID for the dialog `event` names. On a legacy client GetQuestID is
---- Compatibility.lua's substitute, which resolves the quest from the text of the dialog it
---- is told about; telling it here, just before asking, means no event order is relied on.
-local function QuestIDFor(event)
-    local quest = QUEST_EVENTS[event]
-    if quest and Addon.NoteLegacyQuestEvent then
-        Addon:NoteLegacyQuestEvent(quest.source, quest.text())
-    end
-    return GetQuestID and GetQuestID() or 0
+--- The quest the open dialog shows, 0 when none.
+local function CurrentQuestID()
+    return NotSecret(GetQuestID()) or 0
 end
 
---- The quest on the open dialog `event` names, falling back on its title, NPC and text where
---- the client has no ID for it. For callers outside the dialog events, which have no snapshot:
---- Followup.lua's accept and turn-in hooks on the legacy clients.
-function Addon:DialogQuestID(event)
-    local quest = QUEST_EVENTS[event]
-    return ResolveQuestID(quest.source, QuestIDFor(event), GetTitleText and GetTitleText() or "",
-        Utils:GetNPCName() or "", quest.text(), true) or 0
+-- More than one quest can have a queued turn-in line while an addon moves straight from one
+-- dialog to the next. Keep each record until its own turn-in event or close timer handles it;
+-- replacing the record would strand the earlier line without a record to mark or stop.
+local function QuestTurnInRecords()
+    Addon.openQuestTurnIns = Addon.openQuestTurnIns or {}
+    return Addon.openQuestTurnIns
+end
+
+local function SameQuest(questID, title, otherID, otherTitle)
+    local id, other = tonumber(questID), tonumber(otherID)
+    return id and other and id == other and (id ~= 0 or title == otherTitle)
+end
+
+local function FindQuestTurnIn(questID, title, includeTurnedIn)
+    for i = #QuestTurnInRecords(), 1, -1 do
+        local turnIn = QuestTurnInRecords()[i]
+        if (includeTurnedIn or not turnIn.turnedIn) and SameQuest(questID, title, turnIn.questID, turnIn.title) then
+            return turnIn
+        end
+    end
+end
+
+local function NewQuestTurnIn(questID, title)
+    local turnIn = { questID = questID, title = title, soundData = {} }
+    table.insert(QuestTurnInRecords(), turnIn)
+    Addon.openQuestTurnIn = turnIn
+    return turnIn
+end
+
+local EVENT_OF_SOUND = {}
+for event, quest in pairs(QUEST_EVENTS) do
+    EVENT_OF_SOUND[quest.sound] = event
+end
+
+local function PruneQuestSnapshots()
+    local now = GetTime()
+    for i = #questSnapshots, 1, -1 do
+        if now - questSnapshots[i].at > SNAPSHOT_LIFETIME then
+            table.remove(questSnapshots, i)
+        end
+    end
 end
 
 local function CaptureQuestSnapshot(event)
@@ -102,22 +160,87 @@ local function CaptureQuestSnapshot(event)
     if not quest then
         return
     end
-    local readText = quest.text
-    local questID = QuestIDFor(event)
-    local questTitle = GetTitleText and GetTitleText() or ""
+    PruneQuestSnapshots()
+    local questID = CurrentQuestID()
+    local questTitle = QuestTitle()
     -- Nothing to replay, and nothing to identify a quest by either.
-    if (not questID or questID == 0) and questTitle == "" then
+    if questID == 0 and questTitle == "" then
         return
     end
-    questSnapshot = {
+    local text, targetName = quest.text(), Utils:GetNPCName()
+    -- Resolved now, the way the handler would: QUEST_ACCEPTED and QUEST_TURNED_IN find a page by
+    -- its quest ID, and the brief 0 a Classic client reports would match neither.
+    if questID == 0 then
+        questID = ResolveQuestID(quest.source, questID, questTitle, targetName, text, true) or 0
+    end
+    local snapshot = {
         event = event,
+        at = GetTime(),
         questID = questID,
         title = questTitle,
-        text = readText(),
+        text = text,
         guid = Utils:GetNPCGUID(),
-        targetName = Utils:GetNPCName(),
+        targetName = targetName,
         isObjectOrItem = Utils:IsNPCObjectOrItem(),
     }
+    if event == "QUEST_DETAIL" then
+        local offer = Addon.openQuestOffer
+        if not offer or offer.accepted or offer.questID ~= questID or offer.title ~= questTitle then
+            Addon.openQuestOffer = { questID = questID, title = questTitle }
+        end
+    elseif event == "QUEST_PROGRESS" or event == "QUEST_COMPLETE" then
+        local turnIn = FindQuestTurnIn(questID, questTitle)
+        if not turnIn then
+            NewQuestTurnIn(questID, questTitle)
+        else
+            Addon.openQuestTurnIn = turnIn
+        end
+    end
+    -- The same page shown again replaces its record, and keeps what was done with it, so a page
+    -- read in the open window is not read again after it closes.
+    for i = #questSnapshots, 1, -1 do
+        local old = questSnapshots[i]
+        if old.event == event and old.questID == questID and old.title == questTitle then
+            snapshot.dispatched = old.dispatched
+            table.remove(questSnapshots, i)
+        end
+    end
+    table.insert(questSnapshots, snapshot)
+end
+
+--- A page of `event` of quest `questID` was read while its dialog was open: the newest record of
+--- that event is that page, whatever the globals held when its event arrived. The earlier pages of
+--- `questID` were passed over by the player, as they always were, so they are not replayed after it
+--- either. The record's own quest ID is not used for that: it may be the previous quest's, and
+--- that quest's pages may still be waiting for their own accept or turn-in.
+local function MarkQuestSnapshotRead(event, questID)
+    for i = #questSnapshots, 1, -1 do
+        if questSnapshots[i].event == event then
+            questSnapshots[i].dispatched = true
+            for j = 1, i - 1 do
+                if questSnapshots[j].questID == questID then
+                    questSnapshots[j].dispatched = true
+                end
+            end
+            return
+        end
+    end
+end
+
+--- An offer recorded after a progress or reward page of its quest: it carries the globals of the
+--- quest just handed in, not an offer of its own.
+local function IsStaleOffer(i)
+    local offer = questSnapshots[i]
+    if offer.event ~= "QUEST_DETAIL" then
+        return false
+    end
+    for j = 1, i - 1 do
+        local earlier = questSnapshots[j]
+        if earlier.questID == offer.questID and earlier.event ~= "QUEST_DETAIL" then
+            return true
+        end
+    end
+    return false
 end
 
 -- Where a quest handler's fields come from: the live globals, or the snapshot being replayed.
@@ -127,7 +250,7 @@ local function ReadQuestFields(event)
         return snapshot.questID, snapshot.title, snapshot.text, snapshot.guid, snapshot.targetName,
             snapshot.isObjectOrItem
     end
-    return QuestIDFor(event), GetTitleText(), QUEST_EVENTS[event].text(), Utils:GetNPCGUID(),
+    return CurrentQuestID(), QuestTitle(), QUEST_EVENTS[event].text(), Utils:GetNPCGUID(),
         Utils:GetNPCName(), Utils:IsNPCObjectOrItem()
 end
 
@@ -144,7 +267,7 @@ local function GetVisibleQuestEvent()
         return "QUEST_GREETING"
     end
 
-    local questID = GetQuestID and GetQuestID()
+    local questID = NotSecret(GetQuestID())
     if not questID or questID == 0 then
         return
     end
@@ -161,15 +284,20 @@ local function GetVisibleQuestEvent()
     return lastQuestEvent
 end
 
+local function IsQuestWindowVisible()
+    return IsFrameVisible(QuestFrameRewardPanel)
+        or IsFrameVisible(QuestFrameProgressPanel)
+        or IsFrameVisible(QuestFrameDetailPanel)
+        or IsFrameVisible(QuestFrameGreetingPanel)
+end
+
 -- The Forever client's gamepad UI takes over every popup as it opens, inside the code that
 -- opened it. Opened by an addon, that taints the gamepad's bindings: the next close is blocked,
 -- and the "blocked from an action" dialog it raises hangs the client (#165). What this addon
 -- would pop up unasked goes to chat there instead. A copy of Spoken's own (Core.lua), because
--- the player may be the addon that is missing. pcall, because 1.12 raises on a CVar it has never
--- heard of.
+-- the player may be the addon that is missing.
 local function IsGamepadUI()
-    local ok, style = pcall(GetCVar, "InputDeviceInterfaceStyle")
-    return ok and style == "1"
+    return GetCVar("InputDeviceInterfaceStyle") == "1"
 end
 
 local function Say(text)
@@ -189,7 +317,7 @@ function Addon:ShowMissingDataModulePopup()
         end
     end
     local details = next(loadDetails) and ("|n|nDetected but not loaded:|n" .. table.concat(loadDetails, "|n")) or ""
-    local text = [[No usable sound packs were loaded.|n|nKeep a sound pack installed beside this addon - "Spoken Quests Audio", or the older "AI_VoiceOverData_Vanilla". Run "/spq diagnostics" for details.]] .. details
+    local text = [[No usable voice packs were loaded.|n|nKeep a voice pack installed beside this addon - "Spoken Audio: Quests", or the older "AI_VoiceOverData_Vanilla". Run "/spq diagnostics" for details.]] .. details
     if IsGamepadUI() then
         Say(text)
         return
@@ -207,19 +335,23 @@ end
 --- Every read goes through here, automatic or not. `manual` is a player asking for this
 --- line - the Play button, /spq read - rather than the client reporting a dialog, so it reads
 --- whatever autoplay and the greeting frequency say.
-function Addon:InvokeQuestHandler(event, source, manual)
+--- `snapshot` is a page replayed from the record of its event: it is read as recorded, and does
+--- not wait for DialogueUI's window, which is no longer the page's.
+function Addon:InvokeQuestHandler(event, source, manual, snapshot)
     local handler = self[event]
     if not handler then
         Debug:Record("handler-missing", format("No handler exists for %s", tostring(event)))
         return false
     end
-    if not manual and not self:IsAutoplayOn() then
-        Debug:Record("autoplay-off", format("Not reading %s: autoplay is off", event))
+    -- Only a read waits on autoplay: a window closing must still stop a line the Play button started.
+    if not manual and event ~= "QUEST_FINISHED" and event ~= "GOSSIP_CLOSED" and not self:ReadsItself(event) then
+        Debug:Record("autoplay-off", format("Not reading %s: %s", event,
+            self:IsAutoplayOn() and "Read Quest Progress Text is off" or "autoplay is off"))
         return false
     end
     -- Read while DialogueUI's window is still appearing, the voice would run ahead of the words
     -- it marks, so autoplay waits for the window.
-    local bridge = not manual and rawget(VoiceOver, "DialogueUIBridge")
+    local bridge = not manual and not snapshot and rawget(VoiceOver, "DialogueUIBridge")
     if bridge and bridge.Defer and bridge:Defer(event, function()
         self:InvokeQuestHandler(event, source, manual)
     end) then
@@ -230,7 +362,9 @@ function Addon:InvokeQuestHandler(event, source, manual)
     Debug:Record("quest-dispatch", format("Dispatching %s through %s", event, source or "manual reader"))
     -- Where the lines this queues come from, for the debug log (Player:Enqueue keeps it on each).
     Player.origin = Player:Origin(event, source, manual)
+    questSnapshotInUse = snapshot
     local succeeded, errorMessage = pcall(handler, self, event, manual)
+    questSnapshotInUse = nil
     Player.origin = nil
     -- The bridge keeps the page blank for this read's line; it shows the page at once if none came.
     if bridge and bridge.Read then
@@ -248,23 +382,70 @@ function Addon:InvokeQuestHandler(event, source, manual)
     return true
 end
 
---- Whether the player has this part of Spoken switched on (Spoken's settings). Off, none of
---- its buttons show on the game's frames.
-function Addon:IsPartOn()
-    return not (Spoken and Spoken.IsPartOn) or Spoken:IsPartOn("quests")
+--- Whether the player has a part of Spoken switched on (Spoken's settings): "quests", or
+--- "gossip" for what NPCs say. Off, none of its buttons show on the game's frames.
+function Addon:IsPartOn(part)
+    return not (Spoken and Spoken.IsPartOn) or Spoken:IsPartOn(part or "quests")
+end
+
+--- The part a window belongs to, told by the game event that opens it: greeting and gossip
+--- windows are Gossip's, every quest window Quests'.
+function Addon:PartOfPage(event)
+    return (event == "GOSSIP_SHOW" or event == "QUEST_GREETING") and "gossip" or "quests"
+end
+
+--- Whether the part the window `event` opens belongs to is switched on.
+function Addon:IsPageOn(event)
+    return self:IsPartOn(self:PartOfPage(event))
 end
 
 function Addon:IsAutoplayOn()
     return self.db.profile.Audio.Autoplay ~= false
 end
 
-function Addon:SetAutoplay(on)
-    self.db.profile.Audio.Autoplay = on and true or false
-    -- The Play button stands in for autoplay, so it appears or goes with the setting even
-    -- while a dialog is already open.
+function Addon:IsProgressTextOn()
+    return self.db.profile.Audio.ProgressText ~= false
+end
+
+--- Autoplay on, and for the progress page Read Quest Progress Text too.
+function Addon:ReadsItself(event)
+    return self:IsAutoplayOn() and (event ~= "QUEST_PROGRESS" or self:IsProgressTextOn())
+end
+
+--- Why this page waits for its Play button, as the button's tip says it, or nil when it reads
+--- itself.
+function Addon:WhyHeld(event)
+    if not self:IsAutoplayOn() then
+        return L.OPT_AUTOPLAY_OFF_TIP
+    elseif event == "QUEST_PROGRESS" and not self:IsProgressTextOn() then
+        return L.OPT_PROGRESS_OFF_TIP
+    elseif event and self:PartOfPage(event) == "gossip" and self:IsNever() then
+        return L.OPT_NEVER_TIP
+    elseif event and self:PartOfPage(event) == "gossip" and self:IsGossipNPCIgnored(Utils:GetNPCGUID()) then
+        return L.OPT_MUTED_TIP
+    end
+end
+
+--- Read Greetings is at Never: no NPC window reads itself, whatever Read Automatically says.
+function Addon:IsNever()
+    return self.db.profile.Audio.GossipFrequency == Enums.GossipFrequency.Never
+end
+
+-- The Play button stands in for autoplay, so it appears or goes with these settings even while
+-- a dialog is already open.
+local function SetAudioFlag(key, on)
+    Addon.db.profile.Audio[key] = on and true or false
     if DialogPlayButton and DialogPlayButton.Refresh then
         DialogPlayButton:Refresh()
     end
+end
+
+function Addon:SetProgressText(on)
+    SetAudioFlag("ProgressText", on)
+end
+
+function Addon:SetAutoplay(on)
+    SetAudioFlag("Autoplay", on)
 end
 
 --- The quest panels and the gossip frame, in the priority GetVisibleQuestEvent gives them.
@@ -278,8 +459,8 @@ local function GetVisibleDialogueEvent()
 end
 
 local SPEECH_EVENTS = {
-    QUEST_GREETING = { sound = Enums.SoundEvent.QuestGreeting, text = function() return GetGreetingText() end },
-    GOSSIP_SHOW = { sound = Enums.SoundEvent.Gossip, text = function() return GetGossipText() end },
+    QUEST_GREETING = { sound = Enums.SoundEvent.QuestGreeting, text = function() return NotSecret(GetGreetingText()) end },
+    GOSSIP_SHOW = { sound = Enums.SoundEvent.Gossip, text = function() return NotSecret(GetGossipText()) end },
 }
 
 --- The line the open dialog would read, resolved against the packs, or nil when no dialog
@@ -291,16 +472,22 @@ local SPEECH_EVENTS = {
 ---@return SoundData?, string?
 function Addon:GetVisibleLine(event)
     event = event or GetVisibleDialogueEvent()
+    -- A part that is off reads nothing and offers nothing: no Listen button, no DialogueUI Play.
+    if event and not self:IsPageOn(event) then
+        return nil, event
+    end
     local quest = event and QUEST_EVENTS[event]
     local speech = event and SPEECH_EVENTS[event]
     local probe
     if quest then
-        local questID = ResolveQuestID(quest.source, QuestIDFor(event),
-            GetTitleText and GetTitleText() or "", Utils:GetNPCName() or "", quest.text(), true)
+        local text = quest.text()
+        local questID = ResolveQuestID(quest.source, CurrentQuestID(),
+            QuestTitle(), Utils:GetNPCName() or "", text, true)
         if not questID then
             return nil
         end
-        probe = { event = quest.sound, questID = questID }
+        -- The text and giver too: a moment in several wordings is found by the words on screen.
+        probe = { event = quest.sound, questID = questID, text = text, unitGUID = Utils:GetNPCGUID() }
     elseif speech then
         local guid, name = Utils:GetNPCGUID(), Utils:GetNPCName()
         if not guid and not name then
@@ -335,19 +522,15 @@ end
 ---@class VoiceOverConfig
 local defaults = {
     profile = {
-        -- The frame, the minimap button, the sound channel's legacy music-channel
-        -- workaround and the paused flag are the Spoken player's settings now.
+        -- The frame, the minimap button and the paused flag are the Spoken player's settings now.
         Audio = {
-            -- Once per NPC rather than once per quest NPC, which upstream defaulted to:
-            -- that setting only silences a repeat where the NPC has a quest, so every
-            -- innkeeper, vendor and flight master said the same line on every visit --
-            -- the greeting a player hears most often is exactly the one it did not
-            -- remember. A profile that stored a choice of its own keeps it.
-            GossipFrequency = Enums.GossipFrequency.OncePerNPC,
+            -- A quest giver's greeting is read once; other NPCs greet every time. A profile
+            -- that stored a choice of its own keeps it.
+            GossipFrequency = Enums.GossipFrequency.OncePerQuestNPC,
             -- The sound channel and the muting of the client's own NPC dialogue used to
             -- live here. They describe how anything is played rather than what this addon
             -- reads, so they are Spoken's settings now.
-            StopAudioOnDisengage = false,
+            StopAudioOnDisengage = true,
             -- On, the NPC's own greeting is heard and what Spoken reads waits for it
             -- (GreetingFirst.lua); off, Silence NPC Voices cuts it where a pack has one.
             GreetingFirst = false,
@@ -356,9 +539,13 @@ local defaults = {
             -- /spq read is typed. GossipFrequency then has nothing to decide.
             Autoplay = true,
             OGThrall = false,
+            -- On, an automatic read starts when the window closes instead of when it opens.
+            ReadAfterClose = false,
             -- What NPCs say in chat after this player accepts or turns in a quest
             -- (Followup.lua). Autoplay off silences these too: they read themselves.
             FollowupLines = true,
+            -- Off, the progress page does not read itself; its Play button and /spq read still play it.
+            ProgressText = true,
             -- Follow the client, and fall back on English. Every pack that exists today
             -- is English and declares no language, so an English-speaking player with the
             -- packs they already have resolves enUS on the first pass and hears exactly
@@ -371,17 +558,16 @@ local defaults = {
             -- Typed out, lit, or both, by Spoken's Type Words Out and Highlight Words.
             Captions = true,
             AutoScroll = true,
-            -- Off by default: DialogueUI hides the rest of the interface on purpose, and its marked text
-            -- already shows the words.
-            ShowPlayer = false,
             -- Shown whether or not DialogueUI's Text To Speech is on.
             PlayButton = true,
         },
+        QuestLogPlayButton = true,
+        TrackerPlayButton = true,
         DebugEnabled = false,
     },
     char = {
         hasSeenGossipForNPC = {},
-        RecentQuestTitleToID = Version:IsBelowLegacyVersion(30300) and {},
+        ignoredGossipNPCs = {},
     }
 }
 
@@ -392,106 +578,54 @@ local selectedGossipOption
 -- Set by picking any option, even one whose label could not be found, until the window closes:
 -- every page after the greeting was asked for.
 local gossipOptionPicked
+-- The gossip or greeting event whose window took a mute ahead, until the next window opens, it
+-- closes, or a read gives the NPC its voice back; and how often it has been read again for its text.
+local greetingMutedFor
+-- A right-click took a mute ahead that no window has ruled on yet.
+local clickTookMute
+local greetingTextTries = 0
+local GREETING_TEXT_TRIES, GREETING_TEXT_WAIT = 5, 0.2
+-- Moved on whenever a wait ends, so a read again for one window never runs in the next: a quest
+-- page replaces the greeting in the same window with no close at all.
+local greetingWait = 0
+
+local function EndGreetingTextWait()
+    greetingMutedFor = nil
+    greetingTextTries = 0
+    greetingWait = greetingWait + 1
+end
+
+--- A read of a window that took a mute will not speak its greeting: the NPC has its voice back
+--- now, not at the mute's deadline.
+local function GiveVoiceBack(event)
+    if greetingMutedFor == event then
+        EndGreetingTextWait()
+        if Spoken.EndMuteGameDialogueAhead then
+            Spoken:EndMuteGameDialogueAhead()
+        end
+    end
+end
 local currentQuestSoundData
 local currentGossipSoundData
 
---------------------------------------------------------------------------------
--- The player, when it is installed but switched off
---------------------------------------------------------------------------------
-
--- The player is an optional dependency: without it this addon loads, says so, and reads
--- nothing. One case deserves more than a line in chat -- the player installed and
--- disabled -- because it is one click to fix and an addon manager that fetched the
--- dependency cannot see that the player then turned it off.
---
--- The two feature addons each carry a copy of this, because the code they would share
--- lives in the player, which is the addon that is not there. They coordinate through two
--- globals instead: one collects the names to say, the other makes sure only one dialog is
--- raised however many addons are waiting on it.
-local PLAYER_FOLDER = "Spoken"
-local PLAYER_DIALOG = "SPOKEN_PLAYER_REQUIRED"
-
---- Say that this addon needs the player. Called whether or not the player is there, since
---- the addon that raises the dialog may not be the one that noticed first.
-local function RequirePlayer(title)
-    local names = rawget(_G, "SpokenPlayerRequiredBy")
-    if not names then
-        names = {}
-        _G.SpokenPlayerRequiredBy = names
-    end
-    for _, name in ipairs(names) do
-        if name == title then
-            return
-        end
-    end
-    table.insert(names, title)
-end
-
---- "A", "A and B", "A, B and C".
-local function ListNames(names)
-    local count = 0
-    for _ in ipairs(names) do
-        count = count + 1
-    end
-    local text = ""
-    for index, name in ipairs(names) do
-        if index == 1 then
-            text = name
-        elseif index == count then
-            text = text .. " and " .. name
-        else
-            text = text .. ", " .. name
-        end
-    end
-    return text
-end
-
---- Raise the dialog, if the player is installed and disabled and nobody has raised it yet.
---- Returns whether this call was the one that raised it.
-function Addon:PromptForPlayer()
-    if rawget(_G, "Spoken") or rawget(_G, "SpokenPlayerPrompted") then
-        return false
-    end
-    local names = rawget(_G, "SpokenPlayerRequiredBy")
-    if not names or not names[1] then
-        return false
-    end
-    local getInfo = (C_AddOns and C_AddOns.GetAddOnInfo) or GetAddOnInfo
-    local enableAddOn = (C_AddOns and C_AddOns.EnableAddOn) or EnableAddOn
-    if not (getInfo and enableAddOn and StaticPopupDialogs and StaticPopup_Show) then
-        return false
-    end
-    -- Absent rather than disabled: there is nothing to enable, so there is nothing to
-    -- click. The addon has already said in chat that the player is missing.
-    local present, _, _, _, reason = getInfo(PLAYER_FOLDER)
-    if not present or reason ~= "DISABLED" then
-        return false
-    end
-
-    _G.SpokenPlayerPrompted = true
-    if IsGamepadUI() then
-        Say(format("|cffffd200Spoken|r is required to use %s. Enable it in the AddOns list and reload.", ListNames(names)))
-        return true
-    end
-    StaticPopupDialogs[PLAYER_DIALOG] =
-    {
-        text = format("|cffffd200Spoken|r is required to use %s.", ListNames(names)),
-        button1 = ENABLE or "Enable",
-        button2 = CANCEL or "Cancel",
-        timeout = 0,
-        whileDead = 1,
-        -- An addon is only loaded at login, so enabling it takes effect on the next one.
-        OnAccept = function()
-            enableAddOn(PLAYER_FOLDER)
-            ReloadUI()
-        end,
-    }
-    StaticPopup_Show(PLAYER_DIALOG)
-    return true
+local function IsQuestTurnInSoundData(soundData)
+    return soundData and (soundData.event == Enums.SoundEvent.QuestProgress
+        or soundData.event == Enums.SoundEvent.QuestComplete)
 end
 
 function Addon:OnInitialize()
-    self.db = LibStub("AceDB-3.0"):New("SpokenQuestsSettings", defaults)
+    -- A character Spoken put on the profile chosen for new characters starts on it here too, so the
+    -- two stay one profile. AceDB uses it only where these settings have not seen the character.
+    local profile = Spoken and Spoken.NewCharacterStartProfile and Spoken:NewCharacterStartProfile()
+    self.db = LibStub("AceDB-3.0"):New("SpokenQuestsSettings", defaults, profile)
+    -- A Started Only saved off before it was on by default would read as the player's choice:
+    -- cleared once behind this marker, as unset reads as on. An off set after that is kept.
+    local global = self.db.global
+    if not global.startedOnlyDefaultOn then
+        global.startedOnlyDefaultOn = true
+        if global.Compendium then global.Compendium.FoundOnly = nil end
+    end
+    self:FoldGreetingsHeardByGUID()
     self.db.RegisterCallback(self, "OnProfileChanged", "RefreshConfig")
     self.db.RegisterCallback(self, "OnProfileReset", "RefreshConfig")
 
@@ -503,9 +637,9 @@ function Addon:OnInitialize()
         whileDead = 1,
     }
 
-    RequirePlayer("Spoken Quests")
     Player:Setup()
     GreetingFirst:Setup()
+    WorldFrame:HookScript("OnMouseDown", function(_, button) self:MuteGreetingOnClick(button) end)
     -- The copy-link popup behind the Report button. Guarded because a failure to build a
     -- dialog must not stop playback initializing.
     local reportButtonReady, reportButtonError = pcall(ReportButton.Initialize, ReportButton)
@@ -548,6 +682,14 @@ function Addon:OnInitialize()
     if not dialogueUIReady then
         Debug:Record("dialogueui-error", tostring(dialogueUIError))
     end
+    local immersionReady, immersionError = pcall(function()
+        if ImmersionBridge and ImmersionBridge.Setup then
+            ImmersionBridge:Setup()
+        end
+    end)
+    if not immersionReady then
+        Debug:Record("immersion-error", tostring(immersionError))
+    end
 
     -- The lines NPCs say after a quest. Guarded the same way: a failed hook here must not
     -- take quest narration down with it.
@@ -560,42 +702,56 @@ function Addon:OnInitialize()
         Debug:Record("followup-error", tostring(followupError))
     end
 
+    -- What NPCs say in the world: a failed hook here must not take quest narration down either.
+    local chatterReady, chatterError = pcall(function()
+        if Chatter and Chatter.Setup then
+            Chatter:Setup()
+        end
+    end)
+    if not chatterReady then
+        Debug:Record("chatter-error", tostring(chatterError))
+    end
+
     -- Discover data packs now, but load their multi-megabyte generated Lua
     -- tables after entering the world. Keeping LoadAddOn out of AceAddon's
     -- shared initialization/login stack avoids Hardcore's stricter script
-    -- time budget being charged to AceAddon-3.0.
+    -- time budget being charged to AceAddon-3.0. One pack per callback: several
+    -- in one still run past the client's script-time limit.
     DataModules:EnumerateAddons(false)
     self.dataModulesPending = not DataModules:HasRegisteredModules()
+    -- A position rather than "the first pack not registered", so a pack that fails is tried once
+    -- and cannot hold back the packs after it.
+    local nextPack = 1
     local function LoadDeferredDataModules()
         if not self.dataModulesPending then
             return
         end
-        local succeeded, loadError = pcall(DataModules.LoadPresentModules, DataModules)
+        -- result is the pack tried, or the error when the call itself failed.
+        local succeeded, result = pcall(DataModules.LoadPresentModuleAt, DataModules, nextPack)
+        if succeeded and result then
+            nextPack = nextPack + 1
+            local reason = DataModules:GetModuleLoadError(result.AddonName)
+            if reason then
+                Debug:Record("data-load-error", format("%s: %s", result.AddonName, reason))
+            end
+            -- The next frame's callback starts with a fresh script-time budget.
+            C_Timer.After(0, LoadDeferredDataModules)
+            return
+        end
         self.dataModulesPending = nil
         if not succeeded then
-            self.dataModulesDeferredError = tostring(loadError)
+            self.dataModulesDeferredError = tostring(result)
             Debug:Record("data-load-error", self.dataModulesDeferredError)
         elseif DataModules:HasRegisteredModules() then
             Debug:Record("data-ready", "Deferred sound packs finished loading")
         end
+        -- The settings pages were built before this, with every pack still to register.
+        SpokenEnv.Callbacks:Fire("VOICE_PACKS_LOADED")
         self:ShowMissingDataModulePopup()
     end
     local function ScheduleDeferredDataLoad()
-        if C_Timer and C_Timer.After then
-            C_Timer.After(1, LoadDeferredDataModules)
-        else
-            self:ScheduleTimer(LoadDeferredDataModules, 1)
-        end
+        C_Timer.After(1, LoadDeferredDataModules)
     end
-    -- Always deferred, never raised here: on a /reload every addon's ADDON_LOADED has
-    -- already fired by the time this runs, but on a fresh login the other addon that
-    -- wants the player may not have loaded yet, and the dialog would name only this one.
-    local prompt = CreateFrame("Frame")
-    prompt:RegisterEvent("PLAYER_ENTERING_WORLD")
-    prompt:SetScript("OnEvent", function(frame)
-        frame:UnregisterEvent("PLAYER_ENTERING_WORLD")
-        Addon:PromptForPlayer()
-    end)
     if self.dataModulesPending then
         if IsLoggedIn and IsLoggedIn() then
             ScheduleDeferredDataLoad()
@@ -631,6 +787,66 @@ function Addon:OnInitialize()
         state.completedKey = nil
     end
 
+    --- Reads the recorded pages nothing has read yet, oldest first. With `questID` (from
+    --- QUEST_ACCEPTED or QUEST_TURNED_IN) only that quest's pages of `events`; without it, the
+    --- newest unread page of each event whose dialog has closed: of offers opened and closed
+    --- unread, the last is the one the player was left with. The others are passed over, and
+    --- stay for their own accept or turn-in. An offer recorded after its quest's own pages
+    --- carries the globals of the quest just handed in, so it is not read.
+    local function ReplaySnapshot(snapshot, source)
+        local state = self.autoQuestState
+        snapshot.dispatched = true
+        local key = PageKey(snapshot.event, snapshot.questID, snapshot.title)
+        if HandledRecently(state, key) then
+            return
+        end
+        MarkHandled(state, key)
+        Debug:Record("auto-watcher-snapshot", format("Reading %s quest %s from its event snapshot: %s",
+            snapshot.event, tostring(snapshot.questID), source))
+        self:InvokeQuestHandler(snapshot.event, "event snapshot", false, snapshot)
+    end
+
+    -- Index of the newest unread page of each event, refilled on every close-time replay.
+    local newest = {}
+
+    local function ReplayQuestSnapshots(source, questID, events)
+        PruneQuestSnapshots()
+        -- The watcher calls this ten times a second whenever no quest is open.
+        if #questSnapshots == 0 then
+            return
+        end
+        if questID then
+            for _, snapshot in ipairs(questSnapshots) do
+                if not snapshot.dispatched and events[snapshot.event] and snapshot.questID == questID then
+                    ReplaySnapshot(snapshot, source)
+                end
+            end
+            return
+        end
+        wipe(newest)
+        for i, snapshot in ipairs(questSnapshots) do
+            if not snapshot.dispatched and not snapshot.passed then
+                newest[snapshot.event] = i
+            end
+        end
+        for i, snapshot in ipairs(questSnapshots) do
+            if not snapshot.dispatched and not snapshot.passed then
+                -- Passed over, not spent: its own QUEST_ACCEPTED or QUEST_TURNED_IN still reads it.
+                if newest[snapshot.event] ~= i or IsStaleOffer(i) then
+                    snapshot.passed = true
+                else
+                    ReplaySnapshot(snapshot, source)
+                end
+            end
+        end
+    end
+
+    local function FinishPage(state, key, event, questID)
+        state.completedKey = key
+        MarkHandled(state, key)
+        MarkQuestSnapshotRead(event, questID)
+    end
+
     local function PollAutomaticQuest()
         local state = self.autoQuestState
         if self.dataModulesPending then
@@ -638,50 +854,28 @@ function Addon:OnInitialize()
             return
         end
         if not self:IsAutoplayOn() then
-            -- Nothing to poll for: InvokeQuestHandler would refuse every read. The snapshot is
+            -- Nothing to poll for: InvokeQuestHandler would refuse every read. The snapshots are
             -- dropped too, so turning autoplay back on does not replay a dialog long closed.
-            questSnapshot = nil
+            wipe(questSnapshots)
             ResetCandidate(state)
             -- Said once for each quest opened meanwhile, which is the question a player asks.
-            local open = GetQuestID and GetQuestID() or 0
-            if open and open ~= 0 then
+            local open = CurrentQuestID()
+            if open ~= 0 then
                 Debug:Note("watcher", "off:" .. tostring(open),
                     "quest %s open, not read: Read Automatically is off", tostring(open))
             end
             return
         end
-        local questCallSucceeded, questID = pcall(function()
-            return GetQuestID and GetQuestID() or 0
-        end)
-        if not questCallSucceeded then
-            error(questID)
-        end
-        if not questID or questID == 0 then
-            -- The dialog is gone. If it closed with nothing dispatched for it, the event
-            -- snapshot is the whole record of the interaction, so read that before the
-            -- candidate state is cleared.
-            local snapshot = questSnapshot
-            questSnapshot = nil
-            if snapshot and not snapshot.dispatched then
-                local key = format("%s:%s:%s", snapshot.event, tostring(snapshot.questID), snapshot.title or "")
-                if key ~= state.lastHandledKey or GetTime() - state.lastHandledAt >= 5 then
-                    state.lastHandledKey = key
-                    state.lastHandledAt = GetTime()
-                    Debug:Record("auto-watcher-snapshot", format(
-                        "Reading %s quest %s from its event snapshot: the dialog closed before it could stabilize",
-                        snapshot.event, tostring(snapshot.questID)))
-                    questSnapshotInUse = snapshot
-                    self:InvokeQuestHandler(snapshot.event, "closed dialog event snapshot", false)
-                    questSnapshotInUse = nil
-                end
-            end
+        local questID = CurrentQuestID()
+        if questID == 0 then
+            -- The dialog is gone. Pages it closed on with nothing dispatched for them are the
+            -- whole record of the interaction, so read them before the candidate state is cleared.
+            ReplayQuestSnapshots("the dialog closed before it could stabilize")
             ResetCandidate(state)
             return
         end
 
-        local titleSucceeded, questTitle = pcall(function()
-            return GetTitleText and GetTitleText() or ""
-        end)
+        local titleSucceeded, questTitle = pcall(QuestTitle)
         if not titleSucceeded then
             error(questTitle)
         end
@@ -690,7 +884,7 @@ function Addon:OnInitialize()
             error(event)
         end
         event = event or "QUEST_DETAIL"
-        local key = format("%s:%s:%s", event, tostring(questID), questTitle or "")
+        local key = PageKey(event, questID, questTitle)
         if key ~= state.candidateKey then
             state.candidateKey = key
             state.candidateAge = 0
@@ -701,11 +895,19 @@ function Addon:OnInitialize()
             return
         end
 
+        -- Finished once, or the watcher would ask again every poll.
+        if not self:ReadsItself(event) then
+            if key ~= state.completedKey then
+                FinishPage(state, key, event, questID)
+            end
+            return
+        end
+
         -- A synchronous Classic quest event can expose the previous quest's
         -- globals briefly while switching NPCs. Do not replay the most recent
         -- quest key during that transition; /spq read remains an explicit way
         -- to replay it.
-        if key == state.lastHandledKey and GetTime() - state.lastHandledAt < 5 then
+        if HandledRecently(state, key) then
             state.completedKey = key
             return
         end
@@ -715,12 +917,7 @@ function Addon:OnInitialize()
         local expectedSoundEvent = QUEST_EVENTS[event] and QUEST_EVENTS[event].sound
         for _, queuedSound in ipairs(Player:Queued()) do
             if queuedSound.questID == questID and queuedSound.event == expectedSoundEvent then
-                state.completedKey = key
-                state.lastHandledKey = key
-                state.lastHandledAt = GetTime()
-                if questSnapshot then
-                    questSnapshot.dispatched = true
-                end
+                FinishPage(state, key, event, questID)
                 return
             end
         end
@@ -740,36 +937,22 @@ function Addon:OnInitialize()
             if stage == "queued" or stage == "queue-paused" or stage == "playing" or
                stage == "sound-disabled" or stage == "file-playback-failed" or stage == "playback-failed" or
                stage == "data-lookup-failed" then
-                state.completedKey = key
-                state.lastHandledKey = key
-                state.lastHandledAt = GetTime()
-                if questSnapshot then
-                    questSnapshot.dispatched = true
-                end
+                FinishPage(state, key, visibleEvent, questID)
             end
         end
     end
 
-    -- The watcher cannot work on a legacy client and must not be installed there.
-    -- GetQuestID does not exist before 3.3.0, so Compatibility.lua substitutes one that
-    -- resolves a quest fuzzily from text captured by the QUEST_DETAIL/PROGRESS/COMPLETE
-    -- handlers - which the poll below is trying to decide whether to call. It would poll a
-    -- zero forever. Those clients dispatch from the events directly instead; see directEvents.
-    if Version.IsAnyLegacy then
-        Debug:Record("auto-watcher-skipped", "Legacy client: quest events dispatch directly")
-    else
-        local tickerInstalled, tickerOrError = pcall(self.ScheduleRepeatingTimer, self, function()
-            local succeeded, pollError = pcall(PollAutomaticQuest)
-            if not succeeded then
-                Debug:Record("auto-watcher-error", tostring(pollError))
-            end
-        end, AUTO_POLL_INTERVAL)
-        if tickerInstalled then
-            self.autoQuestTicker = tickerOrError
-            Debug:Record("auto-watcher-ready", "AceTimer GetQuestID polling is active")
-        else
-            Debug:Record("auto-watcher-install-failed", tostring(tickerOrError))
+    local tickerInstalled, tickerOrError = pcall(self.ScheduleRepeatingTimer, self, function()
+        local succeeded, pollError = pcall(PollAutomaticQuest)
+        if not succeeded then
+            Debug:Record("auto-watcher-error", tostring(pollError))
         end
+    end, AUTO_POLL_INTERVAL)
+    if tickerInstalled then
+        self.autoQuestTicker = tickerOrError
+        Debug:Record("auto-watcher-ready", "AceTimer GetQuestID polling is active")
+    else
+        Debug:Record("auto-watcher-install-failed", tostring(tickerOrError))
     end
 
     local slashInstalled, slashError = pcall(function()
@@ -783,42 +966,68 @@ function Addon:OnInitialize()
     end
 
     self.eventBridgeErrors = {}
-    local aceRegistered, aceError = pcall(self.RegisterEvent, self, "ADDON_LOADED")
-    if not aceRegistered then
-        table.insert(self.eventBridgeErrors, "AceEvent ADDON_LOADED: " .. tostring(aceError))
-    end
 
-    -- Quest detail/progress/completion are intentionally absent here on Blizzard's clients. On
-    -- Classic Era those synchronous events can fire before GetQuestID and the text globals
-    -- change, replaying the previous quest. The stabilized 10 Hz watcher above is their single
-    -- automatic dispatcher.
-    --
-    -- On a legacy client the race does not exist, the watcher does not run, and these
-    -- events are the only route to quest audio - they are also what sets the text
-    -- Compatibility.lua's GetQuestID substitute reads, so nothing resolves until one fires.
+    -- Quest detail/progress/completion are intentionally absent here. On Classic Era those
+    -- synchronous events can fire before GetQuestID and the text globals change, replaying the
+    -- previous quest. The stabilized 10 Hz watcher above is their single automatic dispatcher.
     local directEvents = {
         "QUEST_GREETING",
         "QUEST_FINISHED",
         "GOSSIP_SHOW",
         "GOSSIP_CLOSED",
     }
-    if Version.IsAnyLegacy then
-        table.insert(directEvents, "QUEST_DETAIL")
-        table.insert(directEvents, "QUEST_PROGRESS")
-        table.insert(directEvents, "QUEST_COMPLETE")
-    end
-    -- Recording a quest event is not the same as dispatching it: on Blizzard's clients an
-    -- event can fire before the quest globals change, which is why the watcher owns
-    -- dispatch, but the event name itself is trustworthy the moment it arrives.
+    -- Recording a quest event is not the same as dispatching it: an event can fire before the
+    -- quest globals change, which is why the watcher owns dispatch, but the event name itself is
+    -- trustworthy the moment it arrives.
     -- QUEST_FINISHED is here to clear the record, so that a quest ID the client keeps
     -- reporting after the dialog closed cannot be read as a fresh interaction.
+    -- QUEST_ACCEPTED and QUEST_TURNED_IN say the dialog closed on an accepted or handed-in quest,
+    -- not a declined one, on a client that keeps reporting the quest ID after the dialog closed.
+    -- The pages each of them reads.
+    local REPLAYED_ON = {
+        QUEST_ACCEPTED = { QUEST_DETAIL = true },
+        QUEST_TURNED_IN = { QUEST_PROGRESS = true, QUEST_COMPLETE = true },
+    }
     self.questEventRecorderFrame = CreateFrame("Frame")
-    for _, event in ipairs({ "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_FINISHED" }) do
+    for _, event in ipairs({ "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_FINISHED",
+        "QUEST_ACCEPTED", "QUEST_TURNED_IN" }) do
         pcall(self.questEventRecorderFrame.RegisterEvent, self.questEventRecorderFrame, event)
     end
-    self.questEventRecorderFrame:SetScript("OnEvent", function(_, event)
+    self.questEventRecorderFrame:SetScript("OnEvent", function(_, event, questIDArg, ...)
         if event == "QUEST_FINISHED" then
             lastQuestEvent = nil
+            local state = self.autoQuestState
+            if state then
+                state.lastHandledKey = nil
+                state.lastHandledAt = 0
+                state.candidateKey = nil
+                state.candidateAge = 0
+                state.retryDelay = 0
+                state.completedKey = nil
+            end
+        elseif REPLAYED_ON[event] then
+            -- QUEST_TURNED_IN carries the quest ID first and the rewards after it. QUEST_ACCEPTED
+            -- carries the quest ID alone, except on Classic clients, where it follows the quest log
+            -- index. A secret quest ID there is no ID, and the index is never taken for one.
+            if event == "QUEST_ACCEPTED" and select("#", ...) > 0 then
+                questIDArg = (...)
+            end
+            local questID = NotSecret(questIDArg)
+            if event == "QUEST_ACCEPTED" then
+                self:MarkQuestOfferAccepted(questID)
+            elseif event == "QUEST_TURNED_IN" then
+                self:MarkQuestTurnedIn(questID)
+            end
+            if type(questID) ~= "number" or questID == 0 then
+                return
+            end
+            if self.dataModulesPending then
+                return
+            end
+            local succeeded, replayError = pcall(ReplayQuestSnapshots, event, questID, REPLAYED_ON[event])
+            if not succeeded then
+                Debug:Record("auto-watcher-error", tostring(replayError))
+            end
         else
             lastQuestEvent = event
             -- Through pcall because a snapshot is a fallback, and a client that refuses one
@@ -871,6 +1080,16 @@ function Addon:OnInitialize()
         GOSSIP_SHOW = true,
     }
     local deferredEventGeneration = {}
+    -- The last read asked for an event wins, and a close of its window cancels it.
+    local function DispatchLater(event, source, delay)
+        local generation = (deferredEventGeneration[event] or 0) + 1
+        deferredEventGeneration[event] = generation
+        self:ScheduleTimer(function()
+            if deferredEventGeneration[event] == generation then
+                DispatchDirectEvent(event, source)
+            end
+        end, delay)
+    end
     local function SignalDirectEvent(event, source)
         if event == "QUEST_FINISHED" then
             deferredEventGeneration.QUEST_GREETING = (deferredEventGeneration.QUEST_GREETING or 0) + 1
@@ -881,13 +1100,7 @@ function Addon:OnInitialize()
             DispatchDirectEvent(event, source)
             return
         end
-        local generation = (deferredEventGeneration[event] or 0) + 1
-        deferredEventGeneration[event] = generation
-        self:ScheduleTimer(function()
-            if deferredEventGeneration[event] == generation then
-                DispatchDirectEvent(event, source .. " (deferred)")
-            end
-        end, 0.1)
+        DispatchLater(event, source .. " (deferred)", 0.1)
     end
 
     self.directEventFrame = CreateFrame("Frame")
@@ -927,13 +1140,8 @@ function Addon:OnInitialize()
 
     -- Hook the exact Blizzard dispatcher that updates the visible quest
     -- panels. This runs after Blizzard has populated GetQuestID/GetTitleText.
-    --
-    -- Blizzard's own function is what is hooked here, so the frame overrides that normalize
-    -- handler arguments on the older clients do not apply: before 3.0.2 it takes no arguments
-    -- and reads the global `event` instead.
-    if QuestFrame_OnEvent and hooksecurefunc then
+    if QuestFrame_OnEvent then
         local hooked, hookError = pcall(hooksecurefunc, "QuestFrame_OnEvent", function(frame, event)
-                event = event or _G.event
                 if directEventLookup[event] then
                     SignalDirectEvent(event, "QuestFrame_OnEvent hook")
                 end
@@ -945,7 +1153,7 @@ function Addon:OnInitialize()
 
     if next(self.eventBridgeErrors) then
         Debug:Record("event-bridge-partial", format("Quest watcher is active; %d optional bridge component(s) failed",
-            getn(self.eventBridgeErrors)))
+            #self.eventBridgeErrors))
     else
         Debug:Record("event-bridge-ready", "Stabilized quest watcher and deferred greeting bridge are registered")
     end
@@ -966,7 +1174,7 @@ function Addon:OnInitialize()
     if next(disabled) and not self.db.profile.SeenDuplicatePlayerDialog then
         StaticPopupDialogs["VOICEOVER_REDUX_DUPLICATE_ADDON"] =
         {
-            text = format([[Spoken Quests|n|n%s was also enabled. It has been disabled for the next login, and its event handler was stopped for this session.|n|nKeep your sound pack enabled - "Spoken Quests Audio" or the older "AI_VoiceOverData_Vanilla", either works. You can delete or leave the old player disabled, then /reload.]],
+            text = format([[Spoken Quests|n|n%s was also enabled. It has been disabled for the next login, and its event handler was stopped for this session.|n|nKeep your sound pack enabled - "Spoken Audio: Quests" or the older "AI_VoiceOverData_Vanilla", either works. You can delete or leave the old player disabled, then /reload.]],
                 table.concat(disabled, " and ")),
             button1 = OKAY,
             timeout = 0,
@@ -980,7 +1188,10 @@ function Addon:OnInitialize()
 
     local function MakeAbandonQuestHook(field, getFieldData)
         return function()
-            local data = getFieldData()
+            local data = NotSecret(getFieldData())
+            if data == nil then
+                return
+            end
             local soundsToRemove = {}
             for _, soundData in ipairs(Player:Queued()) do
                 if Enums.SoundEvent:IsQuestEvent(soundData.event) and soundData[field] == data then
@@ -1008,23 +1219,30 @@ function Addon:OnInitialize()
     end
 
     if C_GossipInfo and C_GossipInfo.SelectOption then
-        hooksecurefunc(C_GossipInfo, "SelectOption", function(optionID)
-            gossipOptionPicked = true
-            if lastGossipOptions then
-                for _, info in ipairs(lastGossipOptions) do
-                    if info.gossipOptionID == optionID then
-                        selectedGossipOption = info.name
-                        break
+        -- The game's window picks by id, DialogueUI by the option's index in the page.
+        for name, field in pairs({ SelectOption = "gossipOptionID", SelectOptionByIndex = "orderIndex" }) do
+            if C_GossipInfo[name] then
+                hooksecurefunc(C_GossipInfo, name, function(pick)
+                    gossipOptionPicked = true
+                    pick = NotSecret(pick)
+                    if lastGossipOptions and pick then
+                        for _, info in ipairs(lastGossipOptions) do
+                            if NotSecret(info[field]) == pick then
+                                selectedGossipOption = NotSecret(info.name)
+                                break
+                            end
+                        end
+                        lastGossipOptions = nil
                     end
-                end
-                lastGossipOptions = nil
+                end)
             end
-        end)
+        end
     elseif SelectGossipOption then
         hooksecurefunc("SelectGossipOption", function(index)
             gossipOptionPicked = true
-            if lastGossipOptions then
-                selectedGossipOption = lastGossipOptions[1 + (index - 1) * 2]
+            index = NotSecret(index)
+            if lastGossipOptions and index then
+                selectedGossipOption = NotSecret(lastGossipOptions[1 + (index - 1) * 2])
                 lastGossipOptions = nil
             end
         end)
@@ -1033,14 +1251,8 @@ end
 
 function Addon:RefreshConfig()
     Player:RefreshConfig()
-end
-
-function Addon:ADDON_LOADED(event, addon)
-    addon = addon or arg1 -- Thanks, Ace3v...
-    local hook = self.OnAddonLoad[addon]
-    if hook then
-        hook()
-    end
+    QuestOverlayUI:RefreshQuestLog()
+    QuestOverlayUI.UpdateTrackerButtons()
 end
 
 local function GossipSoundDataAdded(soundData)
@@ -1051,6 +1263,55 @@ end
 local function QuestSoundDataAdded(soundData)
     -- Save current quest sound data for dialog/frame sync option
     currentQuestSoundData = soundData
+    local offer = Addon.openQuestOffer
+    if offer and soundData.event == Enums.SoundEvent.QuestAccept then
+        -- CaptureQuestSnapshot may have seen the previous quest's globals. The dispatched page's
+        -- resolved ID is authoritative for the offer that is now being queued.
+        offer.questID = soundData.questID
+        offer.soundData = soundData
+    end
+    if IsQuestTurnInSoundData(soundData) then
+        local turnIn = FindQuestTurnIn(soundData.questID, soundData.title)
+        if not turnIn then
+            turnIn = NewQuestTurnIn(soundData.questID, soundData.title)
+        else
+            Addon.openQuestTurnIn = turnIn
+        end
+        table.insert(turnIn.soundData, soundData)
+    end
+end
+
+--- QUEST_FINISHED has no accepted/turned-in flag. QUEST_ACCEPTED and QUEST_TURNED_IN are the
+--- signals that prove completion, but the normal click path reports QUEST_FINISHED first, while
+--- other clients report the completion signal first. Keep the offer alive briefly so the direct
+--- signal can cancel its close stop; a declined offer is removed only when Stop When Window Closes
+--- is on.
+function Addon:MarkQuestOfferAccepted(questID)
+    local offer = self.openQuestOffer
+    local acceptedID, offerID = tonumber(questID), tonumber(offer and offer.questID)
+    if not offer or acceptedID and acceptedID ~= 0 and offerID and offerID ~= acceptedID then return end
+    offer.accepted = true
+    if offer.closeTimer then
+        self:CancelTimer(offer.closeTimer)
+        offer.closeTimer = nil
+    end
+end
+
+--- QUEST_FINISHED can arrive before QUEST_TURNED_IN, just as it can before QUEST_ACCEPTED. There
+--- is no separate decline event, so keep the turn-in pages alive briefly so the direct
+--- QUEST_TURNED_IN signal can cancel their close stop.
+function Addon:MarkQuestTurnedIn(questID)
+    local turnIn = FindQuestTurnIn(questID)
+    local turnedInID = tonumber(questID)
+    if not turnIn and (not turnedInID or turnedInID == 0) then
+        turnIn = self.openQuestTurnIn
+    end
+    if not turnIn then return end
+    turnIn.turnedIn = true
+    if turnIn.closeTimer then
+        self:CancelTimer(turnIn.closeTimer)
+        turnIn.closeTimer = nil
+    end
 end
 
 function ResolveQuestID(source, questID, questTitle, targetName, questText, quiet)
@@ -1078,7 +1339,31 @@ function ResolveQuestID(source, questID, questTitle, targetName, questText, quie
         questTitle or ""))
 end
 
-function Addon:QUEST_DETAIL()
+-- With Read When Window Closes on, an automatic read waits for the window to close
+-- (QUEST_FINISHED). The window shows one quest page at a time, so the last one read is the one kept.
+local pendingRead
+
+local function QueueRead(soundData, manual)
+    -- A read from the snapshot of a window that has already closed has nothing left to wait for.
+    if not manual and Addon.db.profile.Audio.ReadAfterClose and not questSnapshotInUse then
+        pendingRead = soundData
+        -- Held counts as handled for the watcher, or it would read the quest again once the window closes.
+        MarkQuestSnapshotRead(EVENT_OF_SOUND[soundData.event], soundData.questID)
+        local state = Addon.autoQuestState
+        if state then
+            state.completedKey = state.candidateKey
+            MarkHandled(state, state.candidateKey)
+        end
+        return
+    end
+    if questSnapshotInUse then
+        -- Its window closed before it started, so no later close is its own.
+        soundData.addedCallback = nil
+    end
+    Player:Enqueue(soundData, manual)
+end
+
+function Addon:QUEST_DETAIL(_, manual)
     local questID, questTitle, questText, guid, targetName, isObjectOrItem = ReadQuestFields("QUEST_DETAIL")
 
     Debug:Record("quest-detail", format("QUEST_DETAIL: raw ID %s, title %q, NPC %q",
@@ -1086,10 +1371,6 @@ function Addon:QUEST_DETAIL()
     questID = ResolveQuestID("accept", questID, questTitle, targetName, questText)
     if not questID then
         return
-    end
-
-    if Addon.db.char.RecentQuestTitleToID and questID ~= 0 then
-        Addon.db.char.RecentQuestTitleToID[questTitle] = questID
     end
 
     local type = guid and Utils:GetGUIDType(guid)
@@ -1115,10 +1396,10 @@ function Addon:QUEST_DETAIL()
         unitIsObjectOrItem = isObjectOrItem,
         addedCallback = QuestSoundDataAdded,
     }
-    Player:Enqueue(soundData)
+    QueueRead(soundData, manual)
 end
 
-function Addon:QUEST_PROGRESS()
+function Addon:QUEST_PROGRESS(_, manual)
     local questID, questTitle, questText, guid, targetName, isObjectOrItem = ReadQuestFields("QUEST_PROGRESS")
 
     Debug:Record("quest-progress", format("QUEST_PROGRESS: raw ID %s, title %q, NPC %q",
@@ -1126,10 +1407,6 @@ function Addon:QUEST_PROGRESS()
     questID = ResolveQuestID("progress", questID, questTitle, targetName, questText)
     if not questID then
         return
-    end
-
-    if Addon.db.char.RecentQuestTitleToID then
-        Addon.db.char.RecentQuestTitleToID[questTitle] = questID
     end
 
     ---@type SoundData
@@ -1143,10 +1420,10 @@ function Addon:QUEST_PROGRESS()
         unitIsObjectOrItem = isObjectOrItem,
         addedCallback = QuestSoundDataAdded,
     }
-    Player:Enqueue(soundData)
+    QueueRead(soundData, manual)
 end
 
-function Addon:QUEST_COMPLETE()
+function Addon:QUEST_COMPLETE(_, manual)
     local questID, questTitle, questText, guid, targetName, isObjectOrItem = ReadQuestFields("QUEST_COMPLETE")
 
     Debug:Record("quest-complete", format("QUEST_COMPLETE: raw ID %s, title %q, NPC %q",
@@ -1156,9 +1433,6 @@ function Addon:QUEST_COMPLETE()
         return
     end
 
-    if Addon.db.char.RecentQuestTitleToID and questID ~= 0 then
-        Addon.db.char.RecentQuestTitleToID[questTitle] = questID
-    end
 
     -- print("QUEST_COMPLETE", questID, questTitle);
     ---@type SoundData
@@ -1172,7 +1446,136 @@ function Addon:QUEST_COMPLETE()
         unitIsObjectOrItem = isObjectOrItem,
         addedCallback = QuestSoundDataAdded,
     }
-    Player:Enqueue(soundData)
+    QueueRead(soundData, manual)
+end
+
+-- A greeting's text as a short key: the full text of every greeting heard would swell the saved
+-- variables. A sum kept below 2^31, so it stays exact in a double.
+local function TextKey(text)
+    local h = 5381
+    for i = 1, string.len(text) do
+        h = h * 33 + string.byte(text, i)
+        h = h - math.floor(h / 2147483647) * 2147483647
+    end
+    return format("%08x", h)
+end
+
+-- Keyed by ID because a GUID's last part is the spawn: new on a respawn, a server restart and,
+-- on Forever, each session. Object IDs overlap creature IDs, so an object's key is a string.
+local function LastingSpeakerKey(guid)
+    local id, guidType = Utils:ReadIDFromGUID(guid)
+    if guidType == Enums.GUID.GameObject then
+        return "o" .. id
+    end
+    return id
+end
+
+local function SpeakerKey(guid)
+    return LastingSpeakerKey(guid) or guid or "unknown"
+end
+
+local function HeardTexts(seen, key)
+    if type(seen[key]) ~= "table" then
+        seen[key] = {}
+    end
+    return seen[key]
+end
+
+--- A key that holds anything but a table names no text, so it counts as unheard.
+function Addon:HasHeardGreeting(guid, text)
+    if not text then
+        return false
+    end
+    local heard = self.db.char.hasSeenGossipForNPC[SpeakerKey(guid)]
+    return type(heard) == "table" and heard[TextKey(text)] == true
+end
+
+--- For when the text is not known yet.
+function Addon:HasHeardAnyGreeting(guid)
+    return type(self.db.char.hasSeenGossipForNPC[SpeakerKey(guid)]) == "table"
+end
+
+--- Keeps greetings heard under GUIDs from playing again. A GUID marked `true` holds no text and
+--- counts as unheard anyway, so it goes.
+function Addon:FoldGreetingsHeardByGUID()
+    local seen = self.db.char.hasSeenGossipForNPC
+    local lastingKeyOf = {}
+    for key in pairs(seen) do
+        local lastingKey = LastingSpeakerKey(key)
+        if lastingKey then
+            lastingKeyOf[key] = lastingKey
+        end
+    end
+    -- Collected first: a key added to a table while `pairs` walks it breaks the walk.
+    for guid, lastingKey in pairs(lastingKeyOf) do
+        local texts = seen[guid]
+        seen[guid] = nil
+        if type(texts) == "table" then
+            local merged = HeardTexts(seen, lastingKey)
+            for textKey, heard in pairs(texts) do
+                merged[textKey] = heard
+            end
+        end
+    end
+end
+
+function Addon:MarkGreetingHeard(guid, text)
+    HeardTexts(self.db.char.hasSeenGossipForNPC, SpeakerKey(guid))[TextKey(text)] = true
+end
+
+--- Keyed by creature ID, so one choice covers every spawn.
+function Addon:IsGossipNPCIgnored(guid)
+    return guid ~= nil and self.db.char.ignoredGossipNPCs[SpeakerKey(guid)] ~= nil
+end
+
+--- Only an NPC a pack voices, so the toggle never sits on a window Spoken has nothing to read for.
+function Addon:CanIgnoreNPC(clip)
+    return clip.unitGUID ~= nil and Enums.SoundEvent:IsGossipEvent(clip.event) and DataModules:HasGossipFor(clip)
+end
+
+--- A clip-shaped record stands in when nothing has been queued for the NPC yet.
+function Addon:CurrentGossipClip()
+    local event = GetVisibleDialogueEvent()
+    local speech = SPEECH_EVENTS[event]
+    local guid = speech and Utils:GetNPCGUID()
+    if not guid then
+        return nil
+    end
+    if currentGossipSoundData and currentGossipSoundData.unitGUID == guid
+        and Enums.SoundEvent:IsGossipEvent(currentGossipSoundData.event) then
+        return currentGossipSoundData, event
+    end
+    return { event = speech.sound, unitGUID = guid, name = Utils:GetNPCName(),
+        unitIsObjectOrItem = Utils:IsNPCObjectOrItem() }, event
+end
+
+--- Chat lines from Gossip, under its own name.
+function Addon:GossipSay(text)
+    print("|cFF00CCFFSpoken Gossip:|r " .. text)
+end
+
+--- Mute or restore by the list's key, which the settings page holds where no GUID is at hand.
+--- The name is kept for that list; the key alone names no one.
+function Addon:SetGossipNPCMutedKey(key, name, muted)
+    self.db.char.ignoredGossipNPCs[key] = muted and (name or "NPC") or nil
+    if muted then
+        for _, clip in ipairs(Player:Queued()) do
+            if Enums.SoundEvent:IsGossipEvent(clip.event) and clip.unitGUID and SpeakerKey(clip.unitGUID) == key then
+                Player:Remove(clip)
+            end
+        end
+    end
+    -- Listen shows for a muted NPC and the toggle shows the mute, so an open window is redrawn.
+    if DialogPlayButton then DialogPlayButton:Refresh() end
+end
+
+function Addon:SetGossipNPCMuted(guid, name, muted)
+    self:SetGossipNPCMutedKey(SpeakerKey(guid), name, muted)
+end
+
+function Addon:ForgetMutedNPCs()
+    self.db.char.ignoredGossipNPCs = {}
+    if DialogPlayButton then DialogPlayButton:Refresh() end
 end
 
 ---@param followsOption boolean? the page was reached by picking one of the NPC's options
@@ -1181,37 +1584,42 @@ function Addon:ShouldPlayGossip(guid, text, manual, followsOption)
 
     -- Asked for by name, so having heard it before does not stand in the way.
     if manual then
-        return true, npcKey
+        return true
     end
 
-    if self.db.profile.Audio.GossipFrequency == Enums.GossipFrequency.Never then
+    if self:IsGossipNPCIgnored(guid) then
+        Debug:Note("gossip", npcKey .. ":ignored", "line from %s not read: this NPC is muted", npcKey)
+        return
+    end
+
+    if self:IsNever() then
         Debug:Note("gossip", "never", "greetings not read: NPC Greetings is set to never")
         return
     end
     -- The once-per settings hold back the greeting an NPC opens with, not the pages after it.
     if followsOption then
-        return true, npcKey
+        return true
     end
 
-    local gossipSeenForNPC = self.db.char.hasSeenGossipForNPC[npcKey]
+    local heard = self:HasHeardGreeting(guid, text)
 
     -- Asked again for the same NPC while its window stays open; the log says it once.
     if self.db.profile.Audio.GossipFrequency == Enums.GossipFrequency.OncePerQuestNPC then
         local numActiveQuests = GetNumGossipActiveQuests()
         local numAvailableQuests = GetNumGossipAvailableQuests()
         local npcHasQuests = (numActiveQuests > 0 or numAvailableQuests > 0)
-        if npcHasQuests and gossipSeenForNPC then
-            Debug:Note("gossip", npcKey .. ":quest-npc", "greeting of %s not read: an NPC with quests, heard before (NPC Greetings: once per quest NPC)", npcKey)
+        if npcHasQuests and heard then
+            Debug:Note("gossip", npcKey .. ":quest-npc", "greeting of %s not read: an NPC with quests, this greeting heard before (NPC Greetings: once for quest givers)", npcKey)
             return
         end
     elseif self.db.profile.Audio.GossipFrequency == Enums.GossipFrequency.OncePerNPC then
-        if gossipSeenForNPC then
-            Debug:Note("gossip", npcKey .. ":once", "greeting of %s not read: heard before (NPC Greetings: once per NPC)", npcKey)
+        if heard then
+            Debug:Note("gossip", npcKey .. ":once", "greeting of %s not read: this greeting heard before (NPC Greetings: once per greeting)", npcKey)
             return
         end
     end
 
-    return true, npcKey
+    return true
 end
 
 --- An NPC's own greeting starts the moment its dialog opens, and the line that replaces it
@@ -1221,13 +1629,19 @@ end
 --- in the frame the dialog opened, and the greeting is not heard at all. A dialog nothing
 --- will be read for keeps its greeting: that is what the lookups below are for.
 ---@param event string
-function Addon:MuteGreetingAhead(event)
-    if not Spoken.MuteGameDialogueAhead or not self:IsAutoplayOn() or self.dataModulesPending
-        or not Player.source then
+---@return boolean? muted
+local function TakeGreetingMute(self, event)
+    EndGreetingTextWait()
+    if not Spoken.MuteGameDialogueAhead or not self:IsPageOn(event) or not self:ReadsItself(event)
+        or self.dataModulesPending or not Player.source then
         return
     end
     local quest = QUEST_EVENTS[event]
     if not (SPEECH_EVENTS[event] or quest) then
+        return
+    end
+    -- A quest read that waits for the window to close leaves the NPC's greeting alone.
+    if quest and self.db.profile.Audio.ReadAfterClose then
         return
     end
     -- Game Greeting First: nothing is cut, and the line waits for the greeting instead.
@@ -1237,10 +1651,76 @@ function Addon:MuteGreetingAhead(event)
     end
     -- Silenced only where a pack reads the line; any other NPC keeps its greeting. A quest whose
     -- ID is not known yet is muted too: its greeting starts now, and with no line the mute lifts.
-    local questID = quest and QuestIDFor(event)
+    local questID = quest and CurrentQuestID()
     if (quest and (not questID or questID == 0)) or self:ExpectedLine(event) then
-        Spoken:MuteGameDialogueAhead(Player.source)
+        local muted = Spoken:MuteGameDialogueAhead(self:PartOfPage(event) == "gossip" and Player.gossipSource or Player.source)
+        greetingMutedFor = muted and SPEECH_EVENTS[event] and event or nil
+        return muted
     end
+end
+
+---@param event string
+function Addon:MuteGreetingAhead(event)
+    local muted = TakeGreetingMute(self, event)
+    -- The click only guessed: a window with nothing to read keeps its greeting.
+    if clickTookMute and not muted then
+        Spoken:EndMuteGameDialogueAhead()
+    end
+    clickTookMute = nil
+end
+
+--- A greeting can start before any window event, and on a first talk that gap is heard. The text
+--- is not known yet at the click, so under the once-per settings an NPC already heard keeps its greeting.
+---@param button string
+function Addon:MuteGreetingOnClick(button)
+    if button ~= "RightButton" or not Spoken.MuteGameDialogueAhead or not self:IsPageOn("GOSSIP_SHOW")
+        or not self:IsAutoplayOn() or self:IsNever() or self.dataModulesPending or not Player.gossipSource
+        or GreetingFirst:IsOn() then
+        return
+    end
+    local unit = "mouseover"
+    local guid = NotSecret(UnitGUID(unit))
+    if not guid or NotSecret(UnitCanAttack("player", unit)) or NotSecret(UnitIsDead(unit)) then
+        return
+    end
+    if self:IsGossipNPCIgnored(guid) then
+        return
+    end
+    if self.db.profile.Audio.GossipFrequency ~= Enums.GossipFrequency.Always and self:HasHeardAnyGreeting(guid) then
+        return
+    end
+    if DataModules:HasGossipFor({ unitGUID = guid, name = NotSecret(UnitName(unit)), unitIsObjectOrItem = false }) then
+        clickTookMute = Spoken:MuteGameDialogueAhead(Player.gossipSource)
+    end
+end
+
+--- Whether the read of a greeting window found no text yet, with the mute its opening took
+--- still held. On a first talk to an NPC the client has not shown before, the window's text can
+--- arrive after the event, so the window is read again every GREETING_TEXT_WAIT seconds, up to
+--- GREETING_TEXT_TRIES times while the mute holds: the count starts again with the next window,
+--- and a close ends it. A read that finds text and no line is a real miss, and gives the NPC its
+--- voice back at once.
+---@param event string
+---@param text string? what the window's text read as
+---@param manual boolean?
+---@return boolean waiting true when the read is to be tried again, so this one stops
+function Addon:WaitsForGreetingText(event, text, manual)
+    if manual or greetingMutedFor ~= event or (text and text:find("%S")) then
+        return false
+    end
+    if greetingTextTries >= GREETING_TEXT_TRIES then
+        return false
+    end
+    greetingTextTries = greetingTextTries + 1
+    local wait = greetingWait
+    self:ScheduleTimer(function()
+        -- Past the mute's deadline the NPC's greeting is heard again, and a line read now would
+        -- start over it.
+        if wait == greetingWait and Spoken:IsMutingGameDialogueAhead() then
+            self:DispatchDirectEvent(event, "text not there yet, read again")
+        end
+    end, GREETING_TEXT_WAIT)
+    return true
 end
 
 --- The text autoplay will read for the dialog that just opened, or nil. Asked before the line is
@@ -1249,7 +1729,8 @@ end
 ---@param textIsCurrent boolean?
 ---@return string?
 function Addon:ExpectedLine(event, textIsCurrent)
-    if not self:IsAutoplayOn() or self.dataModulesPending or not Player.source then
+    if not self:IsPageOn(event) or not self:ReadsItself(event) or self.dataModulesPending or not Player.source
+        or (Spoken.ReadsHere and not Spoken:ReadsHere()) then
         return nil
     end
     local speech, quest = SPEECH_EVENTS[event], QUEST_EVENTS[event]
@@ -1262,7 +1743,9 @@ function Addon:ExpectedLine(event, textIsCurrent)
             return nil
         end
         local followsOption = event == "GOSSIP_SHOW" and gossipOptionPicked
-        if not self:ShouldPlayGossip(guid, nil, false, followsOption)
+        -- Whether the greeting was heard goes by its text, so the text on screen is the best
+        -- guess there is. A stale one costs only the NPC's own greeting being cut or not.
+        if not self:ShouldPlayGossip(guid, speech.text(), false, followsOption)
             or not DataModules:HasGossipFor(speaker) then
             return nil
         end
@@ -1271,16 +1754,20 @@ function Addon:ExpectedLine(event, textIsCurrent)
         end
         return speech.text() or ""
     elseif quest then
+        if self.db.profile.Audio.ReadAfterClose then
+            return nil
+        end
         -- The quest ID can still be the previous quest's this early; the worst that costs is
         -- one greeting muted for nothing, or one cut off as it was before.
-        local questID = QuestIDFor(event)
+        local questID = CurrentQuestID()
         if not questID or questID == 0 then
             return nil
         end
-        if not DataModules:PrepareSound({ event = quest.sound, questID = questID }) then
+        local text = quest.text() or ""
+        if not DataModules:PrepareSound({ event = quest.sound, questID = questID, text = text }) then
             return nil
         end
-        return quest.text() or ""
+        return text
     end
     return nil
 end
@@ -1288,15 +1775,22 @@ end
 function Addon:QUEST_GREETING(event, manual)
     local guid = Utils:GetNPCGUID()
     local targetName = Utils:GetNPCName()
-    local greetingText = GetGreetingText()
+    local greetingText = NotSecret(GetGreetingText())
 
     -- Can happen if the player interacted with an NPC while having main menu or options opened
     if not guid and not targetName then
         return
     end
+    if self:WaitsForGreetingText(event, greetingText, manual) then
+        return
+    end
+    if not greetingText then
+        GiveVoiceBack(event)
+        return
+    end
 
-    local play, npcKey = self:ShouldPlayGossip(guid, greetingText, manual)
-    if not play then
+    if not self:ShouldPlayGossip(guid, greetingText, manual) then
+        GiveVoiceBack(event)
         return
     end
 
@@ -1310,10 +1804,10 @@ function Addon:QUEST_GREETING(event, manual)
         unitIsObjectOrItem = Utils:IsNPCObjectOrItem(),
         addedCallback = GossipSoundDataAdded,
         startCallback = function()
-            self.db.char.hasSeenGossipForNPC[npcKey] = true
+            self:MarkGreetingHeard(guid, greetingText)
         end
     }
-    Player:Enqueue(soundData)
+    Player:Enqueue(soundData, manual)
 end
 
 -- The option the player picked to reach the gossip on screen, as its clip's label. Kept past
@@ -1327,12 +1821,17 @@ local shownGossipKey
 --- not it is read. With autoplay off it is not, and the next page's label would otherwise be
 --- looked up in this page's predecessor's options.
 function NoteGossipPage()
-    local pageKey = tostring(Utils:GetNPCGUID() or Utils:GetNPCName()) .. ":" .. tostring(GetGossipText())
+    local npc = tostring(Utils:GetNPCGUID() or Utils:GetNPCName())
+    local pageKey = npc .. ":" .. tostring(NotSecret(GetGossipText()) or "")
     if not selectedGossipOption and pageKey == shownGossipKey then
         return
     end
+    -- The text of the page already noted arriving: its label stays, and only what it offers is read again.
+    local textArrived = not selectedGossipOption and shownGossipKey == npc .. ":"
     shownGossipKey = pageKey
-    shownGossipTitle = selectedGossipOption and format([["%s"]], selectedGossipOption)
+    if not textArrived then
+        shownGossipTitle = selectedGossipOption and format([["%s"]], selectedGossipOption)
+    end
     selectedGossipOption = nil
     lastGossipOptions = nil
     if C_GossipInfo and C_GossipInfo.GetOptions then
@@ -1345,15 +1844,22 @@ end
 function Addon:GOSSIP_SHOW(event, manual)
     local guid = Utils:GetNPCGUID()
     local targetName = Utils:GetNPCName()
-    local gossipText = GetGossipText()
+    local gossipText = NotSecret(GetGossipText())
 
     -- Can happen if the player interacted with an NPC while having main menu or options opened
     if not guid and not targetName then
         return
     end
+    if self:WaitsForGreetingText(event, gossipText, manual) then
+        return
+    end
+    if not gossipText then
+        GiveVoiceBack(event)
+        return
+    end
 
-    local play, npcKey = self:ShouldPlayGossip(guid, gossipText, manual, gossipOptionPicked)
-    if not play then
+    if not self:ShouldPlayGossip(guid, gossipText, manual, gossipOptionPicked) then
+        GiveVoiceBack(event)
         return
     end
 
@@ -1368,24 +1874,95 @@ function Addon:GOSSIP_SHOW(event, manual)
         unitIsObjectOrItem = Utils:IsNPCObjectOrItem(),
         addedCallback = GossipSoundDataAdded,
         startCallback = function()
-            self.db.char.hasSeenGossipForNPC[npcKey] = true
+            self:MarkGreetingHeard(guid, gossipText)
         end
     }
-    Player:Enqueue(soundData)
+    Player:Enqueue(soundData, manual)
 end
 
 function Addon:QUEST_FINISHED()
-    if Addon.db.profile.Audio.StopAudioOnDisengage and currentQuestSoundData then
-        Player:Remove(currentQuestSoundData)
+    local offer = self.openQuestOffer
+    if offer and not offer.accepted and not offer.closeTimer then
+        offer.stopOnClose = Addon.db.profile.Audio.StopAudioOnDisengage
+        offer.closeTimer = self:ScheduleTimer(function()
+            offer.closeTimer = nil
+            if IsQuestWindowVisible() then
+                return
+            end
+            if not offer.accepted and offer.stopOnClose and offer.soundData then
+                Player:Remove(offer.soundData)
+            end
+            if self.openQuestOffer == offer then
+                self.openQuestOffer = nil
+            end
+        end, QUEST_ACCEPT_GRACE)
+    end
+    local turnIn = self.openQuestTurnIn
+    -- If the client exposed the page to the handler before its event snapshot was captured,
+    -- use the queued line as the turn-in record so closing the window does not remove it at once.
+    if IsQuestTurnInSoundData(currentQuestSoundData) then
+        local currentQuestID = tonumber(currentQuestSoundData.questID)
+        local currentTurnIn = FindQuestTurnIn(currentQuestID, currentQuestSoundData.title, true)
+        if not currentTurnIn then
+            currentTurnIn = NewQuestTurnIn(currentQuestSoundData.questID, currentQuestSoundData.title)
+            table.insert(currentTurnIn.soundData, currentQuestSoundData)
+        else
+            turnIn = currentTurnIn
+            self.openQuestTurnIn = turnIn
+        end
+        turnIn = currentTurnIn
+    end
+    -- Every retained record belongs to a page that can still be waiting for its own
+    -- QUEST_TURNED_IN. Schedule each one; only scheduling the current record leaves an earlier
+    -- queued line without cleanup when the dialog closes.
+    for _, retainedTurnIn in ipairs(QuestTurnInRecords()) do
+        if not retainedTurnIn.turnedIn and not retainedTurnIn.closeTimer then
+            retainedTurnIn.stopOnClose = Addon.db.profile.Audio.StopAudioOnDisengage
+            retainedTurnIn.closeTimer = self:ScheduleTimer(function()
+                retainedTurnIn.closeTimer = nil
+                if IsQuestWindowVisible() then
+                    return
+                end
+                if not retainedTurnIn.turnedIn and retainedTurnIn.stopOnClose then
+                    for _, soundData in ipairs(retainedTurnIn.soundData) do
+                        Player:Remove(soundData)
+                    end
+                end
+                if self.openQuestTurnIn == retainedTurnIn then
+                    self.openQuestTurnIn = nil
+                end
+                for i = #QuestTurnInRecords(), 1, -1 do
+                    if QuestTurnInRecords()[i] == retainedTurnIn then
+                        table.remove(QuestTurnInRecords(), i)
+                        break
+                    end
+                end
+            end, QUEST_ACCEPT_GRACE)
+        end
+    end
+    if Addon.db.profile.Audio.StopAudioOnDisengage then
+        local deferOfferStop = offer
+            and currentQuestSoundData and currentQuestSoundData.event == Enums.SoundEvent.QuestAccept
+        local deferTurnInStop = turnIn and IsQuestTurnInSoundData(currentQuestSoundData)
+        if currentQuestSoundData and not deferOfferStop and not deferTurnInStop then
+            Player:Remove(currentQuestSoundData)
+        end
     end
     currentQuestSoundData = nil
+    currentGossipSoundData = nil
+    EndGreetingTextWait()
+    local pending = pendingRead
+    pendingRead = nil
+    if pending then
+        -- Its window has closed, so it is no window's line: the next close leaves it playing.
+        pending.addedCallback = nil
+        Player:Enqueue(pending)
+    end
 end
 
 function Addon:GOSSIP_CLOSED()
-    if Addon.db.profile.Audio.StopAudioOnDisengage and currentGossipSoundData then
-        Player:Remove(currentGossipSoundData)
-    end
     currentGossipSoundData = nil
+    EndGreetingTextWait()
 
     selectedGossipOption = nil
     gossipOptionPicked = nil

@@ -23,8 +23,8 @@ export function when(iso: string): string {
  * Which take is live, and every take it could be instead.
  *
  * ONE CONTROL, NOT TWO. The version label and the way back used to be separate things, and
- * only on some rows: zones printed `v3` beside a restore button that silently put back
- * whichever clip was newest, quests hid a history popover behind a second icon, and books
+ * only on some rows: places printed `v3` beside a restore button that silently put back
+ * whichever clip was newest, quests hid a history popover behind a second icon, and readables
  * had neither although its takes were in the same table. The label is the trigger now --
  * the number is the question, and "which other numbers are there" is what a click asks.
  *

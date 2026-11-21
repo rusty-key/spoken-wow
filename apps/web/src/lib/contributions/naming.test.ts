@@ -11,8 +11,12 @@ import {
   gossipLineId,
   gossipStemRank,
   localizedGossipStem,
+  momentOf,
+  playerGenderForms,
   questFileName,
   questLineId,
+  questWordingFileName,
+  questWordingLineId,
   variantFileName,
   variantLineId,
 } from "./naming";
@@ -89,5 +93,20 @@ describe("baseLineId", () => {
   it("is the line a voice's line is of, and a plain line itself", () => {
     expect(baseLineId(variantLineId("q:109:accept:m", "tauren-male-elder"))).toBe("q:109:accept:m");
     expect(baseLineId("g:abc")).toBe("g:abc");
+  });
+});
+
+describe("quest wordings", () => {
+  it("names a wording as naming.py does", () => {
+    expect(questWordingLineId(97287, "accept", 1)).toBe("q:97287:accept:w1");
+    expect(questWordingFileName(97287, "accept", 1)).toBe("97287-accept-w1");
+  });
+
+  it("keeps a wording its own player-gender moment", () => {
+    expect(momentOf("q:5:accept:w2:f")).toBe("q:5:accept:w2");
+    expect(playerGenderForms("q:5:accept:w2", "5-accept-w2", true).map((f) => f.fileName)).toEqual([
+      "m-5-accept-w2",
+      "f-5-accept-w2",
+    ]);
   });
 });

@@ -1,17 +1,18 @@
 /**
  * A file's voice-actor recordings: list them, upload one, remove one.
  *
- *   GET    /api/recordings?lang=deDE&source=zones&file=1411/razor-hill
+ *   GET    /api/recordings?lang=deDE&source=places&file=1411/razor-hill
  *   POST   /api/recordings?lang=deDE   multipart: source, file, audio
- *   DELETE /api/recordings?lang=deDE&source=zones&file=1411/razor-hill&version=2
+ *   DELETE /api/recordings?lang=deDE&source=places&file=1411/razor-hill&version=2
  *
  * All behind `record` in the language (0061): an actor hears every actor's takes there,
  * which is how they match each other. Removing is the author's, or a global admin's.
  *
  * One file per POST. The bulk drop zone sends them one after another, so a 25 MiB cap holds
  * per request and one bad file fails alone. Buffered through formData() as the voice samples
- * route is; nginx's limit for /api/recordings/ is set to match (deploy/web/nginx-spoken.conf).
+ * route is; nginx's limit for /api/recordings/ is set to match (deploy/web/nginx-spoken-api.conf).
  */
+import { storageRefusalResponse } from "@/lib/blobs/keep";
 import { requireIn } from "@/lib/generation/authz";
 import { MAX_RECORDING_BYTES } from "@/lib/recordings/match";
 import { commitRecording, listRecordings, removeRecording } from "@/lib/recordings/store";
@@ -32,6 +33,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const { lang, session, denied } = await requireIn(request, "record");
   if (denied) return denied;
+  // Before the upload is read: a team that keeps its audio only in its own bucket and has none
+  // switched on could keep nothing of it.
+  const refused = await storageRefusalResponse(lang);
+  if (refused) return refused;
 
   let form: FormData;
   try {
@@ -69,7 +74,7 @@ export async function POST(request: Request) {
     source: target.source,
     lang,
     file: target.file,
-    // The file's own line, from the whitelist, rather than anything the caller says: the zones
+    // The file's own line, from the whitelist, rather than anything the caller says: the places
     // overlay is keyed by it, and a line id that is not this file's would put the clip under
     // another place or fail the pack build.
     lineId: target.lineId,

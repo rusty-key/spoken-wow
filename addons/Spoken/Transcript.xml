@@ -1,12 +1,7 @@
 <Ui xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
-    <!--
-        Captions, listed by every .toc except 1.12's. The 1.12 client's Lua 5.0 cannot parse
-        this file (it uses the length operator and string methods), so that client loads
-        1.12\Transcript.lua instead: the same table with captions switched off.
-    -->
+    <!-- Captions. -->
     <Include file="UI\Transcript.lua"/>
     <Include file="UI\Subtitle.lua"/>
     <Include file="UI\WordMarks.lua"/>
-    <!-- Search needs the settings canvas, which 1.12 has not got, and is Lua 5.1 too. -->
     <Include file="UI\Search.lua"/>
 </Ui>

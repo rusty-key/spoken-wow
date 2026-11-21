@@ -15,10 +15,9 @@ import { NextRequest } from "next/server";
 import { FOLDS, isGroup } from "@/lib/activity/kinds";
 import { groupRows, isDay } from "@/lib/activity/store";
 import { requireIn } from "@/lib/generation/authz";
+import { isUuid } from "@/lib/uuid";
 
 export const dynamic = "force-dynamic";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(request: NextRequest) {
   const { lang, denied } = await requireIn(request, "admin");
@@ -26,7 +25,7 @@ export async function GET(request: NextRequest) {
 
   const params = request.nextUrl.searchParams;
   const id = params.get("id");
-  if (!id || !UUID.test(id)) {
+  if (!id || !isUuid(id)) {
     return Response.json({ error: "id must be a group id" }, { status: 400 });
   }
   const kind = params.get("kind") ?? "batch";

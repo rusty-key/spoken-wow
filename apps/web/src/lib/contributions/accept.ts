@@ -2,9 +2,9 @@
  * Resolving a contribution -- the route's whole verb, now that accepting a quests row can also
  * write a line.
  *
- * Everything except quests-accept and books-accept in another language is the plain status
- * flip setContributionStatus always did: a moderator moving any row to "new" or "rejected"
- * changes nothing else. Books-accept writes that language's page (acceptBookTranslation).
+ * Everything except quests-accept and readables-accept is the plain status flip
+ * setContributionStatus always did: a moderator moving any row to "new" or "rejected" changes
+ * nothing else. Readables-accept writes the page in the row's language (acceptBookContribution).
  * Quests-accept is different because the accepted line must appear in the explorer, and the
  * explorer reads the quest tables (lib/quests/catalogue.ts) -- so accepting writes into them:
  * a `quest_line` row with origin "contributed" and a `quest_line_speaker` row carrying the
@@ -26,74 +26,77 @@
 import { skipReasonFor } from "@/lib/text-gate";
 import type { PoolClient } from "pg";
 
-import { normaliseText } from "@books-tools/lib/text.mjs";
+import { BOOK_ID_COMPAT, PAGE_COUNT } from "@readables-tools/lib/page.mjs";
+import { normaliseText } from "@readables-tools/lib/text.mjs";
 
 import { recordActivity } from "@/lib/activity/store";
-import { db } from "@/lib/db";
+import { actAs, ALL_TEAMS, db, inTransaction, query } from "@/lib/db";
 import { observedFrom } from "@/lib/npc/resolve";
 import {
   getResolution,
   getResolutions,
   getResolutionsById,
   resolutionKey,
-  type NpcKind,
   type NpcRowKind,
   type NpcResolution,
 } from "@/lib/npc/store";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
 import type { CorpusLine } from "@/lib/corpus";
-import { isGeneratable } from "@/lib/books/tools";
+import { isGeneratable, mintBookId, mintPageId } from "@/lib/readables/tools";
 import { branchesOnPlayerGender, speakPlayerTokens } from "@/lib/player-words";
 import { corpus } from "@/lib/quests/catalogue";
+import { forgetIgnores, writeIgnore } from "@/lib/quests/ignores";
+import {
+  addToMoment,
+  insertSpeaker,
+  lockLine,
+  momentSpeakers,
+  speakerFromResolution,
+  speaksMoment,
+  type Speaker,
+  type SpeakerRow,
+} from "@/lib/quests/speakers";
 import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
+import { asTeam } from "@/lib/teams/acting";
+import { freshOwners, type TeamId } from "@/lib/teams/store";
 
+import { namesOneBook } from "@readables-tools/lib/owners.mjs";
+import { loadBookCorpus, matchBook, sameMatch, type BookCorpus, type BookMatchResult } from "./book-match";
+import { sameLine } from "./compare";
 import type { ContributionStatus } from "./contributions";
+import { momentTexts } from "./known";
 import {
   answersQuestMomentSql,
   baseLineId,
   lineIdentityFor,
+  momentOf,
   playerGenderForms,
+  questWordingFileName,
+  questWordingLineId,
+  wordingsOfMomentSql,
   type LineIdentity,
+  type QuestEvent,
 } from "./naming";
 import { gossipIdentity, recordBroadcast, resolveGossip, type GossipPlan } from "./gossip";
-import { CONTRIBUTION_COLUMNS, observationMeta, type Contribution } from "./store";
+import { noVoice } from "./speaker";
+import { noteFor, pageNotes } from "./notes";
+import { CONTRIBUTION_COLUMNS, observationMeta, REJECT_REASON_MAX, type Contribution } from "./store";
+import { MAX_BYTES } from "./envelope";
 import { spokenFromTemplate } from "./tokens";
 import { idOnlyResolution } from "./triage";
 
 const COLUMNS = CONTRIBUTION_COLUMNS;
-
-/**
- * Where contributed speakers start in quest_line_speaker's `ord`. The importer numbers the
- * extract's own rows from 0 on every import, so contributed rows sit far above it: they never
- * collide with a re-import, and the export lists them after everything the extract carries.
- */
-const CONTRIBUTED_ORD_FLOOR = 1_000_000;
 
 export type ResolveRefusal =
   | { ok: false; reason: "not-found" }
   | { ok: false; reason: "needs-speaker"; message: string }
   | { ok: false; reason: "needs-page"; message: string }
   | { ok: false; reason: "one-way"; message: string }
+  | { ok: false; reason: "changed"; message: string }
   | { ok: false; reason: "malformed"; message: string };
 
 export type ResolveOutcome = { ok: true; contribution: Contribution } | ResolveRefusal;
-
-/**
- * Who speaks a contribution's line. `race` and `gender` are the ones its voice's files are named
- * by (migration 0071's voice table), not the NPC's type: a gameobject's greeting hashes and
- * matches as the narrator's, as every one the extract wrote does.
- */
-type Speaker = {
-  npcId: number;
-  npcName: string | null;
-  npcType: NpcRowKind;
-  race: string;
-  gender: string;
-  flavor: string | null;
-  /** "" while no voice reads the NPC's type, which speakerFor refuses. */
-  voice: string;
-};
 
 /**
  * What accept writes: a new line and its speaker, or only a speaker on a line already there.
@@ -114,7 +117,7 @@ type Resolutions = {
 };
 
 async function resolutionsFor(contributions: readonly Contribution[]): Promise<Resolutions> {
-  const keys: { npcKind: NpcKind; npcId: number }[] = [];
+  const keys: { npcKind: NpcRowKind; npcId: number }[] = [];
   const ids: number[] = [];
   for (const contribution of contributions) {
     const observed = observedFrom(observationMeta(contribution));
@@ -129,6 +132,7 @@ async function resolutionsFor(contributions: readonly Contribution[]): Promise<R
 /** Who speaks a quests contribution, from the npc table -- the same lookup triage.ts's page renders from. */
 async function resolvedSpeaker(
   meta: Record<string, string>,
+  lang: Lang,
   resolutions?: Resolutions,
 ): Promise<Speaker | "conflict" | null> {
   const observed = observedFrom(meta);
@@ -148,20 +152,7 @@ async function resolvedSpeaker(
     resolution = lookup.resolution;
   }
 
-  if (!resolution?.race) return null;
-
-  const roster = await loadRoster();
-  const voice = roster.voiceFor(resolution.race, resolution.gender, resolution.flavor);
-  const family = voice ? roster.familyOf(voice) : null;
-  return {
-    npcId: observed.npcId,
-    npcName: resolution.npcName ?? observed.npcName,
-    npcType: resolution.npcKind,
-    race: family?.race ?? resolution.race,
-    gender: family?.gender ?? resolution.gender ?? "",
-    flavor: resolution.flavor,
-    voice: voice ?? "",
-  };
+  return resolution ? speakerFromResolution(resolution, await loadRoster(lang), observed.npcName) : null;
 }
 
 /**
@@ -217,8 +208,8 @@ function indexOf(lines: readonly CorpusLine[], roster: Roster): CorpusIndex {
 async function speakerFor(
   contribution: Contribution,
   resolutions?: Resolutions,
-): Promise<{ ok: true; speaker: Speaker } | ResolveRefusal> {
-  const speaker = await resolvedSpeaker(observationMeta(contribution), resolutions);
+): Promise<{ ok: true; speaker: Speaker } | Extract<ResolveRefusal, { reason: "needs-speaker" }>> {
+  const speaker = await resolvedSpeaker(observationMeta(contribution), isLang(contribution.locale) ? contribution.locale : BASE_LANG, resolutions);
   if (speaker === "conflict") {
     return {
       ok: false,
@@ -240,7 +231,7 @@ async function speakerFor(
       ok: false,
       reason: "needs-speaker",
       // With no voice, race and gender are still the NPC's own (resolvedSpeaker).
-      message: `No voice reads ${[speaker.race, speaker.gender, speaker.flavor].filter(Boolean).join("-")} yet -- give it one under NPCs → Types.`,
+      message: `${noVoice(speaker)} -- give it one under NPCs → Types.`,
     };
   }
   return { ok: true, speaker };
@@ -273,7 +264,8 @@ async function prepareLine(
   // submission.ts) strips, so a verbatim duplicate of one of them hashes differently.
   // Whichever of the two comes first in the catalogue, as a scan for either would find.
   const text = contribution.text;
-  const index = indexOf(lines, await loadRoster());
+  // English's roster, as the lines matched against are English's corpus.
+  const index = indexOf(lines, await loadRoster(BASE_LANG));
   const byId = (index.byPrefix.get(identity.lineId) ?? []).find(
     (l) => l.source === "gossip" && baseLineId(l.lineId) === identity.lineId,
   );
@@ -312,14 +304,19 @@ function preparedFrom(plan: GossipPlan, text: string, speaker: Speaker): Prepare
  * that already had speakers took without one.
  */
 export async function contributedLineExists(contributionId: number, client?: PoolClient): Promise<boolean> {
-  const { rowCount } = await (client ?? db()).query(
-    `select 1 from "quest_line_speaker" where "contributionId" = $1
+  return (await contributedLine(contributionId, client)) !== null;
+}
+
+/** The moment of the line a contribution's accept wrote (momentOf its id), or null for none. */
+export async function contributedLine(contributionId: number, client?: PoolClient): Promise<string | null> {
+  const { rows } = await (client ?? db()).query<{ lineId: string }>(
+    `select "lineId" from "quest_line_speaker" where "contributionId" = $1
      union all
-     select 1 from "quest_line" where "origin" = 'contributed' and "note" = $2
+     select "lineId" from "quest_line" where "origin" = 'contributed' and "note" = $2
      limit 1`,
     [contributionId, noteFor(contributionId)],
   );
-  return (rowCount ?? 0) > 0;
+  return rows[0] ? momentOf(rows[0].lineId) : null;
 }
 
 /**
@@ -340,52 +337,73 @@ export async function lineIsInExplorer(contribution: Contribution): Promise<bool
  * once -- what the moderator page asks of every accepted row it shows.
  */
 export async function linesInExplorer(contributions: readonly Contribution[]): Promise<Set<number>> {
-  const books = await booksInExplorer(contributions);
+  const readables = await readablesInExplorer(contributions);
   const candidates = contributions.filter((c) => c.source === "quests" && c.status === "accepted");
-  if (candidates.length === 0) return books;
+  if (candidates.length === 0) return readables;
   const quests = await questsInExplorer(candidates);
-  return new Set([...books, ...quests]);
+  return new Set([...readables, ...quests]);
 }
 
 /**
- * The quests rows whose moment already has a speaker, in any language, by id. Accepting one of
- * those writes only the language's text; the rest need a speaker answered first.
+ * The quests rows whose moment already has their speaker, in any language, by id: one of the
+ * moment's speakers is the row's NPC, or the row names none. Accepting one of those writes only
+ * the language's text; the rest need a speaker answered first, since accepting makes their NPC
+ * one more speaker of the moment (acceptQuestMoment).
  */
 export async function momentHasSpeaker(contributions: readonly Contribution[]): Promise<Set<number>> {
   const moments = momentsOf(contributions);
   if (moments.length === 0) return new Set();
   const { rows } = await db().query<{ id: number }>(
-    `select m."id" from unnest($1::int[], $2::text[]) as m ("id", "lineId")
+    `select m."id" from unnest($1::int[], $2::text[], $3::int[], $4::text[]) as m ("id", "lineId", "npcId", "npcKind")
       where exists (select 1 from "quest_line_speaker" s
-                     where ${answersQuestMomentSql(`s."lineId"`, `m."lineId"`)})`,
-    [moments.map((m) => m.id), moments.map((m) => m.lineId)],
+                     where ${answersQuestMomentSql(`s."lineId"`, `m."lineId"`)}
+                       -- speaksMoment's rule, in SQL
+                       and (m."npcId" is null
+                            or (s."npcId" = m."npcId" and (m."npcKind" is null or s."npcType" = m."npcKind"))))`,
+    [moments.map((m) => m.id), moments.map((m) => m.lineId), moments.map((m) => m.npcId), moments.map((m) => m.npcKind)],
   );
   return new Set(rows.map((row) => row.id));
 }
 
 /** Each quest-moment contribution's moment id; gossip names none. */
-function momentsOf(contributions: readonly Contribution[]): { id: number; lineId: string; lang: string }[] {
+function momentsOf(
+  contributions: readonly Contribution[],
+): { id: number; lineId: string; lang: string; npcId: number | null; npcKind: string | null }[] {
   return contributions.flatMap((c) => {
     if (c.source !== "quests" || !(c.meta.quest && c.meta.event)) return [];
     const identity = lineIdentityFor(c.meta, c.text ?? "", "", "");
-    return identity ? [{ id: c.id, lineId: identity.lineId, lang: c.locale }] : [];
+    const observed = observedFrom(observationMeta(c));
+    return identity
+      ? [{ id: c.id, lineId: identity.lineId, lang: c.locale, npcId: observed.npcId, npcKind: observed.npcKind }]
+      : [];
   });
 }
 
 /**
- * The books side of linesInExplorer: an accepted row from another language is there once the
- * language has its page -- written by this row, or by anything before it, which accept would
- * leave alone. An English row writes nothing, so it is never "missing" from the explorer.
+ * The readables side of linesInExplorer: an accepted row is there once it has written its page,
+ * as a first version or a correction.
+ *
+ * A row accepted before accept wrote readables rows in every language wrote nothing in English, and
+ * in another language only where the page lacked that language: such an English row is there,
+ * and another language's is once its page has that language's text.
  */
-async function booksInExplorer(contributions: readonly Contribution[]): Promise<Set<number>> {
-  const accepted = contributions.filter((c) => c.source === "books" && c.status === "accepted");
+async function readablesInExplorer(contributions: readonly Contribution[]): Promise<Set<number>> {
+  const accepted = contributions.filter((c) => c.source === "readables" && c.status === "accepted");
   const found = new Set(accepted.filter((c) => c.locale === BASE_LANG).map((c) => c.id));
-  const matched = accepted.filter((c) => c.locale !== BASE_LANG && c.pageId !== null);
-  if (matched.length === 0) return found;
+  const rest = accepted.filter((c) => !found.has(c.id));
+  if (rest.length === 0) return found;
+  const { rows: notes } = await db().query<{ note: string }>(
+    `select distinct "note" from "book_line" where "note" = any($1::text[])`,
+    [rest.flatMap((c) => pageNotes(c.id))],
+  );
+  const written = new Set(notes.map((row) => row.note));
+  for (const c of rest) if (pageNotes(c.id).some((note) => written.has(note))) found.add(c.id);
+  const unwritten = rest.filter((c) => !found.has(c.id) && c.matchLineId !== null);
+  if (unwritten.length === 0) return found;
   const { rows } = await db().query<{ id: number }>(
-    `select m."id" from unnest($1::int[], $2::int[], $3::text[]) as m ("id", "pageId", "lang")
-      where exists (select 1 from "book_line" b where b."pageId" = m."pageId" and b."lang" = m."lang")`,
-    [matched.map((c) => c.id), matched.map((c) => c.pageId), matched.map((c) => c.locale)],
+    `select c."id" from unnest($1::int[], $2::text[], $3::text[]) as c ("id", "lang", "lineId")
+      where exists (select 1 from "book_line" b where b."lineId" = c."lineId" and b."lang" = c."lang")`,
+    [unwritten.map((c) => c.id), unwritten.map((c) => c.locale), unwritten.map((c) => c.matchLineId)],
   );
   for (const row of rows) found.add(row.id);
   return found;
@@ -434,40 +452,6 @@ async function momentsInExplorer(contributions: readonly Contribution[]): Promis
   return rows.map((row) => row.id);
 }
 
-async function insertSpeaker(
-  client: PoolClient,
-  contributionId: number,
-  lineId: string,
-  variant: number,
-  speaker: Speaker,
-  lang: Lang = BASE_LANG,
-): Promise<void> {
-  // One writer at a time past this point, so two accepts can never pick the same `ord`.
-  await client.query(`select pg_advisory_xact_lock(hashtext('quest_line_speaker.contributed_ord'))`);
-  await client.query(
-    `insert into "quest_line_speaker"
-       ("lineId", "variant", "lang", "ord", "npcType", "npcId", "npcName", "race", "gender",
-        "flavor", "voice", "contributionId")
-     select $1, $2, $3,
-            greatest(coalesce(max("ord") + 1, 0), $4),
-            $5, $6, $7, $8, $9, $10, $11, $12
-       from "quest_line_speaker" where "lang" = $3`,
-    [
-      lineId, variant, lang, CONTRIBUTED_ORD_FLOOR, speaker.npcType, speaker.npcId,
-      speaker.npcName ?? `npc ${speaker.npcId}`, speaker.race, speaker.gender, speaker.flavor,
-      speaker.voice, contributionId,
-    ],
-  );
-}
-
-/**
- * One writer per line id past this point, so two accepts of the same line running side by side
- * (resolveContributions) can never both find it missing and both write it.
- */
-async function lockLine(client: PoolClient, lineId: string): Promise<void> {
-  await client.query(`select pg_advisory_xact_lock(hashtext('quest_line:' || $1))`, [lineId]);
-}
-
 /**
  * insertSpeaker, unless this NPC already speaks the line. Asked of the table rather than the
  * catalogue: in a batch the catalogue is read once, before any of it is written, so a speaker
@@ -485,7 +469,7 @@ async function addSpeakerOnce(
     `select 1 from "quest_line_speaker" where "lineId" = $1 and "npcType" = $2 and "npcId" = $3`,
     [lineId, speaker.npcType, speaker.npcId],
   );
-  if (!rowCount) await insertSpeaker(client, contributionId, lineId, variant, speaker, lang);
+  if (!rowCount) await insertSpeaker(client, { lineId, variant, lang, speaker, contributionId });
 }
 
 /** The structure a language's row for a moment takes: the id, file and player gender. */
@@ -510,11 +494,7 @@ async function insertLine(
   lang: Lang,
 ): Promise<void> {
   const english = lang === BASE_LANG;
-  // A progress line is kept but never voiced, as the extract marks its own: the game plays no
-  // audio for that panel.
-  const skipReason = english
-    ? row.source === "progress" ? "progress" : null
-    : skipReasonFor(row.source as LineIdentity["source"], template, lang, row.playerGender);
+  const skipReason = english ? null : skipReasonFor(template, lang, row.playerGender);
   await client.query(
     `insert into "quest_line"
        ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId",
@@ -570,11 +550,13 @@ async function ownRows(client: PoolClient, identity: LineIdentity, text: string,
 }
 
 /**
- * Accepting a quest moment, the same in every language: the language's own row for it, and a
- * speaker only when the moment has none in any language yet. Who speaks a line is a fact about
- * the world, so a speaker one language wrote voices the line in every other.
+ * Accepting a quest moment, the same in every language: the language's own row for it, and its
+ * NPC as a speaker when the moment has none in any language yet, or has others but not this one
+ * -- a quest two givers offer, each in their own voice (addToMoment). Who speaks a line is a fact
+ * about the world, so a speaker one language wrote voices the line in every other.
  *
- * A moment the language already has is left alone: an import or a translator got there first.
+ * The text of a moment the language already has is left alone: an import or a translator got
+ * there first.
  * The id and file are the quest's and the event's in every language, in the shape ownRows
  * gives them. In another language the quest's and the NPC's names the client showed are
  * written too (namesSeenIn).
@@ -595,24 +577,28 @@ async function acceptQuestMoment(
   // Under the moment's lock: a batch reads nothing up front, but two rows of it may share the
   // moment, and only one of them may find it missing.
   await lockLine(client, identity.lineId);
-  if (await momentTaken(client, lang, identity.lineId)) return null;
+  const taken = await momentTaken(client, lang, identity.lineId);
+  const speakers = await momentSpeakers(client, identity.lineId);
+  const spoken = momentSpeaks(speakers, contribution);
+  if (taken && spoken !== "others") return null;
 
-  const rows = await ownRows(client, identity, text, lang);
-
-  const { rowCount: spoken } = await client.query(
-    `select 1 from "quest_line_speaker" where ${answersQuestMomentSql(`"lineId"`, "$1")} limit 1`,
-    [identity.lineId],
-  );
   let speaker: Speaker | null = null;
-  if (!spoken) {
+  if (spoken !== "this-npc") {
     const found = await speakerFor(contribution);
     if (!found.ok) return found;
     speaker = found.speaker;
   }
 
-  for (const row of rows) {
-    await insertLine(client, contribution.id, userId, row, text, lang);
-    if (speaker) await insertSpeaker(client, contribution.id, row.lineId, 0, speaker, lang);
+  if (!taken) {
+    for (const row of await ownRows(client, identity, text, lang)) {
+      await insertLine(client, contribution.id, userId, row, text, lang);
+      if (speaker && spoken === "nobody") {
+        await insertSpeaker(client, { lineId: row.lineId, variant: 0, lang, speaker, contributionId: contribution.id });
+      }
+    }
+  }
+  if (speaker && spoken === "others") {
+    await addToMoment(client, identity.lineId, speaker, { contributionId: contribution.id }, speakers);
   }
   if (lang !== BASE_LANG) {
     for (const name of namesSeenIn(contribution)) {
@@ -620,6 +606,78 @@ async function acceptQuestMoment(
     }
   }
   return null;
+}
+
+/**
+ * Another wording of a quest moment the corpus already has: the contribution's text as the
+ * moment's next `:w{n}` line in its language, spoken by its NPC (naming.py says what a wording
+ * is). Numbered past every wording the moment has in any language, under the moment's lock,
+ * so two accepts never take one number.
+ */
+export async function writeWording(
+  contribution: Contribution,
+  userId: string,
+): Promise<
+  | { ok: true; lineId: string }
+  | { ok: false; reason: "not-a-correction"; message: string }
+  | Extract<ResolveRefusal, { reason: "needs-speaker" | "malformed" }>
+> {
+  const identity = lineIdentityFor(contribution.meta, contribution.text, "", "");
+  if (!identity || identity.questId === null || !contribution.text) {
+    return { ok: false, reason: "malformed", message: "Only a quest line can be another wording." };
+  }
+  const found = await speakerFor(contribution);
+  if (!found.ok) return found;
+  // Narrowed here: a closure does not keep the narrowing of a property.
+  const questId = identity.questId;
+  const text = contribution.text;
+  const lang = contribution.locale as Lang;
+  const event = identity.source as QuestEvent;
+
+  return inTransaction(async (client) => {
+    await lockLine(client, identity.lineId);
+    // Decided under the lock, so an accept that waited on another's sees what it wrote: its
+    // own wording again is done, and a text some wording already says is not another.
+    const own = await contributedLine(contribution.id, client);
+    if (own) return { ok: true as const, lineId: own };
+    const lines = (await momentTexts([{ locale: lang, moment: identity.lineId }], client)).get(`${lang}|${identity.lineId}`);
+    if (lines?.some((line) => sameLine(line.text, text))) {
+      return { ok: false as const, reason: "not-a-correction" as const, message: "The corpus already has this text for the moment -- nothing to add." };
+    }
+    const n = await nextWording(client, identity.lineId);
+    const wording: LineIdentity = {
+      ...identity,
+      lineId: questWordingLineId(questId, event, n),
+      fileName: questWordingFileName(questId, event, n),
+    };
+    for (const row of await ownRows(client, wording, text, lang)) {
+      await insertLine(client, contribution.id, userId, row, text, lang);
+      await insertSpeaker(client, { lineId: row.lineId, variant: 0, lang, speaker: found.speaker, contributionId: contribution.id });
+    }
+    return { ok: true as const, lineId: wording.lineId };
+  });
+}
+
+/** One past the highest wording a moment has in any language: 1 for a moment with only its first. */
+async function nextWording(client: PoolClient, moment: string): Promise<number> {
+  const { rows } = await client.query<{ n: number | null }>(
+    `select max(substring("lineId" from ':w([0-9]+)(?::[mf])?$')::int) as "n"
+       from "quest_line" where ${wordingsOfMomentSql(`"questId"`, `"source"`, "$1")}`,
+    [moment],
+  );
+  return (rows[0].n ?? 0) + 1;
+}
+
+/**
+ * Who already speaks a moment, in any language, as far as a contribution is concerned: nobody,
+ * its own NPC (or it names none), or only others. A kind-less envelope's NPC is matched by id
+ * alone, as idOnlyResolution answers it.
+ */
+function momentSpeaks(rows: SpeakerRow[], contribution: Contribution): "nobody" | "this-npc" | "others" {
+  const observed = observedFrom(observationMeta(contribution));
+  if (rows.length === 0) return "nobody";
+  if (observed.npcId === null) return "this-npc";
+  return speaksMoment(rows, observed.npcId, observed.npcKind) ? "this-npc" : "others";
 }
 
 /** Longer than any name the game gives a quest or an NPC; what npc-identity caps a typed one at. */
@@ -639,9 +697,9 @@ const MAX_NAME = 200;
  */
 export function namesSeenIn(
   contribution: Pick<Contribution, "source" | "meta">,
-): { kind: "quest" | NpcKind; entityId: string; name: string }[] {
+): { kind: "quest" | NpcRowKind; entityId: string; name: string }[] {
   if (contribution.source !== "quests") return [];
-  const names: { kind: "quest" | NpcKind; entityId: string; name: string }[] = [];
+  const names: { kind: "quest" | NpcRowKind; entityId: string; name: string }[] = [];
   const { quest, title } = contribution.meta;
   if (quest && /^\d+$/.test(quest) && title?.trim() && title.trim().length <= MAX_NAME) {
     names.push({ kind: "quest", entityId: quest, name: title.trim() });
@@ -679,97 +737,224 @@ async function nameIfUnnamed(
   return (rowCount ?? 0) > 0;
 }
 
-/** The note a written row carries, which is also how it is found again. */
-export function noteFor(contributionId: number): string {
-  return `contribution #${contributionId}`;
+/**
+ * Ignore every line a quests contribution wrote, in its language, or in every language for an
+ * English row. A line it only added a speaker to is ignored whole, whoever else speaks it.
+ * The ignores are the language's, which every team of it honours, whichever team the rejecter
+ * works in; their activity is filed under `owner`. The client acts as `acting` again after.
+ */
+async function ignoreWrittenLines(
+  client: PoolClient,
+  contribution: Contribution,
+  userId: string,
+  owner: TeamId | undefined,
+  acting: TeamId | typeof ALL_TEAMS,
+): Promise<void> {
+  const { rows } = await client.query<{ lineId: string }>(
+    `select "lineId" from "quest_line_speaker" where "contributionId" = $1
+     union
+     select "lineId" from "quest_line" where "origin" = 'contributed' and "note" = $2`,
+    [contribution.id, noteFor(contribution.id)],
+  );
+  const lang = contribution.locale === BASE_LANG || !isLang(contribution.locale) ? null : contribution.locale;
+  // Only ALL_TEAMS writes a row with no team.
+  await actAs(client, ALL_TEAMS);
+  await asTeam(lang, owner, async () => {
+    for (const { lineId } of rows) {
+      await writeIgnore(lineId, `Rejected ${noteFor(contribution.id)}`, userId, { lang, client, wholeLanguage: true });
+    }
+  });
+  await actAs(client, acting);
 }
 
-/** Whether a books contribution has written a page -- the books side of contributedLineExists. */
+/**
+ * Whether a readables contribution has written a page, a first version or a correction -- the
+ * readables side of contributedLineExists.
+ */
 async function contributedPageExists(contributionId: number, client: PoolClient): Promise<boolean> {
   const { rowCount } = await client.query(
-    `select 1 from "book_line" where "origin" = 'contributed' and "note" = $1`,
-    [noteFor(contributionId)],
+    `select 1 from "book_line" where "note" = any($1::text[])`,
+    [pageNotes(contributionId)],
   );
   return (rowCount ?? 0) > 0;
 }
 
 /**
- * A books contribution sent from a client in another language: that language's text of a
- * page the English corpus has, written as its first version.
+ * A readables contribution, in any language: what the matcher says it is, written.
  *
- * Which page is the moderator's answer, on the contribution (migration 0059): the envelope
- * carries only the checksum of the translated text, which names no page by itself. A row
- * nobody has matched is refused rather than guessed at -- a title and a page number do not
- * identify a page (AGENTS.md), and a translation filed under the wrong page is read aloud
- * over the wrong one.
- *
- * Structure comes from the English page, as saveBookText takes it for a first translation;
- * the title is the one the client showed. A page this language already has is left alone,
- * as accept leaves a quest moment: an import or a translator got there first. The
- * owner's name in this language is written the same way, only where it has none, since the
- * catalogue titles a translated page from entity_name rather than from the row. It is written
- * as 'contributed', not 'edited', so the next import that finds the game's own name promotes
- * it over this one (migration 0060).
+ * Matched again here, inside the transaction and under a lock every readables accept takes, so two
+ * pages of one new book accepted at once find each other rather than minting two books.
+ * A page the game names keeps its id; one only a player's client has shown gets a minted
+ * `b:n{uuid}`, in a minted `n{uuid}` book when it starts one. A correction is a new version of
+ * that language's text, as an editor's save is; the rest is a first version, 'contributed'.
+ * Known and ambiguous rows are refused: there is nothing to write, or nobody has said where.
+ * With `expected`, the match the caller checked before accepting, a row that now matches
+ * otherwise is refused rather than written as something nobody looked at.
  */
-async function acceptBookTranslation(
+async function acceptBookContribution(
   client: PoolClient,
   contribution: Contribution,
   userId: string,
+  expected?: BookMatchResult,
 ): Promise<ResolveRefusal | null> {
   const text = contribution.text?.trim();
   if (!text) return { ok: false, reason: "malformed", message: "contribution has no text to voice" };
-  if (contribution.pageId === null) {
-    return {
-      ok: false,
-      reason: "needs-page",
-      message: "Match it to an English page first -- the text alone does not say which page it is.",
-    };
-  }
-
   const lang = contribution.locale as Lang;
   const title = contribution.meta.book?.trim() || null;
-  const { generatable, skipReason } = isGeneratable(speakPlayerTokens(text, lang));
-  const note = noteFor(contribution.id);
-  // Conflict-free rather than locked: two rows of a batch may write the same page, or name the
-  // same owner, and whichever lands first is the one kept.
-  const { rows: english } = await client.query<{ ownerKind: string; ownerIds: number[] }>(
-    `select "ownerKind", "ownerIds" from "book_line"
-      where "pageId" = $1 and "lang" = $2 and "isCurrent"`,
-    [contribution.pageId, BASE_LANG],
-  );
-  if (english.length === 0) {
-    return { ok: false, reason: "needs-page", message: `There is no English page ${contribution.pageId} -- match it again.` };
+  // One readables accept at a time, in any language: two rows of one new page or book may be in
+  // different languages, or shown under different titles.
+  // The key keeps the section's old name: a release being replaced still takes that one.
+  await client.query(`select pg_advisory_xact_lock(hashtext('books.accept'))`);
+
+  const corpus = await loadBookCorpus(client);
+  const match = matchBook(contribution, corpus);
+  if (expected && !sameMatch(match, expected)) {
+    return { ok: false, reason: "changed", message: "This page changed since you looked -- open it again." };
   }
-  const { rows: written } = await client.query<{ ownerKind: string; ownerIds: number[] }>(
+  const note = noteFor(contribution.id);
+  const { generatable, skipReason } = isGeneratable(speakPlayerTokens(text, lang));
+  const words = { lang, title, text, generatable, skipReason, userId, note };
+
+  let lineId: string;
+  switch (match.kind) {
+    case "ambiguous":
+      return { ok: false, reason: "needs-page", message: "Several pages could be this one -- pick it first." };
+    case "known":
+      return { ok: false, reason: "malformed", message: "The corpus already has these words for this page." };
+    case "correction":
+      lineId = match.lineId;
+      await client.query(
+        `update "book_line" set "isCurrent" = false where "lineId" = $1 and "lang" = $2 and "isCurrent"`,
+        [lineId, lang],
+      );
+      await insertText(client, { ...words, lineId, origin: "edited" });
+      break;
+    case "translation":
+      lineId = match.lineId;
+      await insertText(client, { ...words, lineId, origin: "contributed" });
+      break;
+    case "new-page":
+    case "new-book": {
+      const bookId = match.kind === "new-page" ? match.bookId : mintBookId();
+      lineId = mintPageId();
+      await client.query(
+        `insert into "book_page" ("lineId", "bookId", "pageNumber") values ($1, $2, $3)`,
+        [lineId, bookId, match.pageNumber],
+      );
+      await insertText(client, { ...words, lineId, origin: "contributed" });
+      break;
+    }
+  }
+  const firstOwner = await addOwner(client, lineId, contribution.meta, corpus);
+  await nameOwnersIfUnnamed(client, { lineId, lang, title, userId, note, everyLanguage: firstOwner });
+  return null;
+}
+
+/**
+ * One language's text of a page, versioned after whatever that language already has. Throws
+ * when book_page no longer has the page live: an import does not take accept's lock, and a
+ * correction that wrote nothing would leave the language with no current text.
+ */
+async function insertText(
+  client: PoolClient,
+  row: {
+    lineId: string;
+    lang: Lang;
+    title: string | null;
+    text: string;
+    generatable: boolean;
+    skipReason: string | null;
+    userId: string;
+    note: string;
+    origin: "contributed" | "edited";
+  },
+): Promise<void> {
+  const { rowCount } = await client.query(
     `insert into "book_line"
-       ("lineId", "lang", "version", "isCurrent", "origin", "pageId", "bookId",
-        "pageNumber", "pageCount", "title", "ownerKind", "ownerIds", "material",
-        "text", "generatable", "skipReason", "editedBy", "note")
-     select e."lineId", $2, 1, true, 'contributed', e."pageId", e."bookId",
-            e."pageNumber", e."pageCount", coalesce($3, e."title"), e."ownerKind",
-            e."ownerIds", e."material", $4, $5, $6, $7, $8
-       from "book_line" e
-      where e."pageId" = $1 and e."lang" = $9 and e."isCurrent"
-        and not exists (select 1 from "book_line" t
-                         where t."lineId" = e."lineId" and t."lang" = $2)
-     on conflict do nothing
-     returning "ownerKind", "ownerIds"`,
-    [contribution.pageId, lang, title, text, generatable, skipReason, userId, note, BASE_LANG],
+       ("lineId", "lang", "version", "isCurrent", "origin", "pageId", "bookId", "pageNumber", "pageCount",
+        "title", "ownerKind", "ownerIds", "material", "text", "generatable", "skipReason", "editedBy", "note")
+     select p."lineId", $2,
+            coalesce((select max(m."version") from "book_line" m where m."lineId" = p."lineId" and m."lang" = $2), 0) + 1,
+            true, $9, p."pageTextId", ${BOOK_ID_COMPAT}, p."pageNumber", ${PAGE_COUNT},
+            coalesce($3, (select e."title" from "book_line" e
+                           where e."lineId" = p."lineId" and (e."lang" = $2 or e."isCurrent")
+                           order by (e."lang" = $2) desc, e."version" desc, e."lang" limit 1), ''),
+            p."ownerKind", p."ownerIds", coalesce(p."material", 0), $4, $5, $6, $7, $8
+       from "book_page" p where p."lineId" = $1 and p."aliasOf" is null`,
+    [row.lineId, row.lang, row.title, row.text, row.generatable, row.skipReason, row.userId, row.note, row.origin],
   );
-  if (!title) return null;
-  for (const { ownerKind, ownerIds } of written) {
-    for (const owner of ownerIds) {
+  if (rowCount !== 1) throw new Error(`book page ${row.lineId} is gone or an alias; match the contribution again`);
+}
+
+/**
+ * The page's owners named where a language has no name for them, since the catalogue titles an
+ * owned page from entity_name rather than from the row: in the row's language, the title the
+ * client showed. With `everyLanguage`, for an owner the page has only just been given, every
+ * language's own title for the page too, so a language that read it by its row's title still
+ * does.
+ */
+async function nameOwnersIfUnnamed(
+  client: PoolClient,
+  args: { lineId: string; lang: Lang; title: string | null; userId: string; note: string; everyLanguage: boolean },
+): Promise<void> {
+  const { rows } = await client.query<{ ownerKind: string | null; ownerIds: number[] | null }>(
+    `select "ownerKind", "ownerIds" from "book_page" where "lineId" = $1`,
+    [args.lineId],
+  );
+  const { ownerKind, ownerIds } = rows[0] ?? {};
+  if (!ownerKind) return;
+  const names = new Map<string, string>();
+  if (args.everyLanguage) {
+    const { rows: titled } = await client.query<{ lang: string; title: string }>(
+      `select "lang", "title" from "book_line" where "lineId" = $1 and "isCurrent" and "title" <> ''`,
+      [args.lineId],
+    );
+    for (const { lang, title } of titled) names.set(lang, title);
+  }
+  if (args.title) names.set(args.lang, args.title);
+  for (const [lang, name] of names) {
+    for (const owner of ownerIds ?? []) {
       await nameIfUnnamed(client, {
         kind: ownerKind === "object" ? "gameobject" : "item",
         entityId: String(owner),
-        lang,
-        name: title,
-        userId,
-        note,
+        lang: lang as Lang,
+        name,
+        userId: args.userId,
+        note: args.note,
       });
     }
   }
-  return null;
+}
+
+/**
+ * The item or object the client read this page from, added to the page's owners when no page
+ * in the corpus has it: Forever renumbered some objects, and the next client to open one finds
+ * the page by id rather than by its words. Answers whether that gave an ownerless page its first
+ * owner.
+ */
+async function addOwner(
+  client: PoolClient,
+  lineId: string,
+  meta: Record<string, string>,
+  corpus: BookCorpus,
+): Promise<boolean> {
+  let first = false;
+  for (const kind of ["item", "object"] as const) {
+    const id = Number(meta[kind]);
+    if (!Number.isInteger(id) || id <= 0 || id > 2_147_483_647) continue;
+    if (!namesOneBook(kind, id) || corpus.byOwner.has(`${kind}:${id}`)) continue;
+    const { rows } = await client.query<{ first: boolean }>(
+      `update "book_page" p set "ownerKind" = coalesce(p."ownerKind", $2),
+              "ownerIds" = array_append(coalesce(p."ownerIds", '{}'), $3::int)
+         from (select "lineId", "ownerKind" is null as "first" from "book_page" where "lineId" = $1) was
+        where p."lineId" = was."lineId" and (p."ownerKind" is null or p."ownerKind" = $2)
+          and not ($3::int = any(coalesce(p."ownerIds", '{}')))
+        returning was."first"`,
+      [lineId, kind, id],
+    );
+    if (rows[0]?.first) first = true;
+  }
+  return first;
 }
 
 /**
@@ -777,14 +962,38 @@ async function acceptBookTranslation(
  * is "accepted" for a fresh quests row.
  *
  * `corpusLines` is the English catalogue to match against, read by the caller -- a batch reads
- * it once for all its rows. Left out, it is read here.
+ * it once for all its rows. Left out, it is read here. `bookMatch` is what the caller saw a
+ * readables row match; the accept refuses when the row matches otherwise by the time it writes.
  */
 export async function resolveContribution(
   id: number,
   status: ContributionStatus,
   userId: string,
   corpusLines?: readonly CorpusLine[],
+  // Whether the resolver may ignore the line in the contribution's language (English meaning
+  // every language), which rejecting a written quests row does.
+  mayIgnore = false,
+  bookMatch?: BookMatchResult,
+  // The reviewer's edit of the sent text on an accept, and the reason given on a reject. Both are
+  // written under the row's lock and in this transaction, so a refused or failed resolve leaves
+  // neither behind and two reviewers can't interleave. `onlyNew` refuses a row decided since the
+  // caller saw it waiting, so a batch can't undo another reviewer's (or the same one's) decision.
+  { text, reason, onlyNew = false }: { text?: string; reason?: string | null; onlyNew?: boolean } = {},
 ): Promise<ResolveOutcome> {
+  let edited: string | null = null;
+  if (status === "accepted" && text !== undefined) {
+    edited = normaliseText(text);
+    if (!edited) return { ok: false, reason: "malformed", message: "The text is empty." };
+    if (new TextEncoder().encode(edited).length > MAX_BYTES) {
+      return { ok: false, reason: "malformed", message: "The text is longer than any line the addon sends." };
+    }
+  }
+  const rejectReason = status === "rejected" ? reason?.trim().slice(0, REJECT_REASON_MAX) || null : null;
+  // Read before the client is held: a refresh of the memo needs a connection of its own. The
+  // resolution is filed under the resolver's team; the ignores a rejection leaves are the
+  // language's, whichever team that is.
+  const [row] = await query<{ locale: string }>(`select "locale" from "contribution" where "id" = $1`, [id]);
+  const owners = await freshOwners(row && isLang(row.locale) ? [row.locale] : []);
   const client = await db().connect();
   // Set only on the path below where rollback itself throws -- that is the one case that
   // releases the client itself (with the error, so node-postgres destroys rather than recycles
@@ -813,28 +1022,71 @@ export async function resolveContribution(
       };
     }
 
+    // What this writes is shared but for its activity row, the language's team's, and the
+    // ignores a rejection leaves. An English row's are on every language: system work.
+    const lang = isLang(contribution.locale) ? contribution.locale : null;
+    const siteWide = status === "rejected" && mayIgnore && (lang === null || lang === BASE_LANG);
+    const team = (!siteWide && lang && owners.get(lang)) || ALL_TEAMS;
+    await actAs(client, team);
+
+    if (onlyNew && contribution.status !== "new" && contribution.status !== status) {
+      await client.query("rollback");
+      return { ok: false, reason: "changed", message: "Someone decided this line meanwhile; reload to see it." };
+    }
+
+    // An edit only lands on a row still waiting; a row decided meanwhile keeps its text, and a
+    // keep that would claim the edit is refused rather than reported as done.
+    if (edited !== null && edited !== contribution.text) {
+      if (contribution.status !== "new") {
+        await client.query("rollback");
+        return { ok: false, reason: "changed", message: "Someone decided this line meanwhile; reload to see it." };
+      }
+      await client.query(`update "contribution" set "text" = $2, "updatedAt" = now() where "id" = $1`, [id, edited]);
+      contribution.text = edited;
+      if (isLang(contribution.locale)) {
+        await recordActivity(
+          {
+            team: team === ALL_TEAMS ? null : team,
+            kind: "contribution.edited",
+            lang: contribution.locale,
+            source: contribution.source,
+            subject: String(id),
+            actorId: userId,
+            detail: { field: "text" },
+          },
+          client,
+        );
+      }
+    }
+
     const written =
-      contribution.source === "books"
+      contribution.source === "readables"
         ? await contributedPageExists(id, client)
         : await contributedLineExists(id, client);
 
-    // One-way once written. Audio may already have been generated for the line, and the
-    // explorer's own line-ignore is how an editor backs out of a line they no longer want.
+    // A written row never goes back to new: audio may already exist for its line. Rejecting a
+    // written quests row ignores what it wrote instead, which keeps the rows and takes, so
+    // lifting the ignore in the explorer undoes it.
+    let ignored = false;
     if (written && status !== "accepted") {
-      await client.query("rollback");
-      return {
-        ok: false,
-        reason: "one-way",
-        message: "This line is already in the explorer; ignore it there instead.",
-      };
+      if (status === "rejected" && contribution.source === "quests" && mayIgnore) {
+        await ignoreWrittenLines(client, contribution, userId, lang ? owners.get(lang) : undefined, team);
+        ignored = true;
+      } else {
+        await client.query("rollback");
+        return {
+          ok: false,
+          reason: "one-way",
+          message:
+            status === "rejected" && contribution.source === "quests"
+              ? "This line is already in the explorer; rejecting it ignores it there, which you may not do."
+              : "This line is already in the explorer; ignore it there instead.",
+        };
+      }
     }
 
-    if (
-      status === "accepted" &&
-      contribution.source === "books" &&
-      contribution.locale !== BASE_LANG
-    ) {
-      const refused = await acceptBookTranslation(client, contribution, userId);
+    if (status === "accepted" && contribution.source === "readables" && !written) {
+      const refused = await acceptBookContribution(client, contribution, userId, bookMatch);
       if (refused) {
         await client.query("rollback");
         return refused;
@@ -851,16 +1103,17 @@ export async function resolveContribution(
 
     const updated = await client.query<Contribution>(
       `update "contribution"
-          set "status" = $2, "resolvedBy" = $3, "updatedAt" = now()
+          set "status" = $2, "resolvedBy" = $3, "updatedAt" = now(), "rejectReason" = $4
         where "id" = $1
         returning ${COLUMNS}`,
-      [id, status, userId],
+      [id, status, userId, rejectReason],
     );
     // In the transaction, so a resolve that rolls back is never logged. A row sent from a
     // client in a language the site does not have is logged under every language rather
     // than dropped: somebody still resolved it.
     await recordActivity(
       {
+        team: (lang && owners.get(lang)) || null,
         kind: "contribution.resolved",
         lang: isLang(contribution.locale) ? contribution.locale : null,
         source: contribution.source,
@@ -872,6 +1125,7 @@ export async function resolveContribution(
     );
 
     await client.query("commit");
+    if (ignored) forgetIgnores();
     return { ok: true, contribution: updated.rows[0] };
   } catch (error) {
     try {
@@ -922,7 +1176,9 @@ async function acceptGossip(
         { ...prepared.identity, playerGender: null, originalText: prepared.text },
         prepared.text, BASE_LANG,
       );
-      await insertSpeaker(client, contribution.id, prepared.identity.lineId, 0, prepared.speaker, BASE_LANG);
+      await insertSpeaker(client, {
+        lineId: prepared.identity.lineId, variant: 0, lang: BASE_LANG, speaker: prepared.speaker, contributionId: contribution.id,
+      });
     }
   } else if (prepared.kind === "speaker") {
     await lockLine(client, prepared.lineId);
@@ -967,7 +1223,7 @@ async function acceptTranslatedGossip(
     if (!(await momentTaken(client, lang, identity.lineId))) {
       for (const row of await ownRows(client, identity, text, lang)) {
         await insertLine(client, contribution.id, userId, row, text, lang);
-        if (plan.kind === "line") await insertSpeaker(client, contribution.id, row.lineId, 0, speaker, lang);
+        if (plan.kind === "line") await insertSpeaker(client, { lineId: row.lineId, variant: 0, lang, speaker, contributionId: contribution.id });
       }
     }
     if (plan.kind === "translation" && plan.addSpeaker) await addSpeakerOnce(client, contribution.id, lineId, 0, speaker);
@@ -990,12 +1246,19 @@ const BATCH_CONCURRENCY = 8;
  * line; lockLine and the re-checks under it are what keep them from both writing it.
  *
  * Each row is still its own transaction, so one refused (or failing) row leaves the rest
- * landed. A row that throws is answered as an Error, in its place.
+ * landed. A row that throws is answered as an Error, in its place. `bookMatches` holds, per
+ * readables row, the match the caller checked it by (resolveContribution's `bookMatch`).
  */
 export async function resolveContributions(
   ids: readonly number[],
   status: ContributionStatus,
   userId: string,
+  // resolveContribution's mayIgnore, per row.
+  mayIgnore: (id: number) => boolean = () => false,
+  bookMatches?: ReadonlyMap<number, BookMatchResult>,
+  // One reason for every row a bulk reject lands on.
+  reason?: string | null,
+  // A keep or drop for many rows lands only on rows still waiting; reopening many takes any row.
 ): Promise<Map<number, ResolveOutcome | Error>> {
   const corpusLines = status === "accepted" ? (await corpus()).lines : undefined;
   const outcomes = new Map<number, ResolveOutcome | Error>();
@@ -1004,7 +1267,10 @@ export async function resolveContributions(
     while (next < ids.length) {
       const id = ids[next++];
       try {
-        outcomes.set(id, await resolveContribution(id, status, userId, corpusLines));
+        outcomes.set(id, await resolveContribution(id, status, userId, corpusLines, mayIgnore(id), bookMatches?.get(id), {
+          reason,
+          onlyNew: status !== "new",
+        }));
       } catch (error) {
         outcomes.set(id, error instanceof Error ? error : new Error(String(error)));
       }

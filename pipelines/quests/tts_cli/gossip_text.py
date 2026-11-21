@@ -20,6 +20,10 @@ line's own stem first and its aliases after, so audio recorded under a sibling s
 stem carrying a flavor (the broadcast form) is only tied to stems with the same flavor or none.
 The pack build reads the same aliases (corpus/gossip_aliases.json) to ship those files.
 
+Each file also carries the client locale's text of every quest moment it shows in more than one
+wording (QuestWordingLookup, as the packs name it), so a client in that language can tell the
+wordings apart.
+
 Nothing here needs a database: corpus_db.export_gossip_text does the queries.
 """
 import json
@@ -27,10 +31,10 @@ import os
 
 from tts_cli.build import escape_lua_string
 from tts_cli.giver_names import lua_string
-from tts_cli.naming import gossip_hash_from_line_id, gossip_stem_rank
+from tts_cli.naming import (gossip_hash_from_line_id, gossip_stem_rank, quest_moment_stem,
+                            quest_stem_from_line_id, several_wordings)
 
-#: Every client locale but English, whose text is the packs' own tables. Italian is no
-#: client's locale.
+#: Every client locale but English, whose text is the packs' own tables.
 CLIENT_LOCALES = ("deDE", "esES", "esMX", "frFR", "koKR", "ptBR", "ruRU", "zhCN", "zhTW")
 
 #: kind -> the addon table it is filed under, as the packs name them.
@@ -117,6 +121,34 @@ def gossip_text_tables(speakers: dict, english: dict, translations: dict, native
     return tables
 
 
+QUEST_WORDINGS = "QuestWordingLookup"
+
+
+def quest_wording_tables(english: dict, translations: dict, natives: dict, ignored=()) -> dict:
+    """{lang: {moment stem: {client text: wording stem}}} for every client locale.
+
+    english, translations and natives as gossip_text_tables takes them, for quest lines. Only a
+    moment with two or more wordings in the language is listed (several_wordings).
+    """
+    tables = {}
+    for lang in CLIENT_LOCALES:
+        texts = {}
+        for line_id, original, text in translations.get(lang, ()):
+            if english.get(line_id) == original:
+                texts.setdefault(line_id, text)
+        for line_id, text in natives.get(lang, {}).items():
+            if line_id not in english:
+                texts.setdefault(line_id, text)
+        moments = {}
+        for line_id, text in texts.items():
+            if line_id in ignored or not text:
+                continue
+            moments.setdefault(quest_moment_stem(line_id), {})[escape_lua_string(text)] = \
+                quest_stem_from_line_id(line_id)
+        tables[lang] = several_wordings(moments)
+    return tables
+
+
 #: What the pack build reads to ship each gossip file's aliases beside it.
 DEFAULT_ALIASES_PATH = "corpus/gossip_aliases.json"
 
@@ -172,7 +204,7 @@ def load_aliases(path: str = DEFAULT_ALIASES_PATH) -> dict:
         return json.load(f)
 
 
-def render(lang: str, table: dict) -> str:
+def render(lang: str, table: dict, wordings: dict = None) -> str:
     """One locale's file. Sorted, so an export that changed nothing is the same file."""
     out = [HEADER.format(lang=lang), "GossipText = {\n"]
     for kind, name in TABLES.items():
@@ -182,6 +214,14 @@ def render(lang: str, table: dict) -> str:
             for text in sorted(table[kind][npc_id]):
                 out.append(f"            [{lua_string(text)}] = "
                            f"{lua_string(table[kind][npc_id][text])},\n")
+            out.append("        },\n")
+        out.append("    },\n")
+    if wordings:
+        out.append(f"    {QUEST_WORDINGS} = {{\n")
+        for moment in sorted(wordings):
+            out.append(f"        [{lua_string(moment)}] = {{\n")
+            for text in sorted(wordings[moment]):
+                out.append(f"            [{lua_string(text)}] = {lua_string(wordings[moment][text])},\n")
             out.append("        },\n")
         out.append("    },\n")
     out.append("}\n")
@@ -197,10 +237,11 @@ def render_aliases(aliases: dict) -> str:
     return "".join(out)
 
 
-def write_gossip_text(out_dir: str, tables: dict, aliases: dict) -> list:
+def write_gossip_text(out_dir: str, tables: dict, aliases: dict, wordings: dict = None) -> list:
     """Every locale's file, Aliases.lua and the Gossip.xml that loads them. Returns the paths."""
     os.makedirs(out_dir, exist_ok=True)
-    files = {f"{lang}.lua": render(lang, tables[lang]) for lang in CLIENT_LOCALES}
+    files = {f"{lang}.lua": render(lang, tables[lang], (wordings or {}).get(lang))
+             for lang in CLIENT_LOCALES}
     files["Aliases.lua"] = render_aliases(aliases)
     files["Gossip.xml"] = "\n".join(
         ['<Ui xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\\FrameXML\\UI.xsd">',

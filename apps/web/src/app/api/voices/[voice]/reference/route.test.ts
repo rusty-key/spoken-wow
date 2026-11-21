@@ -11,7 +11,11 @@ const { saveReference, deleteReference } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/voices/authz", () => ({
-  requireVoiceManager: async () => ({ session: { user: { id: "admin" } }, denied: null }),
+  requireVoiceManager: async (request: Request) => ({
+    session: { user: { id: "admin" } },
+    lang: new URL(request.url).searchParams.get("lang") ?? "enUS",
+    denied: null,
+  }),
   requireVoiceViewer: async () => ({ denied: Response.json({}, { status: 403 }) }),
 }));
 vi.mock("@/lib/generation/authz", () => ({
@@ -27,7 +31,8 @@ vi.mock("@/lib/voices/references", () => ({
 }));
 vi.mock("@/lib/voices/samples", () => ({
   isStoredSampleName: () => true,
-  samplePath: async () => "/clips/clip.mp3",
+  withSampleFiles: async (_clone: string, _files: string[], use: (paths: string[]) => unknown) =>
+    use(["/clips/clip.mp3"]),
 }));
 vi.mock("@/lib/lang-server", () => ({
   langParam: async (request: Request) => ({

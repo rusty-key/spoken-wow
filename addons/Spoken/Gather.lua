@@ -13,8 +13,6 @@ setfenv(1, SpokenEnv)
 -- The table itself is SpokenContributionsDB, declared by the SpokenContributions folder the
 -- player ships beside itself, so the file is SavedVariables/SpokenContributions.lua and holds
 -- nothing but this: a file named after the player would carry its settings along too.
--- Loaded from Contribute.xml alone: the legacy clients, where contributing is off,
--- never have a Gather table, so nothing is gathered there either.
 --
 -- Keyed by what the line IS (quest, stage and speaker; page checksum), not by the envelope's
 -- own checksum: an envelope captured again a second later can differ only in the NPC model a
@@ -41,11 +39,7 @@ function Gather:IsEnabled()
     -- itself -- the file goes out only in an upload the player runs -- so the default
     -- is to keep everything, and the switch (here, and mirrored in the feature
     -- addons) is the opt-out. A stored false is the only off.
-    local enabled = Store().Enabled
-    if enabled == nil then
-        return true
-    end
-    return enabled and true or false
+    return Store().Enabled ~= false
 end
 
 function Gather:SetEnabled(enabled)
@@ -61,6 +55,16 @@ function Gather:SetIntroduced()
     Store().Introduced = true
 end
 
+local function IndexOf(key)
+    local lines = Store().Lines
+    for i = 1, #lines do
+        if lines[i].key == key then
+            return i
+        end
+    end
+    return nil
+end
+
 --- Keep one envelope under `key`, replacing whatever that key held. Does nothing unless the
 --- player opted in: a feature addon may call this on every panel without asking first.
 ---@return boolean stored
@@ -72,11 +76,10 @@ function Gather:Add(key, envelope)
         return false
     end
     local lines = Store().Lines
-    for i = 1, #lines do
-        if lines[i].key == key then
-            lines[i].envelope = envelope
-            return true
-        end
+    local at = IndexOf(key)
+    if at then
+        lines[at].envelope = envelope
+        return true
     end
     lines[#lines + 1] = { key = key, envelope = envelope }
     -- Oldest out first. The player has almost certainly uploaded those already, or was never
@@ -89,6 +92,38 @@ end
 
 function Gather:Count()
     return #Store().Lines
+end
+
+--- Every line kept, oldest first, each `{ key = ..., envelope = ... }`: the store itself, for a
+--- feature addon tidying the lines it kept. Read whether or not gathering is on, since lines kept
+--- before the player opted out still go out with the file.
+function Gather:Lines()
+    return Store().Lines
+end
+
+---@return string|nil
+function Gather:Get(key)
+    local at = IndexOf(key)
+    return at and Store().Lines[at].envelope or nil
+end
+
+---@return boolean removed
+function Gather:Remove(key)
+    local at = IndexOf(key)
+    if at then
+        table.remove(Store().Lines, at)
+    end
+    return at ~= nil
+end
+
+--- Whether the lines kept by earlier versions were tidied at login: a feature addon does that
+--- once, and the file says so.
+function Gather:IsTidied()
+    return Store().Tidied and true or false
+end
+
+function Gather:SetTidied()
+    Store().Tidied = true
 end
 
 --- Forget everything gathered. The addon cannot see the upload happen, so this is the

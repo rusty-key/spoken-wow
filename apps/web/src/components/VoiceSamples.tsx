@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import { Combine, Download, Loader2, Sparkles, Trash2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import AccountVoicePicker from "@/components/voices/AccountVoicePicker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -163,7 +164,7 @@ export default function VoiceSamples({
   const pauseValid =
     Number.isFinite(pauseSeconds) && pauseSeconds >= 0 && pauseSeconds <= MAX_PAUSE;
   return (
-    <div className="bg-muted/30 border-t px-4 py-3">
+    <div>
       {samples.length === 0 ? (
         <p className="text-muted-foreground mb-3 text-sm">
           No clips yet.{" "}
@@ -254,6 +255,13 @@ export default function VoiceSamples({
           {busy === "upload" ? <Loader2 className="animate-spin" /> : <Upload />}
           Add clips
         </Button>
+
+        <AccountVoicePicker
+          voice={voice}
+          exists={exists}
+          disabled={busy !== null}
+          onAdopted={onCloned}
+        />
 
         {hasSeedClips && (
           <Button

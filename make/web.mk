@@ -5,13 +5,13 @@
 # Run from the repo root; the root Makefile's pattern rule guarantees that.
 #
 # The audio stores are NOT synced from here. They belong to the two pipelines and stay in
-# make/quests.mk and make/zones.mk, whose rsync targets carry the guards -- several of them
+# make/quests.mk and make/places.mk, whose rsync targets carry the guards -- several of them
 # run with --delete against directories holding audio that cannot be regenerated, and
 # splitting those guards across two files is how one of them gets lost.
 
 .DEFAULT_GOAL := help
 .PHONY: help dev build typecheck test bootstrap deploy-scripts releases rollback logs \
-        ssh-check store migrate-books db-pull import-locale push-seed-clips push-voice-sources
+        ssh-check store migrate-readables db-pull import-locale push-seed-clips push-voice-sources
 
 APP := @spoken/web
 
@@ -76,11 +76,11 @@ ssh-check: require-droplet ## Test the CI deploy key against the droplet, as CI 
 		'echo "connected as $$(whoami)"; ls -ld $(REMOTE_ROOT) $(REMOTE_ROOT)/bin 2>&1'
 
 #-------------------------------------------------------------------------------
-# The books corpus
+# The readables corpus
 #
-# Its own path, because books cannot be seeded the way the other two are. The quests corpus
-# ships inside the release as a committed file and the zones one is imported from the other
-# droplet's database; books is extracted from a vmangos MySQL that exists only on a
+# Its own path, because readables cannot be seeded the way the other two are. The quests corpus
+# ships inside the release as a committed file and the places one is imported from the other
+# droplet's database; readables is extracted from a vmangos MySQL that exists only on a
 # maintainer's machine, so the rows travel from there or not at all.
 #
 # THE DROPLET CANNOT RE-SEED ITSELF. If this table is ever lost there, it comes back from a
@@ -88,7 +88,7 @@ ssh-check: require-droplet ## Test the CI deploy key against the droplet, as CI 
 # somebody remembers.
 #-------------------------------------------------------------------------------
 
-# The native local Postgres, not a container: the books pipeline writes to whatever
+# The native local Postgres, not a container: the readables pipeline writes to whatever
 # DATABASE_URL names, and this is where it has been run.
 LOCAL_DB ?= postgres://localhost/spoken_dev
 
@@ -100,7 +100,7 @@ UNRESTRICT := sed -e '/^\\restrict/d' -e '/^\\unrestrict/d'
 # The whole production database, copied into a local one of its own.
 #
 # For rehearsing a migration against the data it will actually meet. The per-section syncs
-# (make quests-sync, zones-sync, books-sync) copy one section's rows for everyday work;
+# (make quests-sync, places-sync, readables-sync) copy one section's rows for everyday work;
 # this copies everything, because what a migration can break is the joins between tables --
 # a take whose lineId no longer resolves, an override naming a file the corpus dropped.
 #
@@ -148,18 +148,21 @@ push-seed-clips: require-droplet ## Copy local seed clips to shared/seed-clips o
 # The clips and fish.audio references apps/web/scripts/seed-voice-sources.mts wrote locally,
 # onto the droplet: files, and the fish_reference rows. Replaces only the voices that run
 # listed in pipelines/quests/voice/samples/.seeded; see scripts/voice/push-sources.sh.
-push-voice-sources: require-droplet ## Push seeded voice clips + fish references to the droplet (ADMIN_EMAIL=...)
-	@$(DB_ENV) RSYNC="$(RSYNC)" ADMIN_EMAIL="$(ADMIN_EMAIL)" bash scripts/voice/push-sources.sh
+push-voice-sources: require-droplet ## Push seeded voice clips + fish references to the droplet (ADMIN_EMAIL=..., TEAM=)
+	@$(DB_ENV) RSYNC="$(RSYNC)" ADMIN_EMAIL="$(ADMIN_EMAIL)" TEAM="$(TEAM)" bash scripts/voice/push-sources.sh
 
-migrate-books: require-droplet ## Copy the local books corpus onto the droplet (REPLACES book_line)
+migrate-readables: require-droplet ## Copy the local readables corpus onto the droplet (REPLACES book_page and book_line)
 	@echo "local:"
-	@psql "$(LOCAL_DB)" -c 'select count(*) as rows, count(*) filter (where "isCurrent") as live, count(distinct "bookId") as books from "book_line"'
+	@psql "$(LOCAL_DB)" -c 'select count(*) as rows, count(*) filter (where "isCurrent") as live from "book_line"' \
+	  -c 'select count(*) as pages, count(*) filter (where "aliasOf" is null) as live, count(distinct "bookId") as books from "book_page"'
 	@echo "droplet:"
-	@$(SSH) $(DROPLET) 'set -a; . $(REMOTE_ROOT)/shared/app.env; set +a; psql "$$DATABASE_URL" 		-c "select count(*) as rows, count(*) filter (where \"isCurrent\") as live, count(distinct \"bookId\") as books from \"book_line\""'
-	@printf 'Replace the droplet book_line with the local one? [y/N] ' && read a && [ "$$a" = y ] || { echo aborted; exit 1; }
+	@$(SSH) $(DROPLET) 'set -a; . $(REMOTE_ROOT)/shared/app.env; set +a; psql "$$DATABASE_URL" \
+		-c "select count(*) as rows, count(*) filter (where \"isCurrent\") as live from \"book_line\"" \
+		-c "select count(*) as pages, count(*) filter (where \"aliasOf\" is null) as live, count(distinct \"bookId\") as books from \"book_page\""'
+	@printf 'Replace the droplet book_page and book_line with the local ones? [y/N] ' && read a && [ "$$a" = y ] || { echo aborted; exit 1; }
 	@( echo 'begin;'; \
-	   echo 'truncate "book_line";'; \
-	   pg_dump "$(LOCAL_DB)" --data-only --table=book_line | $(UNRESTRICT); \
+	   echo 'truncate "book_line", "book_page";'; \
+	   pg_dump "$(LOCAL_DB)" --data-only --table=book_page --table=book_line | $(UNRESTRICT); \
 	   echo 'select setval(pg_get_serial_sequence('"'"'public.book_line'"'"', '"'"'id'"'"'), coalesce(max("id"), 1)) from public."book_line";'; \
 	   echo 'commit;' ) \
 	  | $(SSH) $(DROPLET) 'set -a; . $(REMOTE_ROOT)/shared/app.env; set +a; psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -q'

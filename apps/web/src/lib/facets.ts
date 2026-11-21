@@ -3,7 +3,6 @@
  *
  * The roster (migration 0071, roster-store.ts), so a type or voice an admin adds is filterable
  * before any line uses it, and the filters, /voices and the triage selects offer the same set.
- * Zones come from the committed zone-regions seed, so a zone with no line yet is still offered.
  *
  * Being closed sets also makes them a whitelist, which is what lets /api/search take these
  * straight from a query string.
@@ -11,7 +10,7 @@
  * `source` and `npcType` are absent on purpose: they are closed unions on CorpusLine, so
  * their lists live next to the type in lib/search.ts.
  */
-import { QUEST_ZONES, type QuestZone } from "./quests/zones";
+import type { Lang } from "./lang";
 import type { Roster } from "./voices/roster";
 import { loadRoster } from "./voices/roster-store";
 import { GENDERS } from "./voices/voices";
@@ -30,7 +29,6 @@ export type Facets = {
    * so a partial selection (a race with no gender) narrows by the same filter.
    */
   flavorScopes: { race: string; gender: string; flavor: string }[];
-  zones: QuestZone[];
 };
 
 const sorted = (values: Iterable<string>) => [...new Set(values)].sort((a, b) => a.localeCompare(b));
@@ -38,8 +36,8 @@ const sorted = (values: Iterable<string>) => [...new Set(values)].sort((a, b) =>
 /** Per roster: /api/search asks on every request, and the roster is one instance until it moves. */
 const built = new WeakMap<Roster, Facets>();
 
-export async function facets(): Promise<Facets> {
-  const roster = await loadRoster();
+export async function facets(lang: Lang): Promise<Facets> {
+  const roster = await loadRoster(lang);
   let value = built.get(roster);
   if (!value) {
     value = {
@@ -49,7 +47,6 @@ export async function facets(): Promise<Facets> {
       voices: roster.voiceNames,
       // A genderless type's flavors match a race with no gender chosen.
       flavorScopes: roster.flavorScopes().map((scope) => ({ ...scope, gender: scope.gender ?? "" })),
-      zones: QUEST_ZONES,
     };
     built.set(roster, value);
   }

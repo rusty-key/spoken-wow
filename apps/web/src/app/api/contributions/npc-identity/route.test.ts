@@ -80,6 +80,22 @@ describe("POST /api/contributions/npc-identity", () => {
     );
   });
 
+  // An item starts quests too; the database refused one here before migration 0073.
+  it("records an item", async () => {
+    const id = await contribution({});
+    admin = true;
+    expect((await POST(post({ id, npcKind: "item", npcId: 247857, npcName: "Nibbled-On Book" }))).status).toBe(200);
+    const { rows } = await db().query(`select "npcKind" from "contribution" where "id" = $1`, [id]);
+    expect(rows[0].npcKind).toBe("item");
+    expect(resolved).toEqual([expect.objectContaining({ npcKind: "item", npcId: 247857 })]);
+  });
+
+  it("refuses a kind that is not a table's", async () => {
+    const id = await contribution({});
+    admin = true;
+    expect((await POST(post({ id, npcKind: "orc", npcId: 240, npcName: "X" }))).status).toBe(400);
+  });
+
   it("requires both the id and the name", async () => {
     const id = await contribution({});
     admin = true;
@@ -96,7 +112,7 @@ describe("POST /api/contributions/npc-identity", () => {
   });
 
   it("leaves a row that is not a quest's alone", async () => {
-    const id = await contribution({}, "zones");
+    const id = await contribution({}, "places");
     admin = true;
     expect((await POST(post({ id, npcKind: "creature", npcId: 240, npcName: "Y" }))).status).toBe(409);
   });

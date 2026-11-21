@@ -10,7 +10,7 @@ local print = stub.print
 local Expect, Failures = H.Expecter(print)
 
 _G.UISpecialFrames = _G.UISpecialFrames or {}
-stub.SetClient("11509"); stub.ResetSound(); stub.ResetTimers()
+stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers()
 local VO = stub.LoadQuests(here .. "/../../addons/Spoken_Quests/", here .. "/../../addons/Spoken/")
 local Spoken = _G.Spoken
 local Dev = stub.LoadDeveloper(here .. "/../../addons/Spoken_Developer/")

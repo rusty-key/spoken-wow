@@ -8,8 +8,8 @@
 #
 # Or `make web-import-locale LOCALE=frFR`, which passes the droplet settings.
 #
-# Runs HERE, not on the droplet: the quests and books imports read the vmangos MySQL, which
-# only a workstation has (make books-db), and the pipelines are not part of a release. So
+# Runs HERE, not on the droplet: the quests and readables imports read the vmangos MySQL, which
+# only a workstation has (make readables-db), and the pipelines are not part of a release. So
 # production is reached the other way round -- an ssh tunnel to its Postgres, with the
 # credentials read out of the droplet's shared/app.env for the length of this script and
 # never written down.
@@ -33,21 +33,14 @@ if [ "${1:-}" = "--into" ]; then
   INTO=${2:?--into needs a database url}
 fi
 
-# Which of the three sources this language has. `vmangos` is null where the dump carries no
-# text at all; place names still come from the addon's aliases. A language no client runs in
-# (Italian) has neither: its text is the QuestIT community's (make quests-import-questit) and
-# what is written on the site.
+# The language's *_locN column in the dump. A language no client runs in is not one to import:
+# its text is what its team writes on the site.
 vmangos=$(node --input-type=module -e '
   const { localeInfo, BASE_LOCALE } = await import("./pipelines/lib/locales.mjs");
   const info = localeInfo(process.argv[1]);
   if (!info || info.code === BASE_LOCALE) { console.error(`not a language to import: ${process.argv[1]}`); process.exit(2); }
-  console.log(info.client === false ? "client" : (info.vmangos ?? "none"));
+  console.log(info.vmangos);
 ' "$LOCALE")
-if [ "$vmangos" = "client" ]; then
-  echo "$LOCALE: no game client runs in it, so the game has no text to import."
-  echo "Its quest text comes from QuestIT (make quests-import-questit); the rest is written on the site."
-  exit 0
-fi
 
 # The quests import reads MySQL through pandas and PyMySQL (requirements-extract.txt), which
 # the everyday venv does not carry, and the pinned pandas does not build on a new Python. A
@@ -57,14 +50,12 @@ EXTRACT_VENV=pipelines/quests/.venv-extract
 if [ -z "${PYTHON:-}" ] && [ -x "$EXTRACT_VENV/bin/python" ]; then
   export PYTHON=$PWD/$EXTRACT_VENV/bin/python
 fi
-if [ "$vmangos" != "none" ]; then
-  "${PYTHON:-pipelines/quests/.venv/bin/python}" -c 'import pandas, pymysql, psycopg2' 2>/dev/null || {
-    echo "error: the quests import needs pandas, PyMySQL and psycopg2. Make a venv for it:" >&2
-    echo "  uv venv -p 3.11 $EXTRACT_VENV" >&2
-    echo "  VIRTUAL_ENV=\$PWD/$EXTRACT_VENV uv pip install -r pipelines/quests/requirements.txt -r pipelines/quests/requirements-extract.txt" >&2
-    exit 1
-  }
-fi
+"${PYTHON:-pipelines/quests/.venv/bin/python}" -c 'import pandas, pymysql, psycopg2' 2>/dev/null || {
+  echo "error: the quests import needs pandas, PyMySQL and psycopg2. Make a venv for it:" >&2
+  echo "  uv venv -p 3.11 $EXTRACT_VENV" >&2
+  echo "  VIRTUAL_ENV=\$PWD/$EXTRACT_VENV uv pip install -r pipelines/quests/requirements.txt -r pipelines/quests/requirements-extract.txt" >&2
+  exit 1
+}
 
 # Column 9 is not vmangos's own: fill_locales_from_tdb.py adds it. Asked before anything else,
 # because without it both imports stop at "Unknown column" halfway through.
@@ -119,16 +110,12 @@ if [ -t 0 ]; then
   [ "$answer" = "y" ] || { echo "stopped"; exit 1; }
 fi
 
-if [ "$vmangos" = "none" ]; then
-  echo "== quests, books: skipped -- the vmangos dump has no $LOCALE text"
-else
-  echo "== quests"
-  make --no-print-directory quests-import-locale LOCALE="$LOCALE"
-  echo "== books"
-  make --no-print-directory books-import-locale LOCALE="$LOCALE"
-fi
+echo "== quests"
+make --no-print-directory quests-import-locale LOCALE="$LOCALE"
+echo "== readables"
+make --no-print-directory readables-import-locale LOCALE="$LOCALE"
 echo "== zone and subzone names"
-make --no-print-directory zones-lore-import-names LOCALE="$LOCALE"
+make --no-print-directory places-lore-import-names LOCALE="$LOCALE"
 
 echo
 echo "Done. Nothing is public yet: check /$LOCALE/quests as an admin, then switch $LOCALE on"

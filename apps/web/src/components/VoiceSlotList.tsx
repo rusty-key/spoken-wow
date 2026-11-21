@@ -3,16 +3,13 @@
 import { useLang } from "@/components/LangProvider";
 import { BASE_LANG, langName, withLang } from "@/lib/lang";
 import { cloneName } from "@/lib/voices/clone-name";
-import { useState, type Dispatch, type SetStateAction } from "react";
-import { ChevronDown, ChevronRight, Loader2, Sparkles } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Fragment, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { ChevronDown, Loader2, Pause, Pencil, Pin, Play, Search, Sparkles } from "lucide-react";
 
 import FishReference, { type ReferenceView } from "./FishReference";
 import VoiceSamples from "./VoiceSamples";
+import AccountVoicePicker from "./voices/AccountVoicePicker";
 import { cloneVoice } from "./voices/PopulateDialog";
-import { Badge } from "@/components/ui/badge";
 import type { Provider } from "@/lib/generation/providers";
 import { bareDirection } from "@/lib/generation/narration";
 import { cn } from "@/lib/utils";
@@ -23,19 +20,16 @@ import type { VoiceSlot } from "@/lib/voices/slots";
 /**
  * The roster: every voice the corpus needs, as one provider sees it.
  *
- * What a row shows depends on the tab. On ElevenLabs it is the clips a voice is cloned from
- * and whether the clone is in the viewer's own account; on fish.audio it is the reference
- * that is sent with every line. Either way the sources are only heard here: changing them is
- * an admin's, behind `editing`, because every collaborator's voices are made from them.
+ * What a row says depends on the tab. On ElevenLabs it is whether the clone is in the viewer's
+ * own account; on fish.audio it is the reference sent with every line. Either way the sources
+ * are only heard here: changing them is the language admin's, behind `editing`, because every
+ * collaborator's voices are made from them.
  *
- * Ordered by name (see slots.ts): with a voice per race, gender and flavor the list is long
- * enough that finding one row matters more than knowing which to create first. Any number of
- * rows can be open, to compare two voices' clips side by side; the <audio> elements are
- * preload="none", so an open row costs no request until it is played.
- *
- * Grouped by race, every group open: the races are the headings to scan by, and the voices
- * under them are rows to click into. A race's direction is on its header and a voice's own on
- * its row, the two places they apply.
+ * A healthy voice is a quiet row, so the few that need somebody stand out, and the filter chips
+ * count them. A race's accent is on its group header and a voice's own direction in its row,
+ * the two places they apply. Any number of rows can be open, to compare two voices' clips side
+ * by side; the <audio> elements are preload="none", so an open row costs no request until it
+ * is played.
  */
 
 /** A race and the voices under it, in the order slots.ts already sorted them. */
@@ -55,7 +49,7 @@ type Group = {
 function groups(slots: VoiceSlot[]): Group[] {
   const byRace = new Map<string, Group>();
   for (const slot of slots) {
-    const race = slot.name.split("-")[0];
+    const race = raceOf(slot);
     const group = byRace.get(race) ?? { race, slots: [], npcCount: 0, lineCount: 0 };
     group.slots.push(slot);
     // Summed rather than counted distinctly: an NPC speaks with one voice, so no NPC is in
@@ -67,10 +61,22 @@ function groups(slots: VoiceSlot[]): Group[] {
   return [...byRace.values()];
 }
 
+function raceOf(slot: VoiceSlot): string {
+  return slot.name.split("-")[0];
+}
+
 /** Every direction without its square brackets, as the boxes show and take them. */
 function bare(tags: Record<string, string>): Record<string, string> {
   return Object.fromEntries(Object.entries(tags).map(([key, tag]) => [key, bareDirection(tag)]));
 }
+
+function plural(count: number, one: string, many: string): string {
+  return `${count.toLocaleString()} ${count === 1 ? one : many}`;
+}
+
+type Status = { tone: "good" | "fix" | "bad" | "info" | "quiet"; label: string; pinned?: boolean };
+
+type Filter = { key: string; label: string; tone?: Status["tone"]; test: (slot: VoiceSlot) => boolean };
 
 type Props = {
   tab: Provider;
@@ -90,9 +96,12 @@ type Props = {
   setReferences: Dispatch<SetStateAction<Record<string, ReferenceView>>>;
   /** The directions per race and per voice, as the settings currently in force hold them. */
   raceTags: Record<string, string>;
-  /** May change the sources and the accent tags. */
-  manager: boolean;
-  /** The sources' editors are showing: a manager asked for them. */
+  /**
+   * May change this language's directions: a `configure` grant in it, not only a global admin,
+   * since the directions are the language's own.
+   */
+  directs: boolean;
+  /** The sources' editors are showing: an admin asked for them. */
   editing: boolean;
   /** Whether the viewer has an ElevenLabs key to clone into. */
   canClone: boolean;
@@ -109,27 +118,31 @@ export default function VoiceSlotList({
   references,
   setReferences,
   raceTags,
-  manager,
+  directs,
   editing,
   canClone,
 }: Props) {
   const lang = useLang();
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
-  const [openRaces, setOpenRaces] = useState<ReadonlySet<string>>(
-    () => new Set(groups(slots).map((group) => group.race)),
-  );
+  const [query, setQuery] = useState("");
+  // Kept with the tab it was picked on: "No reference" means nothing on ElevenLabs.
+  const [picked, setPicked] = useState<{ tab: Provider; key: string }>({ tab, key: "all" });
+  const filter = picked.tab === tab ? picked.key : "all";
+  const setFilter = (key: string) => setPicked({ tab, key });
   // Bare, as typed: settings.ts puts the brackets back on save.
   const [tags, setTags] = useState(() => bare(raceTags));
   // The last value written, so a box that was edited and put back does not claim a save.
   const [saved, setSaved] = useState(() => bare(raceTags));
   const [tagError, setTagError] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [accentOpen, setAccentOpen] = useState<string | null>(null);
   const [sweep, setSweep] = useState<{
     done: number;
     total: number;
     failed: string[];
   } | null>(null);
   const [confirmingSweep, setConfirmingSweep] = useState(false);
+  const player = usePlayer(tab);
 
   const seedable = slots.filter((slot) => seedSlots.includes(slot.name));
 
@@ -228,246 +241,470 @@ export default function VoiceSlotList({
   }
 
   /**
-   * The direction box for a race or one voice: editable for a manager, read-only otherwise.
+   * The direction box for a race or one voice, for whoever configures the language.
    *
    * On both tabs: the language holds one set, and speakers/shape.ts puts it in front of the
    * NPC's words whichever provider speaks them.
    */
-  function direction(key: string, placeholder: string) {
-    if (!manager) {
-      return tags[key] ? (
-        <span
-          title="Direction"
-          className="text-muted-foreground w-56 shrink-0 truncate font-mono text-xs"
-        >
-          {tags[key]}
-        </span>
-      ) : (
-        <span className="w-56 shrink-0" />
-      );
-    }
+  function directionInput(key: string, placeholder: string, autoFocus = false) {
     return (
-      <Input
+      <input
         aria-label={`Direction for ${key}`}
         title="Direction, sent to ElevenLabs and fish.audio alike; a voice's follows its race's"
         value={tags[key] ?? ""}
         // No brackets: they are added on save, and typing them is harmless.
         placeholder={placeholder}
         disabled={savingKey !== null}
+        autoFocus={autoFocus}
         onChange={(event) => setTags((current) => ({ ...current, [key]: event.target.value }))}
-        onBlur={() => void saveTags(key)}
-        className="h-7 w-56 shrink-0 font-mono text-xs"
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === "Escape") event.currentTarget.blur();
+        }}
+        onBlur={() => {
+          void saveTags(key);
+          if (accentOpen === key) setAccentOpen(null);
+        }}
+        className="vo-input"
       />
     );
   }
 
+  function status(slot: VoiceSlot): Status {
+    if (tab === "fish") {
+      const reference = references[slot.name];
+      if (!reference) return { tone: "quiet", label: "No reference" };
+      return reference.pinned
+        ? { tone: "info", label: "Pinned to fish.audio", pinned: true }
+        : { tone: "info", label: "Reference" };
+    }
+    // Before the clips: a voice adopted from the account has none.
+    if (present?.has(slot.name)) return { tone: "good", label: "In your account" };
+    if ((samples[slot.name] ?? []).length === 0) return { tone: "bad", label: "No clips" };
+    if (present === null) return { tone: "quiet", label: "Unknown" };
+    return { tone: "fix", label: "Not in your account" };
+  }
+
+  // On the saved directions, so a row being edited does not filter itself away before its save.
+  const directed = (slot: VoiceSlot) => Boolean(saved[slot.name] || saved[raceOf(slot)]);
+  const filters: Filter[] =
+    tab === "elevenlabs"
+      ? [
+          { key: "all", label: "All", test: () => true },
+          { key: "missing", label: "Not in your account", tone: "fix", test: (s) => status(s).tone === "fix" },
+          { key: "noclips", label: "No clips", tone: "bad", test: (s) => status(s).tone === "bad" },
+          { key: "unused", label: "No NPCs", tone: "quiet", test: (s) => s.npcCount === 0 },
+          { key: "directed", label: "Has a direction", test: directed },
+        ]
+      : [
+          { key: "all", label: "All", test: () => true },
+          { key: "noref", label: "No reference", tone: "quiet", test: (s) => !references[s.name] },
+          { key: "pinned", label: "Pinned", tone: "info", test: (s) => Boolean(references[s.name]?.pinned) },
+          { key: "unused", label: "No NPCs", tone: "quiet", test: (s) => s.npcCount === 0 },
+          { key: "directed", label: "Has a direction", test: directed },
+        ];
+  const activeFilter = filters.find((each) => each.key === filter) ?? filters[0];
+  const needle = query.trim().toLowerCase();
+  const matches = (slot: VoiceSlot) =>
+    activeFilter.test(slot) &&
+    (!needle ||
+      slot.name.includes(needle) ||
+      (saved[slot.name] ?? "").toLowerCase().includes(needle) ||
+      (saved[raceOf(slot)] ?? "").toLowerCase().includes(needle));
+  const shown = slots.filter(matches).length;
+
+  /** The clip a row's play button plays: the reference on fish.audio, the first clip otherwise. */
+  function previewSrc(slot: VoiceSlot): string | null {
+    if (tab === "fish") {
+      const reference = references[slot.name];
+      return reference
+        ? withLang(lang, `/api/voices/${slot.name}/reference/audio?v=${reference.clipHash}`)
+        : null;
+    }
+    const first = (samples[slot.name] ?? [])[0];
+    return first ? withLang(lang, `/api/voices/${slot.name}/samples/${first.file}`) : null;
+  }
+
   return (
     <>
-      {editing && tab === "elevenlabs" && seedable.length > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-3">
-          <Button
-            size="xs"
-            variant={confirmingSweep ? "destructive" : "outline"}
-            disabled={sweeping}
-            onClick={() => (confirmingSweep ? seed(seedable) : setConfirmingSweep(true))}
-          >
-            {sweeping ? <Loader2 className="animate-spin" /> : <Sparkles />}
-            {confirmingSweep ? "Confirm — rebuild all" : "Seed all from clips"}
-          </Button>
-
-          {/* No confirmation: this only fills gaps, so nothing that exists is destroyed. */}
-          {missing.length > 0 && !confirmingSweep && (
-            <Button size="xs" variant="outline" disabled={sweeping} onClick={() => seed(missing)}>
-              {sweeping ? <Loader2 className="animate-spin" /> : <Sparkles />}
-              Seed remaining from clips ({missing.length})
-            </Button>
-          )}
-
-          {confirmingSweep && (
-            <>
-              <span className="text-xs text-amber-400">
-                This replaces the clips and the ElevenLabs voice for all {seedable.length}{" "}
-                {langName(lang)} voices ({cloneName(seedable[0]?.name ?? "dwarf-male-grim", lang)}
-                {" "}and the rest). Existing {langName(lang)} voices are deleted and re-created, so
-                they will not sound the same afterwards.
-                {lang !== BASE_LANG && " Other languages' voices are separate clones and are not touched."}
-              </span>
-              <Button variant="ghost" size="xs" onClick={() => setConfirmingSweep(false)}>
-                Cancel
-              </Button>
-            </>
-          )}
-
-          {sweep && !confirmingSweep && (
-            <span className="text-muted-foreground text-xs tabular-nums">
-              {sweep.done} / {sweep.total}
-              {sweep.failed.length > 0 && (
-                <span className="text-destructive"> · failed: {sweep.failed.join(", ")}</span>
+      {editing && (
+        <div className="vo-editbar">
+          <Pencil aria-hidden />
+          <span>
+            Editing sources. Open a voice to change its clips{tab === "fish" ? " or its reference" : ""}; every
+            maintainer&apos;s voices are made from them.
+          </span>
+          {tab === "elevenlabs" && seedable.length > 0 && (
+            <span className="vo-editbar-actions">
+              {confirmingSweep ? (
+                <>
+                  <span className="vo-warn">
+                    Replaces the clips and the ElevenLabs voice for all {seedable.length}{" "}
+                    {langName(lang)} voices ({cloneName(seedable[0]?.name ?? "dwarf-male-grim", lang)} and
+                    the rest). They are deleted and re-created, so they will not sound the same
+                    afterwards.
+                    {lang !== BASE_LANG && " Other languages' voices are separate clones and are not touched."}
+                  </span>
+                  <button type="button" className="bs-btn bs-btn-danger vo-sm" onClick={() => seed(seedable)}>
+                    Confirm — rebuild all
+                  </button>
+                  <button type="button" className="bs-btn bs-btn-text vo-sm" onClick={() => setConfirmingSweep(false)}>
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* No confirmation: this only fills gaps, so nothing that exists is destroyed. */}
+                  {missing.length > 0 && (
+                    <button type="button" className="bs-btn vo-outline vo-sm" disabled={sweeping} onClick={() => seed(missing)}>
+                      {sweeping ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                      Seed remaining from clips ({missing.length})
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="bs-btn vo-outline vo-sm"
+                    disabled={sweeping}
+                    onClick={() => setConfirmingSweep(true)}
+                  >
+                    {sweeping ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                    Seed all from clips
+                  </button>
+                </>
+              )}
+              {sweep && !confirmingSweep && (
+                <span className="vo-note tabular-nums">
+                  {sweep.done} / {sweep.total}
+                  {sweep.failed.length > 0 && <span className="vo-bad"> · failed: {sweep.failed.join(", ")}</span>}
+                </span>
               )}
             </span>
           )}
         </div>
       )}
 
-      {tagError && (
-        <div
-          role="alert"
-          className="border-destructive/40 bg-destructive/10 text-destructive mb-3 rounded-md border px-3 py-2 text-sm"
-        >
-          {tagError}
+      <div className="cat-search">
+        <label className="cat-q vo-q">
+          <Search aria-hidden />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Voice, race or direction"
+            aria-label="Search voices"
+          />
+          <span className="vo-q-count">
+            {shown === slots.length ? plural(slots.length, "voice", "voices") : `${shown} of ${slots.length} voices`}
+          </span>
+        </label>
+        <div className="cat-row" role="group" aria-label="Show">
+          {filters.map((each) => {
+            const count = slots.filter(each.test).length;
+            // An empty chip is a promise of nothing: it shows only while it is the one picked.
+            if (count === 0 && each.key !== "all" && each.key !== filter) return null;
+            return (
+              <button
+                key={each.key}
+                type="button"
+                className="bs-chip"
+                aria-pressed={filter === each.key}
+                onClick={() => setFilter(each.key)}
+              >
+                {each.tone && <i className={cn("vo-dot", `vo-tone-${each.tone}`)} aria-hidden />}
+                {each.label}
+                <span className="cat-count">{count}</span>
+              </button>
+            );
+          })}
         </div>
+      </div>
+
+      {tagError && (
+        <p role="alert" className="vo-alert">
+          {tagError}
+        </p>
       )}
 
-      <div className="divide-y overflow-hidden rounded-md border">
-        {races.map((group) => {
-          const openGroup = openRaces.has(group.race);
-
-          return (
-            <div key={group.race}>
-              {/* Not a <button>: the accent box lives on this row, and a text input inside a
-                  button is neither valid nor focusable the way anyone expects. */}
-              <div
-                className={cn(
-                  "flex w-full items-center gap-3 px-3 py-2 text-sm",
-                  openGroup && "bg-muted/50",
-                )}
-              >
-                <button
-                  onClick={() => setOpenRaces((current) => toggled(current, group.race))}
-                  aria-expanded={openGroup}
-                  className={cn(
-                    "hover:text-foreground flex min-w-0 flex-1 items-center gap-3 text-left",
-                    "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
-                  )}
-                >
-                  {openGroup ? (
-                    <ChevronDown className="size-4 shrink-0" />
-                  ) : (
-                    <ChevronRight className="text-muted-foreground size-4 shrink-0" />
-                  )}
-                  <span className="min-w-0 flex-1 font-medium">{group.race}</span>
-                  <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
-                    {group.slots.length} {group.slots.length === 1 ? "voice" : "voices"} ·{" "}
-                    {group.npcCount.toLocaleString()} NPCs · {group.lineCount.toLocaleString()}{" "}
-                    lines
-                  </span>
-                </button>
-
-                {direction(group.race, "no accent direction")}
-              </div>
-
-              {openGroup &&
-                group.slots.map((slot) => {
-                  const clips = samples[slot.name] ?? [];
-                  const expanded = open.has(slot.name);
-
-                  return (
-                    <div key={slot.name} className="border-t">
-                      {/* Not one <button>, for the same reason as the race header: the
-                          voice's own direction box lives on this row. */}
-                      <div
-                        className={cn(
-                          "hover:bg-muted/50 flex w-full items-center gap-3 py-2 pr-3 pl-9 text-sm",
-                          expanded && "bg-muted/50",
-                        )}
-                      >
-                        <button
-                          onClick={() => setOpen((current) => toggled(current, slot.name))}
-                          aria-expanded={expanded}
-                          className={cn(
-                            "flex min-w-0 flex-1 items-center gap-3 text-left",
-                            "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
-                          )}
-                        >
-                          {expanded ? (
-                            <ChevronDown className="size-4 shrink-0" />
-                          ) : (
-                            <ChevronRight className="text-muted-foreground size-4 shrink-0" />
-                          )}
-                          <span className="min-w-0 flex-1 font-medium">{slot.name}</span>
-                          <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
-                            {slot.npcCount.toLocaleString()} NPCs ·{" "}
-                            {slot.lineCount.toLocaleString()} lines
-                          </span>
-                          <span className="w-36 shrink-0 text-right">
-                            {tab === "fish" ? (
-                              references[slot.name] ? (
-                                <Badge variant="outline" className="text-sky-400">
-                                  reference
-                                </Badge>
+      {shown === 0 ? (
+        <p className="cat-empty">No voice matches. Clear the search or pick All.</p>
+      ) : (
+        <div className="cat-list">
+          <table className="cat-table vo-table">
+            <colgroup>
+              <col className="vo-col-play" />
+              <col />
+              <col className="vo-col-speaks" />
+              <col className="vo-col-status" />
+              <col className="vo-col-dir" />
+              <col className="vo-col-chev" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>
+                  <span className="sr-only">Play</span>
+                </th>
+                <th>Voice</th>
+                <th>Speaks</th>
+                <th>{tab === "elevenlabs" ? "ElevenLabs" : "fish.audio"}</th>
+                <th>Direction</th>
+                <th>
+                  <span className="sr-only">Open</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {races.map((group) => {
+                const rows = group.slots.filter(matches);
+                if (rows.length === 0) return null;
+                // A race with one voice is its own row: a header over a single row says it twice.
+                const solo = group.slots.length === 1;
+                const accent = tags[group.race];
+                return (
+                  <Fragment key={group.race}>
+                    {!solo && (
+                      <tr className="cat-group">
+                        <th colSpan={6}>
+                          <div className="vo-group">
+                            <span className="cat-group-name">{group.race}</span>
+                            <span>
+                              {plural(group.slots.length, "voice", "voices")} ·{" "}
+                              {plural(group.lineCount, "line", "lines")}
+                            </span>
+                            <span className="vo-accent">
+                              {accentOpen === group.race ? (
+                                directionInput(group.race, "no accent direction", true)
                               ) : (
-                                <span className="text-muted-foreground text-xs">no reference</span>
-                              )
-                            ) : clips.length === 0 ? (
-                              <span className="text-muted-foreground text-xs">no clips</span>
-                            ) : present === null ? (
-                              <span className="text-muted-foreground text-xs">unknown</span>
-                            ) : present.has(slot.name) ? (
-                              <Badge variant="outline" className="text-emerald-400">
-                                in your account
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-xs">not in your account</span>
-                            )}
-                          </span>
-                        </button>
-                        {direction(slot.name, "only the race's")}
-                      </div>
-
-                      {expanded && tab === "elevenlabs" && !editing && (
-                        <ClonePanel
-                          voice={slot.name}
-                          samples={clips}
-                          exists={present?.has(slot.name) ?? false}
-                          canClone={canClone && present !== null}
-                          onCloned={() =>
-                            setPresent((current) => new Set(current ?? []).add(slot.name))
-                          }
-                        />
-                      )}
-                      {expanded && tab === "fish" && !editing && (
-                        <ReferencePlayer voice={slot.name} reference={references[slot.name] ?? null} />
-                      )}
-                      {expanded && tab === "elevenlabs" && editing && (
-                        <VoiceSamples
-                          voice={slot.name}
-                          samples={clips}
-                          hasSeedClips={seedSlots.includes(slot.name)}
-                          exists={present?.has(slot.name) ?? false}
-                          onChange={(next) =>
-                            setSamples((current) => ({ ...current, [slot.name]: next }))
-                          }
-                          onCloned={() =>
-                            setPresent((current) => new Set(current ?? []).add(slot.name))
-                          }
-                        />
-                      )}
-                      {expanded && tab === "fish" && editing && (
-                        <FishReference
-                          voice={slot.name}
-                          samples={clips}
-                          hasSeedClips={seedSlots.includes(slot.name)}
-                          onSamples={(next) =>
-                            setSamples((current) => ({ ...current, [slot.name]: next }))
-                          }
-                          initial={references[slot.name] ?? null}
-                          onChange={(next) =>
-                            setReferences((current) => {
-                              const { [slot.name]: _, ...rest } = current;
-                              return next ? { ...rest, [slot.name]: next } : rest;
-                            })
-                          }
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-            </div>
-          );
-        })}
-      </div>
+                                <>
+                                  {accent ? (
+                                    <>
+                                      <span className="vo-accent-label">Accent</span>
+                                      <span className="vo-accent-text" title={accent}>
+                                        {accent}
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span className="vo-faint">No accent</span>
+                                  )}
+                                  {directs && (
+                                    <button
+                                      type="button"
+                                      className="vo-icon-btn"
+                                      title={`Change the accent for ${group.race}`}
+                                      aria-label={`Change the accent for ${group.race}`}
+                                      onClick={() => setAccentOpen(group.race)}
+                                    >
+                                      <Pencil />
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        </th>
+                      </tr>
+                    )}
+                    {rows.map((slot) => {
+                      const clips = samples[slot.name] ?? [];
+                      const expanded = open.has(slot.name);
+                      const state = status(slot);
+                      const src = previewSrc(slot);
+                      const playing = player.playing === src && src !== null;
+                      const toggle = () => setOpen((current) => toggled(current, slot.name));
+                      const own = tags[slot.name];
+                      return (
+                        <Fragment key={slot.name}>
+                          <tr
+                            className={cn("cat-tr vo-tr", solo && "vo-solo", expanded && "cat-current")}
+                            onClick={toggle}
+                          >
+                            <td className="cat-cell-play">
+                              <button
+                                type="button"
+                                className="cat-play"
+                                disabled={src === null}
+                                aria-current={playing ? "true" : undefined}
+                                aria-label={playing ? `Stop ${slot.name}` : `Hear ${slot.name}`}
+                                title={src === null ? "Nothing to hear yet" : undefined}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  if (src) player.toggle(src);
+                                }}
+                              >
+                                {playing ? <Pause /> : <Play />}
+                              </button>
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className="vo-name"
+                                aria-expanded={expanded}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  toggle();
+                                }}
+                              >
+                                {!solo && slot.name.startsWith(`${group.race}-`) ? (
+                                  <>
+                                    <span className="vo-faint">{group.race}-</span>
+                                    {slot.name.slice(group.race.length + 1)}
+                                  </>
+                                ) : (
+                                  slot.name
+                                )}
+                              </button>
+                            </td>
+                            <td className={cn("vo-speaks", slot.npcCount === 0 && "vo-faint")}>
+                              {slot.npcCount === 0
+                                ? "No NPCs"
+                                : `${plural(slot.npcCount, "NPC", "NPCs")} · ${plural(slot.lineCount, "line", "lines")}`}
+                            </td>
+                            <td>
+                              <span className={cn("vo-state", `vo-tone-${state.tone}`)}>
+                                {state.pinned ? <Pin aria-hidden /> : <i aria-hidden />}
+                                {state.label}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={cn("vo-dir", !own && "vo-faint")} title={own ?? accent ?? undefined}>
+                                {own || (accent ? `↳ ${solo ? accent : "race accent"}` : "—")}
+                              </span>
+                            </td>
+                            <td>
+                              <ChevronDown className={cn("vo-chev", expanded && "vo-chev-open")} aria-hidden />
+                            </td>
+                          </tr>
+                          {expanded && (
+                            <tr className="vo-open-row">
+                              <td colSpan={6}>
+                                <div className="vo-panel">
+                                  <div className="min-w-0">
+                                    {tab === "elevenlabs" && !editing && (
+                                      <ClonePanel
+                                        voice={slot.name}
+                                        samples={clips}
+                                        exists={present?.has(slot.name) ?? false}
+                                        canClone={canClone && present !== null}
+                                        onCloned={() =>
+                                          setPresent((current) => new Set(current ?? []).add(slot.name))
+                                        }
+                                      />
+                                    )}
+                                    {tab === "fish" && !editing && (
+                                      <ReferencePlayer voice={slot.name} reference={references[slot.name] ?? null} />
+                                    )}
+                                    {tab === "elevenlabs" && editing && (
+                                      <VoiceSamples
+                                        voice={slot.name}
+                                        samples={clips}
+                                        hasSeedClips={seedSlots.includes(slot.name)}
+                                        exists={present?.has(slot.name) ?? false}
+                                        onChange={(next) =>
+                                          setSamples((current) => ({ ...current, [slot.name]: next }))
+                                        }
+                                        onCloned={() =>
+                                          setPresent((current) => new Set(current ?? []).add(slot.name))
+                                        }
+                                      />
+                                    )}
+                                    {tab === "fish" && editing && (
+                                      <FishReference
+                                        voice={slot.name}
+                                        samples={clips}
+                                        hasSeedClips={seedSlots.includes(slot.name)}
+                                        onSamples={(next) =>
+                                          setSamples((current) => ({ ...current, [slot.name]: next }))
+                                        }
+                                        initial={references[slot.name] ?? null}
+                                        onChange={(next) =>
+                                          setReferences((current) => {
+                                            const { [slot.name]: _, ...rest } = current;
+                                            return next ? { ...rest, [slot.name]: next } : rest;
+                                          })
+                                        }
+                                      />
+                                    )}
+                                  </div>
+                                  <div className="vo-side">
+                                    {solo && (
+                                      <label className="vo-field">
+                                        <span className="bs-label">Accent for {group.race}</span>
+                                        {directs ? (
+                                          directionInput(group.race, "no accent direction")
+                                        ) : (
+                                          <span className="vo-mono">{accent || "none"}</span>
+                                        )}
+                                      </label>
+                                    )}
+                                    <label className="vo-field">
+                                      <span className="bs-label">Direction for this voice</span>
+                                      {directs ? (
+                                        directionInput(
+                                          slot.name,
+                                          accent ? `follows the race: ${accent}` : "none — speaks plainly",
+                                        )
+                                      ) : (
+                                        <span className="vo-mono">{own || (accent ? `follows the race: ${accent}` : "none")}</span>
+                                      )}
+                                    </label>
+                                    <p className="vo-note">Sent to ElevenLabs and fish.audio alike.</p>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </>
   );
+}
+
+/**
+ * One <audio> for the whole list, so starting a voice stops the last one rather than talking
+ * over it.
+ */
+function usePlayer(tab: Provider) {
+  const audio = useRef<HTMLAudioElement | null>(null);
+  // Which request is current, so a play() an older one lost does not clear the newer one.
+  const request = useRef(0);
+  const [playing, setPlaying] = useState<string | null>(null);
+
+  // Stopped on a provider switch, which hides the row that could stop it.
+  useEffect(
+    () => () => {
+      request.current++;
+      audio.current?.pause();
+      setPlaying(null);
+    },
+    [tab],
+  );
+
+  function toggle(src: string) {
+    if (!audio.current) {
+      audio.current = new Audio();
+      audio.current.onended = () => setPlaying(null);
+      audio.current.onerror = () => setPlaying(null);
+    }
+    const mine = ++request.current;
+    if (playing === src) {
+      audio.current.pause();
+      setPlaying(null);
+      return;
+    }
+    audio.current.src = src;
+    void audio.current.play().catch(() => {
+      if (request.current === mine) setPlaying(null);
+    });
+    setPlaying(src);
+  }
+
+  return { playing, toggle };
 }
 
 /**
@@ -504,61 +741,71 @@ function ClonePanel({
 
   if (samples.length === 0) {
     return (
-      <p className="text-muted-foreground border-t py-3 pr-3 pl-9 text-xs">
-        No clips for this voice in {langName(lang)} yet, so there is nothing to clone.
-      </p>
+      <div>
+        <p className="vo-note">
+          No clips for this voice in {langName(lang)} yet, so there is nothing to clone.
+        </p>
+        {canClone && (
+          <div className="vo-actions">
+            <AccountVoicePicker voice={voice} exists={exists} onAdopted={onCloned} />
+          </div>
+        )}
+      </div>
     );
   }
 
   return (
-    <div className="border-t py-3 pr-3 pl-9 text-sm">
-      <ul className="mb-3 space-y-1">
+    <div>
+      <p className="bs-label">{plural(samples.length, "clip", "clips")}</p>
+      <ul className="vo-clips">
         {samples.map((sample) => (
-          <li key={sample.file} className="flex items-center gap-3">
-            <audio
-              controls
-              preload="none"
-              src={withLang(lang, `/api/voices/${voice}/samples/${sample.file}`)}
-              className="h-8 max-w-[16rem] flex-1"
-            />
-            <span className="text-muted-foreground min-w-0 flex-1 truncate text-xs">
-              {displayName(sample.file)}
-            </span>
+          <li key={sample.file}>
+            <audio controls preload="none" src={withLang(lang, `/api/voices/${voice}/samples/${sample.file}`)} />
+            <span className="vo-clip-name">{displayName(sample.file)}</span>
           </li>
         ))}
       </ul>
 
       {canClone && (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            size="xs"
-            variant={confirming ? "destructive" : exists ? "outline" : "default"}
+        <div className="vo-actions">
+          <span className={cn("vo-state", exists ? "vo-tone-good" : "vo-tone-fix")}>
+            <i aria-hidden />
+            {exists ? (
+              <>
+                In your account as <span className="vo-mono">{cloneName(voice, lang)}</span>
+              </>
+            ) : (
+              "Not in your account yet"
+            )}
+          </span>
+          <button
+            type="button"
+            className={cn("bs-btn vo-sm", confirming ? "bs-btn-danger" : exists ? "vo-outline" : "bs-btn-primary")}
             disabled={busy}
             onClick={() => (exists && !confirming ? setConfirming(true) : clone())}
           >
             {busy ? <Loader2 className="animate-spin" /> : <Sparkles />}
             {confirming ? "Confirm replace" : exists ? "Replace in my account" : "Add to my account"}
-          </Button>
+          </button>
+          {!confirming && <AccountVoicePicker voice={voice} exists={exists} disabled={busy} onAdopted={onCloned} />}
           {confirming ? (
             <>
-              <span className="text-xs text-amber-400">
-                Deletes <code>{cloneName(voice, lang)}</code> from your ElevenLabs account and
-                clones it again from these clips; it will not sound quite the same.
+              <span className="vo-warn">
+                Deletes <code>{cloneName(voice, lang)}</code> from your ElevenLabs account and clones it
+                again from these clips; it will not sound quite the same.
               </span>
-              <Button variant="ghost" size="xs" onClick={() => setConfirming(false)}>
+              <button type="button" className="bs-btn bs-btn-text vo-sm" onClick={() => setConfirming(false)}>
                 Cancel
-              </Button>
+              </button>
             </>
           ) : (
-            !exists && (
-              <span className="text-muted-foreground text-xs">Uses one voice slot.</span>
-            )
+            !exists && <span className="vo-note">Uses one voice slot.</span>
           )}
         </div>
       )}
 
       {error && (
-        <p role="alert" className="text-destructive mt-2 text-xs">
+        <p role="alert" className="vo-bad vo-note">
           {error}
         </p>
       )}
@@ -570,21 +817,23 @@ function ClonePanel({
 function ReferencePlayer({ voice, reference }: { voice: string; reference: ReferenceView | null }) {
   const lang = useLang();
   if (!reference) {
-    return (
-      <p className="text-muted-foreground border-t py-3 pr-3 pl-9 text-xs">
-        No fish.audio reference for this voice in {langName(lang)} yet.
-      </p>
-    );
+    return <p className="vo-note">No fish.audio reference for this voice in {langName(lang)} yet.</p>;
   }
   return (
-    <div className="border-t py-3 pr-3 pl-9">
+    <div>
+      <p className="bs-label">Reference</p>
       <audio
         controls
         preload="none"
         // The hash in the URL makes a re-cut clip a new resource, not a cached old one.
         src={withLang(lang, `/api/voices/${voice}/reference/audio?v=${reference.clipHash}`)}
-        className="h-8 w-full max-w-md"
+        className="vo-reference"
       />
+      {reference.pinned && (
+        <p className="vo-note">
+          Pinned: every line of this voice is spoken by fish.audio, whichever generator is active.
+        </p>
+      )}
     </div>
   );
 }

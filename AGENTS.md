@@ -1,44 +1,59 @@
 # AGENTS.md
 
 Repo-wide rules. Each section also has its own file, which applies on top of this one:
-`docs/quests/CLAUDE.md`, `docs/zones/AGENTS.md`, `docs/books/AGENTS.md`.
+`docs/quests/CLAUDE.md`, `docs/gossip/AGENTS.md`, `docs/places/AGENTS.md` (Spoken Places), `docs/readables/AGENTS.md` (Spoken Readables).
+Gossip, in `Spoken_Quests`, reads the `g:` lines the quests pipeline builds, so the quests guide
+covers how they are made. Spoken has no guide; `docs/spoken/` holds its changelog and reference pages.
 
 ## Layout
 
 - `addons/`: the shipped Lua.
-  - `Spoken` plays every line. `Spoken_Quests`, `Spoken_Zones` and `Spoken_Books` are its
-    modules, and `SpokenContributions` holds what players upload at /contribute. All five
-    ship in one zip, `Spoken-<v>.zip` (`scripts/spoken/package.sh`).
-  - `SpokenZonesAudio` and `SpokenBooksAudio` are sound packs. The quests packs have no folder
-    here; they are built into `pipelines/quests/audio/`, which is gitignored.
-  - `SpokenPlayer`, `SpokenQuests`, `SpokenZones` and `SpokenBooks` are tombstones: a `.toc`
-    and no Lua, so an update replaces an old install with a folder that never loads. Never
-    add code to them.
-- `apps/web`: the site, `spoken.rusty.one`, a Next.js app backed by Postgres. It imports
-  `pipelines/zones` and `pipelines/books` (`@tools/*` and `@books-tools/*`), so a change there is
+  - `Spoken` plays every line. `Spoken_Quests`, `Spoken_Places`, `Spoken_Readables` and
+    `Spoken_Bosses` are its modules, and `SpokenContributions` holds what players upload at
+    /contribute. All six ship in one zip, `Spoken-<v>.zip` (`scripts/spoken/package.sh`).
+    The bosses' data is covered by the Places guide (`docs/places/BOSSES.md`), the module by
+    `docs/bosses/README.md`.
+  - `Spoken_Developer` is for developers only: the debug log and the Developer page. It is
+    not in Spoken's zip and has no store page or release; a developer links it from a checkout
+    or builds it with `scripts/developer/package.sh` (`addons/Spoken_Developer/README.md`).
+  - `SpokenPlacesAudio`, `SpokenReadablesAudio` and `SpokenBossesAudio` are sound packs. The
+    quests packs have no folder here; they are built into `pipelines/quests/audio/`, which is
+    gitignored.
+- `apps/web`: the site, `spoken.quest`, a Next.js app backed by Postgres. It imports
+  `pipelines/places` and `pipelines/readables` (`@tools/*` and `@readables-tools/*`), so a change there is
   a change to the site.
-- `pipelines/`: `quests` is Python, `zones` and `books` are Node, and `lib` holds the `.mjs`
+- `apps/brann`: Brann Bronzebeard, the Discord bot. He answers support questions from
+  `docs/support/FAQ.md` and files Discord bug reports as issues. He runs on the droplet beside the
+  site and deploys with it.
+- `pipelines/`: `quests` is Python, `places` and `readables` are Node, and `lib` holds the `.mjs`
   modules they and the site share.
 - `publishers/<section>/*.md`: every store page. `make descriptions` regenerates the READMEs
   built from them; never edit a generated README by hand.
 - `deploy/web`: the `/srv` tree, nginx vhosts, migrations runner and runbook.
-- `docs/<section>/`: each section's README, changelog and agent guide. `docs/spoken/` is
+- `docs/<section>/`: each section's README, changelog and agent guide. `docs/manager/` holds
+  only Spoken Manager's changelog; its README is `manager/README.md`. `docs/spoken/` is
   Spoken's.
 
 ## Branches and checks
 
-`develop` is where work lands: open the PR against it. Merging needs one approval from
-another collaborator and the four CI jobs green. Only the admin merges into `master`, and a
-push to `master` that touches the site's inputs deploys production
-(`.github/workflows/deploy-web.yaml`).
+`master` is where work lands: open the PR against it. Only the admin and `svengabr` can merge.
+CI does not block them, so check that its jobs are green first. A merge into `master` that
+touches the site's inputs deploys production (`.github/workflows/deploy-web.yaml`), so ask the
+admin before merging a migration.
 
 Run what your change touches before pushing:
 
 ```sh
 make test-player   # addons' Lua tests (needs luajit)
 make test          # all of it: Lua, web, Node scripts, quests pytest (venv at pipelines/quests/.venv)
-make lint          # what CI gates on: typecheck, addon XML, zones validation, store pages, locale strings
+make lint          # static checks: typecheck, addon XML, changelog, places validation, store pages, locale strings
 ```
+
+CI (`.github/workflows/ci.yaml`) runs four jobs, each only when the paths it reads changed:
+addons, quests pipeline, web, and places pipeline. Between them they run the pieces of those
+commands, not the commands. `make lint` also checks the places language files
+(`build-languages.mjs --check`), which CI does not. CI also runs the Lua block-balance check
+(`make places-lint`), which `make lint` does not. Run both before pushing a change to either.
 
 Several web tests need a real, migrated Postgres, because the invariants they protect live in
 schema constraints. The CI `web` job shows the setup.
@@ -46,32 +61,53 @@ schema constraints. The CI `web` job shows the setup.
 ## Rules that are load-bearing
 
 **Nothing in the repo spends TTS credits** (ElevenLabs or fish.audio). Lines are voiced on the
-droplet, through the site. Do not add a generation flag to a CLI. `make zones-lore-rewrite` does spend Claude
+droplet, through the site. Do not add a generation flag to a CLI. `make places-lore-rewrite` does spend Claude
 credits, even with `--dry-run`.
 
-**Data only comes home from production.** The take archive (`audio-history/`) is the only
-audio and only the site writes it. The `<section>-pull-*` targets never delete anything.
+**Data only comes home from production.** The take archive is the only audio and only the
+site writes it: `audio-history/` on the droplet's volume, the `spoken-archive` R2 bucket, and the
+buckets teams bring themselves (`docs/platform/STORAGE.md`). Objects are named by their SHA-256
+(`apps/web/src/lib/blobs/store.ts`). Nothing deletes from our bucket's `takes/` or `recordings/`.
+A team's own bucket is the team's: we recommend the same rule there and do not enforce it, and the
+site never deletes an archive object from it. The `<section>-pull-*` targets never delete anything.
 The `<section>-sync` targets replace local tables and are destructive, so confirm before
 running one. `sounds` directories are assembled from the live takes before a build and are
 never the record. Audio stays out of git; `.gitignore` says which directories cannot be
 reproduced. Never prune those.
 
+**The database is the source of truth; committed data files are exports of it.** Text and
+structure live in Postgres (`quest_line`, `book_page`/`book_line`, `lore_line` and the rest), and
+the site edits them. `corpus.json.gz`, `Books.lua`, the Places `Zones.lua`/`Subzones.lua` and
+every file headed "AUTO-GENERATED" come out of a database or a generator through a make target.
+Never edit one by hand, merge rows into one, or fill one from the site's public API: the next
+export overwrites the change, and until then the repo and the site disagree. Fix a wrong line
+in the database and export it again, and fix a wrong file in its generator. If you cannot reach
+the database, change only code, tests and hand-kept inputs (the section guides list them), and
+say in the PR which database change and which export are needed.
+
 **The droplet is never named in the tree.** Host, user and key come from the environment
 (`make/droplet.mk`) locally and from the `DO_*` secrets in CI.
 
-**Ids and filenames are frozen.** `q:{questID}:{accept|progress|complete}`, `g:{md5}`,
+**Ids and filenames are frozen.** `q:{questID}:{accept|progress|complete}` (and its other wordings, `…:w{n}`), `g:{md5}`,
 `g:b{broadcastTextID}-{voice}`, `g:{lang}-{md5}`, `f:{broadcastTextID}:{voice}` (each with an optional `:m`/`:f` suffix), `z:{mapID}`,
-`s:{mapID}:{key}`, `b:{pageTextID}`, and the paths derived from them. Renaming one re-ships a
-pack every player has downloaded and orphans the take history. Each is derived in exactly one
+`s:{mapID}:{key}`, `b:{pageTextID}`, the minted `b:n{uuid}` (a page only a player's client has
+shown) and its book's `n{uuid}`, and the paths derived from them. A minted page later found in
+the world database folds into the real one, and its id stays behind as an alias. Renaming one
+re-ships a pack every player has downloaded and orphans the take history. Each is derived in exactly one
 place: `pipelines/quests/tts_cli/naming.py` (mirrored by
-`apps/web/src/lib/contributions/naming.ts`), `pipelines/zones/tools/voice/naming.mjs` and
-`pipelines/books/tools/lib/naming.mjs`.
+`apps/web/src/lib/contributions/naming.ts`), `pipelines/places/tools/voice/naming.mjs` and
+`pipelines/readables/tools/lib/naming.mjs`.
 
 **Migrations are forward-only and additive.** Deploy migrates before the symlink swap and
 rollback restores code without reverting the schema.
 
+**Changing a setting's default changes it for existing players.** AceDB does not save a value
+equal to the default, so everyone who never touched the setting gets the new default. To keep
+their old behaviour, add a one-time migration that saves the old value explicitly. Renaming the
+setting instead drops every player's choice.
+
 **The `make/*.mk` files stay separate.** They share many target names, and the root `Makefile`
-dispatches `quests-*`, `zones-*`, `books-*` and `web-*` to them. Each target is commented with
+dispatches `quests-*`, `places-*`, `readables-*` and `web-*` to them. Each target is commented with
 the failure it prevents; read that comment before changing one.
 
 **Shared credentials live in the repo-root `.env`** (`.env.example` lists them).
@@ -87,12 +123,41 @@ Tooling, the site, CI and docs add no notes.
 A release PR bumps the version and renames `## Unreleased` to the real version heading with
 its date.
 
-- Spoken, its modules, `SpokenContributions` and the tombstones move together, in every
-  `.toc`, both `Environment.lua` `AddonVersion` literals included. Their notes go in
+- Spoken, its modules and `SpokenContributions` move together, in every `.toc`, both
+  `Environment.lua` `AddonVersion` literals included. Their notes go in
   `docs/spoken/CHANGELOG.md`, and they release as the `spoken/vX` tag.
+- Spoken Manager versions on its own, in `manager/package.json`. Its notes go in
+  `docs/manager/CHANGELOG.md`, and it releases as the `manager/vX` tag.
 - Sound packs version on their own, with sections in their section's changelog.
+- `Spoken_Developer` has its own version, and nothing releases it.
 - Release scripts look for the exact `## <version>` heading and fail without it, so a release
   must not ship with the notes still under `## Unreleased`.
+
+### Writing the notes
+
+Players read the notes in Discord and on the store pages, so a change gets one short bullet.
+
+- Start with a bold sentence saying what the player sees now, using the names the game or the
+  Manager shows them. Add one more sentence only if the player needs it: where to find the
+  change, or what to do. Aim for 25 words or fewer before the credit.
+- A fix says what works now, not what was wrong or why.
+- Leave out how it works, why it was built, code, files and internal names, edge cases, and
+  anything players don't see. An API change for other addon authors may name the function.
+- One bullet per change a player would notice. Fold small related changes into one, and leave
+  out changes nobody would miss.
+- End with the credit: `*([login](https://github.com/login))*`.
+
+Too long:
+
+> **Voices, in order.** Voice Language and If a Voice Is Missing are now one list in the Language
+> section of Spoken's page: as many voices as you like, moved up and down, removed, and added
+> with Add a Voice. A line plays in the first voice that has it, and past the last Spoken stays
+> silent. Your choice carries over as the first two voices.
+
+Enough:
+
+> **Choose as many voices as you like, in order,** under Language in Spoken's settings. A line
+> plays in the first voice that has it.
 
 ## Working agreements
 
@@ -101,6 +166,21 @@ its date.
   creep.
 - The checks above are the verification. Do not stack extra self-review passes or use
   subagents to re-check finished work.
+
+## Bug fixes
+
+- Make it fail first. Show the failure on master: the code path with `file:line`, a log, or
+  steps in game. If nothing shows it, say what would, and don't build a fix.
+- Write the test that fails without the fix, and check that it does. A test stub more lenient
+  than the client proves nothing.
+- Fix where the fault starts, not where it shows. Keep asking why until you reach the first
+  wrong assumption.
+- Bugs cluster. Search for every other place that makes the same assumption and fix them all,
+  or fix the shared helper they call.
+- Before removing or loosening a guard, a key reset or a default, find out why it is there
+  (`git log -S`). It usually protects a case your test doesn't cover.
+- No special case, flag, extra slot, timer or retry that only makes the reported case work. If
+  the real fix is too large for the PR, say so in the description and name it.
 
 ## PR descriptions
 
@@ -112,6 +192,7 @@ Include:
 - Why the change exists and what limits it, followable with no prior context.
 - How it works, only where the diff doesn't show it. Say where the risk sits so the reviewer
   looks there.
+- For a bug fix, where the fault starts and why the change is made there.
 - Deliberate omissions, and why.
 - Verification as facts only: what ran, what passed, what was not checked (for example, "not
   looked at in-game").

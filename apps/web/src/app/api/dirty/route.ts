@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   const { source, files } = (await request.json().catch(() => ({}))) as Body;
 
   if (!isSource(source)) {
-    return Response.json({ error: "source must be 'quests', 'zones' or 'books'" }, { status: 400 });
+    return Response.json({ error: "source must be 'quests', 'places', 'readables' or 'bosses'" }, { status: 400 });
   }
   if (!Array.isArray(files) || files.some((file) => typeof file !== "string" || file === "")) {
     return Response.json({ error: "files must be an array of paths" }, { status: 400 });
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   // the same row twice in one statement.
   const unique = [...new Set(files as string[])];
 
-  // Unvalidated against the corpus, unlike a zones flag. A row here says "the take on this
+  // Unvalidated against the corpus, unlike a places flag. A row here says "the take on this
   // path has been judged"; a path with no take is inert -- nothing reads an ack except the
   // sweep, which starts from takes -- so validating would cost a query per call to prevent
   // a row that does nothing.

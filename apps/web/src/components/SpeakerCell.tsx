@@ -119,6 +119,7 @@ export default function SpeakerCell({
   edits,
   readOnly,
   busy,
+  lockType = false,
   onSave,
 }: {
   npc: NpcSummary;
@@ -128,6 +129,8 @@ export default function SpeakerCell({
   edits?: RosterEdits;
   readOnly: boolean;
   busy: boolean;
+  /** Race and gender are the row's key, not an answer: only the flavor and doubt are offered. */
+  lockType?: boolean;
   onSave: (answer: SpeakerAnswer) => void;
 }) {
   const [race, setRace] = useState(npc.race ?? "");
@@ -194,7 +197,7 @@ export default function SpeakerCell({
   // may want to correct any of the three, not just the flavor. So does a guess the moderator
   // has said is wrong (its own Edit, below): the model the client reported is only a guess,
   // and a guessed bloodelf can be a human captain.
-  const known = (npc.provenance === "client" || needsFlavor) && !editing;
+  const known = lockType || ((npc.provenance === "client" || needsFlavor) && !editing);
   // Read from the roster here rather than npc.flavorOptions, which answers for the race-gender
   // on file when the page loaded: the type being picked may differ, and a flavor made from this
   // row since is in the roster only.
@@ -326,7 +329,7 @@ export default function SpeakerCell({
             still earns one, since "a guess came from somewhere" is real information the form
             alone doesn't carry. */}
         {npc.provenance !== "none" ? <ProvenanceBadge provenance={npc.provenance} /> : null}
-        {known ? (
+        {known && !lockType ? (
           <LiteButton className={ROW_BUTTON} onClick={() => setEditing(true)}>
             Edit
           </LiteButton>

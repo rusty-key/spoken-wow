@@ -15,16 +15,12 @@ import {
 import { dismissQueue, pauseQueue, resumeQueue, type QueueSnapshot } from "@/lib/generation/client";
 import { usd } from "@/lib/generation/money";
 import { queueStatus } from "@/lib/generation/queue-line";
-import { LOCALES } from "@/lib/lang";
+import { langName } from "@/lib/lang";
 
 import { Contained } from "./Width";
 
 function n(value: number): string {
   return value.toLocaleString();
-}
-
-function languageName(code: string): string {
-  return LOCALES.find((locale) => locale.code === code)?.name ?? code;
 }
 
 /**
@@ -110,7 +106,8 @@ export default function RegenerationPanel({
   const pauses = snapshot.paused ?? [];
   // Paused rather than regenerating once the pause has taken hold: nothing left in flight.
   // Until then the jobs it let finish are still running, and the spinner says so.
-  const paused = active && pauses.length > 0 && running === 0;
+  // From the whole queue: a pause in another team's language holds work the counts include.
+  const paused = active && (snapshot.pausedAnywhere ?? pauses.length > 0) && running === 0;
 
   return (
     <div className="bg-card/95 border-t backdrop-blur">
@@ -179,7 +176,7 @@ export default function RegenerationPanel({
 
         <div className="bg-muted mt-2 h-1 overflow-hidden rounded-full">
           <div
-            className="bg-primary h-full transition-[width] duration-300"
+            className="bg-primary-ink h-full transition-[width] duration-300"
             style={{ width: `${percent}%` }}
           />
         </div>
@@ -190,7 +187,7 @@ export default function RegenerationPanel({
           <div className="text-muted-foreground mt-1.5 text-xs">
             Paused:{" "}
             {pauses
-              .map((pause) => `${languageName(pause.lang)}${pause.by ? ` by ${pause.by}` : ""}`)
+              .map((pause) => `${langName(pause.lang)}${pause.by ? ` by ${pause.by}` : ""}`)
               .join(" · ")}
           </div>
         )}

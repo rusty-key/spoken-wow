@@ -12,7 +12,7 @@ and what stays is one or two lines.
 
 Take the target from the arguments:
 
-- **Nothing given:** the current branch's diff against its merge-base with `origin/develop`, plus
+- **Nothing given:** the current branch's diff against its merge-base with `origin/master`, plus
   uncommitted changes.
 - **A PR number or branch:** that PR's diff against its base.
 - **"stack" or a stack PR:** every PR in the chain, each against its own base branch.

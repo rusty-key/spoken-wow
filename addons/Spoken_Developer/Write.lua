@@ -31,7 +31,7 @@ local ONE_CLICK = 0.5
 --- The snapshot and the mark. False, saying why, while the log is off.
 function Write:Prepare()
 	if not Log:IsOn() then
-		Developer:Print("the debug log is off, so there is nothing to write: Spoken > Developer > Enable Debug Log Recording")
+		Developer:Print("the debug log is off, so there is nothing to write: Spoken > Developer > Keep a Debug Log")
 		return false
 	end
 	local now = GetTime()

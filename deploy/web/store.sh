@@ -15,7 +15,7 @@
 #
 # WHY SYMLINKS RATHER THAN MOVING THE PATHS. /srv/spoken/shared/<store> is the name
 # everything already uses: ecosystem.config.js builds every SPOKEN_*_AUDIO variable from it,
-# make/quests.mk and make/zones.mk rsync into it, nginx aliases /downloads/ at it, and the
+# make/quests.mk and make/places.mk rsync into it, nginx aliases /downloads/ at it, and the
 # cutover copies into it. Pointing that name at the volume changes where the bytes live and
 # nothing else, so there is one path to reason about instead of two.
 #
@@ -34,7 +34,7 @@ SHARED=${SHARED:-/srv/spoken/shared}
 # linked: audio-history/quests is reached THROUGH the audio-history link, and linking it
 # separately would point it at itself.
 LINKS=(audio sounds books audio-history voices audio-previews downloads)
-CHILDREN=(audio-history/quests audio-history/zones audio-history/books)
+CHILDREN=(audio-history/quests audio-history/places audio-history/readables audio-history/bosses)
 
 # The volume has to be mounted BEFORE anything is created under it. /etc/fstab mounts it
 # `nofail`, so a droplet that boots without it boots fine and /mnt/voice is an ordinary
@@ -77,7 +77,7 @@ for dir in "${LINKS[@]}"; do
   # A real directory holding FILES is somebody's audio. Moving ~10 GB is not something to
   # do inside a setup script that can be interrupted; this stops and hands it back.
   #
-  # Empty subdirectories do not count: bootstrap.sh creates audio-history/{quests,zones},
+  # Empty subdirectories do not count: bootstrap.sh creates audio-history/{quests,places},
   # and refusing over the skeleton this script is meant to replace would mean it could
   # never run on a droplet that had been bootstrapped.
   if [ -d "$path" ] && [ -n "$(find "$path" -mindepth 1 ! -type d -print -quit)" ]; then

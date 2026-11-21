@@ -142,7 +142,7 @@ function Search:Build(parent)
     end
     -- Over the rows below it, as a dropdown's list would be, and drawn as the settings'
     -- dropdown lists are.
-    local results = CreateFrame("Frame", nil, row, BackdropTemplateMixin and "BackdropTemplate" or nil)
+    local results = CreateFrame("Frame", nil, row, "BackdropTemplate")
     results:SetPoint("TOPLEFT", box, "BOTTOMLEFT", -6, -6)
     results:SetWidth(WIDTH)
     results:SetFrameLevel(row:GetFrameLevel() + 50)

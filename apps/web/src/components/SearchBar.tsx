@@ -2,20 +2,28 @@
 
 import { forwardRef, useCallback, useMemo } from "react";
 
-import DateChip from "@/components/DateChip";
-import { MadeByChips } from "@/components/MadeBy";
-import RecordedChip from "@/components/RecordedChip";
+import {
+  CatalogueSearch,
+  FilterChecks,
+  FilterDates,
+  FilterField,
+  FilterGroup,
+  FilterSegments,
+  FilterSelect,
+  FilterToggle,
+  ScopeSelect,
+  type ActiveFilter,
+  type Option,
+} from "@/components/catalogue/CatalogueSearch";
+import { CLIENT_FILTER_LABELS, CLIENT_FILTER_OPTIONS } from "@/components/ClientSelect";
+import LevelBound from "@/components/LevelBound";
+import { DEFAULT_CLIENT_FILTER, type ClientFilter } from "@/lib/contributions/client";
 import { BROADCAST_OPTIONS, type BroadcastStatus } from "@/lib/broadcast/status";
 import type { MadeByFacets } from "@/lib/takes/made-by";
-import FilterChip, { type ChipOption } from "@/components/FilterChip";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import type { Facets } from "@/lib/facets";
-import { AUDIO_STATE_OPTIONS } from "@/lib/audio-state";
-import { kindOf, NPC_TYPES, SOURCE_LABELS, SOURCES } from "@/lib/line-fields";
-import { activeFilterCount } from "@/lib/active-filters";
+import { AUDIO_STATE_LABELS, type StateCounts } from "@/lib/audio-state";
+import { RECORDED_OPTIONS, type Recorded } from "@/lib/recordings/live";
+import { NPC_TYPE_LABELS, NPC_TYPES, SOURCE_LABELS, SOURCES, type Source } from "@/lib/line-fields";
 import type { Filter, LineFilters } from "@/lib/search";
 
 type Props = {
@@ -27,41 +35,47 @@ type Props = {
   onClearAll: () => void;
   /** Editor and up: the ones who act on reports, so the ones who filter by them. */
   canTriage: boolean;
-  /** The model and author chips' options; present only for somebody working in the language. */
+  /** The model and author options; present only for somebody working in the language. */
   madeBy?: MadeByFacets;
   /** The viewer records here, so the search answers whether each line is recorded. */
   recordable?: boolean;
-  /** The gossip explorer: lines can be narrowed by how their BroadcastText ids were found. */
-  broadcastable?: boolean;
+  /** The last answer's counts, for the audio buttons; absent before the first. */
+  counts?: StateCounts;
 };
 
-/** Corpus values, which label themselves. */
-function plainOptions(values: readonly string[]): ChipOption[] {
-  return values.map((value) => ({ value, label: value }));
-}
+// Roster values are lower-case identifiers; the label capitalises them, the URL keeps the value.
+const plain = (values: readonly string[]): Option[] =>
+  values.map((value) => ({ value, label: capital(value) }));
 
-/**
- * The quests explorer's sources in corpus order, each under the name SOURCE_LABELS gives it.
- * Gossip has its own explorer, where a source chip would have one option and is not shown.
- */
-const SOURCE_OPTIONS: ChipOption[] = SOURCES.filter((value) => kindOf(value) === "quests").map((value) => ({
-  value,
-  label: SOURCE_LABELS[value],
-}));
+const SOURCE_OPTIONS: Option[] = SOURCES.map((value) => ({ value, label: SOURCE_LABELS[value] }));
 
-/** Where the free-text query is matched. "any" is the idle state, so it is not an option. */
-const SCOPE_OPTIONS: ChipOption[] = [
-  { value: "npc", label: "NPC only" },
-  { value: "quest", label: "Quest only" },
-  { value: "text", label: "Line text only" },
+const NPC_TYPE_OPTIONS: Option[] = NPC_TYPES.map((value) => ({ value, label: NPC_TYPE_LABELS[value] }));
+
+const SCOPE_OPTIONS: Option[] = [
+  { value: "any", label: "Anywhere" },
+  { value: "npc", label: "NPC" },
+  { value: "quest", label: "Quest" },
+  { value: "text", label: "Line text" },
 ];
 
+const PLAYER_OPTIONS: Option[] = [
+  { value: "m", label: "Male player" },
+  { value: "f", label: "Female player" },
+];
+
+const CLIENT_OPTIONS: Option[] = CLIENT_FILTER_OPTIONS.filter((value) => value !== DEFAULT_CLIENT_FILTER).map(
+  (value) => ({ value, label: CLIENT_FILTER_LABELS[value] }),
+);
+
+const labelOf = (options: readonly Option[], value: string) =>
+  options.find((option) => option.value === value)?.label ?? value;
+
+const capital = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+
 const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
-  { query, filters, facets, onQuery, onFilters, onClearAll, canTriage, madeBy, recordable, broadcastable },
+  { query, filters, facets, onQuery, onFilters, onClearAll, canTriage, madeBy, recordable, counts },
   ref,
 ) {
-  const active = activeFilterCount({ ...filters, q: query });
-
   /** The flavors reachable under a race and gender, or all of them under neither. */
   const flavorsUnder = useCallback(
     (race: string | undefined, gender: string | undefined) => {
@@ -69,9 +83,7 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
       const reachable = facets.flavorScopes.filter(
         (scope) => (!race || scope.race === race) && (!gender || scope.gender === gender),
       );
-      return [...new Set(reachable.map((scope) => scope.flavor))].sort((a, b) =>
-        a.localeCompare(b),
-      );
+      return [...new Set(reachable.map((scope) => scope.flavor))].sort((a, b) => a.localeCompare(b));
     },
     [facets.flavors, facets.flavorScopes],
   );
@@ -82,11 +94,8 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
   );
 
   /**
-   * The flavor to keep when the race or gender changes under it.
-   *
-   * Dropped when the new pairing has no such voice - picking "tauren" while "priestess" is
-   * selected would otherwise leave a filter matching nothing, with the reason two dropdowns
-   * away from where you clicked.
+   * The flavor to keep when the race or gender changes under it. Dropped when the new pairing has
+   * no such voice, which would otherwise leave a filter matching nothing.
    */
   function keptFlavor(next: { race?: string; gender?: string }) {
     if (!filters.flavor) return undefined;
@@ -95,191 +104,157 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
     return flavorsUnder(race, gender).includes(filters.flavor) ? filters.flavor : undefined;
   }
 
+  // Triagers only: the count on a row is public, but a list of complaints is a worklist.
+  const statuses = canTriage
+    ? [
+        {
+          key: "reported",
+          label: "Reported",
+          tone: "reported" as const,
+          pressed: filters.reports === "open",
+          onPress: () => onFilters({ reports: filters.reports === "open" ? undefined : "open" }),
+        },
+      ]
+    : [];
+
+  const authors: Option[] = madeBy?.authors.map(({ id, name }) => ({ value: id, label: name })) ?? [];
+  const genderOptions = plain(facets.genders);
+
+  const active: ActiveFilter[] = [];
+  const add = (key: string, label: string, value: string | undefined, clear: Partial<LineFilters>) => {
+    if (value) active.push({ key, label, value, onRemove: () => onFilters(clear) });
+  };
+  add("state", "Audio", filters.state && AUDIO_STATE_LABELS[filters.state], { state: undefined });
+  add("reports", "Reported", filters.reports === "open" ? "open reports" : undefined, { reports: undefined });
+  add("source", "Line", filters.source?.map((value) => SOURCE_LABELS[value]).join(", "), { source: undefined });
+  add("npcType", "Spoken by", filters.npcType && NPC_TYPE_LABELS[filters.npcType], { npcType: undefined });
+  if (filters.minLevel !== undefined || filters.maxLevel !== undefined) {
+    add("level", "Level", `${filters.minLevel ?? "…"}–${filters.maxLevel ?? "…"}`, { minLevel: undefined, maxLevel: undefined });
+  }
+  add("broadcast", "Broadcast id", filters.broadcast && labelOf(BROADCAST_OPTIONS, filters.broadcast), { broadcast: undefined });
+  add("client", "Game", filters.client && filters.client !== DEFAULT_CLIENT_FILTER ? CLIENT_FILTER_LABELS[filters.client] : undefined, { client: undefined });
+  add("race", "Race", filters.race && capital(filters.race), { race: undefined, flavor: keptFlavor({ race: undefined }) });
+  add("gender", "Gender", filters.gender && capital(filters.gender), { gender: undefined, flavor: keptFlavor({ gender: undefined }) });
+  add("flavor", "Character", filters.flavor && capital(filters.flavor), { flavor: undefined });
+  add("voice", "Voice", filters.voice && capital(filters.voice), { voice: undefined });
+  add("playerGender", "Player", filters.playerGender && labelOf(PLAYER_OPTIONS, filters.playerGender), { playerGender: undefined });
+  add("model", "Model", filters.model, { model: undefined });
+  add("author", "Made by", filters.author && labelOf(authors, filters.author), { author: undefined });
+  add("recorded", "Voice actor", filters.recorded && labelOf(RECORDED_OPTIONS, filters.recorded), { recorded: undefined });
+  if (filters.generatedAfter || filters.generatedBefore) {
+    add("generated", "Made", `${filters.generatedAfter ?? "…"} to ${filters.generatedBefore ?? "today"}`, {
+      generatedAfter: undefined,
+      generatedBefore: undefined,
+    });
+  }
+  add("overridden", "Rewritten", filters.overridden ? "yes" : undefined, { overridden: undefined });
+  add("dirty", "Pronunciation", filters.dirty ? "moved" : undefined, { dirty: undefined });
+  add("narration", "Narration", filters.narration ? "yes" : undefined, { narration: undefined });
+  add("ignored", "Ignored", filters.ignored ? "only ignored" : undefined, { ignored: undefined });
+
   return (
-    <div className="bg-background sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b py-3">
-      <Input
-        ref={ref}
-        type="search"
-        value={query}
-        placeholder={filters.kind === "gossip" ? "NPC, or what the line says…" : "NPC, quest, or what the line says…"}
-        aria-label="Search"
-        autoFocus
-        className="min-w-0 flex-1 basis-64"
-        onChange={(e) => onQuery(e.target.value)}
-      />
-      <FilterChip
-        label="search in"
-        value={filters.filter === "any" ? undefined : filters.filter}
-        // No gossip line has a quest to match a title against.
-        options={filters.kind === "gossip" ? SCOPE_OPTIONS.filter((option) => option.value !== "quest") : SCOPE_OPTIONS}
-        onChange={(value) => onFilters({ filter: (value ?? "any") as Filter })}
-      />
-
-      <div className="flex w-full flex-wrap items-center gap-2">
-        <FilterChip
-          label="race"
-          value={filters.race}
-          options={plainOptions(facets.races)}
-          onChange={(race) => onFilters({ race, flavor: keptFlavor({ race }) })}
+    <CatalogueSearch
+      inputRef={ref}
+      query={query}
+      placeholder="NPC, quest or what the line says"
+      onQueryChange={onQuery}
+      scope={
+        <ScopeSelect
+          value={filters.filter ?? "any"}
+          options={SCOPE_OPTIONS}
+          onChange={(value) => onFilters({ filter: value as Filter })}
         />
-        <FilterChip
-          label="gender"
-          value={filters.gender}
-          options={plainOptions(facets.genders)}
-          onChange={(gender) => onFilters({ gender, flavor: keptFlavor({ gender }) })}
-        />
-        <FilterChip
-          label="flavor"
-          value={filters.flavor}
-          options={plainOptions(flavorOptions)}
-          onChange={(flavor) => onFilters({ flavor })}
-        />
-        <FilterChip
-          label="voice"
-          value={filters.voice}
-          options={plainOptions(facets.voices)}
-          onChange={(voice) => onFilters({ voice })}
-        />
-        {filters.kind !== "gossip" && (
-          <FilterChip
-            label="source"
-            value={filters.source}
-            options={SOURCE_OPTIONS}
-            onChange={(source) => onFilters({ source: source as LineFilters["source"] })}
-          />
-        )}
-        <FilterChip
-          label="type"
-          value={filters.npcType}
-          options={plainOptions(NPC_TYPES)}
-          onChange={(npcType) => onFilters({ npcType: npcType as LineFilters["npcType"] })}
-        />
-        <FilterChip
-          label="zone"
-          value={filters.zone === undefined ? undefined : String(filters.zone)}
-          options={facets.zones.map((zone) => ({ value: String(zone.uiMapID), label: zone.name }))}
-          onChange={(zone) => onFilters({ zone: zone ? Number(zone) : undefined })}
-        />
-        <FilterChip
-          label="audio"
-          value={filters.state}
-          options={AUDIO_STATE_OPTIONS}
-          onChange={(state) => onFilters({ state: state as LineFilters["state"] })}
-        />
-        {/* Read as one range: "generated after X" and "generated before Y". A file the app
-            has never written has no date, and counts as generated long ago - so it sits in
-            every "before" and no "after". */}
-        <DateChip
-          label="generated after"
-          value={filters.generatedAfter}
-          onChange={(generatedAfter) => onFilters({ generatedAfter })}
-        />
-        <DateChip
-          label="generated before"
-          value={filters.generatedBefore}
-          onChange={(generatedBefore) => onFilters({ generatedBefore })}
-        />
-        {madeBy && (
-          <MadeByChips
-            facets={madeBy}
-            model={filters.model}
-            author={filters.author}
-            onChange={onFilters}
-          />
-        )}
-        {recordable && (
-          <RecordedChip value={filters.recorded} onChange={(recorded) => onFilters({ recorded })} />
-        )}
-        {broadcastable && (
-          <FilterChip
-            label="broadcast id"
-            value={filters.broadcast}
-            options={BROADCAST_OPTIONS}
-            onChange={(broadcast) => onFilters({ broadcast: broadcast as BroadcastStatus | undefined })}
-          />
-        )}
-
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <Checkbox
-            id="overridden-only"
-            checked={filters.overridden ?? false}
-            onCheckedChange={(value) => onFilters({ overridden: value === true })}
-          />
-          <Label htmlFor="overridden-only" className="text-muted-foreground text-sm">
-            rewritten only
-          </Label>
-        </div>
-        {/* Its own box beside the "audio" chip, not a narrowing of it: a lexicon edit moves
-            no text, so the two select different faults in the same file. */}
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <Checkbox
-            id="dirty-only"
-            checked={filters.dirty ?? false}
-            onCheckedChange={(value) => onFilters({ dirty: value === true })}
-          />
-          <Label htmlFor="dirty-only" className="text-muted-foreground text-sm">
-            pronunciation moved
-          </Label>
-        </div>
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <Checkbox
-            id="narration-only"
-            checked={filters.narration ?? false}
-            onCheckedChange={(value) => onFilters({ narration: value === true })}
-          />
-          <Label htmlFor="narration-only" className="text-muted-foreground text-sm">
-            has narration
-          </Label>
-        </div>
-        {/* Shows only the ignored lines rather than adding them to the results: they are
-            36 lines nobody will ever voice, and mixing them back in is not a view anyone
-            asked for. Reading the reasons is. */}
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <Checkbox
-            id="ignored-only"
-            checked={filters.ignored ?? false}
-            onCheckedChange={(value) => onFilters({ ignored: value === true })}
-          />
-          <Label htmlFor="ignored-only" className="text-muted-foreground text-sm">
-            ignored only
-          </Label>
-        </div>
-        {/* Triagers only, as in the zones and books bars: the count on a row is public, but
-            a list of what people have complained about is a worklist. */}
-        {canTriage && (
-          <div className="flex items-center gap-2 whitespace-nowrap">
-            <Checkbox
-              id="reported-only"
-              checked={filters.reports === "open"}
-              onCheckedChange={(value) => onFilters({ reports: value === true ? "open" : undefined })}
+      }
+      statuses={statuses}
+      audio={{ state: filters.state, counts, onState: (state) => onFilters({ state }) }}
+      onShowAll={() => onFilters({ state: undefined, reports: undefined })}
+      active={active}
+      onClearAll={onClearAll}
+      groups={
+        <>
+          <FilterGroup title="The line" description="What kind of line, and where it is.">
+            <FilterChecks
+              options={SOURCE_OPTIONS}
+              values={filters.source}
+              onChange={(source) => onFilters({ source: source as Source[] | undefined })}
             />
-            <Label htmlFor="reported-only" className="text-muted-foreground text-sm">
-              reported only
-            </Label>
-          </div>
-        )}
-        {/* Phrased as showing rather than hiding: the box is unticked by default, and an
-            unticked "hide progress text" would claim the opposite of what is happening. */}
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <Checkbox
-            id="include-progress"
-            checked={filters.includeProgress ?? false}
-            onCheckedChange={(value) => onFilters({ includeProgress: value === true })}
-          />
-          <Label htmlFor="include-progress" className="text-muted-foreground text-sm">
-            show progress text
-          </Label>
-        </div>
+            <FilterSegments
+              label="Spoken by"
+              any="Anyone"
+              value={filters.npcType}
+              options={NPC_TYPE_OPTIONS}
+              onChange={(npcType) => onFilters({ npcType: npcType as LineFilters["npcType"] })}
+            />
+            <FilterField label="Quest level">
+              <div className="cat-two">
+                <LevelBound label="minimum quest level" placeholder="from" value={filters.minLevel} onChange={(minLevel) => onFilters({ minLevel })} />
+                <LevelBound label="maximum quest level" placeholder="to" value={filters.maxLevel} onChange={(maxLevel) => onFilters({ maxLevel })} />
+              </div>
+            </FilterField>
+            {/* Only gossip has ids, so any pick here narrows to gossip too. */}
+            <FilterSelect
+              label="Broadcast id"
+              value={filters.broadcast}
+              options={BROADCAST_OPTIONS}
+              onChange={(broadcast) => onFilters({ broadcast: broadcast as BroadcastStatus | undefined })}
+            />
+          </FilterGroup>
 
-        {/* Only when there is something to clear: a button that does nothing on most visits
-            is one more thing to read past every time. */}
-        {active > 0 && (
-          <Button size="sm" variant="ghost" className="ml-auto" onClick={onClearAll}>
-            Clear {active === 1 ? "filter" : `all ${active} filters`}
-          </Button>
-        )}
-      </div>
-    </div>
+          <FilterGroup title="The speaker" description="Who the voice belongs to.">
+            <FilterSelect label="Race" value={filters.race} options={plain(facets.races)} onChange={(race) => onFilters({ race, flavor: keptFlavor({ race }) })} />
+            {genderOptions.length <= 3 ? (
+              <FilterSegments label="Gender" value={filters.gender} options={genderOptions} onChange={(gender) => onFilters({ gender, flavor: keptFlavor({ gender }) })} />
+            ) : (
+              <FilterSelect label="Gender" value={filters.gender} options={genderOptions} onChange={(gender) => onFilters({ gender, flavor: keptFlavor({ gender }) })} />
+            )}
+            <FilterSelect label="Character (gruff, zany …)" value={filters.flavor} options={plain(flavorOptions)} onChange={(flavor) => onFilters({ flavor })} />
+            <FilterSelect label="Voice" value={filters.voice} options={plain(facets.voices)} onChange={(voice) => onFilters({ voice })} />
+            <FilterSegments
+              label="Player version"
+              any="Both"
+              value={filters.playerGender}
+              options={PLAYER_OPTIONS}
+              onChange={(playerGender) => onFilters({ playerGender: playerGender as LineFilters["playerGender"] })}
+            />
+          </FilterGroup>
+
+          <FilterGroup title="The take" description="How the audio was made.">
+            {madeBy && (
+              <>
+                <FilterSelect label="Model" value={filters.model} options={madeBy.models.map((value) => ({ value, label: value }))} onChange={(model) => onFilters({ model })} />
+                <FilterSelect label="Made by" any="Anyone" value={filters.author} options={authors} onChange={(author) => onFilters({ author })} />
+              </>
+            )}
+            {recordable && (
+              <FilterSelect
+                label="Voice actor"
+                value={filters.recorded}
+                options={RECORDED_OPTIONS}
+                onChange={(recorded) => onFilters({ recorded: recorded as Recorded | undefined })}
+              />
+            )}
+            {/* A file the app has never written has no date, and counts as made long ago. */}
+            <FilterDates label="Made between" after={filters.generatedAfter} before={filters.generatedBefore} onChange={onFilters} />
+          </FilterGroup>
+
+          <FilterGroup title="Marked lines" description="Lines someone changed or flagged.">
+            <FilterToggle label="Rewritten by the team" checked={filters.overridden ?? false} onChange={(overridden) => onFilters({ overridden })} />
+            {/* Not a narrower "outdated": a lexicon edit moves no text, so the two find different faults. */}
+            <FilterToggle label="Pronunciation moved" checked={filters.dirty ?? false} onChange={(dirty) => onFilters({ dirty })} />
+            <FilterToggle label="Has narration" checked={filters.narration ?? false} onChange={(narration) => onFilters({ narration })} />
+            {/* Shows only the ignored lines: mixing nobody-will-voice-these back in is not a view anyone asked for. */}
+            <FilterToggle label="Only ignored lines" checked={filters.ignored ?? false} onChange={(ignored) => onFilters({ ignored })} />
+            <FilterSelect
+              label="Game"
+              any={CLIENT_FILTER_LABELS[DEFAULT_CLIENT_FILTER]}
+              value={filters.client && filters.client !== DEFAULT_CLIENT_FILTER ? filters.client : undefined}
+              options={CLIENT_OPTIONS}
+              onChange={(client) => onFilters({ client: (client ?? DEFAULT_CLIENT_FILTER) as ClientFilter })}
+            />
+          </FilterGroup>
+        </>
+      }
+    />
   );
 });
 

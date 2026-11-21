@@ -5,31 +5,41 @@ import { audioRelPath, subfolder, fileIndex } from "./audio";
 
 describe("audio paths", () => {
   it("puts quest lines under quests/", () => {
-    expect(audioRelPath({ source: "accept", fileName: "5-accept" })).toBe(
+    expect(audioRelPath({ lineId: "q:5:accept", fileName: "5-accept" })).toBe(
       "quests/5-accept.mp3",
     );
-    expect(audioRelPath({ source: "complete", fileName: "123-complete" })).toBe(
+    expect(audioRelPath({ lineId: "q:123:complete", fileName: "123-complete" })).toBe(
       "quests/123-complete.mp3",
     );
   });
 
   it("puts gossip under gossip/", () => {
-    expect(audioRelPath({ source: "gossip", fileName: "abc123" })).toBe(
+    expect(audioRelPath({ lineId: "g:abc123", fileName: "abc123" })).toBe(
       "gossip/abc123.mp3",
     );
   });
 
   it("puts follow-up lines under followup/, whatever quest they belong to", () => {
-    expect(audioRelPath({ source: "followup", fileName: "4377-dwarf-male-standard" })).toBe(
+    expect(audioRelPath({ lineId: "f:4377:dwarf-male-standard", fileName: "4377-dwarf-male-standard" })).toBe(
       "followup/4377-dwarf-male-standard.mp3",
     );
-    expect(subfolder({ source: "followup" })).toBe("followup");
+    expect(subfolder({ lineId: "f:4377:dwarf-male-standard" })).toBe("followup");
+  });
+
+  it("goes by the line id's kind, so NPC chat named as a follow-up line shares followup/", () => {
+    expect(audioRelPath({ lineId: "f:1309:human-female-standard", fileName: "1309-human-female-standard" })).toBe(
+      "followup/1309-human-female-standard.mp3",
+    );
+  });
+
+  it("refuses a line id of no known kind rather than guessing quests/", () => {
+    expect(() => subfolder({ lineId: "x:1" })).toThrow();
   });
 
   it("keeps the gender prefix Python put in the filename", () => {
     // The prefix is part of fileName, never added here.
-    expect(subfolder({ source: "gossip" })).toBe("gossip");
-    expect(audioRelPath({ source: "gossip", fileName: "m-abc123" })).toBe(
+    expect(subfolder({ lineId: "g:abc123:m" })).toBe("gossip");
+    expect(audioRelPath({ lineId: "g:abc123:m", fileName: "m-abc123" })).toBe(
       "gossip/m-abc123.mp3",
     );
   });

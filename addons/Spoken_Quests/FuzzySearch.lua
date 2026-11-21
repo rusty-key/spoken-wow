@@ -20,12 +20,15 @@ local function jaccardSimilarity(a, b)
     return intersection / union
 end
 
-function FuzzySearchBestKeys(query, tableVar)
+---@param query string
+---@param tableVar table<string, any>
+---@param keyText fun(key: string): string? what a key is compared as, the key itself by default
+function FuzzySearchBestKeys(query, tableVar, keyText)
     local best_result = nil
     local max_similarity = -1
 
     for entry, value in pairs(tableVar) do
-        local similarity = jaccardSimilarity(query, entry)
+        local similarity = jaccardSimilarity(query, keyText and keyText(entry) or entry)
         if similarity > max_similarity then
             max_similarity = similarity
             best_result = {

@@ -8,14 +8,8 @@ setfenv(1, VoiceOver)
 ---
 --- The address is built from what the client can see - a quest id and an event, or a unit GUID
 --- - and never from soundData. When the data module fails to load there is no soundData at
---- all, and a quest that plays nothing is the report most worth having.
-
-local SITE_URL = "https://voiceover.rusty.one"
-
--- Where a report on another language's line goes. The old host redirects /r/ to the English
--- page and nothing else, and its links must keep working as they are, so a language's report
--- goes straight to the merged site, whose /{lang}/ prefix files it with that language's lines.
-local LANGUAGE_REPORT_URL = "https://spoken.rusty.one/%s/quests/r/%s"
+--- all, and a quest that plays nothing is the report most worth having. A clip that did play
+--- adds its file, which picks the line out of the several an address can mean.
 
 local COPY_DIALOG = "VOICEOVER_COPY_REPORT_LINK"
 
@@ -58,12 +52,14 @@ function ReportButton:TargetForQuest(questID, event)
     return format("quest/%d/%s", questID, path)
 end
 
---- The creature behind a GUID, or nil when this client cannot tell us.
+--- The creature or object behind a GUID, or nil when this client cannot tell us. The two
+--- number their ids apart (creature 68 is a guard, object 68 a poster), so each has its own
+--- address.
 ---
---- Guarded twice over: Utils:GetIDFromGUID is absent on 1.12 and asserts on a GUID carrying no
---- id, and an error thrown here would land on a player who only wanted to complain about audio.
+--- Guarded: Utils:GetIDFromGUID asserts on a GUID carrying no id, and an error thrown here would
+--- land on a player who only wanted to complain about audio.
 function ReportButton:TargetForGUID(guid)
-    if not guid or not Utils.GetGUIDType or not Utils.GetIDFromGUID then
+    if not guid then
         return nil
     end
 
@@ -76,7 +72,7 @@ function ReportButton:TargetForGUID(guid)
     if not readID or not id then
         return nil
     end
-    return format("npc/%d", id)
+    return format(guidType == Enums.GUID.GameObject and "object/%d" or "npc/%d", id)
 end
 
 --- The line a clip is, from what the clip carries: its quest and event, or the NPC who said
@@ -101,7 +97,7 @@ function ReportButton:CurrentTarget()
         event = page and PAGE_EVENTS[page]
     end
 
-    local target = event and self:TargetForQuest(GetQuestID and GetQuestID(), event)
+    local target = event and self:TargetForQuest(GetQuestID and NotSecret(GetQuestID()), event)
     if target then
         return target
     end
@@ -111,21 +107,27 @@ function ReportButton:CurrentTarget()
     return self:TargetForGUID(Utils:GetNPCGUID())
 end
 
--- The address the popup is currently showing. Held here rather than passed to
--- StaticPopup_Show, whose `data` argument and the dialog/data handler signature both postdate
--- the legacy clients: there the popup would open with an empty box.
+-- The address the popup is currently showing.
 local shownLink
 
---- The report address for `target`, filed under `language` -- the language of the clip being
---- reported, which is not necessarily the client's. English keeps the address it always had.
+local function QueryValue(value)
+    return (string.gsub(value, "[^%w%-_%.~]", function(char)
+        return format("%%%02X", string.byte(char))
+    end))
+end
+
+--- The report address for `target`, filed under `language`. `file`, the sound that played,
+--- tells the site which line the player heard when several answer to the address.
 ---@param target string
 ---@param language? string
+---@param file? string
 ---@return string url
-function ReportButton:Link(target, language)
-    if language and language ~= Language.BASE then
-        return format(LANGUAGE_REPORT_URL, language, target)
+function ReportButton:Link(target, language, file)
+    local url = Spoken:ReportURL("quests", target, language)
+    if type(file) == "string" and file ~= "" then
+        url = url .. "?file=" .. QueryValue(file)
     end
-    return format("%s/r/%s", SITE_URL, target)
+    return url
 end
 
 --- DialogueUI hides UIParent and the game's popups with it, so under its window the address
@@ -139,8 +141,22 @@ local function ShowCopy(url)
     StaticPopup_Show(COPY_DIALOG)
 end
 
-function ReportButton:ShowLink(target, language)
-    ShowCopy(self:Link(target, language))
+--- The report address for `target`, with the line as the player met it in its fragment: the
+--- addon version, the client, the text and the NPC. `clip` is the line being reported, or nil
+--- for the window on screen. The bare address in the popup under a Spoken too old to say more.
+---
+--- Filed under the voice language the player chose, not the language the clip played in. A
+--- line missing from a German pack plays the English fallback, and its report ("no German")
+--- belongs beside the German line: filed under the clip's language, it reached the English page.
+function ReportButton:ShowLink(target, clip)
+    local url = self:Link(target, Language:GetVoiceLanguage(), clip and clip.fileName)
+    if not (Spoken and Spoken.ShowReport) then
+        ShowCopy(url)
+        return
+    end
+    Spoken:ShowReport(url, function()
+        return Contribute:ReportContext(clip)
+    end)
 end
 
 --- The same popup, for an address that is not a report: the settings panel offers one per
@@ -156,7 +172,7 @@ function ReportButton:Initialize()
     StaticPopupDialogs[COPY_DIALOG] =
     {
         text = L.OPT_REPORT_COPY,
-        button1 = OKAY,
+        button1 = CLOSE,
         timeout = 0,
         whileDead = 1,
         hasEditBox = true,

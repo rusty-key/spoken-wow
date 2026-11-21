@@ -9,7 +9,7 @@ describe("the roster", () => {
   // The roster is what /voices, the filters and the triage selects offer, so a corpus line
   // outside it would be spoken in a voice nothing can find or clone.
   it("covers every voice the corpus speaks in", async () => {
-    const roster = await loadRoster();
+    const roster = await loadRoster("enUS");
     for (const line of (await corpus()).lines) {
       // An NPC with no type, or one the game gives no flavor, speaks in none until somebody
       // answers for it: its line is marked no-voice and waits.
@@ -19,7 +19,7 @@ describe("the roster", () => {
   });
 
   it("does not mix a bare voice with flavored ones for the same race-gender", async () => {
-    const { data } = await loadRoster();
+    const { data } = await loadRoster("enUS");
     for (const a of data.assignments) {
       if (a.flavor !== null) continue;
       const flavored = data.assignments.some((b) => b.race === a.race && b.gender === a.gender && b.flavor !== null);
@@ -29,7 +29,7 @@ describe("the roster", () => {
   });
 
   it("keeps model slots off it", async () => {
-    const roster = await loadRoster();
+    const roster = await loadRoster("enUS");
     expect(roster.isVoice("model-29")).toBe(true);
     expect(roster.voiceNames.some(isModelVoice)).toBe(false);
     for (const name of ["model-", "model-29-male", "model-../x", "orc-model-29"]) {

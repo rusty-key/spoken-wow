@@ -7,12 +7,14 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
+import { asSystem } from "@/lib/teams/testing";
 
 import {
   acceptedContributions,
   contributionSenders,
   countRecentContributions,
   createContribution,
+  createContributions,
   fillContributionNpcs,
   listContributions,
   observationMeta,
@@ -73,7 +75,7 @@ beforeEach(async () => {
   ip = `test-${Math.random().toString(36).slice(2, 10)}`;
   dedup = `test-${Math.random().toString(36).slice(2, 10)}`;
   key = `${Math.floor(Math.random() * 1e9)}:accept`;
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test Resolver', $2, false)
      on conflict ("id") do nothing`,
@@ -82,18 +84,31 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await db().query(
+  await asSystem.query(
     `delete from "activity" where "kind" like 'contribution.%'
         and "subject" in (select "id"::text from "contribution" where "ip" = $1)`,
     [ip],
   );
-  await db().query(`delete from "contribution" where "ip" = $1`, [ip]);
-  await db().query(`delete from "contribution_hit" where "ip" = $1`, [ip]);
+  await asSystem.query(`delete from "contribution" where "ip" = $1`, [ip]);
+  await asSystem.query(`delete from "contribution_hit" where "ip" = $1`, [ip]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "user" where "id" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [RESOLVER]);
   await closeDb();
+});
+
+describe("createContributions", () => {
+  it("does not deadlock two files holding the same lines in opposite orders", async () => {
+    const rows = Array.from({ length: 500 }, (_, i) => submission({ dedup: `${dedup}-${i}` }));
+    const sender = { body: null, name: null, email: null, userId: null, ip };
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await Promise.all([createContributions(rows, sender), createContributions([...rows].reverse(), sender)]);
+    }
+    const counts = ours(await listContributions("new")).map((row) => row.count);
+    expect(counts).toHaveLength(500);
+    expect(new Set(counts)).toEqual(new Set([10]));
+  });
 });
 
 describe("createContribution", () => {
@@ -117,7 +132,7 @@ describe("createContribution", () => {
     // The older row is sent twice, so the two orders disagree about which comes first.
     await createContribution(submission());
     await createContribution(submission());
-    await db().query(`update "contribution" set "createdAt" = now() - interval '1 day' where "ip" = $1`, [ip]);
+    await asSystem.query(`update "contribution" set "createdAt" = now() - interval '1 day' where "ip" = $1`, [ip]);
     await createContribution(submission({ text: "Kill six.", dedup: `${dedup}-two` }));
 
     expect(ours(await listContributions("new")).map((row) => row.text)).toEqual(["Убей шестерых.", "Kill six."]);
@@ -149,11 +164,11 @@ describe("createContribution", () => {
 
   it("lists one section's rows when asked for one", async () => {
     await createContribution(submission());
-    await createContribution(submission({ source: "books", dedup: `${dedup}-two` }));
-    const sources = async (source?: "quests" | "books") =>
+    await createContribution(submission({ source: "readables", dedup: `${dedup}-two` }));
+    const sources = async (source?: "quests" | "readables") =>
       ours(await listContributions("new", undefined, undefined, source)).map((row) => row.source);
-    expect((await sources()).sort()).toEqual(["books", "quests"]);
-    expect(await sources("books")).toEqual(["books"]);
+    expect((await sources()).sort()).toEqual(["quests", "readables"]);
+    expect(await sources("readables")).toEqual(["readables"]);
   });
 
   it("keeps different text for the same key as its own row", async () => {
@@ -218,7 +233,7 @@ describe("countRecentContributions", () => {
   it("counts inside the window and not outside it", async () => {
     await recordContributionHit(ip);
     expect(await countRecentContributions(ip, 60_000)).toBe(1);
-    await db().query(
+    await asSystem.query(
       `update "contribution_hit" set "createdAt" = now() - interval '2 hours' where "ip" = $1`,
       [ip],
     );

@@ -15,7 +15,9 @@ import { saveName } from "@/lib/names/store";
 // importing one out of a module that reaches for `@/lib/db` fails the client build). Imported
 // (not just re-exported) so this file can still use them as it always did, and re-exported so
 // every existing import of these from this module keeps working unchanged.
-import { NPC_KINDS, NPC_ROW_KINDS, PROVENANCES, isProvenance, type NpcKind, type NpcRowKind, type Provenance } from "./npc";
+import {
+  NPC_KINDS, NPC_ROW_KINDS, PROVENANCES, isProvenance, type NpcKind, type NpcRowKind, type Provenance, type Sex,
+} from "./npc";
 
 export { NPC_KINDS, NPC_ROW_KINDS, PROVENANCES, isProvenance };
 export type { NpcKind, NpcRowKind, Provenance };
@@ -190,7 +192,7 @@ export function resolutionKey(npcKind: NpcRowKind, npcId: number): string {
  * the table's own two-column key, in a single query.
  */
 export async function getResolutions(
-  keys: { npcKind: NpcKind; npcId: number }[],
+  keys: { npcKind: NpcRowKind; npcId: number }[],
 ): Promise<Map<string, NpcResolution>> {
   if (keys.length === 0) return new Map();
 
@@ -229,4 +231,124 @@ export async function listUnconfirmed(kind: NpcKind): Promise<NpcResolution[]> {
     [kind],
   );
   return rows;
+}
+
+/** One body of a split NPC: who it is when the client draws it as that race and sex. */
+export type NpcBodyAnswer = {
+  npcKind: NpcRowKind;
+  npcId: number;
+  race: string;
+  sex: Sex;
+  /** The sex's, always: male for 2, female for 3. */
+  gender: string;
+  /** How often the game draws it, from the extract; null where someone added it. */
+  weight: number | null;
+  flavor: string | null;
+  provenance: Exclude<Provenance, "none">;
+  confirmed: boolean;
+  doubtful: boolean;
+  note: string | null;
+  resolvedBy: string | null;
+  updatedAt: string;
+};
+
+/**
+ * Whether npc_body row `alias` is one of two or more for its NPC, which is what splits it. A row
+ * alone (a moderator's body an import kept) splits nothing, and the NPC's own row answers for it.
+ */
+export function splitBody(alias: string): string {
+  return `exists (select 1 from "npc_body" o
+    where o."npcKind" = ${alias}."npcKind" and o."npcId" = ${alias}."npcId"
+      and (o."race", o."sex") <> (${alias}."race", ${alias}."sex"))`;
+}
+
+const BODY_COLUMNS = `x."npcKind", x."npcId", x."race", x."sex"::int as "sex", x."gender", x."weight",
+                      x."flavor", x."provenance", x."confirmed", x."doubtful", x."note", x."resolvedBy",
+                      x."updatedAt"::text`;
+
+/** The order the sex rule reads a sex's bodies in (npc_bodies.sex_bodies). */
+const BODY_ORDER = `x."sex", x."weight" desc nulls last, x."updatedAt", x."race"`;
+
+/** An NPC's bodies, men first; none for an NPC that is not split. */
+export async function getBodies(kind: NpcRowKind, npcId: number): Promise<NpcBodyAnswer[]> {
+  const { rows } = await db().query<NpcBodyAnswer>(
+    `select ${BODY_COLUMNS} from "npc_body" x where x."npcKind" = $1 and x."npcId" = $2 order by ${BODY_ORDER}`,
+    [kind, npcId],
+  );
+  return rows;
+}
+
+/** Every split NPC's bodies, keyed by resolutionKey. */
+export async function listBodies(): Promise<Map<string, NpcBodyAnswer[]>> {
+  const { rows } = await db().query<NpcBodyAnswer>(
+    `select ${BODY_COLUMNS} from "npc_body" x order by x."npcKind", x."npcId", ${BODY_ORDER}`,
+  );
+  const grouped = new Map<string, NpcBodyAnswer[]>();
+  for (const row of rows) {
+    const key = resolutionKey(row.npcKind, row.npcId);
+    grouped.set(key, [...(grouped.get(key) ?? []), row]);
+  }
+  return grouped;
+}
+
+/**
+ * One body's answer. It lands only over an answer ranked no higher (npc_provenance_rank). The NPC
+ * must have an npc row.
+ */
+export async function upsertBody(
+  input: Omit<NpcBodyAnswer, "gender" | "updatedAt">,
+): Promise<NpcBodyAnswer> {
+  const { rows } = await db().query<NpcBodyAnswer>(
+    `insert into "npc_body" as x
+       ("npcKind", "npcId", "race", "sex", "weight", "flavor", "provenance", "confirmed", "doubtful",
+        "note", "resolvedBy")
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+     on conflict ("npcKind", "npcId", "race", "sex") do update
+       set "weight" = coalesce(excluded."weight", x."weight"),
+           "flavor" = excluded."flavor",
+           "provenance" = excluded."provenance",
+           "confirmed" = excluded."confirmed",
+           "doubtful" = excluded."doubtful",
+           "note" = excluded."note",
+           "resolvedBy" = excluded."resolvedBy",
+           "updatedAt" = now()
+       where "npc_provenance_rank"(x."provenance") <= "npc_provenance_rank"(excluded."provenance")
+         and (x."flavor", x."provenance", x."confirmed", x."doubtful", x."note", x."resolvedBy")
+             is distinct from
+             (excluded."flavor", excluded."provenance", excluded."confirmed",
+              excluded."doubtful", excluded."note", excluded."resolvedBy")
+     returning ${BODY_COLUMNS}`,
+    [
+      input.npcKind, input.npcId, input.race, input.sex, input.weight, input.flavor, input.provenance,
+      input.confirmed, input.doubtful, input.note, input.resolvedBy,
+    ],
+  );
+  // No row back where the ranking refused the write or nothing changed: the stored one stands.
+  if (rows[0]) return rows[0];
+  const stored = (await getBodies(input.npcKind, input.npcId))
+    .find((row) => row.race === input.race && row.sex === input.sex);
+  if (!stored) throw new Error(`upsertBody: no row for ${input.npcKind}/${input.npcId}/${input.race}/${input.sex}`);
+  return stored;
+}
+
+/**
+ * One body taken away. A split needs two bodies, so taking away the second-last takes the last
+ * with it, and the NPC speaks in its npc row's one voice again.
+ */
+export async function deleteBody(kind: NpcRowKind, npcId: number, race: string, sex: Sex): Promise<void> {
+  await db().query(
+    `with gone as (
+       delete from "npc_body" where "npcKind" = $1 and "npcId" = $2 and "race" = $3 and "sex" = $4
+     )
+     delete from "npc_body" x
+      where x."npcKind" = $1 and x."npcId" = $2 and not (x."race" = $3 and x."sex" = $4)
+        and (select count(*) from "npc_body" y
+              where y."npcKind" = $1 and y."npcId" = $2 and not (y."race" = $3 and y."sex" = $4)) < 2`,
+    [kind, npcId, race, sex],
+  );
+}
+
+/** A moderator's "one voice after all": every line of the NPC goes back to its npc row's. */
+export async function unsplit(kind: NpcRowKind, npcId: number): Promise<void> {
+  await db().query(`delete from "npc_body" where "npcKind" = $1 and "npcId" = $2`, [kind, npcId]);
 }

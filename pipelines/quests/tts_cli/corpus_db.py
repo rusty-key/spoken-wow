@@ -4,7 +4,7 @@ The site edits lines, records who changed them and keeps what they used to say. 
 that could live in corpus/corpus.json.gz, so it lived in line_override instead: a patch
 table keyed by file, with no history. This moves the corpus itself into Postgres beside
 lore_line and book_line, and turns the committed file into an EXPORT of that table -- the
-same arrangement zones has with tools/voice/manifest.json.
+same arrangement places has with tools/voice/manifest.json.
 
 WHAT DOES NOT CHANGE: producing audio and building a sound pack still need no database.
 tts_cli.build reads the committed file exactly as it always has,
@@ -38,6 +38,8 @@ from datetime import datetime, timezone
 from tts_cli.corpus import (GENERIC_TYPES, INVALID_CHARS, NO_VOICE, SCHEMA_VERSION, load_corpus,
                             write_corpus)
 from tts_cli.flavors import fallback_flavors, is_model_voice
+from tts_cli.naming import moment_of
+from tts_cli.npc_bodies import body_name
 
 LANG = "enUS"
 
@@ -62,6 +64,10 @@ SPEAKER_FIELDS = ("npcType", "npcId", "npcName", "race", "gender", "flavor", "vo
 # file a contributed row looks exactly like the dump's, so nothing in it may overtake one.
 CONTRIBUTIONS_MARKED = 3
 
+# Where a speaker the site wrote starts in `ord`: a contribution's (apps/web lib/quests/speakers.ts)
+# and one an admin added. The extract numbers its own rows 0..n, and `ord` is unique per language.
+ORD_FLOOR = 1_000_000
+
 
 def connect():
     url = os.environ.get("DATABASE_URL")
@@ -71,7 +77,8 @@ def connect():
             "Producing audio and building a pack still need no database; this command does."
         )
     # Here rather than at the top, so the module's pure parts (split_contributed) load and are
-    # tested without psycopg2, which only requirements-extract.txt installs.
+    # tested without psycopg2, which only requirements-extract.txt installs, and the droplet's
+    # python3-psycopg2 package.
     import psycopg2
 
     return psycopg2.connect(url)
@@ -118,6 +125,23 @@ def with_answered_voices(lines, answers):
     return out
 
 
+def split_here(variants, live):
+    """The dump's plain lines the site split by player gender: (lineId, variant) whose own row
+    is not current while its `:m` or `:f` is (apps/web/src/lib/quests/moment-rewrite.ts).
+
+    The site is the corpus. Such a line is left out, never promoted back beside its split, and
+    its speakers are written onto the two sides.
+    """
+    return {
+        (line_id, variant)
+        for line_id, payloads in variants.items()
+        if moment_of(line_id) == line_id
+        for variant in range(len(payloads))
+        if (line_id, variant) not in live
+        and ((f"{line_id}:m", variant) in live or (f"{line_id}:f", variant) in live)
+    }
+
+
 def _variants(lines):
     """lineId -> [line payload, ...], in the order the corpus first mentions each.
 
@@ -134,7 +158,8 @@ def _variants(lines):
     return order
 
 
-def split_contributed(lines, schema_version, known_contributions, contributed_speakers):
+def split_contributed(lines, schema_version, known_contributions, contributed_speakers,
+                      added_speakers=frozenset()):
     """The file's rows -> (the dump's rows, how many contributed rows were left alone).
 
     A contributed row is already in the tables, written when a moderator accepted it, and is
@@ -146,10 +171,17 @@ def split_contributed(lines, schema_version, known_contributions, contributed_sp
     as CI is -- has no contribution to hang from, so it is seeded as a plain row, as it always
     was. An older file marks nothing, so a row identical to a contributed speaker
     (`contributed_speakers`: lineId plus SPEAKER_FIELDS) is taken for that speaker's copy.
+
+    A speaker an admin added (apps/web migration 0076) carries its "addedBy" and is left alone
+    the same way when the database has it (`added_speakers`: lineId, npcType, npcId). One it does
+    not have keeps the key, and is written as an added speaker again.
     """
     marked = schema_version >= CONTRIBUTIONS_MARKED
     extracted, skipped = [], 0
     for row in lines:
+        if row.get("addedBy") is not None and (row["lineId"], row["npcType"], row["npcId"]) in added_speakers:
+            skipped += 1
+            continue
         contribution = row.get("contributionId")
         if marked:
             if contribution is not None and contribution in known_contributions:
@@ -160,6 +192,12 @@ def split_contributed(lines, schema_version, known_contributions, contributed_sp
             continue
         extracted.append({k: v for k, v in row.items() if k != "contributionId"})
     return extracted, skipped
+
+
+def removed_here(row, removed_speakers):
+    """Whether a row of the dump names a speaker an admin removed from its moment (apps/web
+    migration 0077). `removed_speakers` holds (moment, npcType, npcId)."""
+    return (moment_of(row["lineId"]), row["npcType"], row["npcId"]) in removed_speakers
 
 
 def _progress(message):
@@ -201,6 +239,15 @@ def retyped(npcs) -> list:
             for npc in npcs]
 
 
+def _with_default(answer, defaults) -> tuple:
+    """An answer's (flavor, provenance, doubtful): the extract's own flavorless answer takes its
+    race-gender's default from `defaults`, marked doubtful; anybody else's is as they gave it."""
+    provenance = answer.get("provenance", "corpus")
+    guess = None if answer["flavor"] or provenance != "corpus" else \
+        defaults.get(f'{answer["race"]}-{answer["gender"]}')
+    return answer["flavor"] or guess, provenance, guess is not None
+
+
 def npc_answers(npcs) -> list:
     """The file's NPCs as npc rows, (kind, id, race, gender, flavor, provenance, doubtful).
 
@@ -214,11 +261,8 @@ def npc_answers(npcs) -> list:
     defaults = fallback_flavors((f'{npc["race"]}-{npc["gender"]}', npc["flavor"]) for npc in npcs)
     rows = []
     for npc in npcs:
-        provenance = npc.get("provenance", "corpus")
-        guess = None if npc["flavor"] or provenance != "corpus" else \
-            defaults.get(f'{npc["race"]}-{npc["gender"]}')
         rows.append((npc["npcType"], npc["npcId"], npc["race"], npc["gender"],
-                     npc["flavor"] or guess, provenance, guess is not None))
+                     *_with_default(npc, defaults)))
     return rows
 
 
@@ -248,10 +292,14 @@ def _import_types(cur, npcs):
             new_flavor = cur.rowcount > 0
         if not (new_race or new_flavor) or not voice or is_model_voice(voice):
             continue
-        cur.execute("""insert into "voice" ("name", "race", "gender") values (%s, %s, %s)
+        # The types are every team's, so every team's roster gets the voice. As the table owner
+        # with no spoken.team, the column default is null, so each team is named.
+        cur.execute("""insert into "voice" ("teamId", "name", "race", "gender")
+                       select t."id", %s, %s, %s from "team" t
                        on conflict do nothing""", (voice, race, gender or ""))
-        cur.execute("""insert into "voice_assignment" ("race", "gender", "flavor", "voice")
-                       values (%s, %s, %s, %s) on conflict do nothing""",
+        cur.execute("""insert into "voice_assignment" ("teamId", "race", "gender", "flavor", "voice")
+                       select t."id", %s, %s, %s, %s from "team" t
+                       on conflict do nothing""",
                     (race, gender, flavor if new_flavor else None, voice))
 
 
@@ -305,6 +353,122 @@ def _import_npcs(cur, npc_rows):
     return kept
 
 
+def _bodies_of(corpus: dict) -> list:
+    """The file's bodies: schema 6's npcBodies, or schema 5's npcSexes, each a body of its race."""
+    if "npcBodies" in corpus:
+        return corpus["npcBodies"]
+    return [{**row, "weight": None} for row in corpus.get("npcSexes", [])]
+
+
+def npc_body_answers(npc_bodies, npcs) -> list:
+    """The file's split NPCs as npc_body rows, (kind, id, race, sex, weight, flavor, provenance,
+    doubtful). A moderator's answer for the NPC becomes the answer of its own body, so splitting
+    never takes back a voice someone chose."""
+    chosen = {(npc["npcType"], npc["npcId"]): npc for npc in npcs
+              if npc.get("provenance") == "moderator" and npc.get("race")}
+    defaults = fallback_flavors(
+        [(body_name(npc["race"], npc["gender"]), npc["flavor"]) for npc in retyped(npcs)]
+        + [(body_name(row["race"], row["gender"]), row["flavor"]) for row in npc_bodies])
+    rows = []
+    for row in npc_bodies:
+        npc = chosen.get((row["npcType"], row["npcId"]))
+        weight = row.get("weight")
+        if (row.get("provenance", "corpus") == "corpus" and npc and npc.get("gender") == row["gender"]
+                and npc["race"] == row["race"]):
+            rows.append((row["npcType"], row["npcId"], row["race"], row["sex"], weight, npc["flavor"],
+                         "moderator", bool(npc.get("doubtful"))))
+            continue
+        rows.append((row["npcType"], row["npcId"], row["race"], row["sex"], weight,
+                     *_with_default(row, defaults)))
+    return rows
+
+
+def split_bodies(alias: str) -> str:
+    """Whether npc_body row `alias` has a sibling. An NPC is split by two or more npc_body rows;
+    one alone (a moderator's body an import kept) splits nothing, so it is left out of
+    everything a split NPC is built from."""
+    return f"""exists (select 1 from "npc_body" o
+                        where o."npcKind" = {alias}."npcKind" and o."npcId" = {alias}."npcId"
+                          and (o."race", o."sex") is distinct from ({alias}."race", {alias}."sex"))"""
+
+
+def _import_npc_bodies(cur, rows):
+    """The file's split NPCs into npc_body. An answer lands over one ranked no higher, a
+    moderator's stays unless marked doubtful, and a `corpus` body the file no longer carries goes,
+    as does a `corpus` body left alone under its id (one body is no split).
+    A body of an NPC with no npc row is skipped."""
+    cur.execute("""create temporary table "npc_body_import" ("npcKind" text, "npcId" integer,
+                     "race" text, "sex" smallint, "weight" real, "flavor" text, "provenance" text,
+                     "doubtful" boolean) on commit drop""")
+    if rows:
+        _bulk(cur, "npc_body_import", rows,
+              """insert into "npc_body_import" ("npcKind", "npcId", "race", "sex", "weight",
+                                                "flavor", "provenance", "doubtful") values %s""")
+    cur.execute(
+        """delete from "npc_body" x
+            where x."provenance" = 'corpus'
+              and not exists (select 1 from "npc_body_import" i
+                               where i."npcKind" = x."npcKind" and i."npcId" = x."npcId"
+                                 and i."race" = x."race" and i."sex" = x."sex")""")
+    cur.execute(
+        """insert into "npc_body" as x ("npcKind", "npcId", "race", "sex", "weight", "flavor",
+                                         "provenance", "confirmed", "doubtful")
+            select i."npcKind", i."npcId", i."race", i."sex", i."weight", i."flavor", i."provenance",
+                   i."provenance" in ('corpus', 'display', 'moderator') and not i."doubtful",
+                   i."doubtful"
+              from "npc_body_import" i
+              join "npc" n on n."npcKind" = i."npcKind" and n."npcId" = i."npcId"
+            on conflict ("npcKind", "npcId", "race", "sex") do update
+              set "weight" = coalesce(excluded."weight", x."weight"), "flavor" = excluded."flavor",
+                  "provenance" = excluded."provenance", "confirmed" = excluded."confirmed",
+                  "doubtful" = excluded."doubtful", "updatedAt" = now()
+            where {replaces}
+              and (x."weight", x."flavor", x."provenance", x."doubtful")
+                  is distinct from (coalesce(excluded."weight", x."weight"), excluded."flavor",
+                                    excluded."provenance", excluded."doubtful")""".format(
+            replaces=_REPLACES.format(old="x", new="excluded")))
+    cur.execute("""delete from "npc_body" x where x."provenance" = 'corpus' and not """
+                + split_bodies("x"))
+
+
+
+def export_npc_bodies(cur) -> list:
+    """npc_body as the file's npcBodies, for the NPCs it splits."""
+    cur.execute(
+        """select "npcKind", "npcId", "race", "sex", "gender", "weight",
+                  case when "provenance" = 'corpus' and "doubtful" then null else "flavor" end,
+                  "provenance", voice_for("race", "gender", "flavor") from "npc_body" b
+            where """ + split_bodies("b") + """
+            order by "npcKind", "npcId", "sex", "weight" desc nulls last, "updatedAt", "race" """
+    )
+    return [{"npcType": kind, "npcId": npc_id, "race": race, "sex": sex, "gender": gender,
+             "weight": weight, "flavor": flavor, "provenance": provenance, "voice": voice}
+            for kind, npc_id, race, sex, gender, weight, flavor, provenance, voice in cur.fetchall()]
+
+
+def import_npc_bodies(display_rows, verbose=True) -> list:
+    """The world database's split NPCs into a filled database's npc_body, without a whole
+    extract. Returns the rows written."""
+    from tts_cli.npc_bodies import npc_bodies
+
+    conn = connect()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute("""select "npcKind", "npcId", "race", "gender", "flavor", "provenance",
+                                  "doubtful"
+                             from "npc" where "npcKind" = 'creature' order by "npcId" """)
+            npcs = [{"npcType": kind, "npcId": npc_id, "race": race, "gender": gender,
+                     "flavor": flavor, "provenance": provenance, "doubtful": doubtful}
+                    for kind, npc_id, race, gender, flavor, provenance, doubtful in cur.fetchall()]
+            rows = npc_body_answers(npc_bodies(display_rows, npcs), npcs)
+            _import_npc_bodies(cur, rows)
+    finally:
+        conn.close()
+    if verbose:
+        print(f"{len({(row[0], row[1]) for row in rows})} NPCs split by body, {len(rows)} bodies")
+    return rows
+
+
 class DatabaseNotEmpty(Exception):
     """import-corpus was pointed at a database that already holds the corpus."""
 
@@ -339,7 +503,7 @@ def import_corpus_data(corpus, verbose=True):
     fresh extract of the world database.
 
     Rerunnable by construction, and the rule for a line that already exists is the one
-    pipelines/books/tools/lib/promote.mjs states: unchanged text is skipped, changed text
+    pipelines/readables/tools/lib/promote.mjs states: unchanged text is skipped, changed text
     is promoted UNLESS somebody has edited it here, in which case the extract's version is
     recorded but not promoted. An import that could overwrite a correction is an import
     nobody dares run, and an import nobody runs means the corpus stops tracking the dump.
@@ -364,9 +528,26 @@ def import_corpus_data(corpus, verbose=True):
                 (LANG,),
             )
             contributed_speakers = {tuple(r) for r in cur.fetchall()}
+            cur.execute(
+                """select "lineId", "npcType", "npcId" from "quest_line_speaker"
+                    where "lang" = %s and "addedBy" is not null""",
+                (LANG,),
+            )
+            added_speakers = {tuple(r) for r in cur.fetchall()}
+            # Only rows this database lacks: a fresh extract carries none, and a removal is
+            # taken back by adding the speaker again, never by an import.
+            if corpus.get("removedSpeakers"):
+                _bulk(cur, "quest_line_speaker_removed", [
+                          (r["moment"], r["npcType"], r["npcId"], r["removedBy"])
+                          for r in corpus["removedSpeakers"]],
+                      """insert into "quest_line_speaker_removed"
+                           ("moment", "npcType", "npcId", "removedBy")
+                         values %s on conflict do nothing""")
+            cur.execute("""select "moment", "npcType", "npcId" from "quest_line_speaker_removed" """)
+            removed_speakers = {tuple(r) for r in cur.fetchall()}
             lines, contributed = split_contributed(
                 corpus["lines"], corpus["schemaVersion"], known_contributions,
-                contributed_speakers,
+                contributed_speakers, added_speakers,
             )
             answers = answered_models(cur, lines)
             answered = sum(1 for row in lines
@@ -405,11 +586,17 @@ def import_corpus_data(corpus, verbose=True):
             highest = {(r[0], r[1]): r[2] for r in cur.fetchall()}
 
             unchanged, retire, inserts = [], [], []
+            split = split_here(variants, live)
             for line_id, payloads in variants.items():
                 for variant, payload in enumerate(payloads):
                     row = dict(zip(LINE_FIELDS, payload))
                     current = live.get((line_id, variant))
 
+                    if (line_id, variant) in split:
+                        # Not recorded either: with no current version to compare against,
+                        # every import would add the same text again.
+                        counts["split"] += 1
+                        continue
                     if current is None:
                         action = "promote"
                     elif current[1] == row["text"] and current[2] == row["originalText"]:
@@ -472,24 +659,56 @@ def import_corpus_data(corpus, verbose=True):
             # extract's, and would otherwise vanish -- line and all -- on the next import.
             # Those rows take an `ord` from 1,000,000 up, so the extract's 0..n never meets them.
             # Until the dump has the same NPC on the same line: then the dump is the source of
-            # truth, and the contribution has done its job (below).
+            # truth, and the contribution has done its job (below). The same goes for a speaker
+            # an admin added by hand (migration 0076), marked by its "addedBy".
             cur.execute(
                 """delete from "quest_line_speaker"
-                    where "lang" = %s and "contributionId" is null""",
+                    where "lang" = %s and "contributionId" is null and "addedBy" is null""",
                 (LANG,),
             )
-            speaker_rows = []
+            # A line split here is spoken by the dump's speakers on both of its sides. The
+            # sides' `ord`s follow the dump's own, which are only ever as many as its rows.
+            # A row added by hand keeps the line it was added to, split side or not.
+            # A speaker an admin removed (migration 0077) is left out here and nowhere earlier:
+            # its row may be the only one carrying the line's text into quest_line.
+            speaker_rows, added_rows, removed = [], [], 0
             for ord_, row in enumerate(lines):
                 variant = variants[row["lineId"]].index(_line_key(row))
-                speaker_rows.append(
-                    (row["lineId"], variant, LANG, ord_)
-                    + tuple(row[field] for field in SPEAKER_FIELDS)
-                )
+                speaker = tuple(row[field] for field in SPEAKER_FIELDS)
+                if row.get("addedBy") is not None:
+                    added_rows.append((row["lineId"], variant, LANG) + speaker + (row["addedBy"],))
+                    continue
+                if removed_here(row, removed_speakers):
+                    removed += 1
+                    continue
+                if (row["lineId"], variant) not in split:
+                    speaker_rows.append((row["lineId"], variant, LANG, ord_) + speaker)
+                    continue
+                for side in ("m", "f"):
+                    speaker_rows.append(
+                        (f'{row["lineId"]}:{side}', variant, LANG, len(lines) + len(speaker_rows))
+                        + speaker
+                    )
             _bulk(cur, "quest_line_speaker", speaker_rows,
                   """insert into "quest_line_speaker"
                        ("lineId", "variant", "lang", "ord", "npcType", "npcId", "npcName",
                         "race", "gender", "flavor", "voice")
                      values %s""")
+            # Only from a file seeding a database that lacks them: clear of the extract's
+            # numbering, after every speaker the site already wrote, in the file's order.
+            if added_rows:
+                cur.execute(
+                    """select greatest(coalesce(max("ord") + 1, 0), %s) from "quest_line_speaker"
+                        where "lang" = %s""",
+                    (ORD_FLOOR, LANG),
+                )
+                first = cur.fetchone()[0]
+                added_rows = [row[:3] + (first + i,) + row[3:] for i, row in enumerate(added_rows)]
+                _bulk(cur, "quest_line_speaker: added by hand", added_rows,
+                      """insert into "quest_line_speaker"
+                           ("lineId", "variant", "lang", "ord", "npcType", "npcId", "npcName",
+                            "race", "gender", "flavor", "voice", "addedBy")
+                         values %s""")
 
             npc_rows = npc_answers(corpus.get("npcs", []))
             kept_npcs = []
@@ -498,22 +717,29 @@ def import_corpus_data(corpus, verbose=True):
                 kept_npcs = _import_npcs(cur, npc_rows)
                 # The site reads an NPC's voice from npc alone (apps/web migration 0071).
                 cur.execute("""select "npc_from_speakers"()""")
+            body_rows = npc_body_answers(_bodies_of(corpus), corpus.get("npcs", []))
+            if "npcBodies" in corpus or "npcSexes" in corpus:
+                _import_npc_bodies(cur, body_rows)
 
-            # Only from a marked file: in an older one, the rows that would match are the
-            # contributed speakers' own round-tripped copies, skipped above or not.
-            superseded = 0
-            if marked:
-                cur.execute(
-                    """delete from "quest_line_speaker" c
-                        where c."lang" = %s and c."contributionId" is not null
-                          and exists (
-                            select 1 from "quest_line_speaker" e
-                             where e."contributionId" is null and e."lang" = c."lang"
-                               and e."lineId" = c."lineId" and e."variant" = c."variant"
-                               and e."npcType" = c."npcType" and e."npcId" = c."npcId")""",
-                    (LANG,),
-                )
-                superseded = cur.rowcount
+            # A contributed speaker only from a marked file: in an older one, the rows that
+            # would match are its own round-tripped copies, skipped above or not. A speaker added
+            # by hand is marked in every file that carries one, so needs no schema check.
+            cur.execute(
+                """delete from "quest_line_speaker" c
+                    where c."lang" = %s
+                      and (c."addedBy" is not null or (%s and c."contributionId" is not null))
+                      and exists (
+                        select 1 from "quest_line_speaker" e
+                         where e."contributionId" is null and e."addedBy" is null
+                           and e."lang" = c."lang"
+                           and e."lineId" = c."lineId" and e."variant" = c."variant"
+                           and e."npcType" = c."npcType" and e."npcId" = c."npcId")
+                    returning c."addedBy" is not null""",
+                (LANG, bool(marked)),
+            )
+            overtaken = [row[0] for row in cur.fetchall()]
+            superseded_added = sum(overtaken)
+            superseded = len(overtaken) - superseded_added
 
             cur.execute("""delete from "quest_spawn" """)
             spawn_rows = []
@@ -547,9 +773,11 @@ def import_corpus_data(corpus, verbose=True):
         print(
             f"{len(lines)} rows: {counts['promote']} promoted, "
             f"{counts['record']} recorded without promoting (edited here), "
+            f"{counts['split']} left out (split by player gender here), "
             f"{counts['skip']} unchanged"
         )
-        print(f"{len(speaker_rows)} speakers, {len(npc_rows)} NPCs, {len(spawn_rows)} spawn points")
+        print(f"{len(speaker_rows)} speakers, {len(npc_rows)} NPCs ({len(body_rows)} bodies of split "
+              f"ones), {len(spawn_rows)} spawn points")
         print(f"{answered} model rows spoken in the voice their NPC is already answered with")
         print(f"{len(kept_npcs)} NPC answers kept over a different one in the file"
               + (":" if kept_npcs else ""))
@@ -561,6 +789,8 @@ def import_corpus_data(corpus, verbose=True):
             f"speakers overtaken by the dump"
             + ("" if marked else " (none: the file predates marking them)")
         )
+        print(f"{superseded_added} speakers added by hand overtaken by the dump, "
+              f"{removed} of the dump's speakers left out as removed by hand")
         print(
             f"defects carried over unchanged: {collisions} lineIds naming two different "
             f"lines, {duplicates} duplicate rows"
@@ -568,11 +798,14 @@ def import_corpus_data(corpus, verbose=True):
     return counts
 
 
-def _with_contribution(row, contribution_id):
+def _with_contribution(row, contribution_id, added_by=None):
     """A contributed row carries its contributionId, last, so the import can tell it from the
-    dump's. The dump's rows have no such key, which keeps them as the extract writes them."""
+    dump's, and a speaker an admin added carries its addedBy the same way. The dump's rows have
+    no such key, which keeps them as the extract writes them."""
     if contribution_id is not None:
         row["contributionId"] = contribution_id
+    if added_by is not None:
+        row["addedBy"] = added_by
     return row
 
 
@@ -590,7 +823,7 @@ def _speaker_rows(cur):
                     (select n."name" from "entity_name" n
                       where n."kind" = s."npcType" and n."entityId" = s."npcId"::text
                         and n."lang" = %(lang)s and n."isCurrent"), s."npcName") end,
-                  s."race", s."gender", s."flavor", s."voice", s."contributionId",
+                  s."race", s."gender", s."flavor", s."voice", s."contributionId", s."addedBy",
                   l."lineId", l."source", l."questId", l."questTitle",
                   l."playerGender", l."text", l."originalText", l."fileName",
                   l."generatable", l."skipReason"
@@ -657,6 +890,14 @@ def export_corpus(path, check=False, verbose=True):
                     order by "npcKind", "npcId" """
             )
             npc_rows = cur.fetchall()
+
+            body_rows = export_npc_bodies(cur)
+
+            cur.execute(
+                """select "moment", "npcType", "npcId", "removedBy"
+                     from "quest_line_speaker_removed" order by 1, 2, 3"""
+            )
+            removed_rows = cur.fetchall()
     finally:
         conn.close()
 
@@ -682,8 +923,8 @@ def export_corpus(path, check=False, verbose=True):
             "fileName": file_name,
             "generatable": generatable,
             "skipReason": skip_reason,
-        }, contribution_id)
-        for (npc_type, npc_id, npc_name, race, gender, flavor, voice, contribution_id,
+        }, contribution_id, added_by)
+        for (npc_type, npc_id, npc_name, race, gender, flavor, voice, contribution_id, added_by,
              line_id, source, quest_id, quest_title, player_gender, text, original_text,
              file_name, generatable, skip_reason) in rows
     ]
@@ -709,7 +950,14 @@ def export_corpus(path, check=False, verbose=True):
              "provenance": provenance, "voice": voice}
             for kind, npc_id, race, gender, flavor, provenance, voice in npc_rows
         ],
+        "npcBodies": body_rows,
     }
+    # Only once there is one, so the files exported before the table existed stay identical.
+    if removed_rows:
+        corpus["removedSpeakers"] = [
+            {"moment": moment, "npcType": kind, "npcId": npc_id, "removedBy": by}
+            for moment, kind, npc_id, by in removed_rows
+        ]
 
     if check:
         existing = load_corpus(path)
@@ -829,11 +1077,11 @@ def export_giver_names(corpus_path, out_dir, verbose=True):
     live one, for the reason export_locale_text takes localeText: a translator's edit changes
     how a name is spoken, and what the addon shows must be what the client shows.
     """
-    from tts_cli.giver_names import (KINDS, givers, localized_names, write_giver_names,
-                                   write_names_xml)
-    from tts_cli.ignores import ignored_line_ids
+    from tts_cli.giver_names import KINDS, givers, write_every_language
+    from tts_cli.ignores import load_pack_ignored
 
-    found = givers(load_corpus(corpus_path), ignored_line_ids())
+    corpus = load_corpus(corpus_path)
+    found = givers(corpus, load_pack_ignored(corpus))
     conn = connect()
     try:
         with conn, conn.cursor() as cur:
@@ -852,12 +1100,46 @@ def export_giver_names(corpus_path, out_dir, verbose=True):
     finally:
         conn.close()
 
-    for lang in sorted(by_lang):
-        table = localized_names(found, by_lang[lang])
-        path = write_giver_names(out_dir, lang, table)
-        if verbose:
+    written, removed, checked = write_every_language(out_dir, found, by_lang)
+    if verbose:
+        for path, table in written:
             print(f"wrote {path}: {sum(len(t) for t in table.values())} of {len(found)} givers")
-    write_names_xml(out_dir, sorted(by_lang))
+        for path in removed:
+            print(f"removed {path}: no names in that language any more")
+        if not checked:
+            print(f"no Spoken_Quests.toc above {out_dir}: Forever's names lines were not checked")
+
+
+def _client_texts(cur, sources, locales):
+    """(english, translations, natives) of the current lines of `sources`, as
+    gossip_text.gossip_text_tables takes them: English's template by lineId; each locale's
+    newest translation with localeText, as (lineId, the English it translates, its text); and
+    each locale's own text by lineId, for a line English lacks."""
+    cur.execute(
+        """select "lineId", "originalText" from "quest_line"
+            where "isCurrent" and "source" = any(%s) and "lang" = %s""", (list(sources), LANG))
+    english = dict(cur.fetchall())
+
+    cur.execute(
+        """select distinct on ("lineId", "variant", "lang")
+                  "lang", "lineId", "originalText", "localeText"
+             from "quest_line"
+            where "lang" = any(%s) and "source" = any(%s)
+              and coalesce("localeText", '') <> ''
+            order by "lineId", "variant", "lang", "version" desc""",
+        (list(locales), list(sources)))
+    translations = {}
+    for lang, line_id, original, text in cur.fetchall():
+        translations.setdefault(lang, []).append((line_id, original, text))
+
+    cur.execute(
+        """select "lang", "lineId", "originalText" from "quest_line"
+            where "isCurrent" and "source" = any(%s) and "lang" = any(%s)""",
+        (list(sources), list(locales)))
+    natives = {}
+    for lang, line_id, text in cur.fetchall():
+        natives.setdefault(lang, {})[line_id] = text
+    return english, translations, natives
 
 
 def export_gossip_text(out_dir, aliases_path, verbose=True):
@@ -867,7 +1149,7 @@ def export_gossip_text(out_dir, aliases_path, verbose=True):
     export_locale_text's reason, and is kept only while it translates the current English.
     """
     from tts_cli.gossip_text import (CLIENT_LOCALES, gossip_aliases, gossip_text_tables,
-                                     write_aliases_json, write_gossip_text)
+                                     quest_wording_tables, write_aliases_json, write_gossip_text)
     from tts_cli.ignores import ignored_line_ids
 
     conn = connect()
@@ -883,30 +1165,14 @@ def export_gossip_text(out_dir, aliases_path, verbose=True):
             for line_id, *speaker in cur.fetchall():
                 speakers.setdefault(line_id, []).append(tuple(speaker))
 
-            cur.execute(
-                """select "lineId", "originalText" from "quest_line"
-                    where "isCurrent" and "source" = 'gossip' and "lang" = %s""", (LANG,))
-            english = dict(cur.fetchall())
+            # A split NPC shows each sex its own form of a BroadcastText row.
+            cur.execute("""select distinct "npcKind", "npcId", "gender" from "npc_body" b
+                            where """ + split_bodies("b") + """ order by 1, 2, 3""")
+            sexes = {}
+            for kind, npc_id, gender in cur.fetchall():
+                sexes.setdefault((kind, npc_id), []).append(gender)
 
-            cur.execute(
-                """select distinct on ("lineId", "variant", "lang")
-                          "lang", "lineId", "originalText", "localeText"
-                     from "quest_line"
-                    where "lang" = any(%s) and "source" = 'gossip'
-                      and coalesce("localeText", '') <> ''
-                    order by "lineId", "variant", "lang", "version" desc""",
-                (list(CLIENT_LOCALES),))
-            translations = {}
-            for lang, line_id, original, text in cur.fetchall():
-                translations.setdefault(lang, []).append((line_id, original, text))
-
-            cur.execute(
-                """select "lang", "lineId", "originalText" from "quest_line"
-                    where "isCurrent" and "source" = 'gossip' and "lang" = any(%s)""",
-                (list(CLIENT_LOCALES),))
-            natives = {}
-            for lang, line_id, text in cur.fetchall():
-                natives.setdefault(lang, {})[line_id] = text
+            english, translations, natives = _client_texts(cur, ("gossip",), CLIENT_LOCALES)
 
             cur.execute("""select "lineId", "broadcastTextId" from "gossip_broadcast"
                             order by 1, 2""")
@@ -926,17 +1192,27 @@ def export_gossip_text(out_dir, aliases_path, verbose=True):
 
             cur.execute("""select "lineId", "mergedInto" from "gossip_merge" order by 1""")
             merges = cur.fetchall()
+
+            # Quest text in every client locale, for the moments shown in more than one wording.
+            quest_english, quest_translations, quest_natives = _client_texts(
+                cur, ("accept", "complete"), CLIENT_LOCALES)
     finally:
         conn.close()
 
     ignored = ignored_line_ids()
-    tables = gossip_text_tables(speakers, english, translations, natives, broadcast_ids,
+    shown = {line_id: rows + [(kind, npc_id, race, other, flavor)
+                              for kind, npc_id, race, gender, flavor in rows
+                              for other in sexes.get((kind, npc_id), ()) if other != gender]
+             for line_id, rows in speakers.items()}
+    tables = gossip_text_tables(shown, english, translations, natives, broadcast_ids,
                                 broadcast_texts, ignored)
     aliases = gossip_aliases(speakers, broadcast_ids, ignored, merges)
-    write_gossip_text(out_dir, tables, aliases)
+    wordings = quest_wording_tables(quest_english, quest_translations, quest_natives, ignored)
+    write_gossip_text(out_dir, tables, aliases, wordings)
     write_aliases_json(aliases_path, aliases)
     if verbose:
         for lang in CLIENT_LOCALES:
             count = sum(len(texts) for kind in tables[lang].values() for texts in kind.values())
-            print(f"wrote {lang}.lua: {count} texts")
+            print(f"wrote {lang}.lua: {count} texts, "
+                  f"{len(wordings[lang])} quest moments in several wordings")
         print(f"wrote Aliases.lua: {len(aliases)} stems with aliases")

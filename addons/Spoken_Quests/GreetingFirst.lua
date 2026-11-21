@@ -11,6 +11,8 @@ setfenv(1, VoiceOver)
 GreetingFirst = {}
 
 local FALLBACK, END_GAP, POLL = 1.5, 0.05, 0.025
+-- Two volumes this close are the same level.
+local SAME_LEVEL = 0.00001
 -- How long a voice has to show up before there is taken to be none, and the longest wait.
 local DISCOVERY, LONGEST = 0.25, 10
 -- The handles asked about either side of the marker, how many a poll asks, and how many
@@ -48,12 +50,12 @@ end
 --- Whether a Dialog level can't be told from other sounds: 100% is shared with every sound on the
 --- Master channel, and any other level with SFX, Music or Ambience at it.
 local function Shared(dialog)
-    if math.abs(dialog - 1) < 0.00001 then
+    if math.abs(dialog - 1) < SAME_LEVEL then
         return true
     end
     for _, channel in ipairs(OTHER_CHANNELS) do
         local volume = Number("Sound_" .. channel .. "Volume")
-        if not volume or math.abs(volume - dialog) < 0.00001 then
+        if not volume or math.abs(volume - dialog) < SAME_LEVEL then
             return true
         end
     end
@@ -81,10 +83,7 @@ end
 --- window, so the level has to be apart already. Returns whether it moved.
 function GreetingFirst:SetDialogApart()
     local dialog = Number("Sound_DialogVolume")
-    if not dialog or dialog <= 0 then
-        return false
-    end
-    if not Shared(dialog) then
+    if not dialog or dialog <= 0 or not Shared(dialog) then
         return false
     end
     for _, step in ipairs({ -0.01, 0.01, -0.02, 0.02, -0.03, 0.03 }) do
@@ -247,11 +246,14 @@ function GreetingFirst:Setup()
         return
     end
     self.ready = true
-    Player.source:AddGate(function()
-        if GreetingFirst:IsWaiting() then
-            return L.QUEUE_HELD_GREETING
-        end
-    end)
+    -- Quest, gossip and chat lines are three sources: each waits for the NPC's greeting.
+    for _, source in ipairs({ Player.source, Player.gossipSource, Player.chatterSource }) do
+        source:AddGate(function()
+            if GreetingFirst:IsWaiting() then
+                return L.QUEUE_HELD_GREETING
+            end
+        end)
+    end
     local frame = CreateFrame("Frame")
     for _, event in ipairs({ "GOSSIP_CLOSED", "QUEST_FINISHED" }) do
         pcall(frame.RegisterEvent, frame, event)

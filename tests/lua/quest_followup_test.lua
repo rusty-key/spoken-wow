@@ -49,6 +49,11 @@ local FIXTURE = {
             { id = 61, speaker = SPEAKER, delay = 2, chat = "say", male = "Forward!", female = "Forward!" },
             { id = 62, speaker = SPEAKER, delay = 5, chat = "yell", male = "Victory!", female = "Victory!" },
         },
+        -- Mok'Morokk's shape: a creature's $r, which the server writes with a capital.
+        [308] = {
+            { id = 80, step = 1, speaker = SPEAKER, delay = 0, chat = "say",
+                male = "Puny $r wanna fight Overlord Mok'Morokk?", female = "Puny $r wanna fight Overlord Mok'Morokk?" },
+        },
         -- Another speaker, whose line queues behind the turn-in's own voiceover.
         [303] = {
             { id = 20, step = 1, speaker = 777, delay = 0, chat = "say", male = "Done.", female = "Done." },
@@ -67,7 +72,7 @@ local FIXTURE = {
 }
 
 local lookup = { [GOSSIP_HASH] = 2 }
-for _, q in ipairs({ 300, 301, 302, 303, 305, 306, 307 }) do
+for _, q in ipairs({ 300, 301, 302, 303, 305, 306, 307, 308 }) do
     lookup[q .. "-accept"] = 2; lookup[q .. "-complete"] = 2
 end
 
@@ -119,13 +124,13 @@ local queued = {}
 local booted
 --- Load the addon with `packs` installed (default: RECORDED_PACK). Each entry is
 --- { folder, language (nil = declares none), module = the data module it registers }.
-local function Boot(client, packs, locale)
+local function Boot(packs, locale)
     -- The last boot's frames still hear every event this harness fires, and its Followup
     -- would match and play the same chat through its own packs.
     if booted and booted.Followup.frame then
         booted.Followup.frame:UnregisterAllEvents()
     end
-    stub.SetClient(client or "11509"); stub.ResetSound(); stub.ResetTimers()
+    stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers()
     stub.ldbObjects = {}; stub.dbIcons = {}
     world.questID = 0; stub.ShowPanel(nil); world.gossipText = nil; world.greetingText = nil
     world.playerName = "Tester"; world.unitSex = 2
@@ -202,10 +207,17 @@ Expect("...and is consumed", #VO.Followup.armed, 1)
 Say("Thanks, Tester!", SPEAKER_GUID)
 Expect("the same line said again does not replay", Keys(), "line-1")
 
--- Double spaces collapsed, gender and race/class tokens filled for this player.
-Say("Well done. He is a fine Dwarf Paladin.", SPEAKER_GUID)
+-- Double spaces collapsed, gender and race/class tokens filled for this player: $r and $c in
+-- lower case, as the client writes them.
+Say("Well done. He is a fine dwarf paladin.", SPEAKER_GUID)
 Expect("tokens and whitespace are normalised before comparing", Keys(), "line-1, line-2")
 Expect("...and nothing is left armed", #VO.Followup.armed, 0)
+
+-- The server writes a creature's $r with a capital; letter case is not compared.
+Reset()
+stub.FireEvent("QUEST_TURNED_IN", 308, 0, 0)
+Say("Puny Dwarf wanna fight Overlord Mok'Morokk?", SPEAKER_GUID)
+Expect("a line whose race arrives capitalised still matches", Keys(), "line-80")
 
 ---------------------------------------------------------------- another player's turn-in
 Reset()
@@ -349,7 +361,7 @@ VO.Addon:SetAutoplay(true)
 -- A line with no recording is silent: a borrowed clip - the speaker's gossip, the quest's
 -- own accept or complete - would say other words in the NPC's voice under this line's text.
 for i = #queued, 1, -1 do queued[i] = nil end
-VO, Spoken = Boot(nil, { OLD_PACK })
+VO, Spoken = Boot({ OLD_PACK })
 Reset()
 stub.FireEvent("QUEST_TURNED_IN", 300, 0, 0)
 Say("Thanks, Tester!", SPEAKER_GUID)
@@ -372,26 +384,6 @@ stub.Advance(6)
 Expect("/spq followup plays nothing for a line with no recording", Keys(), "")
 Expect("...and says so beside it", said[1] and said[1]:find("(no recording yet — silent)", 1, true) ~= nil, true)
 
----------------------------------------------------------------- a legacy client
--- No QUEST_TURNED_IN there: the turn-in is the GetQuestReward call, made while the reward
--- dialog still says which quest it is.
-_G.GetQuestReward = function() end
-_G.AcceptQuest = function() end
-for i = #queued, 1, -1 do queued[i] = nil end
-VO, Spoken = Boot("3.3.5")
-world.questID = 300; world.title = "Test Quest"; world.rewardText = "Done."
-_G.GetQuestReward(1)
-world.questID = 0
-Expect("3.3.5: GetQuestReward arms the turn-in", #VO.Followup.armed, 2)
-stub.FireEvent("QUEST_TURNED_IN", 302, 0, 0)
-Expect("...and QUEST_TURNED_IN, which it has no such event for, is not listened to", #VO.Followup.armed, 2)
-Say("Thanks, Tester!", nil)
-Expect("...and the line matches on its text", Keys(), "line-1")
-world.questID = 301; world.questText = "Go."
-_G.AcceptQuest()
-world.questID = 0
-Expect("3.3.5: AcceptQuest arms the start lines", #VO.Followup.armed, 2)
-
 ---------------------------------------------------------------- the line's own recording
 -- Each line's file is named by speaker and broadcast text id, and only the pack that holds
 -- the audio answers for it.
@@ -404,17 +396,22 @@ local LOOKUP = {
 FIXTURE["end"][304] = { { id = 40, delay = 0, chat = "say", male = "Hm.", female = "Hm." } }
 
 for i = #queued, 1, -1 do queued[i] = nil end
-VO, Spoken = Boot(nil, { { folder = "NewPack", module = FollowupPack(LOOKUP,
+VO, Spoken = Boot({ { folder = "NewPack", module = FollowupPack(LOOKUP,
     { [STEM] = 3, ["10-dwarf-male-standard"] = 2, ["40-human-male-standard"] = 1, [GOSSIP_HASH] = 2 },
     { [SPEAKER] = { ["Hail."] = GOSSIP_HASH } }) } })
+VO.DataModules:GetModule("NewPack").WordTimesByFileName = { [STEM] = "0 .8" }
+VO.DataModules:GetModule("NewPack").TextByFileName = { [STEM] = "Pack words." }
 Reset()
 stub.FireEvent("QUEST_TURNED_IN", 300, 0, 0)
 Say("Thanks, Tester!", SPEAKER_GUID)
 Expect("a pack's FollowupLookup plays the line's own recording", Keys(), STEM)
+Expect("...timed by its word times", queued[1] and queued[1].present.timings, "0 .8")
+Expect("...captioned with the pack's words", queued[1] and queued[1].present.transcript, "Pack words.")
+Expect("...the clip's text staying what was said", queued[1] and queued[1].text, "Thanks, Tester!")
 Expect("...from the pack's follow-up folder", queued[1] and queued[1].path,
     [[Interface\AddOns\NewPack\]] .. FOLLOWUP_DIR .. STEM .. ".ogg")
 Expect("...with the pack's length for it", queued[1] and queued[1].length, 3)
-Say("Well done. He is a fine Dwarf Paladin.", SPEAKER_GUID)
+Say("Well done. He is a fine dwarf paladin.", SPEAKER_GUID)
 Expect("a line the lookup names but the pack has no audio for is silent", Keys(), STEM)
 Expect("...and recorded as having no recording", VO.Debug.runtime.stage, "followup-no-recording")
 
@@ -433,7 +430,7 @@ Expect("/spq followup plays the recording where a pack has one, and nothing wher
 ---------------------------------------------------------------- the player's gender
 -- The m-/f- variant is the same one quest lines use, and is preferred when the pack has it.
 for i = #queued, 1, -1 do queued[i] = nil end
-VO, Spoken = Boot(nil, { { folder = "NewPack", module = FollowupPack(LOOKUP,
+VO, Spoken = Boot({ { folder = "NewPack", module = FollowupPack(LOOKUP,
     { [STEM] = 3, ["m-" .. STEM] = 4 }) } })
 Reset()
 stub.FireEvent("QUEST_TURNED_IN", 300, 0, 0)
@@ -458,7 +455,7 @@ local LANGUAGE_PACKS = {
         { [SPEAKER] = { ["Sei gegrüßt."] = GOSSIP_HASH } }) },
 }
 for i = #queued, 1, -1 do queued[i] = nil end
-VO, Spoken = Boot(nil, LANGUAGE_PACKS, "deDE")
+VO, Spoken = Boot(LANGUAGE_PACKS, "deDE")
 stub.FireEvent("QUEST_TURNED_IN", 300, 0, 0)
 Say("Danke, Tester!", SPEAKER_GUID)
 Expect("the selected language's pack answers first", queued[1] and queued[1].path,
@@ -469,7 +466,7 @@ Expect("...and a line only the fallback language has falls back to it", queued[2
 Expect("...recording the language it was answered in", queued[2] and queued[2].language, "enUS")
 
 for i = #queued, 1, -1 do queued[i] = nil end
-VO, Spoken = Boot(nil, LANGUAGE_PACKS, "deDE")
+VO, Spoken = Boot(LANGUAGE_PACKS, "deDE")
 VO.Addon.db.profile.Audio.FallbackLanguage = "none"
 stub.FireEvent("QUEST_TURNED_IN", 300, 0, 0)
 Say("Danke, Tester!", SPEAKER_GUID)
@@ -477,6 +474,48 @@ Say("Gut gemacht.", SPEAKER_GUID)
 Expect("with no fallback, the English recording is not played, nor the German gossip in its place",
     Keys(), STEM)
 Expect("...and the line is recorded as having no recording", VO.Debug.runtime.stage, "followup-no-recording")
+
+---------------------------------------------------------------- an NPC split by sex
+-- A guard drawn as a man or a woman: the woman's file plays while her sex can be read off a
+-- unit the player has up, the man's when it cannot.
+local SPLIT_PACK = { folder = "SplitPack", module = FollowupPack({ [SPEAKER] = { [1] = "line-1" } },
+    { ["line-1"] = 2, ["line-1-f"] = 2 }) }
+SPLIT_PACK.module.FollowupLookupByNPCSex = { [SPEAKER] = { [1] = { [2] = "line-1", [3] = "line-1-f" } } }
+for i = #queued, 1, -1 do queued[i] = nil end
+VO, Spoken = Boot({ SPLIT_PACK })
+local npcGUID = world.npcGUID
+world.npcGUID = SPEAKER_GUID; world.unitSex = 3
+stub.FireEvent("QUEST_TURNED_IN", 300, 0, 0)
+Say("Thanks, Tester!", SPEAKER_GUID)
+Expect("a split NPC seen as a woman says her own follow-up", Keys(), "line-1-f")
+Reset()
+world.npcGUID = npcGUID
+stub.FireEvent("QUEST_TURNED_IN", 300, 0, 0)
+Say("Thanks, Tester!", SPEAKER_GUID)
+Expect("...and the man's while no unit tells her sex", Keys(), "line-1")
+world.unitSex = 2
+
+---------------------------------------------------------------- an NPC split by body
+-- A Reveler drawn as a dwarf or a gnome: the gnome's file plays once its model has loaded, the
+-- sex's before.
+local BODY_PACK = { folder = "BodyPack", module = FollowupPack({ [SPEAKER] = { [1] = "line-1" } },
+    { ["line-1"] = 2, ["line-1-g"] = 2 }) }
+BODY_PACK.module.FollowupLookupByNPCSex = { [SPEAKER] = { [1] = { [2] = "line-1" } } }
+BODY_PACK.module.FollowupLookupByNPCBody = { [SPEAKER] = { [1] = { ["dwarf-male"] = "line-1", ["gnome-male"] = "line-1-g" } } }
+BODY_PACK.module.BodyByModelFileID = { [119159] = "gnome-male" }
+for i = #queued, 1, -1 do queued[i] = nil end
+VO, Spoken = Boot({ BODY_PACK })
+world.npcGUID = SPEAKER_GUID; world.unitSex = 2
+stub.FireEvent("QUEST_TURNED_IN", 300, 0, 0)
+Say("Thanks, Tester!", SPEAKER_GUID)
+Expect("a split speaker whose model is not in says its sex's follow-up", Keys(), "line-1")
+Reset()
+world.modelFileID = 119159
+VO.NPCModel:Prime(SPEAKER_GUID, "npc"); stub.FinishModelLoad()
+stub.FireEvent("QUEST_TURNED_IN", 300, 0, 0)
+Say("Thanks, Tester!", SPEAKER_GUID)
+Expect("a gnome speaker's follow-up is the gnome's file", Keys(), "line-1-g")
+world.npcGUID = npcGUID; world.modelFileID = nil
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll quest follow-up tests passed")

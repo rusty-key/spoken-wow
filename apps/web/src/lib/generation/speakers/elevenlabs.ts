@@ -11,10 +11,11 @@ import "server-only";
 import { elevenLabsCode, type Lang } from "@/lib/lang";
 import type { ElevenLabsOptions } from "@/lib/voices/elevenlabs";
 
-import { currentLocator } from "../dictionary";
+import { dictionaryFor } from "../dictionary";
+import { failure } from "../errors";
 import type { ElevenLabsSettings } from "../preference";
 import { generationStatus } from "../status";
-import { textToDialogue, textToSpeech } from "../tts";
+import { message, textToDialogue, textToSpeech } from "../tts";
 import type { Speaker, SpeakRequest, Spoken, Voices } from "./speaker";
 
 /**
@@ -61,7 +62,15 @@ export function elevenLabsSpeaker(
       // Read per request, not per batch: an admin saving the lexicon mid-batch should affect
       // the lines after the save, and pinning one locator for a whole batch would record a
       // version that some of its takes were not made with.
-      const dictionary = await currentLocator(lang);
+      let dictionary;
+      try {
+        dictionary = await dictionaryFor(lang, options);
+      } catch (error) {
+        return {
+          ok: false,
+          failure: failure("upstream", `preparing the ${lang} dictionary: ${message(error)}`),
+        };
+      }
       const languageCode = elevenLabsCode(lang);
 
       // Narration goes to the dialogue endpoint, which stitches the turns into one mp3. Two

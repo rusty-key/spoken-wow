@@ -8,7 +8,7 @@
 -- live version and a history from the first day rather than after the first regret.
 --
 -- VERSIONED LIKE lore_line. A re-extract inserts a new version and promotes it only when
--- the current version is itself 'extracted'. Without that, `make books-import` is a command
+-- the current version is itself 'extracted'. Without that, `make readables-import` is a command
 -- that silently discards corrections, and therefore one nobody dares run against a corpus
 -- somebody has been editing.
 --

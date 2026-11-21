@@ -1,10 +1,9 @@
 "use client";
 
-import FilterChip from "@/components/FilterChip";
-import type { MadeBy, MadeByFacets } from "@/lib/takes/made-by";
+import type { MadeBy } from "@/lib/takes/made-by";
 
 /**
- * The "Made by" column and its two filter chips, shared by the three explorers.
+ * The "Made by" column, shared by the three explorers.
  *
  * Drawn only when the search answered with facets, which it does only for somebody working
  * in the language. The server decides, not a client-side grant check, so the column never
@@ -33,34 +32,5 @@ export function MadeByCell({ madeBy }: { madeBy: MadeBy | null }) {
         </>
       )}
     </td>
-  );
-}
-
-export function MadeByChips({
-  facets,
-  model,
-  author,
-  onChange,
-}: {
-  facets: MadeByFacets;
-  model: string | undefined;
-  author: string | undefined;
-  onChange: (next: { model?: string; author?: string }) => void;
-}) {
-  return (
-    <>
-      <FilterChip
-        label="model"
-        value={model}
-        options={facets.models.map((value) => ({ value, label: value }))}
-        onChange={(model) => onChange({ model })}
-      />
-      <FilterChip
-        label="author"
-        value={author}
-        options={facets.authors.map(({ id, name }) => ({ value: id, label: name }))}
-        onChange={(author) => onChange({ author })}
-      />
-    </>
   );
 }

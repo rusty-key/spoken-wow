@@ -17,7 +17,15 @@ import {
   DESCRIPTION_MAX,
   DESCRIPTION_MIN,
 } from "@/lib/contributions/contributions";
-import { decodeFragment, type DecodeError, parseEnvelope, type ParseError } from "@/lib/contributions/envelope";
+import {
+  decodeFragment,
+  type DecodeError,
+  parseEnvelope,
+  type ParseError,
+  takeFragment,
+} from "@/lib/contributions/envelope";
+import { browserInstallId } from "@/lib/contributions/browser-install";
+import { sendFailureMessage } from "@/lib/contributions/send-failure";
 
 const FIELD_LABELS: Record<string, string> = {
   quest: "Quest",
@@ -35,6 +43,10 @@ const FIELD_LABELS: Record<string, string> = {
   addon: "Addon",
   x: "x",
   y: "y",
+  // The site takes the name back out of the text and does not keep it (lib/contributions/reader.ts).
+  reader: "Your character (not kept)",
+  readerClass: "Your class",
+  readerRace: "Your race",
 };
 
 const MESSAGES: Record<ParseError, string> = {
@@ -95,16 +107,14 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
   // rather than merely read, so it cannot linger in history or get shared onward carrying the
   // decoded game text a second time.
   useEffect(() => {
-    const hash = window.location.hash;
-    if (!hash.startsWith("#e1=")) {
+    const fragment = takeFragment();
+    if (fragment === null) {
       setRead(true);
       return;
     }
 
-    window.history.replaceState(null, "", window.location.pathname + window.location.search);
-
     let cancelled = false;
-    decodeFragment(hash.slice("#e1=".length)).then((result) => {
+    decodeFragment(fragment).then((result) => {
       if (cancelled) return;
       if (result.ok) {
         setRaw(result.text);
@@ -121,7 +131,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
   const preview = previewOf(raw);
   // A place with no lore: the addon can only name it, so what is sent is the player's own
   // description of it -- required, and in place of the optional note every other source gets.
-  const isPlace = preview.ok && preview.source === "zones";
+  const isPlace = preview.ok && preview.source === "places";
   const described = description.trim().length >= DESCRIPTION_MIN;
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -140,6 +150,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
         name: signedInAs ? null : data.get("name"),
         email: signedInAs ? null : data.get("email"),
         website: data.get("website"),
+        installId: browserInstallId(),
       }),
     }).catch(() => null);
 
@@ -152,7 +163,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
     setError(
       failure?.error === "describe"
         ? `Describe the place in a sentence or two -- at least ${DESCRIPTION_MIN} characters.`
-        : "That did not go through. Try again in a minute.",
+        : sendFailureMessage(response?.status ?? null, failure?.error),
     );
   }
 

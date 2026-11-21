@@ -36,8 +36,8 @@ describe("previewOf", () => {
   });
 
   it("says which source the paste is, which decides what the form asks for", () => {
-    const preview = previewOf(build("zones", { map: "1537", locale: "enUS" }));
-    expect(preview).toMatchObject({ ok: true, source: "zones" });
+    const preview = previewOf(build("places", { map: "1537", locale: "enUS" }));
+    expect(preview).toMatchObject({ ok: true, source: "places" });
   });
 
   it("explains a bad paste in the reader's terms, not the parser's", () => {
@@ -55,19 +55,19 @@ describe("previewOf", () => {
   // enabled Send, and then failed at submissionFrom with a generic "did not go through".
   describe("refuses what submissionFrom would, before Send is ever enabled", () => {
     it("a page id that isn't a number", () => {
-      const preview = previewOf(build("books", { page: "abc", locale: "enUS" }, "Words."));
+      const preview = previewOf(build("readables", { page: "abc", locale: "enUS" }, "Words."));
       expect(preview.ok).toBe(false);
       if (preview.ok) return;
       expect(preview.message).toMatch(/page id/i);
     });
 
-    it("a zones envelope carrying text, which the addon never sends", () => {
+    it("a places envelope carrying text, which the addon never sends", () => {
       const preview = previewOf(
-        build("zones", { map: "1537", subzone: "A Nook", locale: "enUS" }, "not from the addon"),
+        build("places", { map: "1537", subzone: "A Nook", locale: "enUS" }, "not from the addon"),
       );
       expect(preview.ok).toBe(false);
       if (preview.ok) return;
-      expect(preview.message).toMatch(/zones/i);
+      expect(preview.message).toMatch(/from the addon never/i);
     });
 
     it("a quests envelope with no text, which is the whole payload", () => {

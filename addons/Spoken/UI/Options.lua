@@ -1,11 +1,9 @@
 setfenv(1, SpokenEnv)
 
 -- The player's settings: player-wide things only. Each feature addon keeps its own panel
--- and, where the Settings API exists, nests it under this one.
+-- and nests it under this one.
 --
--- Settings.RegisterCanvasLayoutCategory is the modern path and exists on every current
--- client. The three legacy clients have no Settings API at all; there the same
--- panel is a movable window opened with /spoken options. One builder, two hosts.
+-- Registered with Settings.RegisterCanvasLayoutCategory, which every supported client has.
 Options = {}
 
 -- The game's settings list sets its rows 25 in from the canvas's left.
@@ -14,52 +12,90 @@ local TOP = 16    -- where the page's title starts
 local BOTTOM = 16 -- the margin under the last row
 local panel
 local scroller
-local pendingLinks = {}
 
--- Rows, headings and the spacing between them come from UI/Layout.lua, the file every
--- Spoken addon carries a copy of, so the three panels read alike.
+-- Rows, headings and the spacing between them come from UI/Layout.lua, which every module's page
+-- is built with too, so the pages read alike.
 local Layout = SpokenLayout
+
+-- Spoken's files name their strings here, and the words are looked up as they are read: an
+-- interface pack's strings arrive after these files load (Interface.lua), and a word copied as a
+-- file loads would stay in the language before them. tests/lua/interface_packs_test.lua holds them
+-- to it.
+local function Words(keys)
+    return setmetatable({}, { __index = function(_, name) return keys[name] and L[keys[name]] end })
+end
 
 local CHANNELS = { "Master", "SFX", "Music", "Ambience", "Dialog" }
 -- Stored names stay English: playback passes them to the sound API.
-local CHANNEL_LABELS = {
-    Master = L.OPT_CHANNEL_MASTER,
-    SFX = L.OPT_CHANNEL_SFX,
-    Music = L.OPT_CHANNEL_MUSIC,
-    Ambience = L.OPT_CHANNEL_AMBIENCE,
-    Dialog = L.OPT_CHANNEL_DIALOG,
-}
+local CHANNEL_LABELS = Words({
+    Master = "OPT_CHANNEL_MASTER",
+    SFX = "OPT_CHANNEL_SFX",
+    Music = "OPT_CHANNEL_MUSIC",
+    Ambience = "OPT_CHANNEL_AMBIENCE",
+    Dialog = "OPT_CHANNEL_DIALOG",
+})
 
 -- The ways of showing a line, by the name Addon:PlayerStyle gives each.
-local STYLE_LABELS = {
-    minimal = L.OPT_STYLE_MINIMAL,
-    classic = L.OPT_STYLE_CLASSIC,
-    dialogueui = L.OPT_STYLE_DIALOGUEUI,
-    subtitle = L.OPT_STYLE_SUBTITLE,
-    none = L.OPT_STYLE_NONE,
+local STYLE_LABELS = Words({
+    minimal = "OPT_STYLE_MINIMAL",
+    classic = "OPT_STYLE_CLASSIC",
+    dialogueui = "OPT_STYLE_DIALOGUEUI",
+    subtitle = "OPT_STYLE_SUBTITLE",
+    none = "OPT_STYLE_NONE",
+})
+
+-- The game's key bindings list these in a Spoken category (Bindings.xml): each by its binding and
+-- its string's key.
+local BINDINGS = {
+    { "SPOKEN_PLAYPAUSE", "BIND_PLAYPAUSE" },
+    { "SPOKEN_SKIP", "BIND_SKIP" },
+    { "SPOKEN_STOP", "BIND_STOP" },
+    { "SPOKEN_COMPENDIUM", "BIND_COMPENDIUM" },
 }
 
--- The game's key bindings list these under a Spoken heading (Bindings.xml). Set here, after
--- the locale files, so the names are in the player's language.
-_G.BINDING_HEADER_SPOKEN = "Spoken"
-_G.BINDING_NAME_SPOKEN_PLAYPAUSE = L.BIND_PLAYPAUSE
-_G.BINDING_NAME_SPOKEN_SKIP = L.BIND_SKIP
-_G.BINDING_NAME_SPOKEN_STOP = L.BIND_STOP
-local BINDINGS = {
-    { "SPOKEN_PLAYPAUSE", L.BIND_PLAYPAUSE },
-    { "SPOKEN_SKIP", L.BIND_SKIP },
-    { "SPOKEN_STOP", L.BIND_STOP },
-}
--- The parts of Spoken by source key, named as their pages are, each with the game's own icon
--- for what it reads and the order its page is listed in under Spoken.
+--- Name the bindings in the player's language. The category is the name of a string global the
+--- client shows as its title. Called as this file loads, after the locale files, and again when an
+--- interface pack's strings are laid over them.
+function Options:NameBindings()
+    _G.BINDING_HEADER_SPOKEN = "Spoken"
+    for _, binding in ipairs(BINDINGS) do _G["BINDING_NAME_" .. binding[1]] = L[binding[2]] end
+end
+Options:NameBindings()
+
+-- The parts of Spoken by source key, named as their pages are (the keys of their strings), each
+-- with the game's own icon for what it reads and the order its page is listed in under Spoken.
 local PARTS = {
-    { key = "quests", label = L.OPT_PART_QUESTS, text = L.OPT_PART_QUESTS_TEXT, tip = L.OPT_PART_QUESTS_TIP,
+    { key = "quests", label = "OPT_PART_QUESTS", text = "OPT_PART_QUESTS_TEXT",
         icon = [[Interface\Icons\INV_Scroll_03]], order = 1 },
-    { key = "books", label = L.OPT_PART_BOOKS, text = L.OPT_PART_BOOKS_TEXT, tip = L.OPT_PART_BOOKS_TIP,
-        icon = [[Interface\Icons\INV_Misc_Book_09]], order = 2 },
-    { key = "zones", label = L.OPT_PART_ZONES, text = L.OPT_PART_ZONES_TEXT, tip = L.OPT_PART_ZONES_TIP,
+    { key = "gossip", label = "OPT_PART_GOSSIP", text = "OPT_PART_GOSSIP_TEXT",
+        icon = [[Interface\Icons\UI_Chat]], order = 2 },
+    { key = "places", label = "OPT_PART_PLACES", text = "OPT_PART_PLACES_TEXT",
         icon = [[Interface\Icons\INV_Misc_Map02]], order = 3 },
+    { key = "readables", label = "OPT_PART_READABLES", text = "OPT_PART_READABLES_TEXT",
+        icon = [[Interface\Icons\INV_Misc_Book_09]], order = 4 },
 }
+
+--- The parts Spoken's page lists: the four it knows by name, then any other source that
+--- registered, with the title, icon, `about` line and order it gave.
+function Options:Parts()
+    local parts, known = {}, {}
+    for _, part in ipairs(PARTS) do
+        table.insert(parts, { key = part.key, label = L[part.label], text = L[part.text], icon = part.icon,
+            order = part.order })
+        known[part.key] = true
+    end
+    for key, source in Sources:Iterate() do
+        if not known[key] then
+            table.insert(parts, { key = key, label = source.title, text = source.about or "",
+                icon = source.icon, order = source.order })
+        end
+    end
+    table.sort(parts, function(a, b)
+        if a.order ~= b.order then return a.order < b.order end
+        return a.key < b.key
+    end)
+    return parts
+end
 
 -- Sketches of the ways of showing a line, in flat colour, for their tiles: a portrait in
 -- gold, words as pale bars, a window as a darker box. Sized for four tiles to a row, and
@@ -86,7 +122,7 @@ local SKETCHES = {
         R(art, x + 41, 42, 34, 2, 0.48, 0.58, 0.65, 0.6)
     end,
     -- Parchment, a header strip with the face at its left and the title past it, the words
-    -- in dark ink, a slim scrollbar beside them.
+    -- in dark ink, the progress line under them.
     dialogueui = function(art)
         local R, w = Layout.Rect, art.width
         local x = (w - 60) / 2
@@ -97,7 +133,6 @@ local SKETCHES = {
         R(art, x + 6, 26, 44, 2, 0.19, 0.17, 0.13, 0.85)
         R(art, x + 6, 32, 40, 2, 0.19, 0.17, 0.13, 0.85)
         R(art, x + 6, 38, 30, 2, 0.19, 0.17, 0.13, 0.85)
-        R(art, x + 53, 26, 2, 14, 0.5, 0.36, 0.24, 0.8)
         R(art, x + 6, 47, 48, 1, 0.5, 0.36, 0.24, 0.8)
     end,
     subtitle = function(art)
@@ -116,59 +151,184 @@ local SKETCHES = {
         end
     end,
 }
-local STYLE_TEXTS = {
-    minimal = L.OPT_STYLE_MINIMAL_TEXT,
-    classic = L.OPT_STYLE_CLASSIC_TEXT,
-    dialogueui = L.OPT_STYLE_DIALOGUEUI_TEXT,
-    subtitle = L.OPT_STYLE_SUBTITLE_TEXT,
-    none = L.OPT_STYLE_NONE_TEXT,
-}
-local STYLE_TIPS = {
-    minimal = L.WELCOME_STYLE_MINIMAL_TIP,
-    classic = L.WELCOME_STYLE_CLASSIC_TIP,
-    dialogueui = L.WELCOME_STYLE_DIALOGUEUI_TIP,
-    subtitle = L.WELCOME_STYLE_SUBTITLE_TIP,
-    none = L.WELCOME_STYLE_NONE_TIP,
-}
--- The languages a voice pack can speak: the same list, in the same order, as each module's
--- (SpokenQuests' Language.LOCALES, SpokenBooks.LOCALES).
-LANGUAGES = {
-    { code = "enUS", native = "English" },
-    { code = "deDE", native = "Deutsch" },
-    { code = "esES", native = "Español (España)" },
-    { code = "esMX", native = "Español (América Latina)" },
-    { code = "frFR", native = "Français" },
-    -- No client runs in Italian, so "Auto" never lands on it; a player picks it by hand.
-    { code = "itIT", native = "Italiano" },
-    { code = "ptBR", native = "Português" },
-    { code = "ruRU", native = "Русский" },
-    { code = "koKR", native = "한국어" },
-    { code = "zhCN", native = "简体中文" },
-    { code = "zhTW", native = "繁體中文" },
-}
+local STYLE_TEXTS = Words({
+    minimal = "OPT_STYLE_MINIMAL_TEXT",
+    classic = "OPT_STYLE_CLASSIC_TEXT",
+    dialogueui = "OPT_STYLE_DIALOGUEUI_TEXT",
+    subtitle = "OPT_STYLE_SUBTITLE_TEXT",
+    none = "OPT_STYLE_NONE_TEXT",
+})
+-- Whether a font draws `text`: the settings' font object, or the file `path`. A glyph the font
+-- lacks draws as nothing or as a box, so the text is measured against as many U+0378, a code point
+-- Unicode has never assigned and so no font has: the same width means none of it drew. Han and
+-- Hangul, whose glyphs are all as wide as each other, are measured one character at a time and
+-- every one has to draw: a font with a few Hanja draws part of a Chinese name. A file the client
+-- cannot load draws nothing.
+local BOX = "\205\184"
+local probes = {}
+local function Width(probe, text)
+    probe:SetText(text)
+    return probe:GetStringWidth() or 0
+end
+-- U+3400 to U+9FFF (Han) and U+AC00 to U+D7A3 (Hangul), from a three-byte character.
+local function Square(char)
+    local a, b, c = char:byte(1, 3)
+    local code = (a - 224) * 4096 + (b - 128) * 64 + (c - 128)
+    return (code >= 0x3400 and code <= 0x9FFF) or (code >= 0xAC00 and code <= 0xD7A3)
+end
+local function FontDraws(text, path)
+    if not (UIParent and UIParent.CreateFontString) then return not path end
+    local key = path or false
+    local probe = probes[key]
+    if probe == nil then
+        probe = UIParent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        probe:Hide()
+        if path and probe:SetFont(path, 12, "") == false then probe = false end
+        probes[key] = probe
+    end
+    if not probe then return false end
+    local width, count = Width(probe, text), 0
+    for _ in string.gmatch(text, "[%z\1-\127\194-\244][\128-\191]*") do count = count + 1 end
+    local drew = width > 0 and math.abs(width - Width(probe, string.rep(BOX, count))) > 0.5
+    if drew then
+        local box
+        for char in string.gmatch(text, "[\227-\237][\128-\191][\128-\191]") do
+            if Square(char) then
+                box = box or Width(probe, BOX)
+                if math.abs(Width(probe, char) - box) <= 0.5 then
+                    drew = false
+                    break
+                end
+            end
+        end
+    end
+    probe:SetText("")
+    return drew
+end
+
+-- Whether a font draws the language `code`: its own name, and the characters only it has. A
+-- language the registry does not know, or that names itself in no script, draws nothing.
+function Options:LanguageDraws(code, path)
+    local language = Languages:Get(code)
+    return language ~= nil and language.native ~= nil
+        and FontDraws(language.native .. (language.sample or ""), path)
+end
+
+--- A language's name in text drawn in the game's font, one for every module: its own where the
+--- settings' font can draw it, in English where it cannot (Korean on a German client), and the code
+--- where a pack names it in neither. A built-in Latin language needs no probe. A name only a
+--- pack's font draws stays English here, because this text has no way to wear that font.
+function Options:LanguageName(code)
+    local language = Languages:Get(code)
+    if not language then return code end
+    if language.builtin and language.script == "latin" then return language.native end
+    if self:LanguageDraws(code) then return language.native end
+    return language.name or code
+end
+
+--- A voice's name: its language's, as `LanguageName` gives it ("Deutsch"), or for a team's voice
+--- with the team's name after it ("Deutsch · Stimmen"). `menu` names the language as
+--- `MenuLanguageName` does, for a row drawn in `LanguageFace`.
+function Options:VoiceName(code, menu)
+    local lang, team = Languages:SplitVoice(code)
+    if not lang then return tostring(code) end
+    local name = menu and self:MenuLanguageName(lang) or self:LanguageName(lang)
+    if not team then return name end
+    local voice = Languages:Voice(code)
+    return format(L.OPT_VOICE_TEAM_FMT, name, voice and voice.teamName or team)
+end
+
+--- The name a menu entry shows, for a menu that draws it in `LanguageFace`: its own where only the
+--- pack's font can draw it, else what `LanguageName` gives.
+function Options:MenuLanguageName(code)
+    if self:LanguageFace(code) then return Languages:Get(code).native end
+    return self:LanguageName(code)
+end
+
+--- The pack's font for a language's name in the lists, where the settings' font cannot draw it
+--- but the pack's can; else nil, and the menu keeps the game's font.
+function Options:LanguageFace(code)
+    local language = Languages:Get(code)
+    if not (language and language.font) then return nil end
+    if language.builtin and language.script == "latin" then return nil end
+    if self:LanguageDraws(code) then return nil end
+    return self:LanguageDraws(code, language.font) and language.font or nil
+end
+
+
+
+--- The voices a player may add to their list: "auto", then every installed voice, each language's
+--- own followed by its teams' (Languages:Voices). Read when the menu opens, so that a pack
+--- installed since is there.
+function Options:VoiceChoices()
+    local list = { "auto" }
+    for _, voice in ipairs(Languages:Voices()) do table.insert(list, voice.code) end
+    return list
+end
+
+--- Whether a pack in the voice `code` is installed. "auto" always is: it reads whatever the
+--- client's language has.
+function Options:VoiceInstalled(code)
+    if code == "auto" then return true end
+    local voice = Languages:Voice(code)
+    return voice ~= nil and #voice.folders > 0
+end
+
+--- The voices as the settings list them: the player's list, or while there is none what it would be
+--- built from the old voice language and fallback, which the first change stores.
+function Options:VoiceList()
+    local language = Addon.db.profile.Language
+    if type(language.Voices) == "table" and #language.Voices > 0 then return language.Voices end
+    return Addon:VoiceListFrom(language.Voice, language.Fallback)
+end
 
 --- Show `style` on screen with a sample line, or nil to stop.
 function Options:Preview(style)
     Addon.previewStyle = style
     PlayerFrame:RefreshConfig()
     Transcript:RefreshConfig()
-    if Subtitle then Subtitle:ShowSample(style == "subtitle") end
+    Subtitle:ShowSample(style == "subtitle")
     PlayerFrame:ShowSample(style == "minimal" or style == "classic" or style == "dialogueui")
 end
 
 -- Where Spoken lives outside the game: a row each, its icon and its address to copy, the game being
 -- unable to open a web page.
+local WEBSITE = "https://spoken.quest"
+local function WebsiteURL()
+    -- In the interface's language, where the site has it: a built-in one.
+    local language = Interface:Base()
+    return language == "enUS" and WEBSITE or WEBSITE .. "/" .. language
+end
+
+local CURSEFORGE = "https://www.curseforge.com/wow/addons/"
+local CURSEFORGE_PAGES = {
+    enUS = "spoken-english",
+    deDE = "spoken-german",
+    esES = "spoken-spanish-eu",
+    esMX = "spoken-spanish-al",
+    frFR = "spoken-french",
+    ptBR = "spoken-portuguese",
+    ruRU = "spoken-russian",
+    koKR = "spoken-korean",
+    zhCN = "spoken-chinese-simplified",
+    zhTW = "spoken-chinese-traditional",
+}
+local function CurseForgeURL()
+    return CURSEFORGE .. (CURSEFORGE_PAGES[Interface:Base()] or "spoken")
+end
+
 local LINKS = {
+    { nameKey = "OPT_LINKS_WEBSITE", icon = [[Interface\AddOns\Spoken\icon]], url = WebsiteURL() },
     { name = "GitHub", icon = [[Interface\AddOns\Spoken\Textures\LinkGitHub]],
-        url = "https://github.com/rusty-key/spoken-wow", tip = "LINK_GITHUB_TIP" },
+        url = "https://github.com/rusty-key/spoken-wow" },
     { name = "Discord", icon = [[Interface\AddOns\Spoken\Textures\LinkDiscord]],
-        url = "https://discord.gg/HEGUgn6Yf", tip = "LINK_DISCORD_TIP" },
+        url = "https://spoken.quest/discord" },
     { name = "CurseForge", icon = [[Interface\AddOns\Spoken\Textures\LinkCurseForge]],
-        url = "https://www.curseforge.com/wow/addons/spoken-player", tip = "LINK_CURSEFORGE_TIP" },
+        url = CurseForgeURL() },
     { name = "Wago", icon = [[Interface\AddOns\Spoken\Textures\LinkWago]],
-        url = "https://addons.wago.io/addons/spoken-player", tip = "LINK_WAGO_TIP" },
+        url = "https://addons.wago.io/addons/spoken" },
     { name = "Buy Me a Coffee", icon = [[Interface\AddOns\Spoken\Textures\LinkBuyMeACoffee]],
-        url = "https://buymeacoffee.com/rustykey", tip = "LINK_COFFEE_TIP" },
+        url = "https://buymeacoffee.com/rustykey" },
 }
 Options.LINKS = LINKS
 
@@ -176,8 +336,8 @@ function Options:AddLinks(layout)
     layout:Section(L.OPT_LINKS_TITLE)
     local frames = {}
     for _, link in ipairs(LINKS) do
-        table.insert(frames, layout:Link({ icon = link.icon, title = link.name, url = link.url,
-            tooltip = L[link.tip] .. "|n|n" .. L.OPT_LINKS_TIP }))
+        table.insert(frames, layout:Link({ icon = link.icon, title = link.name or L[link.nameKey], url = link.url,
+            tooltip = L.OPT_LINKS_TIP }))
     end
     return frames
 end
@@ -201,7 +361,7 @@ function Options:PreviewButton(layout)
     local button = layout:HeadingButton(L.STYLE_PREVIEW, function()
         Options:SetPreviewing(not Options.previewing)
         layout:Refresh()
-    end, L.STYLE_PREVIEW_TIP)
+    end)
     layout:OnRefresh(function()
         button:SetText(Options.previewing and L.STYLE_PREVIEW_HIDE or L.STYLE_PREVIEW)
         Layout.FitButton(button)
@@ -210,42 +370,82 @@ function Options:PreviewButton(layout)
     return button
 end
 
--- Feature addons' pages asked for before this panel was registered; see Options:AddPage.
+-- Feature addons' pages asked for before they are registered; see Options:AddPage.
 local pendingPages = {}
+local pagesHeld = true
 
 -- The same parts and ways of showing lines, drawn the same way, in the welcome window.
-Options.PARTS, Options.SKETCHES = PARTS, SKETCHES
-Options.STYLE_LABELS, Options.STYLE_TEXTS, Options.STYLE_TIPS = STYLE_LABELS, STYLE_TEXTS, STYLE_TIPS
+Options.SKETCHES = SKETCHES
+Options.STYLE_LABELS, Options.STYLE_TEXTS = STYLE_LABELS, STYLE_TEXTS
 
---- The ways of showing lines this client can offer, in the order they are listed: the narrator
---- cards, and the legacy window's list. Subtitles Only first, the default; Voice Only last, its
---- card a sound's bars rising and falling, since there is nothing on screen to picture.
+--- Put the window and the subtitles back where they start.
+function Options:ResetPositions()
+    PlayerFrame:Reset()
+    Subtitle:Reset()
+end
+
+--- Open Azeroth's Compendium, or close it.
+function Options:ToggleCompendium()
+    local compendium = _G.SpokenCompendium
+    if compendium and compendium.Toggle then compendium:Toggle() end
+end
+
+--- Spoken's diagnostics in chat, then each module's: what to paste into a report.
+function Options:ShowDiagnostics()
+    Addon:PrintDiagnostics()
+    for _, source in Sources:Iterate() do
+        if type(source.diagnostics) == "function" then
+            local ok, err = pcall(source.diagnostics)
+            if not ok then print("Spoken: " .. tostring(source.key) .. " diagnostics failed: " .. tostring(err)) end
+        end
+    end
+end
+
+--- The ways of showing lines this client can offer, in the order the narrator cards list them.
+--- Voice Only last, its card a sound's bars rising and falling, since there is nothing on screen
+--- to picture.
 function Options:Styles()
-    local styles = {}
-    if not Transcript.unavailable then table.insert(styles, "subtitle") end
-    if not Version.IsAnyLegacy then table.insert(styles, "minimal") end
-    table.insert(styles, "classic")
+    local styles = { "subtitle", "minimal", "classic" }
     if DialogueUITheme and DialogueUITheme:Available() then table.insert(styles, "dialogueui") end
     table.insert(styles, "none")
     return styles
 end
 
-local function Build(canvas)
+-- Contribute & Report's page: last, after the modules' (Quests 1, Gossip 2, Places 3, Readables 4,
+-- Bosses 5) and Developer's (6).
+local CONTRIBUTE_ORDER = 7
+local contribute
+
+--- Contribute & Report's own page under Spoken's, its rows added by `build(layout)`.
+local function BuildContributePage(build)
+    local frame = CreateFrame("Frame", "SpokenContributeOptionsPanel")
+    frame.name = L.OPT_CONTRIBUTE_TITLE
+    local pageScroller = Layout.Scroll(frame)
+    local content = pageScroller.child
+    local layout = Layout.New(content, INDENT, -TOP)
+    frame.layout = layout
+    layout:Intro(nil, L.OPT_CONTRIBUTE_TITLE)
+    layout:Section(nil)
+    build(layout)
+    local function Fit() pageScroller:SetContentHeight(layout:Height() + 40) end
+    layout.onResize = Fit
+    content:SetScript("OnShow", function() layout:Refresh() end)
+    layout:Refresh()
+    Fit()
+    contribute = Options:AddPage(frame, L.OPT_CONTRIBUTE_TITLE, CONTRIBUTE_ORDER, layout, pageScroller)
+end
+
+local function Build()
     panel = CreateFrame("Frame", "SpokenOptionsPanel", UIParent)
     -- The family's one entry in the game's settings. This page is its Home; each feature
     -- addon's page is nested under it (Options:AddPage).
     panel.name = "Spoken"
-    -- On the settings canvas the rows are laid out in a scroller, as the books and zones
-    -- panels are: the canvas neither scrolls nor clips, and the contributions rows pushed
-    -- this panel past its bottom edge, drawing the minimap section over the game world. The
-    -- legacy window grows to fit its rows instead (FitWindow), so it keeps laying out on
-    -- the panel itself and never meets a ScrollFrame on a client that has not been tried.
-    local host = panel
-    if canvas then
-        scroller = Layout.Scroll(panel)
-        host = scroller.child
-        panel.content = host
-    end
+    -- The rows are laid out in a scroller, as the Readables and Places panels are: the canvas
+    -- neither scrolls nor clips, and the contributions rows pushed this panel past its bottom
+    -- edge, drawing the minimap section over the game world.
+    scroller = Layout.Scroll(panel)
+    local host = scroller.child
+    panel.content = host
     local cfg = function() return Addon.db.profile.Frame end
     local audio = function() return Addon.db.profile.Audio end
     local transcript = function() return Addon.db.profile.Transcript end
@@ -257,19 +457,22 @@ local function Build(canvas)
     end
     local function Small() return Style() == "minimal" end
     local function Subtitles() return Style() == "subtitle" end
-    local function Words() return transcript().Enabled end
+    local function DUI() return Style() == "dialogueui" end
+    local function Narrator() return transcript().Enabled end
     local refresh = function() PlayerFrame:RefreshConfig(); Options:UpdateRows() end
     local refreshTranscript = function() Transcript:RefreshConfig(); Options:UpdateRows() end
+    -- The subtitle's own: redrawing it is enough, on every step of a drag, without the captions'
+    -- full refresh and every row's.
+    local refreshSubtitle = function() Subtitle:Update() end
+    -- Text Size and Lines: the DialogueUI and minimal windows lay their words out in the window's own
+    -- refresh, so the window is refreshed too, as the wheel's Text Size does.
+    local refreshText = function() PlayerFrame:RefreshConfig(); refreshTranscript(); refreshSubtitle() end
 
     local layout = Layout.New(host, INDENT, -TOP)
     panel.layout = layout
-    layout:Header(L.OPT_HOME_TITLE, L.OPT_HOME_NOTE, nil, [[Interface\AddOns\Spoken\icon.tga]])
-    -- On the canvas the page is headed as the game's pages are: its name and its Defaults, and
-    -- no paragraph under them, as the game's own pages have none.
-    if canvas then
-        layout:HideHeader()
-        layout:Intro([[Interface\AddOns\Spoken\icon.tga]], L.OPT_HOME_TITLE)
-    end
+    -- Headed as the game's pages are: its name and its Defaults, and no paragraph under them,
+    -- as the game's own pages have none.
+    layout:Intro([[Interface\AddOns\Spoken\icon.tga]], L.OPT_HOME_TITLE)
     -- Two kinds of row that does nothing right now. One that belongs to another way of
     -- showing lines is hidden, and the page closes up round it: a player who chose subtitles
     -- has no use for the window's size. One waiting on a switch beside it is greyed out
@@ -277,453 +480,187 @@ local function Build(canvas)
     local function Requires(row, applies, reason) return layout:Requires(row, applies, reason) end
     local function Only(row, applies) return layout:ShowWhen(row, applies) end
     local function Shown() return Style() ~= "none" end
+    -- DialogueUI's own quest text follows Show Narrator, Highlight Words and Type Words Out, so with
+    -- DialogueUI installed they matter under Voice Only too.
+    local function MarksWords() return DialogueUIOptions:WordRowsShown(Style()) end
 
     -- Every Spoken page is searchable from here; the game's own settings search cannot see
     -- inside an addon's canvas.
-    if canvas and Search then
-        layout:Custom(Search:Build(host), Search.height, function(width) Search:Fit(width) end)
-    end
+    layout:Custom(Search:Build(host), Search.height, function(width) Search:Fit(width) end)
 
-    -- What Spoken reads, first: it decides which of the pages under this one matter. On the
-    -- settings canvas, a list with a row each, saying what is installed; the legacy window
-    -- keeps a plain switch per row. No box round the list: it is a box itself.
-    layout:Section(L.OPT_PARTS_TITLE, canvas)
-    panel.parts = {}
-    local known = {}
+    -- The page in two halves. First what most players change: what Spoken reads, how a line
+    -- is shown, in which language, how loud, the keys, the Compendium, and where to go when
+    -- something is wrong. Then the finer settings, each section named for what it holds.
+
+    -- What Spoken reads, first: it decides which of the pages under this one matter. A list
+    -- with a row each, saying what is installed. No box round the list: it is a box itself.
+    layout:Section(L.OPT_PARTS_TITLE, true)
+    layout:HeadingButton(L.OPT_WELCOME_AGAIN, function() Welcome:Show() end)
     local modules = {}
-    for _, part in ipairs(PARTS) do
-        known[part.key] = true
+    for _, part in ipairs(Options:Parts()) do
         local key, order = part.key, part.order
         local function On() return Spoken:IsPartOn(key) end
         local function Write(v) Sources:SetTurnedOff(key, not v) end
         local function Missing() if not Sources:Get(key) then return L.REASON_NOT_INSTALLED end end
-        if canvas then
-            -- Beside its words, how many of its voice packs it has, then a button to its page,
-            -- whenever the module is installed: switched off, its page is still there, with its
-            -- own Enable switch for exactly that. Whether it is on, its checkbox and its row say.
-            table.insert(modules, { icon = part.icon, title = part.label, text = part.text, tooltip = part.tip,
-                read = On, write = Write, apply = function() Options:UpdateRows() end, disabled = Missing,
-                status = function() return Options:PartVoice(key) end,
-                hint = function(on) return on and L.OPT_PART_CLICK_OFF or L.OPT_PART_CLICK_ON end,
-                button = L.OPT_PART_SETTINGS, onButton = function() Options:OpenPage(order) end,
-                buttonEnabled = function() return Sources:Get(key) ~= nil end })
-        else
-            local row = layout:Checkbox(part.label, part.tip, On, Write, function() Options:UpdateRows() end)
-            row.partKey, row.partLabel = key, part.label
-            table.insert(panel.parts, row)
-            Requires(row, function() return Sources:Get(key) ~= nil end, L.REASON_NOT_INSTALLED)
-        end
+        -- Beside its words, how many of its voice packs it has, then a button to its page,
+        -- whenever the module is installed: switched off, its page is still there, with its
+        -- own Enable switch for exactly that. Whether it is on, its checkbox and its row say.
+        table.insert(modules, { icon = part.icon, title = part.label, text = part.text,
+            read = On, write = Write, apply = function() Options:UpdateRows() end, disabled = Missing,
+            status = function() return Options:PartVoice(key) end,
+            hint = function(on) return on and L.OPT_PART_CLICK_OFF or L.OPT_PART_CLICK_ON end,
+            button = L.OPT_PART_SETTINGS, onButton = function() Options:OpenPage(order) end,
+            buttonEnabled = function() return Sources:Get(key) ~= nil and Options:HasPage(order) end })
     end
-    if canvas then layout:List(modules) end
-    -- An addon outside the three that speaks through the player still gets its switch.
-    for key, source in Sources:Iterate() do
-        if not known[key] then
-            layout:Checkbox(source.title, L.OPT_PART_OTHER_TIP,
-                function() return not Sources:IsTurnedOff(source) end,
-                function(v) Sources:SetTurnedOff(key, not v) end)
-        end
-    end
+    layout:List(modules)
 
-    -- The choice every other display row depends on, then the two that apply whichever way
-    -- lines are shown. On the canvas the choice is a list with a picture each, a section of its own.
-    local styles = Options:Styles()
-    -- Pictures on the canvas, where the three look different enough that a sketch says more
-    -- than a name; a dropdown in the legacy window, which has room for neither.
-    if canvas then
-        layout:Section(L.OPT_PLAYER_STYLE, true)
-        local tiles = {}
-        for _, style in ipairs(styles) do
-            table.insert(tiles, { value = style, title = STYLE_LABELS[style], text = STYLE_TEXTS[style],
-                tooltip = STYLE_TIPS[style], art = SKETCHES[style] })
-        end
-        Options:PreviewButton(layout)
-        layout:Choices(tiles, Style, function(v) Addon:SetPlayerStyle(v) end,
-            function()
-                PlayerFrame:RefreshConfig(); refreshTranscript()
-                Options:StyleChosen()
-            end,
-            { choose = L.STYLE_CHOOSE })
-        layout:Group(L.OPT_NARRATOR_SETTINGS)
-    else
-        layout:Group(L.OPT_NARRATOR_SETTINGS)
+    -- How a line is shown: a list with a picture each, then the few rows most players change
+    -- straight under it, with no title of their own.
+    layout:Section(L.OPT_PLAYER_STYLE, true)
+    local tiles = {}
+    for _, style in ipairs(Options:Styles()) do
+        table.insert(tiles, { value = style, title = STYLE_LABELS[style], text = STYLE_TEXTS[style],
+            art = SKETCHES[style] })
     end
-    -- Every style has the same three sections; a row the chosen style has no use for is hidden.
-    -- Without captions (1.12's Transcript is a stub) the words' rows are not built.
-    local captions = not Transcript.unavailable
-    local function DUI() return Style() == "dialogueui" end
-    local function ForDUI(row) return Only(row, DUI) end
-    -- The subtitle's own: redrawing it is enough, on every step of a drag, without the captions'
-    -- full refresh and every row's.
-    local refreshSubtitle = function() Subtitle:Update() end
-    local function ForSubtitles(row)
-        Only(row, Subtitles)
-        Requires(row, Words, L.REASON_WORDS)
-        return row
-    end
-
-    layout:Section(L.OPT_PLACE_TITLE)
-    if not canvas then
-        layout:Dropdown(L.OPT_PLAYER_STYLE, L.OPT_PLAYER_STYLE_TIP, styles, Style,
-            function(v) Addon:SetPlayerStyle(v) end,
-            function() PlayerFrame:RefreshConfig(); refreshTranscript() end,
-            function(v) return STYLE_LABELS[v] or v end)
-    end
-    Only(layout:Slider(L.OPT_SCALE, 0.5, 2, 0.05,
-        function() return cfg().FrameScale end, function(v) cfg().FrameScale = v end, refresh,
-        nil, L.OPT_SCALE_TIP), InWindow)
-    if captions then
-        ForSubtitles(layout:Slider(L.OPT_SUBTITLE_SIZE, 0.6, 1.6, 0.05,
-            function() return transcript().SubtitleScale end,
-            function(v) transcript().SubtitleScale = v end, refreshSubtitle, nil, L.OPT_SUBTITLE_SIZE_TIP))
-    end
-    Only(layout:Checkbox(L.OPT_LOCK_FRAME, L.OPT_LOCK_FRAME_TIP,
-        function() return cfg().LockFrame end, function(v) cfg().LockFrame = v end, refresh), Shown)
-    Only(layout:Button(L.OPT_RESET, 160, function()
-        PlayerFrame:Reset()
-        if Subtitle then Subtitle:Reset() end
-    end, L.OPT_RESET_TIP), Shown)
-    DialogueUIOptions:WheelNote(layout, ForDUI)
-
-    layout:Section(L.OPT_LOOK_TITLE)
-    DialogueUIOptions:ThemeRows(layout, ForDUI, refresh)
-    Only(layout:Dropdown(L.OPT_MINIMAL_BACKGROUND, L.OPT_MINIMAL_BACKGROUND_TIP, { "parchment", "dark" },
-        function() return cfg().MinimalBackground end, function(v) cfg().MinimalBackground = v end, refresh,
-        function(v) return v == "dark" and L.OPT_DUI_THEME_DARK or L.OPT_DUI_THEME_PARCHMENT end), Small)
-    if captions then
-        ForSubtitles(layout:Slider(L.TRANSCRIPT_SHADOW, 0, 1, 0.05,
-            function() return transcript().SubtitleShadow end,
-            function(v) transcript().SubtitleShadow = v end, refreshSubtitle, nil, L.TRANSCRIPT_SHADOW_TIP))
-        Only(layout:Checkbox(L.OPT_SUBTITLE_NAME, L.OPT_SUBTITLE_NAME_TIP,
-            function() return transcript().SubtitleName ~= false end,
-            function(v) transcript().SubtitleName = v end, refreshSubtitle), Subtitles)
-    end
-    if captions then
-        local progress = layout:Checkbox(L.OPT_SUBTITLE_PROGRESS, L.OPT_SUBTITLE_PROGRESS_TIP,
-            function() return transcript().SubtitleProgress ~= false end,
-            function(v) transcript().SubtitleProgress = v end, function() refreshSubtitle(); refresh() end)
-        Only(progress, function() return Subtitles() or InWindow() end)
-        Requires(progress, function() return not Subtitles() or Words() end, L.REASON_WORDS)
-    end
-    -- Hiding the portrait and hiding a button are one kind of choice, so they sit together. Not
-    -- for the DialogueUI window, whose header has the face's socket built in.
-    Only(layout:Checkbox(L.OPT_HIDE_PORTRAIT, L.OPT_HIDE_PORTRAIT_TIP,
-        function() return cfg().HidePortrait end, function(v) cfg().HidePortrait = v end,
-        function() refresh(); if Subtitle then Subtitle:Update() end end),
-        function() return (InWindow() and not DUI()) or Subtitles() end)
-    -- One row per action an addon declared optional, named by that addon. The player is
-    -- not told what any of them do. The subtitle shows the corner icon too, so the row is
-    -- there with subtitles as well as with a window. Report is not the window's alone (the
-    -- quest log, DialogueUI's window and the lore pages show it), so its row is a general one.
-    local function HideActionRow(id, label, tip, changed)
-        return layout:Checkbox(label, tip,
-            function() return cfg().HiddenActions[id] end,
-            function(v) cfg().HiddenActions[id] = v or nil end, function()
-                refresh()
-                if Subtitle then Subtitle:Update() end
-                if changed then changed() end
-            end)
-    end
-    for _, optional in ipairs(Actions.optional) do
-        if optional.id ~= "report" then
-            Only(HideActionRow(optional.id, format(L.OPT_HIDE_ACTION, optional.label), L.OPT_HIDE_ACTION_TIP),
-                function() return InWindow() or Subtitles() end)
-        end
-    end
-    -- The report action's own key, which the windows already follow: a hidden Report stays hidden.
-    local function ReportRow(tip)
-        return HideActionRow("report", L.OPT_HIDE_REPORT, tip,
-            function() Callbacks:Fire("REPORT_SETTINGS_CHANGED") end)
-    end
-    -- Legacy clients have no Contribute section, and Report only on a window or subtitles. Its tip
-    -- names only what they have: no Small Window, and no subtitles on 1.12.
-    if not Spoken.Contribute then
-        Only(ReportRow(Version.IsLegacyVanilla and L.OPT_HIDE_REPORT_TIP_VANILLA
-            or L.OPT_HIDE_REPORT_TIP_LEGACY), function() return InWindow() or Subtitles() end)
-    end
-    -- No "hide the window" switch: nothing on screen at all is Voice Only, a way of showing
-    -- lines like the others, chosen with them above.
-
-    if captions then
-        -- DialogueUI's quest text follows Show Words, Highlight Words and Type Words Out too, so
-        -- their tooltips say so where it is installed. The legacy clients' stub has no Installed.
-        local withDUI = DialogueUITheme ~= nil and DialogueUITheme.Installed ~= nil and DialogueUITheme:Installed()
-        local function Tip(tip, extra) return withDUI and tip .. " " .. extra or tip end
-        -- Show Words first: everything under it waits on it.
-        layout:Section(L.OPT_TEXT_TITLE)
-        Only(layout:Checkbox(L.TRANSCRIPT_SHOW, Tip(L.TRANSCRIPT_SHOW_TIP, L.TRANSCRIPT_SHOW_DUI_TIP),
-            function() return transcript().Enabled end,
-            function(v) Transcript:SetEnabled(v) end, function() Options:UpdateRows() end), Shown)
-        local function InWindowText(row)
-            Only(row, InWindow)
-            Requires(row, Words, L.REASON_WORDS)
-            return row
-        end
-        local size = layout:Slider(L.TRANSCRIPT_SIZE, 12, 26, 1,
-            function() return transcript().FontSize end,
-            function(v) transcript().FontSize = v end, function() refreshTranscript(); refreshSubtitle() end,
-            Layout.Number, L.TRANSCRIPT_SIZE_TIP)
-        Only(size, function() return InWindow() or Subtitles() end)
-        Requires(size, Words, L.REASON_WORDS)
-        -- How much shows at once: lines in a window or a line-by-line subtitle, sentences in a paged one.
-        local function Rolling() return transcript().SubtitleScroll == "line" end
-        local lines = layout:Slider(L.TRANSCRIPT_LINES, 1, 2, 1,
-            function() return transcript().Lines end,
-            function(v) transcript().Lines = v end, function() refreshTranscript(); refreshSubtitle() end,
-            Layout.Number, L.TRANSCRIPT_LINES_TIP)
-        Only(lines, function() return (InWindow() and Style() ~= "classic") or (Subtitles() and Rolling()) end)
-        Requires(lines, Words, L.REASON_WORDS)
-        Only(ForSubtitles(layout:Slider(L.OPT_SUBTITLE_SENTENCES, 1, 4, 1,
-            function() return transcript().SubtitleSentences or 3 end,
-            function(v) transcript().SubtitleSentences = v end, refreshSubtitle, Layout.Number, L.OPT_SUBTITLE_SENTENCES_TIP)),
-            function() return not Rolling() end)
-        local fit = DialogueUIOptions:FitRow(layout, ForDUI, refresh)
-        if fit then Requires(fit, Words, L.REASON_WORDS) end
-        local SCROLL_LABELS = { line = L.TRANSCRIPT_SCROLL_LINE, page = L.TRANSCRIPT_SCROLL_PAGE,
-            off = L.TRANSCRIPT_SCROLL_OFF }
-        InWindowText(layout:Dropdown(L.TRANSCRIPT_SCROLL, L.TRANSCRIPT_SCROLL_TIP, { "line", "page", "off" },
-            function() return Transcript:ScrollMode() end,
-            function(v) transcript().ScrollMode = v; Transcript.manualScroll = false end, refreshTranscript,
-            function(v) return SCROLL_LABELS[v] or v end))
-        -- The subtitle's Auto-Scroll has no Off: it cannot be scrolled by hand.
-        ForSubtitles(layout:Dropdown(L.TRANSCRIPT_SCROLL, L.OPT_SUBTITLE_SCROLL_TIP, { "line", "page" },
-            function() return transcript().SubtitleScroll or "page" end,
-            function(v) transcript().SubtitleScroll = v end, function() refreshSubtitle(); Options:UpdateRows() end,
-            function(v) return SCROLL_LABELS[v] or v end))
-        -- The subtitle lights the word only while its words show whole: typed at their own pace, an
-        -- estimated word timing would show every miss.
-        local highlight = layout:Checkbox(L.TRANSCRIPT_HIGHLIGHT, Tip(L.TRANSCRIPT_HIGHLIGHT_TIP, L.TRANSCRIPT_DUI_TIP),
-            function() return transcript().HighlightWord end,
-            function(v) transcript().HighlightWord = v end, refreshTranscript)
-        Only(highlight, Shown)
-        Requires(highlight, Words, L.REASON_WORDS)
-        Requires(highlight, function() return not (Subtitles() and transcript().Typewriter) end, L.REASON_UNTYPED)
-        local typewriter = layout:Checkbox(L.TRANSCRIPT_TYPEWRITER, Tip(L.TRANSCRIPT_TYPEWRITER_TIP, L.TRANSCRIPT_DUI_TIP),
-            function() return transcript().Typewriter end,
-            function(v) transcript().Typewriter = v end, refreshTranscript)
-        Only(typewriter, Shown)
-        Requires(typewriter, Words, L.REASON_WORDS)
-        layout:Indent()
-        local by = layout:Dropdown(L.TRANSCRIPT_TYPEWRITER_BY, L.TRANSCRIPT_TYPEWRITER_BY_TIP, { "word", "letter" },
-            function() return transcript().TypewriterBy or "letter" end,
-            function(v) transcript().TypewriterBy = v end, refreshTranscript,
-            function(v) return v == "letter" and L.TRANSCRIPT_BY_LETTER or L.TRANSCRIPT_BY_WORD end)
-        layout:Outdent()
-        Only(by, Shown)
-        Requires(by, function() return Words() and transcript().Typewriter end, L.REASON_TYPEWRITER)
-    end
-
-    -- The narrator style's settings end here; what follows is Spoken's whatever the style.
-    layout:EndGroup()
-
-    -- Outside the narrator style's settings, as it colours every frame Spoken draws. Forever only:
-    -- elsewhere bronze matches nothing.
-    if Version.IsCamelot then
-        layout:Section(L.OPT_COLOURS_TITLE)
-        layout:Checkbox(L.OPT_BRONZE_TINT, L.OPT_BRONZE_TINT_TIP,
-            function() return cfg().BronzeTint end, function(v) cfg().BronzeTint = v end, refresh)
-    end
-
-    DialogueUIOptions:Place(layout)
-
-    -- Azeroth's Compendium, after the narrator style's settings: the window Zones and Books each
-    -- add a tab to, opened here and from the minimap menu, with each tab's Unlock switch. The tabs
-    -- register once the world is up, after this page is built, so the rows ask for them each time
-    -- they are drawn; with neither part installed the section has nothing showing and hides.
-    local function Compendium() return _G.SpokenCompendium end
-    local function Tab(key)
-        local compendium = Compendium()
-        return compendium and compendium.Tab and compendium:Tab(key)
-    end
-    layout:Section(L.OPT_COMPENDIUM_TITLE)
-    local open = layout:Button(L.OPT_COMPENDIUM_OPEN, 200, function()
-        local compendium = Compendium()
-        if compendium and compendium.Toggle then compendium:Toggle() end
-    end, L.OPT_COMPENDIUM_OPEN_TIP)
-    Only(open, function() local compendium = Compendium(); return compendium ~= nil and compendium.Toggle ~= nil end)
-    Requires(open, function()
-        local compendium = Compendium()
-        return compendium ~= nil and compendium.Available ~= nil and compendium:Available()
-    end, L.REASON_COMPENDIUM_OFF)
-    for _, unlock in ipairs({
-        { tab = "places", part = "zones", label = L.OPT_UNLOCK_PLACES, tip = L.OPT_UNLOCK_PLACES_TIP, module = L.OPT_PART_ZONES },
-        { tab = "readables", part = "books", label = L.OPT_UNLOCK_WRITINGS, tip = L.OPT_UNLOCK_WRITINGS_TIP, module = L.OPT_PART_BOOKS },
-    }) do
-        local row = layout:Checkbox(unlock.label, unlock.tip,
-            function() local tab = Tab(unlock.tab); return tab ~= nil and tab.unlock ~= nil and tab.unlock.get() end,
-            function(v) local tab = Tab(unlock.tab); if tab and tab.unlock then tab.unlock.set(v) end end)
-        Only(row, function() local tab = Tab(unlock.tab); return tab ~= nil and tab.unlock ~= nil end)
-        Requires(row, function() return Spoken:IsPartOn(unlock.part) end, format(L.REASON_MODULE_OFF_FMT, unlock.module))
-    end
-
-    -- Everything about how a line is played, whichever addon queued it: the two feature
-    -- addons each used to carry their own channel control, and a player with both
-    -- installed had two settings for one thing.
-    -- The voice language, once for every module: they share the same list of languages, and a
-    -- player who picks Portuguese means it for quests and books alike.
-    layout:Section(L.OPT_LANGUAGE_TITLE)
-    local language = function() return Addon.db.profile.Language end
-    local voices, fallbacks = { "auto" }, { "none" }
-    for _, locale in ipairs(LANGUAGES) do
-        table.insert(voices, locale.code)
-        table.insert(fallbacks, locale.code)
-    end
-    local function Native(code)
-        for _, locale in ipairs(LANGUAGES) do
-            if locale.code == code then return locale.native end
-        end
-        return code
-    end
-    local function ClientLanguage()
-        local locale = GetLocale and GetLocale()
-        if locale == "enGB" then return "enUS" end
-        for _, each in ipairs(LANGUAGES) do
-            if each.code == locale then return locale end
-        end
-        return "enUS"
-    end
-    layout:Dropdown(L.OPT_VOICE_LANGUAGE, L.OPT_VOICE_LANGUAGE_TIP, voices,
-        function() return language().Voice or "auto" end,
-        function(code) language().Voice = code end, nil,
-        function(code)
-            if code == "auto" then return format(L.OPT_LANG_AUTO_FMT, Native(ClientLanguage())) end
-            return Native(code)
+    Options:PreviewButton(layout)
+    layout:Choices(tiles, Style, function(v) Addon:SetPlayerStyle(v) end,
+        function()
+            PlayerFrame:RefreshConfig(); refreshTranscript()
+            Options:StyleChosen()
+        end,
+        { choose = L.STYLE_CHOOSE })
+    layout:Section(nil)
+    -- Search names these rows' section as the tiles' own.
+    layout.section = L.OPT_PLAYER_STYLE
+    Only(layout:Slider(L.OPT_SCALE, SIZES.FrameScale[1], SIZES.FrameScale[2], SIZES.FrameScale[3],
+        function() return cfg().FrameScale end, function(v) cfg().FrameScale = v end, refresh), InWindow)
+    -- With Show Narrator off there are no subtitles to size.
+    local subtitleSize = layout:Slider(L.OPT_SUBTITLE_SIZE, SIZES.SubtitleScale[1], SIZES.SubtitleScale[2],
+        SIZES.SubtitleScale[3],
+        function() return transcript().SubtitleScale end,
+        function(v) transcript().SubtitleScale = v end, refreshSubtitle)
+    Only(subtitleSize, Subtitles)
+    Requires(subtitleSize, Narrator, L.REASON_NARRATOR)
+    Only(layout:Checkbox(L.OPT_SHOW_NARRATOR, nil,
+        function() return transcript().Enabled end,
+        function(v) Transcript:SetEnabled(v) end, function() Options:UpdateRows() end), MarksWords)
+    -- Each module's narrator, on unless turned off: a player can read the quest window and want the
+    -- subtitles only for the places and the writings.
+    layout:Indent()
+    for _, part in ipairs(Options:Parts()) do
+        local key = part.key
+        local row = layout:Checkbox(part.label, nil,
+            function() return not transcript().WordsOff[key] end,
+            function(v) transcript().WordsOff[key] = (not v) or nil end, refreshTranscript)
+        Only(row, MarksWords)
+        Only(row, function()
+            local source = Sources:Get(key)
+            return source ~= nil and not source.noNarrator
         end)
-    layout:Dropdown(L.OPT_FALLBACK_LANGUAGE, L.OPT_FALLBACK_LANGUAGE_TIP, fallbacks,
-        function() return language().Fallback or "enUS" end,
-        function(code) language().Fallback = code end, nil,
-        function(code) return code == "none" and L.OPT_FALLBACK_NONE or Native(code) end)
+        Requires(row, Narrator, L.REASON_NARRATOR)
+    end
+    layout:Outdent()
+    local size = layout:Slider(L.TRANSCRIPT_SIZE, SIZES.FontSize[1], SIZES.FontSize[2], SIZES.FontSize[3],
+        function() return transcript().FontSize end,
+        function(v) transcript().FontSize = v end, refreshText,
+        Layout.Number)
+    Only(size, function() return InWindow() or Subtitles() end)
+    Requires(size, Narrator, L.REASON_NARRATOR)
+    Only(layout:Checkbox(L.OPT_LOCK_FRAME, nil,
+        function() return cfg().LockFrame end, function(v) cfg().LockFrame = v end, refresh), Shown)
+    -- Nothing on the windows or the subtitles shows their wheel shortcuts.
+    local wheel = layout:Note(L.WINDOW_WHEEL_HINT, nil, 40)
+    Only(wheel, function() return Small() or DUI() or Subtitles() end)
+    layout:OnRefresh(function() wheel:SetText(Subtitles() and L.SUBTITLE_WHEEL_HINT or L.WINDOW_WHEEL_HINT) end)
+
+    -- The voices, once for every module, in the order a line tries them: they share the same list
+    -- of languages, and a player who picks Portuguese means it for quests and readables alike.
+    layout:Section(L.OPT_LANGUAGE_TITLE)
+    -- A language as the language rows name it: Auto with what it reads now, a pack's in its font.
+    local function Label(code)
+        if code == "auto" then return format(L.OPT_LANG_AUTO_FMT, Options:LanguageName(Languages:Client())) end
+        return Options:MenuLanguageName(code)
+    end
+    local function Face(code)
+        if code == "auto" then return nil end
+        return Options:LanguageFace((Languages:SplitVoice(code)))
+    end
+    layout:OrderedList(L.OPT_VOICES, L.OPT_VOICES_TIP, function() return Options:VoiceList() end,
+        function(list) Spoken:SetVoiceOrder(list) end, function() return Options:VoiceChoices() end,
+        function(code)
+            if code == "auto" then return Label(code) end
+            local name = Options:VoiceName(code, true)
+            if Options:VoiceInstalled(code) then return name end
+            return format("%s %s", name, L.OPT_VOICE_MISSING)
+        end, Face,
+        { add = L.OPT_VOICE_ADD, earlier = L.OPT_VOICE_EARLIER, later = L.OPT_VOICE_LATER, remove = L.OPT_VOICE_REMOVE,
+            available = function(code) return Options:VoiceInstalled(code) end })
+    -- A language read as Spoken and its modules load, `owner` keeping the choice (Texts, Interface):
+    -- a change waits for a reload, which is asked at once, as a player who switches and sees no change
+    -- concludes it is broken; until then the note says so, while `pending()`.
+    local function LanguageRow(title, setFmt, owner, pending)
+        layout:Dropdown(title, nil, function() return owner:Choices() end,
+            function() return owner:Choice() or "auto" end,
+            function(code)
+                -- Asked only where the next load would read something else: Auto and the client's
+                -- own language read the same interface.
+                if owner:SetChoice(code ~= "auto" and code or nil) and pending() then
+                    Layout.AskReload(format(setFmt,
+                        Options:LanguageName(code ~= "auto" and code or Languages:Client())),
+                        L.OPT_RELOAD_NOW, L.OPT_LATER)
+                end
+            end, function() Options:UpdateRows() end,
+            Label, Face)
+        layout:ShowWhen(layout:Note(L.OPT_TEXT_LANGUAGE_RELOAD, nil, 16), pending)
+    end
+    -- The words' language, apart from the voice's: a Polish reader hears English where no Polish
+    -- voice exists. Choosing the client's own language is a change too: chosen, it comes first
+    -- everywhere.
+    LanguageRow(L.OPT_TEXT_LANGUAGE, L.OPT_TEXT_LANGUAGE_SET_FMT, Texts, function()
+        local wanted, chosen = Texts:Language()
+        local reading, read = Texts:Reading()
+        return wanted ~= reading or chosen ~= read
+    end)
+    -- Spoken's own words, account-wide: the locale files read it before any profile is chosen
+    -- (Interface.lua). A built-in language or an interface pack's, only where the game's font draws it.
+    LanguageRow(L.OPT_INTERFACE_LANGUAGE, L.OPT_INTERFACE_LANGUAGE_SET_FMT, Interface,
+        function() return Interface:Pending() end)
 
     layout:Section(L.OPT_AUDIO_TITLE)
-    -- Legacy clients' playback (Compat.lua) ignores the channel, so there is nothing to choose.
-    if not Version.IsAnyLegacy then
-        layout:Dropdown(L.OPT_CHANNEL, L.OPT_CHANNEL_TIP, CHANNELS,
-            function() return audio().SoundChannel end,
-            function(v) audio().SoundChannel = v end,
-            -- The handle belongs to the old channel, so a line already speaking cannot move.
-            function() SoundQueue:RemoveAllSoundsFromQueue(); Options:UpdateRows() end,
-            function(channel) return CHANNEL_LABELS[channel] end)
-        -- On Dialog, NPC voices and Spoken's are one sound.
-        local dialogWarning = layout:Note(L.OPT_CHANNEL_DIALOG_WARN, nil, 32)
-        dialogWarning:SetTextColor(1, 0.5, 0.25)
-        layout:ShowWhen(dialogWarning, function() return audio().SoundChannel == "Dialog" end)
-    end
-    if audio().AutoToggleDialog ~= nil then
-        local silence = layout:Checkbox(L.OPT_MUTE_DIALOGUE,
-            Version.IsLegacyVanilla and L.OPT_MUTE_DIALOGUE_TIP_VANILLA or L.OPT_MUTE_DIALOGUE_TIP,
-            function() return audio().AutoToggleDialog end,
-            function(v)
-                audio().AutoToggleDialog = v
-                -- Turning it off while it holds the channel down would leave it muted.
-                if not v then
-                    SoundUtils:MuteChannel("Dialog", false)
-                end
-            end, function() Options:UpdateRows() end)
-        -- Muting Dialog would mute Spoken's own line, so on Dialog the queue never does.
-        Requires(silence, function() return Sources:PlayerChannel() ~= "Dialog" end, L.REASON_DIALOG_CHANNEL)
-    end
-    layout:Slider(L.OPT_LINE_GAP, 0, 5, 0.25,
-        function() return audio().LineGap or 0 end, function(v) audio().LineGap = v end,
-        nil, Layout.Seconds, L.OPT_LINE_GAP_TIP)
-    layout:Checkbox(L.OPT_CUE_BETWEEN, L.OPT_CUE_BETWEEN_TIP,
-        function() return audio().CueBetweenLines end,
-        function(v) audio().CueBetweenLines = v end)
-    if OtherSounds:IsAvailable() then
-        local lower = function() return audio().LowerOthers end
-        local apply = function() OtherSounds:RefreshConfig(); Options:UpdateRows() end
-        -- A section of its own rather than indented under its switch: an indented slider
-        -- starts its bar out of line with every other control on the panel.
-        layout:Section(L.OPT_LOWER_TITLE)
-        layout:Checkbox(L.OPT_LOWER_OTHERS, L.OPT_LOWER_OTHERS_TIP,
-            function() return lower().Enabled end, function(v) lower().Enabled = v end, apply)
-        for _, row in ipairs({ { "Music", L.OPT_LOWER_MUSIC, L.OPT_LOWER_MUSIC_TIP },
-            { "Ambience", L.OPT_LOWER_AMBIENCE, L.OPT_LOWER_AMBIENCE_TIP },
-            { "SFX", L.OPT_LOWER_SFX, L.OPT_LOWER_SFX_TIP },
-            { "Dialog", L.OPT_LOWER_DIALOG, L.OPT_LOWER_DIALOG_TIP } }) do
-            local channel = row[1]
-            local slider = layout:Slider(row[2], 0, 1, 0.05,
-                function() return lower()[channel] end, function(v) lower()[channel] = v end, apply,
-                nil, row[3])
-            Requires(slider, function() return lower().Enabled end, L.REASON_LOWER)
-            -- Never lowered while it carries the voices.
-            Requires(slider, function() return Sources:PlayerChannel() ~= channel end, L.REASON_VOICE_CHANNEL)
-            if channel == "Dialog" then
-                -- With the game's dialogue silenced outright, there is no level to set.
-                Requires(slider, function() return not audio().AutoToggleDialog end, L.REASON_DIALOG_MUTED)
+    layout:Dropdown(L.OPT_CHANNEL, nil, CHANNELS,
+        function() return audio().SoundChannel end,
+        function(v) audio().SoundChannel = v end,
+        -- The handle belongs to the old channel, so a line already speaking cannot move.
+        function() SoundQueue:RemoveAllSoundsFromQueue(); Options:UpdateRows() end,
+        function(channel) return CHANNEL_LABELS[channel] end)
+    -- On Dialog, NPC voices and Spoken's are one sound.
+    local dialogWarning = layout:Note(L.OPT_CHANNEL_DIALOG_WARN, nil, 32)
+    dialogWarning:SetTextColor(1, 0.5, 0.25)
+    layout:ShowWhen(dialogWarning, function() return audio().SoundChannel == "Dialog" end)
+
+    -- The game's own sounds while a line is read: its NPCs, then everything else.
+    layout:Section(L.OPT_WHILE_READING_TITLE)
+    local silence = layout:Checkbox(L.OPT_MUTE_DIALOGUE, nil,
+        function() return audio().AutoToggleDialog end,
+        function(v)
+            audio().AutoToggleDialog = v
+            -- Turning it off while it holds the channel down would leave it muted.
+            if not v then
+                SoundUtils:MuteChannel("Dialog", false)
             end
-        end
-    end
-
-    -- 2.4.3 and 3.3.5 only, and absent from the saved variables anywhere else. These had
-    -- no rows at all until recently: the settings existed and could only be reached by
-    -- editing the saved variables by hand.
-    local music = audio().LegacyMusicChannel
-    if music then
-        layout:Checkbox(L.OPT_MUSIC_CHANNEL, L.OPT_MUSIC_CHANNEL_TIP,
-            function() return music.Enabled end,
-            function(v) music.Enabled = v end)
-        layout:Slider(L.OPT_MUSIC_VOLUME, 0, 1, 0.05,
-            function() return music.Volume end,
-            function(v) music.Volume = v end)
-        layout:Slider(L.OPT_MUSIC_FADE, 0, 2, 0.1,
-            function() return music.FadeOutMusic end,
-            function(v) music.FadeOutMusic = v end, nil, Layout.Seconds)
-    end
-    if audio().LegacyHDModels ~= nil then
-        layout:Checkbox(L.OPT_HD_MODELS, L.OPT_HD_MODELS_TIP,
-            function() return audio().LegacyHDModels end,
-            function(v) audio().LegacyHDModels = v end)
-    end
-
-    -- The buttons live on Blizzard's quest, book and map frames, not on the player, but
-    -- they all open the player's box, so the one switch for them is here. Absent where
-    -- Contribute.xml is not loaded (the legacy clients): nothing there to hide.
-    if Spoken.Contribute then
-        layout:Section(L.OPT_CONTRIBUTE_TITLE)
-        -- How much there is to send, first, so a player knows when it is worth sending.
-        if Gather then
-            layout:Badge(L.OPT_GATHER_ROW, function()
-                if not Gather:IsEnabled() then return "off", L.GATHER_OFF end
-                local count = Gather:Count()
-                if count == 0 then return "off", L.GATHER_NONE end
-                return "ok", format(L.GATHER_BADGE_FMT, count)
-            end, L.OPT_GATHER_TIP, true)
-        end
-        layout:Checkbox(L.OPT_HIDE_CONTRIBUTE, L.OPT_HIDE_CONTRIBUTE_TIP,
-            function() return Addon.db.profile.Contribute.HideButtons end,
-            function(v) Addon.db.profile.Contribute.HideButtons = v end,
-            function() Callbacks:Fire("CONTRIBUTE_SETTINGS_CHANGED") end)
-        ReportRow(L.OPT_HIDE_REPORT_TIP)
-        -- The opt-out the first Contribute click promises. Independent of hiding the buttons:
-        -- a player who gathers has no use for them, and hiding them must not stop it.
-        if Gather then
-            layout:Checkbox(L.OPT_GATHER, L.OPT_GATHER_TIP,
-                function() return Gather:IsEnabled() end,
-                function(v)
-                    -- Choosing here is an answer to the first-click question too.
-                    Gather:SetIntroduced()
-                    Gather:SetEnabled(v)
-                end, function() Options:UpdateRows() end)
-            layout:Columns(2)
-            layout:Button(L.OPT_GATHER_SHARE, 200, function() Spoken:ShowGatherInstructions() end,
-                L.OPT_GATHER_SHARE_TIP)
-            layout:Button(L.OPT_GATHER_CLEAR, 200, function() Gather:Clear(); Options:UpdateRows() end,
-                L.OPT_GATHER_CLEAR_TIP)
-        end
-    end
-
-    layout:Section(L.OPT_MINIMAP_TITLE)
-    layout:Checkbox(L.OPT_MINIMAP_SHOW, L.OPT_MINIMAP_SHOW_TIP,
-        function() return not mm().hide end,
-        function(v) mm().hide = not v end, function() Minimap:Refresh() end)
-    layout:Checkbox(L.OPT_MINIMAP_LOCK, L.OPT_MINIMAP_LOCK_TIP,
-        function() return mm().lock end,
-        function(v) mm().lock = v end, function() Minimap:Refresh() end)
-    -- Blizzard's addon compartment exists on the modern clients only; the player's
-    -- button shows there too, opening the same menu, and this row switches it.
-    if AddonCompartmentFrame then
-        layout:Checkbox(L.OPT_MINIMAP_COMPARTMENT, L.OPT_MINIMAP_COMPARTMENT_TIP,
-            function() return mm().showInCompartment end,
-            function(v) Minimap:ToggleCompartment(v) end)
+        end, function() Options:UpdateRows() end)
+    -- Muting Dialog would mute Spoken's own line, so on Dialog the queue never does.
+    Requires(silence, function() return Sources:PlayerChannel() ~= "Dialog" end, L.REASON_DIALOG_CHANNEL)
+    local lower = function() return audio().LowerOthers end
+    local applyLower = function() OtherSounds:RefreshConfig(); Options:UpdateRows() end
+    -- What Spoken starts by itself waits outside a battleground.
+    layout:Checkbox(L.OPT_READ_IN_BATTLEGROUNDS, nil,
+        function() return audio().ReadInBattlegrounds ~= false end,
+        function(v) audio().ReadInBattlegrounds = v end,
+        function() Addon:StopWhereNotRead() end)
+    if OtherSounds:IsAvailable() then
+        layout:Checkbox(L.OPT_LOWER_OTHERS, nil,
+            function() return lower().Enabled end, function(v) lower().Enabled = v end, applyLower)
     end
 
     -- Keys for the queue, said here as well as in the game's key bindings: with subtitles only
@@ -731,10 +668,7 @@ local function Build(canvas)
     layout:Section(L.OPT_KEYS_TITLE)
     -- Each action by its name, with its key beside it where a setting's control would be: read
     -- at a glance down the box, the way the game's own bindings list reads, and set right there.
-    -- The legacy clients name a key only when told where its name lives ("KEY_SPACE").
     local function KeyText(key)
-        if not GetBindingText then return key end
-        if Version.IsAnyLegacy then return GetBindingText(key, "KEY_") or key end
         return GetBindingText(key) or key
     end
     local function Bind(name, key)
@@ -751,7 +685,7 @@ local function Build(canvas)
         layout:Refresh()
     end
     for _, binding in ipairs(BINDINGS) do
-        local name, label = binding[1], binding[2]
+        local name, label = binding[1], L[binding[2]]
         layout:Key(label, function()
             local key = GetBindingKey and GetBindingKey(name)
             if not key then return "off", L.OPT_KEY_NONE end
@@ -767,10 +701,267 @@ local function Build(canvas)
             Bind(name, key)
         end, L.OPT_KEY_SET_TIP, { press = L.OPT_KEY_PRESS })
     end
-    if canvas and Settings and Settings.KEYBINDINGS_CATEGORY_ID then
+    if Settings.KEYBINDINGS_CATEGORY_ID then
         layout:Button(L.OPT_KEYS_SET, 160, function()
             pcall(Settings.OpenToCategory, Settings.KEYBINDINGS_CATEGORY_ID)
-        end, L.OPT_KEYS_SET_TIP)
+        end)
+    end
+
+    -- Azeroth's Compendium: the window Places and Readables each add a tab to, Quests too where
+    -- either is there, opened here and from the minimap menu, with each tab's Unlock switch. The
+    -- tabs register once the world is up, after this page is built, so the rows ask for them each
+    -- time they are drawn; with no tab registered the section has nothing showing and hides.
+    local function Compendium() return _G.SpokenCompendium end
+    local function Tab(key)
+        local compendium = Compendium()
+        return compendium and compendium.Tab and compendium:Tab(key)
+    end
+    layout:Section(L.OPT_COMPENDIUM_TITLE)
+    local open = layout:Button(L.OPT_COMPENDIUM_OPEN, 200, function() Options:ToggleCompendium() end)
+    Only(open, function() local compendium = Compendium(); return compendium ~= nil and compendium.Toggle ~= nil end)
+    local function Available()
+        local compendium = Compendium()
+        return compendium ~= nil and compendium.Available ~= nil and compendium:Available()
+    end
+    Requires(open, Available, L.REASON_COMPENDIUM_OFF)
+    -- The words of every tab's stories, and of Places' panel beside the map.
+    local size = layout:Slider(L.OPT_COMPENDIUM_FONT_SIZE, 9, 20, 1,
+        function() return Spoken:CompendiumFontSize() end,
+        function(v) Spoken:SetCompendiumFontSize(v) end, nil, Layout.Number)
+    Only(size, function() return Compendium() ~= nil end)
+    Requires(size, Available, L.REASON_COMPENDIUM_OFF)
+    -- In the order of the window's tabs.
+    for _, unlock in ipairs({
+        { tab = "quests", part = "quests", label = L.OPT_UNLOCK_QUESTS, module = L.OPT_PART_QUESTS },
+        { tab = "places", part = "places", label = L.OPT_UNLOCK_PLACES, module = L.OPT_PART_PLACES },
+        { tab = "readables", part = "readables", label = L.OPT_UNLOCK_READABLES, module = L.OPT_PART_READABLES },
+        -- Spoken Bosses has no part to turn off: its tab is there while the addon is.
+        { tab = "bosses", label = L.OPT_UNLOCK_BOSSES },
+    }) do
+        local row = layout:Checkbox(unlock.label, nil,
+            function() local tab = Tab(unlock.tab); return tab ~= nil and tab.unlock ~= nil and tab.unlock.get() end,
+            function(v) local tab = Tab(unlock.tab); if tab and tab.unlock then tab.unlock.set(v) end end)
+        Only(row, function() local tab = Tab(unlock.tab); return tab ~= nil and tab.unlock ~= nil end)
+        if unlock.part then
+            Requires(row, function() return Spoken:IsPartOn(unlock.part) end, format(L.REASON_MODULE_OFF_FMT, unlock.module))
+        end
+    end
+
+    -- Where a player goes when something is wrong, for every module at once. Each module's page
+    -- keeps its own Play a Test Line, beside its voice packs. It sits on the Contribute & Report
+    -- page (ContributeRows).
+    local function FixRows(rows)
+        rows:Section(L.OPT_FIX_TITLE)
+        rows:Columns(2)
+        rows:Button(L.OPT_DIAGNOSTICS, 200, function() Options:ShowDiagnostics() end)
+        -- For what belongs to no one line; each line has its own Report. The game cannot open a
+        -- link, so it hands over the address to copy.
+        if Spoken.ShowContribution then
+            rows:Button(L.DIALOGUE_REPORT_PROBLEM, 200, function() Spoken:ShowContribution(Spoken.SITE_URL, nil, true) end)
+        end
+        rows:Columns(nil)
+        rows:ShowWhen(rows:Button(L.OPT_RESET, 200, function() Options:ResetPositions() end), Shown)
+    end
+    -- The finer settings from here on.
+
+    -- How the window and the subtitles look.
+    layout:Section(L.OPT_LOOK_TITLE)
+    -- Parchment or Dark, for each window that has a choice: the Small Window's own, and the
+    -- DialogueUI window's, which can also follow DialogueUI's. None in EllesmereUI's look, which
+    -- has its own.
+    Only(layout:Dropdown(L.OPT_DUI_THEME, nil, { "parchment", "dark" },
+        function() return cfg().MinimalBackground end, function(v) cfg().MinimalBackground = v end, refresh,
+        function(v) return v == "dark" and L.OPT_DUI_THEME_DARK or L.OPT_DUI_THEME_PARCHMENT end),
+        function() return Small() and not Ellesmere:On() end)
+    DialogueUIOptions:ThemeRow(layout, function(row) return Only(row, DUI) end, refresh)
+    local shadow = layout:Slider(L.TRANSCRIPT_SHADOW, 0, 1, 0.05,
+        function() return transcript().SubtitleShadow end,
+        function(v) transcript().SubtitleShadow = v end, refreshSubtitle)
+    Only(shadow, Subtitles)
+    Requires(shadow, Narrator, L.REASON_NARRATOR)
+    Only(layout:Checkbox(L.OPT_SUBTITLE_NAME, nil,
+        function() return transcript().SubtitleName ~= false end,
+        function(v) transcript().SubtitleName = v end, function() refreshSubtitle(); Options:UpdateRows() end),
+        Subtitles)
+    -- The subtitles' portrait sits with their name and title, and goes with them: under that
+    -- row, and greyed while it is off.
+    layout:Indent()
+    local subtitlePortrait = layout:Checkbox(L.OPT_HIDE_PORTRAIT, nil,
+        function() return cfg().HidePortrait end, function(v) cfg().HidePortrait = v end,
+        function() refresh(); Subtitle:Update() end)
+    layout:Outdent()
+    Only(subtitlePortrait, Subtitles)
+    Requires(subtitlePortrait, function() return transcript().SubtitleName ~= false end, L.REASON_SUBTITLE_NAME)
+    -- The windows' portrait: not the DialogueUI window's, whose header has the face's socket
+    -- built in.
+    Only(layout:Checkbox(L.OPT_HIDE_PORTRAIT, nil,
+        function() return cfg().HidePortrait end, function(v) cfg().HidePortrait = v end, refresh),
+        function() return InWindow() and not DUI() end)
+    local progress = layout:Checkbox(L.OPT_SUBTITLE_PROGRESS, nil,
+        function() return transcript().SubtitleProgress ~= false end,
+        function(v) transcript().SubtitleProgress = v end, function() refreshSubtitle(); refresh() end)
+    Only(progress, function() return Subtitles() or InWindow() end)
+    Requires(progress, function() return not Subtitles() or Narrator() end, L.REASON_NARRATOR)
+    -- Forever only, where it matches the game's own frames: every frame Spoken draws, whatever
+    -- the style.
+    if Version.Variant == "forever" then
+        layout:Checkbox(L.OPT_BRONZE_TINT, nil,
+            function() return cfg().BronzeTint end, function(v) cfg().BronzeTint = v end, refresh)
+    end
+
+    -- How the words of a line show, past whether they show at all and how big.
+    layout:Section(L.OPT_TEXT_TITLE)
+    -- How much shows at once: rows in a window or a row-by-row subtitle, sentences in a paged one.
+    local function Rolling() return transcript().SubtitleScroll == "line" end
+    local lines = layout:Slider(L.TRANSCRIPT_LINES, 1, 2, 1,
+        function() return transcript().Lines end,
+        function(v) transcript().Lines = v end, refreshText,
+        Layout.Number)
+    Only(lines, function() return (InWindow() and Style() ~= "classic") or (Subtitles() and Rolling()) end)
+    Requires(lines, Narrator, L.REASON_NARRATOR)
+    local sentences = layout:Slider(L.OPT_SUBTITLE_SENTENCES, 1, 4, 1,
+        function() return transcript().SubtitleSentences or 3 end,
+        function(v) transcript().SubtitleSentences = v end, refreshSubtitle, Layout.Number)
+    Only(sentences, function() return Subtitles() and not Rolling() end)
+    Requires(sentences, Narrator, L.REASON_NARRATOR)
+    local fit = DialogueUIOptions:FitRow(layout, function(row) return Only(row, DUI) end, refresh)
+    if fit then Requires(fit, Narrator, L.REASON_NARRATOR) end
+    local SCROLL_LABELS = { line = L.TRANSCRIPT_SCROLL_LINE, page = L.TRANSCRIPT_SCROLL_PAGE,
+        off = L.TRANSCRIPT_SCROLL_OFF }
+    local scroll = layout:Dropdown(L.TRANSCRIPT_SCROLL, nil, { "line", "page", "off" },
+        function() return Transcript:ScrollMode() end,
+        function(v) transcript().ScrollMode = v; Transcript.manualScroll = false end, refreshTranscript,
+        function(v) return SCROLL_LABELS[v] or v end)
+    Only(scroll, InWindow)
+    Requires(scroll, Narrator, L.REASON_NARRATOR)
+    -- The subtitle's Auto-Scroll has no Off: it cannot be scrolled by hand.
+    local subtitleScroll = layout:Dropdown(L.TRANSCRIPT_SCROLL, nil, { "line", "page" },
+        function() return transcript().SubtitleScroll or "page" end,
+        function(v) transcript().SubtitleScroll = v end, function() refreshSubtitle(); Options:UpdateRows() end,
+        function(v) return SCROLL_LABELS[v] or v end)
+    Only(subtitleScroll, Subtitles)
+    Requires(subtitleScroll, Narrator, L.REASON_NARRATOR)
+    subtitleScroll.layoutSubtitles = true
+    -- The subtitle lights the word only while its words show whole: typed at their own pace, an
+    -- estimated word timing would show every miss.
+    local highlight = layout:Checkbox(L.TRANSCRIPT_HIGHLIGHT, nil,
+        function() return transcript().HighlightWord end,
+        function(v) transcript().HighlightWord = v end, refreshTranscript)
+    Only(highlight, MarksWords)
+    Requires(highlight, Narrator, L.REASON_NARRATOR)
+    Requires(highlight, function() return not (Subtitles() and transcript().Typewriter) end, L.REASON_UNTYPED)
+    local typewriter = layout:Checkbox(L.TRANSCRIPT_TYPEWRITER, nil,
+        function() return transcript().Typewriter end,
+        function(v) transcript().Typewriter = v end, refreshTranscript)
+    Only(typewriter, MarksWords)
+    Requires(typewriter, Narrator, L.REASON_NARRATOR)
+    layout:Indent()
+    local by = layout:Dropdown(L.TRANSCRIPT_TYPEWRITER_BY, nil, { "letter", "word" },
+        function() return transcript().TypewriterBy or "letter" end,
+        function(v) transcript().TypewriterBy = v end, refreshTranscript,
+        function(v) return v == "letter" and L.TRANSCRIPT_BY_LETTER or L.TRANSCRIPT_BY_WORD end)
+    layout:Outdent()
+    Only(by, MarksWords)
+    Requires(by, Narrator, L.REASON_NARRATOR)
+    Requires(by, function() return transcript().Typewriter end, L.REASON_TYPEWRITER)
+
+    -- The rows feature addons add for DialogueUI's own window, where it is installed.
+    DialogueUIOptions:Place(layout)
+
+    -- How lines follow one another.
+    layout:Section(L.OPT_PLAYBACK_TITLE)
+    layout:Slider(L.OPT_LINE_GAP, 0, 5, 0.25,
+        function() return audio().LineGap or 0 end, function(v) audio().LineGap = v end,
+        nil, Layout.Seconds)
+    layout:Checkbox(L.OPT_CUE_BETWEEN, nil,
+        function() return audio().CueBetweenLines end,
+        function(v) audio().CueBetweenLines = v end)
+    if BackgroundSound:IsAvailable() then
+        layout:Checkbox(L.OPT_BACKGROUND_SOUND, nil,
+            function() return audio().KeepTalkingInBackground end,
+            function(v) audio().KeepTalkingInBackground = v end,
+            function() BackgroundSound:Sync() end)
+    end
+
+    -- Each sound's level under Turn Other Sounds Down. A section of its own rather than indented
+    -- under its switch: an indented slider starts its bar out of line with every other control.
+    if OtherSounds:IsAvailable() then
+        layout:Section(L.OPT_LOWER_TITLE)
+        for _, row in ipairs({ { "Music", L.OPT_LOWER_MUSIC }, { "Ambience", L.OPT_LOWER_AMBIENCE },
+            { "SFX", L.OPT_LOWER_SFX }, { "Dialog", L.OPT_LOWER_DIALOG } }) do
+            local channel = row[1]
+            local slider = layout:Slider(row[2], 0, 1, 0.05,
+                function() return lower()[channel] end, function(v) lower()[channel] = v end, applyLower)
+            Requires(slider, function() return lower().Enabled end, L.REASON_LOWER)
+            -- Never lowered while it carries the voices.
+            Requires(slider, function() return Sources:PlayerChannel() ~= channel end, L.REASON_VOICE_CHANNEL)
+            if channel == "Dialog" then
+                -- With the game's dialogue silenced outright, there is no level to set.
+                Requires(slider, function() return not audio().AutoToggleDialog end, L.REASON_DIALOG_MUTED)
+            end
+        end
+    end
+
+    -- The buttons live on Blizzard's quest, book and map frames, not on the player, but
+    -- they all open the player's box, so the one switch for them is Spoken's. They have a page
+    -- of their own under Spoken's, in the list beside the modules'.
+    local function ContributeRows(rows)
+        -- How much there is to send, first, so a player knows when it is worth sending.
+        rows:Badge(L.OPT_GATHER_ROW, function()
+            if not Gather:IsEnabled() then return "off", L.GATHER_OFF end
+            local count = Gather:Count()
+            if count == 0 then return "off", L.GATHER_NONE end
+            return "ok", format(L.GATHER_BADGE_FMT, count)
+        end, nil, true)
+        -- The opt-out the first Contribute click promises. Independent of hiding the
+        -- buttons: a player who collects has no use for them, and hiding them must not stop it.
+        rows:Checkbox(L.OPT_GATHER, nil,
+            function() return Gather:IsEnabled() end,
+            function(v)
+                -- Choosing here is an answer to the first-click question too.
+                Gather:SetIntroduced()
+                Gather:SetEnabled(v)
+            end, function() Options:UpdateRows() end)
+        rows:Button(L.OPT_GATHER_VIEW, 200, function() Spoken:ShowGatheredText() end)
+        rows:Columns(2)
+        rows:Button(L.OPT_GATHER_SHARE, 200, function() Spoken:ShowGatherInstructions() end)
+        rows:Button(L.OPT_GATHER_CLEAR, 200, function()
+            Gather:Clear()
+            Spoken:RefreshGatheredText()
+            Options:UpdateRows()
+        end)
+        rows:Columns(nil)
+        rows:Checkbox(L.OPT_HIDE_CONTRIBUTE, nil,
+            function() return Addon.db.profile.Contribute.HideButtons end,
+            function(v) Addon.db.profile.Contribute.HideButtons = v end,
+            function() Callbacks:Fire("CONTRIBUTE_SETTINGS_CHANGED") end)
+        -- Report on the window and the subtitles.
+        rows:Checkbox(L.OPT_HIDE_REPORT, nil,
+            function() return cfg().HiddenActions.report end,
+            function(v) cfg().HiddenActions.report = v or nil end, function()
+                refresh()
+                Subtitle:Update()
+                Callbacks:Fire("REPORT_SETTINGS_CHANGED")
+            end)
+    end
+    BuildContributePage(function(rows)
+        ContributeRows(rows)
+        FixRows(rows)
+    end)
+
+    layout:Section(L.OPT_MINIMAP_TITLE)
+    layout:Checkbox(L.OPT_MINIMAP_SHOW, nil,
+        function() return not mm().hide end,
+        function(v) mm().hide = not v end, function() Minimap:Refresh() end)
+    layout:Checkbox(L.OPT_MINIMAP_LOCK, nil,
+        function() return mm().lock end,
+        function(v) mm().lock = v end, function() Minimap:Refresh() end)
+    -- Blizzard's addon compartment exists on the modern clients only; the player's
+    -- button shows there too, opening the same menu, and this row switches it.
+    if AddonCompartmentFrame then
+        layout:Checkbox(L.OPT_MINIMAP_COMPARTMENT, nil,
+            function() return mm().showInCompartment end,
+            function(v) Minimap:ToggleCompartment(v) end)
     end
 
     -- Profiles, for all of Spoken at once: the player's own settings and every part that keeps
@@ -778,38 +969,29 @@ local function Build(canvas)
     Options:AddProfiles(layout)
 
     -- Spoken outside the game: its code, its Discord and its download page.
-    if canvas then Options.links = Options:AddLinks(layout) end
+    Options.links = Options:AddLinks(layout)
 
-    -- Last, as Blizzard's own pages end on their defaults button: the two ways to start over.
-    if Welcome and canvas then
-        layout:Section(L.OPT_START_OVER_TITLE)
-        layout:Button(L.OPT_WELCOME_AGAIN, 200, function() Welcome:Show() end, L.OPT_WELCOME_AGAIN_TIP)
-    end
     -- Every setting back, from the header's Defaults as the game's pages have it.
     layout:StartOver(L.OPT_START_OVER_TITLE, L.OPT_RESET_ALL, function()
         Layout.Confirm(L.OPT_RESET_ALL_CONFIRM, L.OPT_RESET_AND_RELOAD, L.CANCEL, function()
             -- The Unlock switches are on this page but kept with each part's settings, which
             -- ResetProfile does not reach, and each part's own Reset skips them.
-            for _, key in ipairs({ "places", "readables" }) do
+            for _, key in ipairs({ "places", "readables", "quests", "bosses" }) do
                 local tab = Tab(key)
                 if tab and tab.unlock then tab.unlock.set(false) end
             end
             -- The feature addons' DialogueUI rows are kept in their own settings too.
             DialogueUIOptions:Reset()
             Addon.db:ResetProfile()
+            -- Unset, the Compendium's Text Size is the one the Places page had: set, it is back
+            -- to its default.
+            Addon.db.profile.CompendiumFontSize = 12
             Addon.db.global.Layout = nil
+            Addon.db.global.InterfaceLanguage = nil
             ReloadUI()
         end)
     end, L.OPT_RESET_ALL_TIP)
 
-    -- Feature addons register a button here to reach their own settings. The section is
-    -- created with the first of them: with no feature addon installed there is nothing
-    -- to head.
-    panel.links = {}
-    for _, link in ipairs(pendingLinks) do
-        Options:AddLink(link.text, link.onClick)
-    end
-    pendingLinks = {}
     -- The modules register on entering the world, after this page is built: drawn again for each,
     -- or their rows in the module list say "Not installed" until something else redraws them.
     Callbacks:Register("SOURCE_REGISTERED", function() Options:UpdateRows() end)
@@ -817,7 +999,7 @@ local function Build(canvas)
         panel:HookScript("OnShow", function() Options:UpdateRows() end)
         -- The sample is for placing the subtitle while the settings are open, not after.
         panel:HookScript("OnHide", function()
-            if Subtitle and Subtitle:IsShowingSample() then Subtitle:ShowSample(false) end
+            if Subtitle:IsShowingSample() then Subtitle:ShowSample(false) end
             if Options.previewing or Addon.previewStyle then Options:SetPreviewing(false) end
         end)
     end
@@ -829,10 +1011,7 @@ end
 function Options:UpdateRows()
     if not panel then return end
     panel.layout:Refresh()
-    for _, row in ipairs(panel.parts or {}) do
-        local installed = Sources:Get(row.partKey) ~= nil
-        row.text:SetText(installed and row.partLabel or format(L.OPT_PART_MISSING, row.partLabel))
-    end
+    if contribute then contribute.layout:Refresh() end
 end
 
 --- How a part stands, for its card and the top of its page: not installed, switched off, or
@@ -866,6 +1045,17 @@ function Options:PartVoice(key)
     local have = self:PackCount(source)
     if not have then return nil end
     return have == 0 and "muted" or "neutral", L.PART_VOICE, tostring(have)
+end
+
+--- Whether no voice pack is installed for any module that says how many it has: the first-run
+--- state, where nothing is read aloud yet.
+function Options:NoVoicePacks()
+    local known, total = false, 0
+    for _, source in Sources:Iterate() do
+        local count = self:PackCount(source)
+        if count then known, total = true, total + count end
+    end
+    return known and total == 0
 end
 
 --- Every AceDB object a profile choice applies to: the player's, then each installed part's
@@ -921,10 +1111,33 @@ function Options:CopyProfile(name)
     end
 end
 
+--- Delete `name` where it is not in use. AceDB clears the key of each character on it; each is put
+--- on its own profile, so it is not taken for a new character at its next login. The choice of it
+--- for new characters goes too, so a later profile of that name is not chosen.
 function Options:DeleteProfile(name)
     for _, db in ipairs(self:ProfileDBs()) do
-        if db.DeleteProfile and Has(db, name) and db:GetCurrentProfile() ~= name then db:DeleteProfile(name) end
+        if db.DeleteProfile and Has(db, name) and db:GetCurrentProfile() ~= name then
+            local keys, moved = db.sv and db.sv.profileKeys, {}
+            for key, profile in pairs(keys or {}) do
+                if profile == name then table.insert(moved, key) end
+            end
+            db:DeleteProfile(name)
+            for _, key in ipairs(moved) do keys[key] = key end
+        end
     end
+    if Addon.db and Addon.db.global.NewCharacterProfile == name and not Addon:SavedProfile(name) then
+        Addon.db.global.NewCharacterProfile = nil
+    end
+end
+
+--- The profile a character logging in with Spoken for the first time starts on: one of Spoken's
+--- saved profiles, or false for a profile of its own.
+function Options:NewCharacterProfile()
+    return Addon:NewCharacterProfile() or false
+end
+
+function Options:SetNewCharacterProfile(name)
+    Addon.db.global.NewCharacterProfile = name or nil
 end
 
 function Options:AddProfiles(layout)
@@ -939,20 +1152,18 @@ function Options:AddProfiles(layout)
     end
     local function Pick(name) return name or L.OPT_PROFILE_PICK end
     layout:Section(L.OPT_SECTION_PROFILES)
-    layout:Dropdown(L.OPT_PROFILE, L.OPT_PROFILE_TIP, function() return self:ProfileNames() end,
+    layout:Dropdown(L.OPT_PROFILE, nil, function() return self:ProfileNames() end,
         function() return self:CurrentProfile() end,
         function(name) self:SetProfile(name); layout:Refresh() end)
-    layout:Dropdown(L.OPT_COPY_PROFILE, L.OPT_COPY_PROFILE_TIP, Others, function() return nil end,
+    layout:Dropdown(L.OPT_COPY_PROFILE, nil, Others, function() return nil end,
         function(name) self:CopyProfile(name); layout:Refresh() end, nil, Pick)
-    layout:Dropdown(L.OPT_DELETE_PROFILE, L.OPT_DELETE_PROFILE_TIP, Others, function() return nil end,
+    layout:Dropdown(L.OPT_DELETE_PROFILE, nil, Others, function() return nil end,
         function(name) self:DeleteProfile(name); layout:Refresh() end, nil, Pick)
     if StaticPopupDialogs and StaticPopup_Show then
         StaticPopupDialogs.SPOKEN_NEW_PROFILE = StaticPopupDialogs.SPOKEN_NEW_PROFILE or {
             text = L.OPT_PROFILE_NEW_PROMPT, button1 = _G.ACCEPT or "Accept", button2 = L.CANCEL,
             hasEditBox = true, timeout = 0, whileDead = true, hideOnEscape = true,
-            -- 1.12 and 2.4.3 hand these nothing: the dialog, or its edit box, is in `this`.
             OnAccept = function(popup)
-                popup = popup or this
                 local box = popup and (popup.editBox or popup.EditBox)
                 if not box and StaticPopup_Visible then
                     local which = StaticPopup_Visible("SPOKEN_NEW_PROFILE")
@@ -965,14 +1176,36 @@ function Options:AddProfiles(layout)
                 end
             end,
             EditBoxOnEnterPressed = function(box)
-                box = box or this
                 local popup = box and box:GetParent()
                 if popup and popup.button1 then popup.button1:Click() end
             end,
         }
-        layout:Button(L.OPT_PROFILE_NEW, 200, function() StaticPopup_Show("SPOKEN_NEW_PROFILE") end,
-            L.OPT_PROFILE_NEW_TIP)
+        layout:Button(L.OPT_PROFILE_NEW, 200, function() StaticPopup_Show("SPOKEN_NEW_PROFILE") end)
     end
+    if Addon.db then
+        layout:Dropdown(L.OPT_NEW_CHARACTER_PROFILE, L.OPT_NEW_CHARACTER_PROFILE_TIP,
+            -- Only Spoken's saved profiles: it reads the choice before any other settings load.
+            function()
+                local names = {}
+                for _, name in ipairs(Addon.db:GetProfiles()) do
+                    if Addon:SavedProfile(name) then table.insert(names, name) end
+                end
+                table.sort(names)
+                table.insert(names, 1, false)
+                return names
+            end,
+            function() return self:NewCharacterProfile() end,
+            function(name) self:SetNewCharacterProfile(name) end,
+            nil, function(name) return name or L.OPT_PROFILE_OWN end)
+    end
+end
+
+--- Whether a settings page was added in `order`: a part with none has no button to it.
+function Options:HasPage(order)
+    for _, page in ipairs(self.pages or {}) do
+        if page.order == order then return true end
+    end
+    return false
 end
 
 --- Open Spoken's page on a tab: Home's is 0, a feature addon's the order it was listed in.
@@ -1015,70 +1248,38 @@ function Options:ShowRow(page, row)
         page.layout:Highlight(row)
     end
     -- The canvas has no size until the window lays it out, so the scroll waits a moment.
-    if C_Timer and C_Timer.After then C_Timer.After(0.05, Land) else Land() end
+    C_Timer.After(0.05, Land)
 end
 
--- The legacy window's height: never shorter than it always was, and tall enough for every
--- row, including a link a feature addon added after the window was built. On the canvas,
--- the scroller's content height instead, for the same late links.
-local function FitWindow()
-    if scroller and panel then
-        scroller:SetContentHeight(TOP + panel.layout:Height() + BOTTOM)
-        return
-    end
-    if not (panel and panel.isWindow) then return end
-    local needed = TOP + panel.layout:Height() + BOTTOM
-    if needed > (panel:GetHeight() or 0) then
-        panel:SetHeight(needed)
-    end
+local function FitScroller()
+    scroller:SetContentHeight(TOP + panel.layout:Height() + BOTTOM)
 end
 
 function Options:Setup()
     if panel then return end
-    local canvas = Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory
-    Build(canvas)
-    -- Rows come and go with the way lines are shown; the window or scroller follows what is left.
-    panel.layout.onResize = function() FitWindow() end
+    Build()
+    -- Rows come and go with the way lines are shown; the scroller follows what is left.
+    panel.layout.onResize = FitScroller
     self:UpdateRows()
-    if canvas then
-        -- Spoken's entry in the game's settings, and each feature addon's page an entry nested
-        -- under it (Options:RegisterPage).
-        FitWindow()
-        self.category = Settings.RegisterCanvasLayoutCategory(panel, "Spoken")
-        Settings.RegisterAddOnCategory(self.category)
-        table.sort(pendingPages, function(a, b) return a.order < b.order end)
-        for _, page in ipairs(pendingPages) do self:RegisterPage(page) end
-        pendingPages = {}
-    else
-        -- No Settings API: a window of our own, opened by /spoken options. Sized to its
-        -- rows, which vary by client, rather than a fixed height the rows can outgrow.
-        panel.isWindow = true
-        panel:SetSize(420, 360)
-        FitWindow()
-        panel:SetPoint("CENTER")
-        panel:SetMovable(true)
-        panel:EnableMouse(true)
-        panel:SetFrameStrata("DIALOG")
-        panel:Hide()
-        local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
-        close:SetPoint("TOPRIGHT", -4, -4)
-        close:SetScript("OnClick", function() panel:Hide() end)
-    end
+    -- Spoken's entry in the game's settings, and each feature addon's page an entry nested
+    -- under it (Options:RegisterPage).
+    FitScroller()
+    self.category = Settings.RegisterCanvasLayoutCategory(panel, "Spoken")
+    Settings.RegisterAddOnCategory(self.category)
+    if not pagesHeld then self:ReleasePages() end
 end
 
 --- A feature addon's page, as a tab on Spoken's. A feature addon may build its panel before
 --- this one exists, at its own load, so the page waits until it does. `page.Open` opens Spoken
---- on its tab, and `page.category` is Spoken's own entry once registered. Nil where the client
---- has no settings canvas, and the feature addon registers a page of its own.
+--- on its tab, and `page.category` is Spoken's own entry once registered.
 function Options:AddPage(frame, name, order, layout, pageScroller)
-    if not (Settings and Settings.RegisterCanvasLayoutCategory) then return nil end
     -- The layout and its scroller come along so the search on Home can reach this page's rows.
     local page = { frame = frame, name = name, order = order or 100, layout = layout, scroller = pageScroller }
     page.Open = function() return Options:OpenPage(page.order) end
     self.pages = self.pages or {}
     table.insert(self.pages, page)
     table.sort(self.pages, function(a, b) return a.order < b.order end)
-    if self.category then
+    if self.category and not pagesHeld then
         self:RegisterPage(page)
     else
         table.insert(pendingPages, page)
@@ -1086,36 +1287,32 @@ function Options:AddPage(frame, name, order, layout, pageScroller)
     return page
 end
 
+--- Register the pages held so far, in their order. The game lists the pages under Spoken in the
+--- order they were registered, not sorted, and the modules ask for theirs on entering the world,
+--- in whatever order their frames hear it: so every page waits until just after that, and they
+--- are registered together. One asked for later is registered at once, after them.
+function Options:ReleasePages()
+    pagesHeld = false
+    if not self.category then return end
+    table.sort(pendingPages, function(a, b) return a.order < b.order end)
+    for _, page in ipairs(pendingPages) do self:RegisterPage(page) end
+    pendingPages = {}
+end
+
+local release = CreateFrame("Frame")
+release:RegisterEvent("PLAYER_ENTERING_WORLD")
+release:SetScript("OnEvent", function()
+    release:UnregisterEvent("PLAYER_ENTERING_WORLD")
+    -- The next frame: after every module's own PLAYER_ENTERING_WORLD.
+    C_Timer.After(0, function() Options:ReleasePages() end)
+end)
+
 function Options:RegisterPage(page)
     page.category = Settings.RegisterCanvasLayoutSubcategory(self.category, page.frame, page.name)
 end
 
---- A button on the player's panel that opens a feature addon's own settings. The
---- quests addon uses this because AceConfigDialog owns its frame lifecycle and nesting
---- it as a canvas subcategory is fragile across six clients.
-function Options:AddLink(text, onClick)
-    -- Where the feature addons' pages nest under this one, the settings list already leads
-    -- to each of them, and a button to the same place is a second way to say one thing.
-    if Settings and Settings.RegisterCanvasLayoutSubcategory then return end
-    -- Feature addons call this from ADDON_LOADED; the panel is built at PLAYER_LOGIN.
-    if not panel then
-        table.insert(pendingLinks, { text = text, onClick = onClick })
-        return
-    end
-    if not panel.linksSection then
-        panel.linksSection = true
-        panel.layout:Section(L.OPT_ADDONS_TITLE)
-    end
-    table.insert(panel.links, panel.layout:Button(text, 200, onClick))
-    FitWindow()
-end
-
 function Options:Open()
-    if self.category and Settings and Settings.OpenToCategory then
+    if self.category then
         Layout.OpenCategory(self.category, L.OPT_OPEN_COMBAT)
-    elseif panel then
-        panel:SetShown(not panel:IsShown())
-    else
-        print("Spoken: " .. L.OPT_NO_SETTINGS_API)
     end
 end

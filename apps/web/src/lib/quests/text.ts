@@ -1,11 +1,9 @@
 /**
  * Writing a quest line's text in a language other than English: new quest_line versions,
- * the way lib/books/text.ts writes pages and lib/zones/lore.ts writes lore.
+ * the way lib/readables/text.ts writes pages and lib/places/lore.ts writes lore.
  *
- * English is not written here. Its spoken rewrites are line_override's -- keyed by file,
- * with the committed corpus and its export behind them -- and moving English onto versions
- * is a change to how every English pack is built, which this is not. Another language has
- * no such history to keep, so its text is simply a versioned row like every other.
+ * English is not written here: it stores each $G side already resolved, where another language
+ * keeps its tokens for player-words.ts.
  *
  * A line is addressed by its id and variant, because 103 ids name two different texts. The
  * first translation of a line copies its structure -- event, quest, file, player gender --
@@ -15,8 +13,10 @@
  */
 import "server-only";
 
+import { auditDetail, type ApiAudit } from "@/lib/activity/kinds";
 import { recordActivity } from "@/lib/activity/store";
-import { db, query } from "@/lib/db";
+import { query } from "@/lib/db";
+import { withTextTeam } from "@/lib/teams/store";
 import { answersQuestMomentSql, baseLineId, momentOf, playerGenderForms } from "@/lib/contributions/naming";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { branchesOnPlayerGender } from "@/lib/player-words";
@@ -59,7 +59,7 @@ export class QuestTextMissing extends Error {}
 
 function refuseEnglish(lang: Lang): void {
   if (lang === BASE_LANG) {
-    throw new Error("English lines are rewritten through line_override, not here");
+    throw new Error("English lines are written through quests/moment-rewrite.ts, not here");
   }
 }
 
@@ -100,17 +100,15 @@ export async function saveQuestText(args: {
   expectedVersion?: number | null;
   /** The contribution the text came from, for a correction accepted from the game. */
   contribution?: number;
-}): Promise<QuestTextVersion> {
+  audit?: ApiAudit;
+}): Promise<QuestTextVersion & { wrote: boolean; lines: string[] }> {
   refuseEnglish(args.lang);
   args = { ...args, lineId: baseLineId(args.lineId) };
   const text = args.text.trim();
   if (!text) throw new Error("the text cannot be empty");
   const moment = momentOf(args.lineId);
 
-  const client = await db().connect();
-  try {
-    await client.query("begin");
-
+  return withTextTeam(args.lang, async (client, team) => {
     // Every current row of the moment in this language, so a split can retire the others.
     const { rows: momentRows } = await client.query<Structure>(
       `select ${COLUMNS}, ${STRUCTURE} from "quest_line"
@@ -159,8 +157,7 @@ export async function saveQuestText(args: {
       !retired.length &&
       targets.every((target) => momentRows.some((row) => row.lineId === target.lineId && row.text === text))
     ) {
-      await client.query("commit");
-      return toVersion(momentRows.find((row) => row.lineId === written[0])!);
+      return { ...toVersion(momentRows.find((row) => row.lineId === written[0])!), wrote: false, lines: written };
     }
 
     await client.query(
@@ -179,10 +176,10 @@ export async function saveQuestText(args: {
       );
       const version = Number(maxRows[0].version) + 1;
       // Whether the line can be voiced is decided from the text now being written, by the
-      // same rules the English uses: progress text never is, and a stray bracket or a token
-      // this language has no word for would be read aloud. Its $N does have one
-      // (player-words.ts), in the form the line's player gender takes.
-      const skipReason = skipReasonFor(from.source, text, args.lang, target.playerGender);
+      // same rules the English uses: a stray bracket or a token this language has no word for
+      // would be read aloud. Its $N does have one (player-words.ts), in the form the line's
+      // player gender takes.
+      const skipReason = skipReasonFor(text, args.lang, target.playerGender);
       const source = own ?? from;
       // localeText from the language's own row only, since the English has none.
       const { rows: inserted } = await client.query<Row>(
@@ -213,6 +210,7 @@ export async function saveQuestText(args: {
       saved ??= inserted[0];
       await recordActivity(
         {
+          team,
           kind: "text.edited",
           lang: args.lang,
           actorId: args.editedBy,
@@ -226,20 +224,15 @@ export async function saveQuestText(args: {
             variant: args.variant,
             ...(retired.length ? { replaces: retired } : {}),
             ...(args.contribution ? { contribution: args.contribution } : {}),
+            ...auditDetail(args.audit, own?.version ?? null),
           },
         },
         client,
       );
     }
 
-    await client.query("commit");
-    return toVersion(saved!);
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+    return { ...toVersion(saved!), wrote: true, lines: written };
+  });
 }
 
 /**
@@ -256,9 +249,7 @@ export async function restoreQuestText(
   by: string | null,
 ): Promise<QuestTextVersion> {
   refuseEnglish(lang);
-  const client = await db().connect();
-  try {
-    await client.query("begin");
+  return withTextTeam(lang, async (client, team) => {
     const { rows } = await client.query<Row>(
       `select ${COLUMNS} from "quest_line"
         where "lineId" = $1 and "variant" = $2 and "lang" = $3 and "version" = $4 for update`,
@@ -291,6 +282,7 @@ export async function restoreQuestText(
     );
     await recordActivity(
       {
+        team,
         kind: "text.restored",
         lang,
         actorId: by,
@@ -301,12 +293,29 @@ export async function restoreQuestText(
       },
       client,
     );
-    await client.query("commit");
     return toVersion(restored[0]);
-  } catch (error) {
-    await client.query("rollback").catch(() => {});
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
+}
+
+/** Takes a first translation back, so the line reads as untranslated again. */
+export async function retireQuestText(
+  lineId: string,
+  variant: number,
+  lang: Lang,
+  version: number,
+  by: string | null,
+): Promise<void> {
+  refuseEnglish(lang);
+  return withTextTeam(lang, async (client, team) => {
+    const { rowCount } = await client.query(
+      `update "quest_line" set "isCurrent" = false
+        where "lineId" = $1 and "variant" = $2 and "lang" = $3 and "version" = $4 and "isCurrent"`,
+      [lineId, variant, lang, version],
+    );
+    if (!rowCount) throw new QuestTextConflict(`${lineId} v${version} is not the current text`);
+    await recordActivity(
+      { team, kind: "text.retired", lang, actorId: by, source: "quests", subject: lineId, lineId, detail: { version } },
+      client,
+    );
+  });
 }

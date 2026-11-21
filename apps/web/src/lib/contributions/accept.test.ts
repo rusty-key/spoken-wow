@@ -8,15 +8,21 @@
  * this file's own care around npcId/questId, which are randomised well outside any id the
  * corpus or an addon submission could plausibly produce.
  */
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { catalogue } from "@/lib/readables/catalogue";
 import { closeDb, db } from "@/lib/db";
+import { forgetIgnores, readIgnores } from "@/lib/quests/ignores";
+import { asTeams } from "@/lib/teams/acting";
+import { asSystem, dropTeam, newTeamIn, systemRows } from "@/lib/teams/testing";
 import { BASE_LANG } from "@/lib/lang";
 import { upsertResolution } from "@/lib/npc/store";
 import { corpus, lineIndex } from "@/lib/quests/catalogue";
 import { isGap, matchingLines, NO_CONTEXT } from "@/lib/search";
 
+import { acceptCorrection } from "./correction";
 import { lineIsInExplorer, momentHasSpeaker, resolveContribution, resolveContributions } from "./accept";
+import { LETTER_COPY_ITEM } from "@readables-tools/lib/owners.mjs";
 import {
   broadcastGossipStem,
   gossipFileName,
@@ -31,7 +37,7 @@ import {
   CONTRIBUTION_COLUMNS,
   listContributions,
   setContributionNpcKind,
-  setContributionPage,
+  setContributionMatch,
   type Contribution,
 } from "./store";
 
@@ -52,7 +58,7 @@ const GUARD_TEXT =
 let contributionIds: number[] = [];
 
 beforeAll(async () => {
-  await db().query(
+  await asSystem.query(
     `insert into "user" ("id", "name", "email", "emailVerified")
      values ($1, 'Test Accept Resolver', $2, false)
      on conflict ("id") do nothing`,
@@ -64,25 +70,29 @@ afterEach(async () => {
   if (contributionIds.length) {
     // The speaker rows reference the contribution (no action on delete), so they go first,
     // then the lines this run wrote, then the contributions themselves.
-    await db().query(`delete from "quest_line_speaker" where "contributionId" = any($1::int[])`, [contributionIds]);
-    await db().query(`delete from "quest_line" where "origin" = 'contributed' and "note" = any($1::text[])`, [
+    await asSystem.query(`delete from "quest_line_speaker" where "contributionId" = any($1::int[])`, [contributionIds]);
+    await asSystem.query(`delete from "quest_line" where "origin" = 'contributed' and "note" = any($1::text[])`, [
       contributionIds.map((id) => `contribution #${id}`),
     ]);
     const notes = contributionIds.map((id) => `contribution #${id}`);
-    await db().query(`delete from "book_line" where "origin" = 'contributed' and "note" = any($1::text[])`, [notes]);
-    await db().query(`delete from "entity_name" where "note" = any($1::text[])`, [notes]);
-    await db().query(
+    await asSystem.query(`delete from "line_ignore" where "reason" = any($1::text[])`, [
+      notes.map((note) => `Rejected ${note}`),
+    ]);
+    await asSystem.query(`delete from "activity" where "kind" = 'ignore.set' and "actorId" = $1`, [RESOLVER]);
+    await asSystem.query(`delete from "book_line" where "origin" = 'contributed' and "note" = any($1::text[])`, [notes]);
+    await asSystem.query(`delete from "entity_name" where "note" = any($1::text[])`, [notes]);
+    await asSystem.query(
       `delete from "activity" where "kind" like 'contribution.%' and "subject" = any($1::text[])`,
       [contributionIds.map(String)],
     );
-    await db().query(`delete from "contribution" where "id" = any($1::int[])`, [contributionIds]);
+    await asSystem.query(`delete from "contribution" where "id" = any($1::int[])`, [contributionIds]);
     contributionIds = [];
   }
-  await db().query(`delete from "npc" where "npcId" between $1 and $2`, [base, base + 100]);
+  await asSystem.query(`delete from "npc" where "npcId" between $1 and $2`, [base, base + 100]);
 });
 
 afterAll(async () => {
-  await db().query(`delete from "user" where "id" = $1`, [RESOLVER]);
+  await asSystem.query(`delete from "user" where "id" = $1`, [RESOLVER]);
   await closeDb();
 });
 
@@ -103,7 +113,7 @@ async function contribution(key: string, text: string, meta: Record<string, stri
     userId: null,
     ip: null,
   });
-  const { rows } = await db().query<{ id: number }>(`select "id" from "contribution" where "dedup" = $1`, [dedup]);
+  const { rows } = await asSystem.query<{ id: number }>(`select "id" from "contribution" where "dedup" = $1`, [dedup]);
   contributionIds.push(rows[0].id);
   return rows[0].id;
 }
@@ -142,7 +152,7 @@ async function speaker(id: number, race: string, gender: string | null, flavor: 
 }
 
 async function speakersOf(contributionId: number): Promise<{ lineId: string; ord: number }[]> {
-  const { rows } = await db().query<{ lineId: string; ord: number }>(
+  const { rows } = await asSystem.query<{ lineId: string; ord: number }>(
     `select "lineId", "ord" from "quest_line_speaker" where "contributionId" = $1`,
     [contributionId],
   );
@@ -150,10 +160,30 @@ async function speakersOf(contributionId: number): Promise<{ lineId: string; ord
 }
 
 async function linesFor(lineId: string): Promise<{ origin: string; generatable: boolean; skipReason: string | null }[]> {
-  const { rows } = await db().query(
+  const { rows } = await asSystem.query(
     `select "origin", "generatable", "skipReason" from "quest_line" where "lineId" = $1 and "lang" = 'enUS'`,
     [lineId],
   );
+  return rows;
+}
+
+/** An English quest line as an import writes it, which fires the quest_line name trigger. */
+const INSERT_ENGLISH_LINE = `insert into "quest_line"
+    ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId",
+     "questTitle", "fileName", "text", "originalText")
+  values ($1, 0, 'enUS', 1, true, 'extracted', 'accept', $2, 'A Test Quest', $1, 'Test.', 'Test.')`;
+
+/** The names the English triggers wrote for this run's quest and NPCs, which carry no note. */
+async function deleteTriggerNames(): Promise<void> {
+  await asSystem.query(
+    `delete from "entity_name"
+      where ("kind" = 'quest' and "entityId" = $1) or ("kind" = 'creature' and "entityId" = any($2::text[]))`,
+    [String(questId), [0, 1, 2].map((offset) => String(npcId + offset))],
+  );
+}
+
+async function ignoresOf(lineId: string): Promise<{ lang: string | null; reason: string }[]> {
+  const { rows } = await asSystem.query(`select "lang", "reason" from "line_ignore" where "lineId" = $1`, [lineId]);
   return rows;
 }
 
@@ -203,7 +233,7 @@ describe("resolveContribution: quests accept", () => {
     const outcome = await resolveContribution(id, "accepted", RESOLVER);
     expect(outcome).toMatchObject({ ok: false, reason: "needs-speaker" });
 
-    const { rows } = await db().query(`select "status" from "contribution" where "id" = $1`, [id]);
+    const { rows } = await asSystem.query(`select "status" from "contribution" where "id" = $1`, [id]);
     expect(rows[0].status).toBe("new");
   });
 
@@ -246,13 +276,13 @@ describe("resolveContribution: quests accept", () => {
     expect(await lineIsInExplorer(outcome.contribution)).toBe(true);
   });
 
-  it("keeps a progress line but never voices it, as the extract marks its own", async () => {
+  it("voices a progress line like any other", async () => {
     await speaker(npcId, "orc", "female", "standard");
     const id = await questContribution({ event: "progress" });
     expect((await resolveContribution(id, "accepted", RESOLVER)).ok).toBe(true);
 
     expect(await linesFor(questLineId(questId, "progress"))).toEqual([
-      { origin: "contributed", generatable: false, skipReason: "progress" },
+      { origin: "contributed", generatable: true, skipReason: null },
     ]);
   });
 
@@ -267,20 +297,60 @@ describe("resolveContribution: quests accept", () => {
     expect(await linesFor(questLineId(questId, "accept"))).toHaveLength(1);
   });
 
-  it("refuses to move an accepted line back to new or rejected", async () => {
+  it("refuses to move an accepted line back to new, or to rejected without the right to ignore", async () => {
     await speaker(npcId, "orc", "female", "standard");
 
     const id = await questContribution();
     await resolveContribution(id, "accepted", RESOLVER);
 
-    const outcome = await resolveContribution(id, "rejected", RESOLVER);
-    expect(outcome).toMatchObject({ ok: false, reason: "one-way" });
+    expect(await resolveContribution(id, "new", RESOLVER, undefined, true)).toMatchObject({ ok: false, reason: "one-way" });
+    expect(await resolveContribution(id, "rejected", RESOLVER)).toMatchObject({ ok: false, reason: "one-way" });
 
-    const { rows } = await db().query(`select "status" from "contribution" where "id" = $1`, [id]);
+    const { rows } = await asSystem.query(`select "status" from "contribution" where "id" = $1`, [id]);
     expect(rows[0].status).toBe("accepted");
+    expect(await ignoresOf(questLineId(questId, "accept"))).toEqual([]);
   });
 
-  it("the corpus wins on a collision: marks the contribution but writes nothing", async () => {
+  it("rejects an accepted line by ignoring it, keeping what it wrote", async () => {
+    await speaker(npcId, "orc", "female", "standard");
+
+    const id = await questContribution();
+    await resolveContribution(id, "accepted", RESOLVER);
+
+    expect(await resolveContribution(id, "rejected", RESOLVER, undefined, true)).toMatchObject({ ok: true });
+    const { rows } = await asSystem.query(`select "status" from "contribution" where "id" = $1`, [id]);
+    expect(rows[0].status).toBe("rejected");
+    expect(await ignoresOf(questLineId(questId, "accept"))).toEqual([
+      { lang: null, reason: `Rejected contribution #${id}` },
+    ]);
+    expect(await speakersOf(id)).toHaveLength(1);
+    expect(await linesFor(questLineId(questId, "accept"))).toHaveLength(1);
+  });
+
+  it("rejects a written line in a language by ignoring it for every team of the language", async () => {
+    const id = await questContribution();
+    await asSystem.query(`update "contribution" set "locale" = 'deDE' where "id" = $1`, [id]);
+    const lineId = questLineId(questId, "accept");
+    await asSystem.query(
+      `insert into "quest_line" ("lineId", "lang", "version", "isCurrent", "origin", "source", "fileName", "text", "originalText", "note")
+       values ($1, 'deDE', 1, true, 'contributed', 'quest', $2, 'x', 'x', $3)`,
+      [lineId, questFileName(questId, "accept"), `contribution #${id}`],
+    );
+    const second = await newTeamIn("deDE", false, "accept-second");
+    try {
+      expect(await resolveContribution(id, "rejected", RESOLVER, undefined, true)).toMatchObject({ ok: true });
+      expect(await systemRows(`select "lang", "teamId" from "line_ignore" where "lineId" = $1`, [lineId])).toEqual([
+        { lang: "deDE", teamId: null },
+      ]);
+      forgetIgnores();
+      expect((await readIgnores("deDE")).has(lineId)).toBe(true);
+      expect((await asTeams(new Map([["deDE", second]]), () => readIgnores("deDE"))).has(lineId)).toBe(true);
+    } finally {
+      await dropTeam(second);
+    }
+  });
+
+  it("the corpus wins on a collision: writes no line, only its NPC as one more speaker", async () => {
     await speaker(npcId, "human", "male", "standard");
 
     // quest 33 accept is a real, committed corpus line (corpus.test.ts pins the same one).
@@ -288,9 +358,21 @@ describe("resolveContribution: quests accept", () => {
     const outcome = await resolveContribution(id, "accepted", RESOLVER);
     expect(outcome.ok).toBe(true);
 
-    expect(await speakersOf(id)).toHaveLength(0);
+    expect(await speakersOf(id)).toEqual([{ lineId: "q:33:accept", ord: expect.any(Number) }]);
     expect((await linesFor("q:33:accept")).map((l) => l.origin)).not.toContain("contributed");
     if (outcome.ok) expect(await lineIsInExplorer(outcome.contribution)).toBe(true);
+  });
+
+  it("the corpus wins on a collision with its own speaker: writes nothing", async () => {
+    const { rows } = await asSystem.query<{ npcType: string; npcId: number }>(
+      `select "npcType", "npcId" from "quest_line_speaker" where "lineId" = 'q:33:accept' and "lang" = 'enUS' limit 1`,
+    );
+    const id = await questContribution(
+      { quest: "33", event: "accept", title: "Wolves Across the Border", kind: rows[0].npcType },
+      rows[0].npcId,
+    );
+    expect((await resolveContribution(id, "accepted", RESOLVER)).ok).toBe(true);
+    expect(await speakersOf(id)).toHaveLength(0);
   });
 
   it("the corpus wins when it only carries a quest moment's player-gender variants", async () => {
@@ -300,11 +382,12 @@ describe("resolveContribution: quests accept", () => {
     const id = await questContribution({ quest: "166", event: "complete", title: "The Defias Brotherhood" });
     expect((await resolveContribution(id, "accepted", RESOLVER)).ok).toBe(true);
 
-    expect(await speakersOf(id)).toHaveLength(0);
+    // Its NPC speaks both sides, as the dump's speakers do.
+    expect((await speakersOf(id)).map((row) => row.lineId).sort()).toEqual(["q:166:complete:f", "q:166:complete:m"]);
     expect(await linesFor("q:166:complete")).toHaveLength(0);
   });
 
-  it("a second contribution for the same quest moment accepts cleanly, without a second line", async () => {
+  it("a second contribution for the same quest moment adds its NPC as a speaker, without a second line", async () => {
     // dedup is on (source, key, locale, text) -- a druid and a mage accepting the same quest
     // moment are two different contributions for one q:X:event.
     const secondNpcId = npcId + 1;
@@ -318,9 +401,9 @@ describe("resolveContribution: quests accept", () => {
     expect((await resolveContribution(second, "accepted", RESOLVER)).ok).toBe(true);
 
     expect(await linesFor(questLineId(questId, "accept"))).toHaveLength(1);
-    expect(await speakersOf(second)).toHaveLength(0);
+    expect(await speakersOf(second)).toEqual([{ lineId: questLineId(questId, "accept"), ord: expect.any(Number) }]);
 
-    const { rows: statuses } = await db().query<{ status: string }>(
+    const { rows: statuses } = await asSystem.query<{ status: string }>(
       `select "status" from "contribution" where "id" = any($1::int[]) order by "id"`,
       [[first, second]],
     );
@@ -345,7 +428,7 @@ describe("resolveContribution: quests accept", () => {
     const id = await gossipContribution(text, npcId);
     expect((await resolveContribution(id, "accepted", RESOLVER)).ok).toBe(true);
 
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "lineId", "race", "gender", "voice" from "quest_line_speaker" where "contributionId" = $1`,
       [id],
     );
@@ -367,25 +450,25 @@ describe("resolveContribution: quests accept", () => {
 
   it("a greeting from a genderless type an admin added is voiced by its own voice", async () => {
     const type = `t${npcId}`;
-    await db().query(`insert into "race" ("key") values ($1)`, [type]);
-    await db().query(`insert into "voice" ("name", "race", "gender") values ($1, $1, '')`, [type]);
-    await db().query(`insert into "voice_assignment" ("race", "voice") values ($1, $1)`, [type]);
+    await asSystem.query(`insert into "race" ("key") values ($1)`, [type]);
+    await asSystem.query(`insert into "voice" ("name", "race", "gender", "teamId") values ($1, $1, '', team_of_lang('enUS'))`, [type]);
+    await asSystem.query(`insert into "voice_assignment" ("race", "voice", "teamId") values ($1, $1, team_of_lang('enUS'))`, [type]);
     try {
       await speaker(npcId, type, null);
       const text = "Creak. The old wood remembers you.";
       const id = await gossipContribution(text, npcId);
       expect((await resolveContribution(id, "accepted", RESOLVER)).ok).toBe(true);
-      const { rows } = await db().query(
+      const { rows } = await asSystem.query(
         `select "lineId", "race", "gender", "voice" from "quest_line_speaker" where "contributionId" = $1`,
         [id],
       );
       expect(rows).toEqual([{ lineId: gossipLineId(gossipHash(text, type, "")), race: type, gender: "", voice: type }]);
     } finally {
-      await db().query(`delete from "quest_line_speaker" where "npcId" = $1`, [npcId]);
-      await db().query(`delete from "npc" where "npcId" = $1`, [npcId]);
-      await db().query(`delete from "voice_assignment" where "race" = $1`, [type]);
-      await db().query(`delete from "voice" where "name" = $1`, [type]);
-      await db().query(`delete from "race" where "key" = $1`, [type]);
+      await asSystem.query(`delete from "quest_line_speaker" where "npcId" = $1`, [npcId]);
+      await asSystem.query(`delete from "npc" where "npcId" = $1`, [npcId]);
+      await asSystem.query(`delete from "voice_assignment" where "race" = $1`, [type]);
+      await asSystem.query(`delete from "voice" where "name" = $1`, [type]);
+      await asSystem.query(`delete from "race" where "key" = $1`, [type]);
     }
   });
 
@@ -436,7 +519,7 @@ describe("resolveContribution: quests accept", () => {
 });
 
 describe("resolveContributions: a batch, side by side", () => {
-  it("two contributions for one quest moment write one line and are both accepted", async () => {
+  it("two contributions for one quest moment write one line, with both NPCs as its speakers", async () => {
     await speaker(npcId, "orc", "female", "standard");
     await speaker(npcId + 1, "orc", "female", "standard");
     const first = await questContribution({}, npcId, "Bring me six wolf pelts, druid.");
@@ -447,7 +530,16 @@ describe("resolveContributions: a batch, side by side", () => {
 
     expect(await linesFor(questLineId(questId, "accept"))).toHaveLength(1);
     const written = [...(await speakersOf(first)), ...(await speakersOf(second))];
-    expect(written).toHaveLength(1);
+    expect(written).toHaveLength(2);
+  });
+
+  it("a quest moment from the same NPC twice is spoken by it once", async () => {
+    await speaker(npcId, "orc", "female", "standard");
+    const first = await questContribution({}, npcId, "Bring me six wolf pelts, druid.");
+    const second = await questContribution({}, npcId, "Bring me six wolf pelts, mage.");
+
+    await resolveContributions([first, second], "accepted", RESOLVER);
+    expect([...(await speakersOf(first)), ...(await speakersOf(second))]).toHaveLength(1);
   });
 
   it("one new gossip line sent by two NPCs is written once, with both as its speakers", async () => {
@@ -464,6 +556,52 @@ describe("resolveContributions: a batch, side by side", () => {
     expect(await linesFor(lineId)).toHaveLength(1);
     expect((await speakersOf(first)).map((s) => s.lineId)).toEqual([lineId]);
     expect((await speakersOf(second)).map((s) => s.lineId)).toEqual([lineId]);
+  });
+
+  it("two rows of one new quest both land, though each names the quest in English", async () => {
+    await speaker(npcId, "orc", "female", "standard");
+    const accept = await questContribution({}, npcId);
+    const complete = await questContribution({ event: "complete" }, npcId, "Well done, druid.");
+
+    try {
+      const outcomes = await resolveContributions([accept, complete], "accepted", RESOLVER);
+      expect(outcomes.get(accept)).toMatchObject({ ok: true });
+      expect(outcomes.get(complete)).toMatchObject({ ok: true });
+    } finally {
+      await deleteTriggerNames();
+    }
+  });
+
+  // What the batch above can only hit by timing: the second transaction's trigger reaches
+  // entity_name_set while the first has written the quest's name but not committed it.
+  it("a second writer of a quest's first English name waits for the first, rather than failing", async () => {
+    const first = await db().connect();
+    const second = await db().connect();
+    try {
+      await first.query("begin");
+      await second.query("begin");
+      await first.query(INSERT_ENGLISH_LINE, [questLineId(questId, "accept"), questId]);
+      const blocked = second.query(INSERT_ENGLISH_LINE, [questLineId(questId, "complete"), questId]);
+      // Long enough for the second insert to reach the trigger and block on the first.
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await first.query("commit");
+      await blocked;
+      await second.query("commit");
+
+      const { rows } = await asSystem.query(
+        `select "version", "isCurrent" from "entity_name"
+          where "kind" = 'quest' and "entityId" = $1 and "lang" = 'enUS'`,
+        [String(questId)],
+      );
+      expect(rows).toEqual([{ version: 1, isCurrent: true }]);
+    } finally {
+      await first.query("rollback").catch(() => {});
+      await second.query("rollback").catch(() => {});
+      first.release();
+      second.release();
+      await asSystem.query(`delete from "quest_line" where "questId" = $1 and "origin" = 'extracted'`, [questId]);
+      await deleteTriggerNames();
+    }
   });
 
   it("a refused row keeps its refusal and the rest still land", async () => {
@@ -484,7 +622,7 @@ describe("resolveContribution: a translation", () => {
   afterEach(async () => {
     // The English names quest_line's and quest_line_speaker's triggers gave this test's own
     // quest and NPC (0036), and the ones accepting wrote in LOCALE.
-    await db().query(
+    await asSystem.query(
       `delete from "entity_name" where "kind" in ('quest', 'creature') and "entityId" = any($1::text[])`,
       [[String(questId), String(npcId)]],
     );
@@ -512,19 +650,19 @@ describe("resolveContribution: a translation", () => {
       userId: null,
       ip: null,
     });
-    const { rows } = await db().query<{ id: number }>(`select "id" from "contribution" where "dedup" = $1`, [dedup]);
+    const { rows } = await asSystem.query<{ id: number }>(`select "id" from "contribution" where "dedup" = $1`, [dedup]);
     contributionIds.push(rows[0].id);
     return rows[0].id;
   }
 
   it("writes a line with two English variants once, as variant 0", async () => {
     // q:4265:complete is one English text under two content patches' titles.
-    const { rows: english } = await db().query<{ variant: number }>(
+    const { rows: english } = await asSystem.query<{ variant: number }>(
       `select "variant" from "quest_line" where "lineId" = 'q:4265:complete' and "lang" = $1 and "isCurrent"`,
       [BASE_LANG],
     );
     if (english.length < 2) return;
-    const { rows: existing } = await db().query(
+    const { rows: existing } = await asSystem.query(
       `select 1 from "quest_line" where "lineId" = 'q:4265:complete' and "lang" = $1`,
       [LOCALE],
     );
@@ -533,7 +671,7 @@ describe("resolveContribution: a translation", () => {
     const id = await translation("4265", "complete", "Bem-vindo de volta, $N.");
     expect((await resolveContribution(id, "accepted", RESOLVER)).ok).toBe(true);
 
-    const { rows } = await db().query<{ variant: number }>(
+    const { rows } = await asSystem.query<{ variant: number }>(
       `select "variant" from "quest_line" where "lineId" = 'q:4265:complete' and "lang" = $1`,
       [LOCALE],
     );
@@ -547,7 +685,7 @@ describe("resolveContribution: a translation", () => {
   }
 
   async function nameIn(kind: string, entityId: number): Promise<{ name: string; origin: string }[]> {
-    const { rows } = await db().query(
+    const { rows } = await asSystem.query(
       `select "name", "origin" from "entity_name"
         where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "isCurrent"`,
       [kind, String(entityId), LOCALE],
@@ -555,12 +693,18 @@ describe("resolveContribution: a translation", () => {
     return rows;
   }
 
-  it("says which moments already have a speaker, in any language, which accept takes with no answer", async () => {
-    const id = await translation(String(questId), "accept", "Traga-me seis peles de lobo, $C.");
-    const rows = async () => (await listContributions("new", LOCALE)).filter((row) => row.id === id);
+  it("says which moments already have the row's speaker, in any language, which accept takes with no answer", async () => {
+    const same = await translation(String(questId), "accept", "Traga-me seis peles de lobo, $C.", {
+      title: "Uma Missão de Teste",
+      kind: "creature",
+      npc: `${npcId} Orador`,
+    });
+    // Ginro is not who English has speaking it: accepting makes him one more speaker, so he needs an answer.
+    const other = await translation(String(questId), "accept", "Traga-me seis peles de lobo, $N.");
+    const rows = async () => (await listContributions("new", LOCALE)).filter((row) => row.id === same || row.id === other);
     expect(await momentHasSpeaker(await rows())).toEqual(new Set());
     await englishLine();
-    expect(await momentHasSpeaker(await rows())).toEqual(new Set([id]));
+    expect(await momentHasSpeaker(await rows())).toEqual(new Set([same]));
   });
 
   it("names the quest and the NPC in the language, as the client showed them", async () => {
@@ -621,7 +765,7 @@ describe("resolveContribution: a translation", () => {
     }
 
     async function rowsIn(lang: string) {
-      const { rows } = await db().query(
+      const { rows } = await asSystem.query(
         `select "lineId", "variant", "origin", "fileName", "text", "originalText", "localeText",
                 "generatable", "skipReason"
            from "quest_line" where "lineId" = $1 and "lang" = $2`,
@@ -655,7 +799,7 @@ describe("resolveContribution: a translation", () => {
         },
       ]);
       expect(await rowsIn(BASE_LANG)).toEqual([]);
-      const { rows: speakers } = await db().query(
+      const { rows: speakers } = await asSystem.query(
         `select "lineId", "lang", "voice" from "quest_line_speaker" where "contributionId" = $1`,
         [contribution.id],
       );
@@ -727,7 +871,7 @@ describe("resolveContribution: a translation", () => {
     it("names the language's speaker in English, where English has a name for the NPC", async () => {
       await speaker(npcId, "tauren", "male", "warrior");
       await accepted(await native());
-      await db().query(
+      await asSystem.query(
         `insert into "entity_name" ("kind", "entityId", "lang", "version", "isCurrent", "origin", "name")
          values ('creature', $1, 'enUS', 1, true, 'extracted', 'Test Speaker')
          on conflict do nothing`,
@@ -764,15 +908,15 @@ describe("resolveContribution: a translation", () => {
     const momentId = () => questLineId(questId, "accept");
 
     afterEach(async () => {
-      await db().query(`delete from "quest_line_speaker" where "lineId" like $1`, [`q:${questId}:%`]);
-      await db().query(`delete from "quest_line" where "lineId" like $1`, [`q:${questId}:%`]);
+      await asSystem.query(`delete from "quest_line_speaker" where "lineId" like $1`, [`q:${questId}:%`]);
+      await asSystem.query(`delete from "quest_line" where "lineId" like $1`, [`q:${questId}:%`]);
     });
 
     /** English's line for the moment as the extract writes a `$G` one: `:m` and `:f`, one speaker each. */
     async function englishByPlayerGender(): Promise<void> {
       await speaker(npcId, "tauren", "male", "warrior");
       for (const [index, g] of (["m", "f"] as const).entries()) {
-        await db().query(
+        await asSystem.query(
           `insert into "quest_line"
              ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "questId",
               "questTitle", "playerGender", "fileName", "text", "originalText", "generatable")
@@ -780,7 +924,7 @@ describe("resolveContribution: a translation", () => {
           [`${momentId()}:${g}`, questId, g, `${g}-${questFileName(questId, "accept")}`,
            g === "m" ? "Well met, lad." : "Well met, lass.", "Well met, $glad:lass;."],
         );
-        await db().query(
+        await asSystem.query(
           `insert into "quest_line_speaker"
              ("lineId", "variant", "lang", "ord", "npcType", "npcId", "npcName", "race", "gender", "flavor", "voice")
            values ($1, 0, 'enUS', $2, 'creature', $3, 'Test Speaker', 'tauren', 'male', 'warrior', 'tauren-male-warrior')`,
@@ -790,7 +934,7 @@ describe("resolveContribution: a translation", () => {
     }
 
     async function lines(lang: string) {
-      const { rows } = await db().query(
+      const { rows } = await asSystem.query(
         `select "lineId", "playerGender", "fileName", "originalText" from "quest_line"
           where "lineId" like $1 and "lang" = $2 and "isCurrent" order by "lineId"`,
         [`q:${questId}:%`, lang],
@@ -848,16 +992,16 @@ describe("resolveContribution: a greeting in any language", { timeout: 20_000 },
   const PORTUGUESE = "Bem-vindo ao alojamento de teste, $n.";
 
   afterEach(async () => {
-    await db().query(`delete from "gossip_broadcast" where "broadcastTextId" between $1 and $2`, [bt, bt + 10]);
-    await db().query(`delete from "broadcast_text" where "broadcastTextId" between $1 and $2`, [bt, bt + 10]);
-    await db().query(
+    await asSystem.query(`delete from "gossip_broadcast" where "broadcastTextId" between $1 and $2`, [bt, bt + 10]);
+    await asSystem.query(`delete from "broadcast_text" where "broadcastTextId" between $1 and $2`, [bt, bt + 10]);
+    await asSystem.query(
       `delete from "entity_name" where "kind" = 'creature' and "entityId" = any($1::text[])`,
       [[String(npcId), String(npcId + 1)]],
     );
   });
 
   async function broadcast(lang: string, id: number, text: string, text1 = ""): Promise<void> {
-    await db().query(
+    await asSystem.query(
       `insert into "broadcast_text" ("lang", "broadcastTextId", "text", "text1", "build") values ($1, $2, $3, $4, 1)`,
       [lang, id, text, text1],
     );
@@ -880,7 +1024,7 @@ describe("resolveContribution: a greeting in any language", { timeout: 20_000 },
       userId: null,
       ip: null,
     });
-    const { rows } = await db().query<{ id: number }>(`select "id" from "contribution" where "dedup" = $1`, [dedup]);
+    const { rows } = await asSystem.query<{ id: number }>(`select "id" from "contribution" where "dedup" = $1`, [dedup]);
     contributionIds.push(rows[0].id);
     return rows[0].id;
   }
@@ -892,7 +1036,7 @@ describe("resolveContribution: a greeting in any language", { timeout: 20_000 },
   }
 
   async function rows(lineId: string) {
-    const { rows } = await db().query<{ lang: string; text: string; fileName: string }>(
+    const { rows } = await asSystem.query<{ lang: string; text: string; fileName: string }>(
       `select "lang", "text", "fileName" from "quest_line" where "lineId" = $1 and "isCurrent" order by "lang"`,
       [lineId],
     );
@@ -900,7 +1044,7 @@ describe("resolveContribution: a greeting in any language", { timeout: 20_000 },
   }
 
   async function idsOf(lineId: string): Promise<number[]> {
-    const { rows } = await db().query<{ id: number }>(
+    const { rows } = await asSystem.query<{ id: number }>(
       `select "broadcastTextId" as "id" from "gossip_broadcast" where "lineId" = $1 order by 1`,
       [lineId],
     );
@@ -908,7 +1052,7 @@ describe("resolveContribution: a greeting in any language", { timeout: 20_000 },
   }
 
   async function linesSpeaking(id: number): Promise<string[]> {
-    const { rows } = await db().query<{ lineId: string }>(
+    const { rows } = await asSystem.query<{ lineId: string }>(
       `select "lineId" from "gossip_broadcast" where "broadcastTextId" = $1 order by 1`,
       [id],
     );
@@ -953,20 +1097,20 @@ describe("resolveContribution: a greeting in any language", { timeout: 20_000 },
     const stem = broadcastGossipStem(bt, VOICE);
     try {
       for (const [index, g] of (["m", "f"] as const).entries()) {
-        await db().query(
+        await asSystem.query(
           `insert into "quest_line"
              ("lineId", "variant", "lang", "version", "isCurrent", "origin", "source", "playerGender",
               "fileName", "text", "originalText", "generatable")
            values ($1, 0, 'enUS', 1, true, 'extracted', 'gossip', $2, $3, $4, $5, true)`,
           [`g:${stem}:${g}`, g, `${g}-${stem}`, g === "m" ? "Well met, lad." : "Well met, lass.", "Well met, $glad:lass;."],
         );
-        await db().query(
+        await asSystem.query(
           `insert into "quest_line_speaker"
              ("lineId", "variant", "lang", "ord", "npcType", "npcId", "npcName", "race", "gender", "flavor", "voice")
            values ($1, 0, 'enUS', $2, 'creature', $3, 'Test Speaker', 'tauren', 'male', 'warrior', $4)`,
           [`g:${stem}:${g}`, 1_960_000_000 + (bt % 10_000_000) * 2 + index, npcId, VOICE],
         );
-        await db().query(
+        await asSystem.query(
           `insert into "gossip_broadcast" ("lineId", "broadcastTextId", "matchedBy") values ($1, $2, 'text')`,
           [`g:${stem}:${g}`, bt],
         );
@@ -974,7 +1118,7 @@ describe("resolveContribution: a greeting in any language", { timeout: 20_000 },
       await broadcast(LOCALE, bt, PORTUGUESE);
 
       await accepted(await greeting(LOCALE, PORTUGUESE));
-      const { rows: written } = await db().query(
+      const { rows: written } = await asSystem.query(
         `select "lineId", "playerGender", "fileName", "originalText" from "quest_line"
           where "lineId" like $1 and "lang" = $2 and "isCurrent"`,
         [`g:${stem}%`, LOCALE],
@@ -983,8 +1127,8 @@ describe("resolveContribution: a greeting in any language", { timeout: 20_000 },
         { lineId: `g:${stem}`, playerGender: null, fileName: stem, originalText: "Well met, $glad:lass;." },
       ]);
     } finally {
-      await db().query(`delete from "quest_line_speaker" where "lineId" like $1 and "lang" = 'enUS'`, [`g:${stem}:%`]);
-      await db().query(`delete from "quest_line" where "lineId" like $1 and "origin" = 'extracted'`, [`g:${stem}:%`]);
+      await asSystem.query(`delete from "quest_line_speaker" where "lineId" like $1 and "lang" = 'enUS'`, [`g:${stem}:%`]);
+      await asSystem.query(`delete from "quest_line" where "lineId" like $1 and "origin" = 'extracted'`, [`g:${stem}:%`]);
     }
   });
 
@@ -1047,21 +1191,83 @@ describe("resolveContribution: a greeting in any language", { timeout: 20_000 },
   });
 });
 
-describe("resolveContribution: a book page in another language", () => {
-  // A language no import on this machine writes, so the rows here are this test's own.
-  const LOCALE = "ptBR";
 
-  /** A books contribution as the addon files one: keyed on the checksum, naming no page. */
-  async function page(text: string, book: string): Promise<number> {
+describe("resolveContribution: a readables contribution, in any language", () => {
+  /**
+   * A two-page book of this test's own, in English and esMX, owned by an object no language has
+   * named, and two more books sharing one English title. Ids far outside vmangos's, fresh per
+   * test, so no run reads another's pages.
+   */
+  let base: number;
+  let seeded: string[] = [];
+  let DUSTY: string;
+
+  async function seedPage(
+    lineId: string,
+    bookId: string,
+    pageNumber: number,
+    owner: number | null,
+    texts: [lang: string, title: string, text: string][],
+  ): Promise<void> {
+    seeded.push(lineId);
+    await asSystem.query(
+      `insert into "book_page" ("lineId", "pageTextId", "bookId", "pageNumber", "ownerKind", "ownerIds")
+       values ($1, $2, $3, $4, $5, $6)`,
+      [lineId, Number(lineId.slice(2)), bookId, pageNumber, owner === null ? null : "object", owner === null ? null : [owner]],
+    );
+    for (const [lang, title, text] of texts) await textRow(lineId, lang, text, title);
+  }
+
+  async function textRow(lineId: string, lang: string, text: string, title = "Libro"): Promise<void> {
+    await asSystem.query(
+      `insert into "book_line" ("lineId", "lang", "version", "isCurrent", "origin", "title", "text")
+       values ($1, $2, 1, true, 'extracted', $3, $4)`,
+      [lineId, lang, title, text],
+    );
+  }
+
+  beforeEach(async () => {
+    base = 900_000_000 + Math.floor(Math.random() * 90_000_000);
+    DUSTY = `Dusty ${base}`;
+    const owner = base;
+    await seedPage(`b:${base}`, String(base), 1, owner, [
+      ["enUS", `A Test Tome ${base}`, `Words one ${base}.`],
+      ["esMX", `Libro ${base}`, `Palabras esMX uno ${base}.`],
+    ]);
+    await seedPage(`b:${base + 1}`, String(base), 2, owner, [
+      ["enUS", `A Test Tome ${base}`, `Words two ${base}.`],
+      ["esMX", `Libro ${base}`, `Palabras esMX dos ${base}.`],
+    ]);
+    await seedPage(`b:${base + 10}`, String(base + 10), 1, null, [["enUS", DUSTY, `Dust one ${base}.`]]);
+    await seedPage(`b:${base + 20}`, String(base + 20), 1, null, [["enUS", DUSTY, `Dust two ${base}.`]]);
+  });
+
+  afterEach(async () => {
+    const notes = contributionIds.map((id) => `contribution #${id}`);
+    await asSystem.query(
+      `delete from "book_page" where "lineId" like 'b:n%'
+          and "lineId" in (select "lineId" from "book_line" where "note" = any($1::text[]))`,
+      [notes],
+    );
+    // A correction is 'edited', which the file's own cleanup leaves.
+    await asSystem.query(`delete from "book_line" where "note" = any($1::text[])`, [notes]);
+    await asSystem.query(`delete from "book_line" where "lineId" = any($1::text[])`, [seeded]);
+    await asSystem.query(`delete from "book_page" where "lineId" = any($1::text[])`, [seeded]);
+    // The English name book_line's trigger gives the seeded owner.
+    await asSystem.query(`delete from "entity_name" where "kind" = 'gameobject' and "entityId" = $1`, [String(base)]);
+    seeded = [];
+  });
+
+  /** A readables contribution as the addon files one: keyed on the checksum, naming no page. */
+  async function readablesRow(over: { locale: string; text: string; meta: Record<string, string> }): Promise<number> {
     const dedup = `accept-test-${Math.random().toString(36).slice(2)}`;
-    // Not a real checksum, so no real contribution shares it.
     await createContribution({
-      source: "books",
+      source: "readables",
       key: dedup,
-      locale: LOCALE,
+      locale: over.locale,
       build: "1.15.7/61582",
-      text,
-      meta: { page: dedup, book, number: "1" },
+      text: over.text,
+      meta: { page: dedup, ...over.meta },
       raw: `raw:${dedup}`,
       dedup,
       body: null,
@@ -1070,101 +1276,267 @@ describe("resolveContribution: a book page in another language", () => {
       userId: null,
       ip: null,
     });
-    const { rows } = await db().query<{ id: number }>(`select "id" from "contribution" where "dedup" = $1`, [dedup]);
+    const { rows } = await asSystem.query<{ id: number }>(`select "id" from "contribution" where "dedup" = $1`, [dedup]);
     contributionIds.push(rows[0].id);
     return rows[0].id;
   }
 
   async function row(id: number): Promise<Contribution> {
-    const { rows } = await db().query<Contribution>(
-      `select ${CONTRIBUTION_COLUMNS} from "contribution" where "id" = $1`,
-      [id],
+    const { rows } = await asSystem.query<Contribution>(`select ${CONTRIBUTION_COLUMNS} from "contribution" where "id" = $1`, [id]);
+    return rows[0];
+  }
+
+  async function textOf(lineId: string, lang: string) {
+    const { rows } = await asSystem.query(
+      `select "text", "origin", "title" from "book_line" where "lineId" = $1 and "lang" = $2 and "isCurrent"`,
+      [lineId, lang],
     );
     return rows[0];
   }
 
-  /**
-   * An English page of this test's own, so it needs no imported corpus: ids far outside
-   * vmangos's, and an owner no language has named.
-   */
-  let seeded: number[] = [];
-
-  afterEach(async () => {
-    await db().query(`delete from "book_line" where "pageId" = any($1::int[])`, [seeded]);
-    // The English name book_line's trigger gave each owner (0036).
-    await db().query(`delete from "entity_name" where "kind" = 'gameobject' and "entityId" = any($1::text[])`, [
-      seeded.map(String),
-    ]);
-    seeded = [];
-  });
-
-  async function untranslatedPage(): Promise<{ pageId: number; lineId: string; owner: string; kind: string }> {
-    const pageId = 900_000_000 + Math.floor(Math.random() * 90_000_000);
-    seeded.push(pageId);
-    await db().query(
-      `insert into "book_line"
-         ("lineId", "lang", "version", "isCurrent", "origin", "pageId", "bookId",
-          "pageNumber", "pageCount", "title", "ownerKind", "ownerIds", "text")
-       values ($1, $2, 1, true, 'extracted', $3, $3, 1, 1, 'A Test Tome', 'object', $4, 'Words.')`,
-      [`b:${pageId}`, BASE_LANG, pageId, [pageId]],
+  async function versionsOf(lineId: string, lang: string) {
+    const { rows } = await asSystem.query(
+      `select "version", "isCurrent", "text" from "book_line" where "lineId" = $1 and "lang" = $2 order by "version" desc`,
+      [lineId, lang],
     );
-    return { pageId, lineId: `b:${pageId}`, owner: String(pageId), kind: "gameobject" };
+    return rows;
   }
 
-  it("refuses a row nobody has matched to a page, and writes nothing", async () => {
-    const id = await page("Uma página sem par.", "Livro Nenhum");
-    expect(await resolveContribution(id, "accepted", RESOLVER)).toMatchObject({ ok: false, reason: "needs-page" });
-    expect((await row(id)).status).toBe("new");
-  });
-
-  it("writes the matched page in its language, with the title the client showed", async () => {
-    const target = await untranslatedPage();
-    const id = await page("Olá, $N. Esta é a página.", "Livro de Teste");
-    expect(await setContributionPage(id, target.pageId, RESOLVER)).toMatchObject({ pageId: target.pageId });
-    expect(await lineIsInExplorer({ ...(await row(id)), status: "accepted" })).toBe(false);
-    expect((await resolveContribution(id, "accepted", RESOLVER)).ok).toBe(true);
-
-    const { rows } = await db().query(
-      `select "origin", "version", "isCurrent", "text", "title", "editedBy", "generatable"
-         from "book_line" where "lineId" = $1 and "lang" = $2`,
-      [target.lineId, LOCALE],
+  async function pagesTitled(title: string, lang: string) {
+    const { rows } = await asSystem.query<{ lineId: string; bookId: string; pageNumber: number }>(
+      `select p."lineId", p."bookId", p."pageNumber" from "book_page" p
+         join "book_line" l on l."lineId" = p."lineId" and l."lang" = $2 and l."isCurrent"
+        where l."title" = $1 order by p."pageNumber"`,
+      [title, lang],
     );
-    expect(rows).toEqual([
-      {
-        origin: "contributed",
-        version: 1,
-        isCurrent: true,
-        text: "Olá, $N. Esta é a página.",
-        title: "Livro de Teste",
-        editedBy: RESOLVER,
-        generatable: true,
-      },
-    ]);
-    const { rows: names } = await db().query(
-      `select "name", "origin" from "entity_name" where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "isCurrent"`,
-      [target.kind, target.owner, LOCALE],
+    return rows;
+  }
+
+  /** Until two backends wait on a lock at accept's readables lock or its book_page insert. */
+  async function bothWaiting(): Promise<void> {
+    for (let tries = 0; tries < 200; tries++) {
+      // From pg_locks rather than pg_stat_activity, whose other sessions' queries the app role
+      // may not read.
+      const { rows } = await asSystem.query<{ n: number }>(
+        `select count(*)::int as "n" from pg_locks
+          where not "granted" and "database" = (select "oid" from pg_database where "datname" = current_database())
+            and ("locktype" = 'advisory' or "relation" = '"book_page"'::regclass)`,
+      );
+      if (rows[0].n >= 2) return;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    throw new Error("the two accepts never both reached the lock");
+  }
+
+  async function ownersOf(lineId: string) {
+    const { rows } = await asSystem.query(`select "ownerKind", "ownerIds" from "book_page" where "lineId" = $1`, [lineId]);
+    return rows[0];
+  }
+
+  it("writes a translation of a page found by another language's words, naming its owner", async () => {
+    const id = await readablesRow({ locale: "esES", text: `Palabras esMX uno ${base}.`, meta: { book: "Libro", number: "1" } });
+    expect(await lineIsInExplorer({ ...(await row(id)), status: "accepted" })).toBe(false);
+    expect(await resolveContribution(id, "accepted", RESOLVER)).toMatchObject({ ok: true });
+    expect(await textOf(`b:${base}`, "esES")).toEqual({ text: `Palabras esMX uno ${base}.`, origin: "contributed", title: "Libro" });
+    const { rows: names } = await asSystem.query(
+      `select "name", "origin" from "entity_name" where "kind" = 'gameobject' and "entityId" = $1 and "lang" = 'esES' and "isCurrent"`,
+      [String(base)],
     );
     // Not 'edited': an import that finds the game's own name must be free to promote over it.
-    expect(names).toEqual([{ name: "Livro de Teste", origin: "contributed" }]);
+    expect(names).toEqual([{ name: "Libro", origin: "contributed" }]);
     expect(await lineIsInExplorer(await row(id))).toBe(true);
   });
 
-  it("leaves a page this language already has alone, and is one-way once written", async () => {
-    const target = await untranslatedPage();
-    const first = await page("O primeiro texto.", "Livro de Teste");
-    const second = await page("O segundo texto.", "Outro Título");
-    await setContributionPage(first, target.pageId, RESOLVER);
-    await setContributionPage(second, target.pageId, RESOLVER);
-    expect((await resolveContribution(first, "accepted", RESOLVER)).ok).toBe(true);
-    expect((await resolveContribution(second, "accepted", RESOLVER)).ok).toBe(true);
-
-    const { rows } = await db().query(`select "text" from "book_line" where "lineId" = $1 and "lang" = $2`, [
-      target.lineId, LOCALE,
+  it("writes a correction as a new version", async () => {
+    await textRow(`b:${base}`, "esES", "Viejo texto.");
+    const id = await readablesRow({ locale: "esES", text: `Palabras esMX uno ${base}.`, meta: { book: "Libro", number: "1" } });
+    expect(await resolveContribution(id, "accepted", RESOLVER)).toMatchObject({ ok: true });
+    expect(await versionsOf(`b:${base}`, "esES")).toEqual([
+      { version: 2, isCurrent: true, text: `Palabras esMX uno ${base}.` },
+      { version: 1, isCurrent: false, text: "Viejo texto." },
     ]);
-    expect(rows).toEqual([{ text: "O primeiro texto." }]);
-    expect(await resolveContribution(first, "rejected", RESOLVER)).toMatchObject({ ok: false, reason: "one-way" });
+    expect(await lineIsInExplorer(await row(id))).toBe(true);
+    // A correction is written too, so it is as one-way as a first version.
+    expect(await resolveContribution(id, "rejected", RESOLVER)).toMatchObject({ ok: false, reason: "one-way" });
+  });
+
+  it("counts an accepted readables correction as in the explorer", async () => {
+    await textRow(`b:${base}`, "esES", "Viejo texto.");
+    const id = await readablesRow({ locale: "esES", text: `Words one ${base}.`, meta: { book: "Libro", number: "1" } });
+    expect(await acceptCorrection(id, RESOLVER)).toMatchObject({ ok: true });
+    expect(await lineIsInExplorer(await row(id))).toBe(true);
+  });
+
+  it("writes the page a moderator named, and is one-way once written", async () => {
+    const id = await readablesRow({ locale: "ptBR", text: "Olá, $N. Esta é a página.", meta: { book: "Livro de Teste", number: "1" } });
+    await setContributionMatch(id, { lineId: `b:${base + 1}` }, RESOLVER);
+    expect(await resolveContribution(id, "accepted", RESOLVER)).toMatchObject({ ok: true });
+    expect(await textOf(`b:${base + 1}`, "ptBR")).toEqual({
+      text: "Olá, $N. Esta é a página.", origin: "contributed", title: "Livro de Teste",
+    });
+    expect(await resolveContribution(id, "rejected", RESOLVER)).toMatchObject({ ok: false, reason: "one-way" });
     // The match under a written page cannot move either.
-    expect(await setContributionPage(first, null, RESOLVER)).toBeNull();
-    expect((await row(first)).pageId).toBe(target.pageId);
+    expect(await setContributionMatch(id, null, RESOLVER)).toBeNull();
+    expect((await row(id)).matchLineId).toBe(`b:${base + 1}`);
+  });
+
+  it("mints a new book, and its next page joins it", async () => {
+    const title = `Instrucciones ${base}`;
+    const first = await readablesRow({ locale: "esES", text: `Uno ${base}.`, meta: { book: title, number: "1" } });
+    const third = await readablesRow({ locale: "esES", text: `Tres ${base}.`, meta: { book: title, number: "3" } });
+    expect(await resolveContribution(first, "accepted", RESOLVER)).toMatchObject({ ok: true });
+    expect(await resolveContribution(third, "accepted", RESOLVER)).toMatchObject({ ok: true });
+    const pages = await pagesTitled(title, "esES");
+    expect(pages).toHaveLength(2);
+    expect(new Set(pages.map((p) => p.bookId)).size).toBe(1);
+    expect(pages.map((p) => p.pageNumber)).toEqual([1, 3]);
+    expect(pages[0].lineId).toMatch(/^b:n[0-9a-f-]{36}$/);
+    expect(pages[0].bookId).toMatch(/^n[0-9a-f-]{36}$/);
+    const { rows } = await asSystem.query(
+      `select "pageId", "bookId", "pageNumber", "pageCount", "ownerKind", "ownerIds" from "book_line"
+        where "lineId" = $1 and "lang" = 'esES'`,
+      [pages[0].lineId],
+    );
+    expect(rows).toEqual([{ pageId: null, bookId: null, pageNumber: 1, pageCount: 1, ownerKind: null, ownerIds: null }]);
+  });
+
+  it("mints one book for two pages of one title accepted at once", async () => {
+    const title = `Simultáneo ${base}`;
+    const a = await readablesRow({ locale: "esES", text: `A ${base}.`, meta: { book: title, number: "1" } });
+    const b = await readablesRow({ locale: "esES", text: `B ${base}.`, meta: { book: ` ${title} `, number: "2" } });
+    // Each resolve takes its own pool connection. Holding book_page's inserts until both are
+    // waiting -- one at the insert, the other at accept's lock, or both at the insert if
+    // nothing serialised them -- makes the two transactions overlap every run.
+    const blocker = await db().connect();
+    let outcomes;
+    try {
+      await blocker.query("begin");
+      await blocker.query(`lock table "book_page" in share mode`);
+      const resolving = Promise.all([resolveContribution(a, "accepted", RESOLVER), resolveContribution(b, "accepted", RESOLVER)]);
+      await bothWaiting();
+      await blocker.query("commit");
+      outcomes = await resolving;
+    } finally {
+      blocker.release();
+    }
+    expect(outcomes).toMatchObject([{ ok: true }, { ok: true }]);
+    const pages = await pagesTitled(title, "esES");
+    expect(pages).toHaveLength(2);
+    expect(new Set(pages.map((p) => p.bookId)).size).toBe(1);
+  });
+
+  it("keeps a page's own title when an English correction names no book", async () => {
+    const id = await readablesRow({ locale: "enUS", text: `New words one ${base}.`, meta: { number: "1", object: String(base) } });
+    expect(await resolveContribution(id, "accepted", RESOLVER)).toMatchObject({ ok: true });
+    expect(await textOf(`b:${base}`, "enUS")).toEqual({
+      text: `New words one ${base}.`, origin: "edited", title: `A Test Tome ${base}`,
+    });
+  });
+
+  it("counts a row accepted before readables rows were written as in the explorer where it would be", async () => {
+    const english = await readablesRow({ locale: "enUS", text: `Old flow ${base}.`, meta: { book: DUSTY, number: "1" } });
+    const translated = await readablesRow({ locale: "esMX", text: `Viejo ${base}.`, meta: { book: "Libro", number: "1" } });
+    const lacking = await readablesRow({ locale: "deDE", text: `Alt ${base}.`, meta: { book: "Buch", number: "1" } });
+    await asSystem.query(
+      `update "contribution" set "status" = 'accepted', "matchLineId" = $2 where "id" = any($1::int[])`,
+      [[english, translated, lacking], `b:${base}`],
+    );
+    expect(await lineIsInExplorer(await row(english))).toBe(true);
+    expect(await lineIsInExplorer(await row(translated))).toBe(true);
+    expect(await lineIsInExplorer(await row(lacking))).toBe(false);
+  });
+
+  it("refuses a row whose match changed since the moderator saw it", async () => {
+    const id = await readablesRow({ locale: "esES", text: `Palabras esMX uno ${base}.`, meta: { book: "Libro", number: "1" } });
+    const seen = { kind: "translation", lineId: `b:${base}`, via: "text" } as const;
+    await textRow(`b:${base}`, "esES", "Otro texto.");
+    expect(await resolveContribution(id, "accepted", RESOLVER, undefined, false, seen)).toMatchObject({
+      ok: false, reason: "changed",
+    });
+    expect(await versionsOf(`b:${base}`, "esES")).toHaveLength(1);
+  });
+
+  it("accepts an English page the corpus lacks", async () => {
+    const title = `New in Forever ${base}`;
+    const id = await readablesRow({ locale: "enUS", text: `Forever only ${base}.`, meta: { book: title, number: "1" } });
+    expect(await resolveContribution(id, "accepted", RESOLVER)).toMatchObject({ ok: true });
+    expect(await pagesTitled(title, "enUS")).toHaveLength(1);
+  });
+
+  it("refuses an ambiguous row until a moderator answers, and writes nothing", async () => {
+    const id = await readablesRow({ locale: "enUS", text: `Unseen ${base}.`, meta: { book: DUSTY, number: "1" } });
+    expect(await resolveContribution(id, "accepted", RESOLVER)).toMatchObject({ ok: false, reason: "needs-page" });
+    expect((await row(id)).status).toBe("new");
+    expect(await pagesTitled(DUSTY, "enUS")).toHaveLength(2);
+  });
+
+  it("refuses a row whose words the page already has", async () => {
+    const id = await readablesRow({ locale: "esMX", text: `Palabras esMX dos ${base}.`, meta: { book: `Libro ${base}`, number: "2" } });
+    expect(await resolveContribution(id, "accepted", RESOLVER)).toMatchObject({ ok: false, reason: "malformed" });
+    expect(await versionsOf(`b:${base + 1}`, "esMX")).toHaveLength(1);
+  });
+
+  it("adds the object the client read it from to the page's owners, once", async () => {
+    const renumbered = String(base + 5);
+    const first = await readablesRow({
+      locale: "esES", text: `Palabras esMX uno ${base}.`, meta: { book: "Libro", number: "1", object: renumbered },
+    });
+    expect(await resolveContribution(first, "accepted", RESOLVER)).toMatchObject({ ok: true });
+    expect(await ownersOf(`b:${base}`)).toEqual({ ownerKind: "object", ownerIds: [base, base + 5] });
+
+    // Found by that object now, as a correction of the same page.
+    const second = await readablesRow({
+      locale: "esES", text: `Otras palabras ${base}.`, meta: { book: "Libro", number: "1", object: renumbered },
+    });
+    expect(await resolveContribution(second, "accepted", RESOLVER)).toMatchObject({ ok: true });
+    expect(await versionsOf(`b:${base}`, "esES")).toHaveLength(2);
+    expect(await ownersOf(`b:${base}`)).toEqual({ ownerKind: "object", ownerIds: [base, base + 5] });
+  });
+
+  it("gives no page the Plain Letter a letter becomes when taken out of the mailbox", async () => {
+    const id = await readablesRow({
+      locale: "esES", text: `Carta ${base}.`, meta: { book: `Carta lisa ${base}`, number: "1", item: String(LETTER_COPY_ITEM) },
+    });
+    expect(await resolveContribution(id, "accepted", RESOLVER)).toMatchObject({ ok: true });
+    const [page] = await pagesTitled(`Carta lisa ${base}`, "esES");
+    expect(await ownersOf(page.lineId)).toEqual({ ownerKind: null, ownerIds: null });
+  });
+
+  it("gives a minted page the item it was read from, named so the page keeps its title", async () => {
+    const item = base + 6;
+    const id = await readablesRow({ locale: "esES", text: `Nueva ${base}.`, meta: { book: `Nuevo ${base}`, number: "1", item: String(item) } });
+    expect(await resolveContribution(id, "accepted", RESOLVER)).toMatchObject({ ok: true });
+    const [page] = await pagesTitled(`Nuevo ${base}`, "esES");
+    expect(await ownersOf(page.lineId)).toEqual({ ownerKind: "item", ownerIds: [item] });
+    const listed = (await catalogue("esES")).find((p) => p.id === page.lineId);
+    expect(listed?.title).toBe(`Nuevo ${base}`);
+    expect(listed?.missing).toBeUndefined();
+  });
+
+  it("keeps every language's title when a correction gives an ownerless page its first owner", async () => {
+    await seedPage(`b:${base + 30}`, String(base + 30), 1, null, [
+      ["deDE", `Staubiges Buch ${base}`, `Staub ${base}.`],
+      ["esES", `Libro polvoriento ${base}`, `Polvo ${base}.`],
+    ]);
+    const id = await readablesRow({
+      locale: "esES", text: `Polvo corregido ${base}.`,
+      meta: { book: `Libro polvoriento ${base}`, number: "1", object: String(base + 31) },
+    });
+    expect(await resolveContribution(id, "accepted", RESOLVER)).toMatchObject({ ok: true });
+    expect(await ownersOf(`b:${base + 30}`)).toEqual({ ownerKind: "object", ownerIds: [base + 31] });
+    const german = (await catalogue("deDE")).find((p) => p.id === `b:${base + 30}`);
+    expect(german?.title).toBe(`Staubiges Buch ${base}`);
+    expect(german?.missing).toBeUndefined();
+    const spanish = (await catalogue("esES")).find((p) => p.id === `b:${base + 30}`);
+    expect(spanish?.title).toBe(`Libro polvoriento ${base}`);
+  });
+
+  it("leaves an id the corpus already knows on its own page", async () => {
+    const id = await readablesRow({
+      locale: "esES", text: `Polvo uno ${base}.`, meta: { book: DUSTY, number: "1", object: String(base) },
+    });
+    await setContributionMatch(id, { lineId: `b:${base + 10}` }, RESOLVER);
+    expect(await resolveContribution(id, "accepted", RESOLVER)).toMatchObject({ ok: true });
+    expect(await ownersOf(`b:${base + 10}`)).toEqual({ ownerKind: null, ownerIds: null });
   });
 });

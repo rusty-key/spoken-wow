@@ -788,3 +788,33 @@ def query_npc_reachability(patch: int = 10):
 
     db.close()
     return facts
+
+
+def query_creature_displays():
+    """Every humanoid appearance of every creature, as (entry, slot, probability, DisplayRaceID,
+    DisplaySexID, npc_sound_name), from the latest patch's creature_template row.
+
+    All four display slots, since they need not share a sex. A display with no
+    CreatureDisplayInfoExtra row has no race or sex and is left out.
+    """
+    slots = " UNION ALL ".join(
+        f"SELECT entry, patch, {n} AS slot, display_id{n} AS display_id, "
+        f"display_probability{n} AS probability FROM creature_template WHERE display_id{n} <> 0"
+        for n in range(1, 5))
+    sql = f'''
+SELECT d.entry, d.slot, d.probability, cdie.DisplayRaceID, cdie.DisplaySexID, se.name
+FROM ({slots}) d
+JOIN (SELECT entry, MAX(patch) AS patch FROM creature_template GROUP BY entry) latest
+  ON latest.entry = d.entry AND latest.patch = d.patch
+JOIN db_CreatureDisplayInfo cdi ON cdi.ID = d.display_id
+JOIN db_CreatureDisplayInfoExtra cdie ON cdie.ID = cdi.ExtendedDisplayInfoID
+LEFT JOIN db_NPCSounds ns ON ns.ID = cdi.NPCSoundID
+LEFT JOIN sound_entries se ON se.id = ns.SoundGreeting
+ORDER BY d.entry, d.slot
+'''
+    db = make_connection()
+    with db.cursor() as cursor:
+        cursor.execute(sql)
+        rows = cursor.fetchall()
+    db.close()
+    return rows

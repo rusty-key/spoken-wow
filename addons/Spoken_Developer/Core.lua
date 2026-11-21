@@ -6,8 +6,7 @@
 -- feature addons write with Spoken:Log here. Without this module those calls do nothing.
 --
 -- Client targets: Classic Era 1.15.9 (11509), Anniversary 2.5.6 (20506) and Forever 1.60
--- (16001). Not the legacy 1.12/2.4.3/3.3.5 clients: their zips carry Spoken inside the quests
--- addon and nothing of this.
+-- (16001).
 
 local ADDON_NAME, Developer = ...
 
@@ -29,6 +28,8 @@ local function Defaults()
 		on = true,
 		-- "<GetTime> <category> <text>", oldest first.
 		lines = {},
+		-- The camera editor's changes: [place][model group] = { right, up, zoom, turn }.
+		cameraEdits = {},
 	}
 end
 
@@ -44,6 +45,7 @@ function Developer:InitDB()
 		if SpokenDeveloperDB[key] == nil then SpokenDeveloperDB[key] = value end
 	end
 	if type(SpokenDeveloperDB.lines) ~= "table" then SpokenDeveloperDB.lines = {} end
+	if type(SpokenDeveloperDB.cameraEdits) ~= "table" then SpokenDeveloperDB.cameraEdits = {} end
 end
 
 function Developer:Print(message, ...)

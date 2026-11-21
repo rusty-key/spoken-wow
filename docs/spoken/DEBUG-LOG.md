@@ -1,6 +1,7 @@
 # Debug log
 
-**Spoken Developer** (`addons/Spoken_Developer`, a download of its own) keeps a log of what
+**Spoken Developer** (`addons/Spoken_Developer`, for developers only: not in Spoken's zip and not
+published; link it from a checkout or build it with `scripts/developer/package.sh`) keeps a log of what
 Spoken plays and why: every line queued, started, stopped, dropped or refused, with the time and
 the reason, Spoken's diagnostics, and whatever its modules add (Spoken Quests writes each quest
 or gossip window it saw and what it decided). It is for finding out afterwards why a line played
@@ -14,8 +15,8 @@ nothing, and `/spoken log` says the module is not installed.
 The log is **on as soon as the module is installed**: the module is installed on purpose, by
 whoever wants a log. It can be turned off, and keeps nothing while off:
 
-- **Spoken > Developer > Enable Debug Log Recording**, in the game's settings.
-- The switch at the bottom of the welcome window (Spoken > General > Show Welcome Window).
+- **Spoken > Developer > Keep a Debug Log**, in the game's settings.
+- The switch at the bottom of the welcome window (Spoken > Show Welcome Window), which is Keep a Debug Log too.
 - Right-click any **Report a Problem** or **Contribute** button: with the log off, the menu offers to turn it on.
 - `/spoken log off` and `/spoken log on`.
 
@@ -30,8 +31,11 @@ says how big the log is (lines used of 2000, and the room they take in the saved
   no clipboard, so Ctrl+A, then Ctrl+C. To send with a report.
 - **Write the Debug Log for an AI Agent**: see below.
 
-The Developer page has the same two buttons and the size, and `/spoken log copy` and
-`/spoken log write` do the same from chat. Opened from a button on DialogueUI's window, which
+The Developer page, Spoken > Developer, has the same two buttons (**Copy with Diagnostics** and
+**Write for an AI Agent**), the size (Log Size), **Show the Log**, **Clear the Log** and the
+steps for asking an AI agent. Under the Debug Log section come the switches for messages in chat
+(Chat Messages) and the testing tools (Testing) that Spoken's modules add. `/spoken log copy`
+and `/spoken log write` do the same from chat. Opened from a button on DialogueUI's window, which
 hides the rest of the interface, the menu and the box show over that window.
 
 ## Writing it for an AI agent
@@ -80,8 +84,8 @@ quest title placed in whichever window shows it, and the last window Spoken Ques
 Forever the game's quest functions can answer that no quest is open while its window shows one.
 It also says which of Spoken's modules are loaded, turned off in the AddOns list or not installed,
 and what the reading window holds (`reading window: open, a book "...", page 2, starting "...";
-nothing of Spoken reads it: Spoken_Books is not installed`) and the mailbox's open letter: a book
-read without Spoken Books is silent and shows nothing, and this is where the log says why.
+nothing of Spoken reads it: Spoken_Readables is not installed`) and the mailbox's open letter: a book
+read without Spoken Readables is silent and shows nothing, and this is where the log says why.
 
 ## Diagnostics in the log
 
@@ -136,7 +140,7 @@ Each line is `<GetTime> <category> <text>`:
 ```
 1234.567 session start: Tata Throwaway, Spoken 3.0.1, Spoken Developer 0.1.0, client 1.60.1 build 70205
 1234.567 session wall clock 2026-10-06 21:14:03 at GetTime 1234.567
-1234.567 session modules: quests (Spoken_Quests), zones (Spoken_Zones)
+1234.567 session modules: quests (Spoken_Quests), places (Spoken_Places)
 1237.570 diag login:
 1237.570 diag   Spoken 3.0.1, API 1, 0 queued, playing
 1240.090 quests quest-detail: QUEST_DETAIL raw quest ID 783, title "A Threat Within", NPC "Marshal McBride"
@@ -158,7 +162,7 @@ on this client's clock, and head each line with whose it is.
   muted channel, a module turned off), and the Dialog channel muted, restored, or left alone
   because the player already had it off.
 - `screen`: the reading window (books, plaques, signs, letters) as each page shows, with its
-  title, page, author for a letter and first words, and whether Spoken Books is there to read it;
+  title, page, author for a letter and first words, and whether Spoken Readables is there to read it;
   then its closing.
 - Other categories come from the modules that write them: `quests` from Spoken Quests, `sync`,
   `msg`, `party`, `room` and `logs` from Spoken Party Sync.
@@ -178,7 +182,7 @@ Additive API on `Spoken`, so `API_VERSION` stays 1: guard on the method.
 | `Spoken:AddLogSource(list, clear)` | Logs to read beside this one, such as other computers'. `list()` returns `{ { name, lines, offset }, ... }`, lines written as the log writes them, on their own clock, `offset` the seconds that put them on this one. `clear()` drops them when the log is cleared. |
 | `Spoken:AddDiagnostics(name, fn)` | `fn(detailed)` returns a list of lines: what your own diagnostics command says, and with `detailed` what an AI agent needs besides. Shown under `name` in the copies and the `diag` snapshots. |
 | `Spoken:AddDeveloperSettings(build)` | A section of your own on the Developer page; `build(layout)` adds rows to its SpokenLayout and may return a function for the page's Defaults. |
-| `Spoken:ShowLogMenu(anchor)`, `Spoken:LogMenuHint()` | The Report menu, for a Report button Spoken did not make; the line its tooltip adds. Buttons made with `Spoken:CreateRoundButton(parent, "report")` have it already. |
+| `Spoken:ShowLogMenu(anchor)`, `Spoken:LogMenuHint()` | The Report menu, for a Report button Spoken did not make; the line its tooltip can add. Buttons made with `Spoken:CreateRoundButton(parent, "report")` have it already. |
 
 The module registers with `Spoken:RegisterDeveloper(provider)`; `addons/Spoken/Developer.lua`
 lists what the provider holds.

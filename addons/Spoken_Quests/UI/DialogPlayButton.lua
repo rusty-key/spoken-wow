@@ -2,19 +2,17 @@ setfenv(1, VoiceOver)
 
 -- The Listen/Stop button on the Blizzard quest and gossip frames, for a player who turned
 -- autoplay off. "Do not start by yourself" must not mean "give me no way to start it", and /spq read is
--- not a way most players will find -- the reason SpokenBooks/UI/PlayButton.lua exists too.
+-- not a way most players will find -- the reason Spoken_Readables/UI/PlayButton.lua exists too.
 --
 -- Shown only while autoplay is off. With it on the line is already playing by the time the
 -- dialog has settled, and the Spoken player frame is where it is stopped.
 --
 -- A TEXT button, not an icon, for PlayButton.lua's reason: an icon path cannot be verified
--- without launching the client, and a texture missing on a legacy client draws
--- nothing at all.
+-- without launching the client, and a missing texture draws nothing at all.
 --
 -- IN THE CORNER UI/ContributeButton.lua uses, under the close button, on whichever of the two
 -- frames is up. The two buttons never want it at once: Contribute is shown only for a line the
--- packs do not have, and this only for one they do. Contribute.xml is not loaded on the legacy clients, so the placement is
--- copied here rather than borrowed from it.
+-- packs do not have, and this only for one they do.
 --
 -- Not drawn under a replacement dialog addon: DialogueUI hides QuestFrame and GossipFrame, and
 -- a button parented to UIParent would float over nothing. /spq read still works there.
@@ -24,11 +22,13 @@ local BUTTON_WIDTH = 60
 -- Room the button's end caps take either side of its label.
 local LABEL_PADDING = 24
 local GAP = 2
-local STRIP_OFFSET = 12
+local STRIP_OFFSET = 8
 local CORNER_INSET = 32
+local MUTE_SIZE = 24
+local SPEAKER_ICON = [[Interface\COMMON\VOICECHAT-SPEAKER]]
+local WAVES_ICON = [[Interface\COMMON\VOICECHAT-ON]]
 
--- The events that change which panel is up, ContributeButton.lua's seven. Ignored as
--- arguments, for its reason: 1.12 hands OnEvent none.
+-- The events that change which panel is up, ContributeButton.lua's seven.
 local REFRESH_EVENTS = {
     "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING",
     "GOSSIP_SHOW", "GOSSIP_CLOSED", "QUEST_FINISHED",
@@ -99,10 +99,9 @@ local function PlayButtonInset()
     return 11
 end
 
-function DialogPlayButton:Position(frameName)
+local function AnchorUnderClose(button, frameName)
     local frame = _G[frameName]
     local close = CloseButtonOf(frame, frameName .. "CloseButton")
-    local button = self.button
     button:ClearAllPoints()
     local frameTop, closeBottom = frame.GetTop and frame:GetTop(), close and close.GetBottom and close:GetBottom()
     if type(frameTop) == "number" and type(closeBottom) == "number" then
@@ -112,6 +111,43 @@ function DialogPlayButton:Position(frameName)
     else
         button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -CORNER_INSET, -CORNER_INSET)
     end
+end
+
+function DialogPlayButton:Position(frameName)
+    AnchorUnderClose(self.button, frameName)
+end
+
+function DialogPlayButton:PositionMute(frameName)
+    local button = self.muteButton
+    local beside = self.button:IsShown() and self.button
+    if not beside and ContributeButton and ContributeButton.button and ContributeButton.button:IsShown() then
+        beside = ContributeButton.button
+    end
+    if beside then
+        button:ClearAllPoints()
+        button:SetPoint("RIGHT", beside, "LEFT", -GAP, 0)
+    else
+        AnchorUnderClose(button, frameName)
+    end
+end
+
+--- DialogueUI hides the gossip and greeting windows, so it gets no toggle.
+function DialogPlayButton:RefreshMute()
+    local button = self.muteButton
+    if not button then
+        return
+    end
+    local clip, event = Addon:CurrentGossipClip()
+    if not clip or Utils:DialogueUIPage() or not Addon:IsPageOn(event) or not Addon:CanIgnoreNPC(clip) then
+        button:Hide()
+        self.muteClip = nil
+        return
+    end
+    self.muteClip = clip
+    button.muted = Addon:IsGossipNPCIgnored(clip.unitGUID)
+    button.muteSlash:SetShown(button.muted)
+    self:PositionMute(event == "GOSSIP_SHOW" and "GossipFrame" or "QuestFrame")
+    button:Show()
 end
 
 --- Show, hide and label the button for whatever is on screen now. Hidden rather than
@@ -124,15 +160,14 @@ function DialogPlayButton:Refresh()
     end
     self.line = nil
 
-    if Addon:IsAutoplayOn() or not Addon:IsPartOn() then
-        button:Hide()
-        return
-    end
     local line, event = Addon:GetVisibleLine()
+    -- Shown only where the page does not read itself, so the player can still play it.
+    self.why = Addon:WhyHeld(event)
     -- The panel itself, not merely the event: under DialogueUI the event arrives and the
-    -- panel never shows.
-    if not line or not IsFrameVisible(_G[PANELS[event]]) then
+    -- panel never shows. Switched off, the window's part puts no button on it.
+    if not self.why or not line or not IsFrameVisible(_G[PANELS[event]]) then
         button:Hide()
+        self:RefreshMute()
         return
     end
 
@@ -140,6 +175,7 @@ function DialogPlayButton:Refresh()
     self.line = line
     self:Relabel()
     button:Show()
+    self:RefreshMute()
 end
 
 --- Listen or Stop, for the line already found. All a clip starting or stopping can change.
@@ -191,7 +227,7 @@ function DialogPlayButton:Setup()
             GameTooltip:SetText(L.OPT_DIALOG_STOP_TIP)
         else
             GameTooltip:SetText(L.OPT_READ_TIP)
-            GameTooltip:AddLine(L.OPT_AUTOPLAY_OFF_TIP, 1, 0.8, 0.2, true)
+            GameTooltip:AddLine(DialogPlayButton.why, 1, 0.8, 0.2, true)
         end
         GameTooltip:Show()
     end)
@@ -202,16 +238,51 @@ function DialogPlayButton:Setup()
     end)
     self.button = button
 
+    if _G.Spoken and Spoken.CreateRoundButton then
+        local mute = Spoken:CreateRoundButton(UIParent, "icon", nil, SPEAKER_ICON)
+        mute:SetSize(MUTE_SIZE, MUTE_SIZE)
+        -- Untrimmed: RoundPicture crops a portrait's edges, and the speaker's waves are there.
+        mute.glyph:SetTexCoord(0, 1, 0, 1)
+        mute:SetFrameStrata("DIALOG")
+        local waves = mute:CreateTexture(nil, "OVERLAY")
+        waves:SetAllPoints(mute.glyph)
+        waves:SetTexture(WAVES_ICON)
+        local slash = mute:CreateTexture(nil, "OVERLAY")
+        slash:SetSize(2, 17)
+        slash:SetPoint("CENTER")
+        slash:SetColorTexture(1, 0.1, 0.1, 0.95)
+        slash:SetRotation(math.rad(-45))
+        mute.muteSlash = slash
+        mute:SetScript("OnClick", function(self)
+            local clip = DialogPlayButton.muteClip
+            if clip then
+                local muted = not self.muted
+                Addon:SetGossipNPCMuted(clip.unitGUID, clip.name, muted)
+                Addon:GossipSay(format(muted and L.MUTE_NPC_DONE or L.UNMUTE_NPC_DONE, clip.name or "NPC"))
+            end
+        end)
+        mute:HookScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(self.muted and L.OPT_UNMUTE_NPC_GOSSIP or L.OPT_MUTE_NPC)
+            GameTooltip:Show()
+        end)
+        mute:HookScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+        mute:Hide()
+        self.muteButton = mute
+    end
+
     local watcher = CreateFrame("Frame")
     for _, event in ipairs(REFRESH_EVENTS) do
         pcall(watcher.RegisterEvent, watcher, event)
     end
-    watcher:SetScript("OnEvent", function()
+    watcher:SetScript("OnEvent", function(_, event)
         DialogPlayButton:Refresh()
         -- Again a moment later: a Classic quest event can arrive before GetQuestID and the
         -- text globals change (VoiceOver.lua's directEvents comment), and the first look
-        -- would label the previous quest. Not with autoplay on, when there is no button.
-        if Addon.ScheduleTimer and not Addon:IsAutoplayOn() then
+        -- would label the previous quest. Only for a page that shows the button.
+        if Addon.ScheduleTimer and Addon:WhyHeld(event) then
             Addon:ScheduleTimer(Refresh, 0.2)
         end
     end)

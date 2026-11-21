@@ -1,15 +1,16 @@
 """Building a module over a staged store, which may hold mp3 or ogg.
 
-The store on disk is always mp3; scripts/package-audio.sh stages a transcoded copy and
+The store on disk is always mp3; scripts/quests/package-audio.sh stages a transcoded copy and
 hands that to `build --store`, and that copy is ogg for the packs this project ships. So
 the module's sound paths have to follow the files rather than assume an extension.
 """
+import json
 import os
 import shutil
 
 import pytest
 
-from tts_cli.build import build_module
+from tts_cli.build import GOSSIP_TEXT_TABLES, build_module, icon_source
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -144,6 +145,22 @@ def test_a_whole_store_pack_ships_a_take_the_english_corpus_does_not_name(tmp_pa
     assert report["audioFiles"] == 2
 
 
+def test_a_line_with_no_words_ships_no_audio_but_keeps_its_giver(tmp_path):
+    corpus = {"lines": CORPUS["lines"] + [
+        {"lineId": "q:3646:accept", "source": "accept", "questId": 3646,
+         "questTitle": "Membership Card Renewal", "npcId": 8738, "npcName": "Vazario Linkgrease",
+         "npcType": "creature", "fileName": "3646-accept", "originalText": "\n",
+         "generatable": True}]}
+    store = _store(tmp_path, "quests/5-accept.ogg", "quests/3646-accept.ogg")
+
+    report = build_module(corpus, store, str(tmp_path / "dist"), "Mod")
+
+    generated = tmp_path / "dist" / "Mod" / "generated"
+    assert not (generated / "sounds" / "quests" / "3646-accept.ogg").exists()
+    assert report["audioFiles"] == 1
+    assert "[3646] = 8738" in (generated / "questlog_npc_lookups.lua").read_text(encoding="utf-8")
+
+
 def test_a_pack_still_drops_ignored_audio(tmp_path):
     store = _store(tmp_path, "quests/5-accept.ogg", "gossip/abc123.ogg")
 
@@ -160,22 +177,21 @@ def test_the_toc_title_says_which_pack_this_is(tmp_path):
     store = _store(tmp_path, "quests/5-accept.ogg")
 
     build_module(CORPUS, store, str(tmp_path / "dist"), "Mod",
-                 title="Spoken Quests Audio (Horde)")
+                 title="Spoken Audio: Quests - Horde")
 
     with open(tmp_path / "dist" / "Mod" / "Mod.toc", encoding="utf-8") as f:
-        assert "## Title: Spoken Quests Audio (Horde)\n" in f.read()
+        assert "## Title: |cffb48cffSpoken|r Audio: Quests - Horde\n" in f.read()
 
 
 def test_the_toc_names_the_forever_client(tmp_path):
     # Forever marks a pack whose Interface it does not list incompatible, which the player's
     # checkAddonVersion switch cannot override, so every client the packs ship for is named.
-    # 100000 leads for the legacy clients, which read one number.
     store = _store(tmp_path, "quests/5-accept.ogg")
 
     build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
 
     with open(tmp_path / "dist" / "Mod" / "Mod.toc", encoding="utf-8") as f:
-        assert f.read().startswith("## Interface: 100000, 11509, 20506, 16001\n")
+        assert f.read().startswith("## Interface: 11509, 20506, 16001\n")
 
 
 def test_the_pack_ships_an_icon_the_toc_points_at(tmp_path):
@@ -191,12 +207,163 @@ def test_the_pack_ships_an_icon_the_toc_points_at(tmp_path):
     assert (module / "icon.tga").is_file()
 
 
+def test_a_language_pack_wears_its_badged_icon(tmp_path):
+    # Otherwise a language's packs look like English's in the AddOns list.
+    store = _store(tmp_path, "quests/5-accept.ogg")
+
+    build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="esMX")
+
+    with open(tmp_path / "dist" / "Mod" / "icon.tga", "rb") as shipped, \
+            open(icon_source("esMX"), "rb") as badged, open(icon_source(), "rb") as english:
+        data = shipped.read()
+        assert data == badged.read()
+        assert data != english.read()
+
+
+def test_a_language_without_a_badge_can_wear_englishs_mark(tmp_path):
+    # A team's pack in a language nobody drew a badge for; its title and TOC name the language.
+    store = _store(tmp_path, "quests/5-accept.ogg")
+
+    build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="jaJP", icon_language="enUS",
+                 toc_extra=[("X-Spoken-LanguageName", "Japanese")])
+
+    with open(tmp_path / "dist" / "Mod" / "icon.tga", "rb") as shipped, open(icon_source(), "rb") as english:
+        assert shipped.read() == english.read()
+    with open(tmp_path / "dist" / "Mod" / "Mod.toc", encoding="utf-8") as f:
+        toc = f.read()
+    assert "## X-SpokenQuests-Language: jaJP\n" in toc
+    assert "## X-Spoken-LanguageName: Japanese\n" in toc
+
+
+def test_a_language_without_a_badge_is_still_an_error_by_default(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+
+    with pytest.raises(FileNotFoundError, match="no icon for jaJP"):
+        build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="jaJP")
+
+
+def test_the_cli_passes_the_icon_language_and_toc_extras(tmp_path):
+    import subprocess
+    import sys
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    import gzip
+    corpus = tmp_path / "corpus.json.gz"
+    with gzip.open(corpus, "wt", encoding="utf-8") as f:
+        json.dump({"lines": [{**line, "voice": None} for line in CORPUS["lines"]]}, f)
+    quests = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    subprocess.run([sys.executable, "cli-main.py", "build", "--store", store, "--corpus", str(corpus),
+                    "--dist", str(tmp_path / "dist"), "--module", "Mod", "--pack", "all",
+                    "--ignored", str(tmp_path / "none.json"), "--overrides", str(tmp_path / "none.lua"),
+                    "--language", "jaJP", "--icon-language", "enUS",
+                    "--toc-extra", "X-Spoken-Team=stimmen", "--toc-extra", "X-Spoken-TeamName=Die Stimmen"],
+                   cwd=quests, check=True, capture_output=True)
+    with open(tmp_path / "dist" / "Mod" / "Mod.toc", encoding="utf-8") as f:
+        toc = f.read()
+    assert "## X-Spoken-Team: stimmen\n## X-Spoken-TeamName: Die Stimmen\n" in toc
+
+
 def test_the_length_table_measures_ogg(tmp_path):
     store = _store(tmp_path, "quests/5-accept.ogg")
 
     build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
 
     assert '["5-accept"] = 0.3' in _sound_length_table(tmp_path)
+
+
+def test_a_store_of_pointers_takes_its_lengths_from_durations_json(tmp_path):
+    root = tmp_path / "store"
+    (root / "quests").mkdir(parents=True)
+    (root / "gossip").mkdir()
+    (root / "gossip" / "abc123.ogg").write_text("spoken-clip-pointer encodings/aa 5\n")
+    (root / "quests" / "5-accept.ogg").write_text("spoken-clip-pointer encodings/bb 5\n")
+    (root / "durations.json").write_text('{"quests/5-accept": 26, "gossip/abc123": 1.25}')
+    build_module(CORPUS, str(root), str(tmp_path / "dist"), "Mod")
+    table = _sound_length_table(tmp_path)
+    assert '["5-accept"] = 26.0' in table
+    assert '["abc123"] = 1.25' in table
+    assert table.index("5-accept") < table.index("abc123")
+
+
+def test_word_times_ship_for_the_clips_a_pack_carries(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    # The gossip clip has times but is not in this store, so its times would be dead weight.
+    with open(os.path.join(store, "word-times.json"), "w", encoding="utf-8") as f:
+        json.dump({"quests/5-accept": "0 0 .42 1.5", "gossip/abc123": "0 .5"}, f)
+
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+
+    with open(tmp_path / "dist" / "Mod" / "generated" / "word_times_table.lua",
+              encoding="utf-8") as f:
+        lua = f.read()
+    assert "Mod.WordTimesByFileName = " in lua
+    assert '["5-accept"] = "0 0 .42 1.5"' in lua
+    assert "abc123" not in lua
+    assert "generated\\word_times_table.lua" in _toc(tmp_path)
+    assert report["tableRows"]["word_times_table"] == 1
+
+
+def _text_table(tmp_path, take_text):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    with open(os.path.join(store, "take-text.json"), "w", encoding="utf-8") as f:
+        json.dump(take_text, f)
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+    with open(tmp_path / "dist" / "Mod" / "generated" / "text_table.lua", encoding="utf-8") as f:
+        return f.read(), report
+
+
+def test_text_ships_for_the_clips_a_pack_carries(tmp_path):
+    # The gossip clip is not in this store, so its text would be dead weight.
+    lua, report = _text_table(tmp_path, {"quests/5-accept": "Pack words.", "gossip/abc123": "No."})
+
+    assert "Mod.TextByFileName = " in lua
+    assert '["5-accept"] = "Pack words."' in lua
+    assert ('(VoiceOver.Language.GetTextLanguage and VoiceOver.Language:GetTextLanguage() '
+            'or VoiceOver.Language:GetClientLanguage()) ~= "enUS" then return end') in lua
+    assert "abc123" not in lua
+    assert "generated\\text_table.lua" in _toc(tmp_path)
+    assert report["tableRows"]["text_table"] == 1
+
+
+def test_a_language_pack_carries_the_words_of_its_lines_without_a_take(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    tables = {"take-text.json": {"quests/5-accept": "Grabada."},
+              "line-text.json": {"quests/5-accept": "Escrita.", "quests/5-complete": "Sin grabar.",
+                                 "quests/9-accept": "Otro paquete."}}
+    for name, table in tables.items():
+        with open(os.path.join(store, name), "w", encoding="utf-8") as f:
+            json.dump(table, f)
+
+    build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="esMX",
+                 include={"quests/5-accept", "quests/5-complete"})
+
+    generated = tmp_path / "dist" / "Mod" / "generated"
+    takes = (generated / "text_table.lua").read_text(encoding="utf-8")
+    lines = (generated / "line_text_table.lua").read_text(encoding="utf-8")
+    assert '["5-accept"] = "Grabada."' in takes and "Sin grabar" not in takes
+    assert '["5-complete"] = "Sin grabar."' in lines
+    assert "Escrita" not in lines and "Otro paquete" not in lines
+
+
+def test_text_survives_lua_quoting(tmp_path):
+    # A raw newline or an unescaped quote stops the whole pack from loading.
+    lua, _ = _text_table(tmp_path, {"quests/5-accept": 'Say "hi"\nC:\\x \tПривет'})
+
+    # Escaped once: escaped twice, a newline reads back as a backslash and an n in game.
+    assert '["5-accept"] = "Say \\"hi\\"\\nC:\\\\x \\009Привет"' in lua
+
+
+def test_a_store_without_text_ships_an_empty_table(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+    assert report["tableRows"]["text_table"] == 0
+
+
+def test_a_store_without_word_times_ships_an_empty_table(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+
+    assert report["tableRows"]["word_times_table"] == 0
 
 
 def _toc(tmp_path):
@@ -312,6 +479,28 @@ def test_locale_text_without_a_language_is_refused(tmp_path):
         build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", locale_text=MX_TEXT)
 
 
+GOSSIP_TEXT_FILES = tuple(name + ".lua" for name in GOSSIP_TEXT_TABLES)
+
+
+@pytest.mark.parametrize("stored, include, carried", [
+    ("quests/5-accept.ogg", {"quests/5-accept"}, False),  # Alliance, Horde, Shared
+    ("quests/5-accept.ogg", set(), False),
+    ("gossip/abc123.ogg", None, True),  # All
+    ("gossip/abc123.ogg", {"gossip/abc123"}, True),  # Gossip
+    ("gossip/abc123.ogg", {"quests/5-accept", "gossip/abc123"}, True),
+])
+def test_only_a_pack_with_gossip_audio_carries_the_gossip_text_tables(tmp_path, stored, include,
+                                                                     carried):
+    # A pack without gossip audio would only pay to parse them.
+    build_module(CORPUS, _store(tmp_path, stored), str(tmp_path / "dist"), "Mod", include=include)
+
+    toc = _toc(tmp_path)
+    for name in GOSSIP_TEXT_FILES:
+        assert (f"generated\\{name}" in toc) is carried
+    assert "generated\\quest_id_lookups.lua" in toc
+    assert "generated\\npc_body_gossip_file_lookups.lua" in toc
+
+
 def test_a_language_pack_without_locale_text_has_no_locale_tables(tmp_path):
     # The faction packs of a language, and every English pack.
     store = _store(tmp_path, "gossip/abc123.ogg")
@@ -320,3 +509,56 @@ def test_a_language_pack_without_locale_text_has_no_locale_tables(tmp_path):
 
     assert not os.path.exists(tmp_path / "dist" / "Mod" / "generated" / "esMX")
     assert "ClientLocaleLookups" not in _toc(tmp_path)
+
+
+# A team's pack is named by its slug, and a slug may hold a hyphen: a folder name that is no Lua
+# identifier, which written bare into the generated Lua stops every file of the pack compiling.
+TEAM_FOLDER = "SpokenQuestsAudioAlliance_esMX_team-two"
+
+
+@pytest.mark.skipif(shutil.which("luajit") is None, reason="needs luajit")
+def test_a_pack_named_by_a_hyphenated_slug_loads_in_lua(tmp_path):
+    import subprocess
+
+    store = _store(tmp_path, "quests/5-accept.ogg", "gossip/abc123.ogg")
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), TEAM_FOLDER,
+                          language="esMX", locale_text=MX_TEXT)
+
+    module_dir = report["moduleDir"]
+    with open(os.path.join(module_dir, TEAM_FOLDER + ".toc"), encoding="utf-8") as f:
+        files = [line.strip().replace("\\", "/") for line in f
+                 if line.strip() and not line.startswith("##")]
+    assert files[0] == "Module.lua" and len(files) > 5
+    probe = tmp_path / "probe.lua"
+    probe.write_text(
+        "local registered = {}\n"
+        "local event = {}\n"
+        "VoiceOver = {DataModules = {Register = function(_, name, module) registered[name] = module end},\n"
+        "    Language = {GetClientLanguage = function() return 'esMX' end},\n"
+        "    Enums = {SoundEvent = {IsQuestEvent = function(_, e) return e == event end,\n"
+        "                           IsGossipEvent = function() return false end}},\n"
+        "    format = string.format}\n"
+        + "".join(f"assert(loadfile([[{os.path.join(module_dir, name)}]]))()\n" for name in files)
+        + f'local module = _G["{TEAM_FOLDER}"]\n'
+        f'assert(type(module) == "table" and registered["{TEAM_FOLDER}"] == module)\n'
+        'assert(module.LookupLocale == "enUS")\n'
+        'assert(module.SoundLengthLookupByFileName["5-accept"])\n'
+        'assert(module.ClientLocaleLookups.GossipLookupByNPCID)\n'
+        'assert(module:GetSoundPath("5-accept", event) == [[generated\\sounds\\quests\\5-accept.ogg]])\n'
+        'print("ok")\n', encoding="utf-8")
+    run = subprocess.run(["luajit", str(probe)], capture_output=True, text=True)
+    assert run.returncode == 0, run.stderr
+    assert run.stdout.strip() == "ok"
+
+
+def test_a_pack_named_by_an_identifier_keeps_its_bare_global(tmp_path):
+    # Every pack already shipped is named so; writing its global another way would change the
+    # bytes of every table file every player holds.
+    build_module(CORPUS, _store(tmp_path, "gossip/abc123.ogg"), str(tmp_path / "dist"), "Mod",
+                 language="esMX", locale_text=MX_TEXT)
+    module = _module_lua(tmp_path)
+    assert "\nMod = {}\n\nfunction Mod:GetSoundPath(fileName, event)\n" in module
+    assert 'VoiceOver.DataModules:Register("Mod", Mod)\nMod.LookupLocale = "enUS"\n' in module
+    assert "\nMod.SoundLengthLookupByFileName = {\n" in _sound_length_table(tmp_path)
+    assert "\nMod.ClientLocaleLookups = Mod.ClientLocaleLookups or {}\n" in \
+        _generated(tmp_path, "esMX", "npc_gossip_file_lookups.lua")

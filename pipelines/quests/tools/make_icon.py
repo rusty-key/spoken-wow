@@ -13,7 +13,7 @@ failing, which is the kind of bug that survives review.
 
 Committed as a TGA rather than converted at build time so that building an addon needs no
 ffmpeg - the same reason the corpus is committed. Re-run it (`make quests-icon`) when the
-SVGs beside the PNGs change and their renders are re-exported.
+PNGs in assets/icon/ are replaced.
 
 ONE ICON PER ADDON. The player carries the play triangle, Spoken Quests and its five sound
 packs the exclamation mark; they sit next to each other in the AddOns list, so the same
@@ -30,7 +30,8 @@ SIZE = 64
 def raw_bgra(source: str, size: int = SIZE) -> bytes:
     result = subprocess.run(
         ["ffmpeg", "-nostdin", "-v", "error", "-i", source,
-         "-vf", f"scale={size}:{size}", "-pix_fmt", "bgra", "-f", "rawvideo", "-"],
+         # Lanczos keeps the frame and the mark crisp at 64 pixels; the default bicubic blurs them.
+         "-vf", f"scale={size}:{size}:flags=lanczos", "-pix_fmt", "bgra", "-f", "rawvideo", "-"],
         check=True, capture_output=True)
     expected = size * size * 4
     if len(result.stdout) != expected:

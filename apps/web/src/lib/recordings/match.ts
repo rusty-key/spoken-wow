@@ -7,10 +7,11 @@
  *
  *   quests  quests/33-accept.mp3       33-accept.ogg    (m-/f- prefixes are their own files)
  *           gossip/31ab….mp3           31ab….mp3
- *   zones   1411/razor-hill            1411-razor-hill.mp3
+ *   places  1411/razor-hill            1411-razor-hill.mp3
  *           947/zone                   947-zone.mp3     (every map has a `zone`, so the map
  *                                                        id has to be in the name)
- *   books   1381                       1381.mp3
+ *   readables 1381                     1381.mp3
+ *   bosses  36/edwin-vancleef          36-edwin-vancleef.mp3
  *
  * Browser-safe: the drop zone names files with it before anything is sent.
  */

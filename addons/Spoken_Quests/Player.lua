@@ -7,10 +7,26 @@ setfenv(1, VoiceOver)
 -- A prepared SoundData IS the clip: the player reads key, path, length, priority and
 -- present from it and ignores the rest, and the dispatcher keeps reading event, questID,
 -- name and unitGUID from the same table. One table, two readers, no copying.
-Player = { source = nil }
+-- Two sources, one per part of Spoken's page: quests, and gossip (what NPCs say in their gossip
+-- and greeting windows). Spoken switches each on and off and shows each on its own; the queue
+-- below them is shared.
+Player = { source = nil, gossipSource = nil, chatterSource = nil }
 
 local TEXTURES = format([[Interface\AddOns\%s\Textures\]], AddonFolder)
 local BOOK = TEXTURES .. "Book"
+
+-- The packs that hold quests alone, in any language. Every other pack holds gossip too.
+local QUEST_ONLY = {
+    SpokenQuestsAudioAlliance = true,
+    SpokenQuestsAudioHorde = true,
+    SpokenQuestsAudioShared = true,
+}
+
+--- Whether a pack holds gossip.
+function Player:HoldsGossip(module)
+    local english = string.gsub(module.AddonName, "_%a%a%a%a$", "")
+    return not QUEST_ONLY[english]
+end
 
 local BULLETS = {
     [Enums.SoundEvent.QuestAccept]   = "quest-accept",
@@ -19,11 +35,30 @@ local BULLETS = {
     [Enums.SoundEvent.QuestGreeting] = "gossip",
     [Enums.SoundEvent.Gossip]        = "gossip",
     [Enums.SoundEvent.QuestFollowup] = "quest-complete",
+    [Enums.SoundEvent.NPCChatter]    = "gossip",
 }
 
 --------------------------------------------------------------------------------
 -- Reading the queue back
 --------------------------------------------------------------------------------
+
+--- Whether a clip is this addon's: quests', gossip's or World Chatter's.
+function Player:Owns(clip)
+    return clip.source ~= nil
+        and (clip.source == self.source or clip.source == self.gossipSource or clip.source == self.chatterSource)
+end
+
+--- The source that plays a line: gossip's for what NPCs say in their windows, World Chatter's for what they
+--- say in the world, quests' for the rest.
+function Player:SourceOf(soundData)
+    if self.chatterSource and soundData.event == Enums.SoundEvent.NPCChatter then
+        return self.chatterSource
+    end
+    if self.gossipSource and Enums.SoundEvent:IsGossipEvent(soundData.event) then
+        return self.gossipSource
+    end
+    return self.source
+end
 
 --- This addon's clips, in queue order.
 function Player:Queued()
@@ -32,7 +67,7 @@ function Player:Queued()
         return list
     end
     for _, clip in ipairs(Spoken:GetQueue()) do
-        if clip.source == self.source then
+        if self:Owns(clip) then
             table.insert(list, clip)
         end
     end
@@ -51,7 +86,7 @@ end
 --- The head, if it is one of ours.
 function Player:Current()
     local head = Spoken and Spoken:GetCurrent()
-    if head and head.source == self.source then
+    if head and self:Owns(head) then
         return head
     end
     return nil
@@ -72,39 +107,53 @@ end
 --------------------------------------------------------------------------------
 
 -- The creature to draw, or nil for the book. The book for Items, GameObjects, players,
--- a missing GUID, and 2.4.3, which cannot show an arbitrary creature -- what
--- ShouldShowBookFor used to decide inside the frame, decided here instead and handed
--- over as a fallback.
+-- and a missing GUID -- what ShouldShowBookFor used to decide inside the frame, decided
+-- here instead and handed over as a fallback.
 local function CreatureFor(soundData)
-    if soundData.unitIsObjectOrItem or Version.IsLegacyBurningCrusade then
+    if soundData.unitIsObjectOrItem then
         return nil
     end
     local guid = soundData.unitGUID
-    if guid and Utils.GetGUIDType and Utils.GetIDFromGUID then
+    if guid then
         return Utils:GetCreatureIDFromGUID(guid)
     end
-    -- 1.12 has no GUIDs; the pooled model shows the "npc" unit and this is only what
-    -- tells one clip's portrait from the next.
-    if Version.IsLegacyVanilla then
-        return soundData.questID or soundData.name
-    end
     return nil
+end
+
+--- The icon of the item that starts `questID`, with its crop: the one in the bags, else `itemID` or
+--- the one the packs name, which the client knows after the item has left the bags.
+function Player:QuestItemIcon(questID, itemID)
+    local icon, crop = Spoken:QuestItemIcon(questID)
+    if icon then return icon, crop end
+    if not itemID then
+        local kind, id = DataModules:GetQuestLogQuestGiverTypeAndID(questID)
+        itemID = kind == Enums.GUID.Item and id or nil
+    end
+    return Spoken:ItemIcon(itemID)
 end
 
 -- A line from something faceless shows the item that starts the quest, else a posted notice.
 local NOTICE = [[Interface\Icons\INV_Misc_Note_01]]
 local ICON_CROP = { 0.08, 0.92, 0.08, 0.92 }
 local function Faceless(soundData)
-    local icon, crop
-    if Spoken and Spoken.QuestItemIcon then icon, crop = Spoken:QuestItemIcon(soundData.questID) end
+    local icon, crop = Player:QuestItemIcon(soundData.questID)
     return { kind = "texture", texture = icon or NOTICE, texCoord = crop or ICON_CROP }
+end
+
+--- The creature's appearance from the data, which the client cannot be trusted for until it has
+--- cached it; nil where the data has none. The narrator's face and the Compendium's quest parts use it.
+function Player:QuestFace(creature)
+    local faces = _G.SpokenQuestFaces
+    return faces and creature and faces[creature] or nil
 end
 
 local function PortraitFor(soundData)
     if soundData.unitIsObjectOrItem then return Faceless(soundData) end
+    local creature = CreatureFor(soundData)
     return {
         kind = "model",
-        creatureID = CreatureFor(soundData),
+        creatureID = creature,
+        displayID = Player:QuestFace(creature),
         animation = 60,
         fallback = { kind = "texture", texture = BOOK },
     }
@@ -162,24 +211,20 @@ local STOP_GOSSIP = {
 local REPORT = {
     id = "report",
     -- An icon in the corner rather than a word beside the line: the label never changed,
-    -- and the strip it used to sit in pushed the queue up to make room for it. The bug
-    -- icon postdates the three legacy clients, where the texture is missing and
-    -- the button would be a blank square; `text` is what they draw instead.
+    -- and the strip it used to sit in pushed the queue up to make room for it.
     icon = [[Interface\HelpFrame\HelpIcon-Bug]],
     label = L.OPT_REPORT_PROBLEM,
-    text = "R",
     anchor = "topright",
     tooltip = function(tooltip)
         tooltip:SetText(L.OPT_REPORT_PROBLEM)
-        tooltip:AddLine(L.OPT_REPORT_LINE_TIP, 1, 0.8, 0.2, true)
     end,
     onClick = function(clip)
         -- The line itself first: by the time Report is clicked the quest window may be shut.
-        local target = ReportButton:TargetForClip(clip) or ReportButton:CurrentTarget()
+        local target = ReportButton:TargetForClip(clip)
+        local described = target and clip or nil
+        target = target or ReportButton:CurrentTarget()
         if target then
-            -- The language the clip was spoken in, which PrepareSound recorded: a fallback line
-            -- is an English take even under a German selection, and its report is about that.
-            ReportButton:ShowLink(target, clip.language)
+            ReportButton:ShowLink(target, described)
         else
             StaticPopup_Show("VOICEOVER_ERROR", L.OPT_REPORT_NO_LINE)
         end
@@ -192,6 +237,8 @@ local ACTIONS = { REPORT, STOP_GOSSIP }
 function Player:Prepare(soundData)
     local event = soundData.event
     local gossip = Enums.SoundEvent:IsGossipEvent(event)
+    -- Chat heard in the world waits its turn as gossip does, and has no dialog window to hold the NPC's own voice.
+    local chatter = event == Enums.SoundEvent.NPCChatter
     -- Log replay clips have no dialog snapshot. Resolve only their acceptance text;
     -- the log's description must never stand in for a reward or progress speech.
     if event == Enums.SoundEvent.QuestAccept and (not soundData.text or soundData.text == "")
@@ -201,18 +248,29 @@ function Player:Prepare(soundData)
     end
     soundData.key = soundData.fileName
     soundData.path = soundData.filePath
-    soundData.priority = gossip and "low" or "normal"
+    soundData.priority = (gossip or chatter) and "low" or "normal"
     -- Cut, so none of the NPC's greeting is heard under the line. With Game Greeting First the NPC
     -- has had its say, so a greeting the wait fell short of fades instead.
-    soundData.cutsGameDialogue = not (GreetingFirst and GreetingFirst:IsOn())
+    soundData.cutsGameDialogue = not chatter and not (GreetingFirst and GreetingFirst:IsOn())
     soundData.present = {
         header = soundData.name or "",
-        label = soundData.title or (event == Enums.SoundEvent.QuestGreeting and L.OPT_GREETING or (gossip and L.OPT_PACK_GOSSIP or "")),
+        label = soundData.title or (event == Enums.SoundEvent.QuestGreeting and L.OPT_GREETING
+            or (gossip and L.OPT_PACK_GOSSIP or (chatter and L.OPT_CHATTER_PAGE_TITLE or ""))),
         bullet = BULLETS[event],
-        tint = gossip and { 1, 1, 1 } or nil,
+        tint = (gossip or chatter) and { 1, 1, 1 } or nil,
         portrait = PortraitFor(soundData),
         actions = ACTIONS,
+        timings = soundData.timings,
+        transcript = soundData.packText,
     }
+    -- No pack in the Text Language voices the line: a text pack's words, timed by estimate.
+    if not soundData.packText and DataModules and DataModules.TextPackText then
+        local text, language = DataModules:TextPackText(soundData)
+        if text then
+            soundData.present.transcript, soundData.present.timings = text, nil
+            soundData.present.font = Spoken:ClipFont(language)
+        end
+    end
     return soundData
 end
 
@@ -249,8 +307,9 @@ end
 --- Resolve a line through the packs and hand it to the player. Records the stage the
 --- 10 Hz watcher keys on, as the queue used to.
 ---@param soundData SoundData
+---@param asked boolean? the player asked for it, so it is read in a battleground too
 ---@return boolean queued
-function Player:Enqueue(soundData)
+function Player:Enqueue(soundData, asked)
     if not soundData.origin then soundData.origin = self.origin end
     if not self.source then
         Debug:Record("player-missing", "The Spoken player addon is not installed")
@@ -263,10 +322,13 @@ function Player:Enqueue(soundData)
             Enums.SoundEvent:GetName(soundData.event) or tostring(soundData.event),
             tostring(soundData.questID or "none"), soundData.title or soundData.name or "",
             table.concat(Language:ResolutionOrder(), " then "), tostring(why)))
+        if Spoken.EndMuteGameDialogueAhead then
+            Spoken:EndMuteGameDialogueAhead()
+        end
         return false
     end
 
-    return self:EnqueuePrepared(soundData)
+    return self:EnqueuePrepared(soundData, asked)
 end
 
 --- A line asked for by hand: played at once when idle or stopped, else queued behind the line
@@ -287,14 +349,15 @@ function Player:PlayNow(soundData)
         return false
     end
     self:Prepare(soundData)
-    local queued = self.source:PlayNow(soundData)
+    local queued = self:SourceOf(soundData):PlayNow(soundData)
     return queued and true or false
 end
 
 --- Hand the player a line whose file DataModules has already resolved.
 ---@param soundData SoundData
+---@param asked boolean? as Enqueue's
 ---@return boolean queued
-function Player:EnqueuePrepared(soundData)
+function Player:EnqueuePrepared(soundData, asked)
     if not self.source then
         Debug:Record("player-missing", "The Spoken player addon is not installed")
         return false
@@ -304,7 +367,7 @@ function Player:EnqueuePrepared(soundData)
     if self.playNow then
         return self:PlayPreparedNow(soundData)
     end
-    local added, reason = self.source:Enqueue(soundData)
+    local added, reason = self:SourceOf(soundData):Enqueue(soundData, asked)
     if not added then
         if reason == "duplicate" then
             -- Already in the queue is, for the watcher's purposes, queued.
@@ -321,7 +384,7 @@ function Player:EnqueuePrepared(soundData)
     end
 
     if Spoken:IsPaused() then
-        Debug:Record("queue-paused", "The voiceover is queued, but playback is stopped; run /spq play")
+        Debug:Record("queue-paused", "The voiceover is queued, but playback is stopped; run /sp replay")
     end
     return true
 end
@@ -337,7 +400,7 @@ function Player:PlayPreparedNow(soundData)
     end
     -- The player's PlayNow queues behind a line already speaking, so that line stops first.
     local stopped = interrupted ~= nil and Spoken.Pause ~= nil and not Spoken:IsPaused() and Spoken:Pause()
-    local playing, reason = self.source:PlayNow(soundData)
+    local playing, reason = self:SourceOf(soundData):PlayNow(soundData)
     if not playing then
         Debug:Record("sound-disabled", reason or "refused")
         if stopped and Spoken.Resume then
@@ -349,7 +412,7 @@ function Player:PlayPreparedNow(soundData)
         for _, clip in ipairs(Spoken:GetQueue()) do
             if clip == interrupted then
                 Debug:Record("skipped", format("Skipped %s for the line asked for", tostring(interrupted.key)))
-                self.source:Remove(interrupted)
+                interrupted.source:Remove(interrupted)
                 break
             end
         end
@@ -371,7 +434,7 @@ function Player:Remove(soundData)
     if not self.source then
         return false
     end
-    return self.source:Remove(soundData)
+    return (soundData.source or self:SourceOf(soundData)):Remove(soundData)
 end
 
 --- After a setting changed something the player draws from.
@@ -395,7 +458,7 @@ function Player:Setup()
     end
 
     self.source = Spoken:RegisterSource("quests", {
-        title = "Spoken Quests",
+        title = L.OPT_PAGE_TITLE,
         addon = AddonFolder,
         order = 1,
         -- Upstream's figure: quest durations come from a lookup that has drifted across
@@ -405,7 +468,50 @@ function Player:Setup()
         testBeforeQueue = true,
         -- Its settings follow the profile chosen in Spoken's own settings.
         profiles = function() return Addon.db end,
+        -- Printed after Spoken's own by its Show Diagnostics.
+        diagnostics = function() Options:PrintDiagnostics() end,
         -- What Spoken's settings show on this part's card: which voice packs are installed.
+        packs = function()
+            local names = {}
+            for _, module in DataModules:GetPresentModules() do table.insert(names, module.Title) end
+            return names
+        end,
+    })
+
+    -- What NPCs say in their gossip and greeting windows is a part of its own on Spoken's page:
+    -- switched on and off, and shown, apart from the quests.
+    self.gossipSource = Spoken:RegisterSource("gossip", {
+        title = L.OPT_GOSSIP_PAGE_TITLE,
+        addon = AddonFolder,
+        order = 2,
+        interClipGap = 0.55,
+        testBeforeQueue = true,
+        profiles = function() return Addon.db end,
+        -- The voice packs that hold gossip.
+        packs = function()
+            local names = {}
+            for _, module in DataModules:GetPresentModules() do
+                if Player:HoldsGossip(module) then table.insert(names, module.Title) end
+            end
+            return names
+        end,
+    })
+
+    -- World Chatter is a part of its own. Every pack carries the lookup its recordings resolve through.
+    self.chatterSource = Spoken:RegisterSource("chatter", {
+        title = L.OPT_CHATTER_PAGE_TITLE,
+        addon = AddonFolder,
+        icon = [[Interface\Icons\Spell_Shadow_PsychicHorrors]],
+        -- Between Bosses (5) and the Developer page (6): a page is opened by its order, so it is not shared.
+        order = 5.5,
+        -- How many clips may wait behind the one speaking: a busy hub talks all the time, and a line
+        -- read minutes late is for a bubble that is gone.
+        queueLimit = 3,
+        interClipGap = 0.55,
+        -- The game's own chat bubble shows the words.
+        noNarrator = true,
+        testBeforeQueue = true,
+        profiles = function() return Addon.db end,
         packs = function()
             local names = {}
             for _, module in DataModules:GetPresentModules() do table.insert(names, module.Title) end
@@ -415,13 +521,13 @@ function Player:Setup()
 
     -- What the watcher reads to know whether an event reached the speaker.
     Spoken:RegisterCallback("CLIP_QUEUED", function(clip)
-        if clip.source == Player.source then
+        if Player:Owns(clip) then
             Debug:Record("queued", format("Queued %s (%s)%s", clip.title or clip.name or clip.fileName, clip.path,
                 From(clip)))
         end
     end)
     Spoken:RegisterCallback("CLIP_STARTED", function(clip)
-        if clip.source ~= Player.source then
+        if not Player:Owns(clip) then
             return
         end
         Debug:Record("playing", format("Playing %s", clip.path or clip.fileName or "voiceover"))
@@ -438,19 +544,21 @@ function Player:Setup()
     Spoken:RegisterBullet("quest-complete", TEXTURES .. "SoundQueueBulletComplete", 14)
     Spoken:RegisterBullet("gossip",         TEXTURES .. "SoundQueueBulletGossip", 14)
 
-    -- Switched off or on in Spoken's settings: the buttons on the log and the dialog follow.
+    -- Switched off or on in Spoken's settings: the buttons on the log and the dialog follow, and
+    -- so does the Compendium's Quests tab.
     if Spoken.RegisterCallback then
         Spoken:RegisterCallback("PART_SWITCHED", function(key)
-            if key ~= "quests" then return end
+            if key ~= "quests" and key ~= "gossip" then return end
             -- Each only where this client loads it.
             local overlay, dialog, contribute = rawget(VoiceOver, "QuestOverlayUI"),
                 rawget(VoiceOver, "DialogPlayButton"), rawget(VoiceOver, "ContributeButton")
-            if overlay then
+            if overlay and key == "quests" then
                 if overlay.Update and (QuestLogFrame or QuestScrollFrame) then overlay:Update() end
                 if overlay.UpdateDetailsPlayButton then overlay:UpdateDetailsPlayButton() end
             end
             if dialog and dialog.Refresh then dialog:Refresh() end
             if contribute and contribute.Refresh then contribute:Refresh() end
+            if SpokenCompendium and SpokenCompendium.Relayout then SpokenCompendium:Relayout() end
         end)
     end
 
@@ -458,8 +566,7 @@ function Player:Setup()
     -- and an open quest window has its own Play button.
     Spoken.Minimap:AddEntry("quests", { id = "Options", text = L.OPT_MINIMAP_SETTINGS, order = 2,
         onClick = function() Options:OpenSettings() end })
-    if Spoken.AddSettingsLink then
-        Spoken:AddSettingsLink(L.OPT_MINIMAP_SETTINGS, function() Options:OpenSettings() end)
-    end
+    Spoken.Minimap:AddEntry("gossip", { id = "Options", text = L.OPT_GOSSIP_MINIMAP_SETTINGS, order = 2,
+        onClick = function() Options:OpenGossipSettings() end })
     return true
 end

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Builds the Spoken Developer zip: a download of its own, not part of Spoken's one download
-# (scripts/spoken/package.sh), so a player who never reports a problem never gets it.
+# Builds the Spoken Developer zip, for developers only: it is not part of Spoken's one download
+# (scripts/spoken/package.sh) and is never published, so this zip is handed to whoever is asked
+# for a log.
 #
 #   ./scripts/developer/package.sh                 # dist/Spoken_Developer-<version>.zip
 #   ALLOW_DIRTY=1 ./scripts/developer/package.sh   # build from an uncommitted tree
@@ -38,18 +39,6 @@ if [ ${#missing[@]} -gt 0 ]; then
   printf '       %s\n' "${missing[@]}" >&2
   exit 1
 fi
-
-# UI/Layout.lua is byte-identical across every Spoken addon and the packaged copy has to
-# stay that way; pipelines/quests/tests/test_package.py enforces it on the tree, and this
-# catches a staging copy that somehow diverged from it.
-for other in Spoken Spoken_Quests Spoken_Zones Spoken_Books; do
-  peer="$REPO/addons/$other/UI/Layout.lua"
-  [ -f "$peer" ] || continue
-  cmp -s "$SRC/UI/Layout.lua" "$peer" || {
-    echo "error: UI/Layout.lua differs from addons/$other/UI/Layout.lua" >&2
-    exit 1
-  }
-done
 
 mkdir -p "$DIST"
 zip_path="$DIST/$NAME-$version.zip"

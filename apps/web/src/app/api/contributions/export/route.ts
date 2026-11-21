@@ -3,7 +3,7 @@
  *
  * NDJSON rather than a write into a staging table, because there is no staging table to write
  * into: the quests corpus is built in pipelines/quests against vmangos, not in this database,
- * and the books corpus is built from the same world DB. A file the pipeline pulls is the
+ * and the readables corpus is built from the same world DB. A file the pipeline pulls is the
  * boundary those two already have.
  *
  * Behind English regenerate, like the other moderator routes: accepted text is still text
@@ -13,7 +13,7 @@ import { requireRegenerate } from "@/lib/generation/authz";
 import { acceptedContributions, observationMeta } from "@/lib/contributions/store";
 import { idOnlyResolution } from "@/lib/contributions/triage";
 import { observedFrom } from "@/lib/npc/resolve";
-import { getResolutions, getResolutionsById, resolutionKey, type NpcKind } from "@/lib/npc/store";
+import { getResolutions, getResolutionsById, resolutionKey, type NpcRowKind } from "@/lib/npc/store";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,7 @@ export async function GET() {
   // One query for every row's resolution, not one per row -- observedFrom is pure and cheap, so
   // it runs twice (once to build the keys, once below per row) rather than kept in a parallel
   // array the two loops would need to stay in lockstep with.
-  const keys: { npcKind: NpcKind; npcId: number }[] = [];
+  const keys: { npcKind: NpcRowKind; npcId: number }[] = [];
   const idOnlyIds = new Set<number>();
   for (const row of rows) {
     // observationMeta puts back build and a moderator-chosen kind, the two things stored in

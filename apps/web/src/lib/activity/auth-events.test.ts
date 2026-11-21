@@ -12,7 +12,8 @@ import { randomUUID } from "node:crypto";
 
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 
-const { closeDb, db } = await import("@/lib/db");
+const { closeDb } = await import("@/lib/db");
+const { asSystem } = await import("@/lib/teams/testing");
 const { auth } = await import("@/lib/auth");
 
 type Person = { id: string; headers: Headers };
@@ -25,7 +26,7 @@ async function person(name: string, role?: "admin"): Promise<Person> {
     returnHeaders: true,
   });
   made.push(response.user.id);
-  if (role) await db().query(`update "user" set "role" = $2 where "id" = $1`, [response.user.id, role]);
+  if (role) await asSystem.query(`update "user" set "role" = $2 where "id" = $1`, [response.user.id, role]);
   // The session cookie alone, as the browser would send it back.
   const cookie = headers.get("set-cookie")!.split(";")[0];
   return { id: response.user.id, headers: new Headers({ cookie }) };
@@ -33,7 +34,7 @@ async function person(name: string, role?: "admin"): Promise<Person> {
 
 /** Every account event about or by the people this test made. */
 async function events() {
-  const { rows } = await db().query<{ kind: string; lang: string | null; actorId: string | null; subject: string; detail: Record<string, unknown> }>(
+  const { rows } = await asSystem.query<{ kind: string; lang: string | null; actorId: string | null; subject: string; detail: Record<string, unknown> }>(
     `select "kind", "lang", "actorId", "subject", "detail" from "activity"
       where "kind" like 'user.%' and ("subject" = any($1) or "actorId" = any($1))
       order by "id"`,
@@ -43,8 +44,8 @@ async function events() {
 }
 
 afterEach(async () => {
-  await db().query(`delete from "activity" where "subject" = any($1) or "actorId" = any($1)`, [made]);
-  await db().query(`delete from "user" where "id" = any($1)`, [made]);
+  await asSystem.query(`delete from "activity" where "subject" = any($1) or "actorId" = any($1)`, [made]);
+  await asSystem.query(`delete from "user" where "id" = any($1)`, [made]);
   made.length = 0;
 });
 

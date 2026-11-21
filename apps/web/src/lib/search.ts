@@ -11,17 +11,21 @@
  * browser; search.test.ts is what keeps the two honest. Text, race, gender, source and
  * entity-type filtering are web-only and have no CLI counterpart to stay in step with.
  */
+import { DEFAULT_CLIENT_FILTER, type ClientFilter } from "./contributions/client";
+import { lineMatchesClient } from "./quests/line-client";
 import type { Corpus, CorpusLine } from "./corpus";
 import { npcKey } from "./corpus";
 import { baseLineId } from "./contributions/naming";
 import { audioRelPath } from "./audio";
 import { hasNarration, restoresOnlyNarration } from "./generation/narration";
-import { kindOf, type Kind, type NpcType, type Source } from "./line-fields";
+import type { NpcType, Source } from "./line-fields";
 import type { LineIgnore } from "./quests/ignores";
 import { overrideOf, type LineOverride } from "./quests/override";
+import { hasDrifted } from "./quests/override-drift";
 import type { LineBroadcast } from "./broadcast/store";
 import type { BroadcastStatus } from "./broadcast/status";
-import type { AudioState } from "./audio-state";
+import { AUDIO_STATES, type AudioState, type StateCounts } from "./audio-state";
+import { PAGE_SIZE } from "./page-size";
 import { isVoiceable, unvoicedReason, type UnvoicedReason } from "./text-gate";
 import { madeByFacets, madeByMatches, type MadeBy, type MadeByFacets } from "./takes/made-by";
 import { recordedMatches, type LiveRecording, type Recorded } from "./recordings/live";
@@ -45,25 +49,17 @@ export type LineFilters = {
   gender?: string;
   flavor?: string;
   voice?: string;
-  /** Which explorer is asking: gossip, or everything tied to a quest. Absent means both. */
-  kind?: Kind;
-  source?: Source;
+  /** Lines of any of these sources. */
+  source?: Source[];
   npcType?: NpcType;
-  /** A uiMapID: lines whose speaker spawns in that zone. */
-  zone?: number;
   /** Only lines carrying a capitalised <stage direction>, which a narrator reads. */
   narration?: boolean;
   /**
-   * Whether to include progress text, which is hidden unless asked for.
-   *
-   * 3,093 lines - 17.7% of the corpus - that no code path will ever voice: the generator
-   * refuses them before the request (tts_cli/tts_utils.py) and so does regeneration
-   * (lib/text-gate.ts). Showing them by default pads every search with results nobody can
-   * act on, so absent means hidden and this is how you ask for them back.
-   *
-   * Widening rather than narrowing, which is why activeFilterCount ignores it.
+   * Which clients' lines (lib/quests/line-client.ts), in the Contributions pages' bins: Era +
+   * Forever when absent, the clients the site voices. A lookup by `line` finds a line whatever
+   * its client, so a report or a contribution's link still reaches it.
    */
-  includeProgress?: boolean;
+  client?: ClientFilter;
   /**
    * One line by its id, which is how a report reaches the corpus.
    *
@@ -92,7 +88,7 @@ export type LineFilters = {
   dirty?: boolean;
   /**
    * 'open' selects lines carrying at least one unresolved report. A value rather than a
-   * boolean, and `fb` in the URL, to match the zones and books filters it mirrors.
+   * boolean, and `fb` in the URL, to match the places and readables filters it mirrors.
    */
   reports?: "open";
   /**
@@ -107,6 +103,17 @@ export type LineFilters = {
    */
   generatedBefore?: string;
   generatedAfter?: string;
+  /**
+   * Both inclusive. A line with no known level is in no range: gossip has no quest, and some
+   * quests have no level on record.
+   */
+  minLevel?: number;
+  maxLevel?: number;
+  /**
+   * The player the line is heard by. A line that does not branch on the player is heard by both,
+   * so it stays in: leaving it out would make "male players first" skip most of the corpus.
+   */
+  playerGender?: "m" | "f";
   /**
    * The live take's model, as lib/takes/made-by.ts labels it, and the id of who made it.
    * Both need `madeBy` in the context, which only somebody working in the language gets;
@@ -176,6 +183,8 @@ export type SearchContext = {
   recordings?: Map<string, LiveRecording>;
   /** lineId -> how its BroadcastText ids were found. Absent means nobody asked. */
   broadcast?: Map<string, Exclude<BroadcastStatus, "none">>;
+  /** Absent means nobody asked, or the database could not be reached. */
+  levels?: Map<number, number>;
 };
 
 export const NO_CONTEXT: SearchContext = { overrides: new Map() };
@@ -194,8 +203,8 @@ export type ResultLine = CorpusLine & {
   reportsOpen: number;
   /**
    * The live take of this line's file, and how many takes it has. Null when none is
-   * recorded, which means the line has never been generated. Shaped like the zones and
-   * books rows' `take` for the same reason the Audio column is shaped like theirs.
+   * recorded, which means the line has never been generated. Shaped like the places and
+   * readables rows' `take` for the same reason the Audio column is shaped like theirs.
    */
   take: { version: number; takes: number } | null;
   /** The live take was cut from text that has since changed. */
@@ -207,6 +216,11 @@ export type ResultLine = CorpusLine & {
   dirty: boolean;
   /** The rewritten spoken text, or null. `text` stays what the corpus says. */
   override: string | null;
+  /**
+   * Set when the original has changed since the override was saved, naming where the override is
+   * stored: a voice's row inherits its line's, so not always this row.
+   */
+  driftedOverride: { file: string; lineId: string } | null;
   /**
    * Whether this line would be voiced *now*, which `generatable` cannot answer: that flag was
    * computed in Python from text nobody could edit yet, so an override that strips a stage
@@ -241,8 +255,8 @@ export type SearchResult = {
   lines: ResultLine[];
   /** Matching lines across every page. */
   total: number;
-  /** Distinct NPCs across every page, which no count of `lines` can recover. */
-  npcCount: number;
+  /** For the audio buttons; see StateCounts. Outdated and up to date read zero without `context.stale`. */
+  counts: StateCounts;
   offset: number;
   limit: number;
   /** What the model and author chips offer. Absent when the context carried no `madeBy`. */
@@ -254,8 +268,6 @@ export type SearchResult = {
    */
   recordable?: true;
 };
-
-export const PAGE_SIZE = 50;
 
 /**
  * One unit of work in a batch regeneration.
@@ -275,24 +287,17 @@ export type BatchLine = {
   preview: string;
 };
 
+/** Why a matched line is not a job of its own: never voiced, or its file is already in. */
+export type BatchSkip = UnvoicedReason | "shared-file";
+
 /**
- * The lines a batch would actually generate.
+ * The lines a batch would actually generate, plus a count of the matched lines that did not
+ * become a job, by reason.
  *
  * Deduplicated by audio file, because 1,076 files in the corpus are spoken by more than one
  * NPC and generating a shared file twice would pay for it twice and leave the second take
  * live. Lines the generator never voices are dropped here rather than failed one by one.
  */
-export function batchJobs(
-  lines: CorpusLine[],
-  overrides: Map<string, LineOverride> = NO_CONTEXT.overrides,
-): BatchLine[] {
-  return batchPlan(lines, overrides).jobs;
-}
-
-/** Why a matched line is not a job of its own: never voiced, or its file is already in. */
-export type BatchSkip = UnvoicedReason | "shared-file";
-
-/** batchJobs, plus a count of the matched lines that did not become a job, by reason. */
 export function batchPlan(
   lines: CorpusLine[],
   overrides: Map<string, LineOverride> = NO_CONTEXT.overrides,
@@ -377,7 +382,7 @@ function matches(line: CorpusLine, q: string, filter: Filter): boolean {
  * A gap: a line the generator would voice, with no live take.
  *
  * Same definition as missing_lines (tts_cli/store.py) - lines the generator never voices
- * (progress text, unresolved template tokens) are expected absences, not gaps.
+ * (unresolved template tokens) are expected absences, not gaps.
  */
 export function isGap(
   line: CorpusLine,
@@ -424,11 +429,9 @@ export function matchingLines(
     gender,
     flavor,
     voice,
-    kind,
     source,
     npcType,
-    zone,
-    includeProgress = false,
+    client = DEFAULT_CLIENT_FILTER,
     narration = false,
     line: lineId,
     overridden,
@@ -441,6 +444,9 @@ export function matchingLines(
     author,
     recorded,
     broadcast,
+    minLevel,
+    maxLevel,
+    playerGender,
   }: LineFilters = {},
   {
     overrides,
@@ -452,34 +458,33 @@ export function matchingLines(
     madeBy,
     recordings,
     broadcast: broadcastOf,
+    levels,
   }: SearchContext = NO_CONTEXT,
 ): CorpusLine[] {
   const query = q.trim();
 
   let lines = corpus.lines;
+  // One line by its id is a lookup, not a search: the defaults that hide ignored
+  // lines would make a report about such a line read as "the corpus dropped it".
+  const lookup = Boolean(lineId);
   // First, and whichever way round: a line nobody will voice is not an answer to any other
   // question either, so every count and every "regenerate everything matching" is computed
   // over a corpus without them unless they are what was asked for.
-  if (ignores?.size) {
+  if (ignores?.size && (ignored || !lookup)) {
     lines = ignored
       ? lines.filter((line) => ignores.has(baseLineId(line.lineId)))
       : lines.filter((line) => !ignores.has(baseLineId(line.lineId)));
   }
   if (query) lines = lines.filter((line) => matches(line, query, filter));
-  if (state === "missing") lines = lines.filter((line) => isGap(line, store, overrides));
+  if (state) lines = lines.filter((line) => inState(line, state, store, overrides, stale));
   if (race) lines = lines.filter((line) => line.race === race);
   if (gender) lines = lines.filter((line) => line.gender === gender);
   if (flavor) lines = lines.filter((line) => line.flavor === flavor);
+  if (playerGender) lines = lines.filter((line) => line.playerGender === null || line.playerGender === playerGender);
   if (voice) lines = lines.filter((line) => line.voice === voice);
-  if (kind) lines = lines.filter((line) => kindOf(line.source) === kind);
-  if (source) lines = lines.filter((line) => line.source === source);
-  // After the source filter and not before it, so asking for progress explicitly still works:
-  // `source=progress` alone would otherwise return nothing at all.
-  if (!includeProgress && source !== "progress") {
-    lines = lines.filter((line) => line.source !== "progress");
-  }
+  if (source?.length) lines = lines.filter((line) => source.includes(line.source));
+  if (client !== "all" && !lineId) lines = lines.filter((line) => lineMatchesClient(line, client));
   if (npcType) lines = lines.filter((line) => line.npcType === npcType);
-  if (zone !== undefined) lines = lines.filter((line) => line.zones?.includes(zone) ?? false);
   // The *effective* text, matching the chip on the row and the text regeneration will send.
   // Reading line.text instead hid every line whose direction was restored by an override -
   // which is 314 of them, and the ones most worth finding.
@@ -491,16 +496,6 @@ export function matchingLines(
   // An id the corpus no longer carries matches nothing rather than everything, because a
   // report about a dropped line must not read as "here it is".
   if (lineId) lines = lines.filter((line) => line.lineId === lineId);
-  // Absent `stale` means nobody asked for it, so nothing matches rather than everything: the
-  // honest answer to "which audio is out of date?" without the data is none, not all.
-  if (state === "stale") lines = lines.filter((line) => stale?.has(audioRelPath(line)) ?? false);
-  // Current needs the same set, for the same reason: without it nothing is known current.
-  if (state === "current") {
-    lines = lines.filter((line) => {
-      const file = audioRelPath(line);
-      return store.has(file) && stale !== undefined && !stale.has(file);
-    });
-  }
   // Absent `dirty` means nobody asked, so nothing matches rather than everything - the
   // argument the line above makes, for the same reason.
   if (dirty) lines = lines.filter((line) => dirtyOf?.has(audioRelPath(line)) ?? false);
@@ -546,8 +541,36 @@ export function matchingLines(
       ? lines.filter((line) => line.source === "gossip" && (broadcastOf.get(line.lineId) ?? "none") === broadcast)
       : [];
   }
+  // Absent `levels` matches nothing: a batch posts these same filters, and an outage must not
+  // widen "regenerate level 1 to 10" into every line.
+  if (minLevel !== undefined || maxLevel !== undefined) {
+    lines = lines.filter((line) => {
+      const level = line.questId === null ? undefined : levels?.get(line.questId);
+      return level !== undefined && level >= (minLevel ?? 0) && level <= (maxLevel ?? Infinity);
+    });
+  }
 
   return [...lines].sort(order);
+}
+
+/**
+ * Whether a line's audio is in `state`, for the state filter and the counts beside it alike.
+ *
+ * Absent `stale` means nobody asked for it, so nothing is stale rather than everything: the
+ * honest answer to "which audio is out of date?" without the data is none, not all. Current
+ * needs the same set, for the same reason.
+ */
+function inState(
+  line: CorpusLine,
+  state: AudioState,
+  store: Set<string>,
+  overrides: Map<string, LineOverride> | undefined,
+  stale: Set<string> | undefined,
+): boolean {
+  if (state === "missing") return isGap(line, store, overrides);
+  const file = audioRelPath(line);
+  if (state === "stale") return stale?.has(file) ?? false;
+  return store.has(file) && stale !== undefined && !stale.has(file);
 }
 
 export function search(
@@ -556,13 +579,22 @@ export function search(
   { offset = 0, limit = PAGE_SIZE, ...filters }: SearchOptions = {},
   context: SearchContext = NO_CONTEXT,
 ): SearchResult {
-  const all = matchingLines(corpus, store, filters, context);
+  // Matched once without the state, which the counts ignore, and narrowed after: filtering
+  // keeps the order, so the corpus is neither filtered nor sorted twice.
+  const unstated = matchingLines(corpus, store, { ...filters, state: undefined }, context);
+  const { state } = filters;
+  const all = state ? unstated.filter((line) => inState(line, state, store, context.overrides, context.stale)) : unstated;
+  const counts: StateCounts = { all: unstated.length, missing: 0, stale: 0, current: 0 };
+  for (const line of unstated) {
+    for (const each of AUDIO_STATES) if (inState(line, each, store, context.overrides, context.stale)) counts[each]++;
+  }
   const keys = rowKeys(corpus);
 
   const start = Math.max(0, Math.floor(offset));
   const lines = all.slice(start, start + limit).map((line) => {
     const audioPath = audioRelPath(line);
-    const override = overrideOf(context.overrides, audioPath)?.text ?? null;
+    const own = overrideOf(context.overrides, audioPath);
+    const override = own?.text ?? null;
     return {
       ...line,
       key: keys.get(line)!,
@@ -575,6 +607,7 @@ export function search(
       stale: context.stale?.has(audioPath) ?? false,
       dirty: context.dirty?.has(audioPath) ?? false,
       override,
+      driftedOverride: own && hasDrifted(own, line.text) ? { file: own.file, lineId: own.lineId } : null,
       voiceable: isVoiceable(line, override ?? line.text),
       narration: hasNarration(override ?? line.text),
       narrationRestored: override !== null && restoresOnlyNarration(override, line.text),
@@ -587,7 +620,7 @@ export function search(
   return {
     lines,
     total: all.length,
-    npcCount: new Set(all.map(npcKey)).size,
+    counts,
     offset: start,
     limit,
     ...(context.madeBy && { madeBy: madeByFacets(context.madeBy.values()) }),

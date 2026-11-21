@@ -92,6 +92,10 @@ local VO, env = stub.LoadQuests(QUESTS, SPOKEN)
 dofile(QUESTS .. "UI/DialogueUIBridge.lua")
 local Bridge = VO.DialogueUIBridge
 VO.Addon:OnInitialize()
+-- The Compendium's Quests tab, standing in for UI/QuestsTab.lua: it lists quest 101.
+local opened = {}
+VO.QuestsTab = { Has = function(_, id) return id == 101 end, Open = function(_, id) table.insert(opened, id) end }
+assert(loadfile(QUESTS .. "UI/OpenInCompendium.lua"))("Spoken_Quests", {})
 VO.DataModules:Register("TestPack", {
     SoundLengthLookupByFileName = { ["101-accept"] = 12, ["101-progress"] = 2,
         ["guard-greeting"] = 2, ["guard-directions"] = 2 },
@@ -160,6 +164,9 @@ local paras = Paras("Farmer Test: Hello there, traveller.", "Safe roads.")
 map, span = Marks.Align(caption, paras)
 local function Cut(fields)
     fields.typewriter = fields.typewriter ~= false
+    fields.typewriterBy = fields.typewriterBy or "word"
+    fields.words = fields.words or caption
+    fields.totalWeight = fields.totalWeight or caption[#caption].finish
     local p, byte = Marks.Cut(fields, map, span, paras)
     return p and (p .. ":" .. byte) or "all"
 end
@@ -170,6 +177,11 @@ Expect("...into the next paragraph", Cut({ progress = 0.9, speaking = true, acti
 Expect("once it has finished, all of it", Cut({ progress = 1, speaking = false }), "all")
 Expect("a clip with no length to time it shows all of it", Cut({ speaking = false }), "all")
 Expect("with Type Words Out off, all of it", Cut({ typewriter = false, progress = 0.1, speaking = true, activeWord = 1 }), "all")
+Expect("letter mode reveals only part of the active word",
+    Cut({ typewriterBy = "letter", progress = 0.2, speaking = true, activeWord = 2 }), "1:21")
+Expect("...and lights only the letters typed so far",
+    Marks.Want(paras[1], 1, span, 1, 21, { [1] = { paras[1].words[3], paras[1].words[4] } }, GOLD),
+    "Farmer Test: " .. GOLD .. "Hello|r " .. GOLD .. "th|r")
 
 ---------------------------------------------------------------- the highlight alone
 words.HighlightWord, words.Typewriter = true, false
@@ -208,7 +220,7 @@ Expect("Spoken's Highlight Words off: DialogueUI's own text", Paragraph(1) .. Pa
 words.HighlightWord = true
 words.Enabled = false
 Tick(0)
-Expect("...and with Spoken's Show Words off, which greys it", Lit(), 0)
+Expect("...and with Spoken's Show Narrator off, which greys it", Lit(), 0)
 words.Enabled = true
 Tick(0)
 Expect("...lit again when it is back on", Lit(), 2)
@@ -229,7 +241,7 @@ Tick(0.4)
 Expect("...and stays blank while its line is on its way", Paragraph(1) .. "|" .. Paragraph(2), "|")
 VO.Addon:QUEST_DETAIL()
 Tick(0.1)
-Expect("the text types out as the voice reads it", Paragraph(1), "Farmer Test: Greetings,")
+Expect("the text types out as the voice reads it", Paragraph(1), "Farmer Test: G")
 Expect("...the paragraph it has not reached is blank", Paragraph(2), "")
 Expect("...and nothing is lit", Lit(), 0)
 Tick(9)
@@ -281,11 +293,11 @@ Tick(0)
 Expect("...shows whole once the read queues nothing, not after the wait", Paragraph(1) ~= "", true)
 VO.Addon.GOSSIP_SHOW, VO.Addon.ExpectedLine = gossipHandler, expectedLine
 
--- Once per NPC, a guard already heard: the greeting stays quiet, the directions picked from it
+-- Once per Greeting, a guard's greeting already heard: the greeting stays quiet, the directions picked from it
 -- do not. DialogueUI can draw the directions before Spoken Quests notes the page or after.
 world.npcGUID = "Creature-0-0-0-0-4321-0"
 VO.Addon.db.profile.Audio.GossipFrequency = VO.Enums.GossipFrequency.OncePerNPC
-VO.Addon.db.char.hasSeenGossipForNPC[world.npcGUID] = true
+VO.Addon:MarkGreetingHeard(world.npcGUID, GREETING)
 local function Greet()
     Spoken:StopAll()
     stub.ShowGossip(GREETING, { "Where is the bank?" })
@@ -314,6 +326,25 @@ stub.HidePanels()
 stub.FireEvent("GOSSIP_CLOSED")
 Greet()
 Expect("...but not the greeting on the next visit", VO.Addon:ExpectedLine("GOSSIP_SHOW", true), nil)
+-- What an NPC says in the world is another part's line: the page's words show while it is read.
+stub.HidePanels()
+stub.FireEvent("GOSSIP_CLOSED")
+Greet()
+VO.Player.chatterSource:Enqueue({ key = "chat-y", path = "chat-y.ogg", length = 12, priority = "low",
+    event = VO.Enums.SoundEvent.NPCChatter,
+    present = { header = "Guard", transcript = "Move along.", bullet = "gossip" } })
+stub.SelectGossipOption("Where is the bank?")
+stub.ShowGossip(DIRECTIONS)
+DUI:HandleGossip()
+Tick(0.2)
+Expect("a page drawn while an NPC chats in the world shows its words at once", Paragraph(1), DIRECTIONS)
+Spoken:StopAll()
+VO.Player.chatterSource:Enqueue({ key = "chat-z", path = "chat-z.ogg", length = 12, priority = "low",
+    event = VO.Enums.SoundEvent.NPCChatter,
+    present = { header = "Guard", transcript = DIRECTIONS, bullet = "gossip" } })
+Tick(2)
+Expect("...and a chat line with the page's very words is not lit in it: it is not on the page",
+    Paragraph(1), DIRECTIONS)
 stub.HidePanels()
 stub.FireEvent("GOSSIP_CLOSED")
 Spoken:StopAll()
@@ -322,8 +353,8 @@ world.npcGUID, world.gossipText, DUI.handler = questGiver, nil, nil
 -- A zone clip whose transcript is the quest text word for word.
 Spoken:StopAll()
 DUI:HandleQuestDetail()
-local zones = Spoken:RegisterSource("zones", { title = "Zones", addon = "Spoken_Zones" })
-zones:Enqueue({ key = "z:12", path = "z12.ogg", length = 12,
+local places = Spoken:RegisterSource("places", { title = "Places", addon = "Spoken_Places" })
+places:Enqueue({ key = "z:12", path = "z12.ogg", length = 12,
     present = { header = "Elwynn Forest", transcript = QUEST_TEXT, bullet = "zone",
         portrait = { kind = "texture", texture = "Book" } } })
 Expect("a zone clip is playing", Spoken:GetCurrent() and Spoken:GetCurrent().key, "z:12")
@@ -347,10 +378,10 @@ Expect("closing DialogueUI does not cut the line off", Spoken:GetQueueSize(), 1)
 DUI:Show()
 provider.stopPlaying()
 Expect("Stop removes it", Spoken:GetQueueSize(), 0)
-zones:Enqueue({ key = "z:13", path = "z13.ogg", length = 12,
+places:Enqueue({ key = "z:13", path = "z13.ogg", length = 12,
     present = { header = "Elwynn Forest", transcript = "Lore.", bullet = "zone",
         portrait = { kind = "texture", texture = "Book" } } })
-zones:Enqueue({ key = "z:14", path = "z14.ogg", length = 12,
+places:Enqueue({ key = "z:14", path = "z14.ogg", length = 12,
     present = { header = "Teldrassil", transcript = "More lore.", bullet = "zone",
         portrait = { kind = "texture", texture = "Book" } } })
 Expect("another part's line is speaking", Spoken:GetCurrent() and Spoken:GetCurrent().key, "z:13")
@@ -363,8 +394,8 @@ local keys = {}
 for _, clip in ipairs(Spoken:GetQueue()) do table.insert(keys, clip.key) end
 Expect("...the line it cut off skipped, and the next one still waiting", table.concat(keys, " "), "101-accept z:14")
 Spoken:StopAll()
-zones:StopAll()
-zones:Enqueue({ key = "z:15", path = "z15.ogg", length = 12,
+places:StopAll()
+places:Enqueue({ key = "z:15", path = "z15.ogg", length = 12,
     present = { header = "Darkshore", transcript = "Lore.", bullet = "zone",
         portrait = { kind = "texture", texture = "Book" } } })
 VO.Addon:InvokeQuestHandler("QUEST_DETAIL", "test", true)
@@ -374,7 +405,7 @@ Expect("...is not playing, so the button offers Play", provider.isPlaying(), fal
 provider.playFile()
 Expect("...and Play brings it forward", Spoken:GetCurrent() and Spoken:GetCurrent().fileName, "101-accept")
 Spoken:StopAll()
-zones:StopAll()
+places:StopAll()
 -- Answered for what the client is showing, which is the page DialogueUI asks about.
 world.questID = 102
 Expect("no recording, no button", provider.doesFileExist("quest", 102, "detail"), false)
@@ -467,6 +498,17 @@ Expect("...the row just left of it, on its middle", controls.frame.anchor and co
     and controls.frame.anchor.point .. " " .. controls.frame.anchor.relativePoint .. " " .. controls.frame.anchor.x
     .. " " .. controls.frame.anchor.y, "RIGHT LEFT -4 0")
 Expect("...Play left of Skip", play.anchor and play.anchor.relativeTo == skip and play.anchor.relativePoint, "LEFT")
+local open = controls.open
+Expect("...and left of Play, Open in Azeroth's Compendium, for a quest the tab lists", open ~= nil and open:IsShown()
+    and open.anchor and open.anchor.relativeTo == play and open.questID, 101)
+if open then
+    local hidUI = false
+    DUI.HideUI = function() hidUI = true end
+    open.scripts.OnClick(open)
+    DUI.HideUI = nil
+    Expect("...which closes DialogueUI's window, as the interface is hidden while it is up, and opens the quest",
+        hidUI and opened[#opened], 101)
+end
 local round = UIParent:GetEffectiveScale() / DUI:GetEffectiveScale()
 Expect("...as large on screen as Place Lore draws them, 24 at UIParent's scale, whatever DialogueUI's size",
     play:GetWidth() .. " " .. play:GetScale() .. " " .. skip:GetScale(), "24 " .. round .. " " .. round)
@@ -477,6 +519,7 @@ Expect("...in the paper's art on DialogueUI's parchment", closeButton.file,
 DUI.handler = "HandleGossip"
 DUI:HandleGossip()
 Bridge:RefreshPlayButton("GOSSIP_SHOW")
+Expect("a gossip page has no Open in Azeroth's Compendium", open ~= nil and open:IsShown(), false)
 -- The gossip text's top 36 under the line too, not the quest header's distance.
 local gossipShift = (2 * 36 + 24) * lineScale - 42
 Expect("...and on a gossip page its text starts 36 under the line, its own line moved with it",
@@ -521,7 +564,7 @@ Expect("...and Play turns to Stop while it speaks", play.state, "stop")
 Expect("...and Skip can skip it", skip:IsEnabled(), true)
 play.scripts.OnEnter(play)
 local tip = play.tooltip
-Expect("its tooltip says a click stops it", tip and tip.text, VO.L.OPT_STOP)
+Expect("its tooltip names Stop", tip and tip.text, VO.L.OPT_STOP)
 local saysRightClick = false
 for _, text in ipairs(tip and tip.lines or {}) do
     if text == VO.L.OPT_DUI_PLAY_RIGHT_CLICK then saysRightClick = true end
@@ -543,7 +586,7 @@ play.scripts.OnClick(play, "LeftButton")
 skip.scripts.OnClick(skip)
 Expect("Skip skips what speaks", Spoken:GetCurrent() == nil or Spoken:GetCurrent().fileName ~= "101-accept", true)
 Spoken:StopAll()
-zones:Enqueue({ key = "z:16", path = "z16.ogg", length = 12,
+places:Enqueue({ key = "z:16", path = "z16.ogg", length = 12,
     present = { header = "Duskwood", transcript = "Lore.", bullet = "zone",
         portrait = { kind = "texture", texture = "Book" } } })
 play.scripts.OnClick(play, "LeftButton")
@@ -551,7 +594,7 @@ Expect("...in front of a zone's lore, which is skipped", Spoken:GetCurrent() and
     "101-accept")
 Expect("...the lore not kept to replay", Spoken:GetQueueSize(), 1)
 Spoken:StopAll()
-zones:StopAll()
+places:StopAll()
 DUI.TTSButton = stub.Widget("Button")
 DUI.TTSButton:SetAlpha(0.6)
 Bridge:RefreshPlayButton()
@@ -567,7 +610,9 @@ dui.PlayButton = false
 Bridge:Refresh()
 Expect("with the setting off Play is not there", play:IsShown(), false)
 Expect("...and DialogueUI's own button is given back", DUI.TTSButton:GetAlpha(), 0.6)
-Expect("...Skip moving up to the row's left end", controls.frame:GetWidth(), 24 * round)
+Expect("...the row one button narrower, Open in Azeroth's Compendium moving up beside Skip",
+    controls.frame:GetWidth() .. " " .. tostring(open and open.anchor and open.anchor.relativeTo == skip),
+    (2 * 24 + 4) * round .. " true")
 dui.PlayButton = true
 Bridge:Refresh()
 -- Spoken Quests off: DialogueUI's window as DialogueUI draws it.
@@ -634,26 +679,15 @@ DUI.handler = nil
 ---------------------------------------------------------------- the player over the window
 local frame = env.PlayerFrame.frame
 driver.scripts.OnShow(driver)
-Expect("by default the player is left out of DialogueUI's window", frame:GetParent(), _G.UIParent)
+Expect("the player is left out of DialogueUI's window", frame:GetParent(), _G.UIParent)
 Expect("...and can still be dragged", env.Addon:IsFrameLocked(), false)
+dui.ShowPlayer = true
 driver:Hide()
 driver.scripts.OnHide(driver)
 driver:Show()
-dui.ShowPlayer = true
 driver.scripts.OnShow(driver)
-Expect("turned on, while DialogueUI is open the player sits on its window", frame:GetParent(), DUI)
-Expect("...the same size on screen", frame:GetScale(), env.Addon.db.profile.Frame.FrameScale / 0.8)
-Expect("...and can still be dragged there", env.Addon:IsFrameLocked(), false)
-driver:Hide()
-driver.scripts.OnHide(driver)
-Expect("when it closes the player goes back to UIParent", frame:GetParent(), _G.UIParent)
-Expect("...at its own size", frame:GetScale(), env.Addon.db.profile.Frame.FrameScale)
-Expect("...and can be dragged again", env.Addon:IsFrameLocked(), false)
-driver:Show()
-dui.ShowPlayer = false
-driver.scripts.OnShow(driver)
-Expect("with the setting off the player is left alone", frame:GetParent(), _G.UIParent)
-dui.ShowPlayer = true
+Expect("...even with Show Spoken Over DialogueUI left on from an older version", frame:GetParent(), _G.UIParent)
+dui.ShowPlayer = nil
 driver:Hide()
 driver.scripts.OnHide(driver)
 
@@ -679,17 +713,13 @@ subtitle.SetFrameStrata = function(_, value) strata = value end
 local anchor = subtitle.anchor and subtitle.anchor.y
 driver:Show()
 driver.scripts.OnShow(driver)
-Expect("while DialogueUI is open the subtitles sit on its window", subtitle:GetParent(), DUI)
-Expect("...the same size on screen", subtitle:GetScale(), (words.SubtitleScale or 1) / 0.8)
-Expect("...above it", strata, "FULLSCREEN")
+Expect("while DialogueUI is open the subtitles stay on UIParent, which DialogueUI hides", subtitle:GetParent(), _G.UIParent)
+Expect("...at their own size", subtitle:GetScale(), words.SubtitleScale or 1)
 Expect("...in the same place", subtitle.anchor and subtitle.anchor.y, anchor)
 Subtitle:Update()
-Expect("...and stay there as they update", subtitle:GetParent(), DUI)
+Expect("...and stay there as they update", subtitle:GetParent(), _G.UIParent)
 driver:Hide()
 driver.scripts.OnHide(driver)
-Expect("when it closes they go back to UIParent", subtitle:GetParent(), _G.UIParent)
-Expect("...at their own size", subtitle:GetScale(), words.SubtitleScale or 1)
-Expect("...and their own strata, under the game's panels", strata, "LOW")
 Spoken:StopAll()
 env.Addon:SetPlayerStyle("classic")
 driver:Show()
@@ -762,7 +792,11 @@ Expect("...and goes back in the row on the next page", icon.anchor and icon.anch
 driver.scripts.OnShow(driver)
 Fire(icon, "OnClick")
 local box = Spoken.ContributeBox
-Expect("Report opens the quest page's address", box and box.editBox:GetText(), "https://voiceover.rusty.one/r/quest/101/accept")
+local address, context = H.SplitReportLink(box and box.editBox:GetText())
+Expect("Report opens the quest page's address", address, "https://spoken.quest/quests/r/quest/101/accept")
+Expect("...carrying the addon, the quest and the text on screen", context
+    and context:find("\naddon=SpokenQuests/", 1, true) and context:find("\nquest=101\nevent=accept\n", 1, true)
+    and context:find("\ntext<<\n", 1, true) and true, true)
 Expect("...over DialogueUI's window", box and box.frame:GetParent(), DUI)
 box.frame:Hide()
 
@@ -820,43 +854,27 @@ end
 local captions, scroll = Row(VO.L.OPT_DUI_CAPTIONS), Row(VO.L.OPT_DUI_AUTOSCROLL)
 Expect("nothing there changes DialogueUI's own settings", table.getn(layout.entries) > 0
     and Row("Turn On Text To Speech") == nil, true)
-Expect("the place has the DialogueUI options", captions ~= nil and Row(VO.L.OPT_DUI_SHOW_PLAYER) ~= nil
+Expect("the place has the DialogueUI options", captions ~= nil
     and Row(VO.L.OPT_DUI_PLAY_BUTTON) ~= nil and scroll ~= nil, true)
+Expect("...and no Show Spoken Over DialogueUI", Row("Show Spoken Over DialogueUI"), nil)
 -- The style as the page reads it: DialogueUI's art is not here to make the style available.
 local playerStyle, chosen = env.Addon.PlayerStyle, "dialogueui"
 env.Addon.PlayerStyle = function() return chosen end
 layout:Refresh()
 -- They change DialogueUI's quest window, which is there whatever the narrator style.
-local narratorEnd, section, compendium
+local words, section, playback
 for index, item in ipairs(layout.items) do
-    if item.kind == "groupEnd" and item.group.text == env.L.OPT_NARRATOR_SETTINGS then narratorEnd = index end
+    if item.kind == "section" and item.text == env.L.OPT_TEXT_TITLE then words = index end
     if item.kind == "section" and item.text == VO.L.OPT_SECTION_DIALOGUEUI then section = index end
-    if item.kind == "section" and item.text == env.L.OPT_COMPENDIUM_TITLE then compendium = index end
+    if item.kind == "section" and item.text == env.L.OPT_PLAYBACK_TITLE then playback = index end
 end
-Expect("...in a DialogueUI section after the narrator style's settings", captions:IsShown()
-    and narratorEnd ~= nil and section ~= nil and section > narratorEnd and compendium ~= nil and section < compendium
+Expect("...in a DialogueUI section of its own after Words", captions:IsShown()
+    and words ~= nil and section ~= nil and section > words and playback ~= nil and section < playback
     and layout.items[section].heading ~= nil, true)
 for _, style in ipairs({ "subtitle", "minimal", "classic", "none" }) do
     chosen = style
     layout:Refresh()
     Expect("...and with the " .. style .. " style too", captions:IsShown() and Row(VO.L.OPT_DUI_PLAY_BUTTON):IsShown(), true)
-end
--- Show Spoken Over DialogueUI keeps the window or the subtitles on screen; Voice Only has neither.
-local showPlayer = Row(VO.L.OPT_DUI_SHOW_PLAYER)
-Expect("Show Spoken Over DialogueUI is not offered with Voice Only", showPlayer:IsShown(), false)
-for _, style in ipairs({ "subtitle", "minimal", "classic", "dialogueui" }) do
-    chosen = style
-    layout:Refresh()
-    Expect("...and is with the " .. style .. " style", showPlayer:IsShown(), true)
-end
--- Show Words, Highlight Words and Type Words Out also set how DialogueUI's quest text is marked.
-for _, label in ipairs({ env.L.TRANSCRIPT_SHOW, env.L.TRANSCRIPT_HIGHLIGHT, env.L.TRANSCRIPT_TYPEWRITER }) do
-    local tip
-    for _, entry in ipairs(layout.entries) do
-        if entry.label == label then tip = entry.tooltip end
-    end
-    Expect(label .. "'s tooltip names DialogueUI's quest text", tip ~= nil
-        and string.find(tip, "DialogueUI's quest and gossip text", 1, true) ~= nil, true)
 end
 chosen = "dialogueui"
 layout:Refresh()

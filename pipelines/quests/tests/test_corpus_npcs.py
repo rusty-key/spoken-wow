@@ -106,6 +106,22 @@ def test_a_type_the_site_lacks_is_added_with_the_voice_the_file_names(cur):
     assert voice_for(cur, "testtreant", None, None) == "testtreant"
 
 
+def test_a_seeded_voice_and_its_assignment_are_every_teams(cur):
+    # The types are every team's, so each team's roster gets the voice: one row per team.
+    cur.execute("""insert into "team" ("slug", "name") values ('test-corpus-npcs', 'Test')""")
+    _import_types(cur, [{"npcType": "creature", "npcId": NPC_ID, "race": "testtreant",
+                         "gender": None, "flavor": None, "provenance": "moderator",
+                         "voice": "testtreant"}])
+    cur.execute("""select (select count(*) from "team"),
+                          (select count(*) from "voice" where "name" = 'testtreant'),
+                          (select count(*) from "voice_assignment" a
+                             join "voice" v on v."teamId" = a."teamId" and v."name" = a."voice"
+                            where a."race" = 'testtreant')""")
+    teams, voices, assignments = cur.fetchone()
+    assert teams >= 2
+    assert (voices, assignments) == (teams, teams)
+
+
 def test_a_type_the_site_has_keeps_its_own_voice(cur):
     _import_types(cur, [{"npcType": "creature", "npcId": NPC_ID, "race": "human",
                          "gender": "male", "flavor": "standard", "provenance": "corpus",
@@ -153,10 +169,9 @@ def test_a_model_row_speaks_in_the_voice_its_npc_is_answered_with(cur):
 
 def test_an_answered_model_row_keeps_any_other_reason_not_to_voice_it(cur):
     seed(cur, NPC_ID, "zany", "client", race="goblin")
-    rows = [dump_row(NPC_ID, text="Hello, $Q."), dump_row(NPC_ID, source="progress", skip="progress")]
-    tokens, progress = with_answered_voices(rows, answered_models(cur, rows))
+    rows = [dump_row(NPC_ID, text="Hello, $Q.")]
+    [tokens] = with_answered_voices(rows, answered_models(cur, rows))
     assert (tokens["skipReason"], tokens["generatable"]) == ("invalid-chars", False)
-    assert (progress["skipReason"], progress["generatable"]) == ("progress", False)
 
 
 def test_a_model_row_nobody_answered_stays_a_model_slot(cur):

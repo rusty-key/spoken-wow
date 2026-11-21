@@ -1,5 +1,5 @@
--- The quests addon's settings panel: sections on one canvas, laid out by the UI/Layout.lua
--- every Spoken addon carries, rather than a Blizzard category per group of an AceConfig
+-- The quests addon's settings panel: sections on one canvas, laid out by Spoken's UI/Layout.lua,
+-- rather than a Blizzard category per group of an AceConfig
 -- tree. The tree itself is untouched -- it still backs every /spq command and still fills
 -- the window where profiles and the pack manager live. Run with `make test-player`.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
@@ -12,7 +12,7 @@ local SPOKEN = here .. "/../../addons/Spoken/"
 local Expect, Failures = H.Expecter(print)
 
 local function Boot()
-    stub.SetClient("11509"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
+    stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
     stub.settingsCategories = {}; stub.ldbObjects = {}; stub.dbIcons = {}
     stub.world.questID = 0; stub.ShowPanel(nil)
     local VO = stub.LoadQuests(QUESTS, SPOKEN)
@@ -21,6 +21,7 @@ local function Boot()
     _G.SpokenEnv.Addon:Enable()
     local SettingsPanel = stub.LoadQuestsPanel(QUESTS, VO)
     SettingsPanel:Setup()
+    VO.GossipSettingsPanel:Setup()
     return VO, SettingsPanel
 end
 
@@ -39,7 +40,9 @@ Expect("...and not as a top-level entry of its own", SettingsPanel.category, nil
 
 local rows, headings = {}, {}
 for _, child in ipairs(SettingsPanel.panel.content.children) do
-    if child.layoutHeading then
+    -- Hidden: the Objective Tracker section, on a client without one.
+    if not child:IsShown() then
+    elseif child.layoutHeading then
         table.insert(headings, { y = child.layoutY, height = child.layoutHeight, text = child.text })
     elseif child.layoutHeight then
         table.insert(rows, { y = child.layoutY, height = child.layoutHeight, anchor = child.anchor and child.anchor.y })
@@ -49,7 +52,7 @@ end
 local names = {}
 for _, heading in ipairs(headings) do table.insert(names, heading.text) end
 Expect("the settings are grouped into sections", table.concat(names, "|"),
-    "When to Read|Extras|Reading History|Voice Packs|Fix a Problem")
+    "When to Read|Voice Packs")
 
 local function Distinct(values)
     local seen, count = {}, 0
@@ -89,16 +92,23 @@ Expect("every section heading the same distance below the section above", Distin
 local db = VO.Addon.db.profile
 db.Audio.GossipFrequency = VO.Enums.GossipFrequency.Always
 local greetings
-for _, child in ipairs(SettingsPanel.panel.content.children) do
-    if child.dropdownInit and child.layoutLabel and child.layoutLabel.text == "NPC Greetings" then
+local GossipPanel = VO.GossipSettingsPanel
+for _, child in ipairs(GossipPanel.panel.content.children) do
+    if child.dropdownInit and child.layoutLabel and child.layoutLabel.text == "Read Greetings" then
         greetings = child
     end
 end
-Expect("the greeting frequency is a dropdown", greetings ~= nil, true)
+Expect("the greeting frequency is a dropdown, on the Gossip page", greetings ~= nil, true)
 greetings:GetScript("OnShow")(greetings)
 Expect("...showing the setting when the panel opens", greetings.dropdownText, "Every Time")
+local onQuestsPage
+for _, child in ipairs(SettingsPanel.panel.content.children) do
+    if child.dropdownInit and child.layoutLabel and child.layoutLabel.text == "Read Greetings" then onQuestsPage = child end
+end
+Expect("...and not on the Quests page", onQuestsPage, nil)
 
--- Autoplay is what reads greetings, so the frequency sits under it and goes grey without it.
+-- Autoplay is what reads greetings, and is the Quests page's: the frequency goes grey without it
+-- and says where to turn it on.
 local autoplay
 for _, child in ipairs(SettingsPanel.panel.content.children) do
     if type(child.text) == "table" and child.text.text == "Read Automatically" then
@@ -106,36 +116,37 @@ for _, child in ipairs(SettingsPanel.panel.content.children) do
     end
 end
 Expect("autoplay is a checkbox on the panel", autoplay ~= nil, true)
--- The labels carry the indent; every control stays in the one column the page shares.
-Expect("...with the greeting frequency indented under it",
-    greetings.layoutLabel.anchor.x > autoplay.text.anchor.x, true)
 Expect("...live while autoplay is on", greetings.dropdownDisabled or false, false)
 autoplay:SetChecked(false)
 autoplay:GetScript("OnClick")(autoplay)
 Expect("unticking autoplay turns it off", db.Audio.Autoplay, false)
+-- The Gossip page redraws as it is shown, as every page does.
+GossipPanel.panel.layout:Refresh()
 Expect("...and greys the greeting frequency out", greetings.dropdownDisabled, true)
+Expect("...saying where autoplay is", greetings.layoutReason, VO.L.REASON_AUTOPLAY_ON_QUESTS)
 -- Follow-up lines are queued by autoplay alone (Followup.lua), so they grey out with it too.
 local followup
 for _, child in ipairs(SettingsPanel.panel.content.children) do
-    if type(child.text) == "table" and child.text.text == "Follow-up Lines" then followup = child end
+    if type(child.text) == "table" and child.text.text == "Read NPC Chat After Quests" then followup = child end
 end
-Expect("...and Follow-up Lines, saying why", followup and followup.layoutReason, VO.L.REASON_AUTOPLAY)
+Expect("...and Read NPC Chat After Quests, saying why", followup and followup.layoutReason, VO.L.REASON_AUTOPLAY)
 autoplay:SetChecked(true)
 autoplay:GetScript("OnClick")(autoplay)
+GossipPanel.panel.layout:Refresh()
 Expect("ticking it again brings the frequency back", greetings.dropdownDisabled, false)
-Expect("...and Follow-up Lines", followup and followup.layoutReason, nil)
+Expect("...and Read NPC Chat After Quests", followup and followup.layoutReason, nil)
 
 local entries = stub.OpenDropdown(greetings)
 local offered = {}
 for _, entry in ipairs(entries) do table.insert(offered, entry.text) end
 Expect("...offering every choice at once", table.concat(offered, "|"),
-    "Every Time|Once per NPC with Quests|Once per NPC|Never")
+    "Every Time|Once for Quest Givers|Once per Greeting|Never")
 Expect("...with the current one ticked", entries[1].checked, true)
 
-Expect("picking one is possible", stub.PickDropdown(greetings, "Once per NPC"), true)
+Expect("picking one is possible", stub.PickDropdown(greetings, "Once per Greeting"), true)
 Expect("...and stores the number the addon reads", db.Audio.GossipFrequency,
     VO.Enums.GossipFrequency.OncePerNPC)
-Expect("...and relabels", greetings.dropdownText, "Once per NPC")
+Expect("...and relabels", greetings.dropdownText, "Once per Greeting")
 -- Picking again from a different value: what the control shows and what it compares have
 -- to be the same thing, or it can never find where in the list it is.
 Expect("picking a second time works too", stub.PickDropdown(greetings, "Never"), true)
@@ -143,7 +154,7 @@ Expect("...and stores that", db.Audio.GossipFrequency, VO.Enums.GossipFrequency.
 Expect("...with the ticked entry moved", stub.OpenDropdown(greetings)[4].checked, true)
 
 ---------------------------------------------------------------- the gather switch stays in the player's settings
--- The switch is the player's alone: quests and books both feed the one store, so a
+-- The switch is the player's alone: quests and readables both feed the one store, so a
 -- mirror here could only ever repeat it -- a player cannot have quests off and pages on.
 local gather
 for _, child in ipairs(SettingsPanel.panel.content.children) do
@@ -173,11 +184,26 @@ Expect("profiles are not chosen on the Quests page: they are Spoken's, for every
 Expect("...and can be reset there, from the header's Defaults as the game's pages have it",
     SettingsPanel.panel.layout.defaults ~= nil, true)
 Expect("nothing sends the player to a second window", Mentions("everything else"), false)
+-- The Compendium's Started Only and Voiced Only are the account's: Defaults resets them too, and
+-- draws the Quests tab again where it is open.
+do
+    VO.Addon.db.global.Compendium = { FoundOnly = true, VoicedOnly = true, UnlockUnfound = true }
+    local redrawn = 0
+    VO.QuestsTab = { panel = { IsVisible = function() return true end }, Refresh = function() redrawn = redrawn + 1 end }
+    local defaults = SettingsPanel.panel.layout.defaults
+    defaults.scripts.OnClick(defaults)
+    stub.popups[#stub.popups].dialog.OnAccept()
+    local filters = VO.Addon.db.global.Compendium
+    Expect("Defaults clears the choice of Started Only (unset reads as on) and Voiced Only and redraws an open Quests tab",
+        tostring(filters.FoundOnly) .. "|" .. tostring(filters.VoicedOnly) .. "|" .. redrawn, "nil|nil|1")
+    Expect("...leaving Unlock Unstarted Quests, which is Spoken's page's", filters.UnlockUnfound, true)
+    VO.QuestsTab, VO.Addon.db.global.Compendium = nil, nil
+end
 
 local profile
 local home = _G.SpokenOptionsPanel.content or _G.SpokenOptionsPanel
 for _, child in ipairs(home.children) do
-    if child.dropdownInit and child.layoutLabel and child.layoutLabel.text == "Profile in Use" then
+    if child.dropdownInit and child.layoutLabel and child.layoutLabel.text == "Profile" then
         profile = child
     end
 end
@@ -190,7 +216,7 @@ Expect("...and the player's settings with it", _G.SpokenEnv.Addon.db:GetCurrentP
 _G.SpokenEnv.Options:SetProfile("Default")
 
 ---------------------------------------------------------------- the language choices
--- On the panel, as in SpokenBooks, rather than only in the /spq window; Auto is named with
+-- On the panel, as in SpokenReadables, rather than only in the /spq window; Auto is named with
 -- the language it follows, the same way all three addons name it.
 -- The voice language is chosen once, on Spoken's page, for every module; this page has none.
 local function Dropdown(content, label)
@@ -200,18 +226,127 @@ local function Dropdown(content, label)
 end
 Expect("the Quests page has no language of its own", Dropdown(SettingsPanel.panel.content, "Voice Language"), nil)
 local spoken = _G.SpokenOptionsPanel.content or _G.SpokenOptionsPanel
-local voice, fallback = Dropdown(spoken, "Voice Language"), Dropdown(spoken, "If a Line Is Missing")
-Expect("the voice language is chosen on Spoken's page", voice ~= nil, true)
-Expect("...Auto by default, named with the client's language", voice and voice.dropdownText, "Auto (English)")
+local voices
+for _, child in ipairs(spoken.children) do
+    if child.layoutAdd and child.layoutLabel and child.layoutLabel.text == "Voices, in Order" then voices = child end
+end
+-- What the list shows, line by line, as the player reads it.
+local function Lines()
+    local names = {}
+    for i = 1, #voices.layoutList() do table.insert(names, voices.layoutLines[i].name.text) end
+    return table.concat(names, " | ")
+end
+local function Add(text)
+    voices.layoutAdd:Click()
+    for _, entry in ipairs(stub.dropDownEntries) do
+        if entry.text == text then entry.func(); return true end
+    end
+    stub.ResetDropDowns()
+    return false
+end
+Expect("the voices are chosen on Spoken's page", voices ~= nil, true)
+Expect("...Auto then English by default, Auto named with the client's language", Lines(), "Auto (English) | English")
+-- The menu lists the languages an installed pack declares.
+for _, code in ipairs({ "deDE", "frFR" }) do _G.SpokenEnv.Languages:Declare(code, "SpokenQuestsAudio_" .. code) end
+-- The page reads them again as it opens.
+_G.SpokenEnv.Options:UpdateRows()
 VO.Addon.db.profile.Audio.VoiceLanguage = "frFR"
-Expect("...and until it is, Quests keeps the choice it had", VO.Language:GetVoiceLanguage(), "frFR")
-Expect("...a language can be picked", stub.PickDropdown(voice, "Deutsch"), true)
+Expect("...and until they are, Quests keeps the choice it had", VO.Language:GetVoiceLanguage(), "frFR")
+Expect("...a language can be added", Add("Deutsch"), true)
+Expect("...at the end", Lines(), "Auto (English) | English | Deutsch")
+voices.layoutLines[3].up:Click()
+Expect("...and moved earlier", Lines(), "Auto (English) | Deutsch | English")
+voices.layoutLines[1].remove:Click()
+Expect("...Auto removed", Lines(), "Deutsch | English")
 Expect("...which Quests then speaks", VO.Language:GetVoiceLanguage(), "deDE")
-Expect("...and going back to Auto is possible", stub.PickDropdown(voice, "Auto (English)"), true)
+Expect("...and plays first", table.concat(VO.Language:ResolutionOrder(), ","), "deDE,enUS")
+Expect("...but not a language no installed pack declares", Add("日本語") or Add("Japanese"), false)
+voices.layoutLines[2].remove:Click()
+Expect("removing English leaves German alone", Lines(), "Deutsch")
+Expect("...past which Quests is silent", VO.Language:GetFallbackLanguage(), nil)
+Expect("...and the last voice cannot be removed", voices.layoutLines[1].remove:IsEnabled(), false)
+Expect("...nor moved", tostring(voices.layoutLines[1].up:IsEnabled()) .. " " .. tostring(voices.layoutLines[1].down:IsEnabled()),
+    "false false")
+Expect("going back to Auto is possible", Add("Auto (English)"), true)
+voices.layoutLines[2].up:Click()
+Expect("...first", Lines(), "Auto (English) | Deutsch")
 Expect("...which follows the client", VO.Language:GetVoiceLanguage(), "enUS")
-Expect("the fallback language is chosen there too", fallback and fallback.dropdownText, "English")
-Expect("...and can be switched off", stub.PickDropdown(fallback, "Stay Silent"), true)
-Expect("...which Quests then honours", VO.Language:GetFallbackLanguage(), nil)
+-- A team's voice beside its language's.
+_G.SpokenEnv.Languages:Declare("deDE", "SpokenQuestsAudioShared_deDE_stimmen", { team = "stimmen", teamName = "Stimmen" })
+_G.SpokenEnv.Options:UpdateRows()
+Expect("a team's voice is offered, named for its team", Add("Deutsch · Stimmen"), true)
+voices.layoutLines[3].up:Click()
+Expect("...and listed so", Lines(), "Auto (English) | Deutsch · Stimmen | Deutsch")
+Expect("...a voice in the list is not offered again", Add("Deutsch"), false)
+-- A voice kept in the list whose pack is gone keeps its place, greyed.
+_G.Spoken:SetVoiceOrder({ "deDE_gone", "deDE" })
+Expect("a voice whose pack is gone stays, saying so", Lines(), "Deutsch · gone (not installed) | Deutsch")
+Expect("...greyed", voices.layoutLines[1].name.textColor and voices.layoutLines[1].name.textColor[1], 0.5)
+Expect("...a voice that is there is not", voices.layoutLines[2].name.textColor and voices.layoutLines[2].name.textColor[1], 1)
+Expect("there is no Stay Silent: the end of the list is", Dropdown(spoken, "If a Voice Is Missing"), nil)
+_G.SpokenEnv.Addon.db.profile.Language.Voices = nil
+_G.SpokenEnv.Addon.db.profile.Language.Voice, _G.SpokenEnv.Addon.db.profile.Language.Fallback = nil, nil
+
+---------------------------------------------------------------- packs that register after the page is built
+-- The packs are loaded a second after login, so the page is built while an installed pack is
+-- still to register: its row is drawn again once they have (#254).
+do
+    local VO, Panel = Boot()
+    local row
+    for _, child in ipairs(Panel.panel.content.children) do
+        if child.layoutHit and child.layoutLabel and child.layoutLabel.text == "TestPack" then row = child end
+    end
+    local W = _G.Spoken:Words()
+    Expect("a pack found but not yet loaded says so", row and row.message, W.MODULE_NOT_LOADED)
+    VO.DataModules:Register("TestPack", {})
+    stub.Advance(2)
+    Expect("...and says its version once the packs have loaded", row and row.message, "1.2.1")
+end
+
+---------------------------------------------------------------- the objective tracker's Play button
+-- Only where the client has the tracker, and unticked, every tracker button goes.
+do
+    -- The campaign tracker is the modern name; the settings row must not require the legacy one.
+    _G.CampaignQuestObjectiveTracker = {}
+    local VO, Panel = Boot()
+    Panel.panel.layout:Refresh()
+    local heading, box
+    for _, child in ipairs(Panel.panel.content.children) do
+        if child.layoutHeading and child.text == "Show Play Button" then heading = child end
+        if type(child.text) == "table" and child.text.text == "Tracker" then box = child end
+    end
+    Expect("a client with the tracker has its section", heading and heading:IsShown(), true)
+    local swept = 0
+    VO.QuestOverlayUI.UpdateTrackerButtons = function() swept = swept + 1 end
+    box:SetChecked(false)
+    box:GetScript("OnClick")(box)
+    Expect("unticking it turns the buttons off", VO.Addon.db.profile.TrackerPlayButton, false)
+    Expect("...and takes away the ones drawn", swept, 1)
+    _G.CampaignQuestObjectiveTracker = nil
+end
+
+---------------------------------------------------------------- the classic quest log's Play button
+do
+    -- Era has the classic Quest Log frame, without the modern objective tracker globals.
+    _G.QuestLogFrame = {}
+    local VO, Panel = Boot()
+    Panel.panel.layout:Refresh()
+    local heading, box
+    for _, child in ipairs(Panel.panel.content.children) do
+        if child.layoutHeading and child.text == "Show Play Button" then heading = child end
+        if type(child.text) == "table" and child.text.text == "Quest Log" then box = child end
+    end
+    Expect("a classic client has the Show Play Button section", heading and heading:IsShown(), true)
+    Expect("...with a Quest Log suboption", box and box:IsShown(), true)
+    local updated = 0
+    -- Spoken's own buttons, never the client's QuestLog_Update, which would taint the log.
+    VO.QuestOverlayUI.RefreshQuestLog = function() updated = updated + 1 end
+    box:SetChecked(false)
+    box:GetScript("OnClick")(box)
+    Expect("unticking Quest Log turns its buttons off", VO.Addon.db.profile.QuestLogPlayButton, false)
+    Expect("...and redraws Spoken's quest log buttons", updated, 1)
+    _G.QuestLog_Update, _G.QuestLogFrame = nil, nil
+end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll quests options tests passed")

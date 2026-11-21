@@ -1,25 +1,19 @@
-# Minimal Classic offline checks
+# Small Window portrait checks
 
-From the repository root, with Python 3:
+From the repository root, with LuaJIT:
 
 ```sh
-python -m pip install lupa Pillow
-python tests/minimal-classic/verify.py
+luajit tests/minimal-classic/verify.lua
 ```
 
-The verifier uses Lupa's Lua 5.1 runtime. It compiles the player/library Lua
-files and loads the real queue, actions, portraits and both player layouts
-against `fixture.lua`, a small WoW UI/timer fixture.
+`make test-player` runs it with the other suites.
 
-Coverage includes pause/restart timing, inter-clip gaps, held gates,
-queue pagination/removal, source-owned actions, hidden modes, layout switching,
-reset/fades, native portrait identity and fallback, queued snapshots after
-target changes, delayed appearance refresh, bounded cache size, badge opacity,
-panel-corner geometry and all nine runtime textures.
+It loads Spoken's real queue, actions and portraits against `fixture.lua`, a small WoW UI and
+timer fixture, and checks whose face the Small Window shows as speakers, targets and the queue
+change: native snapshots, exact-GUID matching, an unmet quest giver drawn from its appearance and
+retried while uncached, the bounded cache, and the line badges. It also compiles every Lua file
+Spoken ships as Lua 5.1 and checks that the `Minimal*.tga` textures are power-of-two RGBA.
 
-These tests are portable and read the source from this checkout. They do not
-need a WoW installation or local backup archive. They do not prove native
-rendering behavior; an in-game visual check is still required.
-
-For the existing addon regression suites, also run `make test-player` with
-LuaJIT or Lua 5.1 installed.
+The window itself (controls, title, progress, backgrounds, Bronze Border) is
+`tests/lua/minimal_window_test.lua`'s. Neither proves how the client draws it; that still needs a
+look in game.

@@ -1,0 +1,115 @@
+local _, Bosses = ...
+
+-- The voice of a boss's story: its clip in an installed SpokenBossesAudio pack. The packs register
+-- themselves at load (their Data/Sounds.lua), so the registry is read on demand and always holds
+-- what is loaded. With none, every story is words alone.
+
+-- The shape of pack.bosses this build reads. A pack of another format may name its clips otherwise.
+local PACK_FORMAT = 1
+
+--- The language a story is heard in: Spoken's Voice Language, "Auto" being the client's.
+function Bosses:GetVoiceLanguage()
+	if Spoken and Spoken.VoiceLanguage then return Spoken:VoiceLanguage() end
+	return GetLocale and GetLocale() or "enUS"
+end
+local function VoiceLanguage() return Bosses:GetVoiceLanguage() end
+
+--- Spoken's If a Voice Is Missing, English unless the player chose otherwise; nil for Stay Silent.
+function Bosses:GetFallbackLanguage()
+	local fallback
+	if Spoken and Spoken.GetLanguageChoice then
+		local _
+		_, fallback = Spoken:GetLanguageChoice()
+	end
+	if fallback == "none" then return nil end
+	return fallback or "enUS"
+end
+local function FallbackLanguage() return Bosses:GetFallbackLanguage() end
+
+--- The voice a pack is in: its language, or its language and team where its .toc names one
+--- ("deDE_stimmen"), as Spoken's registry read it.
+function Bosses:PackVoice(pack)
+	if Spoken and Spoken.VoiceOf and pack.addon then return Spoken:VoiceOf(pack.addon, pack.language) end
+	return pack.language
+end
+
+--- The voices a story may be heard in, most wanted first: the player's list on Spoken's page once
+--- set, else the voice language and the fallback, each its plain voice.
+function Bosses:GetVoiceOrder()
+	local voice, fallback = VoiceLanguage(), FallbackLanguage()
+	if Spoken and Spoken.VoiceOrder then return Spoken:VoiceOrder(voice, fallback) end
+	if fallback and fallback ~= voice then return { voice, fallback } end
+	return { voice }
+end
+
+--- Every installed pack this build reads, best first: the voice language's, then the client's,
+--- then by bitrate, then by folder name, so two copies of one pack resolve the same way every time.
+--- `lang` narrows the list to one language.
+function Bosses:GetAudioPacks(lang)
+	local packs = {}
+	for name, pack in pairs(_G.SpokenBossesAudioPacks or {}) do
+		if type(pack) == "table" and pack.version == PACK_FORMAT then
+			pack.addon = pack.addon or name
+			pack.language = pack.language or "enUS"
+			pack.voice = Bosses:PackVoice(pack)
+			if lang == nil or pack.language == lang then table.insert(packs, pack) end
+		end
+	end
+	local voice, client = VoiceLanguage(), GetLocale and GetLocale()
+	local function Rank(pack)
+		if pack.language == voice then return 0 end
+		if pack.language == client then return 1 end
+		return 2
+	end
+	table.sort(packs, function(a, b)
+		local ra, rb = Rank(a), Rank(b)
+		if ra ~= rb then return ra < rb end
+		if (a.bitrate or 0) ~= (b.bitrate or 0) then return (a.bitrate or 0) > (b.bitrate or 0) end
+		return tostring(a.addon) < tostring(b.addon)
+	end)
+	return packs
+end
+
+--- The folder names of the installed packs, for the count on Spoken's page.
+function Bosses:PackNames()
+	local names = {}
+	for _, pack in ipairs(self:GetAudioPacks()) do table.insert(names, pack.addon) end
+	return names
+end
+
+function Bosses:PackStoryText(map, key, language)
+	for _, pack in ipairs(self:GetAudioPacks(language)) do
+		local entry = pack.bosses and pack.bosses[map] and pack.bosses[map][key]
+		if entry and type(entry.text) == "string" and entry.text ~= "" then return entry.text end
+	end
+	return nil
+end
+
+--- The recording of the boss `key` of `map`: `{ path, len, times, text, language, packFolder,
+--- voice }`, `text` the words it says where its pack has them, `packFolder` the folder that has
+--- it, from the first voice's packs that has it, best first; nil where none has it.
+--- A language's plain voice never plays a team's pack, nor the other way.
+function Bosses:GetAudioClip(map, key)
+	local packs = self:GetAudioPacks()
+	local candidates = {}
+	for _, voice in ipairs(self:GetVoiceOrder()) do
+		for _, pack in ipairs(packs) do
+			if pack.voice == voice then table.insert(candidates, pack) end
+		end
+	end
+	for _, pack in ipairs(candidates) do
+		local entry = pack.bosses and pack.bosses[map] and pack.bosses[map][key]
+		if entry and entry.file then
+			return {
+				path = "Interface\\AddOns\\" .. pack.addon .. "\\Sounds\\" .. entry.file .. ".mp3",
+				len = entry.len,
+				times = entry.times,
+				text = type(entry.text) == "string" and entry.text ~= "" and entry.text or nil,
+				language = pack.language,
+				packFolder = pack.addon,
+				voice = pack.voice,
+			}
+		end
+	end
+	return nil
+end

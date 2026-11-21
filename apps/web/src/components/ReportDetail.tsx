@@ -1,24 +1,26 @@
 "use client";
 
 /**
- * The line a report is about, opened in place.
+ * The line a report is about, shown beside it.
  *
  * A triager's loop used to be: read the row, open the explorer in another tab, find the
  * line, listen, come back. The context that picked the voice, the text as it will be
  * spoken and the button that cuts a new take are here; the audio plays through the page's
  * transport bar, the same one both explorers use, so one line stops the previous one.
  *
- * Presentational: the row is fetched by ReportTable, because the play button needs the
- * same line without this panel being open.
+ * Presentational: the row is fetched by ReportTable, which owns the transport bar the play
+ * button starts.
  */
 import { useLang } from "@/components/LangProvider";
+import { Play } from "lucide-react";
 import { useState } from "react";
 
 import OverrideDialog from "@/components/OverrideDialog";
+import OutdatedNote from "@/components/OutdatedNote";
+import LineHeading from "@/components/reports/LineHeading";
 import { Button } from "@/components/ui/button";
-import { detailOf, regeneratePath, type SourceLine } from "@/lib/reports/detail";
+import { detailOf, regenerateLine, type SourceLine } from "@/lib/reports/detail";
 
-import { noApiKeyMessage } from "@/lib/no-api-key";
 import type { ResultLine as QuestLine } from "@/lib/search";
 import type { Source } from "@/lib/sections";
 
@@ -29,10 +31,14 @@ type Props = {
   line: SourceLine | null | undefined;
   /** Whether this visitor may spend credits. The page already gates the rest. */
   canRegenerate: boolean;
+  /** Whether the speaker's name opens the NPC page. See LineHeading. */
+  showNpcPage: boolean;
   /** Hands the new take's version up, so the player busts its cache. */
   onRegenerated: (version: number) => void;
-  /** Hands a rewrite up, so the panel and the row read the text that will be spoken next. */
-  onOverridden: (text: string | null) => void;
+  /** A rewrite was saved, so the panel and the row read the text that will be spoken next. */
+  onRewritten: () => void;
+  /** Points the page's transport bar at this line and starts it. */
+  onPlay: () => void;
 };
 
 export default function ReportDetail({
@@ -40,8 +46,10 @@ export default function ReportDetail({
   lineId,
   line,
   canRegenerate,
+  showNpcPage,
   onRegenerated,
-  onOverridden,
+  onRewritten,
+  onPlay,
 }: Props) {
   const lang = useLang();
   const [busy, setBusy] = useState(false);
@@ -54,33 +62,12 @@ export default function ReportDetail({
     setError(null);
     setDone(false);
 
-    const response = await fetch(regeneratePath(source, lang), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ lineId }),
-    }).catch(() => null);
-
-    const body = (await response?.json().catch(() => ({}))) as {
-      ok?: boolean;
-      version?: number;
-      error?: string;
-      code?: string;
-    };
+    const result = await regenerateLine(source, lineId, lang);
     setBusy(false);
-
-    if (!response) return setError("the request did not go through");
-
-    // "You have the role but no key on file" is one page away from fixed, so it says so
-    // rather than reading as a failure of the line.
-    const noKey = noApiKeyMessage(response.status, body);
-    if (noKey) return setError(noKey);
-
-    if (!response.ok || !body.ok || body.version === undefined) {
-      return setError(body.error ?? `failed (${response.status})`);
-    }
+    if ("error" in result) return setError(result.error);
 
     setDone(true);
-    onRegenerated(body.version);
+    onRegenerated(result.version);
   }
 
   if (line === undefined) {
@@ -102,25 +89,40 @@ export default function ReportDetail({
 
   return (
     <div className="flex flex-col gap-2 px-3 py-3">
-      <div>
-        <span className="font-medium">{detail.heading}</span>
-        <span className="text-muted-foreground ml-2 text-xs">{detail.context}</span>
+      <div className="flex items-center gap-1">
+        {detail.audioSrc === null ? null : (
+          <Button size="icon-xs" variant="ghost" title="Play this line" aria-label="Play this line" onClick={onPlay}>
+            <Play />
+          </Button>
+        )}
+        <div>
+          <LineHeading detail={detail} showNpcPage={showNpcPage} asideClassName="ml-2" />
+        </div>
       </div>
 
-      <p className="text-sm whitespace-pre-wrap">{detail.text}</p>
+      {detail.text === null ? (
+        <p className="text-muted-foreground text-sm italic">No story in this language yet.</p>
+      ) : (
+        <p className="text-sm whitespace-pre-wrap">{detail.text}</p>
+      )}
 
       {detail.audioSrc === null ? (
         <p className="text-muted-foreground text-xs">No audio on file for this line.</p>
+      ) : detail.stale ? (
+        <OutdatedNote className="text-xs" />
       ) : null}
 
       {canRegenerate ? (
         <div className="flex items-center gap-3">
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => void regenerate()}>
-            {busy ? "Regenerating…" : "Regenerate"}
-          </Button>
-          {/* Quests only: the override endpoint is theirs, and zones and books have no text a
+          {/* Nothing written in the language is nothing to voice: the server would refuse it. */}
+          {detail.text === null ? null : (
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => void regenerate()}>
+              {busy ? "Regenerating…" : "Regenerate"}
+            </Button>
+          )}
+          {/* Quests only: the override endpoint is theirs, and places and readables have no text a
               triager may edit - their lines are the corpus itself. */}
-          {source === "quests" ? (
+          {source === "quests" && !(line as QuestLine).missing?.text ? (
             <Button size="sm" variant="outline" disabled={busy} onClick={() => setEditing(true)}>
               Rewrite
             </Button>
@@ -138,9 +140,14 @@ export default function ReportDetail({
       {editing && source === "quests" ? (
         <OverrideDialog
           line={line as QuestLine}
-          onSaved={(_file, text) => {
+          onSaved={() => {
             setEditing(false);
-            onOverridden(text);
+            onRewritten();
+          }}
+          // The moment's other lines took the text too, so the explorer is where to see them.
+          onRewritten={() => {
+            setEditing(false);
+            onRewritten();
           }}
           onCancel={() => setEditing(false)}
         />

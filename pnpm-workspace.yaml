@@ -1,5 +1,6 @@
 packages:
   - apps/*
-  - pipelines/zones
-  - pipelines/books
+  - pipelines/places
+  - pipelines/readables
   - packages/*
+  - scripts/manager

@@ -1,0 +1,4 @@
+# What a Manager release's build imports on the droplet. Pure Python, because the deploy vendors it
+# from another Python. psycopg2 comes from the droplet's own package, compiled against its Python.
+SLPP==1.2.3
+tqdm==4.65.0

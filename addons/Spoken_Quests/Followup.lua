@@ -47,26 +47,43 @@ end
 --- The line's text with the server's tokens filled in for the local player. The name is
 --- UnitName("player") deliberately: a line naming somebody else then cannot match.
 local function Render(text, sender)
-    local female = UnitSex and UnitSex("player") == 3
-    -- $gmale:female; and $Gmale:female; - the export keeps Blizzard's spacing, "$GHe : She;".
-    text = string.gsub(text, "%$[gG]([^:;]*):([^;]*);", function(male, femaleForm)
-        return string.trim(female and femaleForm or male)
-    end)
-    text = string.gsub(text, "%$[nN]", Literal(UnitName("player")))
-    text = string.gsub(text, "%$[rR]", Literal(UnitRace and UnitRace("player")))
-    text = string.gsub(text, "%$[cC]", Literal(UnitClass and UnitClass("player")))
+    text = Utils:FillPlayerTokens(text)
     -- Emote-style lines carry the speaker as %s, which the client fills with the sender.
     if sender then
         text = string.gsub(text, "%%s", Literal(sender))
     end
     return Normalize(text)
 end
+Followup.Normalize = Normalize
+Followup.Render = Render
 
 --- Only an English client shows the English text the export holds. Anywhere else a line
 --- can only be told by who said it.
 local function ClientSpeaksExportLanguage()
     local locale = GetLocale and GetLocale()
     return locale == "enUS" or locale == "enGB"
+end
+Followup.ClientSpeaksExportLanguage = ClientSpeaksExportLanguage
+
+local scripted
+
+--- Whether `speaker` says line `id` only because a quest's script makes them: the lines this file
+--- arms after the player's own accept or turn-in. Heard with nothing armed, such a line is another
+--- player's quest.
+function Followup.IsScripted(speaker, id)
+    if not scripted then
+        scripted = {}
+        for _, byQuest in pairs(FollowupLines or {}) do
+            for _, lines in pairs(byQuest) do
+                for _, line in ipairs(lines) do
+                    if line.speaker and line.id then
+                        scripted[line.speaker .. ":" .. line.id] = true
+                    end
+                end
+            end
+        end
+    end
+    return scripted[speaker .. ":" .. id] or false
 end
 
 --- The text a line is matched by, rendered when it is armed: nothing in it changes before
@@ -101,6 +118,7 @@ end
 
 --- The player's own trigger: `kind` is "end" for a turn-in and "start" for an accept.
 function Followup:Arm(kind, questID, title)
+    questID = NotSecret(questID)
     if not questID or questID == 0 or not self:IsEnabled() then
         return
     end
@@ -158,17 +176,18 @@ local function SameStep(a, b)
     return a.speaker == b.speaker and a.delay == b.delay
 end
 
---- The armed entry this chat message is, or nil.
+--- The armed entry this chat message is, or nil. Letter case is not compared: the server writes a
+--- creature's $r and $c with a capital ("Puny Human"), where a quest window writes them in lower case.
 function Followup:Match(message, sender, npcID)
     if ClientSpeaksExportLanguage() then
-        local said = Normalize(message)
+        local said = string.lower(Normalize(message))
         for _, entry in ipairs(self.armed) do
             local speaker = entry.line.speaker
             -- Checked only when both sides know: a line with no resolved speaker, or a client
             -- with no GUID in its chat events, falls back on the text alone.
             if not (speaker and npcID) or speaker == npcID then
                 for _, saying in ipairs(entry.sayings) do
-                    if (saying.text or Render(saying.raw, sender)) == said then
+                    if string.lower(saying.text or Render(saying.raw, sender)) == said then
                         return entry
                     end
                 end
@@ -206,7 +225,8 @@ function Followup:Consume(matched)
     end
 end
 
-function Followup:OnChat(event, message, sender, guid)
+--- `asked`: replayed by /spq followup, which the player typed.
+function Followup:OnChat(event, message, sender, guid, asked)
     if not self.armed[1] then
         return
     end
@@ -216,6 +236,11 @@ function Followup:OnChat(event, message, sender, guid)
     end
     if not self:IsEnabled() then
         self.armed = {}
+        return
+    end
+    -- In a dungeon the server's NPC chat can come as secrets, which cannot be matched.
+    message, sender, guid = NotSecret(message), NotSecret(sender), NotSecret(guid)
+    if not message then
         return
     end
 
@@ -229,7 +254,7 @@ function Followup:OnChat(event, message, sender, guid)
     self:Consume(entry)
     Debug:Record("followup-matched", format("Line %d from %s after quest %d", entry.line.id or 0,
         tostring(sender), entry.questID))
-    self:Play(entry, message, sender, guid, npcID)
+    self:Play(entry, message, sender, guid, npcID, asked)
 end
 
 --------------------------------------------------------------------------------
@@ -245,16 +270,26 @@ end
 --- within each, and the player-gendered m-/f- variant ahead of the plain one. Every pack
 --- carries the full lookup whether or not it has the audio, so the first stem is usually the
 --- only one; a second is tried only in case packs of different builds disagree.
+---
+--- An NPC split by body has a file per body in FollowupLookupByNPCBody, and per sex in
+--- FollowupLookupByNPCSex. Its body is readable only once its model has loaded, and its sex only
+--- while the speaker is a unit the player has up; FollowupLookup's file plays when neither is.
 ---@return SoundData|nil
-local function OwnClip(line, npcID)
+local function OwnClip(line, npcID, guid)
     local speaker = line.speaker or npcID
     if not (line.id and speaker) then
         return nil
     end
+    local sex = guid and Utils:GetSexForGUID(guid)
+    local body = guid and Utils:GetBodyForGUID(guid)
     local tried = {}
     for _, module in DataModules:GetModules() do
+        local byBody = body and module.FollowupLookupByNPCBody and module.FollowupLookupByNPCBody[speaker]
+        local ofBody = byBody and byBody[line.id] and byBody[line.id][body]
+        local bySex = sex and module.FollowupLookupByNPCSex and module.FollowupLookupByNPCSex[speaker]
+        local ofSex = bySex and bySex[line.id] and bySex[line.id][sex]
         local byLine = module.FollowupLookup and module.FollowupLookup[speaker]
-        local stem = byLine and byLine[line.id]
+        local stem = ofBody or ofSex or byLine and byLine[line.id]
         if stem and not tried[stem] then
             tried[stem] = true
             local probe = { event = Enums.SoundEvent.QuestFollowup, fileName = stem }
@@ -265,14 +300,19 @@ local function OwnClip(line, npcID)
     end
 end
 
-function Followup:Play(entry, message, sender, guid, npcID)
+Followup.OwnClip = OwnClip
+
+--- `event`: the sound event to play the line as, QuestFollowup when omitted.
+function Followup:Play(entry, message, sender, guid, npcID, asked, event)
+    local chatter = event == Enums.SoundEvent.NPCChatter
     -- Only the line's own recording plays. A borrowed clip - the speaker's gossip, the
     -- quest's accept or complete - says other words in the NPC's voice while the chat shows
     -- this line, which is worse than the silence of a line nobody has voiced yet.
-    local clip = OwnClip(entry.line, npcID)
+    local clip = OwnClip(entry.line, npcID, guid)
     if not clip then
-        Debug:Record("followup-no-recording", format("No installed pack has a recording of follow-up line %d (NPC %s)",
-            entry.line.id or 0, tostring(entry.line.speaker or npcID or "unknown")))
+        Debug:Record(chatter and "chatter-no-recording" or "followup-no-recording",
+            format("No installed pack has a recording of %s line %d (NPC %s)", chatter and "chat" or "follow-up",
+                entry.line.id or 0, tostring(entry.line.speaker or npcID or "unknown")))
         return false
     end
     local speaker = entry.line.speaker or npcID
@@ -281,9 +321,10 @@ function Followup:Play(entry, message, sender, guid, npcID)
     end
     ---@type SoundData
     local soundData = {
-        event = Enums.SoundEvent.QuestFollowup,
+        event = event or Enums.SoundEvent.QuestFollowup,
         name = sender or (speaker and DataModules:GetObjectName(Enums.GUID.Creature, speaker)) or "",
         title = entry.title,
+        lineKey = entry.lineKey,
         text = message,
         unitGUID = guid,
         unitIsObjectOrItem = false,
@@ -291,11 +332,13 @@ function Followup:Play(entry, message, sender, guid, npcID)
         fileName = clip.fileName,
         filePath = clip.filePath,
         length = clip.length,
+        timings = clip.timings,
+        packText = clip.packText,
         module = clip.module,
         language = clip.language,
     }
     -- Appended like any other line, so it waits for the turn-in's own voiceover to finish.
-    return Player:EnqueuePrepared(soundData)
+    return Player:EnqueuePrepared(soundData, asked)
 end
 
 --------------------------------------------------------------------------------
@@ -303,8 +346,10 @@ end
 --------------------------------------------------------------------------------
 
 local function TitleFor(questID)
-    local title = C_QuestLog and C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(questID)
-    return title or (GetTitleText and GetTitleText()) or nil
+    questID = NotSecret(questID)
+    local title = questID and C_QuestLog and C_QuestLog.GetTitleForQuestID
+        and NotSecret(C_QuestLog.GetTitleForQuestID(questID))
+    return title or (GetTitleText and NotSecret(GetTitleText())) or nil
 end
 
 -- The event each exported chat label arrives as, for /spq followup to replay it through.
@@ -353,7 +398,7 @@ function Followup:Simulate(input)
             print(format("line %d in %ds, %s: %s%s", line.id, line.delay or 0, name, text,
                 OwnClip(line) and "" or "  |cFFFF8040(no recording yet — silent)|r"))
             Addon:ScheduleTimer(function()
-                Followup:OnChat(event, text, name, guid)
+                Followup:OnChat(event, text, name, guid, true)
             end, line.delay or 0)
         end
     end
@@ -368,47 +413,23 @@ function Followup:Setup()
     -- A whisper is addressed to this player alone, but is still only matched while armed:
     -- an NPC whispers the same words to everybody who takes the quest, and one armed by
     -- nothing is no evidence of which quest it followed. CHAT_MSG_RAID_BOSS_WHISPER is the
-    -- server's boss whisper; the 1.12 client has no such event, and the pcall below lets it
-    -- fail there. Both carry the same payload as a /say: text, sender, and the GUID in arg12
-    -- where the client sends one.
+    -- server's boss whisper. Both carry the same payload as a /say: text, sender, and the GUID
+    -- in arg12 where the client sends one.
     local events = { "CHAT_MSG_MONSTER_SAY", "CHAT_MSG_MONSTER_YELL", "CHAT_MSG_MONSTER_WHISPER",
-        "CHAT_MSG_RAID_BOSS_WHISPER" }
-    if not Version.IsAnyLegacy then
-        table.insert(events, "QUEST_TURNED_IN")
-        table.insert(events, "QUEST_ACCEPTED")
-    end
+        "CHAT_MSG_RAID_BOSS_WHISPER", "QUEST_TURNED_IN", "QUEST_ACCEPTED" }
     for _, event in ipairs(events) do
-        pcall(frame.RegisterEvent, frame, event)
+        frame:RegisterEvent(event)
     end
-    -- Named arguments rather than ...: on 1.12 the handler is called by Compatibility.lua's
-    -- SetScript wrapper with the arg1..arg9 globals, and Lua 5.0 has no select() for varargs.
     frame:SetScript("OnEvent", function(_, event, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12)
         if event == "QUEST_TURNED_IN" then
             Followup:Arm("end", a1, TitleFor(a1))
         elseif event == "QUEST_ACCEPTED" then
             -- Classic sends (questLogIndex, questID); mainline sends the questID alone.
-            local questID = a2 or a1
+            local questID = NotSecret(a2) or NotSecret(a1)
             Followup:Arm("start", questID, TitleFor(questID))
         else
             Followup:OnChat(event, a1, a2, a12)
         end
     end)
 
-    -- The legacy clients have neither event, but every accept and turn-in, clicked or
-    -- automated by another addon, goes through these two calls while the dialog is still up.
-    if Version.IsAnyLegacy and hooksecurefunc then
-        -- IsEnabled first: resolving the quest can mean a fuzzy search of every loaded pack.
-        pcall(hooksecurefunc, "GetQuestReward", function()
-            if Followup:IsEnabled() then
-                local questID = Addon:DialogQuestID("QUEST_COMPLETE")
-                Followup:Arm("end", questID, TitleFor(questID))
-            end
-        end)
-        pcall(hooksecurefunc, "AcceptQuest", function()
-            if Followup:IsEnabled() then
-                local questID = Addon:DialogQuestID("QUEST_DETAIL")
-                Followup:Arm("start", questID, TitleFor(questID))
-            end
-        end)
-    end
 end

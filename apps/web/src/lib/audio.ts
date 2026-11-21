@@ -7,24 +7,26 @@
  */
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { memoByLang } from "@/lib/memo";
-import type { CorpusLine } from "./corpus";
+import type { Corpus, CorpusLine } from "./corpus";
 import { corpus } from "./quests/catalogue";
 
 export const SUBFOLDERS = ["quests", "gossip", "followup"] as const;
 
 /**
- * Followup has a folder of its own, not quests/: a follow-up file is named after its words and
- * its voice (`4377-dwarf-male-standard`), and the addon resolves it by its own event
- * (Module.lua's GetSoundPath), so the path has to be the one Python's naming gives it.
+ * By the line id's kind, not its source: NPC chat is named like a follow-up line, after its words
+ * and voice, and shares its folder. The addon resolves the path itself, so it must match Python's.
  */
-export function subfolder(line: Pick<CorpusLine, "source">): (typeof SUBFOLDERS)[number] {
-  if (line.source === "gossip") return "gossip";
-  if (line.source === "followup") return "followup";
-  return "quests";
+const KIND_FOLDER: Record<string, (typeof SUBFOLDERS)[number]> = { q: "quests", g: "gossip", f: "followup" };
+
+export function subfolder(line: Pick<CorpusLine, "lineId">): (typeof SUBFOLDERS)[number] {
+  const kind = line.lineId.split(":", 1)[0];
+  const folder = KIND_FOLDER[kind];
+  if (!folder) throw new Error(`unknown lineId kind ${JSON.stringify(kind)} in ${JSON.stringify(line.lineId)}`);
+  return folder;
 }
 
 /** The addon's path, e.g. "quests/5-accept.mp3". Also the take's `file` and the /api/quests/audio/ route path. */
-export function audioRelPath(line: Pick<CorpusLine, "source" | "fileName">): string {
+export function audioRelPath(line: Pick<CorpusLine, "lineId" | "fileName">): string {
   return `${subfolder(line)}/${line.fileName}.mp3`;
 }
 
@@ -48,7 +50,11 @@ const fileIndexKey = Symbol.for("wow-voiceover.file-index.by-lang");
 
 /** Per language, since a file is the same in every one but the line's text is not. */
 export async function fileIndex(lang: Lang = BASE_LANG): Promise<Map<string, CorpusLine>> {
-  const lines = (await corpus(lang)).lines;
+  return fileIndexOf(await corpus(lang), lang);
+}
+
+/** fileIndex of a corpus the caller already read, which saves the stamp check that read costs. */
+export function fileIndexOf({ lines }: Corpus, lang: Lang = BASE_LANG): Map<string, CorpusLine> {
   return memoByLang(fileIndexKey, lang, lines, () => {
     const index = new Map<string, CorpusLine>();
     for (const line of lines) {

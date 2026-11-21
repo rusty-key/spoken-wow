@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     subject: String(body.key ?? body.race ?? ""),
     detail: { action: String(body.action), gender: str(body.gender), flavor: str(body.flavor), voice: str(body.voice), existing: str(body.existing) },
   });
-  return Response.json({ roster: (await loadRoster()).data });
+  return Response.json({ roster: (await loadRoster(lang)).data });
 }
 
 function str(value: unknown): string | null {

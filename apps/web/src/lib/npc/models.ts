@@ -20,3 +20,12 @@ export function raceForModel(fileId: number | null | undefined): ModelRace | nul
   if (typeof fileId !== "number" || !Number.isInteger(fileId) || fileId <= 0) return null;
   return BY_FILE_ID[String(fileId)] ?? null;
 }
+
+/**
+ * The race a model draws a creature of `gender` as: null where the map does not know the model,
+ * or knows it as the other gender (the report's sex wins over a model it disagrees with).
+ */
+export function raceOfModel(fileId: number | null | undefined, gender: "male" | "female"): string | null {
+  const model = raceForModel(fileId);
+  return model && model.gender === gender ? model.race : null;
+}

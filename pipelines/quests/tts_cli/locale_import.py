@@ -157,7 +157,7 @@ def import_locale(conn, lang: str, lines: list, names: dict,
     """Write a language's lines and names. Returns what happened, counted.
 
     `origin` is what the rows are: the dump's ('extracted'), or a translation community's
-    ('community', tools/import_questit.py), with `note` saying which release. Either way an
+    ('community'), with `note` saying which release. Either way an
     import replaces what it wrote before and only records beside what was edited here.
     """
     counts = Counter()

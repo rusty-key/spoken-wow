@@ -24,17 +24,31 @@ EasterEggs =
     },
 }
 
+--- Whether English is among the player's voices: the recordings are English, so only then do they
+--- play and their options show.
+---@return boolean
+function EasterEggs:IsAvailable()
+    for _, voice in ipairs(Language:ResolutionOrder()) do
+        if Language:SplitVoice(voice) == Language.BASE then return true end
+    end
+    return false
+end
+
 --- Swap in the easter egg recording for a line, if there is one and its option is on.
 ---@param soundData SoundData Resolved by `DataModules:PrepareSound`, mutated in place
 ---@return boolean applied Whether an easter egg replaced what the packs resolved
 function EasterEggs:Apply(soundData)
     local alternate = self.alternates[soundData.fileName]
-    if not alternate or not Addon.db.profile.Audio[alternate.option] then
+    -- Never over another language's take: the English recording would switch language mid-greeting.
+    if not alternate or not Addon.db.profile.Audio[alternate.option] or not self:IsAvailable()
+        or (soundData.language or Language.BASE) ~= Language.BASE then
         return false
     end
 
     soundData.filePath = format([[Interface\AddOns\%s\%s]], self.ADDON_NAME, alternate.path)
     soundData.length = alternate.length
+    soundData.timings = nil
+    soundData.packText = nil
     -- SoundQueue logs the addon a sound came from, so there is always a module to name even
     -- when no pack held the line.
     soundData.module = soundData.module or

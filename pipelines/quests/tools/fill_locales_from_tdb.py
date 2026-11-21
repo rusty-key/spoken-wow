@@ -10,7 +10,7 @@ carry the same tables keyed by the same Blizzard ids:
   * TDB 12.x  -- retail, the only one with ptBR, and complete for gossip (BroadcastText).
 
 This copies their translations into the vmangos locales_* columns the imports read
-(tts_cli/locale_import.py, pipelines/books/tools/import-locale.mjs), so filling a gap is this
+(tts_cli/locale_import.py, pipelines/readables/tools/import-locale.mjs), so filling a gap is this
 followed by the ordinary `make web-import-locale`. Three rules make that safe:
 
   * ONLY EMPTY CELLS. vmangos's own translation always wins; this never overwrites one.

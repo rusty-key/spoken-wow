@@ -5,6 +5,7 @@ import { Download, Loader2, Scissors, Trash2 } from "lucide-react";
 
 import { useLang } from "@/components/LangProvider";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { withLang } from "@/lib/lang";
@@ -27,7 +28,7 @@ import type { Sample } from "@/lib/voices/samples";
  */
 export type ReferenceView = Pick<
   Reference,
-  "sample" | "startSec" | "endSec" | "transcript" | "clipHash"
+  "sample" | "startSec" | "endSec" | "transcript" | "clipHash" | "pinned"
 >;
 
 type Props = {
@@ -62,7 +63,7 @@ export default function FishReference({
   );
   const [duration, setDuration] = useState<number | null>(null);
   const [transcript, setTranscript] = useState(initial?.transcript ?? "");
-  const [busy, setBusy] = useState<"import" | "cut" | "transcript" | "delete" | null>(null);
+  const [busy, setBusy] = useState<"import" | "cut" | "transcript" | "pin" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // The chosen clip's length, from its metadata, so a window past its end is refused here
@@ -97,7 +98,7 @@ export default function FishReference({
         ? `That clip is only ${duration.toFixed(1)} s long.`
         : null));
 
-  async function send(kind: "cut" | "transcript" | "delete", init: RequestInit) {
+  async function send(kind: "cut" | "transcript" | "pin" | "delete", init: RequestInit) {
     setBusy(kind);
     setError(null);
     try {
@@ -105,7 +106,9 @@ export default function FishReference({
         headers: { "Content-Type": "application/json" },
         ...init,
       });
-      const body = (await response.json()) as { reference?: ReferenceView | null; error?: string };
+      // A failure may be a proxy's page rather than the route's JSON: its status is the message. A
+      // success that does not parse throws, and the panel keeps what it showed.
+      const body = (await (response.ok ? response.json() : response.json().catch(() => ({})))) as { reference?: ReferenceView | null; error?: string };
       if (!response.ok) throw new Error(body.error ?? `failed (${response.status})`);
       const next = body.reference ?? null;
       setReference(next);
@@ -132,7 +135,9 @@ export default function FishReference({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ replace: false }),
       });
-      const body = (await response.json()) as { samples?: Sample[]; error?: string };
+      // A failure may be a proxy's page rather than the route's JSON: its status is the message. A
+      // success that does not parse throws, and the panel keeps what it showed.
+      const body = (await (response.ok ? response.json() : response.json().catch(() => ({})))) as { samples?: Sample[]; error?: string };
       if (!response.ok) throw new Error(body.error ?? `import failed (${response.status})`);
       onSamples(body.samples ?? []);
     } catch (err) {
@@ -143,7 +148,7 @@ export default function FishReference({
   }
 
   return (
-    <section className="border-t px-9 py-3 text-sm">
+    <section className="text-sm">
       <h3 className="mb-1 font-medium">fish.audio reference</h3>
       <p className="text-muted-foreground mb-3 text-xs">
         fish.audio speaks this voice from {MIN_SECONDS}-{MAX_SECONDS} seconds of one clip and a
@@ -287,6 +292,24 @@ export default function FishReference({
               {busy === "delete" ? <Loader2 className="animate-spin" /> : <Trash2 />}
               Remove
             </Button>
+          </div>
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id={`${voice}-reference-pinned`}
+              checked={reference.pinned}
+              disabled={busy !== null}
+              onCheckedChange={(on) =>
+                send("pin", { method: "PATCH", body: JSON.stringify({ pinned: on === true }) })
+              }
+            />
+            <Label htmlFor={`${voice}-reference-pinned`} className="grid gap-0.5 text-xs font-normal">
+              <span className="font-medium">Always speak this voice with fish.audio</span>
+              <span className="text-muted-foreground">
+                Its lines go to fish.audio even for somebody generating with ElevenLabs, on their
+                own fish.audio key and settings. A narrated line goes with it, so the narrator needs
+                a reference too.
+              </span>
+            </Label>
           </div>
         </div>
       )}

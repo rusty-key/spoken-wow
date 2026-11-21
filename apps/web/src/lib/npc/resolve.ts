@@ -21,7 +21,8 @@ import { isGenericCreatureType } from "./creature-types";
 import { voiceFromDisplays } from "./display-voices";
 import { raceForModel } from "./models";
 import { INT32_MAX } from "./npc";
-import { getResolution, NPC_KINDS, upsertResolution, type NpcKind, type NpcResolution } from "./store";
+import { splitByBody } from "./split";
+import { getResolution, NPC_ROW_KINDS, upsertResolution, type NpcResolution, type NpcRowKind } from "./store";
 
 // The three integer columns npc and contribution both ultimately feed from an
 // unauthenticated envelope: an id this large is still "a digit run ending at a space" as far
@@ -32,7 +33,7 @@ import { getResolution, NPC_KINDS, upsertResolution, type NpcKind, type NpcResol
 // this rule exists.
 
 export type Observed = {
-  npcKind: NpcKind | null;
+  npcKind: NpcRowKind | null;
   npcId: number | null;
   npcName: string | null;
   modelFileId: number | null;
@@ -79,8 +80,8 @@ function displayIdsFrom(value: string | undefined): number[] {
 export function observedFrom(meta: Record<string, string>): Observed {
   // `npc` is "<id> <name>" -- the id, then whatever the client called them.
   const npc = meta.npc?.match(/^(\d+)(?:\s+(.*))?$/);
-  const kind = (NPC_KINDS as readonly string[]).includes(meta.kind ?? "")
-    ? (meta.kind as NpcKind)
+  const kind = (NPC_ROW_KINDS as readonly string[]).includes(meta.kind ?? "")
+    ? (meta.kind as NpcRowKind)
     : null;
   // Through the same bound as modelFileId and sex, not a bare Number(): the regex only proves
   // digits, not that they fit in `integer`, and npcId is the one of the three that gets used as
@@ -104,7 +105,11 @@ export function observedFrom(meta: Record<string, string>): Observed {
   };
 }
 
-/** `lang` is the language of the client that observed the NPC, and so of its name. */
+/**
+ * `lang` is the language of the client that observed the NPC, and so of its name. An NPC seen
+ * drawn as a body its voice is not is split by body instead: answered, a client's guess would be
+ * retyped as the sex just seen, and its voice would flip with every report.
+ */
 export async function resolveNpc(observed: Observed, lang: Lang | null): Promise<NpcResolution | null> {
   const { npcKind, npcId } = observed;
   // `npcId === null`, not a truthiness check: id 0 is a real id and must not be mistaken for
@@ -117,6 +122,7 @@ export async function resolveNpc(observed: Observed, lang: Lang | null): Promise
   if (!npcKind || npcId === null) return null;
 
   const existing = await getResolution(npcKind, npcId);
+  if (await splitByBody(observed, existing)) return existing;
   // The store's upsert already ranks provenance and would refuse a lower-ranked write on its
   // own, so this is not what keeps a moderator's answer safe -- it is here so a moderator-owned
   // NPC skips the write entirely, rather than arriving back where it started.
@@ -150,15 +156,15 @@ export async function resolveNpc(observed: Observed, lang: Lang | null): Promise
     });
   }
 
-  // A gameobject is read as one whatever it looks like, as the corpus types its own
+  // A gameobject or an item is read as one whatever it looks like, as the corpus types its own
   // (tts_cli/corpus.py GENERIC_TYPES). Not confirmed: the kind is the envelope's word.
-  if (npcKind === "gameobject") {
+  if (npcKind === "gameobject" || npcKind === "item") {
     return upsertResolution({
       npcKind,
       npcId,
       npcName: lang ? observed.npcName : null,
       nameLang: lang ?? undefined,
-      race: "gameobject",
+      race: npcKind,
       gender: null,
       flavor: null,
       provenance: "client",

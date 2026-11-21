@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { Roster } from "../voices/roster";
-import { DEFAULT_SORT, bucketOf, contributionsHref, nextSort, sortOf, matchesSearch, matchesStage, nextContributionFilters, pageOf, sectionOf } from "./query";
+import { DEFAULT_SORT, bucketOf, waitingReason, contributionsHref, nextSort, sortOf, matchesSearch, matchesStage, nextContributionFilters, pageOf, stagesOf } from "./query";
 
 describe("nextContributionFilters", () => {
-  const current = { status: "new", bucket: "ready", client: "all", source: "quests", stage: "all", sort: DEFAULT_SORT } as const;
+  const current = { status: "new", bucket: "ready", client: "all", source: "quests", stage: [], sort: DEFAULT_SORT } as const;
 
   it("changes the dimension named in `next` and keeps the other", () => {
     expect(nextContributionFilters(current, { bucket: "blocked" })).toEqual({
@@ -12,7 +12,7 @@ describe("nextContributionFilters", () => {
       bucket: "blocked",
       client: "all",
       source: "quests",
-      stage: "all",
+      stage: [],
       sort: DEFAULT_SORT,
     });
   });
@@ -20,8 +20,8 @@ describe("nextContributionFilters", () => {
   it("resets a dimension to its default when `next` names it with no value", () => {
     // FilterChip's reset button calls onChange(undefined) -- the key is present, the value
     // isn't, and that must read as "clear this filter", not "leave it alone".
-    expect(nextContributionFilters({ status: "accepted", bucket: "blocked", client: "forever", source: "books", stage: "all", sort: DEFAULT_SORT }, { bucket: undefined })).toEqual(
-      { status: "accepted", bucket: "ready", client: "forever", source: "books", stage: "all", sort: DEFAULT_SORT },
+    expect(nextContributionFilters({ status: "accepted", bucket: "blocked", client: "forever", source: "readables", stage: [], sort: DEFAULT_SORT }, { bucket: undefined })).toEqual(
+      { status: "accepted", bucket: "ready", client: "forever", source: "readables", stage: [], sort: DEFAULT_SORT },
     );
   });
 
@@ -36,29 +36,41 @@ describe("nextContributionFilters", () => {
 
 describe("contributionsHref", () => {
   it("builds a query string carrying every dimension", () => {
-    expect(contributionsHref({ status: "new", bucket: "ready", client: "era", source: "quests", stage: "all", sort: DEFAULT_SORT }, { status: "rejected" })).toBe(
+    expect(contributionsHref({ status: "new", bucket: "ready", client: "era", source: "quests", stage: [], sort: DEFAULT_SORT }, { status: "rejected" })).toBe(
       "/contributions/quests?status=rejected&client=era",
     );
   });
 
   it("puts the section in the path and the stage in the query only when one is picked", () => {
-    const books = { status: "new", bucket: "ready", client: "all", source: "books", stage: "all", sort: DEFAULT_SORT } as const;
-    expect(contributionsHref(books, {})).toBe("/contributions/books?status=new&client=all");
-    expect(contributionsHref({ ...books, source: "quests" }, { stage: "complete" })).toBe(
-      "/contributions/quests?status=new&client=all&stage=complete",
+    const readables = { status: "new", bucket: "ready", client: "all", source: "readables", stage: [], sort: DEFAULT_SORT } as const;
+    expect(contributionsHref(readables, {})).toBe("/contributions/readables?status=new&client=all");
+    expect(contributionsHref({ ...readables, source: "quests" }, { stage: ["complete", "gossip"] })).toBe(
+      "/contributions/quests?status=new&client=all&stage=complete%2Cgossip",
     );
-    expect(contributionsHref({ ...books, source: "gossip" }, {})).toBe("/contributions/gossip?status=new&client=all");
+  });
+
+  it("keeps a picked build across another filter's change, and drops it when cleared", () => {
+    const filters = { status: "new", bucket: "ready", client: "forever", build: "70790", source: "quests", stage: [], sort: DEFAULT_SORT } as const;
+    expect(contributionsHref(filters, { status: "accepted" })).toBe("/contributions/quests?status=accepted&client=forever&build=70790");
+    expect(contributionsHref(filters, { build: undefined })).toBe("/contributions/quests?status=new&client=forever");
+  });
+
+  it("keeps showing only lines or only corrections across another filter's change, and writes nothing for all", () => {
+    const filters = { status: "new", bucket: "ready", client: "all", source: "quests", stage: [], sort: DEFAULT_SORT, show: "corrections" } as const;
+    expect(contributionsHref(filters, { status: "rejected" })).toBe("/contributions/quests?status=rejected&client=all&show=corrections");
+    expect(contributionsHref(filters, { show: "lines" })).toBe("/contributions/quests?status=new&client=all&show=lines");
+    expect(contributionsHref(filters, { show: "all" })).toBe("/contributions/quests?status=new&client=all");
   });
 
   it("writes the bucket only when it is not the ready rows", () => {
     expect(
-      contributionsHref({ status: "new", bucket: "ready", client: "all", source: "quests", stage: "all", sort: DEFAULT_SORT }, { bucket: "blocked" }),
+      contributionsHref({ status: "new", bucket: "ready", client: "all", source: "quests", stage: [], sort: DEFAULT_SORT }, { bucket: "blocked" }),
     ).toBe("/contributions/quests?status=new&client=all&bucket=blocked");
   });
 });
 
 describe("sort", () => {
-  const filters = { status: "new", bucket: "ready", client: "all", source: "quests", stage: "all", sort: DEFAULT_SORT } as const;
+  const filters = { status: "new", bucket: "ready", client: "all", source: "quests", stage: [], sort: DEFAULT_SORT } as const;
 
   it("starts a newly clicked column in its own direction, and flips the one in force", () => {
     expect(nextSort(DEFAULT_SORT, "filed")).toEqual({ column: "filed", direction: "desc" });
@@ -90,7 +102,7 @@ describe("sort", () => {
 
 describe("paging", () => {
   it("carries a page past the first, and leaves the first page bare", () => {
-    const filters = { status: "new", bucket: "ready", client: "all", source: "quests", stage: "all", sort: DEFAULT_SORT } as const;
+    const filters = { status: "new", bucket: "ready", client: "all", source: "quests", stage: [], sort: DEFAULT_SORT } as const;
     expect(contributionsHref(filters, {}, 3)).toBe("/contributions/quests?status=new&client=all&page=3");
     expect(contributionsHref(filters, {}, 1)).toBe("/contributions/quests?status=new&client=all");
     // A filter change starts again from the first page.
@@ -155,9 +167,52 @@ describe("bucketOf", () => {
     expect(bucketOf({ ...moment, quest: "gossip", locale: "deDE" }, { ...npc, race: null }, roster)).toBe("blocked");
   });
 
-  it("is ready for zones and books, which name no NPC", () => {
-    expect(bucketOf({ ...moment, source: "zones", quest: null }, null, roster)).toBe("ready");
-    expect(bucketOf({ ...moment, source: "books", quest: null, locale: "deDE" }, null, roster)).toBe("ready");
+  it("is ready for places and readables, which name no NPC", () => {
+    expect(bucketOf({ ...moment, source: "places", quest: null }, null, roster)).toBe("ready");
+    expect(bucketOf({ ...moment, source: "readables", quest: null, locale: "deDE" }, null, roster)).toBe("ready");
+  });
+
+  describe("waitingReason", () => {
+    const why = (row: Parameters<typeof waitingReason>[0], speaker: Parameters<typeof waitingReason>[1]) =>
+      waitingReason(row, speaker, roster, "German");
+
+    it("gives none for a row bucketOf calls ready", () => {
+      expect(why({ ...moment, hasSpeaker: true }, null)).toBeNull();
+      expect(why(moment, npc)).toBeNull();
+      expect(why({ ...moment, source: "places", quest: null }, null)).toBeNull();
+    });
+
+    it("names each reason bucketOf blocks a row for, with what an admin does", () => {
+      expect(why(moment, null)).toMatchObject({ kind: "no-npc", fix: "An admin names the NPC." });
+      expect(why(moment, { ...npc, conflict: [{}] })?.kind).toBe("conflict");
+      expect(why(moment, { ...npc, race: null })?.kind).toBe("unresolved");
+      expect(why(moment, { ...npc, race: "murloc" })).toMatchObject({
+        kind: "no-voice",
+        why: "The German voices have none for murloc, male, warrior yet.",
+      });
+      expect(why(moment, { ...npc, flavor: null })?.why).toBe("The German voices have none for tauren, male yet.");
+    });
+
+    it("blocks exactly the rows bucketOf blocks", () => {
+      const speakers: Parameters<typeof waitingReason>[1][] = [
+        null,
+        npc,
+        { ...npc, race: null },
+        { ...npc, conflict: [{}] },
+        { ...npc, race: "murloc" },
+        { ...npc, flavor: null },
+      ];
+      const rows: (typeof moment | (Omit<typeof moment, "quest"> & { quest: "gossip" }))[] = [
+        moment,
+        { ...moment, hasSpeaker: true },
+        { ...moment, quest: "gossip", hasSpeaker: true },
+      ];
+      for (const row of rows) {
+        for (const speaker of speakers) {
+          expect(why(row, speaker) !== null).toBe(bucketOf(row, speaker, roster) === "blocked");
+        }
+      }
+    });
   });
 });
 
@@ -165,20 +220,23 @@ describe("matchesStage", () => {
   const quest = (stage: "accept" | "progress" | "complete" | null) => ({ title: "Stalk With The Earthmother", questId: 76156, stage });
 
   it("lets everything through when no stage is picked", () => {
-    expect(matchesStage(null, "all")).toBe(true);
-    expect(matchesStage("gossip", "all")).toBe(true);
-    expect(matchesStage(quest(null), "all")).toBe(true);
+    expect(matchesStage(null, [])).toBe(true);
+    expect(matchesStage("gossip", [])).toBe(true);
+    expect(matchesStage(quest(null), [])).toBe(true);
   });
 
-  it("matches a quest row on its own stage only", () => {
-    expect(matchesStage(quest("progress"), "progress")).toBe(true);
-    expect(matchesStage(quest("progress"), "complete")).toBe(false);
-    expect(matchesStage(quest(null), "accept")).toBe(false);
+  it("matches a quest row on its own stage, among any picked", () => {
+    expect(matchesStage(quest("progress"), ["progress"])).toBe(true);
+    expect(matchesStage(quest("progress"), ["accept", "progress"])).toBe(true);
+    expect(matchesStage(quest("progress"), ["complete"])).toBe(false);
+    expect(matchesStage(quest(null), ["accept"])).toBe(false);
   });
 
-  it("drops gossip and rows with no quest concept from any narrowed view", () => {
-    expect(matchesStage("gossip", "accept")).toBe(false);
-    expect(matchesStage(null, "complete")).toBe(false);
+  it("matches gossip only when it is picked, and a row with no quest concept never", () => {
+    expect(matchesStage("gossip", ["gossip"])).toBe(true);
+    expect(matchesStage("gossip", ["accept", "gossip"])).toBe(true);
+    expect(matchesStage("gossip", ["accept"])).toBe(false);
+    expect(matchesStage(null, ["gossip"])).toBe(false);
   });
 });
 
@@ -217,7 +275,7 @@ describe("matchesSearch", () => {
 });
 
 describe("contributionsHref search", () => {
-  const filters = { status: "new", bucket: "ready", client: "all", source: "quests", stage: "all", sort: DEFAULT_SORT } as const;
+  const filters = { status: "new", bucket: "ready", client: "all", source: "quests", stage: [], sort: DEFAULT_SORT } as const;
 
   it("writes the query and where it is searched only when set, and keeps them across a filter change", () => {
     expect(contributionsHref(filters, { q: " dughan ", searchIn: "npc" })).toBe(
@@ -229,13 +287,11 @@ describe("contributionsHref search", () => {
   });
 });
 
-describe("sectionOf", () => {
-  const quest = { title: "Stalk With The Earthmother", questId: 76156, stage: "accept" as const };
-
-  it("lists a quests row with no quest under gossip, and every other row under its source", () => {
-    expect(sectionOf({ source: "quests" }, "gossip")).toBe("gossip");
-    expect(sectionOf({ source: "quests" }, quest)).toBe("quests");
-    expect(sectionOf({ source: "zones" }, null)).toBe("zones");
+describe("stagesOf", () => {
+  it("reads a comma-separated list in the dropdown's order, dropping what is not a stage", () => {
+    expect(stagesOf("gossip,accept")).toEqual(["accept", "gossip"]);
+    expect(stagesOf("complete,places")).toEqual(["complete"]);
+    expect(stagesOf(undefined)).toEqual([]);
   });
 });
 

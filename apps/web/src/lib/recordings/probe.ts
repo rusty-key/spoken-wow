@@ -7,7 +7,7 @@
  * it. So the container and codec are read here, and the format a recording is stored as is
  * the one ffprobe found.
  *
- * The duration is measured for the same reason the generated takes' is: the zones and books
+ * The duration is measured for the same reason the generated takes' is: the places and readables
  * lookups ship it, and the addon stops a clip by it.
  */
 import "server-only";

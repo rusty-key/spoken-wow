@@ -3,19 +3,8 @@ setfenv(1, SpokenEnv)
 -- DialogueUI's theme code is private, so this is the one file that knows its saved variables,
 -- window and font object names. Each is checked before use; Available answers false rather
 -- than raising.
---
--- Parsed by the 1.12 client too (addon.xml is shared), so Lua 5.0 syntax throughout; the
--- stub below is all that client runs.
 
 DialogueUITheme = {}
-
-if Version.IsAnyLegacy then
-    function DialogueUITheme:Available() return false end
-    function DialogueUITheme:Problem() return L.OPT_STYLE_DUI_MISSING end
-    function DialogueUITheme:Watch() end
-    function DialogueUITheme:Describe() return "dialogueui: not available on this client" end
-    return
-end
 
 local Theme = DialogueUITheme
 local ART = "Interface/AddOns/DialogueUI/Art/"
@@ -81,23 +70,15 @@ function Theme:ThemeID()
 end
 
 --- Built from the id, not read off DialogueUI's window, so overriding its theme shows the
---- other folder.
-function Theme:TexturePath()
-    return ART .. (self:ThemeID() == 2 and "Theme_Dark/" or "Theme_Brown/")
+--- other folder. `themeID` names a theme's folder whatever the theme in use.
+function Theme:TexturePath(themeID)
+    return ART .. ((themeID or self:ThemeID()) == 2 and "Theme_Dark/" or "Theme_Brown/")
 end
 
 --- The text colours: `palette` 1 or 2 where a look fixes it (a book's paper or stone), otherwise
 --- DialogueUI's theme's.
 function Theme:Colors(palette)
     return PALETTE[palette or self:ThemeID()]
-end
-
---- The face DialogueUI writes its text in, whatever font it is set to.
-function Theme:FontFace()
-    local font = _G.DUIFont_Quest_Paragraph
-    local ok, face = pcall(function() return font:GetFont() end)
-    if ok and type(face) == "string" then return face end
-    return GameFontNormal:GetFont()
 end
 
 local function FontOf(name, size)

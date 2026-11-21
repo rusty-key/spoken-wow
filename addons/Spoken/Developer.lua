@@ -15,10 +15,8 @@ setfenv(1, SpokenEnv)
 --   SwitchLabel(), SwitchTip() the welcome window's switch
 --   Command(rest)             `/spoken log <rest>`
 --   Describe()                one line for `/spoken diagnostics`
---
--- Parsed by the 1.12 client too (addon.xml is shared), so Lua 5.0 syntax throughout.
 
-Developer = { provider = nil, settings = {}, diagnostics = {} }
+Developer = { provider = nil, settings = {}, groups = {}, orders = {}, diagnostics = {} }
 
 function Developer:Register(provider)
     self.provider = provider
@@ -70,10 +68,12 @@ end
 --------------------------------------------------------------------------------
 
 --- build(layout) adds a section and its rows, and may return a function that puts them back to
---- their defaults. Kept here so a feature addon can hand it in whether the module is installed or
---- not, and before or after the module builds its page.
-function Developer:AddSettings(build)
+--- their defaults. With a `group` ("chat" or "testing") it adds rows only, which the page puts
+--- under that group's one title with every module's others. Kept here so a feature addon can hand
+--- it in whether the module is installed or not, and before or after the module builds its page.
+function Developer:AddSettings(build, group, order)
     table.insert(self.settings, build)
+    self.groups[build], self.orders[build] = group, order
     Callbacks:Fire("DEVELOPER_SETTINGS_ADDED", build)
 end
 
@@ -96,17 +96,17 @@ local function Join(a, b, c, d)
     return table.concat(parts, " ")
 end
 
---- What `/spoken diagnostics` prints, as lines rather than in chat: the command itself runs, with
---- `print` caught for the time it takes, so the two never say different things.
+--- What `/spoken diagnostics` prints of Spoken's own, as lines rather than in chat: the same
+--- function runs, with `print` caught for the time it takes, so the two never say different things.
+--- The modules' own come after, each from its AddDiagnostics.
 local function SpokenLines(lines)
-    local command = SlashCmdList and SlashCmdList.SPOKEN
-    if not command then
+    if not Addon.enabled then
         table.insert(lines, "Spoken " .. tostring(AddonVersion) .. ": not enabled yet")
         return
     end
     local saved = rawget(SpokenEnv, "print")
     SpokenEnv.print = function(a, b, c, d) table.insert(lines, Join(a, b, c, d)) end
-    local ok, err = pcall(command, "diagnostics")
+    local ok, err = pcall(Addon.PrintDiagnostics, Addon)
     SpokenEnv.print = saved
     if not ok then table.insert(lines, "diagnostics error: " .. tostring(err)) end
 end
@@ -130,7 +130,7 @@ function Developer:Context()
         table.insert(lines, format("module %s (%s): %s", key, tostring(source.addon),
             Sources:IsTurnedOff(source) and "turned off" or "on"))
     end
-    local queue = SoundQueue.sounds or {}
+    local queue = SoundQueue.sounds
     if table.getn(queue) == 0 then
         table.insert(lines, "queue empty")
     end
