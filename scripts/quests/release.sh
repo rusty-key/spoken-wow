@@ -346,7 +346,7 @@ changelog_for() {
       if (lines[i].startsWith("## ")) { end = i; break; }
     }
     process.stdout.write(lines.slice(start, end).join("\n").trim());
-  ' "$file" "$1" "$2"
+  ' "$file" "$1" "$2" | node "$REPO/scripts/lib/changelog.mjs" unwrap
 }
 
 #-- upload --------------------------------------------------------------------------------
