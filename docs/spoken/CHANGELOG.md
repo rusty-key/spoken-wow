@@ -4,10 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **The Compendium's lists use the professions window's look.** Each category is a header bar with a gold
-  plus or minus, over the professions list's background. The chosen row is lit yellow, the faint lines down
-  open groups are gone, and the list is a little wider with its scroll bar set in from the edge.
-  *([Nucabe](https://github.com/Nucabe))*
+- **The Compendium's lists take the professions window's look,** with gold header bars and a yellow light on
+  the chosen row. *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.11.0 — 2026-11-21
 

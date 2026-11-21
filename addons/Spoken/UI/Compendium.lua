@@ -80,8 +80,8 @@ local LIST_LEFT, LIST_RIGHT = 6, 6
 -- The scroll bar stands BAR_SIDE in from the scroll frame's right, BAR_HEAD down from its top and BAR_FOOT
 -- up from its foot. With the rows' own margins that leaves 8 px, measured in the game, between the
 -- inset's border and the rows, between the border and the bar, and between the rows and the bar.
--- The rows end BAR_ROOM short of the bar, plus LIST_RIGHT.
-local BAR_SIDE, BAR_HEAD, BAR_FOOT, BAR_ROOM = 6, 8, 4, 7
+-- The scroll child ends BAR_ROOM short of the bar, and the rows LIST_RIGHT short of the child's edge.
+local BAR_SIDE, BAR_HEAD, BAR_FOOT, BAR_ROOM = 6, 8, 4, 1
 -- What a banner holds sits this far in from it, one step down the tree; with no banners, nothing
 -- is set in.
 local UNDER_BANNER_IN = 20.4
@@ -906,8 +906,7 @@ local CHECK = "questlog-icon-checkmark-yellow"
 -- One size for every tick in the column down the list's right, on every line.
 local TICK_WIDTH, TICK_HEIGHT = 15, 13
 
--- A banner is the professions window's header bar. HeaderBar is 256x64 with rounded ends BAR_CAP texels
--- wide, drawn in three pieces so the ends are not stretched; HeaderPlus and HeaderMinus are white, tinted
+-- HeaderBar is 256x64 with rounded ends BAR_CAP texels wide. HeaderPlus and HeaderMinus are white, tinted
 -- to the banner's gold.
 local BAR_FILE = [[Interface\AddOns\Spoken\Textures\HeaderBar]]
 local SIGN_FILES = { [true] = [[Interface\AddOns\Spoken\Textures\HeaderMinus]],
@@ -916,7 +915,6 @@ local BAR_WIDTH, BAR_HEIGHT, BAR_CAP = 256, 64, 24
 local BAR_PIECES = { { 0, BAR_CAP }, { BAR_CAP, BAR_WIDTH - BAR_CAP }, { BAR_WIDTH - BAR_CAP, BAR_WIDTH } }
 local SIGN_SIZE = 14
 local SIGN_INK = { 1, 0.82, 0 }
--- The professions list's own background, under the rows.
 local LIST_BACKGROUND = "Professions-background-summarylist"
 
 local ROW_END = 12            -- from a row's right side to its numbers
@@ -1018,8 +1016,8 @@ local function ShowAll(parts, shown)
 	for _, part in ipairs(parts) do part:SetShown(shown and true or false) end
 end
 
--- A row's light. A banner brightens; a plain row, or a banner drawn without the game's art, takes
--- a gold wash, stronger when chosen with a gold edge.
+-- A row's light. A banner brightens; a plain row, or EllesmereUI's flat banner, takes a wash under the
+-- pointer and a yellow one when chosen (in EllesmereUI's look its one wash, stronger, with an accent edge).
 local function Light(row)
 	local style = row.row and row.row.style
 	local over, chosen = row.over and true or false, row.selected and true or false
@@ -1030,11 +1028,16 @@ local function Light(row)
 		row.wash:SetColorTexture(1, 1, 1, 0.08)
 		row.edge:SetColorTexture(EDGE_INK[1], EDGE_INK[2], EDGE_INK[3], EDGE_INK[4])
 	end
-	-- The pointer's light white, the chosen row's yellow; EllesmereUI's look keeps its one light and its edge.
-	row.wash:SetShown(flat and (flatBanners and (over or chosen) or (over and not chosen)))
+	if flatBanners then
+		row.wash:SetShown(flat and (over or chosen))
+		row.chosenWash:Hide()
+		row.edge:SetShown(flat and chosen)
+	else
+		row.wash:SetShown(flat and over and not chosen)
+		row.chosenWash:SetShown(flat and chosen)
+		row.edge:Hide()
+	end
 	row.wash:SetAlpha(chosen and 1 or 0.55)
-	row.chosenWash:SetShown(flat and chosen and not flatBanners)
-	row.edge:SetShown(flat and chosen and flatBanners)
 	if row.glow then
 		ShowAll(row.glow, style == "banner" and row.bannerArt and (over or chosen))
 		for _, part in ipairs(row.glow) do part:SetAlpha(chosen and 0.25 or 0.15) end
@@ -1095,15 +1098,12 @@ function C.NewList(panel, opts)
 
 	local inset = NewInset(panel)
 	-- The game's dark marble under the list, at its own colour.
-	if type(inset.Bg) == "table" and inset.Bg.SetTexture then
+	-- Forever has the professions list's background; Era keeps the marble.
+	if type(inset.Bg) == "table" and inset.Bg.SetTexture
+		and (IS_ERA or not Atlas(inset.Bg, LIST_BACKGROUND)) then
 		inset.Bg:SetTexture([[Interface\FrameGeneral\UI-Background-Marble]], "REPEAT", "REPEAT")
 		if inset.Bg.SetHorizTile then inset.Bg:SetHorizTile(true); inset.Bg:SetVertTile(true) end
 		if inset.Bg.SetVertexColor then inset.Bg:SetVertexColor(1, 1, 1, 1) end
-		-- Forever has the professions list's background; Era keeps the marble.
-		if not IS_ERA and Atlas(inset.Bg, LIST_BACKGROUND) and inset.Bg.SetHorizTile then
-			inset.Bg:SetHorizTile(false)
-			inset.Bg:SetVertTile(false)
-		end
 	end
 	inset:SetPoint("TOPLEFT", panel, "TOPLEFT", left, top - 38)
 	-- Down to the window's foot, level with the page beside it.
@@ -1140,8 +1140,7 @@ function C.NewList(panel, opts)
 	-- The game's minimal scroll bar down the list's right side, as each part draws its pages'.
 	if opts.addScrollBar then
 		list.bar = opts.addScrollBar(scroll, child, inset)
-		local bar = list.bar
-		if type(bar) == "table" and bar.SetBarInsets then bar:SetBarInsets(BAR_SIDE, BAR_HEAD, BAR_FOOT, BAR_ROOM) end
+		list.bar:SetBarInsets(BAR_SIDE, BAR_HEAD, BAR_FOOT, BAR_ROOM)
 	end
 
 	-- The filter menu.
@@ -1284,23 +1283,22 @@ function List:AcquireRow(index)
 	row = CreateFrame("Button", nil, self.child)
 	row.list = self
 
-	-- A row's light: the professions list's own, faint under the pointer and full when chosen, with
-	-- a gold edge on the chosen one. A flat wash where the client has not got it.
+	-- A flat wash where the client has not got the professions list's hover light.
 	row.wash = row:CreateTexture(nil, "BACKGROUND")
 	if not Atlas(row.wash, "Professions_Recipe_Hover", false) then
 		row.wash:SetColorTexture(1, 1, 1, 0.1)
 	end
 	row.wash:Hide()
-	-- The chosen row's light is yellow, as the professions list's is: its own picture where the client has it,
-	-- else the hover light in the list's gold.
+	-- Yellow, as the professions list's chosen row. Era names these atlases without their art, so it gets a flat wash.
 	row.chosenWash = row:CreateTexture(nil, "BACKGROUND")
-	if not Atlas(row.chosenWash, "Professions_Recipe_Active", false) then
-		if Atlas(row.chosenWash, "Professions_Recipe_Hover", false) then
-			row.chosenWash:SetVertexColor(1, 0.82, 0)
-		else
-			row.chosenWash:SetColorTexture(1, 0.82, 0, 0.3)
-		end
+	if not IS_ERA and Atlas(row.chosenWash, "Professions_Recipe_Active", false) then
+		-- The client's own.
+	elseif not IS_ERA and Atlas(row.chosenWash, "Professions_Recipe_Hover", false) then
+		row.chosenWash:SetVertexColor(1, 0.82, 0)
+	else
+		row.chosenWash:SetColorTexture(1, 0.82, 0, 0.3)
 	end
+	row.chosenWash:SetAllPoints(row.wash)
 	row.chosenWash:Hide()
 	row.edge = row:CreateTexture(nil, "ARTWORK")
 	row.edge:SetWidth(Pixels(row, 2))
@@ -1359,28 +1357,37 @@ local function BannerParts(row)
 	row.headLeft = row:CreateTexture(nil, "BACKGROUND")
 	row.headMiddle = row:CreateTexture(nil, "BACKGROUND")
 	row.headRight = row:CreateTexture(nil, "BACKGROUND")
+	row.heads = { row.headLeft, row.headMiddle, row.headRight }
+	row.headLeft:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+	row.headRight:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
+	row.headMiddle:SetPoint("TOPLEFT", row.headLeft, "TOPRIGHT", 0, 0)
+	row.headMiddle:SetPoint("BOTTOMRIGHT", row.headRight, "BOTTOMLEFT", 0, 0)
 	row.glow = {}
 	for i = 1, 3 do
 		local glow = row:CreateTexture(nil, "BORDER")
 		if glow.SetBlendMode then glow:SetBlendMode("ADD") end
+		glow:SetAllPoints(row.heads[i])
 		glow:Hide()
 		row.glow[i] = glow
 	end
-	-- Where the client has not got the bar: a dark band, a gold line along each edge.
+	-- In three pieces, so the rounded ends are not stretched.
+	for i, piece in ipairs(BAR_PIECES) do
+		for _, part in ipairs({ row.heads[i], row.glow[i] }) do
+			part:SetTexture(BAR_FILE)
+			part:SetTexCoord(piece[1] / BAR_WIDTH, piece[2] / BAR_WIDTH, 0, 1)
+		end
+	end
+	-- EllesmereUI's flat box: a fill and a line along each edge, coloured in DrawBanner.
 	row.bannerFill = row:CreateTexture(nil, "BACKGROUND", nil, -1)
-	row.bannerFill:SetColorTexture(0.17, 0.11, 0.06, 0.95)
 	row.bannerFill:SetAllPoints(row)
 	row.bannerTop = row:CreateTexture(nil, "BORDER")
 	row.bannerTop:SetHeight(Pixels(row, 1))
-	row.bannerTop:SetColorTexture(0.79, 0.63, 0.31, 0.8)
 	row.bannerTop:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
 	row.bannerTop:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
 	row.bannerBottom = row:CreateTexture(nil, "BORDER")
 	row.bannerBottom:SetHeight(Pixels(row, 1))
-	row.bannerBottom:SetColorTexture(0.79, 0.63, 0.31, 0.45)
 	row.bannerBottom:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
 	row.bannerBottom:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
-	-- And down each end, for a flat box.
 	row.bannerLeft = row:CreateTexture(nil, "BORDER")
 	row.bannerLeft:SetWidth(Pixels(row, 1))
 	row.bannerLeft:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
@@ -1444,7 +1451,6 @@ local function Toggle(row, item, onlyFound, bar)
 	row.toggle:Show()
 end
 
--- The room above the row for `items[i]`.
 local function GapAbove(items, i)
 	local item, before = items[i], items[i - 1]
 	if not before then return FIRST_GAP end
@@ -1461,36 +1467,27 @@ local function RowHeight(item)
 	return LEAF_ROW
 end
 
+-- The gap above `items[i]` and its height, in whole screen pixels: unrounded, a 28 bar at 33.6 px drew 33 px
+-- tall here and 34 there.
+local function RowSpan(child, items, i)
+	return Pixels(child, GapAbove(items, i), 0), Pixels(child, RowHeight(items[i]), 1)
+end
+
 local function DrawBanner(row, item, onlyFound)
 	BannerParts(row)
 	row.bannerArt = not flatBanners
 	if row.bannerArt then
 		-- The ends keep their shape at any row height: BAR_CAP texels of the bar's BAR_HEIGHT.
-		local cap = Pixels(row, BANNER_ROW, 1) * BAR_CAP / BAR_HEIGHT
-		for i, piece in ipairs(BAR_PIECES) do
-			for _, part in ipairs({ { row.headLeft, row.headMiddle, row.headRight }, row.glow }) do
-				part[i]:SetTexture(BAR_FILE)
-				part[i]:SetTexCoord(piece[1] / BAR_WIDTH, piece[2] / BAR_WIDTH, 0, 1)
-			end
-		end
-		row.headLeft:ClearAllPoints()
-		row.headLeft:SetSize(cap, BANNER_ROW)
-		row.headLeft:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
-		row.headRight:ClearAllPoints()
-		row.headRight:SetSize(cap, BANNER_ROW)
-		row.headRight:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
-		row.headMiddle:ClearAllPoints()
-		row.headMiddle:SetPoint("TOPLEFT", row.headLeft, "TOPRIGHT", 0, 0)
-		row.headMiddle:SetPoint("BOTTOMRIGHT", row.headRight, "BOTTOMLEFT", 0, 0)
-		for i, parts in ipairs({ row.headLeft, row.headMiddle, row.headRight }) do row.glow[i]:SetAllPoints(parts) end
+		local height = Pixels(row, BANNER_ROW, 1)
+		local cap = height * BAR_CAP / BAR_HEIGHT
+		row.headLeft:SetSize(cap, height)
+		row.headRight:SetSize(cap, height)
 	end
-	ShowAll({ row.headLeft, row.headMiddle, row.headRight }, row.bannerArt)
-	ShowAll({ row.bannerFill, row.bannerTop, row.bannerBottom }, false)
-	ShowAll({ row.bannerLeft, row.bannerRight }, flatBanners)
+	ShowAll(row.heads, row.bannerArt)
+	ShowAll({ row.bannerFill, row.bannerTop, row.bannerBottom, row.bannerLeft, row.bannerRight }, flatBanners)
 	if flatBanners then
 		-- A faint box with a faint edge all round, as EllesmereUI's flat plates are.
 		row.bannerFill:SetColorTexture(1, 1, 1, 0.05)
-		ShowAll({ row.bannerFill, row.bannerTop, row.bannerBottom }, true)
 		for _, line in ipairs({ row.bannerTop, row.bannerBottom, row.bannerLeft, row.bannerRight }) do
 			line:SetColorTexture(1, 1, 1, 0.12)
 		end
@@ -1554,10 +1551,14 @@ local function DrawGroup(row, item, indent, onlyFound)
 	row.count:SetShown(not locked and numbers ~= "")
 
 	row.label:SetPoint("LEFT", row, "LEFT", indent + NEST_STEP + 12, TEXT_LIFT)
-	local stop = locked and row.lock or (numbers ~= "" and row.count) or row
 	-- The numbers are lifted already; the padlock and the row's edge are not.
-	row.label:SetPoint("RIGHT", stop, locked and "LEFT"
-		or (numbers ~= "" and "LEFT") or "RIGHT", -8, stop == row.count and TEXT_LIFT - COUNT_LIFT or TEXT_LIFT)
+	if locked then
+		row.label:SetPoint("RIGHT", row.lock, "LEFT", -8, TEXT_LIFT)
+	elseif numbers ~= "" then
+		row.label:SetPoint("RIGHT", row.count, "LEFT", -8, TEXT_LIFT - COUNT_LIFT)
+	else
+		row.label:SetPoint("RIGHT", row, "RIGHT", -8, TEXT_LIFT)
+	end
 	NameInk(row.label, item)
 	row.label:SetText(item.label)
 end
@@ -1607,8 +1608,6 @@ function List:Render()
 	local onlyFound = self.opts.onlyGet and self.opts.onlyGet()
 	local unlock = self.panel.tab and self.panel.tab.unlock
 	local unlocked = unlock and unlock.get and unlock.get()
-	-- Every height and gap in whole screen pixels, as the rows are drawn: at a scale that cuts 28 into 33.6 pixels,
-	-- bars came out 33 pixels tall here and 34 there.
 	local y = Pixels(self.child, LIST_TOP, 0)
 	local underBanner = false
 	for i, item in ipairs(items) do
@@ -1616,9 +1615,7 @@ function List:Render()
 		if item.style == "banner" then underBanner = true end
 		local row = self:AcquireRow(i)
 		row.row = item
-		local gap = GapAbove(items, i)
-		gap = Pixels(self.child, gap, 0)
-		local height = Pixels(self.child, RowHeight(item), 1)
+		local gap, height = RowSpan(self.child, items, i)
 		y = y + gap
 		row:SetHeight(height)
 		row:ClearAllPoints()
@@ -1647,9 +1644,6 @@ function List:Render()
 		row.wash:ClearAllPoints()
 		row.wash:SetPoint("TOPLEFT", row, "TOPLEFT", lit, 0)
 		row.wash:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
-		row.chosenWash:ClearAllPoints()
-		row.chosenWash:SetPoint("TOPLEFT", row, "TOPLEFT", lit, 0)
-		row.chosenWash:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
 		row.edge:ClearAllPoints()
 		row.edge:SetPoint("TOPLEFT", row, "TOPLEFT", lit, 0)
 		row.edge:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", lit, Pixels(row, 2, 0))
@@ -1678,8 +1672,8 @@ end
 function List:ScrollToSelection(items)
 	local y = Pixels(self.child, LIST_TOP, 0)
 	for i, item in ipairs(items) do
-		y = y + Pixels(self.child, (GapAbove(items, i)), 0)
-		local height = Pixels(self.child, RowHeight(item), 1)
+		local gap, height = RowSpan(self.child, items, i)
+		y = y + gap
 		if self.opts.isSelected and self.opts.isSelected(item) then
 			local viewHeight = self.scroll:GetHeight() or 0
 			-- GetVerticalScrollRange is stale until the next layout pass, right after
