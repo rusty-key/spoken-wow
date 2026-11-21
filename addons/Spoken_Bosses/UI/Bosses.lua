@@ -412,7 +412,7 @@ local REPORT = {
 	title = REPORT_LABEL,
 }
 Bosses.ReportAction = REPORT
-Bosses.Name, Bosses.Model, Bosses.Unlocked = Name, Model, Unlocked
+Bosses.Name = Name
 
 --- The font file to write `code` (the Text Language by default) in where a page uses `fontObject`,
 --- or nil where none draws it: a text pack's language may need its own.
