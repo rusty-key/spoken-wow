@@ -63,6 +63,8 @@ for _, child in ipairs(content.children) do
     if child.dropdownInit and child.layoutLabel and child.layoutLabel.text == L.OPT_PANEL_GREETINGS then greetings = child end
 end
 Expect("the rows under it are live", greetings.dropdownDisabled or false, false)
+local originalThrall = boxes[L.OPT_OG_THRALL]
+Expect("Original Thrall Speech is shown to an English client", originalThrall and originalThrall:IsShown(), true)
 switch:SetChecked(false)
 switch:GetScript("OnClick")(switch)
 Expect("clicking it turns the part off for Spoken", Spoken:IsPartOn("gossip"), false)
@@ -73,6 +75,13 @@ Expect("...but not the switch itself", switch.layoutReason, nil)
 switch:SetChecked(true)
 switch:GetScript("OnClick")(switch)
 Expect("turning it on again makes the part read", Spoken:IsPartOn("gossip"), true)
+
+stub.SetLocale("deDE")
+Panel.panel.layout:Refresh()
+Expect("Original Thrall Speech stays shown with an English pack", originalThrall:IsShown(), true)
+stub.SetLocale("enUS")
+Panel.panel.layout:Refresh()
+Expect("Original Thrall Speech returns for an English client", originalThrall:IsShown(), true)
 
 ---------------------------------------------------------------- shared rows on the Quests page
 -- Read Automatically covers the Gossip window too, so the Quests page keeps it live while Gossip
@@ -136,6 +145,13 @@ Expect("...which clears this character's muted NPCs", next(db.char.ignoredGossip
 Expect("the part lists the packs that hold gossip, not Alliance's", table.concat(Spoken:GetSource("gossip").packs(), "|"),
     "Spoken Audio: Gossip")
 Expect("the minimap menu heads its entries with the page's name", Spoken:GetSource("gossip").title, L.OPT_GOSSIP_PAGE_TITLE)
+
+---------------------------------------------------------------- no English voice pack
+local presentModules = VO.DataModules.presentModulesOrdered
+VO.DataModules.presentModulesOrdered = {}
+Panel.panel.layout:Refresh()
+Expect("Original Thrall Speech is hidden without an English pack", originalThrall:IsShown(), false)
+VO.DataModules.presentModulesOrdered = presentModules
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll gossip page tests passed")

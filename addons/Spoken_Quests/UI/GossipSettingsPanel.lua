@@ -66,9 +66,11 @@ function GossipSettingsPanel:Setup()
         refresh,
         function(name) return GOSSIP_LABELS[name] or name end)
     layout:Requires(greetings, AutoplayOn, L.REASON_AUTOPLAY_ON_QUESTS)
-    layout:Checkbox(L.OPT_OG_THRALL, nil,
+    -- The original VoiceOver recording is useful only with an English voice pack.
+    local originalThrall = layout:Checkbox(L.OPT_OG_THRALL, nil,
         function() return audio().OGThrall end,
         function(value) audio().OGThrall = value end)
+    layout:ShowWhen(originalThrall, function() return Language:HasEnglishVoicePack() end)
 
     -- What this character has heard: forgotten, every NPC greets again. It only matters while
     -- a greeting is read once.

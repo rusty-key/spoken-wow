@@ -99,6 +99,8 @@ local GeneralTab =
                     order = 8,
                     width = 2,
                     name = L.OPT_OG_THRALL,
+                    -- The original VoiceOver recording is useful only with an English voice pack.
+                    hidden = function() return not Language:HasEnglishVoicePack() end,
                     get = function(info) return Addon.db.profile.Audio.OGThrall end,
                     set = function(info, value)
                         Addon.db.profile.Audio.OGThrall = value

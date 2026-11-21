@@ -114,6 +114,17 @@ function Language:GetClientLanguage()
     return self.BASE
 end
 
+--- Whether an English Quest or Gossip voice pack is installed. The client's language does not
+--- matter: a player may use English voice packs while playing the game in another language.
+---@return boolean
+function Language:HasEnglishVoicePack()
+    if not DataModules then return false end
+    for _, module in DataModules:GetPresentModules() do
+        if module.Language == self.BASE then return true end
+    end
+    return false
+end
+
 --- Whether a game client runs in this language: a built-in one, which the registry marks `client`.
 ---@param code string|nil
 ---@return boolean
