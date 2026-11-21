@@ -1005,7 +1005,7 @@ local function PartText(id, moment)
     -- On Auto too, a window this client never showed leaves only the English, and the packs in its
     -- language carry the words of lines they have no recording of.
     local language, chosen = VO.Language:GetTextLanguage()
-    local unseen = not chosen and not seen and language ~= VO.Language.BASE
+    local unseen = text and not seen and not chosen and language ~= VO.Language.BASE
     return VO.DataModules:TextPackText(soundData, unseen and language or nil) or soundData.text
 end
 

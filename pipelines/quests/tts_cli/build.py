@@ -577,13 +577,17 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     words = take_text(store_dir)
     texts = {os.path.basename(stem): words[stem]
              for stem in (os.path.splitext(rel)[0] for rel in audio) if stem in words}
-    # Lines with no take yet too, so a quest page reads them in the pack's language, not English.
-    for stem, text in line_text(store_dir).items():
-        if carried(stem):
-            texts.setdefault(os.path.basename(stem), text)
     write_lua_table(os.path.join(generated_dir, "text_table.lua"),
                     module_name, "TextByFileName", texts, only_on=language or "enUS")
     written.append("text_table.lua")
+
+    # The words of the pack's lines with no take yet, so a quest page reads them in the pack's
+    # language, not English. Apart from the take text: they are no voice's, so a text pack's win.
+    lines = {os.path.basename(stem): text for stem, text in line_text(store_dir).items()
+             if carried(stem) and os.path.basename(stem) not in texts}
+    write_lua_table(os.path.join(generated_dir, "line_text_table.lua"),
+                    module_name, "LineTextByFileName", lines, only_on=language or "enUS")
+    written.append("line_text_table.lua")
 
     shutil.copy2(icon_source(icon_language or language), os.path.join(module_dir, ICON_NAME))
 

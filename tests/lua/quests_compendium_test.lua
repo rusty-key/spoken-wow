@@ -1019,11 +1019,11 @@ do
     stub.SetLocale("esMX")
     local packLanguage = testPack.METADATA.Language
     testPack.METADATA.Language = "esMX"
-    testPack.TextByFileName = { ["60-accept"] = "Hola, $N." }
+    testPack.LineTextByFileName = { ["60-accept"] = "Hola, $N." }
     Click("Kobold Candles")
     Expect("a line no pack recorded shows the words its pack in the client's language carries",
         PartOf(L.QUEST_PART_ACCEPT).text, "Hola, " .. UnitName("player") .. ".")
-    testPack.TextByFileName = nil
+    testPack.LineTextByFileName = nil
     Click("Kobold Candles")
     Expect("...and the English where that pack has none", PartOf(L.QUEST_PART_ACCEPT).text ~= nil
         and PartOf(L.QUEST_PART_ACCEPT).text:find("Hola", 1, true) == nil, true)

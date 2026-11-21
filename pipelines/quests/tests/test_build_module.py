@@ -336,11 +336,12 @@ def test_a_language_pack_carries_the_words_of_its_lines_without_a_take(tmp_path)
     build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="esMX",
                  include={"quests/5-accept", "quests/5-complete"})
 
-    with open(tmp_path / "dist" / "Mod" / "generated" / "text_table.lua", encoding="utf-8") as f:
-        lua = f.read()
-    assert '["5-accept"] = "Grabada."' in lua
-    assert '["5-complete"] = "Sin grabar."' in lua
-    assert "Otro paquete" not in lua
+    generated = tmp_path / "dist" / "Mod" / "generated"
+    takes = (generated / "text_table.lua").read_text(encoding="utf-8")
+    lines = (generated / "line_text_table.lua").read_text(encoding="utf-8")
+    assert '["5-accept"] = "Grabada."' in takes and "Sin grabar" not in takes
+    assert '["5-complete"] = "Sin grabar."' in lines
+    assert "Escrita" not in lines and "Otro paquete" not in lines
 
 
 def test_text_survives_lua_quoting(tmp_path):
