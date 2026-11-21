@@ -265,6 +265,8 @@ export interface SharingStatus {
   lastSent?: { at: string; count: number }
   /** A send is running now. */
   sending: boolean
+  /** Whether the most recent completed send submitted its entire batch successfully. */
+  success?: boolean
   /** Why the last attempt failed, in plain words, until one succeeds. */
   error?: string
 }

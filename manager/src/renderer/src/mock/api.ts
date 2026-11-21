@@ -574,10 +574,10 @@ export function createMockApi(): ManagerApi {
         sharingStatus = next
         sharingListeners.forEach((l) => l(next))
       }
-      emit({ ...sharingStatus, sending: true })
+      emit({ ...sharingStatus, sending: true, success: undefined })
       await sleep(900)
-      if (offline) emit({ ...sharingStatus, sending: false, error: 'The site could not be reached (fetch failed).' })
-      else emit({ sending: false, lastSent: { at: new Date().toISOString(), count: 12 } })
+      if (offline) emit({ ...sharingStatus, sending: false, success: false, error: 'The site could not be reached (fetch failed).' })
+      else emit({ sending: false, success: true, lastSent: { at: new Date().toISOString(), count: 12 } })
     },
     async resetShareId() {
       console.info('[mock] resetShareId')

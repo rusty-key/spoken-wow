@@ -250,6 +250,7 @@ export const S_ZH: Dict = {
     neverSent: '尚未发送过。',
     sending: '发送中',
     sendNow: '立即发送',
+    sendDone: '发送成功。',
     resetId: '重置 id',
     resetDone: '此管理器已换用新的 id。已发送的台词不会重复发送。',
     contributor: '贡献者',

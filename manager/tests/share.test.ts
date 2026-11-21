@@ -183,7 +183,7 @@ describe('ManagerService sharing', () => {
     await svc.sendNow()
     expect(site.posted).toHaveLength(1)
     const last = sent.filter((s) => s.channel === CHANNELS.sharingChanged).at(-1)?.payload as SharingStatus
-    expect(last).toMatchObject({ sending: false, lastSent: { count: 1 } })
+    expect(last).toMatchObject({ sending: false, success: true, lastSent: { count: 1 } })
     expect(svc.snapshot().sharingStatus?.lastSent?.count).toBe(1)
   })
 
@@ -219,5 +219,32 @@ describe('ManagerService sharing', () => {
     expect(await running).toBeNull()
     release()
     expect(Object.keys(loadLedger(dataPath).sent)).toEqual([])
+  })
+
+  it('does not report success when cancellation follows a completed chunk', async () => {
+    const { game, dataPath } = await setup()
+    write(contributionsFile(game, 'A'), savedVariables(Array.from({ length: 2001 }, (_, i) => envelope(i))))
+    let calls = 0
+    let abortSecond: (() => void) | undefined
+    const fetchImpl = ((_url: string, init?: RequestInit) => {
+      calls++
+      if (calls === 1) return Promise.resolve(new Response('{}', { status: 200 }))
+      return new Promise<Response>((_resolve, reject) => {
+        abortSecond = () => reject(init?.signal?.reason ?? new Error('cancelled'))
+        init?.signal?.addEventListener('abort', abortSecond)
+      })
+    }) as unknown as typeof fetch
+    const sent: { channel: string; payload: unknown }[] = []
+    const svc = new ManagerService({ dataPath, appVersion: '0.1.0', packsBaseUrl: 'http://127.0.0.1:9/', send: (channel, payload) => sent.push({ channel, payload }), fetchImpl, autoPaths: [game.root] })
+    await svc.init()
+    svc.settings = { ...svc.settings, sharing: 'on' }
+    const running = svc.shareTick(true)
+    while (calls < 2) await new Promise((resolve) => setTimeout(resolve, 1))
+    svc.setSettings({ sharing: 'off' })
+    abortSecond?.()
+    expect(await running).toBeNull()
+    expect(svc.sharingStatus).toMatchObject({ sending: false, success: false, lastSent: { count: 2000 } })
+    const last = sent.filter((s) => s.channel === CHANNELS.sharingChanged).at(-1)?.payload as SharingStatus
+    expect(last).toMatchObject({ sending: false, success: false })
   })
 })

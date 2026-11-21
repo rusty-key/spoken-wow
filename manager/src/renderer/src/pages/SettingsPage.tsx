@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { formatBytes, formatDate, formatTime } from '../format'
 import { api, errorText } from '../api'
 import { GameIcon } from '../components/Brand'
@@ -272,10 +272,22 @@ function SharingSection(): ReactNode {
   const { sharing } = state
   const on = state.settings.sharing === 'on'
   const [reset, setReset] = useState(false)
+  const [sent, setSent] = useState(false)
+  const sendPending = useRef(false)
   const last = sharing.lastSent
+  useEffect(() => {
+    if (!sendPending.current || sharing.sending) return
+    sendPending.current = false
+    setSent(sharing.success === true)
+  }, [sharing.sending, sharing.success])
   const resetId = async (): Promise<void> => {
     await api().resetShareId()
     setReset(true)
+  }
+  const sendNow = (): void => {
+    sendPending.current = true
+    setSent(false)
+    void actions.shareNow()
   }
   return (
     <section aria-labelledby="set-sharing">
@@ -299,13 +311,18 @@ function SharingSection(): ReactNode {
         </p>
       )}
       <div className="setting-actions">
-        <button type="button" className="btn" onClick={() => void actions.shareNow()} disabled={!on || sharing.sending} aria-busy={sharing.sending}>
+        <button type="button" className="btn" onClick={sendNow} disabled={!on || sharing.sending} aria-busy={sharing.sending}>
           {S.settings.sendNow}
         </button>
         <button type="button" className="btn" onClick={() => void resetId()}>
           {S.settings.resetId}
         </button>
       </div>
+      {sent && (
+        <p className="status status-ok-text setting-result" role="status">
+          {S.settings.sendDone}
+        </p>
+      )}
       {reset && (
         <p className="status status-ok-text setting-result" role="status">
           {S.settings.resetDone}
