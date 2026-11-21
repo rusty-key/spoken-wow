@@ -108,7 +108,6 @@ const ru: Dictionary = {
         "Выберите цель или убийство в пункте «Показывать историю босса»",
       ],
       browse: "Смотреть боссов",
-      position: "Позиция в примере боссов",
     },
     examplesLabel: "Примеры: {part}",
     noVoice:
@@ -146,9 +145,7 @@ const ru: Dictionary = {
     title: "Установка Spoken",
     intro: "Выберите один способ. Каждый устанавливает Spoken и пакеты озвучки для вашего языка. После этого перезапустите игру.",
     waysLabel: "Способы установки Spoken",
-    tabManager: "Spoken Manager",
-    tabCurseforge: "CurseForge",
-    tabManual: "Вручную",
+    tabs: { manager: "Spoken Manager", curseforge: "CurseForge", manual: "Вручную" },
     recommended: "Рекомендуем",
     managerText:
       "Скачайте Manager, откройте его и нажмите Install. Он найдёт папку игры, установит Spoken и пакеты озвучки для выбранных языков и обновит их, когда выйдет новая версия. При обновлении скачиваются только изменённые файлы, поэтому новая запись не заставляет скачивать весь пакет заново.",
@@ -179,7 +176,6 @@ const ru: Dictionary = {
     addonNote: "Сам аддон. Обязателен.",
     packName: "Озвучка: {name}",
     githubAll: "GitHub: всё",
-    curseforgePart: "CurseForge: {part}",
     sections: {
       quests: { name: "Задания и разговоры", note: "Диалоги заданий и то, что говорят НИП" },
       places: { name: "Места", note: "Предания каждой зоны" },

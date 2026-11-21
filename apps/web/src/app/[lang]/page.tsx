@@ -2,28 +2,28 @@ import type { Metadata } from "next";
 import Image from "next/image";
 
 import Link from "@/components/LocaleLink";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { BACKSTAGE_HREF } from "@/components/landing/backstage";
 import { body, display } from "@/components/landing/fonts";
 import BrandIcon from "@/components/landing/BrandIcon";
 import Gallery from "@/components/landing/Gallery";
 import HeroLine from "@/components/landing/HeroLine";
 import InstallTabs, { type InstallLanguage, type InstallLink, type InstallRow } from "@/components/landing/InstallTabs";
-import { CURSEFORGE, GITHUB, MANAGER_URL, RELEASES, WAGO, githubReleases } from "@/components/landing/links";
+import { GITHUB, MANAGER_URL, RELEASES, WAGO, githubReleases } from "@/components/landing/links";
 import LoginPanel from "@/components/landing/LoginPanel";
 import ManagerWindow from "@/components/landing/ManagerWindow";
 import NavMenu from "@/components/landing/NavMenu";
 import { NAV } from "@/components/landing/nav";
+import LanguageSelect from "@/components/landing/LanguageSelect";
 import NavSession from "@/components/landing/NavSession";
 import Showcase from "@/components/landing/Showcase";
 import { SiteTextProvider } from "@/components/landing/SiteTextProvider";
 import { DISCORD_INVITE as DISCORD } from "@/lib/discord";
 import { BUILTIN, type BuiltinLang, type Lang } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
-import { packDownloads, packFor, type Section } from "@/lib/packs";
+import { packFor } from "@/lib/packs";
+import { SOURCES } from "@/lib/sections";
 import { fill } from "@/lib/site-text/format";
 import WithLink from "@/lib/site-text/WithLink";
-import { nativeName } from "@/lib/site-text/names";
 import { siteText, type SiteText } from "@/lib/site-text";
 import "@/components/landing/brand.css";
 import "@/components/landing/landing.css";
@@ -55,41 +55,35 @@ const META: Partial<Record<BuiltinLang, string>> = {
   zhTW: "spoken-chinese-traditional",
 };
 
-const SECTIONS: Section[] = ["quests", "places", "readables", "bosses"];
-
 function installRows(lang: Lang, t: SiteText["install"]): InstallRow[] {
   const rows: InstallRow[] = [
     {
       name: t.addon,
       note: t.addonNote,
       links: [
-        { kind: "curseforge", label: "CurseForge", href: `${CURSEFORGE}/spoken-player` },
         { kind: "wago", label: "Wago", href: `${WAGO}/spoken-quests` },
         { kind: "github", label: "GitHub", href: githubReleases("spoken/") },
       ],
     },
   ];
-  for (const section of SECTIONS) {
+  for (const section of SOURCES) {
     const pack = packFor(section, lang);
-    const links: InstallLink[] = (pack ? packDownloads(pack) : []).map((link) => ({
-      kind: link.kind,
-      href: link.href,
-      label: link.part ? fill(t.curseforgePart, { part: link.part }) : link.all ? t.githubAll : link.label,
-    }));
+    // CurseForge has a tab of its own: a row lists what downloads by hand.
+    const links: InstallLink[] = pack
+      ? [{ kind: "github", label: pack.split ? t.githubAll : "GitHub", href: githubReleases(pack.release) }]
+      : [];
     rows.push({ name: fill(t.packName, { name: t.sections[section].name }), note: t.sections[section].note, links });
   }
   return rows;
 }
 
-const NEW_TAB = (text: string) => <span className="sr-only">{text}</span>;
-
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);
   const t = await siteText(lang);
-  const newTab = NEW_TAB(t.newTab);
-  const languages: InstallLanguage[] = BUILTIN.map(({ code }) => ({
+  const newTab = <span className="sr-only">{t.newTab}</span>;
+  const languages: InstallLanguage[] = BUILTIN.map(({ code, native }) => ({
     code,
-    name: nativeName(code),
+    name: native,
     curseforge: META[code] ?? null,
     rows: installRows(code, t.install),
   }));
@@ -114,7 +108,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
               ))}
             </nav>
             <div className="bn-nav-end">
-              <LanguageSwitcher variant="landing" label={t.nav.language} off={t.nav.off} />
+              <LanguageSelect />
               <NavSession />
               <NavMenu />
             </div>

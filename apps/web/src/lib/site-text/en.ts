@@ -109,7 +109,6 @@ export const EN = {
         "Pick target or kill under Show a Boss's Story",
       ],
       browse: "Browse the bosses",
-      position: "Position in the bosses example",
     },
     examplesLabel: "{part} examples",
     noVoice: "Boss stories are voiced by the Spoken Audio: Bosses pack. Without it they show as words in the narrator.",
@@ -147,9 +146,7 @@ export const EN = {
     title: "Install Spoken",
     intro: "Choose one. Each installs Spoken and the voice packs for your language. Restart the game afterwards.",
     waysLabel: "Ways to install Spoken",
-    tabManager: "Spoken Manager",
-    tabCurseforge: "CurseForge",
-    tabManual: "By hand",
+    tabs: { manager: "Spoken Manager", curseforge: "CurseForge", manual: "By hand" },
     recommended: "Recommended",
     managerText:
       "Download the Manager, open it and press Install. It finds your game folder, installs Spoken and the voice packs for the languages you pick, and updates them when a new version comes out. An update downloads only the files that changed, so a new recording does not mean downloading the whole pack again.",
@@ -179,7 +176,6 @@ export const EN = {
     addonNote: "The addon. Required.",
     packName: "{name} voices",
     githubAll: "GitHub: all",
-    curseforgePart: "CurseForge: {part}",
     sections: {
       quests: { name: "Quests and Gossip", note: "Quest dialogue and what NPCs say" },
       places: { name: "Places", note: "Lore of each zone" },
@@ -322,7 +318,5 @@ export const EN = {
   },
 };
 
-type Widen<T> = T extends string ? string : T extends readonly (infer U)[] ? Widen<U>[] : { [K in keyof T]: Widen<T[K]> };
-
-/** The shape of a dictionary: every key of English, with a string wherever English has one. */
-export type SiteText = Widen<typeof EN>;
+/** The shape of a dictionary: every key of English. */
+export type SiteText = typeof EN;

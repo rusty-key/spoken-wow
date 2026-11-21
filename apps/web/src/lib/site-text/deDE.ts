@@ -104,7 +104,6 @@ const de: Dictionary = {
         "Wähle Anvisieren oder Besiegen unter „Geschichte eines Bosses anzeigen“",
       ],
       browse: "Bosse durchsuchen",
-      position: "Position im Bosse-Beispiel",
     },
     examplesLabel: "Beispiele: {part}",
     noVoice:
@@ -142,9 +141,7 @@ const de: Dictionary = {
     title: "Spoken installieren",
     intro: "Wähle einen Weg. Jeder installiert Spoken und die Sprachpakete für deine Sprache. Starte danach das Spiel neu.",
     waysLabel: "Wege, Spoken zu installieren",
-    tabManager: "Spoken Manager",
-    tabCurseforge: "CurseForge",
-    tabManual: "Von Hand",
+    tabs: { manager: "Spoken Manager", curseforge: "CurseForge", manual: "Von Hand" },
     recommended: "Empfohlen",
     managerText:
       "Lade den Manager herunter, öffne ihn und drücke Install. Er findet deinen Spielordner, installiert Spoken und die Sprachpakete der Sprachen, die du wählst, und aktualisiert sie, wenn eine neue Version erscheint. Ein Update lädt nur die geänderten Dateien herunter, eine neue Aufnahme heißt also nicht, dass du das ganze Paket noch einmal herunterladen musst.",
@@ -175,7 +172,6 @@ const de: Dictionary = {
     addonNote: "Das AddOn. Erforderlich.",
     packName: "Stimmen: {name}",
     githubAll: "GitHub: alle",
-    curseforgePart: "CurseForge: {part}",
     sections: {
       quests: { name: "Quests und Gespräche", note: "Quest-Dialoge und was NPCs sagen" },
       places: { name: "Orte", note: "Geschichten der Zonen" },

@@ -104,7 +104,6 @@ const pt: Dictionary = {
         "Escolha entre selecioná-lo como alvo ou derrotá-lo em “Mostrar a história de um chefe”",
       ],
       browse: "Ver os chefes",
-      position: "Posição no exemplo de chefes",
     },
     examplesLabel: "Exemplos: {part}",
     noVoice: "As histórias dos chefes têm voz no pacote Spoken Audio: Bosses. Sem ele, aparecem como palavras no narrador.",
@@ -141,9 +140,7 @@ const pt: Dictionary = {
     title: "Instalar o Spoken",
     intro: "Escolha uma opção. Todas instalam o Spoken e os pacotes de voz do seu idioma. Reinicie o jogo depois.",
     waysLabel: "Formas de instalar o Spoken",
-    tabManager: "Spoken Manager",
-    tabCurseforge: "CurseForge",
-    tabManual: "Manualmente",
+    tabs: { manager: "Spoken Manager", curseforge: "CurseForge", manual: "Manualmente" },
     recommended: "Recomendado",
     managerText:
       "Baixe o Manager, abra e clique em Install. Ele encontra a pasta do jogo, instala o Spoken e os pacotes de voz dos idiomas que você escolher e os atualiza quando sai uma versão nova. Uma atualização baixa só os arquivos que mudaram, então uma gravação nova não obriga a baixar o pacote inteiro de novo.",
@@ -173,7 +170,6 @@ const pt: Dictionary = {
     addonNote: "O addon. Obrigatório.",
     packName: "Vozes: {name}",
     githubAll: "GitHub: tudo",
-    curseforgePart: "CurseForge: {part}",
     sections: {
       quests: { name: "Missões e conversas", note: "Diálogo das missões e o que os PNJs dizem" },
       places: { name: "Lugares", note: "A história de cada zona" },
