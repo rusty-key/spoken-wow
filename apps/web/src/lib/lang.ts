@@ -2,19 +2,21 @@
  * Which language a page, a query or a take is in.
  *
  * CLIENT-SAFE: the header's switcher and every URL builder need the list as a value, and
- * the layout hands it to the browser. The thirteen built-ins are code; any other language is a
+ * the layout hands it to the browser. The ten built-ins are code; any other language is a
  * row of the `language` table, registered here at boot and on every change (languages/catalogue.ts).
  * The URL rewrites do not use it: they match a build-time list of page sections, and the layout
  * validates the prefix. Whether a language is switched ON is a different question with a different
  * answer at runtime, and is asked on the server.
  *
  * THE SAME LIST AS pipelines/lib/locales.mjs, restated here as a literal so the type of a
- * built-in code is the thirteen codes rather than `string`. lang.test.ts fails if the two drift, the way
+ * built-in code is the ten codes rather than `string`. lang.test.ts fails if the two drift, the way
  * pipelines/places/tools/validate.mjs guards the addon's copy.
  *
  * It was here before as lib/places/lang.ts, and went when zones lost its language axis in
  * 4939d3f because nothing had been translated. It comes back for all three sections at once.
  */
+import { registerPlayerWords } from "../../../../pipelines/lib/player-words.mjs";
+
 export type LanguageInfo = {
   code: string;
   name: string;
@@ -23,23 +25,28 @@ export type LanguageInfo = {
   /** The code the speech provider takes as language_code. */
   provider: string;
   client: boolean;
+  /** What its row says $N, $C and $R are spoken as. Absent on a built-in, whose words are code. */
+  playerWords?: PlayerWords | null;
+  /** UTF-8 bytes per character at worst, for fish.audio's list price; null for the script's default. */
+  bytesPerCharacter?: number | null;
 };
 
-/** The thirteen languages the site ships with. Never overwritten or removed by registration. */
+/** One reader's words: `name` for $N and $C, `race` for $R. */
+export type PlayerForms = { name: string; race: string; nameGenitive?: string; classPlural?: string };
+export type PlayerWords = { m: PlayerForms; f: PlayerForms };
+
+/** The ten languages the site ships with: those a game client runs in. Never overwritten or removed by registration. */
 export const BUILTIN = [
   { code: "enUS", name: "English", native: "English", bcp47: "en-US", provider: "en", client: true },
   { code: "deDE", name: "German", native: "Deutsch", bcp47: "de-DE", provider: "de", client: true },
   { code: "esES", name: "Spanish (EU)", native: "Español (EU)", bcp47: "es-ES", provider: "es", client: true },
   { code: "esMX", name: "Spanish (AL)", native: "Español (AL)", bcp47: "es-MX", provider: "es", client: true },
   { code: "frFR", name: "French", native: "Français", bcp47: "fr-FR", provider: "fr", client: true },
-  { code: "itIT", name: "Italian", native: "Italiano", bcp47: "it-IT", provider: "it", client: false },
-  { code: "plPL", name: "Polish", native: "Polski", bcp47: "pl-PL", provider: "pl", client: false },
   { code: "ptBR", name: "Portuguese", native: "Português", bcp47: "pt-BR", provider: "pt", client: true },
   { code: "ruRU", name: "Russian", native: "Русский", bcp47: "ru-RU", provider: "ru", client: true },
   { code: "koKR", name: "Korean", native: "한국어", bcp47: "ko-KR", provider: "ko", client: true },
   { code: "zhCN", name: "Chinese (S)", native: "简体中文", bcp47: "zh-CN", provider: "zh", client: true },
   { code: "zhTW", name: "Chinese (T)", native: "繁體中文", bcp47: "zh-TW", provider: "zh", client: true },
-  { code: "viVN", name: "Vietnamese", native: "Tiếng Việt", bcp47: "vi-VN", provider: "vi", client: false },
 ] as const satisfies readonly LanguageInfo[];
 
 /** What a language code looks like: two lowercase letters, two uppercase (enUS). A regex source, for the redirects and the validators. */
@@ -71,6 +78,7 @@ const registry: Registry = ((globalThis as RegistryHolder)[registryKey] ??= { ex
 /** Replaces the languages beyond the built-in ones. A built-in's code in the list is ignored. */
 export function registerLanguages(list: readonly LanguageInfo[]): void {
   registry.extras = new Map(list.filter((info) => !builtinByCode.has(info.code)).map((info) => [info.code, info]));
+  registerPlayerWords([...registry.extras.values()].map((info) => [info.code, info.playerWords ?? null]));
   registry.langs = undefined;
   registry.extrasList = undefined;
 }
@@ -100,8 +108,8 @@ export function isLang(value: unknown): value is Lang {
 }
 
 /**
- * Whether a game client runs in this language. Italian and Vietnamese are translated by a
- * community and chosen by a player in the addons; no client ever reports it, so nothing that comes from a
+ * Whether a game client runs in this language. One no client runs in (a team's) is
+ * chosen by a player in the addons; no client ever reports it, so nothing that comes from a
  * client -- a contribution above all -- is in it. See `client` in pipelines/lib/locales.mjs.
  */
 export function isClientLang(lang: Lang): boolean {
@@ -113,7 +121,7 @@ export function isClientLang(lang: Lang): boolean {
  *
  * enGB is the EU English client: the same text and the same English packs as enUS, so a
  * contribution from it is an English one. Anything else must already be one of ours, and one a
- * client runs in: an envelope claiming Italian was not written by the game.
+ * client runs in: an envelope claiming another language was not written by the game.
  */
 export function clientLang(locale: string): Lang | null {
   if (locale === "enGB") return BASE_LANG;

@@ -6,7 +6,7 @@
  * error neither pnpm test nor pnpm typecheck reports.
  */
 import { ALL_TEAMS, queryIn } from "@/lib/db";
-import type { BuiltinLang, Lang } from "@/lib/lang";
+import { type BuiltinLang, type Lang, languageInfo } from "@/lib/lang";
 import { readAs } from "@/lib/teams/store";
 import { fishPrice } from "@/lib/voices/fish";
 
@@ -57,6 +57,7 @@ export async function observedRate(modelId: string): Promise<Rate> {
  * character; accented Latin a little over; Cyrillic two for letters and one for spaces and
  * punctuation; Hangul and Han three. Each figure is the script's letter width, so the
  * estimate is an upper bound until real takes calibrate it, which is the direction to err.
+ * A team's language carries its own in its row (`bytesPerCharacter`), else reads as accented Latin.
  */
 const BYTES_PER_CHARACTER: Partial<Record<BuiltinLang, number>> = {
   enUS: 1,
@@ -64,9 +65,6 @@ const BYTES_PER_CHARACTER: Partial<Record<BuiltinLang, number>> = {
   koKR: 3,
   zhCN: 3,
   zhTW: 3,
-  // Not a letter width: Vietnamese mixes ASCII letters with two- and three-byte ones, and
-  // the Forever translation's letters average 1.41 bytes.
-  viVN: 1.5,
 };
 const ACCENTED_LATIN = 1.1;
 
@@ -107,6 +105,9 @@ export async function observedFishRate(modelId: string, lang: Lang): Promise<Rat
   if (perByte === null) {
     return { rate: 0, unit: "usd", unknown: true, samples: 0, modelId };
   }
-  const width = (BYTES_PER_CHARACTER as Partial<Record<string, number>>)[lang] ?? ACCENTED_LATIN;
+  const width =
+    (BYTES_PER_CHARACTER as Partial<Record<string, number>>)[lang] ??
+    languageInfo(lang)?.bytesPerCharacter ??
+    ACCENTED_LATIN;
   return { rate: (perByte / 1_000_000) * width, unit: "usd", samples: 0, modelId };
 }

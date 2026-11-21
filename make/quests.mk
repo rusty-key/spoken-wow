@@ -59,7 +59,7 @@ endef
         package-meta icon \
         downloads-status \
         factions followup-lines compendium-text compendium release release-audio release-audio-dry release-wago release-curse \
-        release-dry import-corpus import-locale import-npc-bodies fill-locales import-questit import-forever-csv export-corpus export-ignores export-locale-text export-giver-names export-gossip-text export-chatter-lines \
+        release-dry import-corpus import-locale import-npc-bodies fill-locales export-corpus export-ignores export-locale-text export-giver-names export-gossip-text export-chatter-lines \
         sync check-synced full-release upload upload-dry
 
 help: ## Show this help
@@ -189,12 +189,12 @@ icon: ## Rebuild the addons' icon.tga and the minimap BLP from pipelines/quests/
 package: ## Zip the quests addon into dist/
 	@./scripts/quests/package.sh
 
-# Languages no client runs in (pipelines/lib/locales.mjs, `client: false`). Their packs carry
-# no gossip locale text: the addon matches gossip by what the client shows, which is never in
-# them. Recursive, so only a target that reads it pays for the node start.
-NON_CLIENT_LOCALES = $(shell node --input-type=module -e 'const { LOCALES } = await import("./pipelines/lib/locales.mjs"); console.log(LOCALES.filter((l) => l.client === false).map((l) => l.code).join(" "))')
+# The languages a client runs in (pipelines/lib/locales.mjs). Only their packs carry gossip
+# locale text: the addon matches gossip by what the client shows, which a team's language is never
+# in. Recursive, so only a target that reads it pays for the node start.
+CLIENT_LOCALES = $(shell node --input-type=module -e 'const { CODES } = await import("./pipelines/lib/locales.mjs"); console.log(CODES.join(" "))')
 
-package-audio: check-synced export-corpus export-ignores $(if $(filter-out enUS $(NON_CLIENT_LOCALES),$(LOCALE)),export-locale-text) sounds ## Transcode, build and zip the four split packs, and bundle them into one zip for GitHub, into dist/ (VERSION=1.4.0)
+package-audio: check-synced export-corpus export-ignores $(if $(filter-out enUS,$(filter $(CLIENT_LOCALES),$(LOCALE))),export-locale-text) sounds ## Transcode, build and zip the four split packs, and bundle them into one zip for GitHub, into dist/ (VERSION=1.4.0)
 	@VERSION=$(VERSION) ENCODE=$(if $(ENCODE),$(ENCODE),ogg-q0-44k) MODULE=SpokenQuestsAudio \
 	  LANGUAGE="$(or $(LOCALE),enUS)" JOBS=$(JOBS) ./scripts/quests/package-audio.sh
 
@@ -398,22 +398,6 @@ fill-locales: ## Fill vmangos's empty *_locN columns from TrinityCore (TDB335= T
 	@cd $(QUESTS_DIR) && $(abspath $(PYTHON)) tools/fill_locales_from_tdb.py \
 	  --tdb335 "$(abspath $(TDB335))" --tdb-world "$(abspath $(TDB_WORLD))" \
 	  --tdb-hotfixes "$(abspath $(TDB_HOTFIXES))" $(ARGS)
-
-# Italian, which no client runs in, from the QuestIT community's addon: quest text, quest
-# titles and the few book pages it has, as 'community' rows. Run again on each of their
-# releases; an edit made on the site is kept. ARGS=--dry-run counts instead.
-import-questit: ## Import a QuestIT release into itIT (QUESTIT=~/Downloads/QuestIT)
-	@test -n "$(QUESTIT)" || { echo "import-questit: set QUESTIT to a QuestIT release folder"; exit 2; }
-	@cd $(QUESTS_DIR) && $(abspath $(PYTHON)) tools/import_questit.py "$(abspath $(patsubst ~/%,$(HOME)/%,$(QUESTIT)))" $(ARGS)
-
-# Vietnamese, which no client runs in either, from Forever's mission export: quest text and
-# titles, as 'community' rows. Run again on each new export; an edit made on the site is
-# kept. ARGS=--dry-run counts instead. The path is resolved in the shell, not with abspath:
-# an export saved by a browser has spaces in its name, and make splits words on them.
-import-forever-csv: ## Import a Forever mission export into its language (CSV=~/Downloads/forever-mission-viVN-….csv)
-	@test -n "$(CSV)" || { echo "import-forever-csv: set CSV to a forever-mission-<lang>-<stamp>.csv export"; exit 2; }
-	@csv='$(CSV)'; case "$$csv" in "~/"*) csv="$$HOME/$${csv#\~/}";; /*) ;; *) csv="$(CURDIR)/$$csv";; esac; \
-	  cd $(QUESTS_DIR) && $(abspath $(PYTHON)) tools/import_forever_csv.py "$$csv" $(ARGS)
 
 export-corpus: check-synced ## quest_line -> corpus/corpus.json.gz (ARGS=--check to compare instead)
 	@$(QUESTS_CLI) export-corpus $(ARGS)

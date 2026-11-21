@@ -24,6 +24,7 @@ import { isClientLocale } from "../../../lib/locales.mjs";
 import { releaseTeamSql } from "../../../lib/release-team.mjs";
 import { packTimes } from "../../../lib/word-times.mjs";
 import { canBeHad, compareIds, indexLua, luaId, pageIndex, quote } from "./lua.mjs";
+import { PLAYER_WORDS_SQL, registerPlayerWordRows } from "../../../lib/player-words.mjs";
 import { shownPage } from "./text.mjs";
 
 const ROOT = new URL("../../../../", import.meta.url).pathname;
@@ -161,6 +162,9 @@ export async function buildLookup({ lang = LANG, out = lookupPath(lang) } = {}) 
 
   const pool = new pg.Pool({ connectionString: url });
   try {
+    // A team's language speaks its tokens in its row's words, as the site spoke the take's text.
+    const words = await pool.query({ text: PLAYER_WORDS_SQL, rowMode: "array" });
+    registerPlayerWordRows(words.rows);
     // Joined to the corpus rather than trusting the take's lineId: a take for a page no
     // longer in the corpus has nothing to narrate, and an entry for it would be a row the
     // addon can never reach. One take per page, the newest, whatever else is flagged live. A
@@ -190,7 +194,7 @@ export async function buildLookup({ lang = LANG, out = lookupPath(lang) } = {}) 
       })),
     );
 
-    // A language no client runs in (Italian) has no index: no client shows its words, so a page
+    // A language no client runs in has no index: no client shows its words, so a page
     // is always found by the client's own index and only played in this one.
     let entries = null;
     if (lang === LANG || isClientLocale(lang)) {

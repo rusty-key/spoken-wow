@@ -151,7 +151,7 @@ function SpokenPlaces:SetupOptions()
 	layout:OnRefresh(function() silent:SetText(Spoken:SilentNote("places") or "") end)
 	layout:ShowWhen(silent, function() return Spoken:SilentNote("places") ~= nil end)
 	-- The packs to get are the voice language's; any pack installed is listed too. Not the
-	-- fallback's to get, unless the voice language has no pack of its own (itIT).
+	-- fallback's to get, unless the voice language has no pack of its own.
 	local function Installed(addon)
 		for _, pack in ipairs(SpokenPlaces:GetAudioPacks()) do
 			if pack.addon == addon then return true end

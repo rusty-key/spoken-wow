@@ -19,6 +19,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   game client runs in, such as Italian. The captions then show what that pack's voice says. Before,
   such a language appeared only with a text pack, so an Italian voice came with English words.
   *([rusty-key](https://github.com/rusty-key))*
+- **Italian and Vietnamese voices are now made by their own teams.** Spoken's settings no longer
+  link Italian packs on CurseForge or GitHub, and the Compendium names dungeons in the game's own
+  languages only; an Italian team's text pack can name them in Italian. Installed Italian and
+  Vietnamese packs keep working. *([rusty-key](https://github.com/rusty-key))*
 - **When Stop When Window Closes is enabled, unaccepted quest offers and unturned-in quest pages stop
   when their dialog closes.** Accepted offers and turned-in quest pages continue playing. Gossip
   audio is unaffected and continues after its window closes; with the option off, quest behavior

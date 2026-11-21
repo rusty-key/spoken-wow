@@ -3,8 +3,7 @@
 // Run on its own, this brings the boss tables (boss_instance, boss and the 'boss' and
 // 'instance' names of entity_name) into step with the client: for each instance map in
 // dungeons.json, its bosses in Forever's order, each with its name in every language, from
-// Forever's DungeonEncounter table (retail's where wago has none of Forever's strings in a
-// language). A boss the client lists once for each difficulty (Season of Discovery's raid-sized
+// Forever's DungeonEncounter table. A boss the client lists once for each difficulty (Season of Discovery's raid-sized
 // Blackfathom Deeps and Gnomeregan, Sunken Temple's phases) is one boss here. A boss is matched
 // by its encounter id, so one the game renames keeps its key and its stories; one the client
 // drops, or one in UNCONFIRMED, is retired. Stories are not in the client: they are data of the
@@ -17,7 +16,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 import { LOCALES, loadDungeons, mapNames as instanceNames, quote } from "./dungeons.mjs";
-import { FOREVER_BUILD, RETAIL_BUILD, wagoTable } from "./wago.mjs";
+import { FOREVER_BUILD, wagoTable } from "./wago.mjs";
 
 const EXPORT = fileURLToPath(new URL("../../addons/Spoken_Bosses/Data/Bosses.lua", import.meta.url));
 const RENAMED = fileURLToPath(new URL("./boss-names.json", import.meta.url));
@@ -147,20 +146,6 @@ export function renameAsCreatures(maps, names, renamed) {
   }
 }
 
-/**
- * Forever's DungeonEncounter rows `english` named in a language from retail's rows: by the encounter's
- * id, else, for an encounter only Forever has, by its English name in retail's `retailEnglish`.
- * Returns [{ ID, Name_lang }], one for each of `english` that retail names.
- */
-export function retailRows(english, retailEnglish, retailLocale) {
-  const byId = new Map(retailLocale.map((row) => [row.ID, row.Name_lang]));
-  const byName = new Map();
-  for (const row of retailEnglish) if (byId.has(row.ID) && !byName.has(row.Name_lang)) byName.set(row.Name_lang, byId.get(row.ID));
-  return english
-    .map((row) => ({ ID: row.ID, Name_lang: byId.get(row.ID) ?? byName.get(row.Name_lang) }))
-    .filter((row) => row.Name_lang);
-}
-
 /** The Lua file: `maps` is { map: [{ id, key, name }] }, `names` { locale: { id: name } }. */
 export function render(maps, names) {
   const blocks = Object.keys(maps).map(Number).sort((a, b) => a - b).map((map) => {
@@ -181,7 +166,7 @@ export function render(maps, names) {
 -- the client's encounter, \`ids\` every encounter the client has for it, one for each difficulty
 -- (the ids ENCOUNTER_START gives), \`key\` the boss's English name lowercased without punctuation (how its
 -- story is filed), then its name, and in every other language where it differs (Forever
--- ${FOREVER_BUILD}, else retail ${RETAIL_BUILD}, wago.tools). Regenerate with:
+-- ${FOREVER_BUILD}, wago.tools). Regenerate with:
 --   make bosses-export
 --
 -- A global rather than a private namespace: a data file cannot reach into the addon's environment.
@@ -232,19 +217,12 @@ async function sync(store, { bossChanges, nameChanges, reconcileBosses }, checkO
   for (const [map, rows] of byMap) maps[map] = bossesOf(rows).filter((boss) => !UNCONFIRMED[map]?.includes(boss.key));
 
   const wanted = new Set(Object.values(maps).flat().map((boss) => boss.id));
-  const englishOf = new Map(english.map((row) => [Number(row.ID), row.Name_lang]));
-  let retailEnglish;
   const names = {};
   for (const locale of LOCALES) {
     names[locale] = {};
-    let rows = await wagoTable("DungeonEncounter", { build: FOREVER_BUILD, locale });
-    // An empty table is a failed fetch, not English: stop rather than write retail's names.
+    const rows = await wagoTable("DungeonEncounter", { build: FOREVER_BUILD, locale });
+    // An empty table is a failed fetch: stop rather than write a language with no names.
     if (!rows.length) throw new Error(`wago served no ${locale} DungeonEncounter rows for ${FOREVER_BUILD}`);
-    // A build wago has no strings of for the locale serves English (Forever's itIT): retail's then.
-    if (rows.every((row) => row.Name_lang === englishOf.get(Number(row.ID)))) {
-      retailEnglish ??= await wagoTable("DungeonEncounter", { build: RETAIL_BUILD, locale: "enUS" });
-      rows = retailRows(english, retailEnglish, await wagoTable("DungeonEncounter", { build: RETAIL_BUILD, locale }));
-    }
     for (const row of rows) {
       const id = Number(row.ID);
       if (wanted.has(id) && row.Name_lang) names[locale][id] = row.Name_lang;

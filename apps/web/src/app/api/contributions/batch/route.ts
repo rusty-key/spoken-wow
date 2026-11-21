@@ -132,7 +132,7 @@ export async function POST(request: Request) {
       continue;
     }
     known++;
-    const hit = installId ? hitFrom(submission, state.lineId) : null;
+    const hit = installId ? await hitFrom(submission, state.lineId) : null;
     if (hit) hits.push(hit);
   }
   await createContributions(unknown, identity);

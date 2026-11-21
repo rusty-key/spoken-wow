@@ -44,7 +44,6 @@ const META: Partial<Record<BuiltinLang, string>> = {
   esES: "spoken-spanish-eu",
   esMX: "spoken-spanish-al",
   frFR: "spoken-french",
-  itIT: "spoken-italian",
   ptBR: "spoken-portuguese",
   ruRU: "spoken-russian",
   koKR: "spoken-korean",
@@ -181,7 +180,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                 <h3>Languages</h3>
                 <p>
                   English, German, Spanish (Spain and Latin America), French, Portuguese, Russian, Korean
-                  and both Chinese scripts. Italian is made by the community.
+                  and both Chinese scripts. Teams on this site voice other languages themselves.
                 </p>
               </div>
               <div>
@@ -313,8 +312,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                 </ul>
                 <p>
                   Menus and settings follow the game&apos;s text language. The language you hear is a separate
-                  choice, Voice Language, and plays once its voice pack is installed. Italian is made by the
-                  community.
+                  choice, Voice Language, and plays once its voice pack is installed.
                 </p>
               </div>
 

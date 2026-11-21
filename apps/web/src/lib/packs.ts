@@ -106,17 +106,6 @@ export const PACKS: readonly Pack[] = [
   },
   {
     section: "quests",
-    lang: "itIT",
-    name: "Spoken Quests Audio: Italian",
-    curseforge: null,
-    release: "quests-audio-itIT",
-    split: [
-      { label: "Quests", slug: "spoken-italian-audio-quests-shared", folder: "SpokenQuestsAudioShared_itIT", name: "Spoken Italian Audio: Quests - Shared" },
-      { label: "Gossip", slug: "spoken-italian-audio-gossip", folder: "SpokenQuestsAudioGossip_itIT", name: "Spoken Italian Audio: Gossip" },
-    ],
-  },
-  {
-    section: "quests",
     lang: "ptBR",
     name: "Spoken Quests Audio: Portuguese",
     curseforge: null,
@@ -241,13 +230,6 @@ export const PACKS: readonly Pack[] = [
     curseforge: "spoken-chinese-traditional-audio-places",
     release: "places-audio-zhTW",
   },
-  {
-    section: "places",
-    lang: "itIT",
-    name: "Spoken Italian Audio: Places",
-    curseforge: null,
-    release: "places-audio-itIT",
-  },
 
   {
     section: "readables",
@@ -319,13 +301,6 @@ export const PACKS: readonly Pack[] = [
     curseforge: "spoken-chinese-traditional-audio-readables",
     release: "readables-audio-zhTW",
   },
-  {
-    section: "readables",
-    lang: "itIT",
-    name: "Spoken Italian Audio: Readables",
-    curseforge: null,
-    release: "readables-audio-itIT",
-  },
 
   {
     section: "bosses",
@@ -343,7 +318,6 @@ export const PACKS: readonly Pack[] = [
   { section: "bosses", lang: "koKR", name: "Spoken Korean Audio: Bosses", curseforge: "spoken-korean-audio-bosses", release: "bosses-audio-koKR" },
   { section: "bosses", lang: "zhCN", name: "Spoken Chinese (Simplified) Audio: Bosses", curseforge: "spoken-chinese-simplified-audio-bosses", release: "bosses-audio-zhCN" },
   { section: "bosses", lang: "zhTW", name: "Spoken Chinese (Traditional) Audio: Bosses", curseforge: "spoken-chinese-traditional-audio-bosses", release: "bosses-audio-zhTW" },
-  { section: "bosses", lang: "itIT", name: "Spoken Italian Audio: Bosses", curseforge: null, release: "bosses-audio-itIT" },
 ];
 
 /** The pack for a section in a language, or undefined where none has been built. */

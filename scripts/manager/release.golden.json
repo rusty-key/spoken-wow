@@ -53,19 +53,6 @@
   },
   {
     "section": "bosses",
-    "lang": "itIT",
-    "folders": [
-      {
-        "folder": "SpokenBossesAudio_itIT",
-        "section": "bosses",
-        "lang": "itIT"
-      }
-    ],
-    "version": "0.0.1",
-    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Italian Audio: Bosses\n## Notes: Narrated boss stories for Spoken Bosses.|n|nKeep it enabled: it loads with the game, and Spoken Bosses plays from it.\n## Version: 0.0.1\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenBossesAudio_itIT\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Bosses\n## X-License: Audio generated with ElevenLabs from boss lore text.\n## X-Credits: Boss lore sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. Data/Sounds.lua reads these back at load time; the tree in the\n# repository is the 128kbps master, so it describes itself as the high tier.\n## X-SpokenBosses-Quality: high\n## X-SpokenBosses-Bitrate: 128\n\n# The language this pack narrates, read back the same way.\n## X-SpokenBosses-Language: itIT\n\n# Defines the SpokenBossesAudioPacks registry entry that Spoken Bosses reads. No dependency is\n# declared in either direction: Spoken Bosses shows text only when no pack is present.\nData/Sounds.lua\n"
-  },
-  {
-    "section": "bosses",
     "lang": "koKR",
     "folders": [
       {
@@ -193,19 +180,6 @@
     ],
     "version": "2.0.0",
     "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r French Audio: Places\n## Notes: Narrated place lore for Spoken Places.|n|nKeep it enabled: it loads with the game, and Spoken Places plays from it.|n|nBeta: a proof-of-concept voice, being redesigned and re-generated.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenPlacesAudio_frFR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Places\n## X-License: Audio generated with ElevenLabs from warcraft.wiki.gg lore text (CC BY-SA 4.0).\n## X-Credits: Lore text sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. scripts/package-audio.sh rewrites these two lines, and\n# the Title above, once per tier it builds; the tree in the repository is the\n# 128kbps master every shipped tier is transcoded from, so it describes itself as\n# the high tier. Data/Sounds.lua reads these back at load time and reports them\n# to ZoneLore, which is how two tiers installed side by side can be told apart.\n## X-SpokenPlaces-Quality: high\n## X-SpokenPlaces-Bitrate: 128\n\n# The language this pack narrates, read back the same way. Spoken Zones loads that\n# language's lore for the captions and offers the pack under it; the player picks\n# which installed pack plays, so it can narrate a language the client is not in.\n## X-SpokenPlaces-Language: frFR\n\n# Defines the SpokenPlacesAudioPacks registry entry that Spoken Zones reads. No dependency\n# is declared in either direction: Spoken Zones reads its lore without narrating when\n# no pack is present, and a pack is inert without it.\nData/Sounds.lua\n"
-  },
-  {
-    "section": "places",
-    "lang": "itIT",
-    "folders": [
-      {
-        "folder": "SpokenPlacesAudio_itIT",
-        "section": "places",
-        "lang": "itIT"
-      }
-    ],
-    "version": "0.0.1",
-    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Italian Audio: Places\n## Notes: Narrated place lore for Spoken Places.|n|nKeep it enabled: it loads with the game, and Spoken Places plays from it.|n|nBeta: a proof-of-concept voice, being redesigned and re-generated.\n## Version: 0.0.1\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenPlacesAudio_itIT\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Places\n## X-License: Audio generated with ElevenLabs from warcraft.wiki.gg lore text (CC BY-SA 4.0).\n## X-Credits: Lore text sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. scripts/package-audio.sh rewrites these two lines, and\n# the Title above, once per tier it builds; the tree in the repository is the\n# 128kbps master every shipped tier is transcoded from, so it describes itself as\n# the high tier. Data/Sounds.lua reads these back at load time and reports them\n# to ZoneLore, which is how two tiers installed side by side can be told apart.\n## X-SpokenPlaces-Quality: high\n## X-SpokenPlaces-Bitrate: 128\n\n# The language this pack narrates, read back the same way. Spoken Zones loads that\n# language's lore for the captions and offers the pack under it; the player picks\n# which installed pack plays, so it can narrate a language the client is not in.\n## X-SpokenPlaces-Language: itIT\n\n# Defines the SpokenPlacesAudioPacks registry entry that Spoken Zones reads. No dependency\n# is declared in either direction: Spoken Zones reads its lore without narrating when\n# no pack is present, and a pack is inert without it.\nData/Sounds.lua\n"
   },
   {
     "section": "places",
@@ -719,96 +693,6 @@
   },
   {
     "section": "quests",
-    "lang": "itIT",
-    "folders": [
-      {
-        "folder": "SpokenQuestsAudioAlliance_itIT",
-        "section": "quests",
-        "lang": "itIT"
-      },
-      {
-        "folder": "SpokenQuestsAudioHorde_itIT",
-        "section": "quests",
-        "lang": "itIT"
-      },
-      {
-        "folder": "SpokenQuestsAudioShared_itIT",
-        "section": "quests",
-        "lang": "itIT"
-      },
-      {
-        "folder": "SpokenQuestsAudioGossip_itIT",
-        "section": "quests",
-        "lang": "itIT"
-      }
-    ],
-    "builds": [
-      {
-        "folder": "SpokenQuestsAudioAlliance_itIT",
-        "args": [
-          "--module",
-          "SpokenQuestsAudioAlliance_itIT",
-          "--pack",
-          "alliance",
-          "--version",
-          "0.0.2",
-          "--module-title",
-          "Spoken Italian Audio: Quests - Alliance",
-          "--language",
-          "itIT"
-        ]
-      },
-      {
-        "folder": "SpokenQuestsAudioHorde_itIT",
-        "args": [
-          "--module",
-          "SpokenQuestsAudioHorde_itIT",
-          "--pack",
-          "horde",
-          "--version",
-          "0.0.2",
-          "--module-title",
-          "Spoken Italian Audio: Quests - Horde",
-          "--language",
-          "itIT"
-        ]
-      },
-      {
-        "folder": "SpokenQuestsAudioShared_itIT",
-        "args": [
-          "--module",
-          "SpokenQuestsAudioShared_itIT",
-          "--pack",
-          "shared",
-          "--version",
-          "0.0.2",
-          "--module-title",
-          "Spoken Italian Audio: Quests - Shared",
-          "--language",
-          "itIT"
-        ]
-      },
-      {
-        "folder": "SpokenQuestsAudioGossip_itIT",
-        "args": [
-          "--module",
-          "SpokenQuestsAudioGossip_itIT",
-          "--pack",
-          "gossip",
-          "--version",
-          "0.0.2",
-          "--module-title",
-          "Spoken Italian Audio: Gossip",
-          "--language",
-          "itIT",
-          "--locale-text",
-          "LOCALE_TEXT"
-        ]
-      }
-    ]
-  },
-  {
-    "section": "quests",
     "lang": "koKR",
     "folders": [
       {
@@ -1308,19 +1192,6 @@
     ],
     "version": "2.0.0",
     "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r French Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_frFR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: frFR\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
-  },
-  {
-    "section": "readables",
-    "lang": "itIT",
-    "folders": [
-      {
-        "folder": "SpokenReadablesAudio_itIT",
-        "section": "readables",
-        "lang": "itIT"
-      }
-    ],
-    "version": "0.0.1",
-    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Italian Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 0.0.1\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_itIT\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: itIT\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
   },
   {
     "section": "readables",

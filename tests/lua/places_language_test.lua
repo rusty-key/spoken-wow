@@ -228,7 +228,7 @@ Expect("F. going back to Auto follows the client again", Z:GetLanguage(), "frFR"
 local HANGUL, HAN, CYRILLIC = { [234] = true, [235] = true, [236] = true, [237] = true },
     { [228] = true, [229] = true, [230] = true, [231] = true, [232] = true, [233] = true },
     { [208] = true, [209] = true }
-local VIETNAMESE = { [225] = true }   -- ế and ệ, U+1EBF and U+1EC7
+local YORUBA = { [195] = true, [225] = true }   -- ù and á, and ẹ and ọ (U+1EB9, U+1ECD)
 local HEBREW = { [215] = true }
 local function With(base, extra)
     local set = {}
@@ -315,23 +315,23 @@ fontHas["Fonts\\blei00d.TTF"] = blei
 Reset()
 Expect("G. a Latin language needs no asking", Z:CanRenderLanguage("frFR"), true)
 Expect("G. ...and keeps the page's font", Font(_G.GameFontHighlight, "frFR"), "Fonts\\FRIZQT__.TTF")
--- Vietnamese is no built-in language: its pack declares it, its name and the font that draws it.
-local VIET_FONT = "Interface\\AddOns\\SpokenPlacesAudio_viVN\\Fonts\\Viet.ttf"
-fontHas[VIET_FONT] = VIETNAMESE
-Spoken:DeclareLanguage("viVN", "SpokenPlacesAudio_viVN",
-    { name = "Vietnamese", native = "Tiếng Việt", font = VIET_FONT })
-Expect("G. Vietnamese, which the page's font cannot draw, is written in its pack's font",
-    tostring(Z:CanRenderLanguage("viVN")) .. " " .. Font(_G.GameFontHighlight, "viVN"),
-    "true " .. VIET_FONT)
+-- Yoruba is no built-in language: its pack declares it, its name and the font that draws it.
+local YORUBA_FONT = "Interface\\AddOns\\SpokenPlacesAudio_yoNG\\Fonts\\Yoruba.ttf"
+fontHas[YORUBA_FONT] = YORUBA
+Spoken:DeclareLanguage("yoNG", "SpokenPlacesAudio_yoNG",
+    { name = "Yoruba", native = "Èdè Yorùbá", font = YORUBA_FONT })
+Expect("G. Yoruba, which the page's font cannot draw, is written in its pack's font",
+    tostring(Z:CanRenderLanguage("yoNG")) .. " " .. Font(_G.GameFontHighlight, "yoNG"),
+    "true " .. YORUBA_FONT)
 -- A pack language whose pack names no font, or one the page cannot use, has Arial Narrow to try.
-fontHas[VIET_FONT] = {}
-fontHas["Fonts\\ARIALN.TTF"] = VIETNAMESE
+fontHas[YORUBA_FONT] = {}
+fontHas["Fonts\\ARIALN.TTF"] = YORUBA
 Reset()
 Expect("G. ...and without one, in the stock font most likely to draw its accents",
-    tostring(Z:CanRenderLanguage("viVN")) .. " " .. Font(_G.GameFontHighlight, "viVN"),
+    tostring(Z:CanRenderLanguage("yoNG")) .. " " .. Font(_G.GameFontHighlight, "yoNG"),
     "true Fonts\\ARIALN.TTF")
 fontHas["Fonts\\ARIALN.TTF"] = nil
-fontHas[VIET_FONT] = VIETNAMESE
+fontHas[YORUBA_FONT] = YORUBA
 Reset()
 
 -- The captions set a font file too: a clip of Korean lore on a German client names the one to use.
@@ -369,9 +369,9 @@ fontHas["Fonts\\2002.TTF"] = {}
 Reset()
 Expect("G. a client whose Korean font cannot draw Korean does not offer it",
     Z:CanRenderLanguage("koKR"), false)
-fontHas[VIET_FONT] = {}
+fontHas[YORUBA_FONT] = {}
 Reset()
-Expect("G. ...nor Vietnamese where no font draws its accents", Z:CanRenderLanguage("viVN"), false)
+Expect("G. ...nor Yoruba where no font draws its accents", Z:CanRenderLanguage("yoNG"), false)
 
 ---------------------------------------------------------------- H. lore a pack brings
 -- A language Spoken does not build in has lore when its pack says so in its .toc, which the

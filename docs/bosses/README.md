@@ -70,10 +70,8 @@ The bosses come from `pipelines/lib/bosses.mjs` (`make bosses-extract`), which w
 `DungeonEncounter` table (Forever's build, wago.tools), for each instance map in
 `pipelines/lib/dungeons.json`: the bosses in Forever's order (the client's difficulty 0 and 1 rows, a
 boss only other difficulties list after them; Forever splits a dungeon's bosses over both on one scale),
-each once, named as the difficulty that lists the most of them names it, with its name in every language
-(retail's `DungeonEncounter`, by id or else English name, where wago has no strings of Forever's in a
-language, as for Italian) and a `key` (its English name lowercased, without
-punctuation). The client lists a boss for each difficulty, the Season of Discovery's raid-sized
+each once, named as the difficulty that lists the most of them names it, with its name in every client
+language and a `key` (its English name lowercased, without punctuation). The client lists a boss for each difficulty, the Season of Discovery's raid-sized
 Blackfathom Deeps, Gnomeregan and Sunken Temple among them; a "A and B" row is dropped where A or B is
 a boss on its own, and a name the client spells two ways is one boss (`SAME`).
 

@@ -109,7 +109,8 @@ describe('Voice Packs: an installed pack the channel no longer lists', () => {
   it('shows it, with Remove and nothing to install, update or repair', () => {
     const state = withInstalled({ voiceLanguage: 'plPL' }, 'places-audio-plPL-klang', 'SpokenPlacesAudio_plPL_klang')
     const html = draw(state)
-    expect(html).toContain('>Polski</button>')
+    // A team's language the channel no longer names goes by its code.
+    expect(html).toContain('>plPL</button>')
     const places = section(html, 'Places')
     expect(places).toContain('by klang')
     expect(places).toContain('>Remove</button>')

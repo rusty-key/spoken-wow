@@ -14,7 +14,7 @@
  * A line the corpus already has is not stored, but it was still sent because the player's pack
  * could not voice it. With the browser's install id (lib/contributions/browser-install.ts) it is
  * counted as a missing-audio hit for the pack's language, as the manager's uploads are -- the only
- * way an Italian or Vietnamese team, whose language no client runs in, hears of it.
+ * way a team whose language no client runs in hears of it.
  */
 import { headers } from "next/headers";
 
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
   // Not counted against the install's own allowance: that is the manager's, per file, and a
   // player may follow several links in an hour. The IP's allowance above still bounds it.
   const installId = installIdFrom(body.installId);
-  const hit = installId && state?.kind === "known" ? hitFrom(submission, state.lineId) : null;
+  const hit = installId && state?.kind === "known" ? await hitFrom(submission, state.lineId) : null;
   if (installId && hit) await recordMissingAudio(installId, [hit]);
 
   // After the write, and unconditionally: the hit is what the limiter counts, and an identical

@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     | { lang?: unknown; build?: unknown; texts?: unknown }
     | null;
   const lang = await knownLang(body?.lang);
-  // A cache is written by a game client, and no client runs in Italian.
+  // A cache is written by a game client, and not one in a language no client runs in.
   if (!lang || !isClientLang(lang)) return Response.json({ error: "unknown language" }, { status: 400 });
   const raw = body?.build;
   const build = typeof raw === "number" && Number.isInteger(raw) && raw > 0 ? raw : null;

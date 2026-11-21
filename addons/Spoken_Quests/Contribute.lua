@@ -475,7 +475,7 @@ local function HasSomethingToSend()
     return false
 end
 
---- Off while the player listens in a language no client runs in (Italian). HasSoundForCurrent
+--- Off while the player listens in a language no client runs in. HasSoundForCurrent
 --- asks the voice language, so every line its pack has not voiced yet would read as missing
 --- text and send English the corpus already has. Its text comes from its translators, not
 --- from the client, so there is nothing for a player to send for it.

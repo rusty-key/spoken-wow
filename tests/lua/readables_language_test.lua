@@ -106,7 +106,7 @@ B:RememberPageText(ONLY_ENGLISH, "deDE", "Die zweite Seite.")
 Expect("D. ...but not where the client showed that page: the Text Language's words, over the fallback clip",
     B:ClipFor(ONLY_ENGLISH).present.transcript, "Die zweite Seite.")
 Expect("D. ...which is still the English recording", B:ClipFor(ONLY_ENGLISH).language, "enUS")
-SpokenReadablesSettings.voiceLanguage = "itIT"
+SpokenReadablesSettings.voiceLanguage = "jaJP"
 Expect("D. ...the same words whichever voice the fallback stands in for",
     B:ClipFor(ONLY_ENGLISH).present.transcript, "Die zweite Seite.")
 Expect("D. ...and the same for the page the German pack records",
@@ -179,28 +179,28 @@ Expect("E. a German report goes to the German page", B:ReportURL(PAGE, "deDE"),
 _G.Spoken, _G.SpokenEnv = nil, nil
 
 ---------------------------------------------------------------- F. a language no client runs in
--- Italian has no index of its own: the page is found by the English client's and read from
--- the Italian pack, captions included. No client runs in Italian, so its players are on an
+-- Japanese has no index of its own: the page is found by the English client's and read from
+-- the Japanese pack, captions included. No client runs in Japanese, so its players are on an
 -- English one and read along in the voice's words, not the client's.
-local ITALIAN = { addon = "SpokenReadablesAudio_itIT", language = "itIT", pages = {
-    [PAGE] = { file = "15", len = 2, text = "Prima pagina italiana." } } }
-B = Install({ ENGLISH, ITALIAN }, "enUS")
+local JAPANESE = { addon = "SpokenReadablesAudio_jaJP", language = "jaJP", pages = {
+    [PAGE] = { file = "15", len = 2, text = "Saisho no peji." } } }
+B = Install({ ENGLISH, JAPANESE }, "enUS")
 Expect("F. on Auto an English client hears English", B:GetVoiceLanguage(), "enUS")
-SpokenReadablesSettings.voiceLanguage = "itIT"
+SpokenReadablesSettings.voiceLanguage = "jaJP"
 SpokenReadablesData.index["Registry"][1][B:ChecksumOf("English first page.")] = PAGE
 stub.ShowPage({ title = "Registry", number = 1, text = "English first page." })
 Expect("F. the English index finds the page", B:PageOnScreen(), PAGE)
-Expect("F. ...and the Italian pack reads it", B:ClipFor(PAGE).language, "itIT")
-Expect("F. ...captioned in the Italian pack's own words, not the English client's",
-    B:ClipFor(PAGE).present.transcript, "Prima pagina italiana.")
-ITALIAN.pages[PAGE].text = nil
-B = Install({ ENGLISH, ITALIAN }, "enUS")
-SpokenReadablesSettings.voiceLanguage = "itIT"
-Expect("F. ...and in English where the Italian pack has no words for the page",
+Expect("F. ...and the Japanese pack reads it", B:ClipFor(PAGE).language, "jaJP")
+Expect("F. ...captioned in the Japanese pack's own words, not the English client's",
+    B:ClipFor(PAGE).present.transcript, "Saisho no peji.")
+JAPANESE.pages[PAGE].text = nil
+B = Install({ ENGLISH, JAPANESE }, "enUS")
+SpokenReadablesSettings.voiceLanguage = "jaJP"
+Expect("F. ...and in English where the Japanese pack has no words for the page",
     B:ClipFor(PAGE).present.transcript, "English first page.")
-B = Install({ ENGLISH, ITALIAN }, "itIT")
-Expect("F. a client claiming Italian is not taken at its word", B:GetClientLanguage(), "enUS")
-Expect("F. Italian is not a client language", B:IsClientLanguage("itIT"), false)
+B = Install({ ENGLISH, JAPANESE }, "jaJP")
+Expect("F. a client claiming Japanese is not taken at its word", B:GetClientLanguage(), "enUS")
+Expect("F. Japanese is not a client language", B:IsClientLanguage("jaJP"), false)
 
 ---------------------------------------------------------------- F1. the pack list
 -- A pack registered before it is in this version's format is listed once it is.

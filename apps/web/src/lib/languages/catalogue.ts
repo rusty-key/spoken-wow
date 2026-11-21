@@ -9,7 +9,7 @@
 import "server-only";
 
 import { query } from "@/lib/db";
-import { derivedTags, isLang, type Lang, type LanguageInfo, registerLanguages } from "@/lib/lang";
+import { derivedTags, isLang, type Lang, type LanguageInfo, type PlayerWords, registerLanguages } from "@/lib/lang";
 import { listenInServer } from "@/lib/teams/listen";
 
 const TTL_MS = 60_000;
@@ -30,6 +30,8 @@ type Row = {
   bcp47: string | null;
   provider: string | null;
   client: boolean;
+  playerWords: PlayerWords | null;
+  bytesPerCharacter: string | null;
 };
 
 /**
@@ -46,6 +48,8 @@ function describe(row: Row): LanguageInfo {
     bcp47: row.bcp47 ?? derived.bcp47,
     provider: row.provider ?? derived.provider,
     client: row.client,
+    playerWords: row.playerWords,
+    bytesPerCharacter: row.bytesPerCharacter === null ? null : Number(row.bytesPerCharacter),
   };
 }
 
@@ -60,7 +64,8 @@ export function loadLanguages(): Promise<LanguageInfo[]> {
   if (cached && Date.now() - cached.at < TTL_MS) return cached.langs;
   const seq = ++memo.started;
   const langs: Promise<LanguageInfo[]> = query<Row>(
-    `select "code", "name", "native", "bcp47", "provider", "client" from "language" order by "code"`,
+    `select "code", "name", "native", "bcp47", "provider", "client", "playerWords", "bytesPerCharacter"
+       from "language" order by "code"`,
   ).then((rows) => {
     const list = rows.map(describe);
     // A read forgotten in flight still registers unless a newer one already has: at boot the

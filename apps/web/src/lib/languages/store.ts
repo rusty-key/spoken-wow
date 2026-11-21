@@ -17,8 +17,9 @@ import type { ClientBase } from "pg";
 
 import { recordActivity } from "@/lib/activity/store";
 import { inTransaction, query } from "@/lib/db";
-import { BASE_LANG, BUILTIN, allLangs, derivedTags, isLang, type Lang } from "@/lib/lang";
+import { BASE_LANG, BUILTIN, allLangs, derivedTags, isLang, type Lang, type PlayerWords } from "@/lib/lang";
 import { loadLanguages } from "@/lib/languages/catalogue";
+import { validPlayerWords } from "@/lib/player-words";
 import { foundLangTeam } from "@/lib/teams/store";
 
 export type LanguageState = { code: Lang; enabled: boolean };
@@ -88,6 +89,37 @@ export async function setEnabledOn(
 /** Lets the admins of the language's teams appoint its text maintainers. */
 export async function giveTextToTeam(client: ClientBase, lang: string): Promise<void> {
   await client.query(`update "language" set "textByTeam" = true where "code" = $1`, [lang]);
+}
+
+/** "name / race" for each reader, for the activity log. */
+function wordsSummary(words: PlayerWords | null): string | null {
+  if (!words) return null;
+  const forms = (side: PlayerWords["m"]) => `${side.name} / ${side.race}`;
+  const m = forms(words.m);
+  const f = forms(words.f);
+  return m === f ? m : `${m}; ${f}`;
+}
+
+/**
+ * Sets a language's validated player words, or clears them with null; logged only when they
+ * change. Every take whose text holds a token goes stale against the new words.
+ */
+export async function setPlayerWords(lang: Lang, words: PlayerWords | null, userId: string): Promise<void> {
+  const before = await inTransaction(async (client) => {
+    const { rows } = await client.query<{ before: PlayerWords | null }>(
+      `with "before" as (select "playerWords" from "language" where "code" = $1 for update)
+       update "language"
+          set "playerWords" = $2::jsonb, "updatedAt" = now(), "updatedBy" = $3
+        where "code" = $1
+       returning (select "playerWords" from "before") as "before"`,
+      [lang, words === null ? null : JSON.stringify(words), userId],
+    );
+    if (!rows[0]) throw new Error(`${lang} has no row in the language table`);
+    return rows[0].before;
+  });
+  const [was, now] = [wordsSummary(before), wordsSummary(words)];
+  if (JSON.stringify(validPlayerWords(before)) === JSON.stringify(words)) return;
+  await recordActivity({ kind: "text.player_words", lang, actorId: userId, detail: { before: was, after: now } });
 }
 
 export class LanguageExistsError extends Error {

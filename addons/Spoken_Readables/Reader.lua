@@ -460,7 +460,7 @@ end
 --- The words a page's caption shows, the language they are in, and whether they are the words the
 --- recording says. They are in the Text Language the player chose, whatever the voice. On Auto they
 --- are in the client's language, as the game shows the page, and in the clip's only where the
---- client's has none; a voice no client runs in (Italian, Vietnamese) comes first, as its players
+--- client's has none; a voice no client runs in comes first, as its players
 --- are on another language's client. Each language falls to the next where it has no words for the
 --- page. `clipText`, the playing pack's own words, beats another pack's. Nil where none has any.
 function SpokenReadables:CaptionText(pageId, clipLanguage, clipText)

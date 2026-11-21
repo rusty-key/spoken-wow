@@ -126,7 +126,7 @@ a language pins it on every client.
   pack's `.toc` must also say `X-SpokenPlaces-Language: <code>`, even with no `Sounds.lua`, because
   `ShouldLoadLanguage` reads that key before it accepts the text. A
   pack's `X-Spoken-LanguageFont` draws its name and lore pages; without one, Places tries the
-  stock `ARIALN.TTF`, which draws Vietnamese on most clients but no script the game lacks. Right-to-left text is the pack's job: ship it in visual order.
+  stock `ARIALN.TTF`, which draws most accented Latin on most clients but no script the game lacks. Right-to-left text is the pack's job: ship it in visual order.
   The built-in list must equal the client languages in `pipelines/lib/locales.mjs`; `validate.mjs`
   checks it.
 
