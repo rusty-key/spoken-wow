@@ -1219,7 +1219,6 @@ end
 
 --- A line's words from a voice pack in `language` that did not play it: a Polish pack's under an
 --- English voice. By the file that played and the line's own, each for the player's sex first.
---- From `field`, TextByFileName or LineTextByFileName.
 local function PackWords(self, soundData, language, field)
     local names = {}
     for _, name in pairs({ soundData.fileName, soundData.lineFile }) do
