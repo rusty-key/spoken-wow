@@ -104,6 +104,10 @@ local function Press(frame, dirKey)
     return override
 end
 local function Ignored(frame) return frame.nav and frame.nav.ignored or false end
+local function At(frame)
+    local anchor = frame.nav and frame.nav.anchor
+    return anchor and anchor.relativeTo, anchor and anchor.relativePoint
+end
 
 ---------------------------------------------------------------- one stop per row
 local rows = Page()
@@ -166,10 +170,6 @@ Expect("the scroll bar's thumb is no stop: the cursor scrolls the page itself", 
 -- only to a stop within 45 degrees. Every stop in the page's column is counted at its left, by
 -- the label, or a page's rows and buttons are two columns the d-pad skips between (Readables:
 -- down from Defaults to the voice pack, up from there to Enable).
-local function At(frame)
-    local anchor = frame.nav and frame.nav.anchor
-    return anchor and anchor.relativeTo, anchor and anchor.relativePoint
-end
 do
     local page = CreateFrame("Frame")
     page.children = {}
@@ -224,6 +224,28 @@ do
     Expect("a page built while combat holds addons back asks nothing the game would refuse",
         tostring(fought.check.nav) .. " " .. tostring(fought.check.layoutHit.nav) .. " "
         .. tostring(fought.view.thumb.nav), "nil nil nil")
+    -- A page is built once: what combat refused is asked for once it ends, or the page keeps the
+    -- game's stops for the session.
+    stub.FireEvent("PLAYER_REGEN_ENABLED")
+    Expect("...and asks once combat ends", tostring(Ignored(fought.check)) .. " "
+        .. tostring(Ignored(fought.check.layoutHit)) .. " " .. tostring(Ignored(fought.view.thumb)),
+        "true false true")
+    Expect("...its row counted by its label", At(fought.check.layoutHit), fought.check.layoutLabel)
+    Expect("...left and right stepping the slider", Press(fought.slider.layoutHit, "Right"), true)
+end
+
+do
+    -- A link is a stop too: down from its section's button lands on it, not the row under it.
+    local page = CreateFrame("Frame")
+    page.children = {}
+    function page:GetWidth() return 640 end
+    local layout = Layout.New(page, 25, -16)
+    layout:Section("Links")
+    local button = layout:HeadingButton("Open", function() end)
+    local link = layout:Link({ title = "Site", url = "https://example.invalid", icon = 1 })
+    layout:Checkbox("After", nil, function() return true end, function() end)
+    layout:Reflow(); layout:Refresh()
+    Expect("down from a section's button is its link, where the link comes first", Press(button, "Down"), link)
 end
 
 ---------------------------------------------------------------- questions under the controller UI

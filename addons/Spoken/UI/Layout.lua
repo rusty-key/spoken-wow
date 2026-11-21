@@ -728,16 +728,37 @@ local function CombatRestricted()
         and C_RestrictedActions.IsAddOnRestrictionActive(Enum.AddOnRestrictionType.Combat) or false
 end
 
--- Hide a frame from the controller UI's cursor (SmartNavigation, Forever's gamepad UI).
-local function NoStop(frame)
-    if SmartNavigation_MarkFrameIgnored and not CombatRestricted() then
-        SmartNavigation_MarkFrameIgnored(frame)
+-- What combat refused, run once it ends. A page is built once, so a row skipped in combat
+-- would keep the game's stops for the session.
+local afterCombat, afterCombatFrame = {}, nil
+
+local function AfterCombat(run)
+    if not afterCombatFrame then
+        afterCombatFrame = CreateFrame("Frame")
+        afterCombatFrame:SetScript("OnEvent", function(self)
+            self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+            local waiting = afterCombat
+            afterCombat = {}
+            for _, each in ipairs(waiting) do each() end
+        end)
     end
+    table.insert(afterCombat, run)
+    afterCombatFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 end
 
-local function CanNavigate()
-    return SmartNavigation_MarkFrameIgnored and SMART_NAV_INPUT_DIRECTION and CreateAnchor
-        and not CombatRestricted()
+-- Run `set` on the controller UI's cursor now, or once combat ends.
+local function Navigate(set)
+    if not (SmartNavigation_MarkFrameIgnored and SMART_NAV_INPUT_DIRECTION and CreateAnchor) then return end
+    if CombatRestricted() then
+        AfterCombat(function() Navigate(set) end)
+        return
+    end
+    set()
+end
+
+-- Hide a frame from the controller UI's cursor (SmartNavigation, Forever's gamepad UI).
+local function NoStop(frame)
+    Navigate(function() SmartNavigation_MarkFrameIgnored(frame) end)
 end
 
 -- Where the cursor counts a stop and draws itself: just left of `at`. It goes up or down only to
@@ -751,7 +772,8 @@ end
 
 -- A stop in the page's column with no label, a button or a link: counted at its own left.
 local function ColumnStop(frame)
-    if CanNavigate() then CountAt(frame, frame) end
+    frame.layoutStop = true
+    Navigate(function() CountAt(frame, frame) end)
 end
 
 -- Make a row one stop for the controller UI's cursor, as the game's own settings rows are
@@ -762,17 +784,18 @@ end
 -- call and only while combat does not hold addons back (SmartNavigation.lua,
 -- HandleNavigationInput).
 local function OneStop(hit, controls, caption, step, open)
-    if not CanNavigate() then return end
-    local dir = SMART_NAV_INPUT_DIRECTION
-    for _, frame in ipairs(controls) do SmartNavigation_MarkFrameIgnored(frame) end
-    CountAt(hit, caption)
-    if step then
-        SmartNavigation_AddJumpNavigationOverride(hit, dir.LEFT, function() step(false); return true end)
-        SmartNavigation_AddJumpNavigationOverride(hit, dir.RIGHT, function() step(true); return true end)
-    else
-        SmartNavigation_AddIgnoreInputNavigationOverride(hit, dir.RIGHT)
-    end
-    if open then hit.OnSmartNavClick = open end
+    Navigate(function()
+        local dir = SMART_NAV_INPUT_DIRECTION
+        for _, frame in ipairs(controls) do SmartNavigation_MarkFrameIgnored(frame) end
+        CountAt(hit, caption)
+        if step then
+            SmartNavigation_AddJumpNavigationOverride(hit, dir.LEFT, function() step(false); return true end)
+            SmartNavigation_AddJumpNavigationOverride(hit, dir.RIGHT, function() step(true); return true end)
+        else
+            SmartNavigation_AddIgnoreInputNavigationOverride(hit, dir.RIGHT)
+        end
+        if open then hit.OnSmartNavClick = open end
+    end)
 end
 
 -- A checkbox: the game's settings checkbox (SettingsCheckboxTemplate), 30 by 29 -- the minimal
@@ -995,25 +1018,13 @@ Layout.IsGamepadUI = GamepadUI
 --- to the window under it on hide. The manager refuses addons in combat: a frame closed then is
 --- handed back once combat ends, or the manager keeps it listed as shown and does not move the
 --- focus to it when it opens again.
-local afterCombat, afterCombatFrame
-
 local function HandBack(frame)
     local manager = GamepadUI() and GamepadMode and GamepadMode.FrameControlsManager
     if not manager then frame.followed = nil; return end
     if CombatRestricted() then
-        if not afterCombatFrame then
-            afterCombat, afterCombatFrame = {}, CreateFrame("Frame")
-            afterCombatFrame:SetScript("OnEvent", function(self)
-                self:UnregisterEvent("PLAYER_REGEN_ENABLED")
-                local waiting = afterCombat
-                afterCombat = {}
-                for each in pairs(waiting) do
-                    if each.followed and not each:IsShown() then HandBack(each) end
-                end
-            end)
-        end
-        afterCombat[frame] = true
-        afterCombatFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+        AfterCombat(function()
+            if frame.followed and not frame:IsShown() then HandBack(frame) end
+        end)
         return
     end
     frame.followed = nil
@@ -1548,24 +1559,27 @@ end
 local HEADING_LINE = 17      -- GameFontHighlightLarge's line
 
 -- A shown row's stop for the controller UI's cursor: its band, or its control where that is a
--- button. Nil for a note, a link or a row out of sight.
+-- button or a ColumnStop (a link, a status). Nil for a note or a row out of sight.
 local function RowStop(row)
     local control = row.control
     local stop = control and (control.layoutHit or control)
     if not (row.shown and stop and stop.IsVisible and stop:IsVisible()) then return nil end
     local kind = stop.GetObjectType and stop:GetObjectType()
-    if stop == control.layoutHit or kind == "Button" or kind == "CheckButton" then return stop end
+    if stop == control.layoutHit or stop.layoutStop or kind == "Button" or kind == "CheckButton" then
+        return stop
+    end
 end
 
 -- Down from a button at the page's right, Defaults or a section's, is the first of `rows()` with
 -- a stop: the rows are counted by their labels at the left, too far aside for straight down.
 local function DownToFirstRow(button, rows)
-    if not CanNavigate() then return end
-    SmartNavigation_AddJumpNavigationOverride(button, SMART_NAV_INPUT_DIRECTION.DOWN, function()
-        for _, row in ipairs(rows()) do
-            local stop = RowStop(row)
-            if stop then return stop end
-        end
+    Navigate(function()
+        SmartNavigation_AddJumpNavigationOverride(button, SMART_NAV_INPUT_DIRECTION.DOWN, function()
+            for _, row in ipairs(rows()) do
+                local stop = RowStop(row)
+                if stop then return stop end
+            end
+        end)
     end)
 end
 
