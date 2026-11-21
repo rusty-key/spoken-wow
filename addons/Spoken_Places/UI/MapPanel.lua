@@ -189,12 +189,10 @@ local function BuildPanel()
 	-- strata; why is not known. The model and the edge laid over it stay in the page, as in the
 	-- Compendium, at HIGH strata. A model moved to a frame of its own under UIParent did not draw.
 	local body = page.body
-	if body.model and body.modelEdgeFrame then
-		for _, frame in ipairs({ body.model, body.modelEdgeFrame }) do
-			frame:SetFrameStrata("HIGH")
-			-- The panel takes the map's strata on every refresh, which would carry its children with it.
-			if frame.SetFixedFrameStrata then frame:SetFixedFrameStrata(true) end
-		end
+	for _, frame in ipairs({ body.model, body.modelEdgeFrame }) do
+		frame:SetFrameStrata("HIGH")
+		-- The panel takes the map's strata on every refresh, which would carry its children with it.
+		if frame.SetFixedFrameStrata then frame:SetFixedFrameStrata(true) end
 	end
 
 	-- The rim on a frame of its own above the page: drawn on the panel itself it would sit under

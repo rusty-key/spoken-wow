@@ -55,7 +55,6 @@ function Camera:Set(view, right, up, zoom, turn)
 	if not group or not view.modelCamera then return false end
 	zoom = math.min(ZOOM_MAX, math.max(ZOOM_MIN, zoom))
 	local db = Developer:DB()
-	if type(db.cameraEdits) ~= "table" then db.cameraEdits = {} end
 	db.cameraEdits[place] = db.cameraEdits[place] or {}
 	db.cameraEdits[place][group] = { Round(right), Round(up), Round(zoom), Round(turn) }
 	view:ApplyModelCamera()
@@ -201,7 +200,7 @@ end
 --- How many models have an edit, in all places.
 function Camera:Count()
 	local n = 0
-	for _, groups in pairs(Developer:DB().cameraEdits or {}) do
+	for _, groups in pairs(Developer:DB().cameraEdits) do
 		for _ in pairs(groups) do n = n + 1 end
 	end
 	return n

@@ -823,8 +823,6 @@ do
         tostring(actor.useCenter[2]), tostring(actor.useCenter[3]) }, ","), "0,0,0|0|false,false,false")
     fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2030 }, text = "A boss's story." })
     Expect("...the same actor drawing the next boss", #fresh.body.model.actors .. "|" .. actor.displayID, "1|2030")
-    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029, scale = 1.5 }, text = "A boss's story." })
-    Expect("...at the scale the model asks for", actor.scale, 1.5)
     fresh:Show({ title = "Edwin VanCleef", model = { creatureID = 196 }, text = "A boss's story." })
     Expect("a model with no display ID is no model: a scene draws a display and nothing else",
         tostring(fresh.body.modelDisplayID) .. "|" .. tostring(fresh.body.model:IsShown()) .. "|" .. tostring(actor.displayID), "nil|false|nil")
@@ -1188,12 +1186,10 @@ do
     Expect("a boss's camera is set from its actor's box, with no handler on the scene waiting for the model to load",
         Position() .. "|" .. tostring(scene.scripts.OnModelLoaded), Round(BASE) .. ",0,1|nil")
 
-    -- The pose every boss stands in: SpokenBossCameraView's, unless the model asks for one.
+    -- The pose every boss stands in: SpokenBossCameraView's.
     _G.SpokenBossCameraView = { fov = 27.78, sequence = 5 }
     Boss()
     Expect("a boss stands in the pose its data names", actor.animation, 5)
-    fresh:Show({ title = "Edwin VanCleef", model = { displayID = 2029, sequence = 2 }, text = "A boss's story." })
-    Expect("...unless the model names another", actor.animation, 2)
     _G.SpokenBossCameraView = nil
     Boss()
     Expect("...and a data file with no view in it means the idle pose", actor.animation, 0)
@@ -1337,26 +1333,21 @@ do
         Tick()
 
         -- A boss shown again is the one already drawn: it is not loaded and framed over again, which would
-        -- blink it out and back. One asked for in another size or pose is another model.
+        -- blink it out and back.
         local actor = back.modelActor
         local sets = actor.modelSets
         back:SetModel({ displayID = 2029 })
         Tick()
         Expect("a boss shown again is not loaded again, and stays drawn", actor.modelSets .. "|" .. back.model:GetAlpha(),
             sets .. "|1")
-        back:SetModel({ displayID = 2029, scale = 2 })
-        Expect("...but one asked for at another scale is", actor.modelSets, sets + 1)
-        Tick()
-        back:SetModel({ displayID = 2029, scale = 2, sequence = 3 })
-        Expect("...or in another pose", actor.modelSets, sets + 2)
         back:SetModel(nil)
-        back:SetModel({ displayID = 2029, scale = 2, sequence = 3 })
-        Expect("...and one cleared in between is loaded afresh", actor.modelSets, sets + 3)
+        back:SetModel({ displayID = 2029 })
+        Expect("...but one cleared in between is loaded afresh", actor.modelSets, sets + 1)
         Tick()
         -- The client can drop a model while it is hidden.
         back.frame:Hide()
-        back:SetModel({ displayID = 2029, scale = 2, sequence = 3 })
-        Expect("...and one shown again after its page was hidden is loaded afresh", actor.modelSets, sets + 4)
+        back:SetModel({ displayID = 2029 })
+        Expect("...and one shown again after its page was hidden is loaded afresh", actor.modelSets, sets + 2)
         back.frame:Show()
         Tick()
         Expect("nothing is left of hiding or fading a covered model",

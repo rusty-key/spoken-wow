@@ -241,7 +241,7 @@ local function Creature(map, key)
 	return known and known[map] and known[map][key]
 end
 
--- The creature is the fallback for clients that cannot set a display directly.
+-- The display draws the model; the creature is for the portrait.
 local function Model(map, key)
 	local entry = Creature(map, key)
 	return entry and entry.display and { creatureID = entry.creature, displayID = entry.display }

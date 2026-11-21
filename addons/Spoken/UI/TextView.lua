@@ -544,6 +544,11 @@ local function Under(a, b)
 	return a.modelAsked < b.modelAsked
 end
 
+-- A developer module that takes part in a view's model is told of each change (Spoken_Developer's camera editor).
+local function Notify(view)
+	if view.onModel then pcall(view.onModel, view) end
+end
+
 local sceneFailureSaid = {}
 
 -- What the client rejects while a boss is drawn is said once in chat for each kind of call.
@@ -562,8 +567,10 @@ function TextView:ApplyNearClip()
 	if not ok then SceneFailed("near clip", err) end
 end
 
+local live = {}
+
 function Refresh()
-	local live = {}
+	for i = #live, 1, -1 do live[i] = nil end
 	for view in pairs(wanting) do
 		if view.modelBottom and view.frame:IsVisible() then live[#live + 1] = view end
 	end
@@ -735,9 +742,11 @@ function TextView:SetText(str)
 		self.model:Show()
 		self.modelEdgeFrame:Show()
 		-- Scrolled past this, the model is out of sight and its edge is not cut again.
+		local placed = self.modelBottom ~= nil
 		self.modelBottom = PAD_TOP - PICTURE_LIFT + high + EDGE_OVER
 		self:PaintModelEdge()
-		Refresh()
+		-- A model laid out for the first time joins the ranking; a new size does not change a rank.
+		if not placed then Refresh() end
 		modelRoom = high + MODEL_GAP - PICTURE_LIFT
 	else
 		self:HideModel()
@@ -1004,25 +1013,30 @@ local function CameraView()
 	return fov, sequence or DEFAULT_SEQUENCE
 end
 
+-- The frame's height one scene unit from the camera, through the lens: framing and nudges must agree on it.
+local function Span()
+	return 2 * math.tan(math.rad((CameraView())) / 2)
+end
+
 --- A creature model above the text from the next SetText on: `displayID` is the client's model
---- display ID, as DBM's boss model preview uses; `scale` and `sequence` (the animation) are optional.
---- A model with no displayID is no model: a scene draws a display and nothing else. nil for none.
+--- display ID, as DBM's boss model preview uses. A model with no displayID is no model: a scene draws a
+--- display and nothing else. nil for none.
 function TextView:SetModel(model)
 	local displayID = self.hasScene and model and model.displayID or nil
-	local key = displayID and (displayID .. ":" .. (model.scale or 1) .. ":" .. (model.sequence or "")) or nil
+	-- Most pages have no model, and set none on every layout.
+	if not displayID and not self.modelDisplayID then return end
 	-- The boss already drawn is not loaded and framed again: it would blink out and back in. It is asked for
 	-- again, so it counts as the later model of two in windows on the same level, and takes a nudge that
 	-- has changed. A model out of sight is reloaded, since the client can drop it while hidden.
-	if key and key == self.modelKey and wanting[self] and self.model:IsVisible() then
+	if displayID and displayID == self.modelDisplayID and self.model:IsVisible() then
 		asked = asked + 1
 		self.modelAsked = asked
 		if self.modelCamera then self:ApplyModelCamera() end
 		Refresh()
-		if self.onModel then pcall(self.onModel, self) end
+		Notify(self)
 		return
 	end
 	self.modelDisplayID = displayID
-	self.modelKey = key
 	if not self.modelDisplayID then
 		wanting[self] = nil
 		framing[self] = nil
@@ -1034,8 +1048,8 @@ function TextView:SetModel(model)
 		end
 		self.model:SetAlpha(1)
 		Refresh()
-		self:SetModelCamera(nil)
-		if self.onModel then pcall(self.onModel, self) end
+		self.modelCamera = nil
+		Notify(self)
 		return
 	end
 	asked = asked + 1
@@ -1048,20 +1062,19 @@ function TextView:SetModel(model)
 			"CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
 	end
 	-- The last boss's framing is not this one's.
-	self:SetModelCamera(nil)
-	local _, shown = CameraView()
-	self:DrawModel(model.scale or 1, model.sequence or shown)
+	self.modelCamera = nil
+	self:DrawModel(select(2, CameraView()))
 	-- Not drawn until it is framed, so it does not show in the wrong place first.
 	self.model:SetAlpha(0)
 	self.modelWaited = 0
 	framing[self] = true
 	Refresh()
-	if self.onModel then pcall(self.onModel, self) end
+	Notify(self)
 end
 
 --- The scene's one actor, standing at the scene's origin facing the camera's side of it (yaw 0 is the
 --- model's front), drawn from the display in the pose `sequence`.
-function TextView:DrawModel(scale, sequence)
+function TextView:DrawModel(sequence)
 	local scene = self.model
 	if not (scene and scene.CreateActor) then return end
 	local ok, err = pcall(function()
@@ -1081,7 +1094,6 @@ function TextView:DrawModel(scale, sequence)
 		actor:SetModelByCreatureDisplayID(self.modelDisplayID)
 		-- The pose is not worth losing the model over.
 		pcall(actor.SetAnimation, actor, sequence)
-		if actor.SetScale then actor:SetScale(scale) end
 		actor:Show()
 	end)
 	if not ok then SceneFailed("model", err) end
@@ -1121,7 +1133,7 @@ local function Nudged(cam, right, up, zoom, yaw)
 	if rl < 1e-6 then rx, ry, rl = 0, 1, 1 end
 	rx, ry = rx / rl, ry / rl
 	local ux, uy, uz = ry * fz, -rx * fz, rx * fy - ry * fx
-	local move = dist * 2 * math.tan(math.rad((CameraView())) / 2)
+	local move = dist * Span()
 	tx = tx - (rx * right + ux * up) * move
 	ty = ty - (ry * right + uy * up) * move
 	tz = tz - uz * up * move
@@ -1167,11 +1179,6 @@ function TextView:CurrentCamera()
 	return base
 end
 
---- Sets the camera framed for the model (nil for none, while it loads). It is applied by ApplyModelCamera.
-function TextView:SetModelCamera(camera)
-	self.modelCamera = camera
-end
-
 -- How much of the frame's height, and of its width, the figure fills. The scene's field of view is taken to
 -- be the vertical one, as a PlayerModel's is, and the frame as MODEL_WIDE wide: the first look in the game
 -- decides both, and these two numbers are all that changes if they are off.
@@ -1204,15 +1211,15 @@ end
 --- frame's height or width, whichever is the larger.
 function TextView:FrameModel(box)
 	local x0, y0, z0, x1, y1, z1 = unpack(box)
-	local span = 2 * math.tan(math.rad((CameraView())) / 2)
+	local span = Span()
 	local far = math.max((z1 - z0) / (FIT * span), (y1 - y0) / (FIT * ASPECT * span))
 	local cx, cy, cz = (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2
 	-- How far the figure reaches from the camera's target in any turn: half the diagonal of its footprint.
 	self.modelReach = math.sqrt((x1 - x0) ^ 2 + (y1 - y0) ^ 2) / 2
-	self:SetModelCamera({ cx + far + (x1 - x0) / 2, cy, cz, cx, cy, cz })
+	self.modelCamera = { cx + far + (x1 - x0) / 2, cy, cz, cx, cy, cz }
 	self:ApplyModelCamera()
 	self.model:SetAlpha(1)
-	if self.onModel then pcall(self.onModel, self) end
+	Notify(self)
 end
 
 --- Looks at every model waiting to be framed, `elapsed` seconds on: frames the ones that have loaded, the
@@ -1220,15 +1227,17 @@ end
 function FrameWaiting(elapsed)
 	for view in pairs(framing) do
 		-- A page that is hidden is not waited on: its model may only load once it is shown.
-		if view.frame:IsVisible() then view.modelWaited = (view.modelWaited or 0) + elapsed end
-		local box = ModelBox(view.modelActor)
-		if box then
-			framing[view] = nil
-			view:FrameModel(box)
-		elseif view.modelWaited >= FRAME_LAST then
-			framing[view] = nil
-		elseif view.modelWaited >= FRAME_GIVE_UP and not view.modelCamera then
-			view:FrameModel(PLAIN_BOX)
+		if view.frame:IsVisible() then
+			view.modelWaited = view.modelWaited + elapsed
+			local box = ModelBox(view.modelActor)
+			if box then
+				framing[view] = nil
+				view:FrameModel(box)
+			elseif view.modelWaited >= FRAME_LAST then
+				framing[view] = nil
+			elseif view.modelWaited >= FRAME_GIVE_UP and not view.modelCamera then
+				view:FrameModel(PLAIN_BOX)
+			end
 		end
 	end
 	if next(framing) == nil then Refresh() end

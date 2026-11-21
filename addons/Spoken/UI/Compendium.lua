@@ -2423,8 +2423,8 @@ end
 
 --- entry = { title, subtitle, onSubtitle, text, target = what Play and Report act on, or nil for
 --- none, icon = the round portrait left of the title (a Spoken:CreateSpeakerFace speaker table), the
---- Compendium's tome without it, and none on a page made with `noFace` unless `face` is set, model = { displayID,
---- scale, sequence } above the words, picture = { file, mask } above the words, parts = { { heading, text, buttons } } in place
+--- Compendium's tome without it, and none on a page made with `noFace` unless `face` is set, model = { displayID }
+--- above the words, picture = { file, mask } above the words, parts = { { heading, text, buttons } } in place
 --- of `text`: words in parts, each under its heading with its own buttons (TextView:SetParts) }. With no text, parts, target or unwritten the page is a group's or a place's: no
 --- Play, and its mark in the middle.
 --- onSubtitle(), where given, is what a click on the line under the title does (the map panel's

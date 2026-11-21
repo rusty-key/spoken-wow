@@ -26,7 +26,7 @@ OUT = os.path.join(ROOT, "addons/Spoken_Bosses/Data/Cameras.lua")
 # boss with it and turns a hand nudge (frame heights) into the scene's units with it, so it is written into
 # Cameras.lua rather than kept in two places.
 FOV_DEGREES = 27.78
-# The animation the game plays (TextView's SetSequence), written into Cameras.lua as the view's sequence.
+# The animation the game plays (the actor's SetAnimation in TextView), written into Cameras.lua as the view's sequence.
 SHOWN = 0
 
 

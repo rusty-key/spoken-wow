@@ -155,32 +155,26 @@ def is_identity(row):
     return abs(r) < 1e-4 and abs(u) < 1e-4 and abs(z - 1) < 1e-4 and abs(t) < 1e-4
 
 
+def rows_by_place(table):
+    """{ place: { model file: row } } from a parsed { [place] = { [model file] = row } }, leaving out what is not one."""
+    table = table if isinstance(table, dict) else {}
+    out = {}
+    for place in PLACES:
+        models = table.get(place)
+        rows = ((group, row_of(v)) for group, v in (models if isinstance(models, dict) else {}).items())
+        out[place] = {group: row for group, row in rows if row is not None and isinstance(group, int)}
+    return out
+
+
 def saved_edits(text):
     """{ place: { model file: row } } from SpokenDeveloperDB.cameraEdits in a Spoken_Developer.lua; {} where it has none."""
     db = parse(text).get("SpokenDeveloperDB")
-    edits = db.get("cameraEdits") if isinstance(db, dict) else None
-    out = {}
-    for place in PLACES:
-        models = edits.get(place) if isinstance(edits, dict) else None
-        out[place] = {}
-        for group, v in (models or {}).items():
-            row = row_of(v)
-            if row is not None and isinstance(group, int):
-                out[place][group] = row
-    return out
+    return rows_by_place(db.get("cameraEdits") if isinstance(db, dict) else None)
 
 
 def kept_nudges(text):
     """{ place: { model file: row } } from the SpokenBossCameraNudges already in CameraNudges.lua."""
-    table = parse(text).get("SpokenBossCameraNudges") or {}
-    out = {}
-    for place in PLACES:
-        out[place] = {}
-        for group, v in (table.get(place) or {}).items():
-            row = row_of(v)
-            if row is not None:
-                out[place][group] = row
-    return out
+    return rows_by_place(parse(text).get("SpokenBossCameraNudges"))
 
 
 def falls_back(nudges, place, group):
