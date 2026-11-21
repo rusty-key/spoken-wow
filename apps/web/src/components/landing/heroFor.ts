@@ -6,7 +6,6 @@ import type { Lang } from "@/lib/lang";
 
 import type { HeroLineData } from "./HeroLine";
 
-/** One file per language, written by apps/web/scripts/landing-voices.py. */
 const LOADERS: Partial<Record<Lang, () => Promise<{ default: HeroLineData[] }>>> = {
   enUS: () => import("./hero/enUS.json"),
   deDE: () => import("./hero/deDE.json"),

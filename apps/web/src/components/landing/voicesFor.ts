@@ -8,7 +8,6 @@ import { VOICES, type Voice } from "./voices";
 
 type Voices = Record<string, Voice[]>;
 
-/** One file per language, written by apps/web/scripts/landing-voices.py. */
 const LOADERS: Record<Lang, () => Promise<{ default: Voices }>> = {
   enUS: () => import("./voices/enUS.json"),
   deDE: () => import("./voices/deDE.json"),
