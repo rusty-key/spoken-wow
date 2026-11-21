@@ -103,6 +103,14 @@ test("a version with no changelog section still announces, without notes", () =>
   assert.deepEqual(run("places/v9.9.9"), { name: "Spoken Zones", version: "9.9.9", notes: null });
 });
 
+test("Spoken Manager is announced without a store page or a changelog", () => {
+  const { name, version, notes } = run("manager/v0.2.1");
+  assert.equal(name, "Spoken Manager");
+  assert.equal(version, "0.2.1");
+  assert.ok(notes);
+  assert.ok(run("manager-latest").skip);
+});
+
 test("a tag with no store page behind it is skipped", () => {
   assert.ok(run("legacy/quests/v1.0.0").skip);
   assert.ok(run("not-a-release").skip);

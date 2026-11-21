@@ -7,6 +7,7 @@ name: Manager
 #   tag manager/vX.Y.Z    the same, then a release for the tag with every installer, then the
 #                         `manager-latest` release is refreshed: the manager's own updater reads
 #                         latest*.yml from there (manager/src/main/updater.ts, FEED_URL).
+#                         A stable version is then announced in #announcements.
 #
 # The tag has to match "version" in manager/package.json; the release job checks it.
 #
@@ -196,6 +197,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write # dispatches announce-release.yaml
     concurrency:
       group: manager-release
       cancel-in-progress: false
@@ -269,3 +271,14 @@ jobs:
               --latest=false
           fi
           gh release edit manager-latest --draft=false --prerelease=false --latest=false
+
+      # A release made with GITHUB_TOKEN fires no `release` event, so announce-release.yaml is
+      # dispatched by hand (which GITHUB_TOKEN may do). Last, so the download links work when
+      # players read it. A pre-release is not announced. Re-running this job announces again.
+      - name: Announce on Discord
+        working-directory: .
+        run: |
+          case "${GITHUB_REF_NAME}" in
+            *-*) echo "Pre-release tag: not announced."; exit 0 ;;
+          esac
+          gh workflow run announce-release.yaml -f tag="${GITHUB_REF_NAME}"
