@@ -133,6 +133,32 @@ its date.
 - Release scripts look for the exact `## <version>` heading and fail without it, so a release
   must not ship with the notes still under `## Unreleased`.
 
+### Writing the notes
+
+Players read the notes in Discord and on the store pages, so a change gets one short bullet.
+
+- Start with a bold sentence saying what the player sees now, using the names the game or the
+  Manager shows them. Add one more sentence only if the player needs it: where to find the
+  change, or what to do. Aim for 25 words or fewer before the credit.
+- A fix says what works now, not what was wrong or why.
+- Leave out how it works, why it was built, code, files and internal names, edge cases, and
+  anything players don't see. An API change for other addon authors may name the function.
+- One bullet per change a player would notice. Fold small related changes into one, and leave
+  out changes nobody would miss.
+- End with the credit: `*([login](https://github.com/login))*`.
+
+Too long:
+
+> **Voices, in order.** Voice Language and If a Voice Is Missing are now one list in the Language
+> section of Spoken's page: as many voices as you like, moved up and down, removed, and added
+> with Add a Voice. A line plays in the first voice that has it, and past the last Spoken stays
+> silent. Your choice carries over as the first two voices.
+
+Enough:
+
+> **Choose as many voices as you like, in order,** under Language in Spoken's settings. A line
+> plays in the first voice that has it.
+
 ## Working agreements
 
 - Do what was asked, at the scope intended. If a better approach exists, say so in a sentence
