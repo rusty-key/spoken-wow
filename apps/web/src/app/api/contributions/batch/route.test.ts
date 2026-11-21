@@ -260,7 +260,8 @@ describe("where the player met each NPC", () => {
     expect(await response.json()).toMatchObject({ accepted: 2, seen: 1, refused: {} });
     const rows = await sightings();
     expect(rows.map((row) => row.uiMapID)).toEqual([1411, 1413]);
-    expect(rows.every((row) => /^ip:[0-9a-f]{64}$/.test(row.uploader))).toBe(true);
+    // No account and no install: this upload is its own voucher, and no address is kept.
+    expect(rows.every((row) => /^upload:[0-9a-f-]{36}$/.test(row.uploader))).toBe(true);
     const { rows: contributions } = await db().query(`select "source" from "contribution" where "ip" = $1`, [ip]);
     expect(contributions.map((row) => row.source)).toEqual(["readables"]);
   });

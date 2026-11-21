@@ -1108,8 +1108,9 @@ With collecting on, every quest or gossip window also keeps where its NPC was me
 not: a `seen` envelope per NPC (`SeeSpeaker`, beside the lines in `Gather.lua`, at most
 `SEEN_CAP`), naming it and each zone map the player stood in, a town's map walked up to its zone's.
 It goes up with the lines and is stored in `npc_sighting` under who sent it (an account, the
-Manager's install id, or a hash of the address), never as a contribution. A zone counts for the
-zone filter once two uploaders send it.
+Manager's install id, or that one anonymous upload; no address is kept), never as a contribution.
+A zone counts for the zone filter once two uploaders send it, so the Manager sending one player's
+file after every logout is one voice.
 
 The same text pasted again — by the same player or a different one — bumps a count on the
 existing row rather than filing a second one; different text under the same key stays its own

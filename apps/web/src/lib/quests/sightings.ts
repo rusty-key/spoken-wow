@@ -3,13 +3,11 @@
  * (lib/contributions/sighting.ts): the game's own answer to which zone a speaker stands in, for
  * the zone filter beside corpus/zones.json's (lib/quests/zones.ts).
  *
- * Anyone can hand-build a file, so a zone counts for an NPC only once VOUCHERS uploaders have
- * sent it. One person can still pass for two (a signed-in upload and the Manager's install id),
- * which is the bar for a filter, not for anything spent.
+ * A zone counts for an NPC once VOUCHERS uploaders have sent it: one player's file, sent again
+ * after every logout, is one voice. Not a defence against someone set on poisoning it, which
+ * would take many accounts, and the filter is worth nothing to them.
  */
 import "server-only";
-
-import { createHash } from "node:crypto";
 
 import type { Sighting } from "@/lib/contributions/sighting";
 import { query } from "@/lib/db";
@@ -30,11 +28,14 @@ const KNOWN_ZONES: ReadonlyMap<number, string> = new Map([
   ...QUEST_ZONES.map((zone) => [zone.uiMapID, zone.name] as const),
 ]);
 
-/** Who vouches for a sighting: the account, else the Manager's install, else a hash of the address. */
-export function uploaderOf({ userId, installId, ip }: { userId: string | null; installId: string | null; ip: string | null }): string | null {
+/**
+ * Who vouches for a sighting: the account, else the Manager's install, else this upload alone. No
+ * address is kept, so an anonymous file uploaded twice counts twice: it takes the page, by hand.
+ */
+export function uploaderOf({ userId, installId }: { userId: string | null; installId: string | null }): string {
   if (userId) return `user:${userId}`;
   if (installId) return `install:${installId}`;
-  return ip ? `ip:${createHash("sha256").update(ip).digest("hex")}` : null;
+  return `upload:${crypto.randomUUID()}`;
 }
 
 /** Stores what one uploader saw, each NPC and zone once. A zone no list knows is dropped. Returns the rows new. */
@@ -61,41 +62,36 @@ export async function recordSightings(sightings: readonly Sighting[], uploader: 
   return rows.length;
 }
 
-/** npcKey -> the zones VOUCHERS uploaders agree it stands in, by uiMapID. */
-export async function confirmedSightings(): Promise<Map<string, number[]>> {
-  const rows = await query<{ npcType: string; npcId: number; zones: number[] }>(
-    `select "npcType", "npcId", array_agg("uiMapID" order by "uiMapID") as "zones"
-       from (select "npcType", "npcId", "uiMapID" from "npc_sighting"
-              group by 1, 2, 3 having count(*) >= $1) as "vouched"
-      group by 1, 2`,
-    [VOUCHERS],
-  );
-  return new Map(rows.map((row) => [`${row.npcType}:${row.npcId}`, row.zones]));
-}
+// Read by every zone search and, through the facets, every search: a sighting vouched for a minute
+// late is fine, and the whole table is aggregated once a minute rather than per keystroke.
+const TTL_MS = 60_000;
+let vouched: { at: number; sightings: Promise<Map<string, number[]>> } | null = null;
 
-// Asked by every search request through the facets; a sighting vouched for a minute late is fine.
-const OFFERED_TTL_MS = 60_000;
-let offered: { at: number; zones: Promise<readonly QuestZone[]> } | null = null;
-
-/** The zones the filter offers: corpus/zones.json's, and every zone a vouched sighting adds, by name. */
-export function offeredZones(now = Date.now()): Promise<readonly QuestZone[]> {
-  if (!offered || now - offered.at > OFFERED_TTL_MS) {
-    const zones = query<{ uiMapID: number }>(
-      `select distinct "uiMapID" from (select "uiMapID" from "npc_sighting"
-         group by "npcType", "npcId", "uiMapID" having count(*) >= $1) as "vouched"`,
+/** npcKey -> the zones VOUCHERS uploaders agree it stands in, by uiMapID. An outage reads as none. */
+export function confirmedSightings(now = Date.now()): Promise<Map<string, number[]>> {
+  if (!vouched || now - vouched.at > TTL_MS) {
+    const sightings = query<{ npcType: string; npcId: number; zones: number[] }>(
+      `select "npcType", "npcId", array_agg("uiMapID" order by "uiMapID") as "zones"
+         from (select "npcType", "npcId", "uiMapID" from "npc_sighting"
+                group by 1, 2, 3 having count(*) >= $1) as "vouched"
+        group by 1, 2`,
       [VOUCHERS],
     )
-      .then((rows) => {
-        const byId = new Map(QUEST_ZONES.map((zone) => [zone.uiMapID, zone]));
-        for (const { uiMapID } of rows) {
-          const name = KNOWN_ZONES.get(uiMapID);
-          if (name && !byId.has(uiMapID)) byId.set(uiMapID, { uiMapID, name });
-        }
-        return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
-      })
-      // An outage offers the export's zones rather than failing every search.
-      .catch(() => QUEST_ZONES);
-    offered = { at: now, zones };
+      .then((rows) => new Map(rows.map((row) => [`${row.npcType}:${row.npcId}`, row.zones])))
+      .catch(() => new Map<string, number[]>());
+    vouched = { at: now, sightings };
   }
-  return offered.zones;
+  return vouched.sightings;
+}
+
+/** The zones the filter offers: corpus/zones.json's, and every zone a vouched sighting adds, by name. */
+export async function offeredZones(now = Date.now()): Promise<readonly QuestZone[]> {
+  const byId = new Map(QUEST_ZONES.map((zone) => [zone.uiMapID, zone]));
+  for (const zones of (await confirmedSightings(now)).values()) {
+    for (const uiMapID of zones) {
+      const name = KNOWN_ZONES.get(uiMapID);
+      if (name && !byId.has(uiMapID)) byId.set(uiMapID, { uiMapID, name });
+    }
+  }
+  return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
 }

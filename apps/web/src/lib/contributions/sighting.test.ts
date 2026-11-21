@@ -44,6 +44,8 @@ describe("a sighting", () => {
       "npc=creature:5\nzones=\n",
       "npc=creature:5\nzones=1411,Durotar\n",
       "npc=creature:5\nzones=1,2,3,4,5,6,7,8,9\n",
+      "npc=creature:2147483648\nzones=1411\n",
+      "npc=creature:5\nzones=2147483648\n",
     ]) {
       expect(sightingFrom(seen(fields)).ok, fields).toBe(false);
     }

@@ -546,7 +546,8 @@ end
 
 -- More zones than any NPC stands in: past this, an envelope's zones are a hand-built list.
 local MAX_ZONES = 8
--- npc -> the zone last kept for it this session, so a window opened again rewrites nothing.
+-- npc -> the zone last kept for it this session, so a window opened again rewrites nothing while
+-- its envelope is still there: Clear Collected Lines empties the store, not this.
 local seenIn = {}
 
 --- Keep the zone the player met the NPC on screen in, beside the zones met before: the site
@@ -565,7 +566,7 @@ local function SeeSpeaker()
         return
     end
     local npc = format("%s:%d", kind, id)
-    if seenIn[npc] == zone then
+    if seenIn[npc] == zone and Spoken.Gather:GetSeen(npc) then
         return
     end
     local zones, listed = {}, {}

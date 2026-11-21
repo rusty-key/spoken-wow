@@ -127,6 +127,9 @@ do
     Expect("met in another zone, both are kept", seen("creature:12345"), "1411,1413")
     VoiceOver.Contribute:HasGap()
     Expect("...each once", seen("creature:12345"), "1411,1413")
+    Gather:Clear()
+    VoiceOver.Contribute:HasGap()
+    Expect("cleared, the next window keeps it again", seen("creature:12345"), "1413")
 
     -- A town's own map (Razor Hill, 1418 here) is walked up to the zone it lies in.
     _G.C_Map.GetMapInfo = function(id)

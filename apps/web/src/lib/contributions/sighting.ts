@@ -11,13 +11,15 @@ export type Sighting = { npcType: "creature" | "gameobject"; npcId: number; zone
 
 /** SeeSpeaker's MAX_ZONES. More is a list nobody's game wrote. */
 const MAX_ZONES = 8;
+const INT4_MAX = 2_147_483_647;
 
 export function sightingFrom(raw: string): { ok: true; value: Sighting } | { ok: false; error: ParseError | "incomplete" } {
   const parsed = parseEnvelope(raw, ["seen"]);
   if (!parsed.ok) return parsed;
   const npc = /^(creature|gameobject):([1-9]\d{0,9})$/.exec(parsed.value.fields.npc ?? "");
   const zones = (parsed.value.fields.zones ?? "").split(",").filter(Boolean);
-  if (!npc || zones.length === 0 || zones.length > MAX_ZONES || !zones.every((zone) => /^[1-9]\d{0,9}$/.test(zone))) {
+  // npc_sighting's columns are 32-bit: a bigger id is no game's, and would fail the whole upload.
+  if (!npc || Number(npc[2]) > INT4_MAX || zones.length === 0 || zones.length > MAX_ZONES || !zones.every((zone) => /^[1-9]\d{0,9}$/.test(zone) && Number(zone) <= INT4_MAX)) {
     return { ok: false, error: "incomplete" };
   }
   return {
