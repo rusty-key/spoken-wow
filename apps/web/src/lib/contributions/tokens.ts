@@ -2,9 +2,9 @@
  * The spoken form of a contributed line's template tokens -- REPLACE_DICT in
  * pipelines/quests/tts_cli/tts_utils.py, which is what the extract does to every line it reads.
  *
- * A contribution arrives with the reader's name, class and race already put back as `$N`, `$C`
- * and `$R` (addons/Spoken_Quests/Contribute.lua, Detemplate), so it is the same kind of text the
- * extract starts from: the template is the line's `originalText`, and this is its `text`. Left
+ * A contribution is stored with the reader's name, class and race put back as `$N`, `$C` and
+ * `$R` (reader.ts), so it is the same kind of text the extract starts from: the template is the
+ * line's `originalText`, and this is its `text`. Left
  * as tokens, `text` would be refused as `invalid-chars` (text-gate.ts) and never voiced.
  *
  * Kept as the Python's table, entry for entry and in its order, so the two can be diffed by

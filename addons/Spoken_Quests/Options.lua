@@ -57,6 +57,14 @@ local GeneralTab =
                         [Enums.GossipFrequency.OncePerSession] = L.OPT_GREETING_LABEL_ONCE_SESSION,
                         [Enums.GossipFrequency.Never] = L.OPT_GREETING_LABEL_NEVER,
                     },
+                    -- Never is stored as 4, so by value it would sort above Once per Session.
+                    sorting = {
+                        Enums.GossipFrequency.Always,
+                        Enums.GossipFrequency.OncePerQuestNPC,
+                        Enums.GossipFrequency.OncePerNPC,
+                        Enums.GossipFrequency.OncePerSession,
+                        Enums.GossipFrequency.Never,
+                    },
                     get = function(info) return Addon.db.profile.Audio.GossipFrequency end,
                     set = function(info, value)
                         Addon.db.profile.Audio.GossipFrequency = value
@@ -86,11 +94,21 @@ local GeneralTab =
                         Addon.db.profile.Audio.FollowupLines = value
                     end,
                 },
+                ToggleProgressText = {
+                    type = "toggle",
+                    order = 6.6,
+                    width = 2,
+                    name = L.OPT_PANEL_PROGRESS,
+                    disabled = function(info) return not Addon:IsAutoplayOn() end,
+                    get = function(info) return Addon:IsProgressTextOn() end,
+                    set = function(info, value) Addon:SetProgressText(value) end,
+                },
                 OGThrall = {
                     type = "toggle",
                     order = 8,
                     width = 2,
                     name = L.OPT_OG_THRALL,
+                    hidden = function() return not EasterEggs:IsAvailable() end,
                     get = function(info) return Addon.db.profile.Audio.OGThrall end,
                     set = function(info, value)
                         Addon.db.profile.Audio.OGThrall = value

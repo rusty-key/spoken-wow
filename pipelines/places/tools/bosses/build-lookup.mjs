@@ -12,6 +12,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { quote } from "../../../lib/lua-text.mjs";
 import { packTimes } from "../../../lib/word-times.mjs";
 import { loadEnvFile } from "../lib/env.mjs";
 import { close, readBosses, readLiveTakes, requireDatabase } from "./store.mjs";
@@ -19,14 +20,11 @@ import { close, readBosses, readLiveTakes, requireDatabase } from "./store.mjs";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const BASE_LANG = "enUS";
 
-function luaString(text) {
-  return `"${text.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-}
-
 // Takes store a POSIX path; WoW addresses files with backslashes.
 function fields(entry) {
-  const times = entry.times ? `, times = ${luaString(packTimes(entry.times))}` : "";
-  return `file = ${luaString(entry.file.replace(/\//g, "\\"))}, len = ${entry.len}${times}`;
+  const times = entry.times ? `, times = ${quote(packTimes(entry.times))}` : "";
+  const text = entry.text ? `, text = ${quote(entry.text)}` : "";
+  return `file = ${quote(entry.file.replace(/\//g, "\\"))}, len = ${entry.len}${times}${text}`;
 }
 
 /** The take rows of live bosses as lookup entries; takes naming no live boss come back in `skipped`. */
@@ -46,12 +44,13 @@ export function buildEntries(takes, bosses) {
       file: take.file,
       len: take.durationSec,
       ...(take.wordTimes ? { times: take.wordTimes } : {}),
+      ...(take.text ? { text: take.text } : {}),
     });
   }
   return { entries, skipped };
 }
 
-/** @param entries {{ map: number, key: string, file: string, len: number, times?: number[] }[]} */
+/** @param entries {{ map: number, key: string, file: string, len: number, times?: number[], text?: string }[]} */
 export function renderLookup(entries) {
   const byMap = new Map();
   for (const e of entries) {
@@ -76,7 +75,7 @@ export function renderLookup(entries) {
   for (const map of [...byMap.keys()].sort((a, b) => a - b)) {
     lines.push(`\t\t[${map}] = {`);
     const rows = byMap.get(map).sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
-    for (const e of rows) lines.push(`\t\t\t[${luaString(e.key)}] = { ${fields(e)} },`);
+    for (const e of rows) lines.push(`\t\t\t[${quote(e.key)}] = { ${fields(e)} },`);
     lines.push("\t\t},");
   }
 

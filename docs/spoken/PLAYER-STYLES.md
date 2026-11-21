@@ -47,7 +47,10 @@ All of it is in `addons/Spoken/UI/`, one copy for every module.
   A story you ask for with Play does not wait. Pointing at "+N" opens a tooltip, Up Next, with
   the waiting lines in the order they will play, each with its title and who says it, at most
   twelve (`Actions.WaitingTip`). Clicking "+N" does nothing, and a click on it reaches the window
-  under it.
+  under it. A line queued while Spoken is stopped waits, as every line does, and the count says
+  so: it swells, lit gold with a glow behind it, and settles back (`Actions.Pulse`). Skip plays the
+  waiting line; Replay plays the stopped one first. A count that grows while lines play only fades
+  in.
 - **The face** (`Face.lua`): the speaker's still portrait, captured from their unit or drawn from
   their creature (`StaticPortrait.lua`), else the line's own picture, cut round, with the line's
   badge on a dark disc at its lower right, and the disc only under a badge. A creature the client
@@ -123,8 +126,8 @@ they do in the windows.
   Out By). **Highlight Words** lights the word being read only while the words show whole, with
   Type Words Out off: an estimated timing lit as it is typed in front of the reader shows every
   miss.
-- **Show Name and Title** off leaves the row out; it still says "(Stopped)" or why a line waits,
-  and Hide Portrait waits on it.
+- **Show Name and Title** off leaves the row out; it still says "(Stopped)", with "+N" after it
+  when lines wait behind the stop, or why a line waits, and Hide Portrait waits on it.
 - The words do nothing when clicked, and there is no right-click menu: a subtitle in the middle
   of the screen is clicked by accident, and a right-drag there is the camera turning. Stop or
   Replay, Skip and Report fade in under it while the pointer is over it.

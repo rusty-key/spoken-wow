@@ -161,7 +161,7 @@ changelog_for() {
       if (lines[i].startsWith("## ")) { end = i; break; }
     }
     process.stdout.write(lines.slice(start, end).join("\n").trim());
-  ' "$REPO/docs/readables/CHANGELOG.md" "$1"
+  ' "$REPO/docs/readables/CHANGELOG.md" "$1" | node "$REPO/scripts/lib/changelog.mjs" unwrap
 }
 
 #-- preflight -------------------------------------------------------------------

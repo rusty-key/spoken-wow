@@ -356,9 +356,13 @@ Z:RefreshPanel()
 Expect("Strahnbrad clicked on Alterac Mountains' map: its story, in Alterac Mountains",
     mapPage.title.text .. ": " .. mapPage.body.text.text .. "|" .. mapPage.sub.text.text,
     "Strahnbrad: A town in the mountains.|In Alterac Mountains")
+local showLoreFor, opened = Z.ShowLoreFor, nil
+Z.ShowLoreFor = function(_, mapID, areaKey) opened = mapID .. "|" .. areaKey end
+mapPage.open:Click()
+Z.ShowLoreFor = showLoreFor
 Expect("...Play, Report and Open on its story under Hillsbrad Foothills",
     table.concat({ mapPage.target[1], mapPage.target[2], tostring(mapPage.play:IsShown()), tostring(mapPage.report:IsShown()),
-        mapPage.open.mapID, mapPage.open.areaKey }, "|"),
+        tostring(opened) }, "|"),
     "1424|strahnbrad|true|true|1424|strahnbrad")
 showAll = false
 Z:RefreshPanel()

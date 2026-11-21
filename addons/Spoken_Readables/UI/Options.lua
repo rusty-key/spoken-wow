@@ -94,7 +94,7 @@ function SpokenReadables:SetupOptions()
 	layout:ShowWhen(silent, function() return Spoken:SilentNote("readables") ~= nil end)
 	-- The packs to get are the voice language's; any pack installed is listed too. Not the
 	-- fallback's to get: it buried the one that mattered. But a voice language with no pack of its
-	-- own (itIT) is heard in the fallback's, so that is the one to get there.
+	-- own is heard in the fallback's, so that is the one to get there.
 	local function Installed(addon)
 		for _, pack in ipairs(SpokenReadables:GetAudioPacks()) do
 			if pack.addon == addon then return true end
@@ -119,10 +119,12 @@ function SpokenReadables:SetupOptions()
 			SpokenReadables:ShowCopyLink(url or AUDIO_URL, L.OPT_DOWNLOAD_ADDRESS)
 		end)
 	end
-	for _, locale in ipairs(SpokenReadables.LOCALES or {}) do
-		local folder, url = Spoken:VoicePack("readables", locale.code)
+	-- The built-in languages, then those an installed pack declares: a language is only ever
+	-- chosen once a pack of it is installed.
+	for _, locale in ipairs(Spoken:KnownLanguages()) do
+		local code = locale.code
+		local folder, url = Spoken:VoicePack("readables", code)
 		if folder then
-			local code = locale.code
 			layout:ShowWhen(PackRow(folder, LanguageName(code), url), function() return Wanted(code, folder) end)
 		end
 	end

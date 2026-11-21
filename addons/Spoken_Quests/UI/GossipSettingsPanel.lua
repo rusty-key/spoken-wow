@@ -8,6 +8,7 @@ GossipSettingsPanel = {}
 
 -- The game's settings list sets its rows 25 in from the canvas's left.
 local INDENT = 25
+local MUTED_ROW = 26
 local ICON = [[Interface\Icons\UI_Chat]]
 local panel
 
@@ -66,26 +67,87 @@ function GossipSettingsPanel:Setup()
         refresh,
         function(name) return GOSSIP_LABELS[name] or name end)
     layout:Requires(greetings, AutoplayOn, L.REASON_AUTOPLAY_ON_QUESTS)
-    layout:Checkbox(L.OPT_OG_THRALL, nil,
+    local originalThrall = layout:Checkbox(L.OPT_OG_THRALL, nil,
         function() return audio().OGThrall end,
         function(value) audio().OGThrall = value end)
+    layout:ShowWhen(originalThrall, function() return EasterEggs:IsAvailable() end)
 
     -- What this character has heard: forgotten, every NPC greets again. It only matters while
     -- a greeting is read once.
     layout:Section(W.MODULE_HISTORY)
     local forget = layout:Button(L.OPT_FORGET_GREETINGS, 200, function()
-        local char = Addon.db and Addon.db.char
-        if char then char.hasSeenGossipForNPC = {} end
-        print("|cFF00CCFFSpoken Gossip:|r " .. L.OPT_FORGET_GREETINGS_DONE)
+        if Addon.db then Addon:ForgetGreetingsHeard() end
+        Addon:GossipSay(L.OPT_FORGET_GREETINGS_DONE)
     end)
     layout:Requires(forget, function()
         local name = GossipName()
-        return name == "OncePerNPC" or name == "OncePerQuestNPC"
+        return name == "OncePerNPC" or name == "OncePerQuestNPC" or name == "OncePerSession"
     end, L.REASON_FORGET_GREETINGS)
+
+    -- A muted NPC never plays on its own again, so this list is where it is unmuted.
+    layout:Section(L.OPT_MUTED_NPCS)
+    local function Muted()
+        local list = {}
+        for key, name in pairs(Addon.db.char.ignoredGossipNPCs) do
+            table.insert(list, { key = key, name = name })
+        end
+        table.sort(list, function(a, b) return a.name < b.name end)
+        return list
+    end
+    local function AnyMuted() return next(Addon.db.char.ignoredGossipNPCs) ~= nil end
+    layout:ShowWhen(layout:Note(L.OPT_NO_MUTED_NPCS, nil, 34), function() return not AnyMuted() end)
+
+    local list = CreateFrame("Frame", nil, content)
+    local rows = {}
+    local function Redraw()
+        layout:Refresh()
+        scroller:SetContentHeight(layout:Height() + 40)
+    end
+    local function Fill()
+        local muted = Muted()
+        for i, entry in ipairs(muted) do
+            local row = rows[i]
+            if not row then
+                row = CreateFrame("Frame", nil, list)
+                row:SetHeight(MUTED_ROW)
+                -- TOPRIGHT, not RIGHT: RIGHT with a top and a height leaves no rect to draw.
+                local y = -(i - 1) * MUTED_ROW
+                row:SetPoint("TOPLEFT", list, "TOPLEFT", SpokenLayout.LABEL_X, y)
+                row:SetPoint("TOPRIGHT", list, "TOPRIGHT", 0, y)
+                row.label = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+                row.label:SetPoint("LEFT", row, "LEFT", 0, 0)
+                row.unmute = SpokenLayout.NewButton(row, L.OPT_UNMUTE_NPC)
+                SpokenLayout.FitButton(row.unmute)
+                row.unmute:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+                row.unmute:SetScript("OnClick", function(self)
+                    Addon:SetGossipNPCMutedKey(self.key, nil, false)
+                    Addon:GossipSay(format(L.UNMUTE_NPC_DONE, self.name))
+                    Redraw()
+                end)
+                rows[i] = row
+            end
+            row.label:SetText(entry.name)
+            row.unmute.key, row.unmute.name = entry.key, entry.name
+            row:Show()
+        end
+        for i = #muted + 1, #rows do rows[i]:Hide() end
+        list.count = #muted
+    end
+    layout:Custom(list, MUTED_ROW, function(width) list:SetWidth(width - 40) end)
+    list.layoutRow.measure = function() return math.max(1, list.count or 0) * MUTED_ROW end
+    layout:ShowWhen(list, AnyMuted)
+    layout:OnRefresh(Fill)
+
+    local forgetMuted = layout:Button(L.OPT_FORGET_MUTED_NPCS, 200, function()
+        Addon:ForgetMutedNPCs()
+        Addon:GossipSay(L.OPT_FORGET_MUTED_NPCS_DONE)
+        Redraw()
+    end)
+    layout:ShowWhen(forgetMuted, AnyMuted)
 
     -- Switched off, the part is off: everything on its page greys out but its own switch.
     layout:RequiresAll(PartOn, W.REASON_PART_OFF, switch)
-    content:SetScript("OnShow", function() layout:Refresh() end)
+    content:SetScript("OnShow", Redraw)
     -- Switched on or off from Spoken's page while this one was hidden: drawn again for it.
     Spoken:RegisterCallback("PART_SWITCHED", function(part) if part == "gossip" then layout:Refresh() end end)
 

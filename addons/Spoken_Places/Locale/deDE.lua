@@ -7,7 +7,7 @@
 
 local _, SpokenPlaces = ...
 
-if GetLocale() ~= "deDE" then
+if not Spoken:InterfaceIn("deDE") then
 	return
 end
 
@@ -23,10 +23,11 @@ L.OPT_AUTOPLAY = "Automatisch vorlesen"
 L.OPT_AUTOPLAY_SUB = "Kleinere Gebiete einbeziehen"
 L.OPT_AUTOPLAY_EXPLORED = "Früher gefundene Orte einbeziehen"
 L.OPT_AUTOPLAY_COMBAT = "Bei Kampfbeginn anhalten"
-L.OPT_LANG_RELOAD = "Tippe /reload, um zu ihr zu wechseln."
-L.OPT_LANGUAGE = "Textsprache"
-L.OPT_LANG_AUTO_FMT = "Automatisch (%1$s)"
-L.OPT_LANG_SET_FMT = "Nach dem Neuladen des Interfaces sind die Geschichten auf %1$s."
+L.OPT_AUTOPLAY_EVERY_VISIT = "Bei jedem Besuch vorlesen"
+L.OPT_AUTOPLAY_GAP = "Erneut vorlesen nach"
+L.OPT_GAP_1D = "1 Tag"
+L.OPT_GAP_1W = "1 Woche"
+L.OPT_GAP_1MO = "1 Monat"
 L.OPT_LANG_PROFILE_FMT = "Dieses Profil liest die Geschichten auf %1$s vor. Tippe /reload, um zu wechseln."
 L.OPT_REPORT_PROBLEM = "Problem melden"
 L.MENU_LORE_WINDOW = "„Kompendium von Azeroth“ öffnen"
@@ -81,10 +82,9 @@ L.LORE_DISCOVERED_ONLY = "Nur entdeckte"
 L.LORE_VOICED_ONLY = "Nur vertonte"
 L.LORE_SEARCH_NONE = "Keine Treffer."
 L.REASON_DISCOVERY = "Schalte „Automatisch vorlesen“ ein, um dies zu nutzen."
+L.REASON_EVERY_VISIT = "Schalte „Bei jedem Besuch vorlesen“ aus, um dies zu nutzen."
 L.REASON_MAP_PANEL = "Schalte „Geschichte neben der Karte“ ein, um dies zu nutzen."
 L.OPT_RESET_PAGE_CONFIRM = "Jede Einstellung für Orte auf den Standard zurücksetzen?"
-L.OPT_RELOAD_NOW = "Jetzt neu laden"
-L.OPT_LATER = "Später"
 L.OPT_PAGE_TITLE = "Orte"
 L.OPT_DEV_DEBUG = "Debug: Orte"
 L.OPT_DEV_PREVIEW = "Unfertige Übersetzungen"

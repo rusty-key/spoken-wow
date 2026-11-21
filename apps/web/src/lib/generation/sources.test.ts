@@ -30,6 +30,8 @@ it("every source check constraint accepts every section", async () => {
             pg_get_constraintdef(oid) as "def"
        from pg_constraint
       where contype = 'c' and pg_get_constraintdef(oid) like '%''quests''%'
+        -- A community pack's section is where the Manager installs it, not a voice source.
+        and conrelid <> 'community_pack'::regclass
       order by 1`,
   );
 

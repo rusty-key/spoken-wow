@@ -1,7 +1,8 @@
-import { test } from "node:test";
+import { after, test } from "node:test";
 import assert from "node:assert/strict";
 
-import { creditsOf, packPath, placesLua, questsLua, readablesLua, recordedDir, toc } from "./acted.mjs";
+import { seedDatabase } from "../../pipelines/lib/test-db.mjs";
+import { actedTeamId, creditsOf, packPath, placesLua, questsLua, readablesLua, recordedDir, toc } from "./acted.mjs";
 
 const clip = (file, extra = {}) => ({ file, durationSec: 2.5, credit: "A", createdAt: "2026-10-01", lineId: "", ...extra });
 
@@ -70,4 +71,20 @@ test("every overlay nests under Spoken and names the addon that plays it", () =>
     assert.match(text, /^## X-Part-Of: Spoken$/m);
     assert.match(text, new RegExp(`^## X-Child-Of: ${player}$`, "m"));
   }
+});
+
+// Needs DATABASE_URL naming a migrated test database, as an owner that bypasses row-level
+// security; skipped without one.
+const seed = seedDatabase();
+after(() => seed?.cleanup());
+
+test("an acted pack is built for the team with plain packs, and refused for one whose packs carry its slug", { skip: seed ? false : "DATABASE_URL is not set" }, () => {
+  const lang = seed.language();
+  const plain = seed.team(lang);
+  const other = seed.team(lang, { packName: "slug" });
+  assert.equal(actedTeamId(seed.url, lang), plain.id);
+  assert.equal(actedTeamId(seed.url, lang, plain.slug), plain.id);
+  assert.throws(() => actedTeamId(seed.url, lang, other.slug), {
+    message: `${other.slug}'s packs in ${lang} carry its slug; acted packs are built only for the team with plain packs`,
+  });
 });

@@ -332,9 +332,13 @@ local mapPage = Z.panel.page
 Expect("Razorfen Downs clicked on The Barrens' map: its story beside the map, in The Barrens",
     mapPage.title.text .. ": " .. mapPage.body.text.text .. "|" .. mapPage.sub.text.text,
     "Razorfen Downs: The quilboars' barrows.|In The Barrens")
+local showLoreFor, opened = Z.ShowLoreFor, nil
+Z.ShowLoreFor = function(_, mapID, areaKey) opened = mapID .. "|" .. areaKey end
+mapPage.open:Click()
+Z.ShowLoreFor = showLoreFor
 Expect("...Play, Report and Open on its story under Thousand Needles",
     table.concat({ mapPage.target[1], mapPage.target[2], tostring(mapPage.play:IsShown()), tostring(mapPage.report:IsShown()),
-        mapPage.open.mapID, mapPage.open.areaKey }, "|"),
+        tostring(opened) }, "|"),
     "1441|razorfen downs|true|true|1441|razorfen downs")
 showAll = false
 Z:RefreshPanel()

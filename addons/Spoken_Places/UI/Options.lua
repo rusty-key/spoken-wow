@@ -97,14 +97,29 @@ function SpokenPlaces:SetupOptions()
 		Get("autoplayExplored"), Set("autoplayExplored"))
 	local combat = layout:Checkbox(L.OPT_AUTOPLAY_COMBAT, nil,
 		Get("autoplayStopInCombat"), Set("autoplayStopInCombat"))
-	for _, row in ipairs({ smaller, before, combat }) do
+	local again = layout:Checkbox(L.OPT_AUTOPLAY_EVERY_VISIT, nil,
+		Get("autoplayEveryVisit"), Set("autoplayEveryVisit"), refresh)
+	local gaps = SpokenPlaces.EVERY_VISIT_GAPS
+	local GAP_LABELS = { [gaps[1]] = L.OPT_GAP_1D, [gaps[2]] = L.OPT_GAP_1W, [gaps[3]] = L.OPT_GAP_1MO }
+	local gapMenu = layout:Dropdown(L.OPT_AUTOPLAY_GAP, nil,
+		SpokenPlaces.EVERY_VISIT_GAPS,
+		function() return SpokenPlaces:EveryVisitGap() end,
+		Set("autoplayEveryVisitGap"),
+		refresh,
+		function(gap) return GAP_LABELS[gap] or tostring(gap) end)
+	layout:ShowWhen(gapMenu, Get("autoplayEveryVisit"))
+	for _, row in ipairs({ smaller, before, combat, again, gapMenu }) do
 		layout:Requires(row, voiced, L.REASON_VOICE)
 		layout:Requires(row, discovering, L.REASON_DISCOVERY)
 	end
+	-- Read Every Visit reads on every zone change, explored before or not, so this row would look
+	-- live and change nothing.
+	layout:Requires(before, function() return not SpokenPlaces:Get("autoplayEveryVisit") end,
+		L.REASON_EVERY_VISIT)
 	layout:Outdent()
 
-	-- The stories themselves: beside the map, with their pictures, read aloud, and in which
-	-- language their text is.
+	-- The stories themselves: beside the map, with their pictures, and read aloud. Their language
+	-- is Spoken's Text Language.
 	layout:Section(L.OPT_SECTION_MAP)
 	layout:Checkbox(L.OPT_MAP_PANEL, nil,
 		Get("showMapPanel"), function(value) SpokenPlaces:SetMapPanelShown(value) end,
@@ -126,57 +141,6 @@ function SpokenPlaces:SetupOptions()
 			SpokenPlaces:NotifyAudioChanged()
 			layout:Refresh()
 		end)
-	-- The text's language. The voice is Spoken's Voice Language; this picks only the words.
-	-- Only finished languages are offered: a player choosing from a list has no way to know that
-	-- half a translation is missing, and would report the English that shows through as a bug.
-	-- Auto stores no language at all, so it keeps following the client: switch the game to French
-	-- and the text is French. Every other entry pins its language.
-	local AUTO = {}
-	local langMenu = layout:Dropdown(L.OPT_LANGUAGE, nil,
-		function()
-			local values = { AUTO }
-			for _, locale in ipairs(SpokenPlaces:GetSelectableLanguages()) do
-				table.insert(values, locale)
-			end
-			return values
-		end,
-		function()
-			local chosen = SpokenPlaces:GetLanguagePreference()
-			for _, locale in ipairs(SpokenPlaces:GetSelectableLanguages()) do
-				if locale.code == chosen then
-					return locale
-				end
-			end
-			return AUTO
-		end,
-		function(locale)
-			local code = locale ~= AUTO and locale.code or nil
-			if SpokenPlaces:SetLanguage(code) then
-				-- Asked at once rather than left to a line in chat: the failure to avoid is
-				-- a player switching, seeing English, and concluding it did not work.
-				SpokenLayout.AskReload(string.format(L.OPT_LANG_SET_FMT,
-					SpokenPlaces:GetLanguageName(code or SpokenPlaces:GetAutoLanguage())),
-					L.OPT_RELOAD_NOW, L.OPT_LATER)
-			end
-		end,
-		refresh,
-		function(locale)
-			-- Named with what it reads now, since that changes with the client.
-			if locale == AUTO then
-				return string.format(L.OPT_LANG_AUTO_FMT, SpokenPlaces:GetLanguageName(SpokenPlaces:GetAutoLanguage()))
-			end
-			return locale and SpokenPlaces:GetLanguageName(locale.code) or SpokenPlaces:GetLanguageName(nil)
-		end)
-	-- A switch takes effect on the next load, which the note says until then.
-	local langNote = layout:Note(L.OPT_LANG_RELOAD, 460, 16)
-	-- A menu with one language in it chooses nothing.
-	local function Choice() return #SpokenPlaces:GetSelectableLanguages() > 1 end
-	layout:ShowWhen(langMenu, Choice)
-	layout:ShowWhen(langNote, function()
-		local chosen = SpokenPlaces:GetLanguagePreference() or SpokenPlaces:GetAutoLanguage()
-		return Choice() and chosen ~= SpokenPlaces:GetLanguage()
-	end)
-
 	-- Every voice pack, a row each named by its language, as on the quests page: its version
 	-- where it is installed, and where it is not, a button with the address to get it.
 	layout:Section(W.PART_VOICE)
@@ -187,7 +151,7 @@ function SpokenPlaces:SetupOptions()
 	layout:OnRefresh(function() silent:SetText(Spoken:SilentNote("places") or "") end)
 	layout:ShowWhen(silent, function() return Spoken:SilentNote("places") ~= nil end)
 	-- The packs to get are the voice language's; any pack installed is listed too. Not the
-	-- fallback's to get, unless the voice language has no pack of its own (itIT).
+	-- fallback's to get, unless the voice language has no pack of its own.
 	local function Installed(addon)
 		for _, pack in ipairs(SpokenPlaces:GetAudioPacks()) do
 			if pack.addon == addon then return true end
@@ -212,10 +176,12 @@ function SpokenPlaces:SetupOptions()
 			SpokenPlaces:ShowCopyLink(url or AUDIO_URL, L.OPT_DOWNLOAD_ADDRESS)
 		end)
 	end
-	for _, locale in ipairs(SpokenPlaces.LOCALES or {}) do
-		local folder, url = Spoken:VoicePack("places", locale.code)
+	-- The built-in languages, then those an installed pack declares: a language is only ever
+	-- chosen once a pack of it is installed.
+	for _, locale in ipairs(Spoken:KnownLanguages()) do
+		local code = locale.code
+		local folder, url = Spoken:VoicePack("places", code)
 		if folder then
-			local code = locale.code
 			layout:ShowWhen(PackRow(folder, LanguageName(code), url), function() return Wanted(code, folder) end)
 		end
 	end

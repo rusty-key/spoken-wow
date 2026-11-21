@@ -57,16 +57,20 @@ function Bosses:StoryClip(map, key)
     return { present = { transcript = map .. ":" .. key .. " lore" } }
 end
 function Bosses:IsBossFound() return true end
+local function Model(map, key)
+    local entry = SpokenBossCreatures[map] and SpokenBossCreatures[map][key]
+    return entry and entry.display and { creatureID = entry.creature, displayID = entry.display }
+end
+function Bosses:Head(map, boss)
+    return { title = Bosses.Name(boss), subtitle = SpokenCompendium.DungeonName(map) or "",
+        model = Model(map, boss.key), revealed = true }
+end
+function Bosses:ShowBoss() end
 function Bosses:GetAudioClip() return nil end
 function Bosses:QueuedStory() return nil end
 function Bosses:PlayStory() end
 
 Bosses.Name = function(entry) return entry[GetLocale()] or entry[1] end
-Bosses.Model = function(map, key)
-    local entry = SpokenBossCreatures[map] and SpokenBossCreatures[map][key]
-    return entry and entry.display and { creatureID = entry.creature, displayID = entry.display }
-end
-Bosses.Unlocked = function() return false end
 assert(loadfile(here .. "/../../addons/Spoken_Bosses/MapLore.lua"))("Spoken_Bosses", Bosses)
 assert(loadfile(here .. "/../../addons/Spoken_Bosses/OpenMap.lua"))("Spoken_Bosses", Bosses)
 stub.FireEvent("PLAYER_ENTERING_WORLD")
@@ -117,6 +121,7 @@ Expect("...with its name", shown and shown.entry.title, "Edwin VanCleef")
 Expect("...the boss panel's title", shown and shown.entry.panelTitle, "Boss Story")
 Expect("...its model", shown and shown.entry.model and shown.entry.model.displayID, 2029)
 Expect("...and a Report button, as from Leatrix Maps", shown and shown.entry.reportAction, Bosses.ReportAction)
+Expect("...and Open in Compendium, as from Leatrix Maps", type(shown and shown.entry.open), "function")
 Expect("...beside the map the client has open", shown and shown.map, 1436)
 
 -- A row a tab click draws from the pool is hooked once the list is filled.
