@@ -486,19 +486,14 @@ end
 -- Models under another window's model
 --------------------------------------------------------------------------------
 
--- Models in different windows share one depth buffer, so figures whose frames overlap cut into each
--- other whichever window is on top. A scene with a larger near clip plane stores its depth as nearer, so
--- the model of the window on top wins cleanly when its scene has a large one and the ones under it a
--- tiny one. Each model is ranked by its window's stacking (strata, then frame level, then who asked first),
--- the lowest at 0, and takes the near clip of its rank as a share of the distance from its camera to the
--- model's nearest face. Every share is below 1, so the model's nearest part is never clipped away. The
--- shares are 0.2 apart, which keeps the depth values of neighbouring ranks from meeting; a fifth window
--- over the others takes the last share with the fourth.
+-- Models in different windows share one depth buffer, so overlapping figures cut into each other. A larger
+-- near clip stores depth as nearer, so each model takes a near clip by its window's rank (strata, frame
+-- level, then who asked first), as a share of its distance to the model's nearest face. Every share is
+-- below 1, so nothing of the model is clipped; a fifth window shares the fourth's.
 local NEAR_BY_RANK = { 0.01, 0.3, 0.5, 0.7 }
 local FAR_CLIP = 500
--- Windows are raised and dragged while shown, so a shared frame looks again, and only while two or more
--- shown views want a model. The same frame looks at a shown model that is still loading every frame,
--- until it has been framed.
+-- Windows are raised while shown, so ranks are looked at again while two or more shown views have a model.
+-- A shown model still loading is looked at every frame until it is framed.
 local WATCH_EVERY = 0.1
 local STRATA = { BACKGROUND = 1, LOW = 2, MEDIUM = 3, HIGH = 4, DIALOG = 5, FULLSCREEN = 6,
 	FULLSCREEN_DIALOG = 7, TOOLTIP = 8 }
@@ -543,7 +538,6 @@ local function Under(a, b)
 	return a.modelAsked < b.modelAsked
 end
 
--- A developer module that takes part in a view's model is told of each change (Spoken_Developer's camera editor).
 local function Notify(view)
 	if view.onModel then pcall(view.onModel, view) end
 end
@@ -622,9 +616,8 @@ function SpokenTextView.Create(parent, owner)
 	child:SetSize(1, 1)
 	scroll:SetScrollChild(child)
 
-	-- A ModelScene, not a PlayerModel: scenes of different windows can be told which one wins the depth
-	-- buffer (the near clip), which models cannot. Where the client has none, a plain frame stands in and a
-	-- boss is no model: the page has no room, frame or backing for one.
+	-- A ModelScene, not a PlayerModel: only a scene takes a near clip, which settles the shared depth buffer.
+	-- Without one, a plain frame stands in and no boss is drawn.
 	local made, model = pcall(CreateFrame, "ModelScene", nil, child)
 	if not made then
 		SceneFailed("model", model)
@@ -702,7 +695,7 @@ function SpokenTextView.Create(parent, owner)
 		end
 	end)
 
-	-- A developer module sets this to take part in a view's model (Spoken_Developer's camera editor).
+	-- Set by a developer module to take part in each view's model.
 	if SpokenTextView.onCreate then pcall(SpokenTextView.onCreate, view) end
 	return view
 end
@@ -999,9 +992,8 @@ local function SetSceneLight(scene)
 	scene:SetLightAmbientColor(0.8, 0.8, 0.8)
 end
 
--- The lens (full vertical field of view, in degrees) and the pose (animation sequence) every boss is drawn
--- with, written to Spoken_Bosses/Data/Cameras.lua as SpokenBossCameraView by the pipeline that makes it.
--- These are what it holds today, for a data file that does not carry it.
+-- The lens (full vertical field of view, in degrees) and pose every boss is drawn with, from
+-- SpokenBossCameraView; these stand in for a data file without it.
 local DEFAULT_FOV, DEFAULT_SEQUENCE = 27.78, 0
 
 local function CameraView()
@@ -1017,9 +1009,8 @@ local function Span()
 	return 2 * math.tan(math.rad((CameraView())) / 2)
 end
 
---- A creature model above the text from the next SetText on: `displayID` is the client's model
---- display ID, as DBM's boss model preview uses. A model with no displayID is no model: a scene draws a
---- display and nothing else. nil for none.
+--- A creature model above the text from the next SetText on, by `displayID`; nil, or none without a
+--- displayID, for no model.
 function TextView:SetModel(model)
 	local displayID = self.hasScene and model and model.displayID or nil
 	-- Most pages have no model, and set none on every layout.
@@ -1060,7 +1051,6 @@ function TextView:SetModel(model)
 		self.modelEdgeMask:SetTexture(EDGE_PATH .. (self.modelDisplayID % MODEL_EDGES + 1),
 			"CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
 	end
-	-- The last boss's framing is not this one's.
 	self.modelCamera = nil
 	self:DrawModel(select(2, CameraView()))
 	-- Not drawn until it is framed, so it does not show in the wrong place first.
@@ -1126,7 +1116,7 @@ local function Nudged(cam, right, up, zoom, yaw)
 	local dist = math.sqrt(fx * fx + fy * fy + fz * fz)
 	if dist < 1e-6 then return cam end
 	fx, fy, fz = fx / dist, fy / dist, fz / dist
-	-- The camera's right and up, as the pipeline works them out: right = forward x (0, 0, 1), up = right x forward.
+	-- right = forward x (0, 0, 1), up = right x forward.
 	local rx, ry = fy, -fx
 	local rl = math.sqrt(rx * rx + ry * ry)
 	if rl < 1e-6 then rx, ry, rl = 0, 1, 1 end
@@ -1152,10 +1142,8 @@ function TextView:CameraPlace()
 	return self.cameraPlace or "compendium"
 end
 
---- The camera is moved for this model in this place by { right, up, zoom, turn }: what a developer module
---- answers through SpokenTextView.cameraEdits(place, group) (nothing for a player), else what
---- Spoken_Bosses/Data/CameraNudges.lua ships. The map's story page has the Compendium's row until a row is
---- made for it. A row that is not four numbers is ignored.
+--- The { right, up, zoom, turn } this model is moved by here: a developer module's edit, else the shipped
+--- row. The story page falls back to the Compendium's row. A malformed row is ignored.
 function TextView:CameraNudge()
 	local group, place = self:CameraGroup(), self:CameraPlace()
 	if not group then return nil end
@@ -1178,9 +1166,8 @@ function TextView:CurrentCamera()
 	return base
 end
 
--- How much of the frame's height, and of its width, the figure fills. The scene's field of view is taken to
--- be the vertical one, as a PlayerModel's is, and the frame as MODEL_WIDE wide: the first look in the game
--- decides both, and these two numbers are all that changes if they are off.
+-- How much of the frame's height, and of its width, the figure fills. The field of view is taken to be the
+-- vertical one, as a PlayerModel's is.
 local FIT, ASPECT = 0.85, MODEL_WIDE
 -- A model that has not loaded by now is framed as this box, in scene units, so the boss is not left unseen.
 -- It is framed again from its own box if that comes by FRAME_LAST, when it is no longer looked for.

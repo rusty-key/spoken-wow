@@ -1,16 +1,7 @@
--- The camera editor: moves, turns and zooms a boss's 3D model in its frame, to set where its camera
--- sits. Spoken frames a boss from its loaded model and moves that camera by
--- a nudge kept in Spoken_Bosses/Data/CameraNudges.lua; this is how a nudge is made.
---
--- Spoken's TextView asks SpokenTextView.cameraEdits(place, group) for the nudge of a model and calls
--- SpokenTextView.onCreate(view) for each view it builds, so the editor is only here, and a player,
--- who does not have this module, has no edits and no editor. An edit is kept per model file (`group`:
--- bosses on the same file move together) and per place (`place`: the Compendium page and the boss's
--- story on the map each have their own) in SpokenDeveloperDB.cameraEdits[place][group] =
--- { right, up, zoom, turn }, the shape the pipeline reads back from this module's saved variables.
---
--- Chat and the on-screen hint stay English, as in the rest of this module: they are read by whoever
--- sets the cameras.
+-- The camera editor: moves, turns and zooms a boss's 3D model to make the nudges in
+-- Spoken_Bosses/Data/CameraNudges.lua. Edits live in SpokenDeveloperDB.cameraEdits[place][group] =
+-- { right, up, zoom, turn }, the shape import_edits.py reads; a player, without this module, has none.
+-- Chat and the hint stay English: only whoever sets the cameras reads them.
 
 local _, Developer = ...
 

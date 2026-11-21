@@ -75,7 +75,7 @@ Developer.provider = {
 	Describe = function() return Developer:Describe() end,
 }
 
--- `/spokenbosscam` (short form `/spbc`), the camera editor's own command (Camera.lua).
+-- `/spokenbosscam` (short form `/spbc`), the camera editor.
 _G.SLASH_SPOKENBOSSCAM1 = "/spokenbosscam"
 _G.SLASH_SPOKENBOSSCAM2 = "/spbc"
 SlashCmdList["SPOKENBOSSCAM"] = function(msg) Developer.Camera:Command(msg) end

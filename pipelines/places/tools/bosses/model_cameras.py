@@ -21,10 +21,8 @@ ROOT = os.path.normpath(os.path.join(HERE, "..", "..", "..", ".."))
 CSV = os.path.expanduser("~/Documents/forever-db/csv")
 CREATURES = os.path.join(ROOT, "addons/Spoken_Bosses/Data/Creatures.lua")
 OUT = os.path.join(ROOT, "addons/Spoken_Bosses/Data/Cameras.lua")
-# The field of view the client draws with, the full vertical angle: it matches the size of the figure in
-# screenshots of the client's own camera (within a few percent for three of five bosses). TextView frames a
-# boss with it and turns a hand nudge (frame heights) into the scene's units with it, so it is written into
-# Cameras.lua rather than kept in two places.
+# The client's full vertical field of view: it matches the figure's size in screenshots of the client's own
+# camera (within a few percent for three of five bosses).
 FOV_DEGREES = 27.78
 # The animation the game plays (the actor's SetAnimation in TextView), written into Cameras.lua as the view's sequence.
 SHOWN = 0

@@ -28,7 +28,7 @@ local function Defaults()
 		on = true,
 		-- "<GetTime> <category> <text>", oldest first.
 		lines = {},
-		-- The camera editor's changes (Camera.lua): [place][model group] = { right, up, zoom, turn }.
+		-- The camera editor's changes: [place][model group] = { right, up, zoom, turn }.
 		cameraEdits = {},
 	}
 end
