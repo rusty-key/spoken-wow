@@ -622,7 +622,8 @@ function SyncBanner({
       <Banner tone="warn">
         <span>
           Generation uses <code>{modelId}</code>, which ignores phoneme rules — only{" "}
-          <code>eleven_v3</code> and <code>eleven_flash_v2</code> honour them. {phonemes} entries
+          <code>eleven_v3</code>, <code>eleven_v4</code>, <code>eleven_v4_turbo</code> and{" "}
+          <code>eleven_flash_v2</code> honour them. {phonemes} entries
           written in IPA are skipped; the respelled ones still apply. Switch the model on Voices,
           or respell those entries.
         </span>
@@ -867,7 +868,7 @@ function Row({
               className="size-7 shrink-0 text-sm"
               title={
                 ipa
-                  ? "Writing IPA. Only eleven_v3 and eleven_flash_v2 honour it — click for a respelling."
+                  ? "Writing IPA. eleven_v3, eleven_v4, eleven_v4_turbo and eleven_flash_v2 honour it — click for a respelling."
                   : "Respelling it as it should be said. Click to write IPA instead."
               }
               aria-label={ipa ? "Switch to a respelling" : "Switch to IPA"}

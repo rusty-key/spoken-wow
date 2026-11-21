@@ -7,8 +7,9 @@
  *
  * An entry says how a name sounds in one of two ways, and the choice is not cosmetic:
  *
- *   ipa    a phoneme rule. Exact, and honoured by eleven_v3 and eleven_flash_v2 only - every
- *          other model silently ignores it and speaks the default pronunciation.
+ *   ipa    a phoneme rule. Exact, and honoured by eleven_v3, eleven_v4, eleven_v4_turbo and
+ *          eleven_flash_v2 - every other model silently ignores it and speaks the default
+ *          pronunciation.
  *   alias  a respelling. Approximate, because it is only as good as the reader's guess at
  *          the new spelling, but honoured by every model.
  *
@@ -21,7 +22,7 @@ export const CONFIDENCES = ["high", "check"] as const;
 export type Confidence = (typeof CONFIDENCES)[number];
 
 /** Models that honour phoneme rules. Everything else ignores the dictionary entirely. */
-export const PHONEME_MODELS = ["eleven_v3", "eleven_flash_v2"] as const;
+export const PHONEME_MODELS = ["eleven_v3", "eleven_v4", "eleven_v4_turbo", "eleven_flash_v2"] as const;
 
 export function honoursPhonemes(modelId: string): boolean {
   return (PHONEME_MODELS as readonly string[]).includes(modelId);

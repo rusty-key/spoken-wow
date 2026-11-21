@@ -155,34 +155,39 @@ describe("sampleSentences", () => {
 
 describe("speakable", () => {
   /**
-   * The trick the whole feature rests on: an inline phoneme tag is honoured by the same
-   * models that honour a dictionary phoneme rule, so a draft can be heard before it is saved
-   * and before any dictionary exists.
+   * The preview syntax follows the selected model: Flash v2 uses an SSML phoneme tag,
+   * while Eleven v3, v4 and v4 Turbo use inline IPA between slashes.
    */
-  it("wraps IPA in an inline phoneme tag", () => {
-    expect(speakable(IPA, "Gnomeregan is lost.")).toBe(
+  it("wraps IPA in an SSML phoneme tag for Flash v2", () => {
+    expect(speakable(IPA, "Gnomeregan is lost.", "eleven_flash_v2")).toBe(
       '<phoneme alphabet="ipa" ph="ˈnoʊmɹəɡæn">Gnomeregan</phoneme> is lost.',
     );
   });
 
+  it("uses inline IPA for Eleven v3, v4 and v4 Turbo", () => {
+    expect(speakable(IPA, "Gnomeregan is lost.", "eleven_v3")).toBe("/ˈnoʊmɹəɡæn/ is lost.");
+    expect(speakable(IPA, "Gnomeregan is lost.", "eleven_v4")).toBe("/ˈnoʊmɹəɡæn/ is lost.");
+    expect(speakable(IPA, "Gnomeregan is lost.", "eleven_v4_turbo")).toBe("/ˈnoʊmɹəɡæn/ is lost.");
+  });
+
   it("substitutes a respelling outright, as an alias rule would", () => {
-    expect(speakable(ALIAS, "Gnomeregan is lost.")).toBe("nomeregan is lost.");
+    expect(speakable(ALIAS, "Gnomeregan is lost.", "eleven_v4")).toBe("nomeregan is lost.");
   });
 
   it("keeps the spelling the sentence actually used", () => {
-    expect(speakable(IPA, "GNOMEREGAN is lost.")).toContain(">GNOMEREGAN</phoneme>");
+    expect(speakable(IPA, "GNOMEREGAN is lost.", "eleven_flash_v2")).toContain(">GNOMEREGAN</phoneme>");
   });
 
   // One occurrence is enough to hear, and every extra tag is billed.
   it("touches only the first occurrence", () => {
-    const spoken = speakable(IPA, "Gnomeregan, oh Gnomeregan.");
+    const spoken = speakable(IPA, "Gnomeregan, oh Gnomeregan.", "eleven_flash_v2");
     expect(spoken.match(/<phoneme/g)).toHaveLength(1);
   });
 
   // The attribute is quoted, so an unescaped quote in the IPA would break the tag and leave
   // the model reading the markup aloud.
   it("cannot break out of the ph attribute", () => {
-    expect(speakable({ ...IPA, ipa: 'no"ʊm' }, "Gnomeregan.")).toContain('ph="noʊm"');
+    expect(speakable({ ...IPA, ipa: 'no"ʊm' }, "Gnomeregan.", "eleven_flash_v2")).toContain('ph="noʊm"');
   });
 });
 
@@ -263,7 +268,7 @@ describe("renderPreview", () => {
     expect(result.preview.audio).toEqual(MP3);
     expect(result.preview.cached).toBe(false);
     expect(result.preview.credits).toBe(17);
-    expect(result.preview.spoken).toContain("<phoneme");
+    expect(result.preview.spoken).toContain("/ˈnoʊmɹəɡæn/");
   });
 
   /** The whole point of the cache: re-opening an entry must not spend credits again. */
@@ -325,9 +330,7 @@ describe("renderPreview", () => {
       const result = await renderPreview(IPA, "word", pick, CONFIG, options, scratch());
 
       expect(result.ok && result.preview.sentence).toBe("Gnomeregan");
-      expect(result.ok && result.preview.spoken).toBe(
-        '<phoneme alphabet="ipa" ph="ˈnoʊmɹəɡæn">Gnomeregan</phoneme>',
-      );
+      expect(result.ok && result.preview.spoken).toBe("/ˈnoʊmɹəɡæn/");
       expect(result.ok && result.preview.source).toBeNull();
       expect(calls).toHaveBeenCalledTimes(1);
     });
@@ -440,6 +443,53 @@ describe("renderPreview", () => {
     expect(result.ok).toBe(false);
     expect(!result.ok && result.failure.message).toMatch(/ignores phoneme rules/);
     expect(calls).not.toHaveBeenCalled();
+  });
+
+  it("previews an IPA pronunciation on Eleven v4", async () => {
+    const { calls, options } = elevenlabs();
+    const config = { ...CONFIG, modelId: "eleven_v4" };
+    const result = await renderPreview(IPA, "word", pick, config, options, scratch());
+
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveBeenCalledTimes(1);
+    const [, init] = calls.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(init.body)).text).toContain("/ˈnoʊmɹəɡæn/");
+    expect(JSON.parse(String(init.body)).text).not.toContain("<phoneme");
+  });
+
+  it("previews an IPA pronunciation on Eleven v3", async () => {
+    const { calls, options } = elevenlabs();
+    const config = { ...CONFIG, modelId: "eleven_v3" };
+    const result = await renderPreview(IPA, "word", pick, config, options, scratch());
+
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveBeenCalledTimes(1);
+    const [, init] = calls.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(init.body)).text).toContain("/ˈnoʊmɹəɡæn/");
+    expect(JSON.parse(String(init.body)).text).not.toContain("<phoneme");
+  });
+
+  it("previews an IPA pronunciation on Eleven v4 Turbo", async () => {
+    const { calls, options } = elevenlabs();
+    const config = { ...CONFIG, modelId: "eleven_v4_turbo" };
+    const result = await renderPreview(IPA, "word", pick, config, options, scratch());
+
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveBeenCalledTimes(1);
+    const [, init] = calls.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(init.body)).text).toContain("/ˈnoʊmɹəɡæn/");
+    expect(JSON.parse(String(init.body)).text).not.toContain("<phoneme");
+  });
+
+  it("previews an IPA pronunciation with an SSML phoneme tag on Flash v2", async () => {
+    const { calls, options } = elevenlabs();
+    const config = { ...CONFIG, modelId: "eleven_flash_v2" };
+    const result = await renderPreview(IPA, "word", pick, config, options, scratch());
+
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveBeenCalledTimes(1);
+    const [, init] = calls.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(init.body)).text).toContain('<phoneme alphabet="ipa"');
   });
 
   // A respelling is plain text. Every model reads it, so there is nothing to refuse.
