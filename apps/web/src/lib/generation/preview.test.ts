@@ -155,16 +155,17 @@ describe("sampleSentences", () => {
 
 describe("speakable", () => {
   /**
-   * The preview syntax follows the selected model: older models use an SSML phoneme tag,
-   * while Eleven v4 uses inline IPA between slashes.
+   * The preview syntax follows the selected model: Flash v2 uses an SSML phoneme tag,
+   * while Eleven v3, v4 and v4 Turbo use inline IPA between slashes.
    */
-  it("wraps IPA in an SSML phoneme tag for older models", () => {
+  it("wraps IPA in an SSML phoneme tag for Flash v2", () => {
     expect(speakable(IPA, "Gnomeregan is lost.", "eleven_flash_v2")).toBe(
       '<phoneme alphabet="ipa" ph="ˈnoʊmɹəɡæn">Gnomeregan</phoneme> is lost.',
     );
   });
 
-  it("uses inline IPA for Eleven v4 and v4 Turbo", () => {
+  it("uses inline IPA for Eleven v3, v4 and v4 Turbo", () => {
+    expect(speakable(IPA, "Gnomeregan is lost.", "eleven_v3")).toBe("/ˈnoʊmɹəɡæn/ is lost.");
     expect(speakable(IPA, "Gnomeregan is lost.", "eleven_v4")).toBe("/ˈnoʊmɹəɡæn/ is lost.");
     expect(speakable(IPA, "Gnomeregan is lost.", "eleven_v4_turbo")).toBe("/ˈnoʊmɹəɡæn/ is lost.");
   });
@@ -267,7 +268,7 @@ describe("renderPreview", () => {
     expect(result.preview.audio).toEqual(MP3);
     expect(result.preview.cached).toBe(false);
     expect(result.preview.credits).toBe(17);
-    expect(result.preview.spoken).toContain("<phoneme");
+    expect(result.preview.spoken).toContain("/ˈnoʊmɹəɡæn/");
   });
 
   /** The whole point of the cache: re-opening an entry must not spend credits again. */
@@ -329,9 +330,7 @@ describe("renderPreview", () => {
       const result = await renderPreview(IPA, "word", pick, CONFIG, options, scratch());
 
       expect(result.ok && result.preview.sentence).toBe("Gnomeregan");
-      expect(result.ok && result.preview.spoken).toBe(
-        '<phoneme alphabet="ipa" ph="ˈnoʊmɹəɡæn">Gnomeregan</phoneme>',
-      );
+      expect(result.ok && result.preview.spoken).toBe("/ˈnoʊmɹəɡæn/");
       expect(result.ok && result.preview.source).toBeNull();
       expect(calls).toHaveBeenCalledTimes(1);
     });
@@ -449,6 +448,18 @@ describe("renderPreview", () => {
   it("previews an IPA pronunciation on Eleven v4", async () => {
     const { calls, options } = elevenlabs();
     const config = { ...CONFIG, modelId: "eleven_v4" };
+    const result = await renderPreview(IPA, "word", pick, config, options, scratch());
+
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveBeenCalledTimes(1);
+    const [, init] = calls.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(String(init.body)).text).toContain("/ˈnoʊmɹəɡæn/");
+    expect(JSON.parse(String(init.body)).text).not.toContain("<phoneme");
+  });
+
+  it("previews an IPA pronunciation on Eleven v3", async () => {
+    const { calls, options } = elevenlabs();
+    const config = { ...CONFIG, modelId: "eleven_v3" };
     const result = await renderPreview(IPA, "word", pick, config, options, scratch());
 
     expect(result.ok).toBe(true);

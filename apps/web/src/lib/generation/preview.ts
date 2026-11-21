@@ -2,10 +2,10 @@
  * Hearing one lexicon entry before it costs a batch.
  *
  * The trick that makes this possible without uploading anything: ElevenLabs accepts a
- * model-specific pronunciation form inline in the text. Eleven v4 and v4 Turbo use
- * slash-delimited IPA; the older phoneme-capable models use an SSML phoneme tag. So a draft
- * entry can be spoken while it is still a draft - before it is saved, before a dictionary
- * exists, and without disturbing the one generation is using.
+ * model-specific pronunciation form inline in the text. Eleven v3, v4 and v4 Turbo use
+ * slash-delimited IPA; Flash v2 uses an SSML phoneme tag. So a draft entry can be spoken
+ * while it is still a draft - before it is saved, before a dictionary exists, and without
+ * disturbing the one generation is using.
  *
  * What it does NOT prove is worth being clear about, because it is the more common
  * misunderstanding: this renders the SOUND, by substituting it directly. It says nothing
@@ -173,14 +173,14 @@ export function sampleSentence(grapheme: string, lines: CorpusLine[]): Sample {
  * Put the entry's pronunciation into the sentence in the syntax the selected model accepts.
  *
  * An alias is substituted outright, which is exactly what an alias rule does. IPA is
- * slash-delimited for Eleven v4 and v4 Turbo, while the older models use the SSML phoneme
- * tag. Only the first occurrence is touched: one is enough to hear, and every extra tag is
- * billed.
+ * slash-delimited for Eleven v3, v4 and v4 Turbo, while Flash v2 uses the SSML phoneme tag.
+ * Only the first occurrence is touched: one is enough to hear, and every extra tag is billed.
  */
 export function speakable(entry: LexiconEntry, sentence: string, modelId: string): string {
   const escaped = entry.grapheme.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const pattern = new RegExp(`(?<![\\w'])${escaped}(?![\\w])`, "i");
-  const inlineIpa = modelId === "eleven_v4" || modelId === "eleven_v4_turbo";
+  const inlineIpa =
+    modelId === "eleven_v3" || modelId === "eleven_v4" || modelId === "eleven_v4_turbo";
 
   return sentence.replace(pattern, (matched) => {
     if (kindOf(entry) === "alias") return entry.alias!;
