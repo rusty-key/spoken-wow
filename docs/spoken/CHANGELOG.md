@@ -15,6 +15,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   off, the subtitles count it after "(Stopped)". Play buttons in the quest log and the Compendium
   show a plus while Spoken reads another line: a click queues the line after it, and the plus
   stays while the line waits. *([rusty-key](https://github.com/rusty-key))*
+- **Collecting lines also notes which zone you met each quest giver and speaker in**, so the
+  site can sort lines by zone. It goes up with your collected lines, and nothing else about
+  where you were. *([rusty-key](https://github.com/rusty-key))*
 - **Quest pages in the Compendium read in your language before a line is voiced.** A quest you have
   not opened, whose line has no recording in your language yet, showed its English. It now shows
   the words your language's quest packs carry, once those packs are rebuilt.

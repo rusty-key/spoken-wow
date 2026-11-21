@@ -78,7 +78,6 @@ export default defineConfig({
       "@tools": path.resolve(__dirname, "../../pipelines/places/tools"),
       // The readables pipeline, for the same reason and with the same caveat.
       "@readables-tools": path.resolve(__dirname, "../../pipelines/readables/tools"),
-      "@quests-corpus": path.resolve(__dirname, "../../pipelines/quests/corpus"),
     },
   },
 });

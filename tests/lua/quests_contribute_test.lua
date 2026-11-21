@@ -103,6 +103,69 @@ Expect("...and the gossip text", gossip:match("\nWe stand ready%.\n") ~= nil, tr
 stub.HidePanels()
 Expect("nothing on screen contributes nothing", VoiceOver.Contribute:Capture(), nil)
 
+---------------------------------------------------------------- where a speaker stands
+-- Every quest or gossip window keeps the zone the player met its NPC in, missing line or not.
+do
+    local Gather = SpokenEnv.Spoken.Gather
+    local mapInfo = _G.C_Map.GetMapInfo
+    local function seen(npc)
+        local envelope = Gather:GetSeen(npc)
+        return envelope and envelope:match("\nzones=([%d,]+)\n")
+    end
+    world.playerMapID = 1411
+    stub.ShowGossip("We stand ready.")
+    VoiceOver.Contribute:HasGap()
+    local envelope = Gather:GetSeen("creature:12345")
+    H.WriteCapturedFixture(here, "seen-npc", envelope)
+    Expect("a gossip window keeps where its NPC was met", seen("creature:12345"), "1411")
+    Expect("...as a seen envelope naming the NPC by kind and id",
+        envelope and envelope:match("^!SPOKEN1 seen\naddon=SpokenQuests/9%.9%.9\nbuild=[^\n]+\nnpc=creature:12345\n") ~= nil, true)
+    Expect("...with no text and no name", envelope and (envelope:find("text<<", 1, true) or envelope:find("Linnea", 1, true)), nil)
+
+    world.playerMapID = 1413
+    VoiceOver.Contribute:HasGap()
+    Expect("met in another zone, both are kept", seen("creature:12345"), "1411,1413")
+    VoiceOver.Contribute:HasGap()
+    Expect("...each once", seen("creature:12345"), "1411,1413")
+    Gather:Clear()
+    VoiceOver.Contribute:HasGap()
+    Expect("cleared, the next window keeps it again", seen("creature:12345"), "1413")
+
+    -- A town's own map (Razor Hill, 1418 here) is walked up to the zone it lies in.
+    _G.C_Map.GetMapInfo = function(id)
+        if id == 9001 then return { mapType = 5, parentMapID = 1411 } end
+        if id == 9002 then return { mapType = 2, parentMapID = 947 } end
+        if id == 947 then return { mapType = 1 } end
+        return { mapType = 3 }
+    end
+    world.npcGUID = "Creature-0-0-0-0-12346-0"
+    world.playerMapID = 9001
+    VoiceOver.Contribute:HasGap()
+    Expect("a town's map counts as its zone's", seen("creature:12346"), "1411")
+    world.npcGUID = "Creature-0-0-0-0-12347-0"
+    world.playerMapID = 9002
+    VoiceOver.Contribute:HasGap()
+    Expect("a map under no zone keeps nothing", Gather:GetSeen("creature:12347"), nil)
+    _G.C_Map.GetMapInfo = mapInfo
+    world.playerMapID = 1411
+
+    local isPlayer = _G.UnitIsPlayer
+    _G.UnitIsPlayer = function() return true end
+    world.npcGUID = "Player-4401-0A1B2C3D"
+    VoiceOver.Contribute:HasGap()
+    _G.UnitIsPlayer = isPlayer
+    Expect("another player is never kept", Gather:SeenCount(), 2)
+
+    world.npcGUID = "Creature-0-0-0-0-12348-0"
+    Gather:SetEnabled(false)
+    VoiceOver.Contribute:HasGap()
+    Gather:SetEnabled(true)
+    Expect("with collecting off, nothing is kept", Gather:GetSeen("creature:12348"), nil)
+
+    world.npcGUID = "Creature-0-0-0-0-12345-0"
+    stub.HidePanels()
+end
+
 ---------------------------------------------------------------- what a report carries
 -- The window on screen when it still shows the clip, so the NPC can be observed.
 stub.ShowPanel("QuestFrameDetailPanel")

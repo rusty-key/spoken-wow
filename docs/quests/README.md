@@ -502,14 +502,15 @@ its Play button and `/spq read` still play it.
 too. The level lives in `quest_level`, loaded from an extract by a one-off script. A line with no
 known level is in no range, so setting either bound hides gossip and quests the extract lacks.
 
-**The zone filter places a line as the Compendium places quests.** `?zone=<uiMapID>` keeps a quest's
-lines when the Compendium files the quest in that zone, wherever its giver stands. Gossip, and a
-quest filed under a class, profession or season, counts in each zone its speaker spawns in. The
-zones come from the committed `pipelines/quests/corpus/zones.json`, which `make quests-zones` writes
-from `Compendium.lua` and the corpus's spawns. The spawns are placed by the server's map files
-(`COMPENDIUM_MAPS`), as the Compendium places a giver, because the zones' rectangles overlap along
-every border. Rerun it after `make quests-compendium` or a corpus export. The filter offers only
-the zones some line is in, and an item or an unspawned object is in none.
+**The zone filter places a line where players met its speaker.** `?zone=<uiMapID>` keeps every line
+whose speaker two players' uploads say they met in that zone (`npc_sighting`, `lib/quests/sightings.ts`,
+the collecting described under contributions): a quest's accept line where its giver stands, its
+complete line where its ender does, whatever zone the quest log files the quest under. The game says
+which zone the player stands in, so a speaker at a border lands right, and an NPC the dump never
+spawned is placed as readily. A speaker nobody has vouched for yet, and an item, are in no zone, and
+the filter offers only the zones some sighting names. Only the zones in the places seed
+(`pipelines/places/tools/seed/zones.json`) are kept, so Forever's own zones are not filterable until
+it lists them.
 
 **The player filter is for voicing one side of a split line first.** `?playerGender=m` or `f` keeps
 that side's `:m` or `:f` lines and every line that does not branch on the player, and a batch started
@@ -1101,6 +1102,14 @@ case and spacing aside (`DataModules:IsTextKnown`), so the site can correct it: 
 the speaker's lines in the client's language, a quest moment against its wordings, or for one
 wording against the Compendium's English accept and complete text. Progress text, and a quest
 moment of one wording in another language, have nothing to compare with and are not checked.
+
+With collecting on, every quest or gossip window also keeps where its NPC was met, missing line or
+not: a `seen` envelope per NPC (`SeeSpeaker`, beside the lines in `Gather.lua`, at most
+`SEEN_CAP`), naming it and each zone map the player stood in, a town's map walked up to its zone's.
+It goes up with the lines and is stored in `npc_sighting` under who sent it (an account, the
+Manager's install id, or that one anonymous upload; no address is kept), never as a contribution.
+A zone counts for the zone filter once two uploaders send it, so the Manager sending one player's
+file after every logout is one voice.
 
 The same text pasted again — by the same player or a different one — bumps a count on the
 existing row rather than filing a second one; different text under the same key stays its own

@@ -29,6 +29,7 @@ import { readAs, type TeamId } from "../teams/store";
 import { publishedOverrides, teamLiveOverrides } from "../teams/viewing";
 import { readIgnores } from "./ignores";
 import { questLevels } from "./levels";
+import { confirmedSightings } from "./sightings";
 import { readOverrides } from "./overrides";
 import { BASE_LANG, type Lang } from "../lang";
 
@@ -90,12 +91,14 @@ export async function searchContext(
 
   try {
     // All per language: a take is compared with its own language's text and lexicon.
-    const [overrides, ignores, reports, dirt, questLevelsByQuest] = await Promise.all([
+    const [overrides, ignores, reports, dirt, questLevelsByQuest, sightings] = await Promise.all([
       readOverrides(lang),
       readIgnores(lang),
       openReports(lang),
       dirty ? dirtyQuestFiles(undefined, lang, undefined, index) : null,
       levels ? questLevels() : null,
+      // Kept a minute, and already read for the facets of this same request.
+      confirmedSightings(),
     ]);
     // From the live takes and overrides just read, rather than a second query for both.
     const stale = outdated ? await staleAmong(live, lang, overrides, index) : null;
@@ -106,6 +109,7 @@ export async function searchContext(
         ignores,
         reports,
         levels: questLevelsByQuest ?? undefined,
+        sightings,
         takes,
         generatedAt,
         madeBy,
@@ -131,10 +135,11 @@ export async function publicSearchContext(
   team: TeamId,
   levels = false,
 ): Promise<{ voiced: Set<string>; context: SearchContext }> {
-  const [live, overrides, questLevelsByQuest] = await Promise.all([
+  const [live, overrides, questLevelsByQuest, sightings] = await Promise.all([
     teamLiveTakes(team, "quests", lang),
     teamLiveOverrides(team, "quests", lang),
     levels ? questLevels() : null,
+    confirmedSightings(),
   ]);
   return {
     voiced: new Set(live.map((row) => row.file)),
@@ -152,6 +157,7 @@ export async function publicSearchContext(
       stale: new Set(),
       dirty: new Set(),
       levels: questLevelsByQuest ?? undefined,
+      sightings,
     },
   };
 }
