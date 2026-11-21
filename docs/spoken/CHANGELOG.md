@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Area Highlight no longer shows Blizzard's zone art through OpenMap's map.** On OpenMap's map
+  the area under the cursor now lights in a gold glow in the area's shape, over OpenMap's own art.
+  Blizzard's map lights as before. *([Loukky](https://github.com/Loukky))*
 - **A line that arrives while Spoken is stopped shows that it waits.** The "+N" after the line's
   title swells and glows when a line joins a stopped queue; Skip plays it. With Show Name and Title
   off, the subtitles count it after "(Stopped)". Play buttons in the quest log and the Compendium
