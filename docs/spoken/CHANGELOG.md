@@ -23,6 +23,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **A boss's model fits its frame whole, standing idle**, and two bosses in overlapping windows no longer
   cut into each other. *([Nucabe](https://github.com/Nucabe))*
 - **A boss you have not met shows its own portrait**, not the question mark. *([Nucabe](https://github.com/Nucabe))*
+- **Read Greetings has a Once per Session choice.** An NPC greets you once each session: after a
+  reload or relog it greets again. Greetings are kept per NPC, so guards that share an NPC ID share
+  one greeting. *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.11.0 — 2026-11-21
 

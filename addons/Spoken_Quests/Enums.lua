@@ -33,8 +33,14 @@ Enums.GossipFrequency =
     Always = 1,
     OncePerQuestNPC = 2,
     OncePerNPC = 3,
+    -- Keep Never at 4: it is already stored in players' profiles.
     Never = 4,
+    OncePerSession = 5,
 }
+--- Menu order: from reading the most to the least.
+function Enums.GossipFrequency:MenuOrder()
+    return { "Always", "OncePerQuestNPC", "OncePerNPC", "OncePerSession", "Never" }
+end
 
 ---@enum GUID
 Enums.GUID =

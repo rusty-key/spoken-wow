@@ -607,6 +607,9 @@ local function GiveVoiceBack(event)
 end
 local currentQuestSoundData
 local currentGossipSoundData
+-- Once per Session reads this instead of hasSeenGossipForNPC, which still records every
+-- greeting. In memory only, so every NPC greets again after a reload or relog.
+local sessionGreetingsHeard = {}
 
 local function IsQuestTurnInSoundData(soundData)
     return soundData and (soundData.event == Enums.SoundEvent.QuestProgress
@@ -1481,18 +1484,31 @@ local function HeardTexts(seen, key)
     return seen[key]
 end
 
+local function HeardStore(self)
+    if self.db.profile.Audio.GossipFrequency == Enums.GossipFrequency.OncePerSession then
+        return sessionGreetingsHeard
+    end
+    return self.db.char.hasSeenGossipForNPC
+end
+
 --- A key that holds anything but a table names no text, so it counts as unheard.
 function Addon:HasHeardGreeting(guid, text)
     if not text then
         return false
     end
-    local heard = self.db.char.hasSeenGossipForNPC[SpeakerKey(guid)]
+    local heard = HeardStore(self)[SpeakerKey(guid)]
     return type(heard) == "table" and heard[TextKey(text)] == true
 end
 
 --- For when the text is not known yet.
 function Addon:HasHeardAnyGreeting(guid)
-    return type(self.db.char.hasSeenGossipForNPC[SpeakerKey(guid)]) == "table"
+    return type(HeardStore(self)[SpeakerKey(guid)]) == "table"
+end
+
+--- Clears this session's greetings too.
+function Addon:ForgetGreetingsHeard()
+    self.db.char.hasSeenGossipForNPC = {}
+    sessionGreetingsHeard = {}
 end
 
 --- Keeps greetings heard under GUIDs from playing again. A GUID marked `true` holds no text and
@@ -1520,7 +1536,9 @@ function Addon:FoldGreetingsHeardByGUID()
 end
 
 function Addon:MarkGreetingHeard(guid, text)
-    HeardTexts(self.db.char.hasSeenGossipForNPC, SpeakerKey(guid))[TextKey(text)] = true
+    local key, textKey = SpeakerKey(guid), TextKey(text)
+    HeardTexts(self.db.char.hasSeenGossipForNPC, key)[textKey] = true
+    HeardTexts(sessionGreetingsHeard, key)[textKey] = true
 end
 
 --- Keyed by creature ID, so one choice covers every spawn.
@@ -1601,10 +1619,11 @@ function Addon:ShouldPlayGossip(guid, text, manual, followsOption)
         return true
     end
 
+    local frequency = self.db.profile.Audio.GossipFrequency
     local heard = self:HasHeardGreeting(guid, text)
 
     -- Asked again for the same NPC while its window stays open; the log says it once.
-    if self.db.profile.Audio.GossipFrequency == Enums.GossipFrequency.OncePerQuestNPC then
+    if frequency == Enums.GossipFrequency.OncePerQuestNPC then
         local numActiveQuests = GetNumGossipActiveQuests()
         local numAvailableQuests = GetNumGossipAvailableQuests()
         local npcHasQuests = (numActiveQuests > 0 or numAvailableQuests > 0)
@@ -1612,9 +1631,14 @@ function Addon:ShouldPlayGossip(guid, text, manual, followsOption)
             Debug:Note("gossip", npcKey .. ":quest-npc", "greeting of %s not read: an NPC with quests, this greeting heard before (NPC Greetings: once for quest givers)", npcKey)
             return
         end
-    elseif self.db.profile.Audio.GossipFrequency == Enums.GossipFrequency.OncePerNPC then
+    elseif frequency == Enums.GossipFrequency.OncePerNPC then
         if heard then
             Debug:Note("gossip", npcKey .. ":once", "greeting of %s not read: this greeting heard before (NPC Greetings: once per greeting)", npcKey)
+            return
+        end
+    elseif frequency == Enums.GossipFrequency.OncePerSession then
+        if heard then
+            Debug:Note("gossip", npcKey .. ":session", "greeting of %s not read: this greeting heard earlier this session (NPC Greetings: once per session)", npcKey)
             return
         end
     end

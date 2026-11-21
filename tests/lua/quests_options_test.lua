@@ -87,7 +87,7 @@ end
 Expect("every section heading the same distance below the section above", Distinct(headingGaps), 1)
 
 ---------------------------------------------------------------- the rows write the settings
--- A dropdown rather than a button that cycles: four named choices, and a player should be
+-- A dropdown rather than a button that cycles: five named choices, and a player should be
 -- able to see them and pick one rather than click through them.
 local db = VO.Addon.db.profile
 db.Audio.GossipFrequency = VO.Enums.GossipFrequency.Always
@@ -140,7 +140,7 @@ local entries = stub.OpenDropdown(greetings)
 local offered = {}
 for _, entry in ipairs(entries) do table.insert(offered, entry.text) end
 Expect("...offering every choice at once", table.concat(offered, "|"),
-    "Every Time|Once for Quest Givers|Once per Greeting|Never")
+    "Every Time|Once for Quest Givers|Once per Greeting|Once per Session|Never")
 Expect("...with the current one ticked", entries[1].checked, true)
 
 Expect("picking one is possible", stub.PickDropdown(greetings, "Once per Greeting"), true)
@@ -151,7 +151,7 @@ Expect("...and relabels", greetings.dropdownText, "Once per Greeting")
 -- to be the same thing, or it can never find where in the list it is.
 Expect("picking a second time works too", stub.PickDropdown(greetings, "Never"), true)
 Expect("...and stores that", db.Audio.GossipFrequency, VO.Enums.GossipFrequency.Never)
-Expect("...with the ticked entry moved", stub.OpenDropdown(greetings)[4].checked, true)
+Expect("...with the ticked entry moved", stub.OpenDropdown(greetings)[5].checked, true)
 
 ---------------------------------------------------------------- the gather switch stays in the player's settings
 -- The switch is the player's alone: quests and readables both feed the one store, so a
