@@ -1,9 +1,9 @@
 /**
  * Hearing one lexicon entry before it costs a batch.
  *
- * The trick that makes this possible without uploading anything: ElevenLabs accepts a
- * phoneme tag inline in the text, honoured by the same models that honour a dictionary
- * phoneme rule. So a draft entry can be spoken while it is still a draft - before it is
+ * The trick that makes this possible without uploading anything: every model that honours a
+ * dictionary phoneme rule also takes IPA inline in the text, each in its own syntax
+ * (PHONEME_SYNTAX). So a draft entry can be spoken while it is still a draft - before it is
  * saved, before a dictionary exists, and without disturbing the one generation is using.
  *
  * What it does NOT prove is worth being clear about, because it is the more common
@@ -25,7 +25,7 @@ import { PREVIEW_DIR } from "@/lib/paths";
 import type { ElevenLabsOptions } from "@/lib/voices/elevenlabs";
 
 import type { GenerationConfig } from "./config";
-import { honoursPhonemes, kindOf, type LexiconEntry } from "./lexicon";
+import { honoursPhonemes, kindOf, PHONEME_SYNTAX, type LexiconEntry } from "./lexicon";
 import type { PreviewMode } from "./preview-modes";
 
 export { PREVIEW_MODES, isPreviewMode, type PreviewMode } from "./preview-modes";
@@ -169,21 +169,24 @@ export function sampleSentence(grapheme: string, lines: CorpusLine[]): Sample {
 }
 
 /**
- * Put the entry's pronunciation into the sentence.
+ * Put the entry's pronunciation into the sentence, in the syntax the model reads.
  *
- * An alias is substituted outright, which is exactly what an alias rule does. IPA is wrapped
- * in a phoneme tag, which is what the dictionary does by another route. Only the first
- * occurrence is touched: one is enough to hear, and every extra tag is billed.
+ * An alias is substituted outright, which is exactly what an alias rule does. IPA goes in
+ * inline, which is what the dictionary does by another route: a phoneme tag or slashes,
+ * whichever PHONEME_SYNTAX gives the model. Only the first occurrence is touched: one is
+ * enough to hear, and every extra tag is billed.
  */
-export function speakable(entry: LexiconEntry, sentence: string): string {
+export function speakable(entry: LexiconEntry, sentence: string, modelId: string): string {
   const escaped = entry.grapheme.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const pattern = new RegExp(`(?<![\\w'])${escaped}(?![\\w])`, "i");
 
-  return sentence.replace(pattern, (matched) =>
-    kindOf(entry) === "alias"
-      ? entry.alias!
-      : `<phoneme alphabet="ipa" ph="${entry.ipa!.replace(/"/g, "")}">${matched}</phoneme>`,
-  );
+  return sentence.replace(pattern, (matched) => {
+    if (kindOf(entry) === "alias") return entry.alias!;
+    const ipa = entry.ipa!.replace(/"/g, "");
+    return honoursPhonemes(modelId) && PHONEME_SYNTAX[modelId] === "slash"
+      ? `/${ipa}/`
+      : `<phoneme alphabet="ipa" ph="${ipa}">${matched}</phoneme>`;
+  });
 }
 
 /**
@@ -259,8 +262,8 @@ export async function renderPreview(
   /** Re-roll: ignore any cached take and pay for a fresh one. */
   force = false,
 ): Promise<PreviewResult> {
-  // Refused rather than rendered. An inline phoneme tag is honoured by exactly the models a
-  // dictionary phoneme rule is, so on any other model this would come back sounding like the
+  // Refused rather than rendered. Inline IPA is honoured by exactly the models a dictionary
+  // phoneme rule is, so on any other model this would come back sounding like the
   // default pronunciation - and someone checking their IPA would conclude they had written
   // it wrong, and "fix" a transcription that was right. A respelling has no such problem: it
   // is plain text, and every model reads it.
@@ -275,7 +278,7 @@ export async function renderPreview(
       ? { text: entry.grapheme, line: null }
       : sampleSentence(entry.grapheme, (await corpus()).lines);
 
-  const spoken = speakable(entry, sentence);
+  const spoken = speakable(entry, sentence, config.modelId);
   const source = line ? { npcName: line.npcName, lineId: line.lineId } : null;
 
   const voiceId = pickVoice(line);
@@ -378,12 +381,12 @@ export async function previewCache(
     const voiceId = pickVoice(line);
     if (!voiceId) return false;
     return fs.existsSync(
-      previewPath(previewKey({ text: speakable(entry, text), voiceId, config }), dir),
+      previewPath(previewKey({ text: speakable(entry, text, config.modelId), voiceId, config }), dir),
     );
   }
 }
 
-/** Reported when the configured model would silently ignore the tag this preview relies on. */
+/** Reported when the configured model would silently ignore the IPA this preview relies on. */
 export const MODEL_IGNORES_PHONEMES = (modelId: string): Failure => ({
   ...failure(
     "bad-request",

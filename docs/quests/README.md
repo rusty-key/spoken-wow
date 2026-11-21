@@ -646,11 +646,18 @@ Not OK filter is how you find the ones still to be checked.
 **You do not need IPA.** An entry gives either an IPA pronunciation or a plain respelling —
 `nomeregan` — and the `ʒ` button switches between the two in one click; the slashes around an
 IPA field are drawn by the editor, and never part of the value. The trade is exactness
-against reach: IPA becomes a phoneme rule, which is precise but honoured only by `eleven_v3`
-and `eleven_flash_v2`; a respelling becomes an alias rule, which is only as good as the guess
-at the new spelling but works on every model. Both kinds sit in one dictionary, so the lexicon
-does not have to pick. When the configured model ignores phoneme rules the page says how many
-entries that silently skips, rather than implying the whole page is inert.
+against reach: IPA becomes a phoneme rule, which is precise but honoured only by `eleven_v3`,
+`eleven_v4`, `eleven_v4_turbo` and `eleven_flash_v2`; a respelling becomes an alias rule, which
+is only as good as the guess at the new spelling but works on every model. Both kinds sit in
+one dictionary, so the lexicon does not have to pick. When the configured model ignores phoneme
+rules the page says how many entries that silently skips, rather than implying the whole page
+is inert.
+
+A preview hears an IPA draft without uploading it, by writing the IPA inline in the text. The
+inline form differs by model (`PHONEME_SYNTAX` in `lexicon.ts`): `eleven_flash_v2` takes an SSML
+`<phoneme>` tag and `eleven_v4` takes the IPA between slashes, as ElevenLabs documents.
+`eleven_v3` keeps the tag and `eleven_v4_turbo` follows `eleven_v4`; neither inline form is
+documented for those two.
 
 Respell it as it should be *said*. Stress capitals steer the model, so `NOME-reh-gan` is a
 valid respelling.
