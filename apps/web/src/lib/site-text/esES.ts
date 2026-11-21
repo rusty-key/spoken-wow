@@ -18,6 +18,7 @@ const es: Dictionary = {
     signIn: "Entrar",
     backstage: "Backstage",
     language: "Idioma",
+    off: "desactivado",
   },
   hero: {
     title: "Spoken lee World of Warcraft en voz alta",
@@ -105,7 +106,7 @@ const es: Dictionary = {
       browse: "Explorar los jefes",
       position: "Posición en el ejemplo de jefes",
     },
-    examplesLabel: "Ejemplos",
+    examplesLabel: "Ejemplos: {part}",
     noVoice: "Las historias de los jefes tienen voz con el paquete Spoken Audio: Bosses. Sin él se muestran como palabras en el narrador.",
     noRecording: "Aún no hay grabación",
     playNone: "Reproducir: aún no hay grabación",
@@ -161,14 +162,14 @@ const es: Dictionary = {
     releasePage: "página de versiones",
     curseforgeText:
       "Instala en la aplicación de CurseForge el addon Spoken de tu idioma. Trae Spoken y todos los paquetes de voces de ese idioma. Solo funciona desde la aplicación: la descarga de un metaaddon desde la web viene vacía.",
-    curseforgePros: [
-      "Un metaaddon por idioma",
-      "Se actualiza con la aplicación de CurseForge",
+    curseforgePros: ["Un metaaddon por idioma", "Se actualiza con la aplicación de CurseForge"],
+    curseforgeCons: [
       "Solo funciona desde la aplicación",
       "Los paquetes nuevos pueden tardar más en aparecer",
     ],
     manualText: "Elige tu idioma, descarga cada zip y descomprímelos en Interface/AddOns.",
-    manualPros: ["Zips sencillos desde GitHub", "La única vía para los clientes 1.12 y 3.3.5", "Tú actualizas cada zip"],
+    manualPros: ["Zips sencillos desde GitHub", "La única vía para los clientes 1.12 y 3.3.5"],
+    manualCons: ["Tú actualizas cada zip"],
     noPack: "Aún no hay paquete en este idioma",
     oldClients: "En los clientes 1.12 y 3.3.5, usa el zip Spoken Quests de la página de versiones. Spoken viene dentro.",
     addon: "Spoken",

@@ -114,7 +114,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
               ))}
             </nav>
             <div className="bn-nav-end">
-              <LanguageSwitcher variant="landing" label={t.nav.language} />
+              <LanguageSwitcher variant="landing" label={t.nav.language} off={t.nav.off} />
               <NavSession />
               <NavMenu />
             </div>

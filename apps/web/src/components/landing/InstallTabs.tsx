@@ -134,9 +134,12 @@ export default function InstallTabs({
           <>
             <p>{t.curseforgeText}</p>
             <ul className="bn-pros">
-              {t.curseforgePros.map((pro, i) => (
-                <li key={pro} className={i >= 2 ? "no" : undefined}>
-                  {pro}
+              {t.curseforgePros.map((pro) => (
+                <li key={pro}>{pro}</li>
+              ))}
+              {t.curseforgeCons.map((con) => (
+                <li key={con} className="no">
+                  {con}
                 </li>
               ))}
             </ul>
@@ -162,9 +165,12 @@ export default function InstallTabs({
           <>
             <p>{t.manualText}</p>
             <ul className="bn-pros">
-              {t.manualPros.map((pro, i) => (
-                <li key={pro} className={i === 2 ? "no" : undefined}>
-                  {pro}
+              {t.manualPros.map((pro) => (
+                <li key={pro}>{pro}</li>
+              ))}
+              {t.manualCons.map((con) => (
+                <li key={con} className="no">
+                  {con}
                 </li>
               ))}
             </ul>

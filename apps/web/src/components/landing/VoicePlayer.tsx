@@ -200,7 +200,7 @@ const CHEVRON = (path: string) => (
  * The part's recordings: one row of buttons that scrolls sideways, fading out at an edge that has
  * more, above the recording that is showing.
  */
-export default function VoicePlayer({ voices, position }: { voices: Voice[]; position: string }) {
+export default function VoicePlayer({ voices, part, position }: { voices: Voice[]; part: string; position: string }) {
   const t = useSiteText().showcase;
   const [pick, setPick] = useState(0);
   const [edges, setEdges] = useState({ start: false, end: false });
@@ -242,7 +242,7 @@ export default function VoicePlayer({ voices, position }: { voices: Voice[]; pos
   return (
     <div className="bn-voice">
       <div className="bn-voice-picks-wrap" data-start={edges.start} data-end={edges.end}>
-        <ul className="bn-voice-picks" aria-label={t.examplesLabel} ref={row} onScroll={measure}>
+        <ul className="bn-voice-picks" aria-label={fill(t.examplesLabel, { part })} ref={row} onScroll={measure}>
           {voices.map((voice, i) => (
             <li key={voice.audio}>
               <button type="button" aria-pressed={i === pick} onClick={() => choose(i)}>

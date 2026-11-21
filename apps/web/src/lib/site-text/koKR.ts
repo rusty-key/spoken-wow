@@ -18,6 +18,7 @@ const ko: Dictionary = {
     signIn: "로그인",
     backstage: "Backstage",
     language: "언어",
+    off: "꺼짐",
   },
   hero: {
     title: "Spoken이 월드 오브 워크래프트를 읽어 줍니다",
@@ -105,7 +106,7 @@ const ko: Dictionary = {
       browse: "우두머리 둘러보기",
       position: "우두머리 예시의 재생 위치",
     },
-    examplesLabel: "예시",
+    examplesLabel: "{part} 예시",
     noVoice:
       "우두머리 이야기는 Spoken Audio: Bosses 팩이 읽어 줍니다. 팩이 없으면 내레이터에 글로만 표시됩니다.",
     noRecording: "아직 녹음이 없습니다",
@@ -162,14 +163,11 @@ const ko: Dictionary = {
     releasePage: "릴리스 페이지",
     curseforgeText:
       "CurseForge 앱에서 사용하는 언어의 Spoken 애드온을 설치하세요. Spoken과 그 언어의 음성 팩이 모두 함께 설치됩니다. 앱으로만 작동하며, 웹사이트에서 받는 메타 애드온은 비어 있습니다.",
-    curseforgePros: [
-      "언어마다 메타 애드온 하나",
-      "CurseForge 앱으로 업데이트",
-      "앱으로만 작동합니다",
-      "새 팩은 올라오는 데 더 걸릴 수 있습니다",
-    ],
+    curseforgePros: ["언어마다 메타 애드온 하나", "CurseForge 앱으로 업데이트"],
+    curseforgeCons: ["앱으로만 작동합니다", "새 팩은 올라오는 데 더 걸릴 수 있습니다"],
     manualText: "언어를 고르고 각 zip을 내려받아 Interface/AddOns에 압축을 푸세요.",
-    manualPros: ["GitHub의 일반 zip 파일", "1.12와 3.3.5 클라이언트에서는 이 방법뿐입니다", "zip은 직접 업데이트해야 합니다"],
+    manualPros: ["GitHub의 일반 zip 파일", "1.12와 3.3.5 클라이언트에서는 이 방법뿐입니다"],
+    manualCons: ["zip은 직접 업데이트해야 합니다"],
     noPack: "이 언어의 팩은 아직 없습니다",
     oldClients: "1.12와 3.3.5 클라이언트에서는 릴리스 페이지의 Spoken Quests zip을 받으세요. Spoken이 그 안에 들어 있습니다.",
     addon: "Spoken",

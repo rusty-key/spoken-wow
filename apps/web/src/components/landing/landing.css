@@ -1996,8 +1996,8 @@ html:has(.bn) {
 }
 
 /*
- * Both of the page's faces are Latin subsets: fonts.ts names the fallback for Cyrillic and
- * Vietnamese, and Korean and Chinese take the system's face for their script, named here.
+ * Both of the page's faces are Latin subsets. Cyrillic and Vietnamese draw in the faces named as
+ * their fallback, and Korean and Chinese in the system's face for their script, named here.
  * Chinese and Korean take no capitals and no letter spacing, which only spreads their characters.
  */
 :lang(ko-KR) {

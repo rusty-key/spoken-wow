@@ -6,9 +6,8 @@ export type GalleryItem = {
 };
 
 /**
- * What the gallery shows, in order. Each picture's title, caption and alt text are the item of
- * the same position in `gallery.items` of lib/site-text/en.ts. To add a shot, drop the files into
- * public/landing/gallery and add an item here and in every dictionary.
+ * What the gallery shows, in order. A picture's title, caption and alt text are the dictionaries'
+ * gallery item at the same position, so that every language describes the same shot.
  */
 export const GALLERY: GalleryItem[] = [
   { src: "/landing/gallery/place-story-map.webp", thumb: "/landing/gallery/place-story-map-thumb.png" },
