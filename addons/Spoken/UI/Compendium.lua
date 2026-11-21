@@ -1961,7 +1961,7 @@ local SPELLBOOK_PAGE = { file = ZONES_ART .. "spellbook-Page-Right-C60", coords 
 --- `look`, where given, changes the page's art from the spellbook's for the Compendium:
 --- { art = { file, coords } the parchment; top, right, the heading's room from the page's top and
 --- its right edge; titleSize; oneLine, a title cut short at one line rather than two; backplate = { full,
---- height }; noFace, no round picture by the title }. Spoken Places' page beside the map is the quest
+--- height }; noFace, no round picture by the title unless an entry has `face` }. Spoken Places' page beside the map is the quest
 --- log's details page this way.
 function C.NewPage(parent, addon, play, report, look)
 	look = look or {}
@@ -1969,9 +1969,8 @@ function C.NewPage(parent, addon, play, report, look)
 	local titleSize = look.titleSize or 26
 	local self = setmetatable({ playing = play, reporting = report, defaultPlaying = play,
 		defaultReporting = report, top = top, right = right,
-		titleSize = titleSize, extra = {}, shift = 0, ink = INK, link = LINK, addon = addon }, Page)
-	-- False is a face never made.
-	if look.noFace then self.headFace = false end
+		titleSize = titleSize, extra = {}, shift = 0, ink = INK, link = LINK, addon = addon,
+		noFace = look.noFace }, Page)
 	local frame = CreateFrame("Frame", nil, parent)
 	frame:SetAllPoints()
 	self.frame = frame
@@ -2104,6 +2103,7 @@ function C.NewPage(parent, addon, play, report, look)
 	frame:HookScript("OnSizeChanged", function() self:PlaceDivider() end)
 
 	local body = SpokenTextView.Create(frame, addon)
+	body.cameraPlace = look.place
 	body.frame:SetPoint("TOPLEFT", divider, "BOTTOMLEFT", 6, -2)
 	body.frame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -right, PAD - 6)
 	body:SetInk(INK[1], INK[2], INK[3])
@@ -2392,20 +2392,28 @@ end
 
 --- entry = { title, subtitle, onSubtitle, text, target = what Play and Report act on, or nil for
 --- none, icon = the round portrait left of the title (a Spoken:CreateSpeakerFace speaker table), the
---- Compendium's tome without it, and none on a page made with `noFace`, model = { displayID,
---- creatureID, scale, zoom, rotation, facing, sequence, x, y, z } above the words, picture = { file, mask } above the words, parts = { { heading, text, buttons } } in place
+--- Compendium's tome without it, and none on a page made with `noFace` unless `face` is set, model = { displayID }
+--- above the words, picture = { file, mask } above the words, parts = { { heading, text, buttons } } in place
 --- of `text`: words in parts, each under its heading with its own buttons (TextView:SetParts) }. With no text, parts, target or unwritten the page is a group's or a place's: no
 --- Play, and its mark in the middle.
 --- onSubtitle(), where given, is what a click on the line under the title does (the map panel's
 --- area story returns to its zone's with it); without it the line is plain words.
 function Page:Show(entry)
-	if self.headFace == nil then
+	-- Made on first need: nil is not yet made, false is made and failed, which is not tried again.
+	if self.headFace == nil and (not self.noFace or entry.face) then
 		local ok, made = false, nil
-		if _G.Spoken and Spoken.CreateSpeakerFace then ok, made = pcall(Spoken.CreateSpeakerFace, Spoken, self.frame, FACE_SIZE) end
+		if _G.Spoken and Spoken.CreateSpeakerFace then
+			ok, made = pcall(Spoken.CreateSpeakerFace, Spoken, self.frame, FACE_SIZE)
+			if not ok then print("|cffff5555Spoken|r: " .. tostring(made)) end
+		end
 		self.headFace = ok and made or false
 		if made and ok then made:SetPoint("TOPLEFT", self.frame, "TOPLEFT", PAD, -(self.top - 4)) end
 	end
 	local face = self.headFace or nil
+	if face and self.noFace then
+		face:SetShown(entry.face and true or false)
+		if not entry.face then face = nil end
+	end
 	local icon = entry.icon or TOME
 	-- Drawn again only for another picture: a page is shown again on every refresh.
 	if face and icon ~= self.faceIcon then

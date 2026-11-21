@@ -24,6 +24,7 @@ LUA ?= $(shell command -v luajit || command -v lua5.1)
         release-spoken-all release-spoken-all-dry \
         descriptions descriptions-check descriptions-published \
         character-models dungeons bosses-extract bosses-export bosses-check bosses-sync bosses-check-synced \
+        bosses-cameras bosses-nudges \
         bosses-pull-live bosses-sounds bosses-lookup bosses-validate-audio bosses-package-audio \
         bosses-full-release bosses-upload-dry bosses-upload bosses-icon \
         audio-release audio-release-dry \
@@ -86,6 +87,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/secret_values_test.lua
 	@$(LUA) tests/lua/developer_hooks_test.lua
 	@$(LUA) tests/lua/developer_log_test.lua
+	@$(LUA) tests/lua/developer_camera_test.lua
 	@$(LUA) tests/lua/quests_log_test.lua
 	@$(LUA) tests/lua/sources_test.lua
 	@$(LUA) tests/lua/api_contract_test.lua
@@ -199,6 +201,7 @@ test: test-player ## Everything: the site, the Node and Python pipelines, the ad
 	  echo "No venv at pipelines/quests/.venv -- see the comment above 'test' in the Makefile"; \
 	  exit 1; }
 	@cd pipelines/quests && ./.venv/bin/python -m pytest -q
+	@python3 -m unittest discover -s pipelines/places/tools/bosses -p "test_*.py"
 
 lint: ## The checks CI gates on
 	@pnpm -r typecheck
@@ -255,6 +258,13 @@ bosses-export: ## Write Spoken_Bosses' Bosses, Creatures and Stories Lua from th
 	@node pipelines/places/tools/bosses/export.mjs
 bosses-check: ## Confirm the committed Spoken_Bosses data matches the database
 	@node pipelines/places/tools/bosses/export.mjs --check
+
+# The game frames each boss model itself: Cameras.lua holds only the lens and each display's model file, read
+# from the Forever tables in ~/Documents/forever-db/csv (see docs/places/BOSSES.md).
+bosses-cameras: ## Write Spoken_Bosses' Data/Cameras.lua (the lens and each display's model file)
+	@python3 pipelines/places/tools/bosses/model_cameras.py
+bosses-nudges: ## Write Spoken_Bosses' Data/CameraNudges.lua from the saved edits (FILE=Spoken_Developer.lua)
+	@python3 pipelines/places/tools/bosses/import_edits.py $(FILE)
 
 include make/droplet.mk
 

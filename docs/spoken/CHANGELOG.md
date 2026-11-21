@@ -6,6 +6,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 - **The Compendium's lists take the professions window's look,** with gold header bars and a yellow light on
   the chosen row. *([Nucabe](https://github.com/Nucabe))*
+- **A boss's model sits on a frayed paper edge**, on the map panel and in the Compendium. On the map,
+  a boss also has its portrait and Open in Compendium. *([Nucabe](https://github.com/Nucabe))*
+- **A boss's model fits its frame whole, standing idle**, and two bosses in overlapping windows no longer
+  cut into each other. *([Nucabe](https://github.com/Nucabe))*
+- **A boss you have not met shows its own portrait**, not the question mark. *([Nucabe](https://github.com/Nucabe))*
 
 ## 3.11.0 — 2026-11-21
 

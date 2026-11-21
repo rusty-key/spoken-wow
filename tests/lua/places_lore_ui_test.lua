@@ -626,9 +626,9 @@ Z:RefreshPanel()
 Expect("with the gamepad UI off again, the panel goes back into the map", panel.parent, WorldMapFrame)
 Expect("...and stops reading the map's alpha each frame", panel:GetScript("OnUpdate"), nil)
 -- Under the panel the Forever client draws no 3D model at all, in the map or beside it.
-Expect("a boss's model draws on a stage of its own, not under the panel", panel.page.body.model:GetParent(),
-    panel.stage)
-Expect("...a stage under UIParent", panel.stage and panel.stage:GetParent(), UIParent)
+local body = panel.page.body
+Expect("a boss's model stays in the page, as the Compendium's does", body.model:GetParent(), body.child)
+Expect("...with no stage of its own", panel.stage, nil)
 -- Side tabs hang down the quest log's right edge, the game's own and other addons' alike, with no
 -- name Spoken knows: here two unnamed ones, as Adventure Guide Forever hangs its own, the upper one
 -- reaching 60 past the map's edge and the lower one 50. The map is 300 wide and 100 high.
@@ -709,7 +709,7 @@ Expect("...the middle stretched to the bottom-right corner's", border and border
     and border[9].anchor.relativePoint, "TOPLEFT")
 Expect("...and shows the zone the map is on, with its story", mapPage.title.text .. ": " .. mapPage.body.text.text,
     "Durotar: Durotar is a cracked, red land.")
-Expect("...with no round picture by its title, unlike the Compendium's pages", mapPage.headFace == false
+Expect("...with no round picture by its title, unlike the Compendium's pages", mapPage.headFace == nil
     and mapPage.shift, 0)
 Z.selected = { mapID = 1411, areaName = "Valley of Trials", entry = Z.Subzones[1411]["valley of trials"] }
 Z:RefreshPanel()
