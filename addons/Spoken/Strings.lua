@@ -49,7 +49,6 @@ L = {
     OPT_PROFILE_PICK = "Choose a profile",
     OPT_NEW_CHARACTER_PROFILE = "Profile for New Characters",
     OPT_PROFILE_OWN = "Their Own Profile",
-    OPT_NEW_CHARACTER_PROFILE_TIP = "The profile a character starts on the first time it logs in with Spoken. Characters that already have a profile keep it.",
     OPT_WELCOME_AGAIN = "Show Welcome Window",
     OPT_RESET_ALL = "Reset Spoken Settings",
     OPT_RESET_ALL_TIP = "Puts this page's settings back to their defaults.",
