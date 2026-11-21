@@ -539,12 +539,22 @@ function Bosses:Portrait(map, key)
 end
 
 --- The line under a boss's name: the dungeon, and where it is. A map the client does not list has
---- the dungeon's name alone.
+--- no zone to name.
 function Bosses:Where(map, key)
+	local dungeon = DungeonName(map)
 	local zone = BossZone(map, key)
-	if not zone then return DungeonName(map) end
-	if Index().world[map] then return L.BOSS_IN_FMT:format(MapName(zone)) end
-	return L.BOSS_IN_FMT:format(DungeonName(map)) .. " · " .. MapName(zone)
+	if zone and Index().world[map] then return L.BOSS_IN_FMT:format(MapName(zone)) end
+	if not dungeon then return "" end
+	local where = L.BOSS_IN_FMT:format(dungeon)
+	return zone and (where .. " · " .. MapName(zone)) or where
+end
+
+--- A boss's page header, the same in the Compendium and on the map panel: { title, subtitle, icon,
+--- model, revealed }. A boss not revealed has its own portrait and no model.
+function Bosses:Head(map, boss)
+	local revealed = self:IsRevealed(map, boss.key)
+	return { title = ShownName(map, boss), subtitle = self:Where(map, boss.key), icon = self:Portrait(map, boss.key),
+		model = revealed and Model(map, boss.key) or nil, revealed = revealed }
 end
 
 local function ShowEntry()
@@ -557,13 +567,13 @@ local function ShowEntry()
 		local map, key = selection.map, selection.key
 		local boss = Boss(map, key)
 		if not boss then return end
-		local where = Bosses:Where(map, key)
-		if not Bosses:IsRevealed(map, key) then
-			page:Show({ title = ShownName(map, boss), subtitle = where, text = L.BOSS_NOT_FOUND, icon = Bosses:Portrait(map, key) })
+		local head = Bosses:Head(map, boss)
+		if not head.revealed then
+			page:Show({ title = head.title, subtitle = head.subtitle, text = L.BOSS_NOT_FOUND, icon = head.icon })
 			return
 		end
 		local story = Story(map, key)
-		page:Show({ title = ShownName(map, boss), subtitle = where, icon = Bosses:Portrait(map, key), model = Model(map, key),
+		page:Show({ title = head.title, subtitle = head.subtitle, icon = head.icon, model = head.model,
 			text = story or C.NotWritten(), unwritten = story == nil, target = story and { map, key } or nil })
 		return
 	end

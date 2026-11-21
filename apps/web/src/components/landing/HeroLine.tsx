@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
+import { useSiteText } from "./SiteTextProvider";
+
 type Line = { icon: string; name: string; subtitle: string; words: string[] };
 
 const LINES: Line[] = [
@@ -35,6 +37,7 @@ const PAUSE_STEPS = 10;
  * first line stays fully lit.
  */
 export default function HeroLine() {
+  const t = useSiteText();
   const [line, setLine] = useState(0);
   const [fading, setFading] = useState(false);
   const [spoken, setSpoken] = useState(0);
@@ -74,7 +77,7 @@ export default function HeroLine() {
   const { icon, name, subtitle, words } = LINES[line];
 
   return (
-    <figure ref={figure} className={fading ? "bn-line bn-line-out" : "bn-line"} aria-label="An example of Spoken's subtitles: a character speaking a line">
+    <figure ref={figure} className={fading ? "bn-line bn-line-out" : "bn-line"} aria-label={t.hero.lineLabel}>
       <div className="bn-line-portrait">
         <Image src={`/landing/icons/${icon}-192.png`} alt="" width={96} height={96} unoptimized />
       </div>

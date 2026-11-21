@@ -86,9 +86,13 @@ function Bosses:StoryClip(map, key)
     return { present = { transcript = map .. ":" .. key .. " lore" } }
 end
 function Bosses:IsBossFound() return met end
-function Bosses:IsRevealed(map, key) return self:IsBossFound(map, key) or (_G.SpokenBossesSettings and _G.SpokenBossesSettings.unlockUnfound == true) end
-function Bosses:Portrait(map, key) return { creatureID = 639, displayID = 2029 } end
-function Bosses:Where(map) return "In " .. SpokenCompendium.DungeonName(map) .. " · Westfall" end
+function Bosses:Head(map, boss)
+    local revealed = self:IsBossFound(map, boss.key)
+        or (_G.SpokenBossesSettings and _G.SpokenBossesSettings.unlockUnfound == true)
+    return { title = Bosses.Name(boss), subtitle = "In " .. SpokenCompendium.DungeonName(map) .. " · Westfall",
+        icon = { creatureID = 639, displayID = 2029 },
+        model = revealed and Bosses.Model(map, boss.key) or nil, revealed = revealed }
+end
 function Bosses:ShowBoss(map, key) opened = map .. ":" .. key end
 function Bosses:GetAudioClip() return nil end
 function Bosses:QueuedStory() return nil end
@@ -156,6 +160,7 @@ pin:Click()
 Expect("a boss not met shows the not-found text", shown and shown.entry.text, "not found")
 Expect("...with its own portrait, not the unknown mark", shown and shown.entry.icon and shown.entry.icon.displayID, 2029)
 Expect("...no Open in Compendium", shown and shown.entry.open, nil)
+Expect("...no model", shown and shown.entry.model, nil)
 Expect("...and nothing to play", shown and shown.entry.target, nil)
 met = true
 WorldMapFrame.mapID = 1420

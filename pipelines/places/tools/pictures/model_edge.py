@@ -1,13 +1,13 @@
 """The paper edge laid over a boss's 3D model, so the model's frame fades into the page.
 
 A model cannot be masked like a picture, so a copy of the page's own parchment is laid on top of it
-instead (TextView:PaintModelEdge), shown through one of these masks: solid round the border and
+instead, shown through one of these masks: solid round the border and
 clear in the middle, the border frayed the way the pictures' masks are. The parchment comes from the
 page, so the edge is the page's colour wherever the model sits.
 
 The game stretches a mask over the whole frame, so its pixel size is not the frame's. It is drawn on a
 5:4 canvas, the model's frame, and shipped at 512x256 (a power of two) by stretching that sideways.
-The model's flat cut lies EDGE_OVER (6 UI units) in from the frame's border, which is up to HOLD px
+The model's flat cut lies 6 UI units in from the frame's border, which is up to HOLD px
 of the canvas on the smallest frame (about 136x109) and fewer on larger ones. HOLD is the solid band
 the paper keeps round the border, so the cut is covered on every frame size.
 
@@ -37,7 +37,7 @@ HOLD = 14
 # deep as the others, as there is no text to line up with) these four, with a HOLD band round them, cover
 # the model's cut on frames from 136x109 to 275x220 with no run of alpha under 0.9.
 SEEDS = (408, 415, 413, 414)
-# The model's cut, in UI units in from the frame's border (EDGE_OVER in TextView.lua), and the model's
+# The model's cut, in UI units in from the frame's border, and the model's
 # size at the largest frame: the preview's stand-in.
 CUT = 6
 PREVIEW_MODEL = (275, 220)

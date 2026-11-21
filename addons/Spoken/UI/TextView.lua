@@ -423,9 +423,11 @@ function TextView:PaintModelEdge()
 	local source = self.fadeSource
 	local drawn = (self.modelDisplayID and self.modelEdgeMask and source and source.file
 		and not self.fadeHeld and self.modelEdgeFrame:IsShown()) and true or false
-	self.modelShade:SetShown(drawn)
 	self.edgeScroll = self.frame:GetVerticalScroll()
-	edge:SetShown(drawn and PaintStrip(edge, source) and true or false)
+	-- Not laid out yet, the edge is not drawn, and the backing alone would show as a square.
+	drawn = drawn and PaintStrip(edge, source) and true or false
+	edge:SetShown(drawn)
+	self.modelShade:SetShown(drawn)
 end
 
 -- The scroll moves the model across the picture its edge is cut from. Cut again only for a new
@@ -724,7 +726,7 @@ function TextView:SetText(str)
 		self.model:SetPoint("TOP", self.child, "TOP", 0, -(PAD_TOP - PICTURE_LIFT))
 		self.model:Show()
 		self.modelEdgeFrame:Show()
-		-- Where the model's bottom lies in the scroll child, for ScrollModelEdge.
+		-- Scrolled past this, the model is out of sight and its edge is not cut again.
 		self.modelBottom = PAD_TOP - PICTURE_LIFT + high + EDGE_OVER
 		self:PaintModelEdge()
 		Refresh()

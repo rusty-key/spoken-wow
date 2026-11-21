@@ -295,8 +295,17 @@ local unmetPortrait = Bosses:Portrait(36, "edwin vancleef")
 Expect("a boss not met has its creature's portrait, not the unknown mark",
     tostring(unmetPortrait.creatureID) .. "|" .. tostring(unmetPortrait.displayID), "639|2029")
 Expect("the line under a boss's name is its dungeon and where it is", Bosses:Where(36, "edwin vancleef"), "In Deadmines · Westfall")
-Expect("a boss on a map the client does not list has its dungeon's name alone",
-    Bosses:Where(2959, SpokenBosses.maps[2959][1].key), SpokenCompendium.DungeonName(2959))
+Expect("a boss on a map the client does not list is in its dungeon, with no zone",
+    Bosses:Where(2959, SpokenBosses.maps[2959][1].key), Bosses.L.BOSS_IN_FMT:format(SpokenCompendium.DungeonName(2959)))
+local edwinBoss = SpokenBosses.maps[36][1]
+local unmetHead = Bosses:Head(36, edwinBoss)
+Expect("a boss not met has a header with no model, as on the map panel",
+    tostring(unmetHead.revealed) .. "|" .. tostring(unmetHead.model), "false|nil")
+SpokenBossesSettings.unlockUnfound = true
+local unlockedHead = Bosses:Head(36, edwinBoss)
+Expect("...and with Unlock Unfound Bosses on, its model",
+    unlockedHead.revealed and unlockedHead.model and unlockedHead.model.displayID ~= nil, true)
+SpokenBossesSettings.unlockUnfound = false
 -- Found Only leaves the boss's row out, so there is no page to open on.
 SpokenBossesSettings.compendiumFoundOnly = true
 Bosses:ShowBoss(36, "edwin vancleef")

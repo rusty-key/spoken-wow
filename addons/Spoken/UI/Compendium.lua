@@ -2001,7 +2001,7 @@ function C.NewPage(parent, addon, play, report, look)
 	local self = setmetatable({ playing = play, reporting = report, defaultPlaying = play,
 		defaultReporting = report, top = top, right = right,
 		titleSize = titleSize, extra = {}, shift = 0, ink = INK, link = LINK, addon = addon,
-		noFace = look.noFace, oneLine = look.oneLine }, Page)
+		noFace = look.noFace }, Page)
 	local frame = CreateFrame("Frame", nil, parent)
 	frame:SetAllPoints()
 	self.frame = frame

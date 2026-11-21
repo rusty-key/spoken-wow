@@ -165,24 +165,23 @@ function M.ShowBoss(mapID, found)
 	if not mapID or not _G.SpokenPlaces or not SpokenPlaces.ShowMapStory then
 		return false
 	end
+	local head = Bosses:Head(found.map, found.boss)
 	local story = Bosses:StoryClip(found.map, found.key)
 	local target = story and { found.map, found.key } or nil
 	local text = story and story.present and story.present.transcript or SpokenCompendium.NotWritten()
-	local revealed = Bosses:IsRevealed(found.map, found.key)
-	if not revealed then
+	if not head.revealed then
 		text = Bosses.L.BOSS_NOT_FOUND
 		target = nil
 	end
 	return M.Show(mapID, {
-		title = M.BossName(found.boss),
-		subtitle = Bosses:Where(found.map, found.key),
+		title = head.title,
+		subtitle = head.subtitle,
 		panelTitle = SpokenPlaces.L and SpokenPlaces.L.BOSS_LORE_TITLE or "Boss lore",
-		icon = Bosses:Portrait(found.map, found.key),
+		icon = head.icon,
 		face = true,
-		-- The page of a boss not shown has no row to land on.
-		open = revealed and function() Bosses:ShowBoss(found.map, found.key) end or nil,
-		-- A boss not met shows no model, as its page in the Compendium shows none.
-		model = revealed and Bosses.Model(found.map, found.key) or nil,
+		-- A boss not revealed may have no row to land on.
+		open = head.revealed and function() Bosses:ShowBoss(found.map, found.key) end or nil,
+		model = head.model,
 		text = text,
 		target = target,
 		play = PLAY,

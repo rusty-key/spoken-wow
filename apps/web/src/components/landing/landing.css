@@ -718,6 +718,23 @@ html:has(.bn) {
 .bn-select:hover {
   background-color: var(--btn-hover);
 }
+.bn-select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.bn-select:disabled {
+  cursor: default;
+  opacity: 1;
+}
+.bn-select-nav {
+  min-width: 0;
+  height: 40px;
+  padding: 0 40px 0 14px;
+  background-position: right 12px center;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+}
 .bn-select option {
   background: var(--panel);
   color: var(--text);
@@ -1311,6 +1328,10 @@ html:has(.bn) {
   .bn-btn-sm,
   .bn-nav-end .bn-btn-sm {
     min-height: 44px;
+  }
+  .bn-select-nav {
+    height: 44px;
+    max-width: 150px;
   }
   .bn-parts {
     grid-template-columns: minmax(0, 1fr);
@@ -1971,4 +1992,50 @@ html:has(.bn) {
 /* Narrator bar follows the words */
 .bn-line-bar i {
   transition: width 0.24s linear;
+}
+
+/*
+ * The page's faces are Latin subsets, so Korean and Chinese name their system face. Capitals and
+ * letter spacing only spread their characters.
+ */
+:lang(ko-KR) {
+  --bn-fallback: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", "Noto Sans CJK KR";
+}
+:lang(zh-CN) {
+  --bn-fallback: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Noto Sans CJK SC";
+}
+:lang(zh-TW) {
+  --bn-fallback: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", "Noto Sans CJK TC";
+}
+:is(:lang(ko), :lang(zh)) :is(.bn, .bn :is(.bn-btn, .bn-select, .bn-tab, .bn-field input, button)) {
+  font-family: var(--bn-body), var(--bn-fallback), sans-serif;
+}
+:is(:lang(ko), :lang(zh)) .bn-display {
+  font-family: var(--bn-display), var(--bn-fallback), serif;
+}
+:is(:lang(ko), :lang(zh)) :is(.bn, .bn *) {
+  letter-spacing: 0;
+}
+/* The Latin wordmark and headings keep their capitals, as in the other languages. */
+:is(:lang(ko), :lang(zh)) .bn *:not(.bn-brand-name, .bn-display) {
+  text-transform: none;
+}
+
+/* A phone: the bar holds the logo, the language, the sign-in button and the menu, and the longest
+   words (Iniciar sesión, Anmelden) need the room the name takes. */
+@media (max-width: 520px) {
+  .bn-nav .bn-brand-name {
+    display: none;
+  }
+  .bn-nav-end {
+    gap: 8px;
+  }
+  .bn-nav-end .bn-btn-sm {
+    padding: 0 12px;
+  }
+  .bn-select-nav {
+    max-width: 104px;
+    padding: 0 26px 0 10px;
+    background-position: right 8px center;
+  }
 }
