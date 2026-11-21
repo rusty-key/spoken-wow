@@ -430,6 +430,14 @@ function TextView:PaintModelEdge()
 	self.modelShade:SetShown(drawn)
 end
 
+--- The model, its edge and its backing out of sight.
+function TextView:HideModel()
+	self.model:Hide()
+	self.modelEdgeFrame:Hide()
+	self.modelShade:Hide()
+	self.modelBottom = nil
+end
+
 -- The scroll moves the model across the picture its edge is cut from. Cut again only for a new
 -- position, and not while the model is out of sight above the view.
 function TextView:ScrollModelEdge()
@@ -612,10 +620,7 @@ function TextView:SetText(str)
 		self:PaintModelEdge()
 		modelRoom = high + MODEL_GAP - PICTURE_LIFT
 	else
-		self.model:Hide()
-		self.modelEdgeFrame:Hide()
-		self.modelShade:Hide()
-		self.modelBottom = nil
+		self:HideModel()
 	end
 	if self.pictureFile and width > 0 then
 		local w = math.min(width, PICTURE_MOST)
@@ -868,10 +873,7 @@ function TextView:SetModel(model)
 	self.modelDisplayID = displayID
 	if not self.modelDisplayID and not (model and model.creatureID) then
 		if self.model then
-			self.model:Hide()
-			self.modelEdgeFrame:Hide()
-			self.modelShade:Hide()
-			self.modelBottom = nil
+			self:HideModel()
 			if self.model.ClearModel then self.model:ClearModel() end
 		end
 		return

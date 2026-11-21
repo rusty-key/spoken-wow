@@ -200,11 +200,7 @@ function SpokenPlaces:CreateLorePage(parent, style)
 	if style ~= "book" and _G.Spoken and Spoken.CreateRoundButton then
 		local open = Spoken:CreateRoundButton(inner.frame, "icon", nil, SpokenCompendium.ICON)
 		open:SetScript("OnClick", function(self)
-			if self.action then
-				self.action()
-			elseif self.mapID then
-				SpokenPlaces:ShowLoreFor(self.mapID, self.areaKey)
-			end
+			if self.action then self.action() end
 		end)
 		open:HookScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
@@ -239,9 +235,9 @@ function Page:Show(entry)
 		end or nil })
 	if self.open then
 		local lore = entry.lore
-		self.open.mapID, self.open.areaKey = lore and lore[1], lore and lore[2]
 		self.open.action = entry.open
-		self.open:SetShown(entry.open ~= nil or (lore ~= nil and lore[1] ~= nil))
+			or (lore and lore[1] and function() SpokenPlaces:ShowLoreFor(lore[1], lore[2]) end) or nil
+		self.open:SetShown(self.open.action ~= nil)
 	end
 end
 

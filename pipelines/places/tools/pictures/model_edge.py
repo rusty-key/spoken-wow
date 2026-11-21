@@ -81,7 +81,7 @@ if __name__ == "__main__":
     args = ap.parse_args()
     os.makedirs(OUT, exist_ok=True)
     for i in range(1, COUNT + 1):
-        P.save_blp(Image.fromarray((edge(i) * 255).astype(np.uint8), "L"), os.path.join(OUT, f"ModelEdge{i}.blp"), alpha=True)
+        P.save_mask(edge(i), os.path.join(OUT, f"ModelEdge{i}.blp"))
     print("wrote", COUNT, "textures to", OUT)
     if args.preview:
         preview(args.preview)
