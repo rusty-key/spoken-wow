@@ -726,7 +726,6 @@ html:has(.bn) {
   cursor: default;
   opacity: 1;
 }
-/* The language switch in the top bar: the same select at the height of the bar's buttons. */
 .bn-select-nav {
   min-width: 0;
   height: 40px;
@@ -1996,9 +1995,8 @@ html:has(.bn) {
 }
 
 /*
- * Both of the page's faces are Latin subsets. Cyrillic and Vietnamese draw in the faces named as
- * their fallback, and Korean and Chinese in the system's face for their script, named here.
- * Chinese and Korean take no capitals and no letter spacing, which only spreads their characters.
+ * The page's faces are Latin subsets, so Korean and Chinese name their system face. Capitals and
+ * letter spacing only spread their characters.
  */
 :lang(ko-KR) {
   --bn-fallback: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", "Noto Sans CJK KR";

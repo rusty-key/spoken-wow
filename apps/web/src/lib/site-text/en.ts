@@ -1,9 +1,6 @@
 /**
- * The front page's words, in English. Every other language's file has this shape.
- *
- * Plain strings only, so a dictionary can cross from the server page to the client components
- * as props. A `{name}` is filled in by `fill`. A string that holds a sentence holds all of it:
- * nothing is built from pieces, because a piece does not translate.
+ * Plain strings only, so a dictionary can cross from the server page to client components as props.
+ * A string holds a whole sentence: a sentence built from pieces does not translate.
  */
 export const EN = {
   meta: {
@@ -318,5 +315,4 @@ export const EN = {
   },
 };
 
-/** The shape of a dictionary: every key of English. */
 export type SiteText = typeof EN;

@@ -78,11 +78,8 @@ export function useLanguageSwitch(): { value: string; pending: boolean; choose: 
 }
 
 /**
- * The site header's language switch. The front page has its own, in its own style.
- *
- * Asked of the API in the browser rather than read by the layout, for the reason UserMenu
- * reads the session there: the layout would otherwise put a query in front of every English
- * page. Renders nothing while only one language is on.
+ * The site header's language switch. Asked of the API in the browser so that the layout puts no
+ * query in front of every English page. Renders nothing while only one language is on.
  */
 export default function LanguageSwitcher({ offered: given }: { offered?: Offered[] } = {}) {
   const { value, pending, choose } = useLanguageSwitch();
