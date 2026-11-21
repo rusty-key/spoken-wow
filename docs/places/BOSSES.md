@@ -124,8 +124,8 @@ It reads `boss_instance`, `boss`, `boss_line` and `entity_name` and nothing else
 A boss model in the Compendium and in a boss's story is framed by the game, not set by hand. The model is a
 `ModelScene` with one actor (the display ID, standing at the scene's origin, its front towards +x), and
 `TextView` frames it once the model has loaded: it waits for the actor's `IsLoaded()` and a bounding box
-(`GetActiveBoundingBox()`, six numbers), looking every frame from the shared watcher frame, and gives up after 3
-seconds of the page being shown with a plain box (person-sized). The scene is invisible until then, so a boss does not flash in the
+(`GetActiveBoundingBox()`, six numbers), looking every frame from the shared watcher frame. After 3 seconds of the page being shown it frames a plain
+box (person-sized), and frames the boss again from its own box if that comes within 30 seconds. The scene is invisible until then, so a boss does not flash in the
 wrong place. The camera looks at the middle of the box from the +x side, as far back as it takes for the figure
 to fill `FIT` (0.85) of the frame's height, or of its width where that needs more (the frame is `ASPECT`, the
 page's `MODEL_WIDE`, 1.25 times as wide as tall), with the lens from the view below, and a light of its own.
@@ -160,7 +160,7 @@ make bosses-nudges    # merge the saved edits into CameraNudges.lua (FILE=<Spoke
 - **`make bosses-cameras` is the only writer of `Cameras.lua`.** It writes every display id in `Creatures.lua`
   with a model file, or nothing.
 - **A change to the framing invalidates `CameraNudges.lua`.** A nudge is a change to the framed camera, so
-  changing `FIT`, `ASPECT` or the lens moves every boss that has one. The file's header records the framing its
+  changing `FIT`, `ASPECT`, the lens or the pose moves every boss that has one. The file's header records the framing its
   rows were made with, and `import_edits.py` stops when `TextView` frames differently now (`--force` merges
   anyway). After changing them, move the bosses again in the game and import those edits; do not import old
   ones on top of a new framing.

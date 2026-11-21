@@ -183,6 +183,12 @@ def kept_nudges(text):
     return out
 
 
+def falls_back(nudges, place, group):
+    """Whether `place` takes the Compendium's row for `group` when it has none of its own (TextView:CameraNudge)."""
+    row = nudges["compendium"].get(group)
+    return place != "compendium" and row is not None and not is_identity(row)
+
+
 def merge(kept, saved):
     """(nudges, counts): the kept rows, with each saved row that differs from no change put over its model's row,
     and the row of each model the game file has reset taken out. counts is how many rows were replaced, added,
@@ -191,7 +197,9 @@ def merge(kept, saved):
     counts = {"replaced": 0, "added": 0, "removed": 0, "ignored": 0}
     for place in PLACES:
         for group, row in saved.get(place, {}).items():
-            if is_identity(row):
+            # A reset on the story page is kept as a row where the Compendium has one: with no row, the story page
+            # would take the Compendium's, which is not what was seen in the game.
+            if is_identity(row) and not falls_back(result, place, group):
                 if result[place].pop(group, None) is not None:
                     counts["removed"] += 1
                 else:
@@ -211,10 +219,13 @@ def framing(textview, cameras):
     fit = re.search(r"local FIT, ASPECT = ([\d.]+), ([\w.]+)", textview)
     wide = re.search(r"local MODEL_MOST, MODEL_GAP, MODEL_WIDE = [\d.]+, [\d.]+, ([\d.]+)", textview)
     fov = re.search(r"fov = ([\d.]+)", cameras)
-    if not (fit and fov and (wide or fit.group(2) != "MODEL_WIDE")):
-        raise ValueError("TextView's FIT and ASPECT, or Cameras.lua's fov, are not where the importer looks")
+    # The pose decides the bounding box the camera is framed to.
+    sequence = re.search(r"sequence = (\d+)", cameras)
+    if not (fit and fov and sequence and (wide or fit.group(2) != "MODEL_WIDE")):
+        raise ValueError("TextView's FIT and ASPECT, or Cameras.lua's fov and sequence, are not where the importer looks")
     aspect = wide.group(1) if fit.group(2) == "MODEL_WIDE" else fit.group(2)
-    return "fit=%g aspect=%g fov=%g" % (float(fit.group(1)), float(aspect), float(fov.group(1)))
+    return "fit=%g aspect=%g fov=%g sequence=%d" % (float(fit.group(1)), float(aspect), float(fov.group(1)),
+                                                     int(sequence.group(1)))
 
 
 def write(nudges, path=OUT, framed=None):
@@ -229,7 +240,7 @@ def write(nudges, path=OUT, framed=None):
         lines.append("\t%s = {" % place)
         for group in sorted(nudges[place]):
             row = nudges[place][group]
-            if is_identity(row):
+            if is_identity(row) and not falls_back(nudges, place, group):
                 continue
             lines.append("\t\t[%d] = { %.4f, %.4f, %.4f, %.4f }," % ((group,) + tuple(row)))
         lines.append("\t},")

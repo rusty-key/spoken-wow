@@ -201,6 +201,7 @@ test: test-player ## Everything: the site, the Node and Python pipelines, the ad
 	  echo "No venv at pipelines/quests/.venv -- see the comment above 'test' in the Makefile"; \
 	  exit 1; }
 	@cd pipelines/quests && ./.venv/bin/python -m pytest -q
+	@python3 -m unittest discover -s pipelines/places/tools/bosses -p "test_*.py"
 
 lint: ## The checks CI gates on
 	@pnpm -r typecheck

@@ -534,12 +534,12 @@ local function Under(a, b)
 	return a.modelAsked < b.modelAsked
 end
 
-local sceneFailureSaid = false
+local sceneFailureSaid = {}
 
--- What the client rejects while a boss is drawn is said once in chat, whichever call it was.
+-- What the client rejects while a boss is drawn is said once in chat for each kind of call.
 local function SceneFailed(what, err)
-	if sceneFailureSaid then return end
-	sceneFailureSaid = true
+	if sceneFailureSaid[what] then return end
+	sceneFailureSaid[what] = true
 	print("Spoken: a boss's " .. what .. " could not be set: " .. tostring(err))
 end
 
@@ -1005,8 +1005,8 @@ function TextView:SetModel(model)
 	local key = displayID and (displayID .. ":" .. (model.scale or 1) .. ":" .. (model.sequence or "")) or nil
 	-- The boss already drawn is not loaded and framed again: it would blink out and back in. It is asked for
 	-- again, so it counts as the later model of two in windows on the same level, and takes a nudge that
-	-- has changed.
-	if key and key == self.modelKey and wanting[self] then
+	-- has changed. A model out of sight is reloaded, since the client can drop it while hidden.
+	if key and key == self.modelKey and wanting[self] and self.model:IsVisible() then
 		asked = asked + 1
 		self.modelAsked = asked
 		if self.modelCamera then self:ApplyModelCamera() end
@@ -1173,7 +1173,8 @@ end
 -- decides both, and these two numbers are all that changes if they are off.
 local FIT, ASPECT = 0.85, MODEL_WIDE
 -- A model that has not loaded by now is framed as this box, in scene units, so the boss is not left unseen.
-local FRAME_GIVE_UP = 3
+-- It is framed again from its own box if that comes by FRAME_LAST, when it is no longer looked for.
+local FRAME_GIVE_UP, FRAME_LAST = 3, 30
 local PLAIN_BOX = { -0.5, -0.5, 0, 0.5, 0.5, 2 }
 local atan2 = math.atan2 or math.atan
 
@@ -1210,16 +1211,20 @@ function TextView:FrameModel(box)
 	if self.onModel then pcall(self.onModel, self) end
 end
 
---- Looks at every model waiting to be framed, `elapsed` seconds on: frames the ones that have loaded, and
---- the ones that have waited FRAME_GIVE_UP while shown as the plain box.
+--- Looks at every model waiting to be framed, `elapsed` seconds on: frames the ones that have loaded, the
+--- ones that have waited FRAME_GIVE_UP while shown as the plain box, and stops looking at FRAME_LAST.
 function FrameWaiting(elapsed)
 	for view in pairs(framing) do
 		-- A page that is hidden is not waited on: its model may only load once it is shown.
 		if view.frame:IsVisible() then view.modelWaited = (view.modelWaited or 0) + elapsed end
 		local box = ModelBox(view.modelActor)
-		if box or view.modelWaited >= FRAME_GIVE_UP then
+		if box then
 			framing[view] = nil
-			view:FrameModel(box or PLAIN_BOX)
+			view:FrameModel(box)
+		elseif view.modelWaited >= FRAME_LAST then
+			framing[view] = nil
+		elseif view.modelWaited >= FRAME_GIVE_UP and not view.modelCamera then
+			view:FrameModel(PLAIN_BOX)
 		end
 	end
 	if next(framing) == nil then Refresh() end
@@ -1233,8 +1238,6 @@ local function SceneCamera(cam)
 	local length = math.sqrt(fx * fx + fy * fy + fz * fz)
 	return px, py, pz, atan2(fy, fx), length > 0 and math.asin(fz / length) or 0, length
 end
-
-local cameraFailureSaid = false
 
 --- The camera framed for this model, moved by its nudge; nothing while it has none. A call that fails is said
 --- once in chat.
@@ -1256,10 +1259,7 @@ function TextView:ApplyModelCamera()
 		scene:SetCameraFarClip(FAR_CLIP)
 		self:ApplyNearClip()
 	end)
-	if not ok and not cameraFailureSaid then
-		cameraFailureSaid = true
-		print("Spoken: a boss's camera could not be set: " .. tostring(err))
-	end
+	if not ok then SceneFailed("camera", err) end
 end
 
 --- A picture above the text from the next SetText on: `file` a texture, `mask` the one fraying its

@@ -2,7 +2,7 @@
 -- in the game (/spokenbosscam, kept in Spoken_Developer's saved variables). Do not edit by hand.
 -- SpokenBossCameraNudges[place][model key] = { right, up, zoom, turn }, applied to the camera TextView frames for the boss:
 -- right and up in frame heights, zoom as a factor, turn in radians. The places are "compendium" and "story".
--- Framed with: fit=0.85 aspect=1.25 fov=27.78
+-- Framed with: fit=0.85 aspect=1.25 fov=27.78 sequence=0
 SpokenBossCameraNudges = {
 	compendium = {
 		[119376] = { -0.0038, -0.1482, 1.0000, -0.3755 },

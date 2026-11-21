@@ -73,6 +73,9 @@ jobs:
               - pipelines/places/**
               - pipelines/lib/**
               - addons/Spoken_Places/**
+              # The boss camera importer reads the framing from these.
+              - addons/Spoken/UI/TextView.lua
+              - addons/Spoken_Bosses/Data/Cameras.lua
               # The readables pipeline's and the scripts' Node tests run in this job too.
               - pipelines/readables/**
               - scripts/**
@@ -203,6 +206,7 @@ jobs:
       - run: node pipelines/places/tools/locale/check-strings.mjs
       - run: pnpm --filter @spoken/readables-pipeline test
       - run: pnpm --filter @spoken/places-pipeline test
+      - run: python3 -m unittest discover -s pipelines/places/tools/bosses -p "test_*.py"
       - run: node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs scripts/maintainers/*.test.mjs
       - run: pnpm --filter @spoken/brann test
       # The FAQ Brann answers from names only settings and commands the code has.

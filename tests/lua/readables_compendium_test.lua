@@ -1043,10 +1043,19 @@ do
     Tick(0.3)
     Expect("...but is after 3: the plain box (not the big one it would report), and shown",
         tostring(At(scene.camera.position, BASE, 0, 1)) .. "|" .. scene:GetAlpha(), "true|1")
-    Expect("...the shared frame resting again", watcher:IsShown(), false)
+    Expect("...the shared frame still looking for its own box", watcher:IsShown(), true)
     stub.actorLoaded = true
     Tick(0.2)
-    Expect("...and not framed a second time when the model loads late", At(scene.camera.position, BASE, 0, 1), true)
+    Expect("...framed again from its own box when the model loads late", At(scene.camera.position, BASE, 0, 1), false)
+    Expect("...and the shared frame resting again", watcher:IsShown(), false)
+    stub.actorLoaded = false
+    Clear()
+    Boss()
+    Tick(3.1)
+    Tick(27)
+    Expect("a model that never loads is looked for until 30 seconds", watcher:IsShown(), false)
+    Expect("...and keeps the plain box", At(scene.camera.position, BASE, 0, 1), true)
+    stub.actorLoaded = true
     stub.actorBox = BOX
 
     -- The wait counts only while the page is shown: a hidden page's model may load once it is shown.
@@ -1343,6 +1352,12 @@ do
         back:SetModel(nil)
         back:SetModel({ displayID = 2029, scale = 2, sequence = 3 })
         Expect("...and one cleared in between is loaded afresh", actor.modelSets, sets + 3)
+        Tick()
+        -- The client can drop a model while it is hidden.
+        back.frame:Hide()
+        back:SetModel({ displayID = 2029, scale = 2, sequence = 3 })
+        Expect("...and one shown again after its page was hidden is loaded afresh", actor.modelSets, sets + 4)
+        back.frame:Show()
         Tick()
         Expect("nothing is left of hiding or fading a covered model",
             tostring(back.SnapModel) .. tostring(back.StepModelFade) .. tostring(back.modelCovered)

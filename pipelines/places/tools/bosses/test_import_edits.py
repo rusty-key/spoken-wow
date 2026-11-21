@@ -117,6 +117,23 @@ class MergeTest(unittest.TestCase):
         self.assertEqual((counts["replaced"], counts["added"], counts["kept"]), (0, 0, 1))
 
 
+    def test_a_story_reset_over_a_compendium_row_is_kept_so_the_story_page_does_not_take_it(self):
+        saved = {"compendium": {}, "story": {126277: [0.0, 0.0, 1.0, 0.0]}}
+        merged, counts = ie.merge(KEPT, saved)
+        self.assertEqual(merged["story"][126277], [0.0, 0.0, 1.0, 0.0])
+        self.assertEqual(counts["added"], 1)
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "CameraNudges.lua")
+            ie.write(merged, path)
+            self.assertEqual(ie.kept_nudges(read(path))["story"], {126277: [0.0, 0.0, 1.0, 0.0]})
+
+    def test_a_story_reset_with_no_compendium_row_takes_the_story_row_out(self):
+        kept = {"compendium": {}, "story": {7: [0.1, 0.0, 1.0, 0.0]}}
+        merged, counts = ie.merge(kept, {"compendium": {}, "story": {7: [0.0, 0.0, 1.0, 0.0]}})
+        self.assertNotIn(7, merged["story"])
+        self.assertEqual(counts["removed"], 1)
+
+
 class WriteTest(unittest.TestCase):
     def test_writes_the_generated_header_and_leaves_out_rows_that_change_nothing(self):
         merged, _ = ie.merge(KEPT, ie.saved_edits(SAMPLE))
@@ -158,20 +175,24 @@ class FramingTest(unittest.TestCase):
     CAMERAS = "SpokenBossCameraView = { fov = 27.78, sequence = 0 }\n"
 
     def test_reads_fit_aspect_and_fov(self):
-        self.assertEqual(ie.framing(self.TEXTVIEW, self.CAMERAS), "fit=0.85 aspect=1.25 fov=27.78")
+        self.assertEqual(ie.framing(self.TEXTVIEW, self.CAMERAS), "fit=0.85 aspect=1.25 fov=27.78 sequence=0")
 
     def test_an_aspect_written_as_a_number_is_read_too(self):
         text = self.TEXTVIEW.replace("0.85, MODEL_WIDE", "0.9, 1.5")
-        self.assertEqual(ie.framing(text, self.CAMERAS), "fit=0.9 aspect=1.5 fov=27.78")
+        self.assertEqual(ie.framing(text, self.CAMERAS), "fit=0.9 aspect=1.5 fov=27.78 sequence=0")
 
     def test_a_change_to_either_constant_is_a_different_framing(self):
         was = ie.framing(self.TEXTVIEW, self.CAMERAS)
         self.assertNotEqual(ie.framing(self.TEXTVIEW.replace("0.85", "0.8"), self.CAMERAS), was)
         self.assertNotEqual(ie.framing(self.TEXTVIEW.replace("1.25", "1.3"), self.CAMERAS), was)
 
+    def test_a_change_to_the_pose_is_a_different_framing(self):
+        was = ie.framing(self.TEXTVIEW, self.CAMERAS)
+        self.assertNotEqual(ie.framing(self.TEXTVIEW, self.CAMERAS.replace("sequence = 0", "sequence = 4")), was)
+
     def test_the_real_sources_are_read(self):
         with open(ie.TEXTVIEW, encoding="utf8") as f, open(ie.CAMERAS, encoding="utf8") as g:
-            self.assertRegex(ie.framing(f.read(), g.read()), r"^fit=[\d.]+ aspect=[\d.]+ fov=[\d.]+$")
+            self.assertRegex(ie.framing(f.read(), g.read()), r"^fit=[\d.]+ aspect=[\d.]+ fov=[\d.]+ sequence=\d+$")
 
     def test_sources_the_importer_cannot_read_are_an_error(self):
         with self.assertRaises(ValueError):
