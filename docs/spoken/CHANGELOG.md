@@ -4,6 +4,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **A line that arrives while Spoken is stopped shows that it waits.** The "+N" after the line's
+  title swells and glows when a line joins a stopped queue; Skip plays it. With Show Name and Title
+  off, the subtitles count it after "(Stopped)". Play buttons in the quest log and the Compendium
+  show a plus while Spoken reads another line: a click queues the line after it, and the plus
+  stays while the line waits. *([rusty-key](https://github.com/rusty-key))*
 - **Quest pages in the Compendium read in your language before a line is voiced.** A quest you have
   not opened, whose line has no recording in your language yet, showed its English. It now shows
   the words your language's quest packs carry, once those packs are rebuilt.
