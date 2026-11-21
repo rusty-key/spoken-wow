@@ -58,7 +58,7 @@ endef
         pull-history pull-live pull-recorded package-acted acted history-status sounds package package-audio \
         package-meta icon \
         downloads-status \
-        factions followup-lines compendium-text compendium release release-audio release-audio-dry release-wago release-curse \
+        factions followup-lines compendium-text compendium zones release release-audio release-audio-dry release-wago release-curse \
         release-dry import-corpus import-locale import-npc-bodies fill-locales export-corpus export-ignores export-locale-text export-giver-names export-gossip-text export-chatter-lines \
         sync check-synced full-release upload upload-dry
 
@@ -250,6 +250,12 @@ compendium-text: ## Re-export addons/Spoken_Quests/Data/QuestText.lua from the c
 
 compendium: ## Re-export addons/Spoken_Quests/Data/Compendium.lua (needs the repack's MySQL and its map files in COMPENDIUM_MAPS; ARGS=--no-db without them)
 	@$(PYTHON) pipelines/quests/tools/export_compendium.py $(ARGS)
+
+# Where each quest and speaker is, for the site's zone filter: the Compendium's zones, and each
+# speaker's spawns placed by the same map files. The rectangles alone put the Crossroads in Durotar.
+
+zones: ## Re-export corpus/zones.json from Compendium.lua and the corpus's spawns (needs COMPENDIUM_MAPS)
+	@$(PYTHON) pipelines/quests/tools/export_zones.py
 
 release-dry: ## Show what `make release` would upload to CurseForge and Wago
 	@./scripts/quests/release.sh --dry-run

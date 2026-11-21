@@ -1,0 +1,12 @@
+{
+  "_comment": ["Where each quest is (the Compendium's zones) and where each speaker stands (its corpus", "spawns, through the server's map files), as uiMapIDs, for the explorers' zone filter.", "Regenerate with:  make quests-zones"],
+  "zones": [
+
+  ],
+  "quests": {
+
+  },
+  "speakers": {
+
+  }
+}
