@@ -85,3 +85,35 @@ describe('a check waits for the proxy', () => {
     expect(states).toEqual(['checking', 'available'])
   })
 })
+
+describe('a proxy change waits for the manager update', () => {
+  it('counts the moment between "available" and the first progress as a download, but not a finished one', async () => {
+    const handlers: Record<string, (arg: unknown) => void> = {}
+    const updater = new ManagerUpdater({
+      isPackaged: true,
+      appVersion: '0.1.0',
+      autoUpdateManager: () => true,
+      send: () => undefined,
+      platform: 'win32',
+      loadUpdater: async () => ({
+        setFeedURL: () => undefined,
+        autoDownload: true,
+        autoInstallOnAppQuit: true,
+        logger: null,
+        on: (event: string, fn: (arg: never) => void) => void (handlers[event] = fn as (arg: unknown) => void),
+        checkForUpdates: async () => undefined,
+        quitAndInstall: () => undefined
+      })
+    })
+    expect(updater.onTheWire()).toBe(false)
+    await updater.checkInBackground()
+    // electron-updater has started downloading, though no progress has been reported yet.
+    handlers['update-available']!({ version: '9.9.9' })
+    expect(updater.onTheWire()).toBe(true)
+    handlers['download-progress']!({ percent: 10 })
+    expect(updater.onTheWire()).toBe(true)
+    // A downloaded update waits for a restart; it must not keep the proxy locked until then.
+    handlers['update-downloaded']!({ version: '9.9.9' })
+    expect(updater.onTheWire()).toBe(false)
+  })
+})

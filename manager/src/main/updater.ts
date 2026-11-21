@@ -35,9 +35,8 @@ export interface UpdaterOptions {
   /** Reads a text file from the web; throws when it cannot (tests). Default: `fetch` with a time limit. */
   fetchText?: (url: string) => Promise<string>
   /**
-   * Resolves once the session proxy is in place. electron-updater sends through its own session, which
-   * `chromiumFetch` does not cover, so a check started while the proxy is still being set would go by the old
-   * route and then have its connections closed under it.
+   * Resolves once the session proxy is set. electron-updater sends through its own session, so a check sent
+   * earlier would go by the old route and then have its connections closed under it.
    */
   proxyReady?: () => Promise<void>
 }
@@ -72,9 +71,8 @@ export function parseFeedVersion(text: string): string | null {
 }
 
 /**
- * The feed read, with the fetch injected: `index.ts` hands it Chromium's, so this route follows the session's
- * proxy. It is a small GET of a yml, which is what that stack is good at, and Node's fetch would ignore the
- * system proxy on the Linux builds that read the feed themselves.
+ * The feed read. The fetch is injected so the read can follow the session's proxy: Node's fetch ignores the
+ * system proxy.
  */
 export async function fetchWithLimit(url: string, fetchImpl: typeof fetch = fetch): Promise<string> {
   const res = await fetchImpl(url, { signal: AbortSignal.timeout(15000), headers: { 'User-Agent': 'Spoken-Manager' } })
@@ -169,9 +167,8 @@ export class ManagerUpdater {
   private async check(byPlayer: boolean): Promise<void> {
     if (this.inCheck || this.checkWouldInterfere()) return
     this.userTriggered = byPlayer
-    // Claimed before the wait, so a second check started while the proxy is being set is turned away. Two
-    // overlapping ones would race for the feed, and the loser's failure would replace a link the winner had
-    // just published.
+    // Claimed before the wait: two overlapping checks would race for the feed, and the loser's failure would
+    // replace the link the winner published.
     this.inCheck = true
     try {
       await this.opts.proxyReady?.()
@@ -185,7 +182,7 @@ export class ManagerUpdater {
     } catch (err) {
       this.failed(err)
     } finally {
-      // Released even on a failure. Once a download starts, `checkWouldInterfere` takes over.
+      // A started download blocks further checks through its state.
       this.inCheck = false
     }
   }
@@ -210,6 +207,15 @@ export class ManagerUpdater {
     await this.check(true)
   }
 
+  /**
+   * A check or the update's download is on the wire, so closing the session's connections would fail it.
+   * `available` without a link counts: electron-updater starts downloading before its first progress event.
+   * `ready` does not, or a downloaded update would keep the proxy locked until a restart.
+   */
+  onTheWire(): boolean {
+    return this.inCheck || (this.last.state !== 'ready' && this.checkWouldInterfere())
+  }
+
   restart(): void {
     if (this.last.state !== 'ready' || !this.updater) return
     try {
@@ -230,6 +236,10 @@ export async function startUpdater(options: UpdaterOptions): Promise<void> {
 
 export async function checkForManagerUpdate(background: boolean): Promise<void> {
   await (background ? current?.checkInBackground() : current?.checkNow())
+}
+
+export function managerUpdateOnTheWire(): boolean {
+  return current?.onTheWire() ?? false
 }
 
 export function restartToUpdateManager(): void {

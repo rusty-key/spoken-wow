@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS } from '../src/shared/types'
 import { normalizeProxy, proxyConfig } from '../src/main/proxy'
-import { dispatcherFor } from '../src/main/proxy-agent'
+import { proxyRoute } from '../src/main/proxy-agent'
 import { loadSettings, sanitizeSettings, saveSettings } from '../src/main/state'
 import { tmpDir } from './helpers'
 
@@ -16,6 +16,8 @@ describe('the proxy setting', () => {
     // `socks5h` is Firefox's name for it, and undici refuses the address outright.
     expect(normalizeProxy('socks5h://127.0.0.1:10808')).toBe('socks5://127.0.0.1:10808')
     expect(normalizeProxy('SOCKS5://127.0.0.1:10808')).toBe('socks5://127.0.0.1:10808')
+    // Chromium reads bare `socks` as SOCKS4 and undici as SOCKS5, so it is written as the one both agree on.
+    expect(normalizeProxy('socks://127.0.0.1:10808')).toBe('socks5://127.0.0.1:10808')
     expect(normalizeProxy('  http://proxy.example:8080  ')).toBe('http://proxy.example:8080')
   })
 
@@ -66,9 +68,12 @@ describe('the proxy setting', () => {
     })
   })
 
-  it('has a dispatcher only while there is a proxy', () => {
-    expect(dispatcherFor('')).toBeNull()
-    expect(dispatcherFor('http://127.0.0.1:10808')).not.toBeNull()
+  it('has a route only while there is a proxy, and keeps one agent per address', async () => {
+    const first = await proxyRoute('http://127.0.0.1:10808')
+    expect(first).not.toBeNull()
+    expect((await proxyRoute('http://127.0.0.1:10808'))?.agent).toBe(first?.agent)
+    expect((await proxyRoute('socks5://127.0.0.1:10808'))?.agent).not.toBe(first?.agent)
+    expect(await proxyRoute('')).toBeNull()
   })
 
   it('survives a restart, and is written down in the form both stacks read', () => {

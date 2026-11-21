@@ -252,8 +252,7 @@ export const S_EN = {
     keepZipsText: 'Saves a copy of each pack, so a reinstall does not download it again. Packs are large.',
     proxy: 'Proxy',
     network: 'Network',
-    proxyText:
-      'Sends the manager through a proxy, one line such as socks5://127.0.0.1:10808. Left empty, downloads, updates and the catalog follow the system proxy, while publishing and the site connect directly. A proxy elsewhere also sees which servers the manager talks to, and if it can decrypt them, your publishing tokens and your site sign-in.',
+    proxyText: 'Empty uses the system proxy, but publishing and the site then connect directly. Use only a proxy you trust.',
     proxyPlaceholder: 'socks5://127.0.0.1:10808',
     useSystemProxy: 'Follow the System',
     sharing: 'Sharing',

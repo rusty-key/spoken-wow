@@ -254,9 +254,8 @@ export interface Settings {
   /** Sending what Spoken collects to the site: 'unset' until the player answers the first-start question. */
   sharing: SharingChoice
   /**
-   * A proxy for the manager's requests. Written as `scheme://host:port`. Chromium's side (downloads, the
-   * catalog, the manager's own update) takes the system proxy when this is empty; the Node side (publishing,
-   * the site) then connects directly, since it cannot read the system's setting.
+   * `scheme://host:port`, or '' for the system proxy. Empty leaves publishing and the site going direct: Node
+   * cannot read the system setting.
    */
   proxy: string
 }

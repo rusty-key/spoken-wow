@@ -1,5 +1,4 @@
-// What the proxy field shows once a save or a clear comes back. Kept out of the page so it can be checked
-// without a renderer: the rules are about ordering, not about the drawing.
+// The proxy field's ordering rules, kept out of the page so they can be tested without a renderer.
 
 export interface ProxyAnswer {
   /** The operation's own number, taken when it was sent. */
@@ -8,16 +7,13 @@ export interface ProxyAnswer {
   newest: number
   /** What that operation sent, already trimmed. */
   submitted: string
-  /** What the field holds now. */
   typed: string
-  /** What the main process saved. */
   saved: string
 }
 
 /**
- * The text the field should show, or null to leave it alone. A later save or clear makes an earlier answer
- * stale even when both came from the same draft: blur saved `proxy.example:8080` and "Follow the System" was
- * pressed before it came back, so the clear must win rather than be dropped as an answer about an old draft.
+ * The text the field should show, or null to leave it alone. Only the newest operation answers, even when an
+ * older one came from the same draft: a clear pressed while a blur save is pending must win.
  */
 export function proxyFieldAfter(a: ProxyAnswer): string | null {
   if (a.seq !== a.newest) return null

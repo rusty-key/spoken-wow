@@ -176,32 +176,23 @@ function GeneralSection(): ReactNode {
   /** The number of the last write that came back, so a pending one is not mistaken for a settled draft. */
   const proxyDone = useRef(0)
   /**
-   * Shows what the main process saved, unless something newer happened or the field has been typed in since.
-   * The main process normalizes, so typing `127.0.0.1:10808` over a stored `http://127.0.0.1:10808` would
-   * otherwise leave the two apart. A clear that was sent after a save must win even though both captured the
-   * same draft, which is what the counter is for.
+   * Shows what the main process saved, which it normalizes: typing `127.0.0.1:10808` over a stored
+   * `http://127.0.0.1:10808` would otherwise leave the two apart. Only the newest write may touch the field or
+   * show an error, so an older save cannot land after a newer one.
    */
-  const showSaved = (submitted: string, seq: number) => (next: Settings): void => {
-    setProxy((typed) => proxyFieldAfter({ seq, newest: proxySeq.current, submitted, typed, saved: next.proxy }) ?? typed)
-  }
-  /** The number this operation owns; a later one makes it stale. */
-  const beginProxyOp = (): number => (proxySeq.current += 1)
-  const saveProxy = (): void => {
+  const writeProxy = (value: string): void => {
     const submitted = proxy
-    const settled = shouldWriteProxy({
-      submitted: submitted.trim(),
-      stored: settings.proxy,
-      newest: proxySeq.current,
-      done: proxyDone.current
-    })
-    if (!settled) return
-    const seq = beginProxyOp()
+    const seq = ++proxySeq.current
     setProxyError('')
     void actions
-      .setSettings({ proxy: submitted.trim() })
-      .then(showSaved(submitted, seq))
-      .catch((e) => setProxyError(errorText(e)))
+      .setSettings({ proxy: value })
+      .then((next) => setProxy((typed) => proxyFieldAfter({ seq, newest: proxySeq.current, submitted, typed, saved: next.proxy }) ?? typed))
+      .catch((e) => seq === proxySeq.current && setProxyError(errorText(e)))
       .finally(() => (proxyDone.current = seq))
+  }
+  const saveProxy = (): void => {
+    const draft = proxy.trim()
+    if (shouldWriteProxy({ submitted: draft, stored: settings.proxy, newest: proxySeq.current, done: proxyDone.current })) writeProxy(draft)
   }
   return (
     <section aria-labelledby="set-general">
@@ -241,16 +232,7 @@ function GeneralSection(): ReactNode {
           <button
             type="button"
             className="link"
-            onClick={() => {
-              const submitted = proxy
-              const seq = beginProxyOp()
-              setProxyError('')
-              void actions
-                .setSettings({ proxy: '' })
-                .then(showSaved(submitted, seq))
-                .catch((e) => setProxyError(errorText(e)))
-                .finally(() => (proxyDone.current = seq))
-            }}
+            onClick={() => writeProxy('')}
           >
             {S.settings.useSystemProxy}
           </button>

@@ -57,10 +57,7 @@ export interface ServiceOptions {
   secretBox?: SecretBox
   /** The fetch for the site and the stores, when it must differ from `fetchImpl`. */
   contributorFetch?: typeof fetch
-  /**
-   * What a proxy change would cut off that the job list does not cover: the manager's own update, which
-   * downloads outside `jobs` and whose session keeps connections of its own.
-   */
+  /** Network work outside `jobs` that a proxy change would cut off: the manager's own update. */
   busyElsewhere?: () => boolean
   settingsChanged?: (settings: Settings, previous: Settings) => void
 }

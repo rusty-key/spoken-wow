@@ -1,31 +1,27 @@
-// Node's side of the proxy setting: the dispatcher that carries the site's and the stores' requests.
-import { ProxyAgent } from 'undici'
-import { normalizeProxy } from './proxy'
+import type { ProxyAgent } from 'undici'
 
+type Undici = typeof import('undici')
+
+// Loaded on first use: most players set no proxy, and requiring undici would slow every start-up.
+let undici: Promise<Undici> | null = null
 let current: { uri: string; agent: ProxyAgent } | null = null
 
 /**
- * The dispatcher for this setting, or null to go direct. A new address closes the old agent, whose pooled
- * sockets would otherwise keep using the proxy that is no longer wanted.
+ * undici's own fetch and an agent for this address (already normalized), or null to go direct. The fetch is
+ * undici's because its ProxyAgent is not guaranteed to work under the different undici copy in Electron's
+ * Node. A new address closes the old agent, whose pooled sockets would keep using the old proxy.
  */
-export function dispatcherFor(setting: string): ProxyAgent | null {
-  const uri = normalizeProxy(setting)
+export async function proxyRoute(uri: string): Promise<{ fetch: Undici['fetch']; agent: ProxyAgent } | null> {
   if (!uri) {
-    if (current) void closeDispatcher()
+    void current?.agent.close().catch(() => undefined)
+    current = null
     return null
   }
-  if (current?.uri === uri) return current.agent
-  const stale = current
-  const agent = new ProxyAgent(uri)
-  current = { uri, agent }
-  // Closed after the new one is in place: the other way round, a request arriving in between would find the
-  // old agent still current and use a proxy that is on its way out.
-  if (stale) void stale.agent.close().catch(() => undefined)
-  return agent
-}
-
-export async function closeDispatcher(): Promise<void> {
-  const old = current
-  current = null
-  if (old) await old.agent.close().catch(() => undefined)
+  const u = await (undici ??= import('undici'))
+  if (current?.uri !== uri) {
+    const stale = current
+    current = { uri, agent: new u.ProxyAgent(uri) }
+    void stale?.agent.close().catch(() => undefined)
+  }
+  return { fetch: u.fetch, agent: current.agent }
 }
