@@ -18,7 +18,11 @@ process.env.SPOKEN_READABLES_AUDIO_HISTORY = path.join(root, "audio-history");
 vi.mock("server-only", () => ({}));
 
 import { actAs, ALL_TEAMS, closeDb, db } from "@/lib/db";
-import { asSystem } from "@/lib/teams/testing";
+import type { Lang } from "@/lib/lang";
+import { asActor } from "@/lib/teams/acting";
+import { forgetTeams } from "@/lib/teams/store";
+import { addMember, asSystem, dropLang, dropTeam, newTeamIn, testUser, uniqueLang } from "@/lib/teams/testing";
+import { readTextOverrides } from "@/lib/text-overrides/store";
 import { pageById } from "./catalogue";
 import { commitTake } from "@/lib/takes/commit";
 import { absorb, foldMinted } from "@readables-tools/lib/absorb.mjs";
@@ -225,5 +229,69 @@ describe("absorb", () => {
       { lineId: REAL, pageNumber: 2 },
       { lineId: MINTED_THREE, pageNumber: 3 },
     ]);
+  });
+});
+
+describe("absorb, for a team's overrides", () => {
+  let lang: Lang;
+  let a: string;
+  let b: string;
+  let u: { id: string; cleanup: () => Promise<void> };
+
+  async function override(team: string, lineId: string, text: string) {
+    await asSystem.query(
+      `insert into "text_override" ("teamId", "lang", "source", "lineId", "text") values ($1, $2, 'readables', $3, $4)`,
+      [team, lang, lineId, text],
+    );
+  }
+
+  const overrides = async () =>
+    (
+      await asSystem.query<{ teamId: string; lineId: string; text: string }>(
+        `select "teamId", "lineId", "text" from "text_override" where "lang" = $1 order by "teamId" = $2, "lineId"`,
+        [lang, b],
+      )
+    ).rows;
+
+  beforeEach(async () => {
+    lang = await uniqueLang();
+    a = await newTeamIn(lang, true);
+    b = await newTeamIn(lang, false);
+    u = await testUser();
+    await addMember(b, u.id, lang, "regenerate");
+  });
+
+  afterEach(async () => {
+    await asSystem.query(`delete from "text_override" where "lang" = $1`, [lang]);
+    for (const team of [a, b]) await dropTeam(team);
+    await u.cleanup();
+    await dropLang(lang);
+    forgetTeams();
+  });
+
+  it("moves a minted page's override to a real page that has none", async () => {
+    await override(b, MINTED, "The minted page, rewritten.");
+    await fold();
+    expect(await overrides()).toEqual([{ teamId: b, lineId: REAL, text: "The minted page, rewritten." }]);
+  });
+
+  it("keeps the real page's override where the team has one, and drops the minted page's", async () => {
+    await override(b, REAL, "The real page, rewritten.");
+    await override(b, MINTED, "The minted page, rewritten.");
+    // Another team's has nothing on the real page to yield to, so it moves.
+    await override(a, MINTED, "Another team's rewrite.");
+    await fold();
+    expect(await overrides()).toEqual([
+      { teamId: a, lineId: REAL, text: "Another team's rewrite." },
+      { teamId: b, lineId: REAL, text: "The real page, rewritten." },
+    ]);
+  });
+
+  it("is seen by a worker that read the overrides before the fold", async () => {
+    await override(b, MINTED, "The minted page, rewritten.");
+    const read = () => asActor(u.id, () => readTextOverrides("readables", lang));
+    expect([...(await read()).keys()]).toEqual([MINTED]);
+    await fold();
+    expect([...(await read()).keys()]).toEqual([REAL]);
   });
 });

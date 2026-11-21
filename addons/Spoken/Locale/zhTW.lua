@@ -6,7 +6,7 @@
 
 setfenv(1, SpokenEnv)
 
-if GetLocale() ~= "zhTW" then
+if not Interface:In("zhTW") then
 	return
 end
 
@@ -151,7 +151,7 @@ L.MODULE_NOT_LOADED = "未載入"
 L.MODULE_NO_PACK = "|cffff8080未安裝語音包。|r沒有語音包就不會朗讀任何內容。"
 L.MODULE_RESET = "重設"
 L.REASON_PART_OFF = "在本頁頂端開啟「啟用」才能使用。"
-L.MODULE_NO_VOICE_FMT = "沒有 %1$s 語音包，且「缺少語音時」設為「保持靜默」：不會朗讀任何內容。"
+L.MODULE_NO_VOICE_FMT = "沒有 %1$s 語音包，清單中之後的語音也沒有：不會朗讀任何內容。"
 L.PART_VOICE = "語音包"
 L.OPT_PART_CLICK_ON = "點擊以開啟。"
 L.OPT_PART_CLICK_OFF = "點擊以關閉。"
@@ -224,10 +224,22 @@ L.OPT_LOWER_AMBIENCE = "環境音"
 L.OPT_LOWER_SFX = "音效"
 L.OPT_LOWER_DIALOG = "NPC 語音"
 L.OPT_LANGUAGE_TITLE = "語言"
-L.OPT_VOICE_LANGUAGE = "語音語言"
+L.OPT_VOICES = "語音（依順序）"
+L.OPT_VOICES_TIP = "每句台詞使用清單中第一個包含它的語音播放。清單中都沒有時，Spoken 保持靜默。"
+L.OPT_VOICE_ADD = "新增語音"
+L.OPT_VOICE_EARLIER = "上移"
+L.OPT_VOICE_LATER = "下移"
+L.OPT_VOICE_REMOVE = "移除"
+L.OPT_VOICE_MISSING = "（未安裝）"
 L.OPT_LANG_AUTO_FMT = "自動（%1$s）"
-L.OPT_FALLBACK_LANGUAGE = "缺少語音時"
-L.OPT_FALLBACK_NONE = "保持靜默"
+L.OPT_VOICE_TEAM_FMT = "%1$s · %2$s"
+L.OPT_TEXT_LANGUAGE = "文字語言"
+L.OPT_TEXT_LANGUAGE_SET_FMT = "介面重新載入後，文字將以%1$s顯示。"
+L.OPT_TEXT_LANGUAGE_RELOAD = "輸入 /reload 即可切換。"
+L.OPT_INTERFACE_LANGUAGE = "介面語言"
+L.OPT_INTERFACE_LANGUAGE_SET_FMT = "介面重新載入後，Spoken 的視窗和設定將以%1$s顯示。"
+L.OPT_RELOAD_NOW = "立即重新載入"
+L.OPT_LATER = "稍後"
 
 -- Azeroth's Compendium, on Spoken's page.
 L.OPT_COMPENDIUM_TITLE = "艾澤拉斯百科"

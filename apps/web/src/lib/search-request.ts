@@ -42,15 +42,12 @@ export async function filtersFromParams(params: URLSearchParams, lang: Lang): Pr
     source: sourcesFromParam(params.get("source")),
     npcType: oneOf(params.get("type"), NPC_TYPES),
     narration: params.get("narration") === "1",
-    // Absent means hidden, so the default state needs no parameter and a bare URL is the
-    // useful view rather than the padded one.
-    includeProgress: params.get("progress") === "1",
     // Absent means Era + Forever, the clients the site voices (lib/quests/line-client.ts).
     client: clientFilterOf(params.get("client")),
     line: params.get("line") || undefined,
     overridden: params.get("overridden") === "1",
-    // Absent means hidden, like progress text: the useful default view is the corpus minus
-    // the lines nobody will ever voice.
+    // Absent means hidden: the useful default view is the corpus minus the lines nobody will
+    // ever voice.
     ignored: params.get("ignored") === "1",
     dirty: params.get("dirty") === "1",
     reports: oneOf(params.get("fb"), ["open"] as const),

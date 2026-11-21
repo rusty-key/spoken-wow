@@ -1,6 +1,6 @@
 // The contract between the window and the main process. The preload exposes `ManagerApi` as
 // `window.manager`; the main process answers each channel.
-import type { Catalog, CommunityCatalog, ContributorView, GameInstall, JobProgress, ProductStatus, ReleaseRow, Settings, SharingStatus, Snapshot, StoreId } from './types'
+import type { Catalog, CatalogUpdate, CommunityCatalog, ContributorView, GameInstall, JobProgress, ManualZip, ProductStatus, ReleaseRow, Settings, SharingStatus, Snapshot, StoreId } from './types'
 
 export const CHANNELS = {
   snapshot: 'manager:snapshot',
@@ -29,6 +29,8 @@ export const CHANNELS = {
   contributorSaveStore: 'manager:contributor:save-store',
   contributorRows: 'manager:contributor:rows',
   contributorPublish: 'manager:contributor:publish',
+  contributorZip: 'manager:contributor:zip',
+  contributorRevealZip: 'manager:contributor:reveal-zip',
   windowMinimize: 'manager:window:minimize',
   windowToggleMaximize: 'manager:window:toggle-maximize',
   windowClose: 'manager:window:close',
@@ -132,6 +134,10 @@ export interface ManagerApi {
   /** Starts a release of a language's packs, or of the one folder `only`; progress comes through `onJob`
    *  and `cancel` stops it. Returns the job id. */
   contributorPublish(gameId: string, lang: string, store: StoreId, only?: string): Promise<string>
+  /** Zips one CurseForge pack for an upload by hand, replacing that pack's older zips. */
+  contributorZip(gameId: string, lang: string, folder: string): Promise<ManualZip>
+  /** Shows a zip made by `contributorZip` in Explorer or Finder. */
+  contributorRevealZip(path: string): Promise<void>
   /** The window has no system title bar, so the page draws its own buttons and calls these. */
   windowMinimize(): Promise<void>
   /** Maximizes the window, or puts it back when it is already maximized. */
@@ -141,7 +147,7 @@ export interface ManagerApi {
 
   onJob(listener: (progress: JobProgress) => void): () => void
   onGamesChanged(listener: (games: GameInstall[]) => void): () => void
-  onCatalogChanged(listener: (catalog: Catalog) => void): () => void
+  onCatalogChanged(listener: (update: CatalogUpdate) => void): () => void
   onCommunityChanged(listener: (community: CommunityCatalog) => void): () => void
   onUpdater(listener: (state: UpdaterState) => void): () => void
   onSharing(listener: (status: SharingStatus) => void): () => void

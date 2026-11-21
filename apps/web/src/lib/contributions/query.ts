@@ -43,6 +43,46 @@ export function bucketOf(
   return roster.voiceFor(npc.race, npc.gender, npc.flavor) ? "ready" : "blocked";
 }
 
+/** Why a line waits on an admin, in groups the waiting tab counts. */
+export type WaitingKind = "no-npc" | "conflict" | "unresolved" | "no-voice";
+
+export type WaitingReason = {
+  kind: WaitingKind;
+  /** What is missing, in plain words, for the person who cannot fix it. */
+  why: string;
+  /** What an admin does about it. */
+  fix: string;
+};
+
+/** The waiting tab's headings, one per kind, in the order the tab lists them. */
+export const WAITING_KINDS: Record<WaitingKind, { title: string; fix: string }> = {
+  "no-voice": { title: "No voice for this kind of NPC yet", fix: "An admin adds a voice for it, or picks another one for the NPC." },
+  unresolved: { title: "We don't know who this NPC is", fix: "An admin sets the NPC's race and gender." },
+  conflict: { title: "Two answers disagree who this NPC is", fix: "An admin picks the right one." },
+  "no-npc": { title: "The game didn't say who speaks it", fix: "An admin names the NPC." },
+};
+
+/**
+ * Why a row bucketOf sends to "blocked" is blocked, or null for a ready row: the same tests in the
+ * same order, read out for the language's editors, who see these rows but cannot act on them.
+ */
+export function waitingReason(
+  row: { source: EnvelopeSource; quest: QuestSummary | null; hasSpeaker: boolean },
+  npc: { race: string | null; gender: string | null; flavor: string | null; conflict: readonly unknown[] } | null,
+  roster: Roster,
+  language: string,
+): WaitingReason | null {
+  if (row.source !== "quests") return null;
+  if (row.quest !== "gossip" && row.hasSpeaker) return null;
+  const reason = (kind: WaitingKind, why: string): WaitingReason => ({ kind, why, fix: WAITING_KINDS[kind].fix });
+  if (!npc) return reason("no-npc", "The player's client didn't say which NPC speaks this line.");
+  if (npc.conflict.length > 0) return reason("conflict", "The game data and an earlier answer disagree about who this NPC is.");
+  if (!npc.race) return reason("unresolved", "Nobody has said yet what race and gender this NPC is, so its voice is unknown.");
+  if (roster.voiceFor(npc.race, npc.gender, npc.flavor)) return null;
+  const kind = [npc.race, npc.gender, npc.flavor].filter(Boolean).join(", ");
+  return reason("no-voice", `The ${language} voices have none for ${kind} yet.`);
+}
+
 export type { ClientFilter };
 
 /** A section of /contributions, which is the page's path: an envelope source. */
@@ -143,6 +183,13 @@ export function sortOf(column: unknown, direction: unknown): ContributionSort {
   return { column, direction: isSortDirection(direction) ? direction : FIRST_DIRECTION[column] };
 }
 
+/** Which rows a section shows: new lines, corrections to lines we have, or both. */
+export type Show = "all" | "lines" | "corrections";
+
+export function isShow(value: unknown): value is Show {
+  return value === "all" || value === "lines" || value === "corrections";
+}
+
 export type ContributionFilters = {
   status: ContributionStatus;
   bucket: Bucket;
@@ -157,6 +204,8 @@ export type ContributionFilters = {
   q?: string;
   /** Which field `q` is matched in; absent is "any". */
   searchIn?: Filter;
+  /** Absent is "all". */
+  show?: Show;
 };
 
 export type FilterChange = {
@@ -168,6 +217,7 @@ export type FilterChange = {
   sort?: ContributionSort;
   q?: string;
   searchIn?: Filter;
+  show?: Show;
 };
 
 /**
@@ -193,6 +243,7 @@ export function nextContributionFilters(
     sort: "sort" in next ? (next.sort ?? DEFAULT_SORT) : current.sort,
     q: "q" in next ? next.q : current.q,
     searchIn: "searchIn" in next ? next.searchIn : current.searchIn,
+    show: "show" in next ? next.show : current.show,
   };
 }
 
@@ -223,6 +274,7 @@ export function contributionsHref(current: ContributionFilters, next: FilterChan
   if (filters.bucket !== "ready") params.set("bucket", filters.bucket);
   if (filters.q?.trim()) params.set("q", filters.q.trim());
   if (filters.searchIn && filters.searchIn !== "any") params.set("filter", filters.searchIn);
+  if (filters.show && filters.show !== "all") params.set("show", filters.show);
   if (filters.sort.column !== DEFAULT_SORT.column || filters.sort.direction !== DEFAULT_SORT.direction) {
     params.set("sort", filters.sort.column);
     params.set("dir", filters.sort.direction);

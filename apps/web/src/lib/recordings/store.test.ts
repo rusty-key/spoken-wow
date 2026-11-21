@@ -160,7 +160,7 @@ describe.skipIf(!hasFfmpeg)("a recording", () => {
       expect(row.archiveFile).toMatch(/^v2-.*\.ogg$/);
       expect(bucket.objects.get(`recordings/${sha}`)?.contentType).toBe("audio/ogg");
       expect(fs.readdirSync(path.dirname(first.path))).toEqual([path.basename(first.path)]);
-      expect(await recordingPath("quests", lang, file, 2)).toEqual({ kind: "blob", key: `recordings/${sha}` });
+      expect(await recordingPath("quests", lang, file, 2)).toEqual({ kind: "blob", key: `recordings/${sha}`, lang });
     } finally {
       restore();
     }

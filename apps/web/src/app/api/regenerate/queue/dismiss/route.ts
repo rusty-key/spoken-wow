@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireAnyRegenerate } from "@/lib/generation/authz";
 import { dismissThrough } from "@/lib/generation/queue";
+import { groupByTeam, ownersOf } from "@/lib/teams/store";
 
 export const dynamic = "force-dynamic";
 
@@ -31,8 +32,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "through is required" }, { status: 400 });
   }
 
-  // Written as the team of the caller's first language: the one panel is cut at the latest of
-  // every team's mark.
-  await dismissThrough(through, session.user.id, langs[0]);
+  // Every team the caller works in across their languages: a language with several teams cuts
+  // its finished lines at its own team's mark.
+  const owners = await ownersOf(langs);
+  for (const own of groupByTeam(langs.map((lang) => [owners.get(lang), lang] as const)).values()) {
+    await dismissThrough(through, session.user.id, own[0]);
+  }
   return NextResponse.json({ ok: true });
 }

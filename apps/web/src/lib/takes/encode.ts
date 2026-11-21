@@ -14,10 +14,13 @@ import path from "node:path";
 import { pipeline } from "node:stream/promises";
 
 import { recordActivity } from "@/lib/activity/store";
-import { archive, blobBytes, blobKey, sha256Of } from "@/lib/blobs/store";
-import { ALL_TEAMS, query, queryIn } from "@/lib/db";
+import { archive, blobKey, sha256Of } from "@/lib/blobs/store";
+import { putArchived } from "@/lib/blobs/keep";
+import { blobBytes } from "@/lib/blobs/where";
+import { ALL_TEAMS, query, queryIn, type TeamId } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
+import { asTeam } from "@/lib/teams/acting";
 
 import { withLocalCopy } from "./bytes";
 
@@ -158,12 +161,20 @@ async function failed(source: Source, sha256: string, take: EncodedTake | undefi
  * Encodes and records, with no look first. Returns the encoding the table holds, which is another
  * caller's when one encoding the same bytes recorded first: oggenc's output differs every run.
  */
-async function encodeAndRecord(source: Source, sha256: string, profile: string, master: string): Promise<Encoding> {
+async function encodeAndRecord(
+  source: Source,
+  sha256: string,
+  profile: string,
+  master: string,
+  lang: Lang | undefined,
+): Promise<Encoding> {
   const encoded = await encodeOgg(master);
   const durationSec = oggDurationSec(encoded);
   if (!(durationSec > 0)) throw new Error("the Ogg has no length: the take may hold no audio");
   const encodedSha256 = sha256Of(encoded);
-  await archive().put(blobKey("encodings", encodedSha256), encoded, "audio/ogg");
+  // Beside its take, in the team's bucket when the team keeps one; ours without a language.
+  if (lang) await putArchived("encodings", encodedSha256, encoded, "audio/ogg", lang);
+  else await archive().put(blobKey("encodings", encodedSha256), encoded, "audio/ogg");
   // A row with no length never shipped from the Manager, whose release stops on it, so replacing
   // its Ogg makes no player download anything again.
   const [kept] = await query<Encoding>(
@@ -205,7 +216,7 @@ export async function encodeForPack(
   }
   for (let attempt = 1; ; attempt++) {
     try {
-      return await encodeAndRecord(source, sha256, profile, master);
+      return await encodeAndRecord(source, sha256, profile, master, take?.lang);
     } catch (error) {
       if (attempt >= 2) {
         await failed(source, sha256, take, error);
@@ -219,8 +230,10 @@ export async function encodeForPack(
 /** The master from the archive, encoded. Never throws. */
 async function encodeFromArchive(source: Source, sha256: string, take?: EncodedTake): Promise<void> {
   try {
-    const master = await blobBytes(blobKey("takes", sha256));
+    const master = await blobBytes(blobKey("takes", sha256), take?.lang);
     if (!master) throw new Error("its audio is not in the archive's bucket: regenerate the line");
+    // A team's bucket answers for what it holds: the encoding is kept under the master's hash.
+    if (sha256Of(master) !== sha256) throw new Error("the archive's copy does not match its hash: regenerate the line");
     await withLocalCopy(master, "mp3", (file) => encodeForPack(source, sha256, file, take));
   } catch (error) {
     await failed(source, sha256, take, error);
@@ -228,9 +241,9 @@ async function encodeFromArchive(source: Source, sha256: string, take?: EncodedT
 }
 
 /**
- * Every live take of a language with no usable encoding, encoded before a release, which stops on
- * any such take. Encoding at commit is best effort, and only a release would otherwise find a
- * failure.
+ * Every live take of `team`'s in a language with no usable encoding, encoded before that team's
+ * release, which stops on any such take. Encoding at commit is best effort, and only a release
+ * would otherwise find a failure. The releasing team's: each team's pack sends its own takes.
  *
  * This runs inside the request that starts the release, and nginx gives that request 60 seconds
  * before the page reports a failure for a release that is in fact starting. So it waits at most
@@ -238,7 +251,7 @@ async function encodeFromArchive(source: Source, sha256: string, take?: EncodedT
  * finishes. Newest first, since those are the takes the release is about to send, and a take that
  * failed in the past day last, so a take that will never encode does not spend every press's time.
  */
-export async function encodeMissingForPack(source: Source, lang: Lang, budgetMs = 30_000): Promise<void> {
+export async function encodeMissingForPack(source: Source, lang: Lang, team: TeamId, budgetMs = 30_000): Promise<void> {
   const profile = profileFor(source);
   if (!profile) return;
   const until = Date.now() + budgetMs;
@@ -250,7 +263,7 @@ export async function encodeMissingForPack(source: Source, lang: Lang, budgetMs 
          left join "take_encoding" e
            on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = $3
         where t."source" = $1 and t."lang" = $2 and t."isCurrent" and t."sha256" is not null
-          and t."teamId" = team_of_lang($2)
+          and t."teamId" = $5
           and coalesce(e."durationSec", 0) <= 0
         order by t."sha256", t."createdAt" desc
      ) live
@@ -259,14 +272,16 @@ export async function encodeMissingForPack(source: Source, lang: Lang, budgetMs 
                          and a."subject" = live."file" and a."detail"->>'version' = live."version"::text),
               "createdAt" desc
      limit 500`,
-    [source, lang, profile, FAILED],
+    [source, lang, profile, FAILED, team],
   );
   for (const { sha256, ...take } of missing) {
     const left = until - Date.now();
     if (left <= 0) return;
     let timer: NodeJS.Timeout | undefined;
     const outOfTime = new Promise<"late">((resolve) => (timer = setTimeout(() => resolve("late"), left)));
-    const result = await Promise.race([encodeFromArchive(source, sha256, { lang, ...take }), outOfTime]);
+    // As the team: where the language has several, nobody else finds where its take is kept.
+    const encoded = asTeam(lang, team, () => encodeFromArchive(source, sha256, { lang, ...take }));
+    const result = await Promise.race([encoded, outOfTime]);
     clearTimeout(timer);
     if (result === "late") return;
   }

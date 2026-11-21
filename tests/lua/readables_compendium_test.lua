@@ -565,11 +565,11 @@ do
     _G.GetLocale = function() return "esES" end
     B:ShowReadables(KURDRAN)
     Expect("...but not on a Spanish client", page.body.text.text:sub(1, 17) == "Newer pack words.", false)
-    _G.SpokenReadablesAudioPacks = { SpokenReadablesAudio_itIT = { version = 1, language = "itIT",
-        pages = { [first] = { file = tostring(first), len = 2, text = "Parole italiane." } } } }
+    _G.SpokenReadablesAudioPacks = { SpokenReadablesAudio_jaJP = { version = 1, language = "jaJP",
+        pages = { [first] = { file = tostring(first), len = 2, text = "Nihongo no kotoba." } } } }
     _G.GetLocale = function() return "enUS" end
-    Expect("an Italian voice on an English client still captions Italian", (B:CaptionText(first, "itIT", "Parole italiane.")),
-        "Parole italiane.")
+    Expect("a Japanese voice on an English client still captions Japanese", (B:CaptionText(first, "jaJP", "Nihongo no kotoba.")),
+        "Nihongo no kotoba.")
     _G.SpokenReadablesAudioPacks, _G.GetLocale = packs, locale
     B:ShowReadables(KURDRAN)
 end

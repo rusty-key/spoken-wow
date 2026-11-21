@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Corpus, CorpusLine } from "@/lib/corpus";
 
-import { formatTarget, parseTarget, resolveTarget } from "./target";
+import { formatTarget, lineIdsOfAddress, pickLine, parseTarget, resolveTarget } from "./target";
 
 function line(overrides: Partial<CorpusLine>): CorpusLine {
   return {
@@ -127,5 +127,46 @@ describe("resolveTarget", () => {
     expect(await resolveTarget({ kind: "quest", questId: 999, event: "accept" }, corpus)).toEqual(
       [],
     );
+  });
+});
+
+describe("lineIdsOfAddress", () => {
+  it("lists every line an address means, each once", async () => {
+    const twice = {
+      ...corpus,
+      lines: [
+        ...corpus.lines,
+        line({ lineId: "q:1:accept~troll-male-shaman", npcId: 8, fileName: "1-accept-troll-male-shaman" }),
+        line({ lineId: "g:guard", source: "gossip", questId: 2, npcId: 68, fileName: "guard" }),
+      ],
+    } as Corpus;
+    expect(await lineIdsOfAddress("quest/1/accept", twice)).toEqual(["q:1:accept", "q:1:accept~troll-male-shaman"]);
+    expect(await lineIdsOfAddress("npc/68", twice)).toEqual(["g:guard"]);
+  });
+
+  it("is empty for an address it cannot read", async () => {
+    expect(await lineIdsOfAddress("quest/nope/accept", corpus)).toEqual([]);
+  });
+});
+
+describe("pickLine", () => {
+  const narrator = line({ lineId: "q:1:accept", fileName: "1-accept" });
+  const troll = line({ lineId: "q:1:accept~troll-male-shaman", fileName: "1-accept-troll-male-shaman" });
+
+  it("takes the reporter's pick over the file that played", () => {
+    expect(pickLine([narrator, troll], narrator.lineId, troll.fileName)).toBe(narrator);
+  });
+
+  it("takes the line whose file played when nobody picked", () => {
+    expect(pickLine([narrator, troll], null, troll.fileName)).toBe(troll);
+  });
+
+  it("takes the only line, whatever the file says", () => {
+    expect(pickLine([narrator], null, "no-such-file")).toBe(narrator);
+  });
+
+  it("picks nothing from several when nothing says which", () => {
+    expect(pickLine([narrator, troll], null, null)).toBeNull();
+    expect(pickLine([narrator, troll], "q:9:accept", "no-such-file")).toBeNull();
   });
 });

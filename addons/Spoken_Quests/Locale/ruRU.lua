@@ -6,7 +6,7 @@
 
 setfenv(1, VoiceOver)
 
-if GetLocale() ~= "ruRU" then
+if not Spoken:InterfaceIn("ruRU") then
 	return
 end
 
@@ -57,7 +57,9 @@ L.OPT_DIALOG_STOP_TIP = "Остановить чтение"
 L.OPT_READ_TIP = "Прочитать это вслух"
 L.OPT_GREETING = "Приветствие"
 L.OPT_AUTOPLAY_OFF_TIP = "«Читать автоматически» выключено на странице «Задания» в настройках Spoken."
+L.OPT_PROGRESS_OFF_TIP = "«Читать текст хода задания» выключено на странице «Задания» в настройках Spoken."
 L.OPT_NEVER_TIP = "«Читать приветствия» установлено на «Никогда» на странице «Разговоры» в настройках Spoken."
+L.OPT_MUTED_TIP = "Вы заглушили этого НИП. Верните звук в разделе «Заглушенные НИП» на странице «Разговоры» в настройках Spoken."
 L.OPT_CONTRIBUTE = "Помочь"
 L.OPT_REPORT = "Сообщить"
 L.OPT_REPORT_COPY = "Spoken Quests|n|nСкопируйте этот адрес и откройте его в браузере."
@@ -78,6 +80,7 @@ L.OPT_CMD_FOLLOWUP_DESC = "Повторить реплики НИП после �
 L.OPT_CMD_CHATTER = "Разговоры в мире"
 L.OPT_CMD_CHATTER_DESC = "Повторить то, что НИП говорит вслух, как будто вы только что это услышали: /spq chatter [id НИП] (без значения берётся ваша цель)"
 L.OPT_PANEL_FOLLOWUP = "Читать чат НИП после заданий"
+L.OPT_PANEL_PROGRESS = "Читать текст хода задания"
 L.OPT_PANEL_GREETINGS = "Читать приветствия"
 L.OPT_GREETING_LABEL_ALWAYS = "Каждый раз"
 L.OPT_GREETING_LABEL_ONCE_QUEST = "Раз для дающих задания"
@@ -87,6 +90,15 @@ L.OPT_OG_THRALL = "Оригинальная речь Тралла"
 L.OPT_FORGET_GREETINGS = "Забыть приветствия"
 L.REASON_FORGET_GREETINGS = "Выберите в «Читать приветствия» вариант «Раз на приветствие» или «Раз для дающих задания», чтобы пользоваться этим."
 L.OPT_FORGET_GREETINGS_DONE = "Список услышанных приветствий этого персонажа очищен."
+L.OPT_MUTE_NPC = "Заглушить разговоры этого НИП"
+L.OPT_UNMUTE_NPC = "Включить звук"
+L.OPT_UNMUTE_NPC_GOSSIP = "Вернуть разговоры этого НИП"
+L.MUTE_NPC_DONE = "Автоматические приветствия НИП %s теперь заглушены."
+L.UNMUTE_NPC_DONE = "Автоматические приветствия НИП %s больше не заглушены."
+L.OPT_MUTED_NPCS = "Заглушенные НИП"
+L.OPT_NO_MUTED_NPCS = "Ни один НИП не заглушен. Заглушите НИП кнопкой с динамиком в его окне разговора."
+L.OPT_FORGET_MUTED_NPCS = "Забыть заглушенных НИП"
+L.OPT_FORGET_MUTED_NPCS_DONE = "Список заглушенных НИП этого персонажа очищен."
 L.OPT_PANEL_GAME_GREETING_FIRST = "Голос НИП перед чтением"
 L.GREETING_DIALOG_APART = "Spoken: громкость диалогов установлена на %1$d%%, отдельно от остальных ползунков громкости, чтобы «Голос НИП перед чтением» знал, когда НИП договорил."
 L.OPT_REPORT_PROBLEM = "Сообщить о проблеме"
@@ -149,5 +161,6 @@ L.QUESTS_MORE_FMT = " и ещё %1$d"
 L.QUESTS_TITLE_NTH_FMT = "%1$s (%2$d)"
 L.QUEST_IN_PROGRESS = "Выполняется"
 L.QUEST_PART_ACCEPT = "Описание"
+L.QUEST_PART_PROGRESS = "Прогресс"
 L.QUEST_PART_COMPLETE = "Завершение"
 L.QUEST_PART_NO_TEXT = "Текст этой части неизвестен."

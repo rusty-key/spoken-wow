@@ -28,9 +28,6 @@ const TABS: { id: Tab; label: string; icon: "spoken" | "curseforge" | "github" }
 
 const NEW_TAB = <span className="sr-only"> (opens in a new tab)</span>;
 
-/** No game client runs in Italian, so its pack plays only once the language is chosen in Spoken. */
-const ITALIAN_NOTE = "No game client runs in Italian: install the pack, then choose the language under Voice Language in Spoken's settings.";
-
 /**
  * The three ways in: the Manager, a CurseForge meta addon per language, or a zip per pack.
  * The manual tab starts on the page's language, and the choice is a select rather than a table.
@@ -49,8 +46,7 @@ export default function InstallTabs({
   const [tab, setTab] = useState<Tab>("manager");
   const [lang, setLang] = useState<Lang>(initial);
   const chosen = languages.find((entry) => entry.code === lang) ?? languages[0];
-  const maintained = languages.filter((entry) => entry.curseforge && entry.code !== "itIT");
-  const italian = languages.find((entry) => entry.code === "itIT");
+  const maintained = languages.filter((entry) => entry.curseforge);
 
   return (
     <div>
@@ -130,7 +126,6 @@ export default function InstallTabs({
               </a>
               . If Windows SmartScreen stops the installer, choose More info, then Run anyway.
             </p>
-            <p className="bn-note">For Italian, choose the language under Voice Language in Spoken&apos;s settings.</p>
           </>
         )}
 
@@ -162,15 +157,6 @@ export default function InstallTabs({
                 </a>
               ))}
             </div>
-            {italian?.curseforge && (
-              <p className="bn-note">
-                Italian is made by others and not maintained here:{" "}
-                <a href={`${CURSEFORGE}/${italian.curseforge}`} target="_blank" rel="noreferrer">
-                  Spoken Italian{NEW_TAB}
-                </a>
-                . {ITALIAN_NOTE}
-              </p>
-            )}
           </>
         )}
 
@@ -219,9 +205,6 @@ export default function InstallTabs({
                 </div>
               ))}
             </div>
-            {chosen.code === "itIT" && (
-              <p className="bn-note">{ITALIAN_NOTE}</p>
-            )}
             <p className="bn-note">
               On the 1.12 and 3.3.5 clients, take the Spoken Quests zip from the release page.
               Spoken is inside it.

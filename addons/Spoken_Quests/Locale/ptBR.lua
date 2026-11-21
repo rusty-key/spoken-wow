@@ -6,7 +6,7 @@
 
 setfenv(1, VoiceOver)
 
-if GetLocale() ~= "ptBR" then
+if not Spoken:InterfaceIn("ptBR") then
 	return
 end
 
@@ -57,7 +57,9 @@ L.OPT_DIALOG_STOP_TIP = "Parar de ler"
 L.OPT_READ_TIP = "Ler isto em voz alta"
 L.OPT_GREETING = "Saudação"
 L.OPT_AUTOPLAY_OFF_TIP = "“Ler automaticamente” está desativado na página Missões das configurações do Spoken."
+L.OPT_PROGRESS_OFF_TIP = "“Ler o progresso das missões” está desativado na página Missões das configurações do Spoken."
 L.OPT_NEVER_TIP = "“Ler saudações” está em “Nunca” na página Conversas das configurações do Spoken."
+L.OPT_MUTED_TIP = "Você silenciou este PNJ. Reative-o em \"PNJs silenciados\", na página \"Conversas\" das configurações do Spoken."
 L.OPT_CONTRIBUTE = "Contribuir"
 L.OPT_REPORT = "Informar"
 L.OPT_REPORT_COPY = "Spoken Quests|n|nCopie este endereço e abra-o no navegador."
@@ -78,6 +80,7 @@ L.OPT_CMD_FOLLOWUP_DESC = "Repete as falas de PNJ após uma missão como se voc�
 L.OPT_CMD_CHATTER = "Conversas do mundo"
 L.OPT_CMD_CHATTER_DESC = "Repete o que um PNJ diz em voz alta, como se você tivesse acabado de ouvir: /spq chatter [id do PNJ] (o do seu alvo se omitido)"
 L.OPT_PANEL_FOLLOWUP = "Ler o chat de PNJs após missões"
+L.OPT_PANEL_PROGRESS = "Ler o progresso das missões"
 L.OPT_PANEL_GREETINGS = "Ler saudações"
 L.OPT_GREETING_LABEL_ALWAYS = "Toda vez"
 L.OPT_GREETING_LABEL_ONCE_QUEST = "Uma vez para quem dá missões"
@@ -87,6 +90,15 @@ L.OPT_OG_THRALL = "Discurso original do Thrall"
 L.OPT_FORGET_GREETINGS = "Esquecer saudações ouvidas"
 L.REASON_FORGET_GREETINGS = "Ajuste Ler saudações para Uma vez por saudação ou Uma vez para quem dá missões para usar isto."
 L.OPT_FORGET_GREETINGS_DONE = "A lista de saudações ouvidas deste personagem foi limpa."
+L.OPT_MUTE_NPC = "Silenciar as conversas deste PNJ"
+L.OPT_UNMUTE_NPC = "Ativar som"
+L.OPT_UNMUTE_NPC_GOSSIP = "Reativar as conversas deste PNJ"
+L.MUTE_NPC_DONE = "As saudações automáticas de %s estão silenciadas."
+L.UNMUTE_NPC_DONE = "As saudações automáticas de %s não estão mais silenciadas."
+L.OPT_MUTED_NPCS = "PNJs silenciados"
+L.OPT_NO_MUTED_NPCS = "Nenhum PNJ está silenciado. Silencie um com o alto-falante na janela de conversa dele."
+L.OPT_FORGET_MUTED_NPCS = "Esquecer PNJs silenciados"
+L.OPT_FORGET_MUTED_NPCS_DONE = "A lista de PNJs silenciados deste personagem foi limpa."
 L.OPT_PANEL_GAME_GREETING_FIRST = "Voz do PNJ antes da leitura"
 L.GREETING_DIALOG_APART = "Spoken: volume de Diálogo ajustado para %1$d%%, diferente dos outros controles de volume, para que Voz do PNJ antes da leitura saiba quando um PNJ terminou de falar."
 L.OPT_REPORT_PROBLEM = "Informar um problema"
@@ -149,5 +161,6 @@ L.QUESTS_MORE_FMT = " e mais %1$d"
 L.QUESTS_TITLE_NTH_FMT = "%1$s (%2$d)"
 L.QUEST_IN_PROGRESS = "Em andamento"
 L.QUEST_PART_ACCEPT = "Descrição"
+L.QUEST_PART_PROGRESS = "Progresso"
 L.QUEST_PART_COMPLETE = "Conclusão"
 L.QUEST_PART_NO_TEXT = "Nenhum texto é conhecido para esta parte."

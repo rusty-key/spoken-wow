@@ -2,7 +2,7 @@
 --
 -- Area names as a zhTW client reports them, mapped to the English keys the
 -- corpus is stored under. Built by joining AreaTable's localized and English
--- strings on their shared ID, from client builds 1.60.1.70338 (Forever), then 1.15.9.69109 (Era).
+-- strings on their shared ID, from client builds 1.60.1.70959 (Forever), then 1.15.9.69109 (Era).
 --
 -- Keyed by the raw client name: SpokenPlaces:NormaliseAreaKey reduces a name to
 -- [a-z0-9 ], which erases a Cyrillic or Chinese name entirely.
@@ -70,6 +70,7 @@ local aliases = {
 	["刺背居所"] = "bristleback retreat",
 	["剃刀嶺"] = "razor hill",
 	["剃刀嶺兵營"] = "razor hill barracks",
+	["剃刀沼澤"] = "razorfen kraul",
 	["剃刀高地"] = "razorfen downs",
 	["前沿哨所"] = "far watch post",
 	["劇毒林地"] = "noxious glade",
@@ -87,6 +88,7 @@ local aliases = {
 	["匕首嶺"] = "dagger hills",
 	["北地哨塔"] = "northpass tower",
 	["北山伐木場"] = "northridge lumber camp",
+	["北方城堡"] = "northwatch hold",
 	["北流海岸"] = "north tides run",
 	["北流谷"] = "north tides hollow",
 	["北谷"] = "northdale",
@@ -106,6 +108,8 @@ local aliases = {
 	["南月廢墟"] = "southmoon ruins",
 	["南流海岸"] = "south tides run",
 	["南海"] = "south seas",
+	["南海鎮"] = "southshore",
+	["南貧瘠之地"] = "southern barrens",
 	["南野人海岸"] = "southern savage coast",
 	["南門小徑"] = "south gate pass",
 	["南門崗哨"] = "south gate outpost",
@@ -142,6 +146,7 @@ local aliases = {
 	["嚎哭鬼屋"] = "writhing haunt",
 	["回音山礦坑"] = "echo ridge mine",
 	["回音群島"] = "echo isles",
+	["國王巷道"] = "kings alley",
 	["國王谷"] = "valley of kings",
 	["地獄石"] = "fel rock",
 	["坦德爾村"] = "thendal village",
@@ -185,6 +190,7 @@ local aliases = {
 	["大樹蔭"] = "bough shadow",
 	["大熔爐"] = "cauldron",
 	["大獸穴"] = "den",
+	["大競技場"] = "battle ring",
 	["大裂口"] = "gaping chasm",
 	["天涯海灘"] = "lands end beach",
 	["天空之牆"] = "skywall",
@@ -215,7 +221,9 @@ local aliases = {
 	["威勒的農莊"] = "wheelers grange",
 	["守望堡"] = "nethergarde keep",
 	["守衛之谷"] = "valley of the watchers",
+	["守護者之地"] = "site of the guardian",
 	["安伯米爾"] = "ambermill",
+	["安其拉之門"] = "gates of ahnqiraj",
 	["安多哈爾廢墟"] = "ruins of andorhal",
 	["安威瑪"] = "anvilmar",
 	["寂靜河岸"] = "hushed bank",
@@ -242,6 +250,8 @@ local aliases = {
 	["巨木谷"] = "greatwood vale",
 	["巨槌崗哨"] = "dreadmaul post",
 	["巨槌石"] = "dreadmaul rock",
+	["巨槌競技場"] = "maul",
+	["巨槌要塞"] = "dreadmaul hold",
 	["巨牙谷"] = "valley of fangs",
 	["巨痕谷"] = "slithering scar",
 	["巨石水壩"] = "stonewrought dam",
@@ -327,6 +337,7 @@ local aliases = {
 	["斯通菲爾德農場"] = "stonefield farm",
 	["斷矛路口"] = "splinterspear junction",
 	["旅行者營地"] = "farstrider lodge",
+	["族長之廳"] = "hall of thanes",
 	["日暮區"] = "eventide",
 	["日落沼澤"] = "sundown marsh",
 	["明鏡湖"] = "mirror lake",
@@ -349,11 +360,14 @@ local aliases = {
 	["暮光基地"] = "twilights run",
 	["暮光崗哨"] = "twilight post",
 	["暮光森林"] = "twilight grove",
+	["暮光海岸"] = "twilight shore",
 	["暮光營地"] = "twilight base camp",
 	["暮光營地廢墟"] = "ravaged twilight camp",
 	["暮光谷"] = "twilight vale",
 	["暴風崖"] = "storm cliffs",
 	["暴風港"] = "stormwind harbor",
+	["暴風祭壇"] = "altar of storms",
+	["月井"] = "moonwell",
 	["月溪鎮"] = "moonbrook",
 	["月神湖"] = "lake eluneara",
 	["望海崖"] = "overlook cliffs",
@@ -390,6 +404,7 @@ local aliases = {
 	["棘齒城"] = "ratchet",
 	["森林邊界"] = "forests edge",
 	["森金村"] = "senjin village",
+	["榮耀崗哨"] = "honors stand",
 	["樹蔭旅店"] = "shady rest inn",
 	["欺詐者神祠"] = "shrine of the deceiver",
 	["止水湖"] = "lake everstill",
@@ -415,6 +430,7 @@ local aliases = {
 	["污染者高地"] = "rise of the defiler",
 	["沃丹提斯河"] = "verdantis river",
 	["沃古爾巨魔山"] = "vulgol ogre mound",
+	["沉沒谷地"] = "sunken hollow",
 	["沉睡峽谷"] = "sleeping gorge",
 	["沙德拉洛"] = "shadraalor",
 	["沙漠賽道"] = "mirage raceway",
@@ -455,6 +471,7 @@ local aliases = {
 	["滾岩峽谷"] = "boulderslide ravine",
 	["滾岩洞穴"] = "boulderslide cavern",
 	["漫塵盆地"] = "dustbowl",
+	["潛獵者灌木林"] = "stalkers thicket",
 	["澈水湖"] = "brightwater lake",
 	["激流堡"] = "stromgarde keep",
 	["灌木谷"] = "thistleshrub valley",
@@ -616,6 +633,7 @@ local aliases = {
 	["維爾加挖掘場"] = "whelgars excavation site",
 	["罪惡谷"] = "vice",
 	["羅哈希尖塔"] = "rohashi spires",
+	["羅德隆墳場"] = "lordaeron graveyard",
 	["羅德隆廢墟"] = "ruins of lordaeron",
 	["羅格瑪"] = "rogmar",
 	["羅蘭之墓"] = "rolands doom",
@@ -637,6 +655,7 @@ local aliases = {
 	["舊達拉然廢墟"] = "old dalaran ruins",
 	["船骸灣"] = "shipwreck cove",
 	["艾力克斯頓農場"] = "alexston farmstead",
+	["艾力克斯頓農莊"] = "alexston farmstead",
 	["艾博斯塔夫的巢穴"] = "emberstrifes den",
 	["艾布林的農場"] = "elbrims farm",
 	["艾森娜神殿"] = "shrine of aessina",
@@ -736,6 +755,7 @@ local aliases = {
 	["迅猛龍巢穴"] = "raptor grounds",
 	["迅猛龍平原"] = "bramblescar",
 	["迪蒙特荒野"] = "demonts place",
+	["迷失沼澤"] = "lost marsh",
 	["迷霧谷"] = "misty valley",
 	["逆風谷"] = "deadwind ravine",
 	["透納的伐木場"] = "turners logging camp",
@@ -743,6 +763,7 @@ local aliases = {
 	["造物者遺跡"] = "makers terrace",
 	["達倫德農場"] = "dandreds fold",
 	["達拉然"] = "dalaran",
+	["達拉然城"] = "city of dalaran",
 	["達比雷農場"] = "dabyries farmstead",
 	["達爾松之淚"] = "dalsons tears",
 	["達隆山"] = "darrow hill",
@@ -831,6 +852,7 @@ local aliases = {
 	["風居"] = "windstead",
 	["風巢"] = "highperch",
 	["風暴海灣"] = "bay of storms",
+	["風暴祭壇"] = "altar of storms",
 	["風暴聖所"] = "sanctum of storms",
 	["風歌湖"] = "windsong lake",
 	["風歌矗立之石"] = "windsong standing stones",
@@ -884,4 +906,10 @@ local aliases = {
 	["龍翼小徑"] = "terror wing path",
 }
 
-SpokenPlaces:RegisterAliases("zhTW", aliases)
+-- Names the client gives more than one place, by the uiMapID each place's story is kept
+-- under. Read before the table above (SpokenPlaces:ResolveAreaKey).
+local byZone = {
+	["靈魂高地"] = { [1456] = "spirit rise", [2521] = "rise of spirits" },
+}
+
+SpokenPlaces:RegisterAliases("zhTW", aliases, byZone)

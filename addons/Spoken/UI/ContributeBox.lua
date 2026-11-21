@@ -29,7 +29,7 @@ local box
 local gatheredView
 
 local HIDDEN_FIELDS = {
-    addon = true, build = true, locale = true, pack = true, packVersion = true,
+    addon = true, build = true, locale = true, pack = true, packVersion = true, packTeam = true,
     model = true, displays = true, sex = true, creature = true,
 }
 

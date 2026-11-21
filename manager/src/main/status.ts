@@ -7,7 +7,7 @@ import { compareVersions } from '../shared/version'
 import { latestFor } from './catalog'
 import { channelTag, isChannelRelease } from '../shared/channel'
 import { loadPackState } from './packs-state'
-import { LINKED_MESSAGE, allowedFolders, isLinked } from './guard'
+import { allowedFolders, isLinked, linkedMessage } from './guard'
 import { getRecord, type StateFile } from './state'
 
 /** The `## Version:` line of a toc file's text. */
@@ -89,7 +89,7 @@ export async function computeStatuses(
     }
 
     const blockedReason = linked
-      ? LINKED_MESSAGE
+      ? linkedMessage()
       : !game.writable
         ? 'The manager cannot write to this game folder. Check that it is not read-only and that your account may change it.'
         : undefined

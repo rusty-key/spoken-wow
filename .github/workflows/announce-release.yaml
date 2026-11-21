@@ -7,7 +7,8 @@ name: Announce release
 # Fires on `published`, not `created`: release-addons.yaml makes drafts with GITHUB_TOKEN,
 # which could not trigger this workflow anyway, so an addon is announced the moment a human
 # publishes its draft. The sound packs are released by scripts/audio-github-release.sh under
-# the user's own token and arrive here already published.
+# the user's own token and arrive here already published. Spoken Manager's release is made with
+# GITHUB_TOKEN too, but published at once, so manager.yml dispatches this workflow itself.
 #
 # The name and notes come from scripts/lib/announce.mjs: the store page's name and the
 # CHANGELOG section for the version, never the release body (see that file for why).

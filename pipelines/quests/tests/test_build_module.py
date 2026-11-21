@@ -10,7 +10,7 @@ import shutil
 
 import pytest
 
-from tts_cli.build import build_module, icon_source
+from tts_cli.build import GOSSIP_TEXT_TABLES, build_module, icon_source
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -220,6 +220,48 @@ def test_a_language_pack_wears_its_badged_icon(tmp_path):
         assert data != english.read()
 
 
+def test_a_language_without_a_badge_can_wear_englishs_mark(tmp_path):
+    # A team's pack in a language nobody drew a badge for; its title and TOC name the language.
+    store = _store(tmp_path, "quests/5-accept.ogg")
+
+    build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="jaJP", icon_language="enUS",
+                 toc_extra=[("X-Spoken-LanguageName", "Japanese")])
+
+    with open(tmp_path / "dist" / "Mod" / "icon.tga", "rb") as shipped, open(icon_source(), "rb") as english:
+        assert shipped.read() == english.read()
+    with open(tmp_path / "dist" / "Mod" / "Mod.toc", encoding="utf-8") as f:
+        toc = f.read()
+    assert "## X-SpokenQuests-Language: jaJP\n" in toc
+    assert "## X-Spoken-LanguageName: Japanese\n" in toc
+
+
+def test_a_language_without_a_badge_is_still_an_error_by_default(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+
+    with pytest.raises(FileNotFoundError, match="no icon for jaJP"):
+        build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="jaJP")
+
+
+def test_the_cli_passes_the_icon_language_and_toc_extras(tmp_path):
+    import subprocess
+    import sys
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    import gzip
+    corpus = tmp_path / "corpus.json.gz"
+    with gzip.open(corpus, "wt", encoding="utf-8") as f:
+        json.dump({"lines": [{**line, "voice": None} for line in CORPUS["lines"]]}, f)
+    quests = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    subprocess.run([sys.executable, "cli-main.py", "build", "--store", store, "--corpus", str(corpus),
+                    "--dist", str(tmp_path / "dist"), "--module", "Mod", "--pack", "all",
+                    "--ignored", str(tmp_path / "none.json"), "--overrides", str(tmp_path / "none.lua"),
+                    "--language", "jaJP", "--icon-language", "enUS",
+                    "--toc-extra", "X-Spoken-Team=stimmen", "--toc-extra", "X-Spoken-TeamName=Die Stimmen"],
+                   cwd=quests, check=True, capture_output=True)
+    with open(tmp_path / "dist" / "Mod" / "Mod.toc", encoding="utf-8") as f:
+        toc = f.read()
+    assert "## X-Spoken-Team: stimmen\n## X-Spoken-TeamName: Die Stimmen\n" in toc
+
+
 def test_the_length_table_measures_ogg(tmp_path):
     store = _store(tmp_path, "quests/5-accept.ogg")
 
@@ -275,7 +317,8 @@ def test_text_ships_for_the_clips_a_pack_carries(tmp_path):
 
     assert "Mod.TextByFileName = " in lua
     assert '["5-accept"] = "Pack words."' in lua
-    assert 'GetClientLanguage() ~= "enUS" then return end' in lua
+    assert ('(VoiceOver.Language.GetTextLanguage and VoiceOver.Language:GetTextLanguage() '
+            'or VoiceOver.Language:GetClientLanguage()) ~= "enUS" then return end') in lua
     assert "abc123" not in lua
     assert "generated\\text_table.lua" in _toc(tmp_path)
     assert report["tableRows"]["text_table"] == 1
@@ -285,11 +328,8 @@ def test_text_survives_lua_quoting(tmp_path):
     # A raw newline or an unescaped quote stops the whole pack from loading.
     lua, _ = _text_table(tmp_path, {"quests/5-accept": 'Say "hi"\nC:\\x \tПривет'})
 
-    assert '\\"hi\\"' in lua
-    assert "\\n" in lua
-    assert "\\\\x" in lua
-    assert "Привет" in lua
-    assert "hi\"\n" not in lua
+    # Escaped once: escaped twice, a newline reads back as a backslash and an n in game.
+    assert '["5-accept"] = "Say \\"hi\\"\\nC:\\\\x \\009Привет"' in lua
 
 
 def test_a_store_without_text_ships_an_empty_table(tmp_path):
@@ -419,6 +459,28 @@ def test_locale_text_without_a_language_is_refused(tmp_path):
         build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", locale_text=MX_TEXT)
 
 
+GOSSIP_TEXT_FILES = tuple(name + ".lua" for name in GOSSIP_TEXT_TABLES)
+
+
+@pytest.mark.parametrize("stored, include, carried", [
+    ("quests/5-accept.ogg", {"quests/5-accept"}, False),  # Alliance, Horde, Shared
+    ("quests/5-accept.ogg", set(), False),
+    ("gossip/abc123.ogg", None, True),  # All
+    ("gossip/abc123.ogg", {"gossip/abc123"}, True),  # Gossip
+    ("gossip/abc123.ogg", {"quests/5-accept", "gossip/abc123"}, True),
+])
+def test_only_a_pack_with_gossip_audio_carries_the_gossip_text_tables(tmp_path, stored, include,
+                                                                     carried):
+    # A pack without gossip audio would only pay to parse them.
+    build_module(CORPUS, _store(tmp_path, stored), str(tmp_path / "dist"), "Mod", include=include)
+
+    toc = _toc(tmp_path)
+    for name in GOSSIP_TEXT_FILES:
+        assert (f"generated\\{name}" in toc) is carried
+    assert "generated\\quest_id_lookups.lua" in toc
+    assert "generated\\npc_body_gossip_file_lookups.lua" in toc
+
+
 def test_a_language_pack_without_locale_text_has_no_locale_tables(tmp_path):
     # The faction packs of a language, and every English pack.
     store = _store(tmp_path, "gossip/abc123.ogg")
@@ -427,3 +489,56 @@ def test_a_language_pack_without_locale_text_has_no_locale_tables(tmp_path):
 
     assert not os.path.exists(tmp_path / "dist" / "Mod" / "generated" / "esMX")
     assert "ClientLocaleLookups" not in _toc(tmp_path)
+
+
+# A team's pack is named by its slug, and a slug may hold a hyphen: a folder name that is no Lua
+# identifier, which written bare into the generated Lua stops every file of the pack compiling.
+TEAM_FOLDER = "SpokenQuestsAudioAlliance_esMX_team-two"
+
+
+@pytest.mark.skipif(shutil.which("luajit") is None, reason="needs luajit")
+def test_a_pack_named_by_a_hyphenated_slug_loads_in_lua(tmp_path):
+    import subprocess
+
+    store = _store(tmp_path, "quests/5-accept.ogg", "gossip/abc123.ogg")
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), TEAM_FOLDER,
+                          language="esMX", locale_text=MX_TEXT)
+
+    module_dir = report["moduleDir"]
+    with open(os.path.join(module_dir, TEAM_FOLDER + ".toc"), encoding="utf-8") as f:
+        files = [line.strip().replace("\\", "/") for line in f
+                 if line.strip() and not line.startswith("##")]
+    assert files[0] == "Module.lua" and len(files) > 5
+    probe = tmp_path / "probe.lua"
+    probe.write_text(
+        "local registered = {}\n"
+        "local event = {}\n"
+        "VoiceOver = {DataModules = {Register = function(_, name, module) registered[name] = module end},\n"
+        "    Language = {GetClientLanguage = function() return 'esMX' end},\n"
+        "    Enums = {SoundEvent = {IsQuestEvent = function(_, e) return e == event end,\n"
+        "                           IsGossipEvent = function() return false end}},\n"
+        "    format = string.format}\n"
+        + "".join(f"assert(loadfile([[{os.path.join(module_dir, name)}]]))()\n" for name in files)
+        + f'local module = _G["{TEAM_FOLDER}"]\n'
+        f'assert(type(module) == "table" and registered["{TEAM_FOLDER}"] == module)\n'
+        'assert(module.LookupLocale == "enUS")\n'
+        'assert(module.SoundLengthLookupByFileName["5-accept"])\n'
+        'assert(module.ClientLocaleLookups.GossipLookupByNPCID)\n'
+        'assert(module:GetSoundPath("5-accept", event) == [[generated\\sounds\\quests\\5-accept.ogg]])\n'
+        'print("ok")\n', encoding="utf-8")
+    run = subprocess.run(["luajit", str(probe)], capture_output=True, text=True)
+    assert run.returncode == 0, run.stderr
+    assert run.stdout.strip() == "ok"
+
+
+def test_a_pack_named_by_an_identifier_keeps_its_bare_global(tmp_path):
+    # Every pack already shipped is named so; writing its global another way would change the
+    # bytes of every table file every player holds.
+    build_module(CORPUS, _store(tmp_path, "gossip/abc123.ogg"), str(tmp_path / "dist"), "Mod",
+                 language="esMX", locale_text=MX_TEXT)
+    module = _module_lua(tmp_path)
+    assert "\nMod = {}\n\nfunction Mod:GetSoundPath(fileName, event)\n" in module
+    assert 'VoiceOver.DataModules:Register("Mod", Mod)\nMod.LookupLocale = "enUS"\n' in module
+    assert "\nMod.SoundLengthLookupByFileName = {\n" in _sound_length_table(tmp_path)
+    assert "\nMod.ClientLocaleLookups = Mod.ClientLocaleLookups or {}\n" in \
+        _generated(tmp_path, "esMX", "npc_gossip_file_lookups.lua")
