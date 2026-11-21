@@ -280,9 +280,9 @@ export type DictionaryLocator = { dictionaryId: string; versionId: string };
  * and keep getting the current rules. This function runs only when no id is configured, and
  * the id it returns is the one to adopt.
  *
- * The rules are phoneme rules, and phoneme rules are honoured by eleven_v3 and
- * eleven_flash_v2 only. This function does not check the model: the dictionary is worth
- * uploading regardless, and the model can change afterwards without re-uploading.
+ * The rules are phoneme rules, honoured only by the models in PHONEME_SYNTAX. This function
+ * does not check the model: the dictionary is worth uploading regardless, and the model can
+ * change afterwards without re-uploading.
  */
 export async function createPronunciationDictionary(
   name: string,
