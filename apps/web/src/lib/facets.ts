@@ -7,10 +7,13 @@
  * Being closed sets also makes them a whitelist, which is what lets /api/search take these
  * straight from a query string.
  *
+ * The zones are the committed corpus/zones.json's (lib/quests/zones.ts), the ones some line is in.
+ *
  * `source` and `npcType` are absent on purpose: they are closed unions on CorpusLine, so
  * their lists live next to the type in lib/search.ts.
  */
 import type { Lang } from "./lang";
+import { QUEST_ZONES, type QuestZone } from "./quests/zones";
 import type { Roster } from "./voices/roster";
 import { loadRoster } from "./voices/roster-store";
 import { GENDERS } from "./voices/voices";
@@ -29,6 +32,7 @@ export type Facets = {
    * so a partial selection (a race with no gender) narrows by the same filter.
    */
   flavorScopes: { race: string; gender: string; flavor: string }[];
+  zones: readonly QuestZone[];
 };
 
 const sorted = (values: Iterable<string>) => [...new Set(values)].sort((a, b) => a.localeCompare(b));
@@ -47,6 +51,7 @@ export async function facets(lang: Lang): Promise<Facets> {
       voices: roster.voiceNames,
       // A genderless type's flavors match a race with no gender chosen.
       flavorScopes: roster.flavorScopes().map((scope) => ({ ...scope, gender: scope.gender ?? "" })),
+      zones: QUEST_ZONES,
     };
     built.set(roster, value);
   }

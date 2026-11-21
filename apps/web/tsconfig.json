@@ -21,7 +21,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@tools/*": ["../../pipelines/places/tools/*"],
-      "@readables-tools/*": ["../../pipelines/readables/tools/*"]
+      "@readables-tools/*": ["../../pipelines/readables/tools/*"],
+      "@quests-corpus/*": ["../../pipelines/quests/corpus/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

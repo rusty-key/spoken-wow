@@ -119,6 +119,7 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
 
   const authors: Option[] = madeBy?.authors.map(({ id, name }) => ({ value: id, label: name })) ?? [];
   const genderOptions = plain(facets.genders);
+  const zoneOptions: Option[] = facets.zones.map((zone) => ({ value: String(zone.uiMapID), label: zone.name }));
 
   const active: ActiveFilter[] = [];
   const add = (key: string, label: string, value: string | undefined, clear: Partial<LineFilters>) => {
@@ -128,6 +129,7 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
   add("reports", "Reported", filters.reports === "open" ? "open reports" : undefined, { reports: undefined });
   add("source", "Line", filters.source?.map((value) => SOURCE_LABELS[value]).join(", "), { source: undefined });
   add("npcType", "Spoken by", filters.npcType && NPC_TYPE_LABELS[filters.npcType], { npcType: undefined });
+  add("zone", "Zone", filters.zone === undefined ? undefined : labelOf(zoneOptions, String(filters.zone)), { zone: undefined });
   if (filters.minLevel !== undefined || filters.maxLevel !== undefined) {
     add("level", "Level", `${filters.minLevel ?? "…"}–${filters.maxLevel ?? "…"}`, { minLevel: undefined, maxLevel: undefined });
   }
@@ -185,6 +187,14 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
               options={NPC_TYPE_OPTIONS}
               onChange={(npcType) => onFilters({ npcType: npcType as LineFilters["npcType"] })}
             />
+            {zoneOptions.length > 0 && (
+              <FilterSelect
+                label="Zone"
+                value={filters.zone === undefined ? undefined : String(filters.zone)}
+                options={zoneOptions}
+                onChange={(zone) => onFilters({ zone: zone ? Number(zone) : undefined })}
+              />
+            )}
             <FilterField label="Quest level">
               <div className="cat-two">
                 <LevelBound label="minimum quest level" placeholder="from" value={filters.minLevel} onChange={(minLevel) => onFilters({ minLevel })} />

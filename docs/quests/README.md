@@ -502,6 +502,15 @@ its Play button and `/spq read` still play it.
 too. The level lives in `quest_level`, loaded from an extract by a one-off script. A line with no
 known level is in no range, so setting either bound hides gossip and quests the extract lacks.
 
+**The zone filter places a line as the Compendium places quests.** `?zone=<uiMapID>` keeps a quest's
+lines when the Compendium files the quest in that zone, wherever its giver stands. Gossip, and a
+quest filed under a class, profession or season, counts in each zone its speaker spawns in. The
+zones come from the committed `pipelines/quests/corpus/zones.json`, which `make quests-zones` writes
+from `Compendium.lua` and the corpus's spawns. The spawns are placed by the server's map files
+(`COMPENDIUM_MAPS`), as the Compendium places a giver, because the zones' rectangles overlap along
+every border. Rerun it after `make quests-compendium` or a corpus export. The filter offers only
+the zones some line is in, and an item or an unspawned object is in none.
+
 **The player filter is for voicing one side of a split line first.** `?playerGender=m` or `f` keeps
 that side's `:m` or `:f` lines and every line that does not branch on the player, and a batch started
 from the page uses it too.

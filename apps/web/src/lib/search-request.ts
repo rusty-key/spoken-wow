@@ -20,6 +20,11 @@ import type { Filter, LineFilters } from "./search";
 
 const FILTERS: Filter[] = ["any", "npc", "quest", "text"];
 
+function zoneOf(value: string | null, zones: readonly { uiMapID: number }[]): number | undefined {
+  const id = Number(value);
+  return value && zones.some((zone) => zone.uiMapID === id) ? id : undefined;
+}
+
 function oneOf<T extends string>(value: string | null, allowed: readonly T[]): T | undefined {
   return value && (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
 }
@@ -29,7 +34,7 @@ function oneOf<T extends string>(value: string | null, allowed: readonly T[]): T
  * is a question with a current answer rather than a constant baked into the release.
  */
 export async function filtersFromParams(params: URLSearchParams, lang: Lang): Promise<LineFilters> {
-  const { races, genders, flavors, voices } = await facets(lang);
+  const { races, genders, flavors, voices, zones } = await facets(lang);
 
   return {
     q: params.get("q") ?? "",
@@ -41,6 +46,7 @@ export async function filtersFromParams(params: URLSearchParams, lang: Lang): Pr
     voice: oneOf(params.get("voice"), voices),
     source: sourcesFromParam(params.get("source")),
     npcType: oneOf(params.get("type"), NPC_TYPES),
+    zone: zoneOf(params.get("zone"), zones),
     narration: params.get("narration") === "1",
     // Absent means Era + Forever, the clients the site voices (lib/quests/line-client.ts).
     client: clientFilterOf(params.get("client")),

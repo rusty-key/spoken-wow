@@ -4,9 +4,13 @@
  * Worth its own test for the reason links.test.ts exists: a param one side writes and the
  * other does not read produces an unfiltered corpus with a 200 and no error anywhere.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { filtersFromParams } from "./search-request";
+
+vi.mock("@quests-corpus/zones.json", () => ({
+  default: { zones: [{ uiMapID: 1411, name: "Durotar" }], quests: {}, speakers: {} },
+}));
 
 describe("filtersFromParams", () => {
   it("reads the line id a report links with", async () => {
@@ -59,5 +63,11 @@ describe("filtersFromParams", () => {
     expect(await client("client=nonsense")).toBe("focus");
     expect(await client("client=anniversary")).toBe("anniversary");
     expect(await client("client=all")).toBe("all");
+  });
+
+  it("reads a zone on offer by its uiMapID, and nothing else", async () => {
+    expect((await filtersFromParams(new URLSearchParams("zone=1411"), "enUS")).zone).toBe(1411);
+    expect((await filtersFromParams(new URLSearchParams("zone=1414"), "enUS")).zone).toBeUndefined();
+    expect((await filtersFromParams(new URLSearchParams("zone=Durotar"), "enUS")).zone).toBeUndefined();
   });
 });
