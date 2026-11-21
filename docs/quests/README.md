@@ -647,11 +647,15 @@ Not OK filter is how you find the ones still to be checked.
 **You do not need IPA.** An entry gives either an IPA pronunciation or a plain respelling —
 `nomeregan` — and the `ʒ` button switches between the two in one click; the slashes around an
 IPA field are drawn by the editor, and never part of the value. The trade is exactness
-against reach: IPA becomes a phoneme rule, which is precise but honoured only by `eleven_v3`
-and `eleven_flash_v2`; a respelling becomes an alias rule, which is only as good as the guess
-at the new spelling but works on every model. Both kinds sit in one dictionary, so the lexicon
-does not have to pick. When the configured model ignores phoneme rules the page says how many
-entries that silently skips, rather than implying the whole page is inert.
+against reach: IPA becomes a phoneme rule, which is precise but honoured only by the models in
+`PHONEME_SYNTAX` (`apps/web/src/lib/generation/lexicon.ts`); a respelling becomes an alias rule,
+which is only as good as the guess at the new spelling but works on every model. Both kinds sit
+in one dictionary, so the lexicon does not have to pick. When the configured model ignores
+phoneme rules the page says how many entries that silently skips, rather than implying the whole
+page is inert.
+
+A preview hears an IPA draft without uploading it, by writing the IPA inline in the text, in
+the form `PHONEME_SYNTAX` gives the model: an SSML `<phoneme>` tag or the IPA between slashes.
 
 Respell it as it should be *said*. Stress capitals steer the model, so `NOME-reh-gan` is a
 valid respelling.
@@ -1822,9 +1826,10 @@ The tab lands on the player's zone, opened; where it has no quests, or Started O
 Only leaves it out, on the player's continent, as Places and Readables land, else on the first continent
 listed (there is no Azeroth row). A switch in the filter menu that leaves out the chosen row
 (`onHidden`) lands again where the tab chose it, and otherwise chooses the nearest row above it
-that is still listed: a quest's zone or group, a zone's continent. The list is drawn in the game's own art
-(`UI/Compendium.lua`, plain colours where a client lacks an atlas): a banner is the objective
-tracker's campaign header for the player's faction, without its crest. A zone's or a dungeon's line has its
+that is still listed: a quest's zone or group, a zone's continent. The list stands on the professions list's
+background (`UI/Compendium.lua`; Era keeps the marble), and a banner is the professions window's header
+bar (`Textures/HeaderBar.tga`, drawn in three pieces so its rounded ends keep their shape) with a gold
+plus or minus (`HeaderPlus.tga`, `HeaderMinus.tga`). A zone's or a dungeon's line has its
 plus or minus and its name, and on its right the quest mark with how many of its quests
 are in progress, the quests completed out of all and the share completed (or, once all are, the
 quest log's gold tick). Its picture is on its page. A banner counts
