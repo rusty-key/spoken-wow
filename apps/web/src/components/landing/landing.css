@@ -2064,10 +2064,11 @@ html:has(.bn) {
   align-items: center;
   gap: 2px;
   height: 100%;
+  overflow: hidden;
 }
 .bn-wave i {
   flex: 1;
-  min-width: 1px;
+  min-width: 0;
   border-radius: 1px;
   background: #5b5d66;
 }
@@ -2129,6 +2130,10 @@ html:has(.bn) {
     gap: 12px;
   }
   .bn-voice-time {
+    display: none;
+  }
+  /* 96 bars and their gaps are wider than the bar on a phone: show every second one. */
+  .bn-wave i:nth-child(even) {
     display: none;
   }
   .bn-voice-picks button {
