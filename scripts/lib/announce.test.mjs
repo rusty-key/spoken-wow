@@ -75,7 +75,16 @@ const spoken = `## 3.5.1 — 2026-10-19
 - Spoken notes.
 `;
 
-const run = repo(pages, { places, quests, spoken });
+const manager = `## Unreleased
+
+- Next.
+
+## 0.2.1 — 2026-11-21
+
+- Manager notes.
+`;
+
+const run = repo(pages, { places, quests, spoken, manager });
 
 test("an addon takes the store page's name and its own heading, not its audio's", () => {
   assert.deepEqual(run("places/v2.0.1"), { name: "Spoken Zones", version: "2.0.1", notes: "- Addon notes." });
@@ -103,11 +112,8 @@ test("a version with no changelog section still announces, without notes", () =>
   assert.deepEqual(run("places/v9.9.9"), { name: "Spoken Zones", version: "9.9.9", notes: null });
 });
 
-test("Spoken Manager is announced without a store page or a changelog", () => {
-  const { name, version, notes } = run("manager/v0.2.1");
-  assert.equal(name, "Spoken Manager");
-  assert.equal(version, "0.2.1");
-  assert.ok(notes);
+test("Spoken Manager has no store page and takes its notes from its own changelog", () => {
+  assert.deepEqual(run("manager/v0.2.1"), { name: "Spoken Manager", version: "0.2.1", notes: "- Manager notes." });
   assert.ok(run("manager-latest").skip);
 });
 
@@ -118,7 +124,7 @@ test("a tag with no store page behind it is skipped", () => {
 
 test("every section's changelog is where the release scripts look", () => {
   const docs = join(import.meta.dirname, "../../docs");
-  for (const section of ["spoken", ...SECTIONS]) {
+  for (const section of ["spoken", "manager", ...SECTIONS]) {
     assert.ok(existsSync(join(docs, section, "CHANGELOG.md")), section);
   }
 });

@@ -30,7 +30,8 @@ covers how they are made. Spoken has no guide; `docs/spoken/` holds its changelo
 - `publishers/<section>/*.md`: every store page. `make descriptions` regenerates the READMEs
   built from them; never edit a generated README by hand.
 - `deploy/web`: the `/srv` tree, nginx vhosts, migrations runner and runbook.
-- `docs/<section>/`: each section's README, changelog and agent guide. `docs/spoken/` is
+- `docs/<section>/`: each section's README, changelog and agent guide. `docs/manager/` holds
+  only Spoken Manager's changelog; its README is `manager/README.md`. `docs/spoken/` is
   Spoken's.
 
 ## Branches and checks
@@ -125,6 +126,8 @@ its date.
 - Spoken, its modules and `SpokenContributions` move together, in every `.toc`, both
   `Environment.lua` `AddonVersion` literals included. Their notes go in
   `docs/spoken/CHANGELOG.md`, and they release as the `spoken/vX` tag.
+- Spoken Manager versions on its own, in `manager/package.json`. Its notes go in
+  `docs/manager/CHANGELOG.md`, and it releases as the `manager/vX` tag.
 - Sound packs version on their own, with sections in their section's changelog.
 - `Spoken_Developer` has its own version, and nothing releases it.
 - Release scripts look for the exact `## <version>` heading and fail without it, so a release
