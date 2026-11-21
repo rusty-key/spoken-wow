@@ -13,6 +13,9 @@
 // its tag in `release:` (packs.mjs); the four addon pages are matched by their directory, which
 // is the tag prefix. spoken's directory also holds the meta addons, Spoken: English (all.md) and
 // each language's (all-<lang>.md), whose pages have no `section` either.
+//
+// Spoken Manager (`manager/vX.Y.Z`) has no store page, so its name is fixed; its notes are its
+// own changelog's, docs/manager/CHANGELOG.md.
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -87,6 +90,9 @@ export function announcement(tag, { publishersDir = join(ROOT, "publishers"), do
         notes = null;
       }
     }
+  } else if (prefix === "manager") {
+    name = "Spoken Manager";
+    notes = sectionFor(readFileSync(join(docsDir, "manager", "CHANGELOG.md"), "utf8"), version, () => true);
   } else if (ADDONS.includes(prefix)) {
     name = addonName(publishersDir, prefix);
     section = prefix;

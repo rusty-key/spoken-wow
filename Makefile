@@ -204,6 +204,7 @@ lint: ## The checks CI gates on
 	@pnpm -r typecheck
 	@node scripts/check-addon-xml.mjs
 	@./scripts/spoken/check-changelog.sh
+	@./scripts/manager/check-changelog.sh
 	@node pipelines/places/tools/validate.mjs
 	@node scripts/descriptions.mjs --check
 	@node pipelines/places/tools/locale/check-strings.mjs
