@@ -64,7 +64,7 @@ for _, child in ipairs(content.children) do
 end
 Expect("the rows under it are live", greetings.dropdownDisabled or false, false)
 local originalThrall = boxes[L.OPT_OG_THRALL]
-Expect("Original Thrall Speech is shown to an English client", originalThrall and originalThrall:IsShown(), true)
+Expect("Original Thrall Speech is shown to a player listening in English", originalThrall and originalThrall:IsShown(), true)
 switch:SetChecked(false)
 switch:GetScript("OnClick")(switch)
 Expect("clicking it turns the part off for Spoken", Spoken:IsPartOn("gossip"), false)
@@ -75,13 +75,6 @@ Expect("...but not the switch itself", switch.layoutReason, nil)
 switch:SetChecked(true)
 switch:GetScript("OnClick")(switch)
 Expect("turning it on again makes the part read", Spoken:IsPartOn("gossip"), true)
-
-stub.SetLocale("deDE")
-Panel.panel.layout:Refresh()
-Expect("Original Thrall Speech stays shown with an English pack", originalThrall:IsShown(), true)
-stub.SetLocale("enUS")
-Panel.panel.layout:Refresh()
-Expect("Original Thrall Speech returns for an English client", originalThrall:IsShown(), true)
 
 ---------------------------------------------------------------- shared rows on the Quests page
 -- Read Automatically covers the Gossip window too, so the Quests page keeps it live while Gossip
@@ -146,12 +139,15 @@ Expect("the part lists the packs that hold gossip, not Alliance's", table.concat
     "Spoken Audio: Gossip")
 Expect("the minimap menu heads its entries with the page's name", Spoken:GetSource("gossip").title, L.OPT_GOSSIP_PAGE_TITLE)
 
----------------------------------------------------------------- no English voice pack
-local presentModules = VO.DataModules.presentModulesOrdered
-VO.DataModules.presentModulesOrdered = {}
+---------------------------------------------------------------- not listening in English
+local audio = VO.Addon.db.profile.Audio
+audio.VoiceLanguage, audio.FallbackLanguage = "deDE", "none"
 Panel.panel.layout:Refresh()
-Expect("Original Thrall Speech is hidden without an English pack", originalThrall:IsShown(), false)
-VO.DataModules.presentModulesOrdered = presentModules
+Expect("Original Thrall Speech is hidden without English among the voices", originalThrall:IsShown(), false)
+audio.FallbackLanguage = "enUS"
+Panel.panel.layout:Refresh()
+Expect("...and shown with English as the fallback", originalThrall:IsShown(), true)
+audio.VoiceLanguage, audio.FallbackLanguage = nil, nil
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll gossip page tests passed")

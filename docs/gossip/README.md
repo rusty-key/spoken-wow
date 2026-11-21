@@ -80,8 +80,9 @@ Spoken's own page. Gossip adds no saved variable.
   with, so an NPC with several greetings reads each new one once. Once for Quest Givers holds
   back a repeat only where the NPC has quests. At Never nothing reads itself and the NPC windows
   show a Listen button.
-- Original Thrall Speech, and Forget Greetings Heard, which makes every
-  NPC greet this character again. That matters only for the two once-per settings. Heard
+- Original Thrall Speech, shown only while English is among the voices a line may play in (the
+  recording is English, and it never replaces another language's take), and Forget Greetings
+  Heard, which makes every NPC greet this character again. That matters only for the two once-per settings. Heard
   greetings are kept per character in `hasSeenGossipForNPC`: under each creature's ID, or `o` and
   the ID for a game object, whose IDs overlap creatures' (any other speaker keeps its GUID), a
   short hash of every text heard from it, marked when the line starts playing. The ID and not the
