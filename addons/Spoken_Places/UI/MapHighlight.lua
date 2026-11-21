@@ -157,6 +157,11 @@ local function Unsnap(texture)
 	if texture.SetTexelSnappingBias then texture:SetTexelSnappingBias(0) end
 end
 
+-- On WoW Forever an overlay's art does not fade out by its rectangle's edge, so its shape alone
+-- left the rectangle's outline in the glow; OpenMap hides it under masks of its own. A second mask
+-- over the whole overlay fades the glow to nothing at that edge.
+local EDGE = [[Interface\AddOns\Spoken_Places\Textures\Art\HighlightEdge]]
+
 local function NewTile()
 	local tile = state.frame:CreateTexture(nil, "OVERLAY")
 	tile:SetBlendMode("ADD")
@@ -165,6 +170,15 @@ local function NewTile()
 	Unsnap(tile)
 	Unsnap(tile.mask)
 	return tile
+end
+
+local function Edge()
+	if not state.edge then
+		state.edge = state.frame:CreateMaskTexture()
+		state.edge:SetTexture(EDGE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		Unsnap(state.edge)
+	end
+	return state.edge
 end
 
 -- One tile of the overlay: the file itself on Blizzard's map; on OpenMap's, the colour cut to the
@@ -177,11 +191,13 @@ local function Paint(tile, file, right, bottom, shaped)
 		tile.mask:SetTexCoord(0, right, 0, bottom)
 		if not tile.masked then
 			tile:AddMaskTexture(tile.mask)
+			tile:AddMaskTexture(Edge())
 			tile.masked = true
 		end
 	else
 		if tile.masked then
 			tile:RemoveMaskTexture(tile.mask)
+			tile:RemoveMaskTexture(Edge())
 			tile.masked = false
 		end
 		tile:SetTexture(file, nil, nil, "TRILINEAR")
@@ -193,6 +209,12 @@ end
 local function Light(info, layer, shaped)
 	local tileW, tileH = layer.tileWidth or 256, layer.tileHeight or 256
 	local wide, tall = math.ceil(info.textureWidth / tileW), math.ceil(info.textureHeight / tileH)
+	if shaped then
+		local edge = Edge()
+		edge:ClearAllPoints()
+		edge:SetPoint("TOPLEFT", state.frame, "TOPLEFT", info.offsetX, -info.offsetY)
+		edge:SetSize(info.textureWidth, info.textureHeight)
+	end
 	local n = 0
 	for row = 1, tall do
 		local h = row < tall and tileH or info.textureHeight - tileH * (tall - 1)

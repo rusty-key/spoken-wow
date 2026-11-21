@@ -79,6 +79,11 @@ local function Shown()
 end
 -- The file a tile is cut to the shape of, on OpenMap's map.
 local function Shape(tile) return tile.masks[tile.mask] and tile.mask:GetTexture() or nil end
+-- Whether the glow fades out at the overlay's rectangle, which the overlay's own shape does not.
+local function Feathered(tile)
+    local edge = state.edge
+    return edge ~= nil and tile.masks[edge] == true and edge:GetTexture():match("HighlightEdge$") ~= nil
+end
 
 Expect("built over the map's canvas", state.frame:GetParent(), canvas)
 Expect("dark until the cursor is over an area", state.frame:IsShown(), false)
@@ -181,6 +186,10 @@ Expect("...in a colour cut to the overlay's shape, not Blizzard's art over OpenM
     lit[1]:GetTexture() == nil and lit[1].color ~= nil, true)
 Expect("...its mask not faded to black at the edges, which drew a line along each seam",
     lit[1].mask.wrap[1] == "CLAMP" and lit[1].mask.wrap[2] == "CLAMP", true)
+Expect("...faded out at the overlay's rectangle, whose art does not fade there on Forever", Feathered(lit[1]), true)
+Expect("...the fade laid over the overlay's whole rectangle",
+    select(4, state.edge:GetPoint(1)) == 200 and select(5, state.edge:GetPoint(1)) == -100
+    and state.edge:GetWidth() == 100 and state.edge:GetHeight() == 80, true)
 u = lit[1].mask.texCoord
 Expect("...cut from the part of its tile the overlay uses", u[2] == 100 / 128 and u[4] == 80 / 128, true)
 Expect("...over OpenMap's art, which covers the explored areas", state.frame.level, 2084)
@@ -215,7 +224,7 @@ Point(120, 60)
 Run()
 lit = Shown()
 Expect("off OpenMap's map, the same tiles show the overlay's art again, unmasked",
-    #lit == 2 and lit[1]:GetTexture() == 11 and Shape(lit[1]) == nil, true)
+    #lit == 2 and lit[1]:GetTexture() == 11 and Shape(lit[1]) == nil and not Feathered(lit[1]), true)
 OpenMapAPI = nil
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
