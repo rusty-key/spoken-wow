@@ -72,9 +72,6 @@ None of this is the project's to license, and the MIT grant does not reach it.
   world database (the one the Forever repack ships), another community reconstruction of
   Blizzard's content; the zone each spawn stands in is worked out against the client's own map
   tables, from [wago.tools](https://wago.tools). `pipelines/readables/tools/places.mjs` is what reads both.
-- **Italian quest, gossip and book text** comes from QuestIT, an Italian community
-  translation by Drakanast whose addon code is MIT-licensed; the quest text it translates
-  is Blizzard's. `pipelines/quests/tools/import_questit.py` imports it.
 - **Some data that is not contributed by players** comes from the quest and NPC data Forever
   clients recorded, published by Efficient Games (https://efficient.games) as
   [EG Link output](https://github.com/JIVESCORP/eg-link-output-wowf) under **CC BY 4.0**:

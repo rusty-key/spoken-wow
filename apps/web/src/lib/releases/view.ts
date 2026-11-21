@@ -14,10 +14,13 @@ const RECENT = 20;
 
 function ownView(run: ReleaseRun, names: Map<string, string>): RunView {
   return {
+    id: run.id,
     section: run.section,
     lang: run.lang,
     state: run.state,
+    kind: run.kind,
     own: true,
+    reviewNote: run.reviewNote,
     githubUrl: run.githubUrl,
     step: run.step,
     error: run.error,
@@ -61,7 +64,7 @@ export async function releaseView(lang: Lang): Promise<ReleaseView> {
       }),
     ),
     released: Object.fromEntries(done.map((run) => [run.section, ownView(run, names)])),
-    bumpable: runsOnDroplet(),
+    onDroplet: runsOnDroplet(),
     pending,
   };
 }

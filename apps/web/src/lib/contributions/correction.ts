@@ -37,18 +37,20 @@ import { normaliseText } from "@readables-tools/lib/text.mjs";
 
 import { recordActivity } from "@/lib/activity/store";
 import { BookConflict, BookMissing, saveBookText } from "@/lib/readables/text";
-import { db, withTeam } from "@/lib/db";
-import { ownerOrAll } from "@/lib/teams/store";
+import { db } from "@/lib/db";
+import { withTextTeam } from "@/lib/teams/store";
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
-import { branchesOnPlayerGender } from "@/lib/player-words";
+import { branchesOnPlayerGender, playerTokenCounts } from "@/lib/player-words";
 import { momentLines, writeEnglishOriginal } from "@/lib/quests/moment-rewrite";
 import { OverrideError } from "@/lib/quests/override";
 import { QuestTextConflict, QuestTextMissing, saveQuestText } from "@/lib/quests/text";
 
 import { writeWording } from "./accept";
+import { genderSplit, readable } from "./compare";
+import type { ReaderGender } from "./gender";
 import { MAX_BYTES } from "./envelope";
 import { lineStates, type CorpusText, type LineState } from "./known";
-import { momentOf } from "./naming";
+import { baseLineId, momentOf } from "./naming";
 import { CONTRIBUTION_COLUMNS, rewriteWaitingTexts, type Contribution } from "./store";
 import { correctionNote } from "./notes";
 import { spokenFromTemplate } from "./tokens";
@@ -66,12 +68,17 @@ export type WordingPick = Pick<CorpusText, "lineId" | "variant">;
  * the one closest to the player's text. `against` is the moment's wordings when the caller
  * compared on something other than the printed text: a report's text is compared on what the
  * line speaks (reports/contribute.ts).
+ *
+ * `split` keeps both instead, one per player gender: the player's text for `split`, the line's
+ * current text for the other, as one `$G` template (compare.ts genderSplit), which splits the
+ * moment. Built here from the line as it now stands, so an edit since the page loaded is kept.
  */
 export async function acceptCorrection(
   id: number,
   userId: string,
   pick?: WordingPick,
   against?: Extract<LineState, { kind: "changed" }>,
+  split?: ReaderGender,
 ): Promise<CorrectionOutcome> {
   const { rows } = await db().query<Contribution>(
     `select ${CONTRIBUTION_COLUMNS} from "contribution" where "id" = $1`,
@@ -111,18 +118,41 @@ export async function acceptCorrection(
     };
   }
 
+  let text = contribution.text;
+  if (split) {
+    const plain = contribution.source === "quests" && momentOf(target.lineId) === target.lineId;
+    const template = plain ? genderSplit(readable(target.text), contribution.text, split) : null;
+    if (!template) {
+      return {
+        ok: false,
+        reason: "not-a-correction",
+        message: "This line cannot be split by gender with the player's text: it is split already, or they differ in nothing a branch can hold.",
+      };
+    }
+    text = template;
+  }
+
+  const dropped = await droppedTokens(contribution.source, lang, target, text);
+  if (dropped.length > 0) {
+    return {
+      ok: false,
+      reason: "malformed",
+      message: `The correction has fewer ${dropped.join(", ")} than the line it replaces. Put them back in the explorer before accepting it.`,
+    };
+  }
+
   try {
     if (contribution.source === "readables") {
-      await saveBookText({ lineId: target.lineId, text: contribution.text, note: correctionNote(id), editedBy: userId, lang });
+      await saveBookText({ lineId: target.lineId, text, note: correctionNote(id), editedBy: userId, lang });
     } else if (lang === BASE_LANG) {
-      const refusal = await correctEnglish(momentOf(target.lineId), target.variant, contribution.text, id, userId);
+      const refusal = await correctEnglish(momentOf(target.lineId), target.variant, text, id, userId);
       if (refusal) return refusal;
     } else {
       await saveQuestText({
         lineId: target.lineId,
         variant: target.variant,
         lang,
-        text: contribution.text,
+        text,
         note: correctionNote(id),
         editedBy: userId,
         contribution: id,
@@ -141,7 +171,7 @@ export async function acceptCorrection(
     throw error;
   }
 
-  return markAccepted(contribution, lang, userId);
+  return markAccepted(contribution, lang, userId, split ? { split } : {});
 }
 
 /**
@@ -229,7 +259,7 @@ async function markAccepted(
   extra: Record<string, unknown> = {},
 ): Promise<CorrectionOutcome> {
   const { id } = contribution;
-  return withTeam(await ownerOrAll(lang), async (client) => {
+  return withTextTeam(lang, async (client, team) => {
     const updated = await client.query<Contribution>(
       `update "contribution"
           set "status" = 'accepted', "resolvedBy" = $2, "updatedAt" = now()
@@ -239,6 +269,7 @@ async function markAccepted(
     );
     await recordActivity(
       {
+        team,
         kind: "contribution.resolved",
         lang,
         source: contribution.source,
@@ -252,12 +283,50 @@ async function markAccepted(
   });
 }
 
+type ReadLine = { text: string; playerGender: ReaderGender | null };
+
+/**
+ * The player tokens (`$N`, `$C`, `$R`, `$G`) `text` has fewer of than a line it replaces, on the
+ * sides that line's readers take. The client fills each in for its own reader, so a text without
+ * them would greet every player as that one. English quest lines store spoken text, not the
+ * template: correctEnglish checks those.
+ */
+async function droppedTokens(source: string, lang: Lang, target: CorpusText, text: string): Promise<string[]> {
+  if (source === "quests" && lang === BASE_LANG) return [];
+  const replaced: ReadLine[] =
+    source === "quests" ? await questLinesReplaced(lang, target, text) : [{ text: target.text, playerGender: null }];
+  const after = playerTokenCounts(text, lang);
+  const dropped = new Set<string>();
+  for (const line of replaced) {
+    const before = playerTokenCounts(line.text, lang);
+    const sides = line.playerGender ? [line.playerGender] : (["m", "f"] as const);
+    for (const token of ["N", "C", "R"] as const) {
+      if (sides.some((side) => after[side][token] < before[side][token])) dropped.add(`$${token}`);
+    }
+    // A side line's branch is only ever read one way, so losing it there loses nothing.
+    if (!line.playerGender && after.G < before.G) dropped.add("$G");
+  }
+  return [...dropped];
+}
+
+/**
+ * The lines saveQuestText overwrites with `text`, as stored: every line of the moment, except a
+ * side of a split moment edited alone by a text without `$G`. Stored rather than the game's print
+ * `target` carries, since a translator's token in the stored text is what the write would lose.
+ */
+async function questLinesReplaced(lang: Lang, target: CorpusText, text: string): Promise<ReadLine[]> {
+  const rows = await momentLines(lang, target.lineId, target.variant);
+  const own = rows.find((row) => row.lineId === baseLineId(target.lineId));
+  if (own?.playerGender && !branchesOnPlayerGender(text)) return [own];
+  return rows.length > 0 ? rows : [{ text: target.text, playerGender: null }];
+}
+
 /**
  * An English correction, written to every line the moment has.
  *
  * A template without `$G` for a moment split by player gender is refused: the client resolves
- * `$G` before sending (Contribute.lua's Detemplate does not restore it) and the envelope does
- * not say which reader sent it, so the text is one side's words with no telling which.
+ * `$G` before sending, so the text is one side's words. A newer addon's `readerSex` says which,
+ * which the corrections tab uses to split a plain line (readers.ts), not a split one.
  */
 async function correctEnglish(
   moment: string,

@@ -3,6 +3,7 @@ import path from 'node:path'
 import { PlainError } from './errors'
 import type { ContributorConfig, StoreId } from '../shared/types'
 import { readJsonFile, writeJsonAtomic } from './state'
+import { t } from './i18n'
 
 
 /** `available` and `seal` can raise the macOS Keychain dialog, so nothing someone signed out triggers may call them. */
@@ -32,7 +33,7 @@ interface ContributorFile {
 
 const REPO = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/
 const DIGITS = /^\d+$/
-const CANNOT_KEEP = 'Spoken Manager cannot keep secrets on this computer right now. If your system asked for access, allow it and try again.'
+const cannotKeep = (): string => t('store.cannotKeep')
 
 function str(v: unknown): string | null {
   return typeof v === 'string' && v !== '' ? v : null
@@ -43,7 +44,7 @@ function refuseSharedProjects(projects: Record<string, string>): void {
   const holder = new Map<string, string>()
   for (const [folder, id] of Object.entries(projects)) {
     const other = holder.get(id)
-    if (other) throw new PlainError(`${other} and ${folder} have the same CurseForge project id, ${id}. Each pack needs its own project.`)
+    if (other) throw new PlainError(t('store.duplicateProject', { other, folder, id }))
     holder.set(id, folder)
   }
 }
@@ -85,12 +86,12 @@ export class ContributorStore {
   }
 
   requireBox(): void {
-    if (!this.box.available()) throw new PlainError(CANNOT_KEEP)
+    if (!this.box.available()) throw new PlainError(cannotKeep())
     // A refused system dialog may pass the check above. Found only at the real seal, that is after the password has left.
     try {
       this.box.seal('probe')
     } catch {
-      throw new PlainError(CANNOT_KEEP)
+      throw new PlainError(cannotKeep())
     }
   }
 
@@ -122,14 +123,14 @@ export class ContributorStore {
         const id = raw.trim()
         if (id === '') delete next[lang]
         else if (DIGITS.test(id)) next[lang] = id
-        else throw new PlainError(`The CurseForge project id for ${lang} must be digits only.`)
+        else throw new PlainError(t('store.digitsOnly', { lang }))
       }
       refuseSharedProjects(next)
       f.projects = next
     }
     if (patch.repo !== undefined) {
       const repo = patch.repo.trim()
-      if (repo !== '' && !REPO.test(repo)) throw new PlainError('The GitHub repository must look like owner/repo.')
+      if (repo !== '' && !REPO.test(repo)) throw new PlainError(t('upload.repoShape'))
       f.repo = repo
     }
     if (patch.gameVersions !== undefined) {

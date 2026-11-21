@@ -333,6 +333,7 @@ function Followup:Play(entry, message, sender, guid, npcID, asked, event)
         filePath = clip.filePath,
         length = clip.length,
         timings = clip.timings,
+        packText = clip.packText,
         module = clip.module,
         language = clip.language,
     }

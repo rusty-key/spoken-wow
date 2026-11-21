@@ -281,6 +281,36 @@ describe("account events", () => {
   });
 });
 
+describe("pack events", () => {
+  beforeEach(async () => {
+    await recordActivity({
+      kind: "pack.rejected",
+      lang: null,
+      actorId: actor,
+      subject: "some-pack",
+      detail: { packId: "some-pack", version: "1.0.0", submissionId: "1", reason: "broken" },
+    });
+    await recordActivity({ kind: "ignore.set", lang: "deDE", actorId: actor, detail: {} });
+  });
+
+  it("are shown to a global admin", async () => {
+    const { rows } = await listActivity({ lang: "deDE", actorId: actor, global: true });
+    expect(rows.map((row) => row.kind).sort()).toEqual(["ignore.set", "pack.rejected"]);
+  });
+
+  it("are hidden from somebody who is admin in one language only", async () => {
+    const { rows } = await listActivity({ lang: "deDE", actorId: actor });
+    expect(rows.map((row) => row.kind)).toEqual(["ignore.set"]);
+  });
+
+  it("do not put their actor in a language admin's person filter", async () => {
+    await asSystem.query(`delete from "activity" where "actorId" = $1 and "kind" = 'ignore.set'`, [actor]);
+
+    expect((await activityActors("deDE")).map((person) => person.id)).not.toContain(actor);
+    expect((await activityActors("deDE", true)).map((person) => person.id)).toContain(actor);
+  });
+});
+
 describe("recordActivity", () => {
   it("rolls back with the transaction it was written in", async () => {
     const client = await db().connect();
@@ -338,6 +368,31 @@ describe("an act's team", () => {
     } finally {
       await asSystem.query(`delete from "activity" where "actorId" = $1`, [actor]);
       await german.restore();
+    }
+  });
+  it("is the acting team's in a language of several teams, else the event's, else none", async () => {
+    const { asTeam } = await import("@/lib/teams/acting");
+    const { dropLang, dropTeam, newTeamIn, uniqueLang } = await import("@/lib/teams/testing");
+    const lang = await uniqueLang();
+    const a = await newTeamIn(lang, false, "test-activity-a");
+    const b = await newTeamIn(lang, false, "test-activity-b");
+    try {
+      await asTeam(lang, b, () => recordActivity({ kind: "ignore.set", lang, actorId: actor, subject: "acting", detail: {} }));
+      await recordActivity({ kind: "ignore.set", lang, actorId: actor, subject: "event", detail: {}, team: a });
+      await recordActivity({ kind: "ignore.set", lang, actorId: actor, subject: "outsider", detail: {} });
+      const { rows } = await asSystem.query<{ subject: string; teamId: string | null }>(
+        `select "subject", "teamId" from "activity" where "actorId" = $1 order by "subject"`,
+        [actor],
+      );
+      expect(rows).toEqual([
+        { subject: "acting", teamId: b },
+        { subject: "event", teamId: a },
+        { subject: "outsider", teamId: null },
+      ]);
+    } finally {
+      await asSystem.query(`delete from "activity" where "actorId" = $1`, [actor]);
+      for (const team of [a, b]) await dropTeam(team);
+      await dropLang(lang);
     }
   });
 });

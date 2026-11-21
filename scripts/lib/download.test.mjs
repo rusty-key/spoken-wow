@@ -80,3 +80,11 @@ test("a dropped connection is retried", async () => {
   assert.equal(res.status, 200);
   assert.equal(calls, 3);
 });
+
+test("waits at most 30 seconds whatever Retry-After asks", async () => {
+  const waits = [];
+  const replies = [new Response("", { status: 429, headers: { "retry-after": "86400" } }), new Response("ok")];
+  const res = await fetchRetrying("u", async () => replies.shift(), async (ms) => void waits.push(ms));
+  assert.equal(await res.text(), "ok");
+  assert.deepEqual(waits, [30_000]);
+});

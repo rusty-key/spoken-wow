@@ -90,6 +90,53 @@ describe("POST /api/profile/tokens", () => {
   });
 });
 
+describe("generate tokens", () => {
+  const TEXT: Grant = { lang: "deDE", capability: "text" };
+  const REGEN: Grant = { lang: "deDE", capability: "regenerate" };
+
+  it("lets a regenerate-only owner make a generate-only token", async () => {
+    viewer.grants = [REGEN];
+    const response = await post({ ...VALID(), access: "none", generate: true });
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { row: { generate: boolean; access: string } }).row).toMatchObject({
+      generate: true,
+      access: "none",
+    });
+  });
+
+  it("lets a regenerate-only owner make a write token, which writes their team's overrides", async () => {
+    viewer.grants = [REGEN];
+    const response = await post({ ...VALID(), access: "write" });
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { row: { access: string } }).row.access).toBe("write");
+  });
+
+  it("403 for a read token where the owner holds neither text nor regenerate", async () => {
+    viewer.grants = [{ lang: "deDE", capability: "configure" }];
+    expect((await post({ ...VALID(), access: "read" })).status).toBe(403);
+  });
+
+  it("403 for generate with only text", async () => {
+    viewer.grants = [TEXT];
+    expect((await post({ ...VALID(), access: "read", generate: true })).status).toBe(403);
+  });
+
+  it("400 for no scope, and for a generate that is not a boolean", async () => {
+    viewer.grants = [TEXT, REGEN];
+    const none = await post({ ...VALID(), access: "none" });
+    expect(none.status).toBe(400);
+    expect(await none.json()).toEqual({ error: "a token must read, write or generate" });
+    expect((await post({ ...VALID(), access: "none", generate: "yes" })).status).toBe(400);
+  });
+
+  it("lets an owner with both make a write and generate token", async () => {
+    viewer.grants = [TEXT, REGEN];
+    const response = await post({ ...VALID(), access: "write", generate: true });
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { row: { generate: boolean } }).row.generate).toBe(true);
+  });
+});
+
 describe("GET /api/profile/tokens", () => {
   it("lists the caller's tokens and never carries the token", async () => {
     const created = (await (await post(VALID())).json()) as { token: string; row: { id: string } };

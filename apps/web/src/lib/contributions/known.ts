@@ -43,8 +43,11 @@ export type CorpusText = { lineId: string; variant: number; text: string };
 
 export type LineState =
   | { kind: "missing" }
-  /** `lineId` is the corpus line it matched: what a missing-audio hit is counted against. */
-  | { kind: "known"; lineId: string }
+  /**
+   * `lineId` and `variant` are the corpus line it matched: what a missing-audio hit is counted
+   * against, and what the reader's gender confirms (readers.ts).
+   */
+  | { kind: "known"; lineId: string; variant: number }
   /**
    * The corpus's texts in the contribution's language: a quest moment's every wording, in
    * order, one line apiece (a split wording by its first side), or a book page alone.
@@ -104,7 +107,7 @@ function otherBody(row: Comparable, voiced: VoicedBodies | undefined): boolean {
 /** A moment's wordings against a player's text: the one it matches, or the one it is closest to. */
 export function stateOfMoment(lines: CorpusText[], text: string): LineState {
   const same = lines.find((line) => sameLine(line.text, text));
-  if (same) return { kind: "known", lineId: same.lineId };
+  if (same) return { kind: "known", lineId: same.lineId, variant: same.variant };
   const wordings = oneLineEach(lines);
   return { kind: "changed", wordings, closest: closestOf(wordings, text) };
 }
@@ -252,7 +255,7 @@ export async function lineStates(rows: readonly Comparable[]): Promise<LineState
         },
         books,
       );
-      if (match.kind === "known") return { kind: "known", lineId: match.lineId };
+      if (match.kind === "known") return { kind: "known", lineId: match.lineId, variant: 0 };
       if (match.kind === "correction") {
         return { kind: "changed", wordings: [{ lineId: match.lineId, variant: 0, text: match.current }], closest: 0 };
       }
@@ -270,7 +273,7 @@ export async function lineStates(rows: readonly Comparable[]): Promise<LineState
     const spoken = npcId === null ? undefined : byNpc.get(`${row.locale}|${npcId}`);
     if (npcId !== null && otherBody(row, bodies.get(npcId))) return MISSING;
     const same = spoken?.find((line) => sameLine(line.text, text));
-    return same ? { kind: "known", lineId: same.lineId } : MISSING;
+    return same ? { kind: "known", lineId: same.lineId, variant: same.variant } : MISSING;
   });
 }
 

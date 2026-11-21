@@ -1,6 +1,6 @@
 # What the bosses still lack
 
-As of 2026-10-20. The lists come from `Data/Bosses.lua`, `Data/Creatures.lua` and `Data/Stories.lua`.
+As of 2026-10-20, with the 34 bosses of client 1.60.1.70959 added on 2026-11-20. The lists come from `Data/Bosses.lua`, `Data/Creatures.lua` and `Data/Stories.lua`.
 
 Sources checked for every boss below:
 
@@ -30,7 +30,7 @@ target there. What it lacks is its face.
 - Story: written from the wiki's lore, as the others are (`build-boss-stories.mjs`,
   `apply-boss-stories.mjs` into the `boss_line` table, then `make bosses-export`), Classic-era events only.
 
-## No creature and no portrait (27)
+## No creature and no portrait (61)
 
 | Dungeon | Bosses | Why |
 | --- | --- | --- |
@@ -40,6 +40,11 @@ target there. What it lacks is its face.
 | City of Dalaran (2959) | Mana Elemental | Efficient Games' encounter 3301 names no creature, and no build has one of that name. The database's 14689 has no spawn and wears Dire Maul's Arcane Aberration model. |
 | Ruins of Lordaeron (2999) | Lordaeron Captain | The database's 32414 is a Wrath of the Lich King creature with a model the client lacks. No captain spawned on the map matches; Captain Truman (265701) is there, but not elite. The wiki calls the boss a rare. No creature, dialogue or scripted summon in the repack names it: the boss is on Forever's live server only. The client hides an instance's units from addons, so the target cannot record them. |
 | Ruins of Lordaeron (2999) | Viktor the Vile | In neither the database nor Efficient Games. No ghoul spawned on the map matches, and no dialogue or scripted summon names it: the boss is on Forever's live server only. The client hides an instance's units from addons, so the target cannot record them. |
+| The Drowned City (2970) | Zul'Alai, Var'Taka, Captain Dreadrise, Deathless Guardians, Primeval Elemental, Min'loth the Serpent | Added with client 1.60.1.70959. Not yet looked for. |
+| Blackmaw Hold (2974) | Withermaw, Impaan the Imprisoner, Elder Shaman Bloodmane, Bonesnout the Unbroken, Varrox Bleakhoof, Blackmaw Behemoth, Unbound Spirit | Added with client 1.60.1.70959. Not yet looked for. |
+| Alcaz Prison (2994) | Overseer Wrex, Tidemistress Ca'zass, Katerina the Cleaner, The Questioner, Blazeroar | Added with client 1.60.1.70959. Not yet looked for. |
+| The Shaper's Terrace (3001) | Titanosaur, Ravasaur Hunters, Thunderhoof, Venomridge, Direhorn Matriarch, Cinder, King Op, Snowtalon, Bolt, Vitrix, Nanaya | Added with client 1.60.1.70959. Not yet looked for. |
+| Krol'dok Stronghold (3039) | Slavecrusher Grox, Twilight Commander Zarmok, Handler Ashka, Nar'gurk, Overseer Mugg | Added with client 1.60.1.70959. Not yet looked for. |
 
 ## No creature but a portrait (1)
 
@@ -62,7 +67,7 @@ target there. What it lacks is its face.
 | Excavation Site: Wetlands (2998) | Highland Horror | 260808, model 9010, by name in Efficient Games. No encounter record. |
 | Karazhan Crypts (2875) | Kaigy Maryla, Sairuh Maryla | 256275 and 256273, by name in Efficient Games. The database spawns Kaigy only in the open world (map 0), and the wiki gives other ids (238233, 238213). |
 
-## No story (25)
+## No story (59)
 
 No story was written for these: neither the Adventure Guide nor the wiki article in `boss-sources.json`
 gave lore for them.
@@ -79,6 +84,11 @@ gave lore for them.
 | Excavation Site: Wetlands (2998) | Saltspine, Shadetooth, Relic Guardian | The wiki has only the dungeon's page. |
 | Ruins of Lordaeron (2999) | The Butcher, Lordaeron Captain | The wiki's Othmar Garithos article says The Baron is Garithos, raised as an abomination: The Butcher's story can come from it. |
 | The Hall of Thanes (3065) | Infurnus, Plunder | The wiki has only the dungeon's page. |
+| The Drowned City (2970) | Zul'Alai, Var'Taka, Captain Dreadrise, Deathless Guardians, Primeval Elemental, Min'loth the Serpent | Added with client 1.60.1.70959. Not yet looked for. |
+| Blackmaw Hold (2974) | Withermaw, Impaan the Imprisoner, Elder Shaman Bloodmane, Bonesnout the Unbroken, Varrox Bleakhoof, Blackmaw Behemoth, Unbound Spirit | Added with client 1.60.1.70959. Not yet looked for. |
+| Alcaz Prison (2994) | Overseer Wrex, Tidemistress Ca'zass, Katerina the Cleaner, The Questioner, Blazeroar | Added with client 1.60.1.70959. Not yet looked for. |
+| The Shaper's Terrace (3001) | Titanosaur, Ravasaur Hunters, Thunderhoof, Venomridge, Direhorn Matriarch, Cinder, King Op, Snowtalon, Bolt, Vitrix, Nanaya | Added with client 1.60.1.70959. Not yet looked for. |
+| Krol'dok Stronghold (3039) | Slavecrusher Grox, Twilight Commander Zarmok, Handler Ashka, Nar'gurk, Overseer Mugg | Added with client 1.60.1.70959. Not yet looked for. |
 
 ## Stories to look at again
 

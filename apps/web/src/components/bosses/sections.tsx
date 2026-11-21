@@ -1,7 +1,7 @@
 import type { ExplorerSection } from "@/components/explorer/section";
 import WowheadLink from "@/components/WowheadLink";
 import type { InstanceFacet } from "@/lib/bosses/catalogue";
-import { activeFilterCount, FIELDS, filterParams, filtersFromParams, type LineFilters } from "@/lib/bosses/filters";
+import { FIELDS, filterParams, filtersFromParams, type LineFilters } from "@/lib/bosses/filters";
 import type { ResultLine } from "@/lib/bosses/search";
 import { wowheadEntityUrl } from "@/lib/wowhead";
 
@@ -44,7 +44,6 @@ export function bossesSection(instances: InstanceFacet[] = []): BossesSection {
       kinds: [],
       fromParams: filtersFromParams,
       toParams: filterParams,
-      activeCount: activeFilterCount,
     },
   };
 }

@@ -50,6 +50,16 @@ Expect("a moment with one wording is named from its id alone", Accept(VO, 21, "A
 Expect("with no text on screen, the moment's file", Accept(VO, 20, nil), "20-accept")
 Expect("an empty text is no text: the moment's file", Accept(VO, 20, ""), "20-accept")
 
+do
+    local soundData = { event = VO.Enums.SoundEvent.QuestAccept, questID = 20, text = "Oh, you are back.",
+        unitGUID = "Creature-0-0-0-0-2-0" }
+    local known = VO.DataModules:IsTextKnown(soundData)
+    VO.DataModules:GetModule("Pack").TextByFileName = { ["20-accept-w1"] = "Other words." }
+    Expect("a pack's words do not change which text counts as known", VO.DataModules:IsTextKnown(soundData), known)
+    Expect("...and a wording still finds its file by the window's words", Accept(VO, 20, "Oh, you are back."), "20-accept-w1")
+    VO.DataModules:GetModule("Pack").TextByFileName = nil
+end
+
 -- The window offers Contribute when the wording on screen has no line, though the moment's
 -- first wording has audio.
 SpokenEnv.Spoken.Gather:SetEnabled(false)
