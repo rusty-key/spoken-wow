@@ -36,10 +36,17 @@ DATA_OUT = os.path.join(WEB, "src", "components", "landing", "voices")
 HERO_OUT = os.path.join(WEB, "src", "components", "landing", "hero")
 CACHE = os.environ.get("LANDING_VOICES_CACHE") or os.path.join(tempfile.gettempdir(), "landing-voices")
 LANGS = ["enUS", "deDE", "esES", "esMX", "frFR", "itIT", "plPL", "ptBR", "ruRU", "koKR", "zhCN", "zhTW", "viVN"]
-WHISPER = {"deDE": "de", "esES": "es", "esMX": "es", "frFR": "fr", "itIT": "it", "plPL": "pl", "ptBR": "pt", "ruRU": "ru",
-           "koKR": "ko", "zhCN": "zh", "zhTW": "zh", "viVN": "vi", "enUS": "en"}
-BCP47 = {"enUS": "en-US", "deDE": "de-DE", "esES": "es-ES", "esMX": "es-MX", "frFR": "fr-FR", "itIT": "it-IT", "plPL": "pl-PL",
-         "ptBR": "pt-BR", "ruRU": "ru-RU", "koKR": "ko-KR", "zhCN": "zh-CN", "zhTW": "zh-TW", "viVN": "vi-VN"}
+CJK = {"zhCN", "zhTW"}  # written without spaces between words
+
+
+def whisper_lang(lang):
+    return lang[:2]
+
+
+def bcp47(lang):
+    return f"{lang[:2]}-{lang[2:]}"
+
+
 MATCH_GATE = 0.85
 # Whisper answers Chinese in Simplified characters unless told otherwise; the clips' text is Traditional.
 PROMPT = {"zhTW": "以下是繁體中文的句子。"}
@@ -103,11 +110,6 @@ def line_by_id(kind, lang, line_id):
     return found[0] if found else None
 
 
-def clean(text):
-    assert "�" not in text, "replacement character in " + text[:40]
-    return text
-
-
 def usable_text(text):
     return bool(text) and "$" not in text and "�" not in text
 
@@ -142,7 +144,7 @@ def norm(word):
 
 def display_words(text, lang):
     """The words the page lights, one per entry. Chinese has no spaces: one character each."""
-    if lang in ("zhCN", "zhTW"):
+    if lang in CJK:
         return [c for c in re.sub(r"\s+", "", text) if c]
     return text.split()
 
@@ -151,13 +153,13 @@ def align(path, text, lang):
     """Start time of each display word, and the share of words Whisper matched."""
     words = display_words(text, lang)
     model = whisper_model()
-    segs, _ = model.transcribe(path, language=WHISPER[lang], word_timestamps=True, vad_filter=False,
+    segs, _ = model.transcribe(path, language=whisper_lang(lang), word_timestamps=True, vad_filter=False,
                                condition_on_previous_text=False, beam_size=5,
                                initial_prompt=PROMPT.get(lang))
     heard = []  # (normalized, start)
     for seg in segs:
         for w in seg.words or []:
-            if lang in ("zhCN", "zhTW"):
+            if lang in CJK:
                 for ch in w.word.strip():
                     if norm(ch):
                         heard.append((norm(ch), w.start))
@@ -175,17 +177,8 @@ def align(path, text, lang):
     known = [i for i, t in enumerate(times) if t is not None]
     if not known:
         return words, [0.0] * len(words), 0.0
-    for i in range(len(times)):
-        if times[i] is None:
-            before = max((k for k in known if k < i), default=None)
-            after = min((k for k in known if k > i), default=None)
-            if before is None:
-                times[i] = times[after]
-            elif after is None:
-                times[i] = times[before]
-            else:
-                f = (i - before) / (after - before)
-                times[i] = times[before] + f * (times[after] - times[before])
+    import numpy as np
+    times = np.interp(range(len(times)), known, [times[k] for k in known]).tolist()
     for i in range(1, len(times)):  # never backwards
         times[i] = max(times[i], times[i - 1])
     return words, times, matched
@@ -216,16 +209,15 @@ def encode(src, dst):
     r = subprocess.run([FF, "-v", "error", "-i", dst, "-ac", "1", "-ar", "8000", "-f", "f32le", "-"], capture_output=True)
     import numpy as np
     pcm = np.frombuffer(r.stdout, dtype=np.float32)
-    peaks = [0.0] * BARS
-    for b in range(BARS):
-        seg = pcm[b * len(pcm) // BARS:(b + 1) * len(pcm) // BARS]
-        peaks[b] = float(np.abs(seg).max()) if len(seg) else 0.0
+    n = len(pcm)
+    segs = (pcm[i * n // BARS:(i + 1) * n // BARS] for i in range(BARS))
+    peaks = [float(np.abs(seg).max()) if len(seg) else 0.0 for seg in segs]
     top = max(peaks) or 1.0
     return round(len(pcm) / 8000, 2), [round(max(0.06, (p / top) ** 0.7), 2) for p in peaks]
 
 
 # ---------------------------------------------------------------- one clip
-def build_clip(lang, part, n, audio_url, text, label, name, sub, icon):
+def build_clip(lang, part, n, audio_url, text, name, sub, icon):
     """The clip's data, or None when its audio is missing or its words do not line up."""
     if not usable_text(text):
         return None
@@ -242,10 +234,10 @@ def build_clip(lang, part, n, audio_url, text, label, name, sub, icon):
     mp3 = os.path.join(AUDIO_OUT, lang, f"{part}-{n}.mp3")
     duration, peaks = encode(src, mp3)
     times = [round(min(t, duration), 2) for t in times]
-    voice = {"label": label, "name": name, "sub": sub, "icon": icon,
+    voice = {"label": name, "name": name, "sub": sub, "icon": icon,
              "audio": f"/landing/voice/{lang}/{part}-{n}.mp3", "duration": duration, "peaks": peaks,
-             "words": words, "times": times, "lang": BCP47[lang]}
-    if lang in ("zhCN", "zhTW"):
+             "words": words, "times": times, "lang": bcp47(lang)}
+    if lang in CJK:
         voice["joiner"] = ""
     log(f"    ok {name!r} ({matched:.0%}, {duration}s)")
     return voice
@@ -262,20 +254,18 @@ def icon_for(l):
     return f"{I}voice-{key[0]}-{key[1]}.png" if key in ICON_VOICES else None
 
 
-def quest_like(lang, part, ids, source):
+def quest_like(lang, part, ids):
     out, used, speakers = [], set(), set()
     # A Chinese character says about what three Latin letters do; one bound for both drops most Chinese lines.
-    low, high = (20, 140) if lang in ("zhCN", "zhTW") else (60, 420)
+    low, high = (20, 140) if lang in CJK else (60, 420)
 
     def take(l):
         icon = icon_for(l)
         if not icon or l["lineId"] in used or l["npcName"] in speakers or not good_line(l) or not low <= len(l["text"]) <= high:
             return False
-        sub = l.get("questTitle") or "Gossip"
-        if source == "gossip":
-            sub = "Gossip"
+        sub = "Gossip" if part == "gossip" else (l.get("questTitle") or "Gossip")
         v = build_clip(lang, part, len(out) + 1, f"{API}/quests/audio/{l['audioPath']}?{q(lang=lang)}" if lang != "enUS"
-                       else f"{API}/quests/audio/{l['audioPath']}", l["text"], l["npcName"], l["npcName"], sub, icon)
+                       else f"{API}/quests/audio/{l['audioPath']}", l["text"], l["npcName"], sub, icon)
         if v:
             used.add(l["lineId"])
             speakers.add(l["npcName"])
@@ -289,53 +279,46 @@ def quest_like(lang, part, ids, source):
         if len(out) == 4:
             return out
     for page in (1, 2, 3):  # replacements: the next lines with a recording, by the same rule
-        for l in lines("quests", lang, source=("accept,complete,followup" if source == "quests" else "gossip"), limit=100, page=page):
+        for l in lines("quests", lang, source=("accept,complete,followup" if part == "quests" else "gossip"), limit=100, page=page):
             if len(out) == 4:
                 return out
             take(l)
     return out
 
 
-def places(lang):
+def current(l):
+    return l and l.get("take") and l.get("state") == "current" and not l.get("dirty") and usable_text(l.get("spoken", ""))
+
+
+def spoken_part(lang, part, items):
+    """Clips for a part whose lines have one take each. items: (line id, field holding the name, sub, icon)."""
     out = []
-    for name_en, icon in PLACES:
-        found = [l for l in lines("places", "enUS", q=name_en) if l["name"] == name_en]
-        if not found:
+    for lid, name_field, sub, icon in items:
+        l = line_by_id(part, lang, lid)
+        if not current(l):
             continue
-        l = line_by_id("places", lang, found[0]["id"])
-        if not l or not l.get("take") or l.get("state") != "current" or l.get("dirty") or not usable_text(l.get("spoken", "")):
-            continue
-        v = build_clip(lang, "places", len(out) + 1, f"{API}/places/audio/{l['file']}.mp3?{q(lang=lang)}",
-                       l["spoken"], l["name"], l["name"], l["zoneName"], I + icon)
+        v = build_clip(lang, part, len(out) + 1, f"{API}/{part}/audio/{l['file']}.mp3?{q(lang=lang)}",
+                       l["spoken"], l[name_field], sub(l), I + icon)
         if v:
             out.append(v)
     return out
+
+
+def places(lang):
+    items = []
+    for name_en, icon in PLACES:
+        found = [l for l in lines("places", "enUS", q=name_en) if l["name"] == name_en]
+        if found:
+            items.append((found[0]["id"], "name", lambda l: l["zoneName"], icon))
+    return spoken_part(lang, "places", items)
 
 
 def readables(lang):
-    out = []
-    for lid, kind, icon in READABLES:
-        l = line_by_id("readables", lang, lid)
-        if not l or not l.get("take") or l.get("state") != "current" or l.get("dirty") or not usable_text(l.get("spoken", "")):
-            continue
-        v = build_clip(lang, "readables", len(out) + 1, f"{API}/readables/audio/{l['file']}.mp3?{q(lang=lang)}",
-                       l["spoken"], l["title"], l["title"], kind, I + icon)
-        if v:
-            out.append(v)
-    return out
+    return spoken_part(lang, "readables", [(lid, "title", lambda l, kind=kind: kind, icon) for lid, kind, icon in READABLES])
 
 
 def bosses(lang):
-    out = []
-    for lid, portrait in BOSSES.items():
-        l = line_by_id("bosses", lang, lid)
-        if not l or not l.get("take") or l.get("state") != "current" or l.get("dirty") or not usable_text(l.get("spoken", "")):
-            continue
-        v = build_clip(lang, "bosses", len(out) + 1, f"{API}/bosses/audio/{l['file']}.mp3?{q(lang=lang)}",
-                       l["spoken"], l["name"], l["name"], l["instanceName"], I + portrait)
-        if v:
-            out.append(v)
-    return out
+    return spoken_part(lang, "bosses", [(lid, "name", lambda l: l["instanceName"], icon) for lid, icon in BOSSES.items()])
 
 
 # ---------------------------------------------------------------- the hero's subtitle lines
@@ -345,9 +328,9 @@ HERO = [("quests", "quests", "q:33:accept"), ("spoken", "gossip", "g:206f059d0c6
 
 def short_text(text, lang):
     """The first sentences of a line that fit the subtitle box: 40 to 110 characters, 20 to 50 in Chinese."""
-    cjk = lang in ("zhCN", "zhTW")
+    cjk = lang in CJK
     low, high = (20, 50) if cjk else (40, 110)
-    text = re.sub(r"\s+", " ", clean(text)).strip()
+    text = re.sub(r"\s+", " ", text).strip()
     # Chinese stops are not followed by a space, so they end a sentence on their own.
     parts = re.findall(r".+?(?:[.!?…]+[\"'”’」』)]*(?:\s+|$)|[。！？]+[”’」』)]*|$)", text)
     out = ""
@@ -369,16 +352,15 @@ def short_text(text, lang):
 def hero(lang):
     """Three subtitle lines for the hero in the page's language, from the same corpus as the players."""
     out = []
-    cjk = lang in ("zhCN", "zhTW")
+    cjk = lang in CJK
     for icon, kind, lid in HERO:
+        l = line_by_id("places" if kind == "places" else "quests", lang, lid)
+        if not l:
+            return None
         if kind == "places":
-            l = line_by_id("places", lang, lid)
-            name, sub, text = (l["name"], None, l["spoken"]) if l else (None, None, None)
+            name, sub, text = l["name"], None, l["spoken"]
         else:
-            l = line_by_id("quests", lang, lid)
-            name = l["npcName"] if l else None
-            sub = (l.get("questTitle") if kind == "quests" else None) if l else None
-            text = l["text"] if l else None
+            name, sub, text = l["npcName"], l.get("questTitle") if kind == "quests" else None, l["text"]
         if not name or not usable_text(text or ""):
             return None
         text = short_text(text, lang)
@@ -390,13 +372,17 @@ def hero(lang):
     return out
 
 
+def write_json(folder, lang, data):
+    os.makedirs(folder, exist_ok=True)
+    with open(os.path.join(folder, lang + ".json"), "w", encoding="utf-8", newline="\n") as f:
+        json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
+        f.write("\n")
+
+
 def write_hero(lang):
     lines_ = hero(lang)
     if lines_:
-        os.makedirs(HERO_OUT, exist_ok=True)
-        with open(os.path.join(HERO_OUT, lang + ".json"), "w", encoding="utf-8", newline="\n") as f:
-            json.dump(lines_, f, ensure_ascii=False, separators=(",", ":"))
-            f.write("\n")
+        write_json(HERO_OUT, lang, lines_)
     else:
         log("  hero: no lines, the page keeps English")
 
@@ -407,17 +393,14 @@ def build(lang):
     shutil.rmtree(os.path.join(AUDIO_OUT, lang), ignore_errors=True)
     data = {}
     if lang != "enUS":  # English's quests, gossip, places and readables stay in voices.ts
-        for part, fn in (("quests", lambda: quest_like(lang, "quests", QUESTS, "quests")),
-                         ("gossip", lambda: quest_like(lang, "gossip", GOSSIP, "gossip")),
+        for part, fn in (("quests", lambda: quest_like(lang, "quests", QUESTS)),
+                         ("gossip", lambda: quest_like(lang, "gossip", GOSSIP)),
                          ("places", lambda: places(lang)), ("readables", lambda: readables(lang))):
             log("  " + part)
             data[part] = fn()
     log("  bosses")
     data["bosses"] = bosses(lang)
-    os.makedirs(DATA_OUT, exist_ok=True)
-    with open(os.path.join(DATA_OUT, lang + ".json"), "w", encoding="utf-8", newline="\n") as f:
-        json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
-        f.write("\n")
+    write_json(DATA_OUT, lang, data)
     log("  ->", {k: len(v) for k, v in data.items()})
     write_hero(lang)
 

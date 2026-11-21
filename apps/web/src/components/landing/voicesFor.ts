@@ -8,21 +8,7 @@ import { VOICES, type Voice } from "./voices";
 
 type Voices = Record<string, Voice[]>;
 
-const LOADERS: Record<Lang, () => Promise<{ default: Voices }>> = {
-  enUS: () => import("./voices/enUS.json"),
-  deDE: () => import("./voices/deDE.json"),
-  esES: () => import("./voices/esES.json"),
-  esMX: () => import("./voices/esMX.json"),
-  frFR: () => import("./voices/frFR.json"),
-  itIT: () => import("./voices/itIT.json"),
-  plPL: () => import("./voices/plPL.json"),
-  ptBR: () => import("./voices/ptBR.json"),
-  ruRU: () => import("./voices/ruRU.json"),
-  koKR: () => import("./voices/koKR.json"),
-  zhCN: () => import("./voices/zhCN.json"),
-  zhTW: () => import("./voices/zhTW.json"),
-  viVN: () => import("./voices/viVN.json"),
-};
+const load = async (lang: Lang): Promise<Voices> => (await import(`./voices/${lang}.json`)).default;
 
 /**
  * The voice samples of the page's language, a part at a time. English keeps the lines in
@@ -31,10 +17,8 @@ const LOADERS: Record<Lang, () => Promise<{ default: Voices }>> = {
  * Loaded on the server so a visitor is sent one language's data, not twelve.
  */
 export const voicesFor = cache(async (lang: Lang): Promise<Voices> => {
-  const english = { ...VOICES, ...(await LOADERS.enUS()).default };
-  if (lang === "enUS") return english;
-  const own = (await LOADERS[lang]()).default;
-  const parts: Voices = { ...english };
-  for (const [part, clips] of Object.entries(own)) if (clips.length) parts[part] = clips;
+  const parts: Voices = { ...VOICES, ...(await load("enUS")) };
+  if (lang === "enUS") return parts;
+  for (const [part, clips] of Object.entries(await load(lang))) if (clips.length) parts[part] = clips;
   return parts;
 });

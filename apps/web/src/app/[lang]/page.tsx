@@ -158,7 +158,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                     <img className="bn-logo-era" src="/landing/games/logo-era.png" alt={t.hero.eraAlt} />
                   </div>
                 </div>
-                <HeroLine key={lang} lines={heroLines} />
+                <HeroLine lines={heroLines} />
               </div>
             </div>
           </section>
