@@ -13,7 +13,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { envelopesFromSavedVariables } from '@site-contributions/saved-variables'
 import { chunksOf } from '@site-contributions/upload'
-import type { GameInstall } from '../shared/types'
+import type { GameInstall, SendResult } from '../shared/types'
 import { findEntrySync, isLinked } from './guard'
 import type { LocalFile } from './packs-plan'
 import { t } from './i18n'
@@ -112,12 +112,7 @@ export interface SendOptions {
   all?: boolean
 }
 
-export type SendResult =
-  | { outcome: 'sent'; count: number }
-  /** Nothing new: no file changed, or every envelope in them was sent before. */
-  | { outcome: 'nothing' }
-  | { outcome: 'rate-limited'; count: number }
-  | { outcome: 'failed'; count: number; error: string }
+export type { SendResult }
 
 function remember(ledger: ShareLedger, hashes: Iterable<string>, at: string): void {
   for (const h of hashes) {

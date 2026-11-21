@@ -262,6 +262,8 @@ export const S_EN = {
     neverSent: 'Nothing sent yet.',
     sending: 'Sending',
     sendNow: 'Send Now',
+    sendDone: (count: number) => `Sent ${count} ${pluralForm(count, { one: 'line', other: 'lines' })}.`,
+    sendNothing: 'Nothing new to send. Spoken saves new lines when you log out or type /reload.',
     resetId: 'Reset Id',
     resetDone: 'This manager has a new id. Lines already sent are not sent again.',
     contributor: 'Contributor',

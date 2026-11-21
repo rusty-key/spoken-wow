@@ -264,6 +264,14 @@ export const SHARING_CHOICES = ['unset', 'on', 'off'] as const
 
 export type SharingChoice = (typeof SHARING_CHOICES)[number]
 
+/** How one send ended. Failures also land in `SharingStatus.error`. */
+export type SendResult =
+  | { outcome: 'sent'; count: number }
+  /** Nothing new: no file changed, or every envelope in them was sent before. */
+  | { outcome: 'nothing' }
+  | { outcome: 'rate-limited'; count: number }
+  | { outcome: 'failed'; count: number; error: string }
+
 /** What the window shows of sharing. The install id stays in the main process. */
 export interface SharingStatus {
   /** The last send that the site took: when, and how many lines. */

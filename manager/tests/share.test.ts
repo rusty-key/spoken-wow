@@ -187,11 +187,30 @@ describe('ManagerService sharing', () => {
     expect(svc.snapshot().sharingStatus?.lastSent?.count).toBe(1)
   })
 
+  it('Send Now resolves with how its own send ended', async () => {
+    const { svc, game, site } = await service()
+    svc.setSettings({ sharing: 'on' })
+    expect(await svc.sendNow()).toEqual({ outcome: 'nothing' })
+    write(contributionsFile(game, 'A'), savedVariables([envelope(1), envelope(2)]))
+    expect(await svc.sendNow()).toEqual({ outcome: 'sent', count: 2 })
+    expect(await svc.sendNow()).toEqual({ outcome: 'nothing' })
+    expect(site.posted).toHaveLength(1)
+  })
+
+  it('Send Now waits for the send that turning Sharing on started, then reports its own', async () => {
+    const { svc, game, site } = await service()
+    write(contributionsFile(game, 'A'), savedVariables([envelope(1)]))
+    svc.setSettings({ sharing: 'on' })
+    expect(await svc.sendNow()).toEqual({ outcome: 'nothing' })
+    expect(site.posted).toHaveLength(1)
+    expect(svc.sharingStatus.lastSent?.count).toBe(1)
+  })
+
   it('waits after a failure, and Send Now does not', async () => {
     const { svc, game, site } = await service([500, 500])
     write(contributionsFile(game, 'A'), savedVariables([envelope(1)]))
     svc.setSettings({ sharing: 'on' })
-    await svc.sendNow()
+    expect(await svc.sendNow()).toMatchObject({ outcome: 'failed' })
     expect(svc.sharingStatus.error).toBe('The site answered 500.')
     const posts = site.posted.length
     expect(await svc.shareTick(false)).toBeNull()

@@ -7,7 +7,7 @@ import { Select, Switch } from '../components/Controls'
 import { useAddGame } from '../components/EmptyGames'
 import { RestartButton } from '../components/RestartButton'
 import { IconChevron, IconChevronRight, IconDownload, IconGames, IconGear, IconHeart, IconInfo, IconRefresh, IconUser } from '../components/Icons'
-import type { Settings, UiLanguage } from '@shared/types'
+import type { SendResult, Settings, UiLanguage } from '@shared/types'
 import { UI_LANGUAGES } from '@shared/types'
 import { languageName } from '@shared/products'
 import { useStore } from '../store'
@@ -330,7 +330,14 @@ function SharingSection(): ReactNode {
   const { sharing } = state
   const on = state.settings.sharing === 'on'
   const [reset, setReset] = useState(false)
+  const [result, setResult] = useState<SendResult | null>(null)
   const last = sharing.lastSent
+  const sendNow = async (): Promise<void> => {
+    setResult(null)
+    setResult(await actions.shareNow())
+  }
+  // Failures speak through sharing.error; a later one hides this click's line.
+  const resultText = sharing.sending || sharing.error || !result ? null : result.outcome === 'sent' ? S.settings.sendDone(result.count) : result.outcome === 'nothing' ? S.settings.sendNothing : null
   const resetId = async (): Promise<void> => {
     await api().resetShareId()
     setReset(true)
@@ -357,13 +364,18 @@ function SharingSection(): ReactNode {
         </p>
       )}
       <div className="setting-actions">
-        <button type="button" className="btn" onClick={() => void actions.shareNow()} disabled={!on || sharing.sending} aria-busy={sharing.sending}>
+        <button type="button" className="btn" onClick={() => void sendNow()} disabled={!on || sharing.sending} aria-busy={sharing.sending}>
           {S.settings.sendNow}
         </button>
         <button type="button" className="btn" onClick={() => void resetId()}>
           {S.settings.resetId}
         </button>
       </div>
+      {resultText && (
+        <p className="status status-ok-text setting-result" role="status">
+          {resultText}
+        </p>
+      )}
       {reset && (
         <p className="status status-ok-text setting-result" role="status">
           {S.settings.resetDone}

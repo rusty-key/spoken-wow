@@ -1,6 +1,6 @@
 // The contract between the window and the main process. The preload exposes `ManagerApi` as
 // `window.manager`; the main process answers each channel.
-import type { Catalog, CatalogUpdate, CommunityCatalog, ContributorView, GameInstall, JobProgress, ManualZip, ProductStatus, ReleaseRow, Settings, SharingStatus, Snapshot, StoreId } from './types'
+import type { Catalog, CatalogUpdate, CommunityCatalog, ContributorView, GameInstall, JobProgress, ManualZip, ProductStatus, ReleaseRow, SendResult, Settings, SharingStatus, Snapshot, StoreId } from './types'
 
 export const CHANNELS = {
   snapshot: 'manager:snapshot',
@@ -120,9 +120,11 @@ export interface ManagerApi {
   restartManager(): Promise<void>
   /** Deletes the downloaded zips (and half-finished ones) kept in the downloads folder. Refused while a job runs. */
   clearDownloads(): Promise<ClearDownloadsResult>
-  /** Sends the collected lines now. Refused while Sharing is off. */
-  /** The status comes through onSharing. */
-  shareNow(): Promise<void>
+  /**
+   * Sends the collected lines now and resolves with how it ended; null when Sharing went off
+   * meanwhile. Refused while Sharing is off. The status also comes through onSharing.
+   */
+  shareNow(): Promise<SendResult | null>
   /** Gives this manager a new random id. */
   resetShareId(): Promise<void>
   /** The signed-in account and the stores' settings, with no secret in it. */

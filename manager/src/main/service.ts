@@ -646,11 +646,15 @@ export class ManagerService {
     void this.ready.then(() => this.shareTick(false))
   }
 
-  /** "Send now": reads every file, whatever the backoff says. The status arrives on sharingChanged. */
-  async sendNow(): Promise<void> {
+  /**
+   * "Send now": reads every file, whatever the backoff says, after any send already running.
+   * Resolves with how this send ended, null when Sharing went off meanwhile. The status also
+   * arrives on sharingChanged.
+   */
+  async sendNow(): Promise<SendResult | null> {
     if (this.settings.sharing !== 'on') throw new PlainError(t('service.turnOnSharing'))
-    await this.sharing?.done
-    await this.shareTick(true)
+    while (this.sharing) await this.sharing.done
+    return this.shareTick(true)
   }
 
   /** A new random id for this manager; the lines already sent are not sent again. */

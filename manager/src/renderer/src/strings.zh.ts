@@ -255,6 +255,8 @@ export const S_ZH: Dict = {
     neverSent: '尚未发送过。',
     sending: '发送中',
     sendNow: '立即发送',
+    sendDone: (count: number) => `已发送 ${count} 条台词。`,
+    sendNothing: '没有新的台词可发送。Spoken 会在你登出或输入 /reload 时保存新台词。',
     resetId: '重置 id',
     resetDone: '此管理器已换用新的 id。已发送的台词不会重复发送。',
     contributor: '贡献者',
