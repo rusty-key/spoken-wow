@@ -992,26 +992,21 @@ local EVENTS = { accept = VO.Enums.SoundEvent.QuestAccept, progress = VO.Enums.S
 -- first, so the page reads what Play says.
 -- The words matching reads: a moment with several wordings resolves by them, never by a pack's.
 local function SeenText(id, moment)
-    local stored = Stored(id, moment)
-    return stored and QuestsTab:Fill(stored)
+    local stored, seen = Stored(id, moment)
+    return stored and QuestsTab:Fill(stored), seen
 end
 
 -- A text pack's words in the Text Language come after a pack's own, as on the captions.
 local function PartText(id, moment)
-    local stored, seen = Stored(id, moment)
-    local soundData = { event = EVENTS[moment], questID = id, text = stored and QuestsTab:Fill(stored) }
+    local text, seen = SeenText(id, moment)
+    local soundData = { event = EVENTS[moment], questID = id, text = text }
     VO.DataModules:PrepareSound(soundData)
     if soundData.packText then return QuestsTab:Fill(soundData.packText) end
-    local text = VO.DataModules:TextPackText(soundData)
-    if text then return text end
-    -- A window this client never showed leaves only the English. The packs in the Text Language
-    -- carry the words of lines they have no recording of, so the page need not fall back to it.
-    local language = VO.Language:GetTextLanguage()
-    if not seen and language ~= VO.Language.BASE then
-        local words = VO.DataModules:WordsIn(soundData, language)
-        if words then return QuestsTab:Fill(words) end
-    end
-    return soundData.text
+    -- On Auto too, a window this client never showed leaves only the English, and the packs in its
+    -- language carry the words of lines they have no recording of.
+    local language, chosen = VO.Language:GetTextLanguage()
+    local unseen = not chosen and not seen and language ~= VO.Language.BASE
+    return VO.DataModules:TextPackText(soundData, unseen and language or nil) or soundData.text
 end
 
 --- Keep what the open quest window shows, in this client's language.

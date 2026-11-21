@@ -48,7 +48,7 @@ import { pointerText, writePointers } from "../lib/clip-pointer.mjs";
 import { archiveBase, eachParallel, fetchRetrying } from "../lib/download.mjs";
 import { releaseTeamSql } from "../../pipelines/lib/release-team.mjs";
 import { PLAYER_WORDS_SQL, registerPlayerWordRows } from "../../pipelines/lib/player-words.mjs";
-import { CURRENT_TEXT_SQL, NAMED_QUESTS_SQL, currentTextFor, namedBy } from "./relevant.mjs";
+import { CURRENT_TEXT_SQL, NAMED_QUESTS_SQL, currentLines, currentTextFor, namedBy } from "./relevant.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -219,10 +219,9 @@ async function writeTakeText() {
 // language before anyone voiced it (UI/QuestsTab.lua). Kept as written, tokens and all: the addon
 // fills them for the player. English has none: its words ship with the addon (Data/QuestText.lua).
 async function writeLineText(rows) {
+  if (lang === BASE_LANG) return;
   const texts = {};
-  if (lang !== BASE_LANG) {
-    for (const { stem, text } of rows) if (text && !(stem in texts)) texts[stem] = text;
-  }
+  for (const [stem, { text }] of currentLines(rows)) if (text) texts[stem] = text;
   await writeFile(join(paths.out, "line-text.json"), `${JSON.stringify(texts)}\n`);
 }
 

@@ -1235,25 +1235,23 @@ local function VoicedWords(self, soundData, language)
     return nil
 end
 
---- A line's words in `language` from its voice packs, whether or not one has the line's recording.
----@param soundData SoundData
----@param language string
----@return string|nil text
-function DataModules:WordsIn(soundData, language)
-    return VoicedWords(self, soundData, language)
-end
-
 --- A line's words in the Text Language the player chose where the recording playing is in another:
 --- a voice pack's in it, which are what its voice says, else a text pack's (Spoken's Texts.lua). Its
 --- tokens filled in for the player, and the language. Nil on Auto, and where neither has the line.
+--- Given a `language`, its words whether the player chose it or not.
 ---@param soundData SoundData
+---@param language string|nil
 ---@return string|nil text
 ---@return string|nil language
-function DataModules:TextPackText(soundData)
-    local language, chosen = Language:GetTextLanguage()
-    if not (chosen and Spoken and Spoken.TextIn) then return nil end
+function DataModules:TextPackText(soundData, language)
+    if not language then
+        local chosen
+        language, chosen = Language:GetTextLanguage()
+        if not chosen then return nil end
+    end
     local voiced = VoicedWords(self, soundData, language)
     if voiced then return Utils:FillPlayerTokens(voiced), language end
+    if not (Spoken and Spoken.TextIn) then return nil end
     for _, id in ipairs(self:LineIds(soundData.lineFile or soundData.fileName)) do
         local text = Spoken:TextIn(language, "quests", "lines", id)
         if text then return Utils:FillPlayerTokens(text), language end

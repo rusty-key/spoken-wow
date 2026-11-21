@@ -530,9 +530,10 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     silent = set(wordless(corpus)) | set(ignored)
     skip = {os.path.splitext(rel)[0] for rel in ignored_files(corpus, silent)} \
         if silent else set()
-    audio = [rel for rel in stored_files(store_dir)
-             if os.path.splitext(rel)[0] not in skip
-             and (include is None or os.path.splitext(rel)[0] in include)]
+    def carried(stem):
+        return stem not in skip and (include is None or stem in include)
+
+    audio = [rel for rel in stored_files(store_dir) if carried(os.path.splitext(rel)[0])]
     iterator = tqdm(audio, unit="file", desc="Copying audio") if progress else audio
     for rel in iterator:
         shutil.copy2(os.path.join(store_dir, rel), os.path.join(sounds_dir, rel))
@@ -579,7 +580,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     # And the words of this pack's lines that have no take yet, so a quest page reads them in the
     # pack's language rather than in English.
     for stem, text in line_text(store_dir).items():
-        if stem not in skip and (include is None or stem in include):
+        if carried(stem):
             texts.setdefault(os.path.basename(stem), text)
     write_lua_table(os.path.join(generated_dir, "text_table.lua"),
                     module_name, "TextByFileName", texts, only_on=language or "enUS")
