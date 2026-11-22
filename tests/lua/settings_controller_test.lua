@@ -1,6 +1,4 @@
--- Entering Spoken's settings pages with the controller. The game's settings window moves a
--- canvas page in with SetParent, which the cursor does not notice, so each page asks the cursor
--- to look for its buttons again as it shows. Run with `make test-player`.
+-- Entering Spoken's settings pages with the controller's cursor. Run with `make test-player`.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")
@@ -12,6 +10,8 @@ local QUESTS = here .. "/../../addons/Spoken_Quests/"
 local refreshed = {}
 -- The cursor as FocusContainer leaves it: inside the page's group, on a button not on screen.
 local cursor = { inGroup = false, topLeft = 0 }
+_G.SmartNavigation_CanFocusFrame = function() return true end
+_G.SmartNavigation_IsFrameIgnored = function() return false end
 _G.SmartNavigation = {
     UpdateParent = function(_, frame) table.insert(refreshed, frame) end,
     IsInFocusGroup = function() return cursor.inGroup end,
@@ -19,8 +19,7 @@ _G.SmartNavigation = {
     SelectTopLeftButton = function() cursor.topLeft = cursor.topLeft + 1 end,
     SetTargetButtonForFrame = function(_, frame, button) cursor.targetFor, cursor.target = frame, button end,
 }
--- The game's FocusContainer enters the page, then selects a row of its own settings list or the
--- button the cursor last left: on a canvas page, both are off screen.
+-- FocusContainer as the game's ends: on a stale button off screen.
 local categoryButton = CreateFrame("Button")
 _G.SettingsPanel = {
     FocusContainer = function()
@@ -79,7 +78,8 @@ local function Enter(stale)
 end
 Enter(hidden)
 Expect("entering a Spoken page off a button not on screen puts the cursor on the page's first row",
-    tostring(cursor.targetFor == _G.SettingsPanel) .. " " .. tostring(cursor.target == first), "true true")
+    cursor.target == first, true)
+Expect("...through the settings window's target", cursor.targetFor == _G.SettingsPanel, true)
 Expect("...which is the Quests card, not a button over the rows", page.layout.entries[2].label, "Quests")
 -- The stub's Hide fires no OnHide; the client's does.
 page:Hide()
@@ -99,4 +99,5 @@ Expect("...and does nothing in combat", cursor.target, nil)
 inCombat = false
 
 _G.SmartNavigation, _G.InCombatLockdown, _G.SettingsPanel = nil, nil, nil
+_G.SmartNavigation_CanFocusFrame, _G.SmartNavigation_IsFrameIgnored = nil, nil
 os.exit(Failures() == 0 and 0 or 1)

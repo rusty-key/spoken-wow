@@ -254,9 +254,8 @@ end
 function Layout:FirstRow()
     for _, entry in ipairs(self.entries) do
         local frame = entry.frame
-        if frame.layoutY and frame:IsVisible()
-            and (not SmartNavigation_CanFocusFrame or SmartNavigation_CanFocusFrame(frame))
-            and (not SmartNavigation_IsFrameIgnored or not SmartNavigation_IsFrameIgnored(frame)) then
+        if frame.layoutY and frame:IsVisible() and SmartNavigation_CanFocusFrame(frame)
+            and not SmartNavigation_IsFrameIgnored(frame) then
             return frame
         end
     end
