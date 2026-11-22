@@ -4,7 +4,7 @@
 //
 //   node check.mjs --lang <xxXX> [--json]
 //
-// Settings come from ~/.claude/spoken/<lang>/config.json (see config.mjs), the packs and their
+// Settings come from config.json in the language's state folder (see config.mjs), the packs and their
 // CurseForge projects from publishers/ in this repository. Writes a changelog per pack whose
 // content differs, for spoken-release.sh --changelog. Uploads nothing.
 import { readdirSync, readFileSync, statSync, existsSync, mkdirSync, writeFileSync, openSync, readSync, closeSync } from "node:fs";

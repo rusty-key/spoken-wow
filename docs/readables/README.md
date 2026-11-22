@@ -445,7 +445,7 @@ fails before anything is sent. `make readables-package` builds `Spoken_Readables
 `readables/v<version>` tag, which `.github/workflows/release-addons.yaml` still builds.
 `scripts/readables/release.sh` carries the two ids in
 `target_curseforge()`, and an unknown target fails on the empty id rather than defaulting, for
-the reason `docs/quests/CLAUDE.md` gives: an id left in that function is an id something
+the reason `docs/quests/AGENTS.md` gives: an id left in that function is an id something
 eventually uploads to, and uploading a readables pack over another project is not recoverable
 from this side.
 

@@ -1,7 +1,10 @@
 # AGENTS.md
 
-Repo-wide rules. Each section also has its own file, which applies on top of this one:
-`docs/quests/CLAUDE.md`, `docs/gossip/AGENTS.md`, `docs/places/AGENTS.md` (Spoken Places), `docs/readables/AGENTS.md` (Spoken Readables).
+Repo-wide rules for every agent (each `CLAUDE.md` only imports the `AGENTS.md` beside it). Each
+section also has its own file, which applies on top of this one; read it before touching that section:
+`docs/quests/AGENTS.md`, `docs/gossip/AGENTS.md`, `docs/places/AGENTS.md` (Spoken Places), `docs/readables/AGENTS.md` (Spoken Readables).
+Each section's `README.md` beside its guide is the detailed prose reference. Check it before
+inferring behaviour from code.
 Gossip, in `Spoken_Quests`, reads the `g:` lines the quests pipeline builds, so the quests guide
 covers how they are made. Spoken has no guide; `docs/spoken/` holds its changelog and reference pages.
 
@@ -216,5 +219,14 @@ that restate the line. Keep identifiers, flags and issue numbers exact.
 
 Comment the *why*, never the *what*: name the failure a line prevents, not what the line
 does. No commented-out code, no history, no pointers to sibling code.
-`.claude/skills/comment-cleanup/SKILL.md` has the full rules; run `/comment-cleanup` in Claude
-Code before asking for review.
+`.agents/skills/comment-cleanup/SKILL.md` has the full rules; run the `comment-cleanup` skill
+before asking for review.
+
+## Agent skills
+
+The repo's skills live in `.agents/skills/<name>/SKILL.md`, where Codex and other agents
+following the Agent Skills standard find them. `.claude/skills` is a symlink to that folder for
+Claude Code, so edit only `.agents/skills`, and keep skill text free of one agent's tool names. On
+Windows, git checks the symlink out as a plain file unless symlinks are on (Developer Mode and
+`git config core.symlinks true`). Skills keep per-maintainer settings and logs in
+`~/.config/spoken/<lang>/` (`.agents/skills/spoken-lang-daily/state.mjs`).

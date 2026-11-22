@@ -18,15 +18,16 @@ Never read `spoken-release.env`: it holds the CurseForge token.
 
 The argument is the language (`deDE`, `frFR`, `esMX`, ...). Without one, ask which.
 
-Settings live in `~/.claude/spoken/<lang>/config.json`, shared with `/spoken-lang-daily`. If it is
-missing, `check.mjs` says so: copy `.claude/skills/spoken-lang-daily/config.example.json` there and
+Settings live in `~/.config/spoken/<lang>/config.json`, shared with `/spoken-lang-daily` (an old
+`~/.claude/spoken/<lang>` moves there on the first run). If it is missing, `check.mjs` says so:
+copy `.agents/skills/spoken-lang-daily/config.example.json` there and
 let the maintainer fill in the `release` part:
 
 | Key | Meaning |
 | --- | --- |
 | `addonsDir` | The `Interface/AddOns` folder the Spoken Manager installs into |
 | `releaseEnv` | Their `spoken-release.env` (default: beside `scripts/maintainers/spoken-release.sh`). It needs `CF_TOKEN` and one `CF_<folder>` per pack, see `spoken-release.env.example` |
-| `workDir` | Where changelogs and manual zips go (default `~/.claude/spoken/<lang>/release`) |
+| `workDir` | Where changelogs and manual zips go (default `~/.config/spoken/<lang>/release`) |
 | `webUpload` | Pack folders too big for the upload API, released through the website (see below) |
 | `minClips`, `minShare` | Threshold for a release, default 50 clips or 2 % of the pack |
 
@@ -39,7 +40,7 @@ The local state is what the Spoken Manager installed. If the Manager is not up t
 compares an old state. Mention that in the report, do not ask first.
 
 ```bash
-node .claude/skills/spoken-lang-release/check.mjs --lang <lang> --json
+node .agents/skills/spoken-lang-release/check.mjs --lang <lang> --json
 ```
 
 Takes about 10 seconds. The script:

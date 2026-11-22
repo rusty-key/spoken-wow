@@ -1,9 +1,10 @@
-// Reads a maintainer's settings for one language from ~/.claude/spoken/<lang>/config.json and
+// Reads a maintainer's settings for one language from config.json in its state folder and
 // the language's packs from publishers/ in this repository. Shared by check.mjs and zip.mjs.
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { stateDir } from "../spoken-lang-daily/state.mjs";
 
 export const SKILL = dirname(fileURLToPath(import.meta.url)).replace(/\\/g, "/");
 export const REPO = resolve(SKILL, "../../..").replace(/\\/g, "/");
@@ -15,10 +16,10 @@ const home = (p, base = homedir()) => (p.startsWith("~") ? join(homedir(), p.sli
 export function loadConfig(lang) {
   const langs = [...new Set(publisherFiles().map((f) => frontmatter(f).lang).filter((l) => l && l !== "enUS"))].sort();
   if (!langs.includes(lang)) throw new Error(`--lang wants one of ${langs.join(", ")} (from publishers/), not ${lang}`);
-  const dir = home(`~/.claude/spoken/${lang}`);
+  const dir = stateDir(lang);
   const file = `${dir}/config.json`;
   if (!existsSync(file)) {
-    throw new Error(`no ${file}: copy ${REPO}/.claude/skills/spoken-lang-daily/config.example.json there and fill in the release part`);
+    throw new Error(`no ${file}: copy ${REPO}/.agents/skills/spoken-lang-daily/config.example.json there and fill in the release part`);
   }
   const c = JSON.parse(readFileSync(file, "utf8"));
   const r = c.release ?? {};

@@ -15,9 +15,12 @@ Same report at the end, with "would" instead of "did".
 
 ## Before the round
 
-1. **Settings:** `~/.claude/spoken/<lang>/config.json`. If missing, copy `config.example.json` from
-   this folder there and ask the maintainer for the values. Everything this skill writes (batch log,
-   Discord files) also goes into `~/.claude/spoken/<lang>/`.
+1. **Settings:** `config.json` in the language's state folder. Run
+   `node .agents/skills/spoken-lang-daily/state.mjs <lang>`: it prints that folder
+   (`~/.config/spoken/<lang>`), first moving an old `~/.claude/spoken/<lang>` there if one exists.
+   If `config.json` is missing, copy `config.example.json` from this folder there and ask the
+   maintainer for the values. Everything this skill writes (batch log, Discord files) also goes
+   into that folder.
 
    | Key | Meaning |
    | --- | --- |
@@ -62,12 +65,12 @@ Not cleared: reject or ignore already accepted rows, rewrite text by PUT on the 
 this round did not accept, pause, resume, stop or discard queue jobs, create or delete voices or
 clones at the voice provider, set NPC speakers, trigger a release.
 
-Ask with `AskUserQuestion` only if voicing would exceed `voicingCap` lines at once.
+Ask the maintainer only if voicing would exceed `voicingCap` lines at once.
 
 ## 0. Prepare the browser
 
-Everything runs in a browser tab logged in to spoken.quest as the maintainer (the built-in
-browser pane of the Claude desktop app, or Claude in Chrome). The site authenticates by session
+Everything runs in a browser tab logged in to spoken.quest as the maintainer (a browser the agent
+drives, with a tool that runs JavaScript in the page). The site authenticates by session
 cookie. Never ask for a password or token, never read cookies.
 
 1. Open `https://spoken.quest/<lang>/contributions/quests` (or use the open tab). If it
@@ -75,10 +78,10 @@ cookie. Never ask for a password or token, never read cookies.
    in means the account has no maintainer rights for this language: stop and say so.
 2. Read `TBC_QUEST_CEILING` from `apps/web/src/lib/quests/line-client.ts` in this repository. Run
    `window.__spokenCfg = { lang: "<lang>", doneModels: <from config>, tbcQuestCeiling: <that value> }`
-   with `javascript_tool`, then read `spoken.js` from this folder and run its **whole content**. Answer:
+   with that tool, then read `spoken.js` from this folder and run its **whole content**. Answer:
    `"__spoken loaded for <lang>"`. Any navigation of the tab drops `window.__spoken`; then load both
    again. The helpers only use `fetch`, so the tab never has to navigate.
-3. Each `javascript_tool` call has 45 s. Split big steps into several calls, e.g. one section per
+3. Keep each call under the tool's timeout (45 s in Claude's browser tools). Split big steps into several calls, e.g. one section per
    call.
 
 If the browser tool refuses a writing `fetch` (classifier), do not work around it and do not
@@ -264,7 +267,7 @@ For the rows step 4 accepted under "accept + fix". The Text API runs with the ma
    text with `$g…;` splits a quest line into `:m`/`:f`, which `restore` cannot undo
    (`gender_split`). So only when the enUS line really addresses the player.
 4. Append each `batchId` with date, section, count and purpose to
-   `~/.claude/spoken/<lang>/batches.log`. Each item succeeds or fails on its own: read every
+   `batches.log` in the state folder. Each item succeeds or fails on its own: read every
    item's result. Retry `internal` items once (the API marks them retryable). Every item that still
    failed (`conflict`, `invalid`, `unknown_id`, `internal`, …) goes into the report with its id
    and result.
@@ -329,7 +332,7 @@ finished, not when queueing. If the job fails, they stay open and the error goes
 "Everything" is the `plan()` totals plus the lines step 5c collected for re-voicing, which
 `plan()` does not count when their audio is current:
 - If the 5c lines and every filter but progress already add up to more than the cap, ask **once**
-  with `AskUserQuestion` before queueing anything, with the combined numbers.
+  before queueing anything, with the combined numbers.
 - Otherwise queue those filters without asking. If progress then breaks the cap, ask **once** about
   the backlog, with its count and characters from `plan()`: all, one level band
   (`&minLevel=<a>&maxLevel=<b>`, both inclusive, low quests first) or nothing today. If progress
@@ -392,7 +395,7 @@ the run: name them in the report with id and reason.
 
 ## 8. Discord: update and dev log
 
-Two files under `~/.claude/spoken/<lang>/`, both Discord messages the maintainer copies and posts.
+Two files in the state folder, both Discord messages the maintainer copies and posts.
 Name both paths in the chat and print both texts. Skipped in `plan` mode.
 
 Format rules for **every** file of this step, because Discord renders only part of Markdown:
