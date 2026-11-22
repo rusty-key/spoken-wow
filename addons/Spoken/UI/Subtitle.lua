@@ -41,7 +41,7 @@ local UTF8_CHAR = "[%z\1-\127\194-\244][\128-\191]*"
 local function Config()
     return Addon:Profile("Transcript")
 end
--- A hosted subtitle follows its host's position and size.
+-- A host owns the subtitle's position; its grabber must not move it.
 local function Locked()
     return Addon:IsFrameLocked() or Addon.playerHost ~= nil
 end
@@ -255,6 +255,7 @@ function Subtitle:Build()
     -- The strata Addon:ApplyHost restores when the host lets go.
     frame.spokenBaseStrata = "LOW"
     frame:SetClampedToScreen(true)
+    -- The captions never take gameplay input; only the hover controls do.
     frame:EnableMouse(false)
     frame:EnableMouseWheel(false)
     frame:SetScript("OnUpdate", function(_, elapsed) self:Tick(elapsed) end)
@@ -931,6 +932,7 @@ function Subtitle:BuildControls()
         Snap.Start(frame, { locked = Locked, place = function(left, top, width) self:Drop(left, top, width) end })
     end)
     mover:SetScript("OnDragStop", function() self:StopMoving() end)
+    -- Quick clicks can release without starting a full drag.
     mover:HookScript("OnMouseUp", function(_, button)
         if button == "LeftButton" then self:StopMoving() end
     end)
@@ -1023,8 +1025,8 @@ function Subtitle:TakeWheel()
     Actions.TakeWheel(self.controls, Locked() or not self.frame:IsShown())
 end
 
--- The controls toward shown while the pointer is over the subtitle or them, and toward
--- hidden otherwise; hidden outright once faded, so they cannot be clicked unseen.
+-- Keep the controls visible during a drag, even if the cursor leaves the subtitles.
+-- Once faded out, hide them so invisible buttons cannot intercept clicks.
 function Subtitle:FadeControls(elapsed)
     local controls = self.controls
     local over = Snap.Active() == self.frame or Actions.PointerOver(self.frame) or Actions.PointerOver(controls)

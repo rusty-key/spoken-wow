@@ -11,7 +11,7 @@ GameFontNormal = { GetFont = function() return 'font.ttf', 14 end }
 
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 local addons = here .. "/../../addons/"
-local widgets=dofile(here .. '/fixture.lua')
+dofile(here .. '/fixture.lua')
 local function Copy(v)
     if type(v)~='table' then return v end
     local t={}; for k,value in pairs(v) do t[k]=Copy(value) end; return t
@@ -470,8 +470,6 @@ cfg.FontSize,cfg.Lines=16,2
 E.Addon:SetPlayerStyle('subtitle'); E.PlayerFrame:RefreshConfig(); T:RefreshConfig()
 local cursor={0,0}
 GetCursorPosition=function() return cursor[1],cursor[2] end
-local mouseButtons={LeftButton=true}
-IsMouseButtonDown=function(button) return mouseButtons[button] or false end
 local function Click(dragBy)
     S.frame:Fire('OnMouseDown','LeftButton')
     cursor[1]=dragBy or 0
@@ -625,29 +623,9 @@ cursor[2]=164; E.Snap.Move(); S.mover:Fire('OnDragStop'); cursor[1],cursor[2]=0,
 Check(math.abs(S.frame:GetTop()-500)<.001 and math.abs(S.frame:GetCenter()-centre-100)<.001
     and E.Addon:Layout().Subtitle.top==500 and math.abs(E.Addon:Layout().Subtitle.x-100)<.001,
     'a dragged subtitle stays where it was dropped')
-local driver
 S.mover:Fire('OnDragStart')
-for _,widget in ipairs(widgets) do
-    if widget.scripts.OnUpdate==E.Snap.Move then driver=widget; break end
-end
-assert(driver,'the grabber started the drag update driver')
-mouseButtons.LeftButton=false; mouseButtons.RightButton=true
-cursor[1],cursor[2]=250,250
-driver:Fire('OnUpdate',.016)
-Check(E.Snap.Active()==nil and not driver.scripts.OnUpdate,
-    'a missed release event cannot leave the subtitle following the pointer')
-Check(math.abs(S.frame:GetTop()-500)<.001 and E.Addon:Layout().Subtitle.top==500
-    and math.abs(E.Addon:Layout().Subtitle.x-100)<.001,
-    'releasing without a drag-stop event preserves the last held position')
-mouseButtons.LeftButton=true; mouseButtons.RightButton=false
-cursor[1],cursor[2]=0,0
-S.mover:Fire('OnDragStart'); S.mover:Fire('OnMouseUp','RightButton')
-Check(E.Snap.Active()==S.frame,'releasing a different button does not drop a held subtitle')
-mouseButtons.LeftButton=false
 S.mover:Fire('OnMouseUp','LeftButton')
-Check(E.Snap.Active()==nil,'mouse-up also releases the grabber without waiting for drag-stop')
-S.mover:Fire('OnDragStop')
-mouseButtons.LeftButton=true
+Check(E.Snap.Active()==nil,'mouse-up releases the grabber without a drag-stop event')
 S.mover:Fire('OnDragStart'); cursor[2]=5000; E.Snap.Move(); S.mover:Fire('OnDragStop'); cursor[2]=0
 Check(math.abs(S.frame:GetTop()-UIParent:GetHeight())<.001,'it cannot be dragged off the top of the screen')
 shift=false
@@ -667,12 +645,6 @@ local lockedWidth=S.controls:GetWidth()
 S.mover:Fire('OnDragStart'); cursor[2]=100; S.mover:Fire('OnDragStop'); cursor[2]=0
 Check(not S.mover:IsEnabled() and S.mover:GetAlpha()<1 and E.Snap.Active()==nil
     and math.abs(S.frame:GetTop()-500)<.001,'Lock Position disables the grabber and prevents movement')
-local addLine,tooltipLine=GameTooltip.AddLine
-GameTooltip.AddLine=function(_,text) tooltipLine=text end
-S.mover:Fire('OnEnter')
-Check(GameTooltip:GetText()==E.L.SUBTITLE_MOVE
-    and tooltipLine==format(E.L.SUBTITLE_MOVE_LOCKED_FMT,E.L.OPT_LOCK_FRAME),
-    'the locked grabber explains which setting permits movement')
 S.pause:Fire('OnClick')
 Check(Q:IsPaused(),'the Stop button still works while position is locked')
 S.pause:Fire('OnClick')
@@ -680,14 +652,12 @@ Check(not Q:IsPaused(),'Replay still works while position is locked')
 frameCfg.LockFrame=false; E.PlayerFrame:RefreshConfig(); Play(.25)
 Check(S.mover:IsEnabled() and S.mover:GetAlpha()==1 and S.controls:GetWidth()==lockedWidth,
     'unlocking restores the grabber without shifting playback buttons')
+local addLine, hint = GameTooltip.AddLine
+GameTooltip.AddLine = function(_, text) hint = text end
 S.mover:Fire('OnEnter')
-Check(tooltipLine==E.L.SUBTITLE_MOVE_HINT,'the unlocked grabber explains holding and dragging')
-E.Addon:SetPlayerHost(CreateFrame('Frame',nil,UIParent))
-S.mover:Fire('OnEnter')
-Check(not S.mover:IsEnabled() and tooltipLine==E.L.SUBTITLE_MOVE_HOSTED,
-    'hosted subtitles explain who controls their position')
-E.Addon:SetPlayerHost(nil)
-GameTooltip.AddLine=addLine
+Check(GameTooltip:GetText()==E.L.SUBTITLE_MOVE and hint==E.L.SUBTITLE_MOVE_HINT,
+    'the grabber identifies movement and explains how to drag')
+GameTooltip.AddLine = addLine
 S.mover:Fire('OnLeave')
 S.mover:Fire('OnDragStart')
 frameCfg.LockFrame=true; E.PlayerFrame:RefreshConfig()

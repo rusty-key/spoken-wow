@@ -83,7 +83,7 @@ function Snap.Move()
     local drag = state
     local frame = drag.frame
     local options = drag.options
-    -- A release event may not reach the handle that started the drag.
+    -- Releasing off the drag handle may not trigger its OnDragStop.
     if not frame:IsShown() or (options.locked and options.locked())
         or (IsMouseButtonDown and not IsMouseButtonDown(options.button or "LeftButton")) then
         Snap.Stop()
@@ -112,9 +112,8 @@ function Snap.Move()
     ShowGuides(lineX, lineY)
 end
 
---- Start dragging `frame` after the pointer. `options`: home() the place its top left rests at by
---- default (left, top), locked() true to let go, place(left, top, width, height) to put it somewhere
---- other than by its top left, button the initiating mouse button (LeftButton by default).
+--- Start dragging `frame` at the cursor. Options can set a home position, lock check,
+--- placement function, and the button to watch for release (LeftButton by default).
 function Snap.Start(frame, options)
     local left, top = frame:GetLeft(), frame:GetTop()
     if not left or not top then return end

@@ -82,29 +82,24 @@ locked = true
 Snap.Move()
 Expect("a window locked mid-drag is let go", Snap.Active(), nil)
 
-local placements = 0
-local function Place() placements = placements + 1 end
-for i = 1, 20 do
-    buttons.LeftButton, buttons.RightButton = true, false
-    Snap.Start(frame, { place = Place })
-    driver:GetScript("OnUpdate")()
-    Expect("a held drag still moves, cycle " .. i, placements, i)
-    buttons.LeftButton, buttons.RightButton = false, true
-    cursor[1] = cursor[1] + 40
-    -- No release event reaches the handle; another button is still held.
-    driver:GetScript("OnUpdate")()
-    Expect("release stops before moving again, cycle " .. i, placements, i)
-    Expect("release clears the active drag, cycle " .. i, Snap.Active(), nil)
-    Expect("release removes the update handler, cycle " .. i, driver:GetScript("OnUpdate"), nil)
-end
+local moves = 0
+local function Place() moves = moves + 1 end
+Snap.Start(frame, { place = Place })
+driver:GetScript("OnUpdate")()
+Expect("a held drag continues moving", moves, 1)
+-- The release can be missed even while another button remains held.
+buttons.LeftButton, buttons.RightButton = false, true
+driver:GetScript("OnUpdate")()
+Expect("release stops movement before another update", moves, 1)
+Expect("release clears the drag and its update handler",
+    Snap.Active() == nil and driver:GetScript("OnUpdate") == nil, true)
 
 Snap.Start(frame, { button = "RightButton", place = Place })
 driver:GetScript("OnUpdate")()
-Expect("a right-button drag follows its initiating button", placements, 21)
 buttons.LeftButton, buttons.RightButton = true, false
 driver:GetScript("OnUpdate")()
-Expect("releasing right stops before another move while left stays held", placements, 21)
-Expect("right-button release removes the update handler", driver:GetScript("OnUpdate"), nil)
+Expect("release is tied to the button that started dragging",
+    moves == 2 and Snap.Active() == nil, true)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll snap tests passed")

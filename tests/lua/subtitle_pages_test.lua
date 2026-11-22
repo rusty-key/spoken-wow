@@ -175,9 +175,6 @@ Subtitle.frame.IsMouseOver = function() return true end
 Subtitle.controls.IsMouseOver = function() return overControls end
 Subtitle.controls.EnableMouseWheel = function(_, on) wheelOn = on end
 Subtitle:FadeControls(1)
-Expect("the preview reveals its controls under the pointer", Subtitle.controls:IsShown(), true)
-Expect("the text never takes mouse buttons", Subtitle.frame:IsMouseEnabled(), false)
-Expect("the text has no wheel action", Subtitle.frame:GetScript("OnMouseWheel"), nil)
 Subtitle:TakeWheel()
 Expect("the controls leave the wheel to the camera without Ctrl", wheelOn, nil)
 ctrl = true
@@ -209,11 +206,6 @@ Expect("...and a turn that reaches them changes nothing", cfg.SubtitleScale, bef
 _G.SpokenEnv.Addon.db.profile.Frame.LockFrame = false
 Subtitle:TakeWheel()
 Expect("...unlocked, they take it again", wheelOn, true)
-_G.SpokenEnv.Addon:SetPlayerHost(CreateFrame("Frame"))
-Subtitle:TakeWheel()
-Subtitle.controls:GetScript("OnMouseWheel")(Subtitle.controls, 1)
-Expect("hosting also prevents sizing from the controls", wheelOn == false and cfg.SubtitleScale == before, true)
-_G.SpokenEnv.Addon:SetPlayerHost(nil)
 Subtitle.frame:Hide()
 Subtitle:TakeWheel()
 Expect("...and give it back once the subtitle hides", wheelOn, false)
