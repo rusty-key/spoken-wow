@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { BUILTIN, LANG_SHAPE } from "@/lib/lang";
 
 import { EN } from "./en";
-import { merge } from "./index";
+import { merge } from "@/lib/site-text/merge";
 
 /** Every string with the path reaching it. */
 function leaves(value: unknown, path = ""): [string, string][] {

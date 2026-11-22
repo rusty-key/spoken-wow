@@ -19,71 +19,25 @@ import {
 } from "@/lib/contributions/contributions";
 import {
   decodeFragment,
-  type DecodeError,
   parseEnvelope,
-  type ParseError,
   takeFragment,
 } from "@/lib/contributions/envelope";
 import { browserInstallId } from "@/lib/contributions/browser-install";
 import { fill } from "@/lib/site-text/format";
 import { useUiText } from "@/components/UiTextProvider";
-import type { UiText } from "@/lib/ui-text/en";
+import { EN, type UiText } from "@/lib/ui-text/en";
 import { sendFailureMessage } from "@/lib/contributions/send-failure";
-
-const FIELD_LABELS: Record<string, string> = {
-  quest: "Quest",
-  event: "Moment",
-  npc: "Character",
-  title: "Title",
-  book: "Book",
-  number: "Page",
-  page: "Page id",
-  map: "Map",
-  zone: "Zone",
-  subzone: "Place",
-  locale: "Language",
-  build: "Client",
-  addon: "Addon",
-  x: "x",
-  y: "y",
-  // The site takes the name back out of the text and does not keep it (lib/contributions/reader.ts).
-  reader: "Your character (not kept)",
-  readerClass: "Your class",
-  readerRace: "Your race",
-};
-
-const MESSAGES: Record<ParseError, string> = {
-  truncated: "That link was cut short. Copy the whole link from the game again.",
-  checksum: "That link was changed after it was copied. Copy it again without editing it.",
-  version: "That came from a newer addon than this page knows. Update the site's addons, or tell me.",
-  source: "That is not something this page can take.",
-  oversize: "That is far larger than anything the addon produces.",
-  malformed: "That link does not carry an addon's contribution. Copy it from the game again.",
-};
-
-const LINK_MESSAGES: Record<DecodeError, string> = {
-  malformed: "That link is missing its payload. Copy the whole link from the game again.",
-  corrupt: "That link looks broken -- copy it from the game again.",
-  // DecompressionStream is missing on pre-16.4 Safari: said plainly, rather than leaving the
-  // player looking at a form that silently never fills in.
-  unsupported: "This browser can't open this kind of link. Try it in a current browser.",
-};
 
 export type Preview =
   | { ok: true; source: string; rows: { key: string; label: string; value: string }[]; text: string | null }
   | { ok: false; message: string };
 
-/**
- * Exported for its test: what the page will show for a given paste.
- *
- * `text` is optional so the test and any caller with no reader in front of it keeps English;
- * the page passes its own so the preview is in the language the page is being read in.
- */
-export function previewOf(raw: string, text?: UiText["contribute"]): Preview {
+/** Exported for its test: what the page will show for a given paste. */
+export function previewOf(raw: string, text: UiText["contribute"] = EN.contribute): Preview {
   if (!raw.trim()) return { ok: false, message: "" };
 
   const parsed = parseEnvelope(raw);
-  if (!parsed.ok) return { ok: false, message: text?.linkProblems[parsed.error] ?? MESSAGES[parsed.error] };
+  if (!parsed.ok) return { ok: false, message: text.linkProblems[parsed.error] };
 
   // A clean parse is not a sendable envelope: submissionFrom (via checkEnvelope) still applies
   // the key/text rules, and previously nothing here did -- a parse-only preview approved
@@ -95,7 +49,7 @@ export function previewOf(raw: string, text?: UiText["contribute"]): Preview {
   // the label is called in the reader's language.
   const rows = Object.entries(parsed.value.fields).map(([key, value]) => ({
     key,
-    label: text?.fieldLabels[key] ?? FIELD_LABELS[key] ?? key,
+    label: text.fieldLabels[key] ?? key,
     value,
   }));
   return { ok: true, source: parsed.value.source, rows, text: parsed.value.text };
@@ -131,7 +85,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
       if (result.ok) {
         setRaw(result.text);
       } else {
-        setLinkError(t.linkProblems[result.error] ?? LINK_MESSAGES[result.error]);
+        setLinkError(t.decodeProblems[result.error]);
       }
       setRead(true);
     });
@@ -219,7 +173,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
         <section aria-label={t.previewLabel} className="bg-muted rounded border p-3 text-sm">
           <ul className="flex flex-col gap-0.5">
             {preview.rows.map((row) => (
-              <li key={row.label}>
+              <li key={row.key}>
                 <strong>{row.label}:</strong> {row.value}
               </li>
             ))}

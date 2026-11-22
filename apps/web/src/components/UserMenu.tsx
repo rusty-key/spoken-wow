@@ -113,6 +113,7 @@ export default function UserMenu() {
   const [pendingPacks] = usePendingPacks();
   const lang = useLang();
   const t = useUiText().menu;
+  const sections = SECTIONS.map((each) => ({ href: each.href, label: t.sectionsNav[each.key] }));
   const { offered, retry: retryLanguages } = useOfferedLanguages(
     !isPending,
     `${session?.user.id ?? ""}:${session?.user.role ?? ""}`,
@@ -226,7 +227,7 @@ export default function UserMenu() {
   return (
     <>
       <nav className="bn-links" aria-label={t.sections}>
-        <Links links={SECTIONS.map((each) => ({ href: each.href, label: t.sectionsNav[each.key] }))} path={path} />
+        <Links links={sections} path={path} />
         <Links links={admin} path={path} />
       </nav>
       <div className="bn-nav-end">
@@ -274,7 +275,7 @@ export default function UserMenu() {
               <LanguageSwitcher offered={offered} />
             </div>
             <Links
-              links={SECTIONS.map((each) => ({ href: each.href, label: t.sectionsNav[each.key] }))}
+              links={sections}
               column
               path={path}
               onPick={() => setBurger(false)}

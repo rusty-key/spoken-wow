@@ -198,6 +198,8 @@ const zhCN: Dictionary = {
       source: "本页不能接收这类内容。",
       oversize: "这比插件能产生的任何内容都大得多。",
       malformed: "这个链接不包含插件投稿内容。请从游戏里重新复制。",
+    },
+    decodeProblems: {
       corrupt: "链接看起来已损坏，请从游戏里重新复制。",
       unsupported: "这个浏览器无法打开这种链接。请用较新的浏览器再试。",
     },

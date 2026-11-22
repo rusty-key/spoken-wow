@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 
 import ContributeForm from "@/components/ContributeForm";
 import UploadBroadcastCache from "@/components/UploadBroadcastCache";
 import UploadGathered from "@/components/UploadGathered";
-import { auth } from "@/lib/auth";
+import { currentSession } from "@/lib/session";
 import { pageLang, readingLang } from "@/lib/lang-server";
 import { Contained } from "@/components/Width";
 import { uiText } from "@/lib/ui-text";
@@ -32,7 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);
   const t = (await uiText(await readingLang(lang))).contribute;
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await currentSession();
   // The name if they have one, the email otherwise: better to say "Filed as you@example.com"
   // than "Filed as ." for an account that never set a display name.
   const signedInAs = session ? (session.user.name?.trim() || session.user.email) : null;

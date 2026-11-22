@@ -8,15 +8,9 @@
 import { bad, bodyOf, objectOf } from "@/lib/api-body";
 import { isLang, type Lang } from "@/lib/lang";
 import { currentSession } from "@/lib/session";
-import { setUiLang, uiLangOf } from "@/lib/users/ui-language";
+import { setUiLang } from "@/lib/users/ui-language";
 
 export const dynamic = "force-dynamic";
-
-export async function GET() {
-  const session = await currentSession();
-  if (!session) return Response.json({ error: "not signed in" }, { status: 401 });
-  return Response.json({ lang: await uiLangOf(session.user.id) });
-}
 
 export async function POST(request: Request) {
   const session = await currentSession();

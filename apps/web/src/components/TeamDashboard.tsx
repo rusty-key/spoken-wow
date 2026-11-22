@@ -209,7 +209,7 @@ function summary(run: ActivityRun, t: UiText["dashboard"]): { what: string; quot
   const where = run.row.source ? fill(t.inSection, { section: t.sections[run.row.source] }) : "";
   // Only foldable kinds make runs of more than one, and each of them has its words.
   const folded = (t.folded as Partial<Record<string, string>>)[run.row.kind] ?? FOLDABLE[run.row.kind]!;
-  const words = folded.replace("{n}", n).replace("{status}", String(run.row.detail.status ?? "resolved"));
+  const words = fill(folded, { n, status: String(run.row.detail.status ?? "resolved") });
   return { what: `${words}${where}`, quote: null };
 }
 

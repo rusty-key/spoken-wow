@@ -200,6 +200,8 @@ const deDE: Dictionary = {
       source: "Das kann diese Seite nicht annehmen.",
       oversize: "Das ist viel größer als alles, was das Addon erzeugt.",
       malformed: "Der Link enthält keinen Beitrag eines Addons. Kopier ihn nochmal aus dem Spiel.",
+    },
+    decodeProblems: {
       corrupt: "Der Link sieht kaputt aus, kopier ihn nochmal aus dem Spiel.",
       unsupported: "Dieser Browser kann solche Links nicht öffnen. Probier es in einem aktuellen Browser.",
     },

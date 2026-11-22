@@ -203,6 +203,8 @@ const frFR: Dictionary = {
       source: "Cette page ne peut pas recevoir ceci.",
       oversize: "C'est bien plus gros que tout ce que l'addon produit.",
       malformed: "Ce lien ne contient pas de contribution d'addon. Copiez-le à nouveau depuis le jeu.",
+    },
+    decodeProblems: {
       corrupt: "Ce lien semble cassé -- copiez-le à nouveau depuis le jeu.",
       unsupported: "Ce navigateur ne peut pas ouvrir ce type de lien. Essayez avec un navigateur à jour.",
     },

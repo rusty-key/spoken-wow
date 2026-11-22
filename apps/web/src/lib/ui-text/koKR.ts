@@ -200,6 +200,8 @@ const koKR: Dictionary = {
       source: "이 페이지가 받을 수 없는 내용입니다.",
       oversize: "애드온이 만들 수 있는 어떤 것보다도 훨씬 큽니다.",
       malformed: "애드온 기여가 담기지 않은 링크입니다. 게임에서 다시 복사하세요.",
+    },
+    decodeProblems: {
       corrupt: "링크가 손상된 것 같습니다. 게임에서 다시 복사하세요.",
       unsupported: "이 브라우저에서는 이런 링크를 열 수 없습니다. 최신 브라우저에서 시도하세요.",
     },

@@ -201,6 +201,8 @@ const esES: Dictionary = {
       source: "Esta página no puede aceptar eso.",
       oversize: "Eso es mucho más grande que cualquier cosa que genere el addon.",
       malformed: "Ese enlace no lleva una contribución del addon. Cópialo desde el juego otra vez.",
+    },
+    decodeProblems: {
       corrupt: "Ese enlace parece roto. Cópialo desde el juego otra vez.",
       unsupported: "Este navegador no puede abrir este tipo de enlace. Prueba en un navegador actual.",
     },

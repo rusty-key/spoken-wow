@@ -11,13 +11,9 @@
  * Plain strings only, so a dictionary can cross from a server page to a client component as
  * props, and `{name}` for anything interpolated: a sentence cut into pieces does not translate.
  */
-/**
- * The shape is `string` at every leaf, not the literal each one happens to hold: `as const`
- * would type `hub` as `"Backstage"`, and no translation could ever satisfy it.
- */
-type Widened<T> = T extends string ? string : { [K in keyof T]: Widened<T[K]> };
+import type { DecodeError, ParseError } from "@/lib/contributions/envelope";
 
-const ENGLISH = {
+export const EN = {
   /** The tag beside the logo, on every page past the front page. */
   hub: "Backstage",
   menu: {
@@ -227,6 +223,7 @@ const ENGLISH = {
       addon: "Addon",
       x: "x",
       y: "y",
+      // The site takes the name back out of the text and does not keep it.
       reader: "Your character (not kept)",
       readerClass: "Your class",
       readerRace: "Your race",
@@ -239,12 +236,16 @@ const ENGLISH = {
       source: "That is not something this page can take.",
       oversize: "That is far larger than anything the addon produces.",
       malformed: "That link does not carry an addon's contribution. Copy it from the game again.",
+    } satisfies Record<ParseError, string>,
+    /* What an opened link's trouble is, by the decoder's error name. */
+    decodeProblems: {
+      malformed: "That link is missing its payload. Copy the whole link from the game again.",
       corrupt: "That link looks broken -- copy it from the game again.",
+      // DecompressionStream is missing on pre-16.4 Safari: said plainly, rather than leaving the
+      // player looking at a form that silently never fills in.
       unsupported: "This browser can't open this kind of link. Try it in a current browser.",
-    } as Record<string, string>,
+    } satisfies Record<DecodeError, string>,
   },
-} as const;
+};
 
-/** English written as a `Widened` map, so a dictionary's strings are interchangeable. */
-export const EN: Widened<typeof ENGLISH> = ENGLISH;
 export type UiText = typeof EN;

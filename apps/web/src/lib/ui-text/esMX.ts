@@ -201,6 +201,8 @@ const esMX: Dictionary = {
       source: "Eso no es algo que esta página pueda recibir.",
       oversize: "Eso es mucho más grande que cualquier cosa que produzca el addon.",
       malformed: "Ese enlace no lleva una contribución del addon. Cópialo desde el juego otra vez.",
+    },
+    decodeProblems: {
       corrupt: "Ese enlace parece roto: cópialo desde el juego otra vez.",
       unsupported: "Este navegador no puede abrir este tipo de enlace. Prueba en un navegador actual.",
     },

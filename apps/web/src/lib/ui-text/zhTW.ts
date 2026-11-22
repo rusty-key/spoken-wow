@@ -199,6 +199,8 @@ const zhTW: Dictionary = {
       source: "這個頁面不能接收這類內容。",
       oversize: "這比外掛能產生的任何內容都大得多。",
       malformed: "這個連結沒有帶外掛的投稿內容。請從遊戲裡重新複製。",
+    },
+    decodeProblems: {
       corrupt: "這個連結看起來已損毀，請從遊戲裡重新複製。",
       unsupported: "這個瀏覽器無法開啟這種連結。請用較新的瀏覽器再試一次。",
     },

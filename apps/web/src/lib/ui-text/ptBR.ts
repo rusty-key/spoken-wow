@@ -201,6 +201,8 @@ const ptBR: Dictionary = {
       source: "Isso não é algo que esta página possa receber.",
       oversize: "Isso é muito maior do que qualquer coisa que o addon produza.",
       malformed: "Esse link não carrega uma contribuição do addon. Copie de novo do jogo.",
+    },
+    decodeProblems: {
       corrupt: "Esse link parece quebrado -- copie de novo do jogo.",
       unsupported: "Este navegador não consegue abrir esse tipo de link. Tente em um navegador atual.",
     },
