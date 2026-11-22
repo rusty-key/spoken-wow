@@ -527,8 +527,8 @@ local function RegisterSlashCommand()
         local lines = {
             { "/sp replay", L.BIND_PLAYPAUSE },
             { "/sp skip", L.BIND_SKIP },
-            { "/sp previous", L.BIND_PREVIOUS },
-            { "/sp stopall", L.BIND_STOP },
+            { "/sp previous", L.BIND_SKIP_BACKWARD },
+            { "/sp stopall", L.BIND_EJECT },
             { "/sp mute on | off", L.BIND_MUTE },
             { "/sp style subtitles | small | large | dialogueui | voice", L.OPT_PLAYER_STYLE },
             { "/sp narrator on | off", L.OPT_SHOW_NARRATOR },

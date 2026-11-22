@@ -213,9 +213,9 @@ function MinimalPlayer:BuildMenu()
         return button
     end
     self.menuPlay = Item(L.STOP, function() if SoundQueue:CanBePaused() then SoundQueue:TogglePauseQueue() end end)
-    self.menuPrevious = Item(L.BIND_PREVIOUS, function() SoundQueue:Previous() end)
+    self.menuPrevious = Item(L.BIND_SKIP_BACKWARD, function() SoundQueue:Previous() end)
     self.menuSkip = Item(L.MIN_SKIP, function() SoundQueue:Skip() end)
-    self.menuStop = Item(L.MIN_STOP_ALL, function() SoundQueue:RemoveAllSoundsFromQueue() end)
+    self.menuStop = Item(L.MIN_EJECT, function() SoundQueue:RemoveAllSoundsFromQueue() end)
     -- The minimap menu's rows too: the Compendium and the settings.
     Item(L.OPT_COMPENDIUM_OPEN, function() Options:ToggleCompendium() end)
     Item(L.SETTINGS, function() Options:Open() end)

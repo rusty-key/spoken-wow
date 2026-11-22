@@ -16,9 +16,9 @@ local ldbObject, menuFrame, minimapButton
 -- an interface pack's strings arrive after this file loads (Interface.lua).
 local PLAYER_ENTRIES = {
     { id = "PlayPause", words = "STOP_REPLAY",  order = 1, onClick = function() SoundQueue:TogglePauseQueue() end },
-    { id = "Previous",  words = "BIND_PREVIOUS", order = 2, onClick = function() SoundQueue:Previous() end },
+    { id = "Previous",  words = "BIND_SKIP_BACKWARD", order = 2, onClick = function() SoundQueue:Previous() end },
     { id = "Skip",      words = "MIN_SKIP",      order = 3, onClick = function() SoundQueue:Skip() end },
-    { id = "Stop",      words = "MIN_STOP_ALL",  order = 4, onClick = function() SoundQueue:RemoveAllSoundsFromQueue() end },
+    { id = "Stop",      words = "MIN_EJECT",      order = 4, onClick = function() SoundQueue:RemoveAllSoundsFromQueue() end },
     -- Azeroth's Compendium, whichever parts have a tab in it (UI/Compendium.lua in each).
     { id = "Compendium", words = "OPT_COMPENDIUM_OPEN", order = 5,
         visible = function()
