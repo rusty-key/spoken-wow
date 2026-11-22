@@ -4,6 +4,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Completed readable quests restore missing Compendium discoveries.** Direct rewards and known quest source items count without starting narration. *([anon1231823](https://github.com/anon1231823))*
 - **Received readables appear in the Compendium with their item icons,** without opening them or starting narration. *([anon1231823](https://github.com/anon1231823))*
 - **`/sp mute [on | off]` and a Mute Spoken Audio key silence Spoken without disabling its
   features.** Lines still queue and show their subtitles and narrator text, one after another, while
