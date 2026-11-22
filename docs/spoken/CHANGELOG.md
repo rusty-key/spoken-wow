@@ -6,6 +6,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 - **Subtitles always pass mouse input through.** Move them with the grabber in their hover controls;
   Lock Position disables movement. *([Praxeomatic](https://github.com/Praxeomatic))*
+- **Subtitle dragging stops when you release the mouse.** The move button now has four-way arrows
+  and clearer instructions. *([Praxeomatic](https://github.com/Praxeomatic))*
 
 ## 3.12.0 — 2026-11-22
 

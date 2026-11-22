@@ -922,8 +922,8 @@ function Subtitle:BuildControls()
 
     local mover = Actions.RoundButton(controls, 16)
     mover:SetPoint("LEFT", controls, "LEFT", 0, 0)
-    mover.glyph:SetTexture([[Interface\AddOns\Spoken\Textures\PortraitFrameAtlas]])
-    mover.glyph:SetTexCoord(462 / 512, 1, 462 / 512, 1)
+    mover.glyph:SetTexture([[Interface\AddOns\Spoken\Textures\GlyphMove]])
+    mover.glyph:SetTexCoord(0, 93 / 128, 0, 93 / 128)
     mover:RegisterForDrag("LeftButton")
     mover:SetScript("OnDragStart", function()
         if Locked() then return end
@@ -931,11 +931,20 @@ function Subtitle:BuildControls()
         Snap.Start(frame, { locked = Locked, place = function(left, top, width) self:Drop(left, top, width) end })
     end)
     mover:SetScript("OnDragStop", function() self:StopMoving() end)
+    mover:HookScript("OnMouseUp", function(_, button)
+        if button == "LeftButton" then self:StopMoving() end
+    end)
     mover:HookScript("OnEnter", function()
         if not Locked() then SetCursor([[Interface\Cursor\UI-Cursor-Move]]) end
+        local hint = L.SUBTITLE_MOVE_HINT
+        if Addon.playerHost then
+            hint = L.SUBTITLE_MOVE_HOSTED
+        elseif Addon:IsFrameLocked() then
+            hint = format(L.SUBTITLE_MOVE_LOCKED_FMT, L.OPT_LOCK_FRAME)
+        end
         GameTooltip:SetOwner(mover, "ANCHOR_TOP")
-        GameTooltip:SetText(L.OPT_STYLE_SUBTITLE)
-        GameTooltip:AddLine(Locked() and L.OPT_LOCK_FRAME or L.QUEUE_DRAG_HINT, 1, 1, 1, true)
+        GameTooltip:SetText(L.SUBTITLE_MOVE)
+        GameTooltip:AddLine(hint, 1, 1, 1, true)
         GameTooltip:Show()
     end)
     mover:HookScript("OnLeave", function() SetCursor(nil) end)
