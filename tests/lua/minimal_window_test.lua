@@ -91,8 +91,7 @@ burst.SetText = function(self, text)
     assert(self.fontFile, "FontString:SetText(): Font not set")
     return SetText(self, text)
 end
-M:Tick(0.009)
-M:Tick(0.141)
+M:Tick(0.15)
 Expect("...the count swelling, lit, over the count itself", Try(function()
     local pulse = M.tail.pulse
     local size = pulse.burst.fontSize
