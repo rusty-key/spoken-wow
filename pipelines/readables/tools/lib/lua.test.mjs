@@ -106,6 +106,15 @@ test("a minted page is written as a quoted key", () => {
   assert.equal(lines[0], "\textraIndex = {");
 });
 
+test("a minted book and its pages are fully written by the export", () => {
+  const pageId = "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11";
+  const bookId = "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8";
+  const lua = booksLua([{ pageId, bookId, pageNumber: 1, pageCount: 1, title: "X", text: "Y" }]);
+  assert.match(lua, new RegExp(`\\[${pageChecksum("Y")}\\] = "${pageId}"`));
+  assert.match(lua, new RegExp(`\\["${pageId}"\\] = \\{ book = "${bookId}"`));
+  assert.match(lua, new RegExp(`\\["${bookId}"\\] = \\{ title = "X", pages = \\{ "${pageId}" \\} \\}`));
+});
+
 test("an item or object names the book it opens", () => {
   const lua = booksLua([
     { ...entries[0], ownerKind: "item", ownerIds: [2794] },
