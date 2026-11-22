@@ -78,5 +78,13 @@ SpokenReadablesCharacter.found = {}
 SpokenReadablesCharacter.questReadableBackfill = 5
 B:BackfillQuestReadables()
 Expect("completed pack-only quest rewards are backfilled", B:IsBookFound(BOOK), true)
+local getClientLanguage = B.GetClientLanguage
+B.GetClientLanguage = function() return "frFR" end
+Expect("a foreign-only pack does not discover items", B:BookForItem(280430), nil)
+Expect("a foreign-only pack does not supply an item icon", B:ItemForBook(BOOK), nil)
+Expect("a foreign-only pack does not supply discovery text", B:HasBookText(BOOK), false)
+Expect("a foreign-only pack is absent from the Compendium", B:CompendiumHas(BOOK), false)
+B.GetClientLanguage = getClientLanguage
+Expect("returning to the pack language restores item lookup", B:ItemForBook(BOOK), 280430)
 
 assert(Failures() == 0, "readables pack checks failed")

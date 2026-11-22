@@ -82,7 +82,7 @@ local filter = ""
 local booksData, booksPacks, booksView
 local function Books()
 	local data = SpokenReadables:Data()
-	local packs = SpokenReadables.GetAudioPacks and SpokenReadables:GetAudioPacks() or {}
+	local packs = SpokenReadables:GetClientPacks()
 	if booksData == data and booksPacks == packs then return booksView or {} end
 	local books = {}
 	for id, book in pairs(data and data.books or {}) do books[id] = book end
@@ -99,7 +99,7 @@ end
 local placesData, placesPacks, placesView
 local function Places()
 	local data = SpokenReadables:Data()
-	local packs = SpokenReadables.GetAudioPacks and SpokenReadables:GetAudioPacks() or {}
+	local packs = SpokenReadables:GetClientPacks()
 	if placesData == data and placesPacks == packs then return placesView or {} end
 	local places = SpokenReadables:BookPlaces()
 	placesData, placesPacks, placesView = data, packs, places
@@ -132,9 +132,12 @@ local Dungeon, DungeonName = C.Dungeon, C.DungeonName
 -- not carry is left out everywhere: places.mjs drops the Deprecated and TEST items no one can
 -- find, and counting them would keep every total out of reach. Built once: the data is fixed for
 -- the session.
-local index
+local index, indexBooks
 local function Index()
-	if index then return index end
+	local books = Books()
+	if index and indexBooks == books then return index end
+	indexBooks = books
+	titles = {}
 	index = { zones = {}, dungeons = {}, events = {}, wide = {}, unknown = {}, types = {}, all = {}, typeOf = {},
 		at = {}, eventOf = {} }
 	local places = Places()

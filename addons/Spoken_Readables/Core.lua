@@ -182,7 +182,7 @@ function SpokenReadables:HasBookText(bookID)
 			end
 		end
 	end
-	for _, pack in ipairs(self.GetAudioPacks and self:GetAudioPacks() or {}) do
+	for _, pack in ipairs(self:GetClientPacks()) do
 		local packed = pack.books and pack.books[bookID]
 		for _, pageID in ipairs(packed and packed.pages or {}) do
 			local page = pack.pages and pack.pages[pageID]
@@ -317,10 +317,23 @@ function SpokenReadables:Data()
 	return _G.SpokenReadablesData
 end
 
+function SpokenReadables:GetClientPacks()
+	local packs = self.GetAudioPacks and self:GetAudioPacks() or {}
+	local language = self:GetClientLanguage()
+	if self.clientPacksSource ~= packs or self.clientPacksLanguage ~= language then
+		self.clientPacksSource, self.clientPacksLanguage = packs, language
+		self.clientPacks = {}
+		for _, pack in ipairs(packs) do
+			if self:PackLanguage(pack) == language then table.insert(self.clientPacks, pack) end
+		end
+	end
+	return self.clientPacks
+end
+
 function SpokenReadables:BookPlaces()
 	local places = {}
 	for id, place in pairs(_G.SpokenReadablesPlaces and SpokenReadablesPlaces.books or {}) do places[id] = place end
-	for _, pack in ipairs(self:GetAudioPacks()) do
+	for _, pack in ipairs(self:GetClientPacks()) do
 		if self:PackLanguage(pack) == self:GetClientLanguage() then
 			for id, place in pairs(pack.bookPlaces or {}) do
 				if not places[id] then places[id] = place end
@@ -340,7 +353,7 @@ function SpokenReadables:BookForItem(itemID)
 	local owners = data and data.owners and data.owners.item
 	local bookID = owners and owners[itemID]
 	if bookID and self:HasBookText(bookID) then return bookID end
-	for _, pack in ipairs(self.GetAudioPacks and self:GetAudioPacks() or {}) do
+	for _, pack in ipairs(self:GetClientPacks()) do
 		bookID = pack.items and pack.items[itemID]
 		if bookID and self:HasBookText(bookID) then return bookID end
 	end
@@ -350,7 +363,7 @@ end
 --- The item that owns a readable, if it is a carried book, letter or note.
 function SpokenReadables:ItemForBook(bookID)
 	local data = self:Data()
-	local packs = self.GetAudioPacks and self:GetAudioPacks() or {}
+	local packs = self:GetClientPacks()
 	if self.itemForBookData ~= data or self.itemForBookPacks ~= packs then
 		self.itemForBookData = data
 		self.itemForBookPacks = packs
