@@ -27,7 +27,7 @@ SpokenReadables.eventFrame = frame
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-frame:RegisterEvent("BAG_UPDATE")
+frame:RegisterEvent("BAG_UPDATE_DELAYED")
 frame:RegisterEvent("ITEM_TEXT_BEGIN")
 frame:RegisterEvent("ITEM_TEXT_READY")
 frame:RegisterEvent("ITEM_TEXT_CLOSED")
@@ -57,42 +57,15 @@ local function ItemID(bag, slot)
 	end
 end
 
-local function ItemCount(bag, slot)
-	if C_Container and C_Container.GetContainerItemInfo then
-		local info = C_Container.GetContainerItemInfo(bag, slot)
-		return info and info.stackCount or 1
-	end
-	if GetContainerItemInfo then
-		local _, count = GetContainerItemInfo(bag, slot)
-		return count or 1
-	end
-	return 1
-end
-
---- The readable items currently in the player's bags, counted by item ID.
-function SpokenReadables:ReadableItemSnapshot()
-	local current = {}
+--- Mark found every text-bearing readable in the bags. Carrying one is enough: a quest note
+--- handed in unopened would otherwise stay locked in the Compendium for good.
+function SpokenReadables:FindCarriedReadables()
 	for bag = 0, NUM_BAG_SLOTS or 4 do
 		for slot = 1, BagSlots(bag) do
-			local itemID = ItemID(bag, slot)
-			if self:BookForItem(itemID) then
-				current[itemID] = (current[itemID] or 0) + ItemCount(bag, slot)
-			end
+			local book = self:BookForItem(ItemID(bag, slot))
+			if book then self:MarkBookFound(book) end
 		end
 	end
-	return current
-end
-
---- Remember text-bearing notes as soon as they enter the bags, without opening or reading them.
-function SpokenReadables:OnBagUpdate()
-	local current = self:ReadableItemSnapshot()
-	local previous = self.readableItemCounts or {}
-	for itemID, count in pairs(current) do
-		if count > (previous[itemID] or 0) then
-			self:MarkBookFound(self:BookForItem(itemID))
-		end
-	end
-	self.readableItemCounts = current
 end
 
 --- A page became available. The addon's whole in-game entry point.
@@ -223,11 +196,9 @@ frame:SetScript("OnEvent", function(_, name, payload, second)
 		-- and community packs load after it and have declared nothing yet. Every addon has loaded
 		-- by now, and no menu has been built.
 		SpokenReadables:GetAudioPacks()
-		-- Establish the starting inventory so items already owned when the character logs in are
-		-- not treated as newly received. Later BAG_UPDATE events record newly acquired notes.
-		SpokenReadables.readableItemCounts = SpokenReadables:ReadableItemSnapshot()
-	elseif name == "BAG_UPDATE" then
-		SpokenReadables:OnBagUpdate()
+	elseif name == "BAG_UPDATE_DELAYED" then
+		-- Not BAG_UPDATE, which fires once for every bag a change touches and rescans each time.
+		SpokenReadables:FindCarriedReadables()
 	elseif name == "PLAYER_ENTERING_WORLD" then
 		SpokenReadables:SetupSource()
 		if SpokenReadables.SetupOpeners then

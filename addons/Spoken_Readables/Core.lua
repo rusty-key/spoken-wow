@@ -113,7 +113,7 @@ function SpokenReadables:InitDB()
 	-- a particular character did. An alt walking into the same library hears it fresh.
 	SpokenReadablesCharacter = SpokenReadablesCharacter or {}
 	SpokenReadablesCharacter.read = SpokenReadablesCharacter.read or {}
-	-- Opened, heard or not: what Azeroth's Compendium counts as found. Kept apart from `read`,
+	-- Opened or carried, heard or not: what Azeroth's Compendium counts as found. Kept apart from `read`,
 	-- which Read Only Once goes by, so opening a book with autoplay off does not stop it being
 	-- read the next time, and Play in the Compendium does not find one. A character from before
 	-- `found` was kept had only `read` to say what it opened, so that is carried over once.
@@ -156,7 +156,7 @@ function SpokenReadables:MarkBookRead(book)
 	SpokenReadablesCharacter.read[book] = true
 end
 
---- Remember that this character has received or opened `book`, whether or not it was read aloud.
+--- Remember that this character has opened or carried `book`, whether or not it was read aloud.
 function SpokenReadables:MarkBookFound(book)
 	if not book or not SpokenReadablesCharacter then
 		return
@@ -168,8 +168,8 @@ function SpokenReadables:MarkBookFound(book)
 	if self.readables and self.readables:IsVisible() and self.RefreshReadables then self:RefreshReadables() end
 end
 
---- Whether this character has found `book`: received or opened it in the world. Hearing it from the
---- Compendium does not count.
+--- Whether this character has found `book`: opened it in the world or carried its item.
+--- Hearing it from the Compendium does not count.
 function SpokenReadables:IsBookFound(book)
 	if not book or not SpokenReadablesCharacter then
 		return false
@@ -311,7 +311,8 @@ function SpokenReadables:BookForItem(itemID)
 	return nil
 end
 
---- The item that owns a readable, if it is a carried book, letter or note.
+--- The item that owns a readable, if it is a carried book, letter or note. Where two items own
+--- one book the lowest id wins, so its icon does not change with `pairs` order between reloads.
 function SpokenReadables:ItemForBook(bookID)
 	local data = self:Data()
 	if self.itemForBookData ~= data then
@@ -319,23 +320,18 @@ function SpokenReadables:ItemForBook(bookID)
 		self.itemForBook = {}
 		local owners = data and data.owners and data.owners.item or {}
 		for itemID, owner in pairs(owners) do
-			if self.itemForBook[owner] == nil or itemID < self.itemForBook[owner] then self.itemForBook[owner] = itemID end
+			local held = self.itemForBook[owner]
+			if held == nil or itemID < held then self.itemForBook[owner] = itemID end
 		end
 	end
 	return self.itemForBook and self.itemForBook[bookID]
 end
 
---- The client's icon for a carried readable, or nil for a world object.
+--- The icon of a carried readable's item and its crop, or nil for a world object.
 function SpokenReadables:ItemIcon(bookID)
 	local itemID = self:ItemForBook(bookID)
-	if not itemID then return nil end
-	local getInfo = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
-	if getInfo then
-		local _, _, _, _, icon = getInfo(itemID)
-		if icon then return icon end
-	end
-	local getIcon = (C_Item and C_Item.GetItemIconByID) or GetItemIcon
-	return getIcon and getIcon(itemID) or nil
+	if not itemID or not (Spoken and Spoken.ItemIcon) then return nil end
+	return Spoken:ItemIcon(itemID)
 end
 
 --- Spoken's site, or nil when Spoken is not loaded: no page is read aloud without it, so there

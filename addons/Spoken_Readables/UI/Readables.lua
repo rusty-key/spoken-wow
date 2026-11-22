@@ -65,8 +65,10 @@ local TYPE_ICONS = {
 	other = "INV_Misc_QuestionMark",
 }
 local function TypeIcon(type, book)
-	local icon = book and SpokenReadables:ItemIcon(book)
-	return { objectOrItem = true, icon = icon or ([[Interface\Icons\]] .. (TYPE_ICONS[type] or TYPE_ICONS.other)), bullet = "book" }
+	local icon, crop
+	if book then icon, crop = SpokenReadables:ItemIcon(book) end
+	return { objectOrItem = true, icon = icon or ([[Interface\Icons\]] .. (TYPE_ICONS[type] or TYPE_ICONS.other)),
+		iconCrop = icon and crop or nil, bullet = "book" }
 end
 local READABLES_ICON = { objectOrItem = true, icon = C.ICON, bullet = "book" }
 local filter = ""
