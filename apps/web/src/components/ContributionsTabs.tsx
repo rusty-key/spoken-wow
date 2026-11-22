@@ -1,3 +1,5 @@
+"use client";
+
 import { Chips } from "@/components/backstage/Tabs";
 import { useUiText } from "@/components/UiTextProvider";
 import type { PendingCounts } from "@/lib/contributions/pending";

@@ -9,6 +9,7 @@ import { ChevronDownIcon, PlayIcon } from "lucide-react";
 
 import { RowActions, StateWord, type RowAction } from "@/components/catalogue/RowParts";
 import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 import { useState } from "react";
 
 import ReportsBadge from "@/components/ReportsBadge";
@@ -133,9 +134,12 @@ export function LineRow<L extends ExplorerLine>({
   // Missing or outdated audio makes generating the row's task: a gold button, not a menu item.
   const needsTake = canRegenerate && !unwritten && (line.state === "missing" || line.state === "stale");
   const generate: RowAction = {
-    label: line.state === "missing" ? "Generate" : "Regenerate",
-    aria: `${line.state === "missing" ? "Generate" : "Regenerate"} ${line.name}`,
-    disabled: state?.phase === "busy" ? "Generating already" : undefined,
+    label: line.state === "missing" ? t.catalogue.row.generate : t.catalogue.row.regenerate,
+    aria: fill(
+      line.state === "missing" ? t.catalogue.row.actions.generateForPlace : t.catalogue.row.actions.regenerateForPlace,
+      { subject: line.name },
+    ),
+    disabled: state?.phase === "busy" ? t.catalogue.row.generatingAlready : undefined,
     emphasis: needsTake,
     onClick: () => onRegenerate(line),
   };

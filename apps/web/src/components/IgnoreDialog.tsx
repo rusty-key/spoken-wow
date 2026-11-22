@@ -94,7 +94,11 @@ export default function IgnoreDialog({ line, onSaved, onCancel }: Props) {
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{t.title}</DialogTitle>
-          <DialogDescription>{t.body}</DialogDescription>
+          <DialogDescription>
+            {t.bodyBefore}
+            <code>make pull-ignores</code>
+            {t.bodyAfter}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-2">

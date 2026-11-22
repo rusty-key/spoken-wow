@@ -228,7 +228,8 @@ export function FilterSelect({
   any?: string;
 }) {
   const known = value === undefined || options.some((option) => option.value === value);
-  const anyLabel = any ?? useUiText().catalogue.search.any;
+  const fallback = useUiText().catalogue.search.any;
+  const anyLabel = any ?? fallback;
   return (
     <FilterField label={label}>
       <select
@@ -264,7 +265,8 @@ export function FilterSegments({
   onChange: (value: string | undefined) => void;
   any?: string;
 }) {
-  const anyLabel = any ?? useUiText().catalogue.search.any;
+  const fallback = useUiText().catalogue.search.any;
+  const anyLabel = any ?? fallback;
   const all: { value: string | undefined; label: string }[] = [{ value: undefined, label: anyLabel }, ...options];
   return (
     <FilterField label={label}>

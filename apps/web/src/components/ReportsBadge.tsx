@@ -79,7 +79,7 @@ export default function ReportsBadge({ source, lineId, count, canTriage }: Props
     setError(null);
     const params = new URLSearchParams({ source, lineId });
     const response = await fetch(withLang(lang, `/api/reports/line?${params}`)).catch(() => null);
-    if (!response?.ok) return setError(t.none);
+    if (!response?.ok) return setError(t.loadFailed);
     const body = (await response.json()) as { reports: Report[] };
     setReports(body.reports);
   }
@@ -90,7 +90,7 @@ export default function ReportsBadge({ source, lineId, count, canTriage }: Props
     const report = await resolveReport(id, status);
     setBusy(null);
 
-    if (!report) return setError("could not change that report");
+    if (!report) return setError(t.resolveFailed);
     setReports((current) => current?.map((known) => (known.id === report.id ? report : known)));
   }
 

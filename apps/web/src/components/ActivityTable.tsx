@@ -28,7 +28,6 @@ import { isProvider, PROVIDER_NAME } from "@/lib/generation/providers";
 import { localeHref, withLang } from "@/lib/lang";
 import { explorerHref, lexiconHref } from "@/lib/links";
 import { capabilityLabel, isCapability } from "@/lib/permissions";
-import { plural } from "@/lib/plural";
 import { SOURCE_LABELS } from "@/lib/reports/reports";
 import { fill as fillFrom } from "@/lib/site-text/format";
 import type { UiText } from "@/lib/ui-text/en";
@@ -139,9 +138,12 @@ export function describe(row: ActivityRow, t: UiText["activity"]["events"]): { w
     case "batch.stopped": {
       const cancelled = num(d.cancelled);
       return {
-        what: cancelled
-          ? fill(t.batchStoppedCancellingMany, { n: cancelled })
-          : t.batchStopped,
+        what:
+          cancelled === null
+            ? t.batchStopped
+            : cancelled === 1
+              ? t.batchStoppedCancellingOne
+              : fill(t.batchStoppedCancellingMany, { n: cancelled }),
         quote: str(d.reason) ?? str(d.label),
       };
     }
@@ -469,18 +471,18 @@ export function describe(row: ActivityRow, t: UiText["activity"]["events"]): { w
       return {
         what: fill(
           d.correction ? t.contributionResolvedCorrection : t.contributionResolved,
-          { status: str(d.status) ?? "" },
+          { status: str(d.status) ?? t.resolved },
         ).trim(),
         quote: str(d.key),
       };
     case "contribution.edited":
       return {
-        what: fill(t.contributionEdited, { field: str(d.field) ?? "" }).trim(),
+        what: fill(t.contributionEdited, { field: str(d.field) ?? t.details }),
         quote: null,
       };
     case "report.resolved":
       return {
-        what: fill(t.reportResolved, { status: str(d.status) ?? "" }).trim(),
+        what: fill(t.reportResolved, { status: str(d.status) ?? t.resolved }),
         quote: str(d.category),
       };
     case "report.passed":
@@ -553,16 +555,20 @@ const FOLD_OF = new Map(
  * The rows a row opens onto, if it folds any (FOLDS). For a batch, `count` is what the
  * server counted for the page's day range.
  */
-function groupOf(row: ActivityRow): { kind: Group; id: string; count: number; noun: readonly [string, string] } | null {
+function groupOf(row: ActivityRow): { kind: Group; id: string; count: number } | null {
   const fold = FOLD_OF.get(row.kind);
   const id = fold && str(row.detail[fold.key]);
   if (!fold || !id) return null;
   const count = fold.count === null ? row.takes : num(row.detail[fold.count]);
-  return { kind: fold.kind, id, count: count ?? 0, noun: fold.noun };
+  return { kind: fold.kind, id, count: count ?? 0 };
 }
 
-/** The takes a row lets you hear: the new one, and for a restore the one it replaced. */
-function takesOf(row: ActivityRow): Take[] {
+/** "1 line" or "3 lines", where the words are the reader's. */
+function pluralText(count: number, one: string, many: string): string {
+  return count === 1 ? one : `${count.toLocaleString()} ${many}`;
+}
+
+/** The takes a row lets you hear: the new one, and for a restore the one it replaced. */function takesOf(row: ActivityRow): Take[] {
   if (!row.source || !row.subject) return [];
   const version = num(row.detail.version);
   if (version === null) return [];
@@ -606,9 +612,10 @@ export default function ActivityTable({
   filter: Filter;
   actors: { id: string; name: string }[];
 }) {
-  const t = useUiText().activity;
+  const text = useUiText();
+  const t = text.activity;
   const categoryOptions = CATEGORIES.map((category) => ({ value: category, label: t.categories[category] }));
-  const sourceOptions = SOURCES.map((source) => ({ value: source, label: SOURCE_LABELS[source] }));
+  const sourceOptions = SOURCES.map((source) => ({ value: source, label: t.sections[source] }));
   const date = useLocalDates();
   const lang = useLang();
   const { pending, push } = usePendingPush();
@@ -785,7 +792,7 @@ export default function ActivityTable({
                         onClick={() => void toggleGroup(row)}
                       >
                         {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-                        {plural(group.count, ...group.noun)}
+                        {group.count === 1 ? t.nouns.one[group.kind] : `${group.count.toLocaleString()} ${t.nouns.many[group.kind]}`}
                       </Button>
                     )}
                   </td>
@@ -799,9 +806,9 @@ export default function ActivityTable({
                     <td />
                     <td colSpan={3} className="border-b pb-2">
                       {inner === undefined ? (
-                        <p className="text-muted-foreground py-2 text-xs">{fillFrom(t.loadingGroup, { what: group.noun[1] })}</p>
+                        <p className="text-muted-foreground py-2 text-xs">{fillFrom(t.loadingGroup, { what: t.nouns.many[group.kind] })}</p>
                       ) : inner === "failed" ? (
-                        <p className="text-destructive py-2 text-xs">{fillFrom(t.groupFailed, { what: group.noun[1] })}</p>
+                        <p className="text-destructive py-2 text-xs">{fillFrom(t.groupFailed, { what: t.nouns.many[group.kind] })}</p>
                       ) : (
                         <ul className="max-h-80 overflow-y-auto text-xs">
                           {inner.map((take) => (
@@ -813,7 +820,7 @@ export default function ActivityTable({
                                   {num(take.detail.cancelled) !== null && (
                                     <span className="text-muted-foreground">
                                       {" "}
-                                      · {fillFrom(t.cancelled, { n: plural(num(take.detail.cancelled), "line") })}
+                                      · {fillFrom(t.cancelled, { n: pluralText(num(take.detail.cancelled) ?? 0, t.nouns.lineOne, t.nouns.lineMany) })}
                                     </span>
                                   )}
                                 </span>

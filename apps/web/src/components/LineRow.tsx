@@ -47,11 +47,14 @@ function absence(line: ResultLine): { kind: "gap" | "skip"; skipReason: string |
  * minus - nothing to do here yet - and gossip, which the game marks with no overhead icon
  * at all, gets a grey speech bubble instead of a fourth punctuation mark nobody would read.
  */
-const QUEST_MARKS: Record<string, { glyph: string; source: string }> = {
-  accept: { glyph: "!", source: "accept" },
-  complete: { glyph: "?", source: "complete" },
-  progress: { glyph: "−", source: "progress" },
-};
+const QUEST_MARKS = {
+  accept: { glyph: "!" },
+  complete: { glyph: "?" },
+  progress: { glyph: "−" },
+} satisfies Record<string, { glyph: string }>;
+
+/** The sources that get the game's own quest icon, and so need its tooltip. */
+type QuestMarkSource = keyof typeof QUEST_MARKS;
 
 function SourceMark({ source, t }: { source: string; t: UiText["catalogue"]["row"]["marks"] }) {
   // Gossip's bubble, because this is an NPC talking rather than a quest dialog, but in the
@@ -84,12 +87,12 @@ function SourceMark({ source, t }: { source: string; t: UiText["catalogue"]["row
     );
   }
 
-  const mark = QUEST_MARKS[source];
-  if (!mark) return null;
+  if (!Object.hasOwn(QUEST_MARKS, source)) return null;
+  const mark = QUEST_MARKS[source as QuestMarkSource];
 
   return (
     <span
-      title={t[mark.source as keyof typeof t] as string}
+      title={t[source as QuestMarkSource]}
       aria-label={source}
       className="mt-px w-3.5 shrink-0 text-center text-sm leading-5 font-bold text-amber-400"
     >
@@ -463,7 +466,7 @@ export default function LineRow({
             {missing.skipReason ?? (missing.kind === "gap" ? t.noAudio : t.notVoiced)}
           </StateWord>
         ) : stale ? (
-          <StateWord tone="stale" title={t.outdated}>
+          <StateWord tone="stale" title={t.outdatedWhy}>
             {t.outdated}
           </StateWord>
         ) : (
