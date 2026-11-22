@@ -8,6 +8,8 @@ Spoken Launcher until 0.1.2, when it became Spoken Manager.
   Automatically in Settings. *([anon1231823](https://github.com/anon1231823))*
 - **Send Now in Settings > Sharing says what it did:** how many lines it sent, or that there was
   nothing new to send. *([rusty-key](https://github.com/rusty-key))*
+- **Sharing empties SpokenContributions.lua once it has sent the lines.** They leave the file at
+  your next login or /reload. Needs the next Spoken. *([rusty-key](https://github.com/rusty-key))*
 
 ## 0.2.1 — 2026-11-21
 

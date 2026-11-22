@@ -59,6 +59,22 @@ Expect("...and keeping the newest", lines[#lines].key, "cap:" .. (Gather.CAP + 5
 Gather:Clear()
 Expect("Clear forgets everything", Gather:Count(), 0)
 Expect("...the sightings too", Gather:SeenCount(), 0)
+
+-- The same envelope and mark as manager/tests/share.test.ts's, so the two sides cannot drift apart.
+local cafe = "!SPOKEN1 quests\ntext<<\nCafé.\n>>\nsum=42\n"
+Expect("a sent line is marked by its sum and its length in bytes", Gather:SentMark(cafe), "42:40")
+Expect("...and a string with no sum is not marked", Gather:SentMark("!SPOKEN1 quests\n"), nil)
+Gather:Add("sent", cafe)
+Gather:Add("kept", "!SPOKEN1 quests\nsum=7\n")
+Gather:Add("bare", "no sum")
+Gather:See("creature:9", { 1 }, "!SPOKEN1 seen\nsum=42\n")
+Expect("DropSent does nothing without Sent.lua", Gather:DropSent(), 0)
+_G.SpokenContributionsSent = { ["42:40"] = true, ["7:99"] = true }
+Expect("...and drops the lines the Manager sent", Gather:DropSent(), 1)
+Expect("...and keeps the rest, in order", _G.SpokenContributionsDB.Lines[1].key .. "," .. _G.SpokenContributionsDB.Lines[2].key, "kept,bare")
+Expect("...and the sightings", Gather:SeenCount(), 1)
+_G.SpokenContributionsSent = nil
+Gather:Clear()
 Gather:SetEnabled(false)
 
 ------------------------------------------------------------------------------- quests
