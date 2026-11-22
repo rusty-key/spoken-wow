@@ -7,8 +7,7 @@ import { speakPlayerTokens, speakQuestTokens } from "./player-words.mjs";
 
 const CORPUS = new URL("../quests/corpus/corpus.json.gz", import.meta.url);
 
-// What the extract wrote for the tokens before English kept them, and what every take of an
-// English line was made from.
+// The words every English quest take was made from.
 const BAKED = [
   ["$b", "\n"], ["$B", "\n"], ["$n", "adventurer"], ["$N", "Adventurer"],
   ["$C", "Adventurer"], ["$c", "adventurer"], ["$R", "Traveler"], ["$r", "traveler"],

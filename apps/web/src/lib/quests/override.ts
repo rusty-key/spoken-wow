@@ -73,7 +73,7 @@ export function validateOverride(input: unknown, lang: Lang): { file: string; li
 
 /**
  * Whether either reader's side of the text's `$G` branches holds what cannot be voiced. Text
- * keeps its tokens for player-words.ts, so a voice maintainer starts from a line holding a `$N`.
+ * keeps its tokens, so a voice maintainer starts from a line holding a `$N`.
  */
 export function rewriteHasInvalidChars(text: string, lang: Lang): boolean {
   return playerGenderSides(text).some((side) => hasInvalidChars(speakQuestTokens(side, lang)));

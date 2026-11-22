@@ -54,8 +54,7 @@ function draftsFor(lang: Lang, rows: readonly MomentRow[], text: string) {
     : rows;
   const [male, female] = playerGenderSides(text);
   const drafts = forms.map((row) => {
-    // The tokens stay for player-words.ts, which says them at the point of sending, so a change to
-    // the language's words reaches this line too.
+    // The tokens stay, so a change to the language's words reaches this line too.
     const side = row.playerGender === "f" ? female : row.playerGender === "m" ? male : text;
     const draft = validateOverride({ file: audioRelPath(row), lineId: row.lineId, text: side }, lang);
     return { ...row, file: draft.file, text: draft.text, current: row.text };
