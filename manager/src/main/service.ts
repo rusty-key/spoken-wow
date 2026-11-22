@@ -65,7 +65,6 @@ export interface ServiceOptions {
 /** A catalog fetched less than this long ago is not fetched again unless forced. */
 const FRESH_MS = 5 * 60 * 1000
 
-/** How often the manager checks the release and community catalogs while it is running. */
 export const UPDATE_CHECK_MS = 30 * 60 * 1000
 
 /** How often the collected-lines files are looked at while sharing is on. */
@@ -199,7 +198,6 @@ export class ManagerService {
 
   // ---------------------------------------------------------------- catalog
 
-  /** Runs `backgroundCheck` now and every UPDATE_CHECK_MS after. */
   startPeriodicRefresh(): void {
     if (this.updateTimer) return
     this.updateTimer = setInterval(() => void this.backgroundCheck(), UPDATE_CHECK_MS)
@@ -207,10 +205,7 @@ export class ManagerService {
     void this.backgroundCheck()
   }
 
-  /**
-   * The check at startup and on the timer. Unlike a manual check it keeps skipping the automatic updates the player
-   * cancelled or that failed, so they are not queued again every half hour.
-   */
+  /** Unlike a manual check, keeps skipping automatic updates the player cancelled or that failed. */
   async backgroundCheck(): Promise<void> {
     await this.ready
     const { checkOnStart, autoUpdateContent } = this.settings
