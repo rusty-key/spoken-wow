@@ -1255,6 +1255,67 @@ local function FitScroller()
     scroller:SetContentHeight(TOP + panel.layout:Height() + BOTTOM)
 end
 
+-- Spoken's pages in the game's settings window, each with its layout, for the controller's
+-- cursor. The cursor refuses addons in combat.
+local canvases = {}
+-- The page that put the cursor on its first row, and so set the window's target.
+local aimed
+
+-- Entering a page, the game's FocusContainer puts the cursor on the page's top-left button, then
+-- moves it to a row of the game's own settings list or to the button it last left. On a canvas
+-- page both are off screen, so the cursor sits on a button nobody can see. It goes to the page's
+-- first row instead. SetTargetButtonForFrame is the only call that selects a given button for an
+-- addon, and it also makes the row the window's target, where the cursor falls back to.
+local function SelectFirstRow()
+    local cursor = SmartNavigation
+    if not cursor or InCombatLockdown() or not cursor:IsInFocusGroup() then return end
+    local current = cursor:GetCurrentButton()
+    if current and current:IsVisible() then return end
+    for frame, layout in pairs(canvases) do
+        if frame:IsVisible() then
+            local row = layout ~= true and layout:FirstRow()
+            if row then
+                aimed = frame
+                cursor:SetTargetButtonForFrame(_G.SettingsPanel, row)
+            else
+                cursor:SelectTopLeftButton()
+            end
+            return
+        end
+    end
+end
+
+-- The window's target is the selected category's button (SettingsPanel's SmartNavPanelInfoAdded).
+-- Left on a hidden row, a page the cursor cannot enter would lose the cursor rather than send it
+-- back to the list.
+local function GiveTargetBack(frame)
+    if aimed ~= frame then return end
+    aimed = nil
+    local settings = _G.SettingsPanel
+    if SmartNavigation and not InCombatLockdown() and settings:IsShown() then
+        SmartNavigation:SetTargetButtonForFrame(settings, settings:GetCategoryList():GetSelectedCategoryButton())
+    end
+end
+
+-- The game's settings window takes a canvas page in with SetParent, which the cursor does not
+-- notice: it keeps the buttons it found when the window opened, none of them this page's, so
+-- entering the page sends it back to the category list. A page asks it to look again as it shows,
+-- and waits hidden until then: one already shown under UIParent gets no OnShow when the window
+-- first takes it.
+local function ForController(frame, layout)
+    if not next(canvases) and _G.SettingsPanel and _G.SettingsPanel.FocusContainer then
+        hooksecurefunc(_G.SettingsPanel, "FocusContainer", SelectFirstRow)
+    end
+    canvases[frame] = layout or true
+    frame:Hide()
+    frame:HookScript("OnShow", function(self)
+        if SmartNavigation and SmartNavigation.UpdateParent and not InCombatLockdown() then
+            SmartNavigation:UpdateParent(self)
+        end
+    end)
+    frame:HookScript("OnHide", GiveTargetBack)
+end
+
 function Options:Setup()
     if panel then return end
     Build()
@@ -1265,6 +1326,7 @@ function Options:Setup()
     -- under it (Options:RegisterPage).
     FitScroller()
     self.category = Settings.RegisterCanvasLayoutCategory(panel, "Spoken")
+    ForController(panel, panel.layout)
     Settings.RegisterAddOnCategory(self.category)
     if not pagesHeld then self:ReleasePages() end
 end
@@ -1309,6 +1371,7 @@ end)
 
 function Options:RegisterPage(page)
     page.category = Settings.RegisterCanvasLayoutSubcategory(self.category, page.frame, page.name)
+    ForController(page.frame, page.layout)
 end
 
 function Options:Open()

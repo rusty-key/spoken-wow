@@ -249,6 +249,19 @@ function Layout:Index(frame, label, tooltip)
     return frame
 end
 
+--- The page's first row on screen that the controller's cursor can stop on: a row in the page's
+--- column, not a button beside a section's title.
+function Layout:FirstRow()
+    for _, entry in ipairs(self.entries) do
+        local frame = entry.frame
+        if frame.layoutY and frame:IsVisible()
+            and (not SmartNavigation_CanFocusFrame or SmartNavigation_CanFocusFrame(frame))
+            and (not SmartNavigation_IsFrameIgnored or not SmartNavigation_IsFrameIgnored(frame)) then
+            return frame
+        end
+    end
+end
+
 -- The middle of a row, which the game's settings place every control against.
 function Layout:Middle()
     return self.left + math.floor(self:Width() / 2)

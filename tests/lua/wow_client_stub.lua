@@ -168,7 +168,8 @@ local function Widget(kind, name)
     end
     function w:IsVisible()
         if self.name == "UIParent" then return true end
-        if self.name then return world.panels[self.name] and true or false end
+        -- Only a frame's global name counts: an addon may keep its own `name` field on a frame.
+        if type(self.name) == "string" then return world.panels[self.name] and true or false end
         return self.shown
     end
     function w:IsShown() return self:IsVisible() end
