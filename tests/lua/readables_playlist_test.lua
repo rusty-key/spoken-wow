@@ -303,6 +303,21 @@ Expect("...and nothing to follow it", tostring(page.continues) .. " " .. #Coming
 SpokenReadablesSettings.bookAsOneLine = true
 B:StopReading()
 
+---------------------------------------------------------------- Previous inside a book
+Spoken:StopAll()
+B:PlayFrom(261)
+stub.Advance(30.8); stub.Advance(0.1)
+Expect("a page turn keeps the page before it for Previous", (Spoken:GetPrevious() or {}).key, "b:261")
+Spoken:Previous()
+Expect("Previous on page 2 replays page 1 ahead of it", Same(QueuedPages(), { 261, 262 }), true)
+Expect("...and the rest of the book still follows", Same(Coming(), { 265 }), true)
+stub.Advance(30.9)
+Expect("...page 2 speaks again after the replay", Same(QueuedPages(), { 262 }), true)
+stub.Advance(41.3)
+Expect("...then the book reads on to its last page", Same(QueuedPages(), { 265 }), true)
+Spoken:StopAll()
+B:StopReading()
+
 ---------------------------------------------------------------- with no pack at all
 _G.SpokenReadablesAudioPacks = {}
 Expect("no pack means no clips", B:ClipFor(261), nil)
