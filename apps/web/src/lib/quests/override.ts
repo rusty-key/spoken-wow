@@ -8,7 +8,7 @@
  * the file and what the addon matches on - see the header of migration 0012.
  */
 import type { Lang } from "../lang";
-import { branchesOnPlayerGender, playerGenderSides, speakPlayerTokens } from "../player-words";
+import { branchesOnPlayerGender, playerGenderSides, speakQuestTokens } from "../player-words";
 import { INVALID_CHARS, hasInvalidChars } from "../text-gate";
 
 export type LineOverride = {
@@ -76,7 +76,7 @@ export function validateOverride(input: unknown, lang: Lang): { file: string; li
  * keeps its tokens for player-words.ts, so a voice maintainer starts from a line holding a `$N`.
  */
 export function rewriteHasInvalidChars(text: string, lang: Lang): boolean {
-  return playerGenderSides(text).some((side) => hasInvalidChars(speakPlayerTokens(side, lang)));
+  return playerGenderSides(text).some((side) => hasInvalidChars(speakQuestTokens(side, lang)));
 }
 
 /** A voice's name as migration 0071's voice table allows it, or a model slot's. */

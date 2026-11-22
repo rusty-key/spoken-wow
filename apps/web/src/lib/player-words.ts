@@ -21,6 +21,8 @@ export const speakPlayerTokens = words.speakPlayerTokens as (
   playerGender?: "m" | "f" | null,
 ) => string;
 
+export const speakQuestTokens = words.speakQuestTokens as typeof speakPlayerTokens;
+
 /** Words as stored, trimmed, or null where any is missing or unspeakable. */
 export const validPlayerWords = words.validPlayerWords as (value: unknown) => PlayerWords | null;
 

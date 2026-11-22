@@ -148,9 +148,9 @@ export function validPlayerWords(value) {
 
 /** German capitalises every noun; the rest only at the start of a sentence. */
 const ALWAYS_CAPITAL = new Set(["deDE"]);
-// English capitalises as the token is written: `$N` says "Adventurer" wherever it stands and `$n`
-// "adventurer", even opening a sentence. English's takes were made from text written that way, so
-// any other rule would mark them stale.
+// English quest text capitalises as the token is written: `$N` says "Adventurer" wherever it stands
+// and `$n` "adventurer", even opening a sentence. Its takes were made from text written that way,
+// so any other rule would mark them stale. English book pages were voiced by position, and keep it.
 const TOKEN_CASE = new Set(["enUS"]);
 
 // A letter that glues to a token. Chinese and Japanese write no spaces at all, and Korean
@@ -255,13 +255,22 @@ export function writtenPlayerTokens(text) {
 
 /** The text as it is spoken in `lang`, by a reader of `playerGender` where the line has one. */
 export function speakPlayerTokens(text, lang, playerGender = null) {
+  return speak(text, lang, playerGender, false);
+}
+
+/** speakPlayerTokens for a quest line, whose English capitalises as the token is written. */
+export function speakQuestTokens(text, lang, playerGender = null) {
+  return speak(text, lang, playerGender, TOKEN_CASE.has(lang));
+}
+
+function speak(text, lang, playerGender, byToken) {
   const forms = playerWordsOf(lang);
   if (!forms) return text;
   text = speakQuantities(text, lang, forms);
   const words = playerGender === "f" ? forms.f : forms.m;
   const capital = (word) => word[0].toUpperCase() + word.slice(1);
   const cased = (word, at, whole, token) => {
-    if (TOKEN_CASE.has(lang)) return token === token.toUpperCase() ? capital(word) : word;
+    if (byToken) return token === token.toUpperCase() ? capital(word) : word;
     return ALWAYS_CAPITAL.has(lang) || SENTENCE_START.test(whole.slice(0, at)) ? capital(word) : word;
   };
 

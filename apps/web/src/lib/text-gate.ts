@@ -21,7 +21,7 @@
  */
 
 import { BASE_LANG, type Lang } from "./lang";
-import { speakPlayerTokens } from "./player-words";
+import { speakQuestTokens } from "./player-words";
 import { isModelVoice } from "./voices/voices";
 
 /** Kept as a string, character for character, so the two files can be diffed by eye. */
@@ -81,7 +81,7 @@ export function unvoicedReason(line: GatedLine, effectiveText: string): Unvoiced
   if (line.voice !== undefined && isModelVoice(line.voice)) return "no-voice";
   // Judged on what would be sent: a translation's $N is spoken as its language's word
   // (player-words.ts), so it is not what stops the line.
-  const spoken = speakPlayerTokens(effectiveText, line.lang ?? BASE_LANG, line.playerGender ?? null);
+  const spoken = speakQuestTokens(effectiveText, line.lang ?? BASE_LANG, line.playerGender ?? null);
   return hasInvalidChars(spoken) ? "invalid-chars" : null;
 }
 
@@ -96,5 +96,5 @@ export function skipReasonFor(
   lang: Lang = BASE_LANG,
   playerGender: "m" | "f" | null = null,
 ): "invalid-chars" | null {
-  return hasInvalidChars(speakPlayerTokens(text, lang, playerGender)) ? "invalid-chars" : null;
+  return hasInvalidChars(speakQuestTokens(text, lang, playerGender)) ? "invalid-chars" : null;
 }

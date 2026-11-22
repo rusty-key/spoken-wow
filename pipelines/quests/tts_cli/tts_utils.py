@@ -15,8 +15,8 @@ from tts_cli.flavors import (apply_fallbacks, consensus_flavor, fallback_flavors
 from tts_cli.flavors import file_key as flavor_file_key
 
 #: `$B` is a line break. `$N`, `$C` and `$R` stay in the text, as every language's do: the site
-#: says them in the language's words at the point a line is judged and sent
-#: (pipelines/lib/player-words.mjs), so a change of words reaches every line.
+#: says them in the language's words when a line is judged and sent, so a change of words reaches
+#: every line.
 REPLACE_DICT = {'$b': '\n', '$B': '\n'}
 
 #: The site leaves a token glued to a letter ("$nath", "$rs") unsaid, so the gate would refuse the

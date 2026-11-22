@@ -9,7 +9,7 @@
  * CLIENT-SAFE: ContributionTable renders these.
  */
 import { BASE_LANG, clientLang } from "@/lib/lang";
-import { speakPlayerTokens } from "@/lib/player-words";
+import { speakQuestTokens } from "@/lib/player-words";
 import { withoutDirections } from "@/lib/text-gate";
 
 import { writtenFromTemplate } from "./tokens";
@@ -29,7 +29,7 @@ export function textHints(text: string, locale: string): string[] {
   const lang = clientLang(locale) ?? BASE_LANG;
   // Spoken as the gate will speak the accepted line: English is stored as the extract writes it,
   // which turns $B into a line break.
-  const spoken = speakPlayerTokens(lang === BASE_LANG ? writtenFromTemplate(text) : text, lang);
+  const spoken = speakQuestTokens(lang === BASE_LANG ? writtenFromTemplate(text) : text, lang);
   const judged = withoutDirections(spoken);
   const hints = new Set<string>();
   for (const token of judged.match(LEFTOVER) ?? []) hints.add(`unspoken token ${token} — won't be voiced`);

@@ -94,9 +94,9 @@ def test_marks_lines_the_generator_skips():
 
 
 def test_a_player_token_is_said_and_a_glued_one_is_not():
-    rows = [{**ROWS[0], "cleanedText": text} for text in ("Hi $N, the $r.", "Hi $Nama.")]
+    rows = [{**ROWS[0], "cleanedText": text} for text in ("Hi $N, the $r.", "$$N, come.", "Hi $Nama.")]
     lines = build_corpus(pd.DataFrame(rows), SPAWNS)["lines"]
-    assert [line["skipReason"] for line in lines] == [None, "invalid-chars"]
+    assert [line["skipReason"] for line in lines] == [None, None, "invalid-chars"]
 
 
 def test_keeps_the_players_tokens_for_the_site_to_say():

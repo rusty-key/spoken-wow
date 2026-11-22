@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { test } from "node:test";
 import zlib from "node:zlib";
 
-import { speakPlayerTokens } from "./player-words.mjs";
+import { speakPlayerTokens, speakQuestTokens } from "./player-words.mjs";
 
 const CORPUS = new URL("../quests/corpus/corpus.json.gz", import.meta.url);
 
@@ -32,12 +32,16 @@ test("English's tokens say exactly what the extract used to write, on every corp
   const tokened = lines.filter((line) => /\$[NnCcRr]/.test(line.originalText));
   assert.ok(tokened.length > 5000, `only ${tokened.length} lines hold a token`);
   const differ = tokened.filter(({ originalText, playerGender }) => {
-    const before = speakPlayerTokens(baked(originalText, playerGender), "enUS", playerGender);
-    return speakPlayerTokens(written(originalText, playerGender), "enUS", playerGender) !== before;
+    const before = speakQuestTokens(baked(originalText, playerGender), "enUS", playerGender);
+    return speakQuestTokens(written(originalText, playerGender), "enUS", playerGender) !== before;
   });
   assert.deepEqual(differ.map((line) => line.lineId), []);
 });
 
 test("English capitalises a token as it is written, not by its place in the sentence", () => {
-  assert.equal(speakPlayerTokens("Well met, $N. $n, the $R and the $c.", "enUS"), "Well met, Adventurer. adventurer, the Traveler and the adventurer.");
+  assert.equal(speakQuestTokens("Well met, $N. $n, the $R and the $c.", "enUS"), "Well met, Adventurer. adventurer, the Traveler and the adventurer.");
+});
+
+test("an English book page still capitalises by place, as its takes were made", () => {
+  assert.equal(speakPlayerTokens("$N,\nWell met, $N.", "enUS"), "Adventurer,\nWell met, adventurer.");
 });

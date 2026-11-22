@@ -15,7 +15,7 @@ const REPLACE: readonly (readonly [string, string])[] = [
   ["$B", "\n"],
 ];
 
-// player-words.ts leaves a token glued to a letter ("$nath") unsaid, and its takes say the word.
+// The site leaves a token glued to a letter ("$nath") unsaid, and its takes say the word.
 const GLUED_TOKEN = /\$([NnCcRr])(?=\p{L})/gu;
 const GLUED_WORDS: Readonly<Record<string, string>> = {
   n: "adventurer",
