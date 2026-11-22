@@ -25,7 +25,7 @@ export function isNameKind(value: unknown): value is NameKind {
 export type NameVersion = {
   version: number;
   isCurrent: boolean;
-  origin: "extracted" | "edited" | "contributed" | "community";
+  origin: "extracted" | "edited" | "contributed" | "community" | "observed";
   name: string;
   editedBy: string | null;
   note: string | null;

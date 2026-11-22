@@ -1119,6 +1119,17 @@ Manager's install id, or that one anonymous upload; no address is kept), never a
 A zone counts for the zone filter once two uploaders send it, so the Manager sending one player's
 file after every logout is one voice.
 
+The envelope also carries the client's locale and the name it shows for the NPC, and is kept
+again when that name changes, so a giver a patch renames reaches the site too. In a language
+other than English, a name the addon would not show is offered on `/contributions/names`
+(`name_contribution`, `lib/names/observed.ts`), one row per name with a count of its uploaders.
+A translator keeps it or drops it; a dropped name stays dropped when it is sent again. A kept
+name is written to `entity_name` as `observed`: live unless a translator's edit is, since an
+edit says how the name is spoken. An `import-locale` records the dump's name beside an
+`observed` one rather than over it, because the dump is older than the client that showed it.
+"The name the addon would show" is the giver-name export's rule below, so a name already shipped
+is never offered again.
+
 The same text pasted again — by the same player or a different one — bumps a count on the
 existing row rather than filing a second one; different text under the same key stays its own
 row. That count is the triage priority at `/contributions`, the contribution queue's own
@@ -2038,8 +2049,11 @@ other language's giver names, `Locale/Names/<lang>.lua`, each returning before i
 anything on a client in another locale, and `DataModules:GetObjectName` asks them first. They
 live in the addon rather than in the packs because the name follows the client, not the voice:
 a German client with English packs still shows German names. `make quests-export-giver-names`
-writes them from `entity_name` (`tts_cli/giver_names.py`), after an `import-locale`, along with
-a `Names.xml` that lists them all. Forever's `.toc` lists each file with
+writes them from `entity_name` (`tts_cli/giver_names.py`), after an `import-locale` or after
+translators keep names on `/contributions/names`, along with a `Names.xml` that lists them all.
+Each name is the newest one a translator kept from a player's client (`observed`), else the
+newest the dump had (`extracted`), whether or not it is the live version: a translator's edit
+changes how a name is spoken, not what the client shows. Forever's `.toc` lists each file with
 `[AllowLoadTextLocale <lang>]`, as it does the gossip text, so the client loads only its own; the
 classic `.toc` files load `Names.xml`. The export stops with the lines to add or remove when
 Forever's `.toc` does not list exactly the files it wrote. Only

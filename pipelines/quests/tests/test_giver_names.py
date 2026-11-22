@@ -182,3 +182,66 @@ def test_a_giver_named_only_by_a_placeholder_has_no_english_name():
     # A language that has a name for it writes it: there is no English to fall back on.
     assert localized_names(found, {("gameobject", "649051"): "Kiste"}) == {
         "creature": {}, "gameobject": {649051: "Kiste"}, "item": {}}
+
+
+# Far above any real creature's id, so the rows are this test's alone.
+KEPT = "990000123"
+
+
+@pytest.fixture
+def names_db():
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        pytest.skip("needs DATABASE_URL and the web migrations")
+    psycopg2 = pytest.importorskip("psycopg2")
+    conn = psycopg2.connect(url)
+    with conn, conn.cursor() as cur:
+        cur.execute("""select 1 from pg_constraint where conname = 'entity_name_origin_check'
+                         and pg_get_constraintdef(oid) like '%observed%'""")
+        migrated = cur.fetchone() is not None
+    if not migrated:
+        conn.close()
+        pytest.skip("needs migration 0129")
+    yield conn
+    with conn, conn.cursor() as cur:
+        cur.execute("""delete from "entity_name" where "kind" = 'creature' and "entityId" = %s""", (KEPT,))
+    conn.close()
+
+
+def name_version(conn, version, origin, name, current):
+    with conn, conn.cursor() as cur:
+        cur.execute("""insert into "entity_name"
+                         ("kind", "entityId", "lang", "version", "isCurrent", "origin", "name")
+                       values ('creature', %s, 'esMX', %s, %s, %s, %s)""",
+                    (KEPT, version, current, origin, name))
+
+
+def exported_esmx(tmp_path):
+    import gzip
+    import json
+
+    from tts_cli.corpus_db import export_giver_names
+
+    source = tmp_path / "corpus.json.gz"
+    with gzip.open(source, "wt", encoding="utf-8") as handle:
+        json.dump({"lines": [line("accept", "creature", int(KEPT), "Alba Fairmoon", 92745)]}, handle)
+    out = tmp_path / "Names"
+    out.mkdir()
+    export_giver_names(str(source), str(out), verbose=False)
+    path = out / "esMX.lua"
+    return path.read_text(encoding="utf-8") if path.exists() else ""
+
+
+def test_a_name_kept_from_a_players_client_is_shown_before_the_dumps(names_db, tmp_path):
+    name_version(names_db, 1, "extracted", "Alba la vieja", False)
+    name_version(names_db, 2, "observed", "Alba Lunaclara", False)
+    # An import of the old dump afterwards records beside it, and a translator's edit says how
+    # it is spoken: neither is what the client shows.
+    name_version(names_db, 3, "extracted", "Alba la vieja", False)
+    name_version(names_db, 4, "edited", "Alba Lunaclára", True)
+    assert f'[{KEPT}] = "Alba Lunaclara"' in exported_esmx(tmp_path)
+
+
+def test_a_contributed_name_alone_is_not_shown(names_db, tmp_path):
+    name_version(names_db, 1, "contributed", "Alba Lunaclara", True)
+    assert KEPT not in exported_esmx(tmp_path)

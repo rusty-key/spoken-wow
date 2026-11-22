@@ -69,6 +69,7 @@ import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
 import { can, isAdmin } from "@/lib/permissions";
 import { linesByPath } from "@/lib/places/catalogue";
+import { countObservedNames } from "@/lib/names/observed";
 
 export const metadata: Metadata = { title: "Contributions · Spoken" };
 
@@ -338,9 +339,10 @@ export default async function Page({
 
   // Lines the corpus already has are not this queue's: a different text is a correction, on
   // its own group, and the same text is nothing to triage at all (known.ts's tabOf).
-  const [{ listed, states, pending }, roster] = await Promise.all([
+  const [{ listed, states, pending }, roster, names] = await Promise.all([
     listedWithPending(status, lang, sort, source),
     loadRoster(lang),
+    lang === BASE_LANG ? undefined : countObservedNames(lang),
   ]);
   const contributions = listed.filter((row, index) => tabOf(row.status, states[index]) === "contributions");
   // Every row's NPC, not just this page's: the buckets read it, and it is one query for the lot.
@@ -467,7 +469,7 @@ export default async function Page({
       description="Lines players' game clients sent. Compare each with the original, then keep it or drop it. Kept lines are voiced in a later voicing run."
     >
       <div className="mb-6">
-        <ContributionsTabs lang={lang} section={source} pending={pending} />
+        <ContributionsTabs lang={lang} section={source} pending={pending} names={names} />
       </div>
         <ContributionTable
           // Showing only corrections leaves the lines out; their count stays on the switch.

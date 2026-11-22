@@ -1,0 +1,221 @@
+/**
+ * The names players' clients show for an NPC, offered to translators. A kept one is written to
+ * entity_name as 'observed', which the giver-name export ships.
+ *
+ * A name is compared with the one the addon shows, not the current one: a translator's edit says
+ * how a name is spoken, and comparing against it would offer the client's spelling on every
+ * upload. tts_cli/corpus_db.py export_giver_names applies the same rule, and the two must agree.
+ */
+import "server-only";
+
+import type { Sighting } from "@/lib/contributions/sighting";
+import { recordActivity } from "@/lib/activity/store";
+import { query } from "@/lib/db";
+import { BASE_LANG, clientLang, type Lang } from "@/lib/lang";
+import { withTextTeam } from "@/lib/teams/store";
+
+export type ObservedKind = "creature" | "gameobject";
+
+/** The name the addon shows for `alias`'s kind, entityId and lang; null where it shows the English. */
+export function shownNameSql(alias: string): string {
+  return `(select n."name" from "entity_name" n
+            where n."kind" = ${alias}."kind" and n."entityId" = ${alias}."entityId" and n."lang" = ${alias}."lang"
+              and n."origin" in ('observed', 'extracted')
+            order by (n."origin" = 'observed') desc, n."version" desc
+            limit 1)`;
+}
+
+/**
+ * Offers every name a sighting carries that the addon would not show, under `uploader`.
+ * English is left out: its names are the corpus's. So is an NPC with no English name, which
+ * nothing on the site lists. Returns how many names this uploader newly vouched for.
+ */
+export async function recordObservedNames(sightings: readonly Sighting[], uploader: string): Promise<number> {
+  const seen = new Map<string, { kind: ObservedKind; entityId: string; lang: Lang; name: string }>();
+  for (const sighting of sightings) {
+    const lang = sighting.locale ? clientLang(sighting.locale) : null;
+    if (!lang || lang === BASE_LANG || !sighting.name) continue;
+    const row = { kind: sighting.npcType, entityId: String(sighting.npcId), lang, name: sighting.name };
+    seen.set(JSON.stringify(row), row);
+  }
+  if (seen.size === 0) return 0;
+  const rows = [...seen.values()];
+  const vouched = await query<{ contributionId: number }>(
+    `with sent as (
+       select * from unnest($1::text[], $2::text[], $3::text[], $4::text[]) as s ("kind", "entityId", "lang", "name")
+     ), offered as (
+       select s.* from sent s
+        where exists (select 1 from "entity_name" e
+                       where e."kind" = s."kind" and e."entityId" = s."entityId"
+                         and e."lang" = '${BASE_LANG}' and e."isCurrent")
+          and ${shownNameSql("s")} is distinct from s."name"
+     ), saved as (
+       insert into "name_contribution" ("kind", "entityId", "lang", "name")
+       select "kind", "entityId", "lang", "name" from offered
+       on conflict ("kind", "entityId", "lang", "name") do update set "updatedAt" = now()
+       returning "id"
+     )
+     insert into "name_contribution_uploader" ("contributionId", "uploader")
+     select "id", $5 from saved
+     on conflict do nothing
+     returning "contributionId"`,
+    [rows.map((r) => r.kind), rows.map((r) => r.entityId), rows.map((r) => r.lang), rows.map((r) => r.name), uploader],
+  );
+  return vouched.length;
+}
+
+export const NAME_STATUSES = ["new", "accepted", "rejected"] as const;
+export type NameStatus = (typeof NAME_STATUSES)[number];
+
+export function isNameStatus(value: unknown): value is NameStatus {
+  return typeof value === "string" && (NAME_STATUSES as readonly string[]).includes(value);
+}
+
+export type NameContribution = {
+  id: number;
+  kind: ObservedKind;
+  entityId: string;
+  name: string;
+  status: NameStatus;
+  /** How many uploaders sent it: accounts, Manager installs, or anonymous files. */
+  uploaders: number;
+  english: string | null;
+  /** What the addon shows in the language now; null where it shows the English. */
+  shown: string | null;
+  /** What the site speaks it as, where a translator's edit differs from `shown`. */
+  spoken: string | null;
+  updatedAt: string;
+};
+
+type Row = Omit<NameContribution, "updatedAt"> & { updatedAt: Date };
+
+/**
+ * A language's names of one status, most vouched for first. New ones the addon already shows,
+ * because an import or another kept name caught up, are left out: nothing is left to decide.
+ */
+export async function listObservedNames(lang: Lang, status: NameStatus): Promise<NameContribution[]> {
+  const rows = await query<Row>(
+    `select c."id", c."kind", c."entityId", c."name", c."status", c."updatedAt",
+            (select count(*) from "name_contribution_uploader" u where u."contributionId" = c."id")::int as "uploaders",
+            (select e."name" from "entity_name" e
+              where e."kind" = c."kind" and e."entityId" = c."entityId"
+                and e."lang" = '${BASE_LANG}' and e."isCurrent") as "english",
+            ${shownNameSql("c")} as "shown",
+            (select e."name" from "entity_name" e
+              where e."kind" = c."kind" and e."entityId" = c."entityId"
+                and e."lang" = c."lang" and e."isCurrent") as "spoken"
+       from "name_contribution" c
+      where c."lang" = $1 and c."status" = $2
+      order by "uploaders" desc, c."updatedAt" desc`,
+    [lang, status],
+  );
+  return rows
+    .filter((row) => status !== "new" || row.shown !== row.name)
+    .map((row) => ({ ...row, updatedAt: row.updatedAt.toISOString() }));
+}
+
+export async function countObservedNames(lang: Lang): Promise<number> {
+  const rows = await query<{ count: number }>(
+    `select count(*)::int as "count" from "name_contribution" c
+      where c."lang" = $1 and c."status" = 'new' and ${shownNameSql("c")} is distinct from c."name"`,
+    [lang],
+  );
+  return rows[0]?.count ?? 0;
+}
+
+/** Read before anything else, so the permission is checked before a missing id is reported. */
+export async function observedNameLang(id: number): Promise<string | null> {
+  const rows = await query<{ lang: string }>(`select "lang" from "name_contribution" where "id" = $1`, [id]);
+  return rows[0]?.lang ?? null;
+}
+
+export type ResolveOutcome = { ok: true } | { ok: false; reason: "not-found" };
+
+/**
+ * Made current unless a translator's edit is: the edit says how the name is spoken, and keeping
+ * a client's spelling must not undo it.
+ */
+export async function acceptObservedName(id: number, lang: Lang, userId: string): Promise<ResolveOutcome> {
+  return withTextTeam(lang, async (client, team) => {
+    const { rows } = await client.query<{ kind: ObservedKind; entityId: string; name: string }>(
+      `select "kind", "entityId", "name" from "name_contribution" where "id" = $1 and "lang" = $2 for update`,
+      [id, lang],
+    );
+    const found = rows[0];
+    if (!found) return { ok: false, reason: "not-found" };
+    const { rows: current } = await client.query<{ origin: string }>(
+      `select "origin" from "entity_name"
+        where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "isCurrent" for update`,
+      [found.kind, found.entityId, lang],
+    );
+    const live = current[0]?.origin !== "edited";
+    if (live) {
+      await client.query(
+        `update "entity_name" set "isCurrent" = false
+          where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "isCurrent"`,
+        [found.kind, found.entityId, lang],
+      );
+    }
+    const { rows: written } = await client.query<{ version: number }>(
+      `insert into "entity_name"
+         ("kind", "entityId", "lang", "version", "isCurrent", "origin", "name", "editedBy", "note")
+       select $1, $2, $3, coalesce(max("version"), 0) + 1, $4, 'observed', $5, $6, $7
+         from "entity_name" where "kind" = $1 and "entityId" = $2 and "lang" = $3
+       returning "version"`,
+      [found.kind, found.entityId, lang, live, found.name, userId, `name contribution #${id}`],
+    );
+    await client.query(
+      `update "name_contribution" set "status" = 'accepted', "resolvedBy" = $2, "updatedAt" = now() where "id" = $1`,
+      [id, userId],
+    );
+    await recordActivity(
+      {
+        team,
+        kind: "name.observed",
+        lang,
+        actorId: userId,
+        subject: `${found.kind}:${found.entityId}`,
+        detail: { version: written[0].version, name: found.name, contribution: id },
+      },
+      client,
+    );
+    return { ok: true };
+  });
+}
+
+/** The same name sent again only counts another uploader, so a dropped name stays dropped. */
+export async function rejectObservedName(id: number, lang: Lang, userId: string): Promise<ResolveOutcome> {
+  return withTextTeam(lang, async (client, team) => {
+    const { rows } = await client.query<{ kind: ObservedKind; entityId: string; name: string }>(
+      `update "name_contribution" set "status" = 'rejected', "resolvedBy" = $3, "updatedAt" = now()
+        where "id" = $1 and "lang" = $2
+       returning "kind", "entityId", "name"`,
+      [id, lang, userId],
+    );
+    const found = rows[0];
+    if (!found) return { ok: false, reason: "not-found" };
+    await recordActivity(
+      {
+        team,
+        kind: "contribution.resolved",
+        lang,
+        actorId: userId,
+        subject: `name:${found.kind}:${found.entityId}`,
+        detail: { status: "rejected", key: found.name },
+      },
+      client,
+    );
+    return { ok: true };
+  });
+}
+
+/** Only a dropped name reopens: a kept one is already written to entity_name. */
+export async function reopenObservedName(id: number, lang: Lang): Promise<ResolveOutcome> {
+  const rows = await query<{ id: number }>(
+    `update "name_contribution" set "status" = 'new', "resolvedBy" = null, "updatedAt" = now()
+      where "id" = $1 and "lang" = $2 and "status" = 'rejected'
+     returning "id"`,
+    [id, lang],
+  );
+  return rows[0] ? { ok: true } : { ok: false, reason: "not-found" };
+}
