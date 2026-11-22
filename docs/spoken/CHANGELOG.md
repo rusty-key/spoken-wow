@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Stop When Window Closes stops every quest and gossip line when its window closes, and starts
+  off.** To keep accepted quests reading, turn off Stop Narration When Accepting.
+  *([rusty-key](https://github.com/rusty-key))*
 - **Notes and books you carry now count as found in Azeroth's Compendium,** even unopened, and show
   their item's icon. *([anon1231823](https://github.com/anon1231823))*
 - **Azeroth's Compendium works with a controller.** LB and RB switch tabs, View searches and Menu

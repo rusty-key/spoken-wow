@@ -82,6 +82,18 @@ local GeneralTab =
                         Addon.db.profile.Audio.StopAudioOnDisengage = value
                     end,
                 },
+                ToggleStopOnAccept = {
+                    type = "toggle",
+                    order = 6.2,
+                    width = 2,
+                    name = L.OPT_PANEL_STOP_ON_ACCEPT,
+                    desc = L.OPT_PANEL_STOP_ON_ACCEPT_TIP,
+                    disabled = function(info) return not Addon.db.profile.Audio.StopAudioOnDisengage end,
+                    get = function(info) return Addon.db.profile.Audio.StopOnAccept end,
+                    set = function(info, value)
+                        Addon.db.profile.Audio.StopOnAccept = value
+                    end,
+                },
                 ToggleFollowupLines = {
                     type = "toggle",
                     order = 6.5,

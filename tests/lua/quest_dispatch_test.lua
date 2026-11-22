@@ -224,9 +224,49 @@ stub.FireEvent("QUEST_ACCEPTED", full)
 stub.Advance(3)
 Expect("normal accept reads accept once", string.format("%d-accept", full))
 
--- Closing an unaccepted offer stops it when Stop When Window Closes is on; accepting it in the
--- close event's grace period leaves the line playing even with that setting enabled.
+-- Stop When Window Closes on its own stops a quest's line however its window closes, accepted,
+-- turned in or walked away from.
 VO.Addon.db.profile.Audio.StopAudioOnDisengage = true
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_ACCEPTED", full)
+stub.Advance(0.6)
+ExpectCurrent("Stop When Window Closes stops an accepted offer as its window closes", "")
+
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(0.6)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(0.6)
+ExpectCurrent("Stop When Window Closes stops a turned-in quest as its window closes", "")
+
+-- An addon that moves straight from one quest's dialog to the next leaves the first quest's line
+-- queued: closing stops it too, not just the line read last.
+lookup[string.format("%d-complete", followUp)] = 1
+StartScenario()
+world.questID = full
+VO.Addon:QUEST_PROGRESS()
+world.questID = followUp
+VO.Addon:QUEST_COMPLETE()
+world.questID = 0
+VO.Addon:QUEST_FINISHED()
+stub.Advance(0.6)
+ExpectCurrent("Stop When Window Closes stops an earlier dialog's line as the window closes", "")
+
+-- With Stop Narration When Accepting off, closing an unaccepted offer stops it, while accepting
+-- it in the close event's grace period leaves the line playing.
+VO.Addon.db.profile.Audio.StopOnAccept = false
 StartScenario()
 world.questID = full
 stub.ShowPanel("QuestFrameDetailPanel")
@@ -371,6 +411,8 @@ stub.ShowPanel(nil)
 stub.FireEvent("QUEST_FINISHED")
 stub.Advance(0.6)
 ExpectCurrent("the turn-in panel stops only after it really closes", "")
+
+VO.Addon.db.profile.Audio.StopOnAccept = true
 
 -- With Stop When Window Closes off, declining an offer leaves its audio playing.
 VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
