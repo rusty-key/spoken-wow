@@ -590,7 +590,6 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     written.append("line_text_table.lua")
 
     # Every quest's, in every pack: a Compendium lists the quests of packs the player did not install.
-    # Strings are interned, so a second pack's copy costs only its table.
     titles = quest_titles(store_dir)
     write_lua_table(os.path.join(generated_dir, "title_table.lua"),
                     module_name, "TitleByQuestID", titles, only_on=language or "enUS")

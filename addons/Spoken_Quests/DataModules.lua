@@ -1217,6 +1217,18 @@ function DataModules:LineIds(fileName)
     return { id }
 end
 
+local function PackEntry(self, language, field, keys)
+    for _, module in self:GetModules() do
+        local entries = module.METADATA.Language == language and module[field]
+        if entries then
+            for _, key in ipairs(keys) do
+                if entries[key] then return entries[key] end
+            end
+        end
+    end
+    return nil
+end
+
 --- A line's words from a voice pack in `language` that did not play it: a Polish pack's under an
 --- English voice. By the file that played and the line's own, each for the player's sex first.
 local function PackWords(self, soundData, language, field)
@@ -1225,15 +1237,7 @@ local function PackWords(self, soundData, language, field)
         table.insert(names, self:AddPlayerGenderToFilename(name))
         table.insert(names, name)
     end
-    for _, module in self:GetModules() do
-        local texts = module.METADATA.Language == language and module[field]
-        if texts then
-            for _, name in ipairs(names) do
-                if texts[name] then return texts[name] end
-            end
-        end
-    end
-    return nil
+    return PackEntry(self, language, field, names)
 end
 
 --- A line's words in the Text Language the player chose where the recording playing is in another:
@@ -1264,17 +1268,12 @@ function DataModules:TextPackText(soundData, language)
     return nil
 end
 
---- A quest's title from a voice pack in `language`, or nil. Only a pack in the language being read
---- builds its table.
+--- Nil unless `language` is the one being read: only then does a pack build its table.
 ---@param questID number
 ---@param language string
 ---@return string|nil title
 function DataModules:PackTitle(questID, language)
-    for _, module in self:GetModules() do
-        local titles = module.METADATA.Language == language and module.TitleByQuestID
-        if titles and titles[questID] then return titles[questID] end
-    end
-    return nil
+    return PackEntry(self, language, "TitleByQuestID", { questID })
 end
 
 function DataModules:AddPlayerGenderToFilename(fileName)
