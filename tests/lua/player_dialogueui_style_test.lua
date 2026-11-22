@@ -504,9 +504,9 @@ local REPORT = { id = "report", icon = "Interface/HelpFrame/HelpIcon-Bug", ancho
 quests:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "One", portrait = { kind = "none" },
     actions = { REPORT } } }))
 quests:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "Two", portrait = { kind = "none" } } }))
-Expect("it has the subtitle's round controls, Stop or Replay, Previous then Skip, and no Stop All",
-    #Skin.buttons == 3 and Skin.buttons[1] == Skin.play and Skin.buttons[2] == Skin.previous
-    and Skin.buttons[3] == Skin.skip and Skin.stop == nil, true)
+Expect("it has the round controls, Stop or Replay, Previous, Skip then Eject",
+    #Skin.buttons == 4 and Skin.buttons[1] == Skin.play and Skin.buttons[2] == Skin.previous
+    and Skin.buttons[3] == Skin.skip and Skin.buttons[4] == Skin.eject, true)
 Expect("...Skip in the subtitle's art", Skin.skip.bar ~= nil, true)
 Expect("...in the header at the right, beside the speaker and the line",
     Skin.controls.anchor.point == "RIGHT" and Skin.controls.anchor.relativeTo == Skin.content
@@ -530,8 +530,8 @@ do
     Skin.frame:SetScale(to)
     Skin:Layout()
 end
-local report = Skin.row[4]
-Expect("...Report after Skip, as large and as strong, as the subtitle shows it", report ~= nil and report:GetParent() == Skin.controls
+local report = Skin.row[5]
+Expect("...Report after Eject, as large and as strong, as the subtitle shows it", report ~= nil and report:GetParent() == Skin.controls
     and report:GetWidth() == Skin.play:GetWidth() and report:GetAlpha() == 1, true)
 local extra = {}
 local function Walk(frame)

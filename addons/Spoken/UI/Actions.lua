@@ -222,17 +222,24 @@ function Actions.Previous()
     return previous
 end
 
--- Skip, or with `back` Previous: the play glyph against a bar, mirrored to point back.
-local function StepButton(parent, name, back)
+local function StepButton(parent, name, direction)
+    local back, eject = direction == "previous", direction == "eject"
     local step = Actions.RoundButton(parent, 10, name, true)
     Actions.Glyph(step.glyph, "play")
     if back then step.glyph:SetTexCoord(PLAY_RIGHT, PLAY_LEFT, PLAY_TOP, PLAY_BOTTOM) end
+    if eject then
+        step.glyph:SetTexCoord(PLAY_RIGHT, PLAY_TOP, PLAY_LEFT, PLAY_TOP,
+            PLAY_RIGHT, PLAY_BOTTOM, PLAY_LEFT, PLAY_BOTTOM)
+    end
     step.glyph:ClearAllPoints()
-    step.glyph:SetPoint("CENTER", back and 2 or -2, 0)
+    step.glyph:SetPoint("CENTER", eject and 0 or (back and 2 or -2), eject and 2 or 0)
     step.bar = step:CreateTexture(nil, "ARTWORK")
     local P = SpokenLayout and SpokenLayout.Pixels
-    step.bar:SetSize(P and P(step, 2) or 2, P and P(step, 9) or 9)
-    if back then
+    local width, height = eject and 9 or 2, eject and 2 or 9
+    step.bar:SetSize(P and P(step, width) or width, P and P(step, height) or height)
+    if eject then
+        step.bar:SetPoint("TOP", step.glyph, "BOTTOM", 0, 0)
+    elseif back then
         step.bar:SetPoint("RIGHT", step.glyph, "LEFT", 0, 0)
     else
         step.bar:SetPoint("LEFT", step.glyph, "RIGHT", 0, 0)
@@ -240,7 +247,7 @@ local function StepButton(parent, name, back)
     if step.bar.SetColorTexture then step.bar:SetColorTexture(1, 0.82, 0, 0.85) end
     -- Squared once the bar exists, so EllesmereUI keeps it with the glyph.
     if Ellesmere then Ellesmere:When(function(skin) Actions.Square(skin, step) end) end
-    local tip = back and L.BIND_PREVIOUS or L.BIND_SKIP
+    local tip = eject and L.MIN_STOP_ALL or (back and L.BIND_PREVIOUS or L.BIND_SKIP)
     step:SetScript("OnEnter", function()
         step.glyph:SetAlpha(1)
         GameTooltip:SetOwner(step, "ANCHOR_TOP")
@@ -258,7 +265,7 @@ function Actions.SkipButton(parent, name)
 end
 
 function Actions.PreviousButton(parent, name)
-    local previous = StepButton(parent, name, true)
+    local previous = StepButton(parent, name, "previous")
     previous.canAct = function() return SoundQueue:CanPrevious() end
     previous:SetScript("OnClick", function()
         local replayed = Actions.Previous()
@@ -268,6 +275,13 @@ function Actions.PreviousButton(parent, name)
         return replayed
     end)
     return previous
+end
+
+function Actions.EjectButton(parent, name)
+    local eject = StepButton(parent, name, "eject")
+    eject.canAct = function() return SoundQueue:GetQueueSize() > 0 end
+    eject:SetScript("OnClick", function() SoundQueue:RemoveAllSoundsFromQueue() end)
+    return eject
 end
 
 --- Stop or Replay for the line at the head. `allowed()`, optional, says whether the window has

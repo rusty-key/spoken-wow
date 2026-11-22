@@ -124,7 +124,8 @@ function MinimalPlayer:Initialize(original)
         function() self:UpdateControls() end)
     self.previous = Actions.PreviousButton(self.controls)
     self.skip = Actions.SkipButton(self.controls)
-    self.buttons = { self.play, self.previous, self.skip }
+    self.eject = Actions.EjectButton(self.controls)
+    self.buttons = { self.play, self.previous, self.skip, self.eject }
 
     self.name = Font(self.header, 16, 1, .82, 0)
     self.name:SetHeight(NAME_HEIGHT)

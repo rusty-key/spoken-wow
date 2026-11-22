@@ -35,13 +35,14 @@ All of it is in `addons/Spoken/UI/`, one copy for every module.
 
 ## What every style shares
 
-- **Controls.** Stop, which turns to Replay once the line is stopped, Previous, Skip, and the
+- **Controls.** Stop, which turns to Replay once the line is stopped, Previous, Skip, Eject, and the
   line's own actions (Report, where its module offers it, unless Hide Report Buttons is on), as the
   round buttons of `Actions.lua`. The game cannot start a sound part-way through, so there is Stop
   and Replay, never Pause and Resume. Previous plays the last line heard ahead of the current one,
   which then speaks again from its start; it reaches back through the last ten lines finished or
   skipped this session, and greys out when there are none. The keys Stop or Replay, Previous Line,
-  Skip Line and Stop All work under every style, Voice Only included.
+  Skip Line and Stop All work under every style, Voice Only included. Eject clears every source's
+  queued lines using the minimap menu's Stop All action; its tooltip says Stop All.
 - **After the line's title**, in this order: why the line waits, "(Stopped)" while it is stopped,
   and "+N", the lines waiting behind it. The reason is what `SoundQueue:GetHeldReason` answers:
   "(Waiting for the NPC to finish speaking.)" under NPC Voice Before Reading, and for a place story

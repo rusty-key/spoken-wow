@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **The player's eject button stops all narration and clears the queue,** like Stop All in the minimap menu.
+  *([anon1231823](https://github.com/anon1231823))*
+
 - **Queue counts pulse without an error when a line is added while Spoken is stopped.** *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.12.0 — 2026-11-22

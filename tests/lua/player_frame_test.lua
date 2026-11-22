@@ -343,15 +343,15 @@ places:Enqueue(H.Clip({ present = { header = "h", label = "l", bullet = "b", por
 Expect("two actions make two buttons", #F.frame.actions.buttons, 2)
 Expect("...each its round icon", F.frame.actions.buttons[1].glyph:GetTexture() .. "|"
     .. F.frame.actions.buttons[2].glyph:GetTexture(), "Read|Report")
-ExpectOf("...in the header's controls after Stop, Previous and Skip", function()
-    return #F.row == 5 and F.row[1] == F.play and F.row[2] == F.previous and F.row[3] == F.skip
-        and F.row[4] == F.frame.actions.buttons[1] and F.row[5]:GetParent() == F.controls
+ExpectOf("...in the header's controls after Stop, Previous, Skip and Eject", function()
+    return #F.row == 6 and F.row[1] == F.play and F.row[2] == F.previous and F.row[3] == F.skip
+        and F.row[4] == F.eject and F.row[5] == F.frame.actions.buttons[1] and F.row[6]:GetParent() == F.controls
 end, true)
 F.frame.actions.buttons[1]:Click()
 Expect("clicking passes the clip", clicked ~= nil and clicked:sub(1, 5), "read:")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 quests:Enqueue(H.Clip({ present = { header = "h", label = "l", bullet = "b", portrait = { kind = "none" } } }))
-ExpectOf("no actions, Stop, Previous and Skip alone", function() return #F.frame.actions.buttons .. " " .. #F.row end, "0 3")
+ExpectOf("no actions, Stop, Previous, Skip and Eject alone", function() return #F.frame.actions.buttons .. " " .. #F.row end, "0 4")
 
 ---------------------------------------------------------------- the Talking Head's layout
 -- The window is the game's Talking Head frame as TalkingHeadUI.xml lays it out: 570 by 155, the
@@ -838,8 +838,8 @@ Expect("the action is a button", corner ~= nil, true)
 Expect("...showing its icon, not a word, in the player's round button", corner.glyph:GetTexture(), ICON)
 Expect("...the ring round it, as the subtitle's controls have", corner.ring ~= nil, true)
 Expect("...with no label", corner:GetText() or "", "")
-ExpectOf("...in the header after Skip, as the DialogueUI window shows it", function()
-    return corner:GetParent() == env.PlayerFrame.controls and env.PlayerFrame.row[4] == corner
+ExpectOf("...in the header after Eject, as the DialogueUI window shows it", function()
+    return corner:GetParent() == env.PlayerFrame.controls and env.PlayerFrame.row[5] == corner
 end, true)
 -- Sized to be aimed at. Pinned as a floor rather than a number, so it can be tuned but
 -- cannot drift back to something you have to hunt for.
@@ -1185,6 +1185,39 @@ end, 0)
 env.SoundQueue:RemoveAllSoundsFromQueue()
 env.Addon:SetPlayerStyle("classic")
 _G.IsShiftKeyDown = hadShift
+
+do
+    env, quests, places = Boot()
+    F = env.PlayerFrame
+    local eject = F.eject
+    Expect("the player has an eject button after Skip", F.buttons[4], eject)
+    Expect("eject reuses Skip's arrow asset", eject.glyph:GetTexture(), F.skip.glyph:GetTexture())
+    Expect("...the same atlas cell turned upward", table.concat(eject.glyph.texCoord, ","),
+        table.concat({ 93 / 512, 419 / 512, 0, 419 / 512, 93 / 512, 1, 0, 1 }, ","))
+    Expect("...with a horizontal bar below the arrow", eject.bar:GetWidth() > eject.bar:GetHeight()
+        and eject.bar.anchor.point == "TOP" and eject.bar.anchor.relativeTo == eject.glyph
+        and eject.bar.anchor.relativePoint == "BOTTOM", true)
+    eject.scripts.OnEnter(eject)
+    Expect("eject explains the existing Stop All action", GameTooltip.lines[1], env.L.MIN_STOP_ALL)
+    for _, style in ipairs({ "classic", "minimal", "subtitle" }) do
+        env.Addon:SetPlayerStyle(style)
+        F:RefreshConfig()
+        local stopped = 0
+        local function OnStop() stopped = stopped + 1 end
+        quests:Enqueue(H.Clip({ stopCallback = OnStop, present = { transcript = "A narrated quest line." } }))
+        places:Enqueue(H.Clip({ stopCallback = OnStop, present = { transcript = "A narrated place line." } }))
+        stub.Advance(0.1)
+        Spoken:Pause()
+        local view = style == "classic" and F or style == "minimal" and env.MinimalPlayer or env.Subtitle
+        Expect(style .. " enables eject for a stopped queue", view.eject:IsEnabled(), true)
+        view.eject:Click()
+        Expect(style .. " eject clears every source's queued lines", Spoken:GetQueueSize(), 0)
+        Expect(style .. " eject stops both lines through the normal callbacks", stopped, 2)
+        Expect(style .. " eject clears the paused flag like the minimap Stop All", Spoken:IsPaused(), false)
+        env.Actions.SetPausable({ view.eject })
+        Expect(style .. " disables eject with no queue", view.eject:IsEnabled(), false)
+    end
+end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll player frame tests passed")
