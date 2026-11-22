@@ -1649,6 +1649,9 @@ local function Build(panel)
     local holder = C.PageHolder(panel, list)
     -- No Play in the page's corner: each part is said at its own time, and has its own.
     page = C.NewPage(holder, ns)
+    -- The parts' faces, made with the page: made on first show in combat under the controller UI,
+    -- they would be built in sight of the cursor, which the game refuses then.
+    for moment in pairs(BULLETS) do PartFace(moment) end
     -- The parts' Play show Stop while their part plays, and their Report follows Hide Report Buttons.
     if Spoken and Spoken.RegisterCallback then
         Spoken:RegisterCallback("AUDIO_CHANGED", function()

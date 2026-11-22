@@ -865,6 +865,7 @@ function C:Relayout()
 	if not window then return end
 	LayOutTabs()
 	PaintTabs()
+	Pad.BuildTabs()
 	if active and C.tabs[active] and not Enabled(C.tabs[active]) then window:Hide() end
 end
 
@@ -1244,6 +1245,13 @@ function C.NewList(panel, opts)
 			-- As close to the box, and as level with it, as the spellbook's arrow is to its search.
 			button:SetPoint("LEFT", searchBox, "RIGHT", 4, -3)
 			list.filterButton = button
+			-- The game's menu, opened from an addon's arrow under the controller UI, taints the
+			-- frame controls manager and leaves the controller's own filter open beside it.
+			local down = button:GetScript("OnMouseDown")
+			button:SetScript("OnMouseDown", function(self, ...)
+				if Pad.OpenFilter(list) then return end
+				if down then down(self, ...) end
+			end)
 			-- What the menu holds, for the controller's own (Pad.OpenFilter): its checkboxes, then
 			-- the orders to choose one of.
 			list.filterEntries = function()
@@ -2003,6 +2011,16 @@ function Pad.Retarget()
 	SmartNavigation:SetScrollFrameForFrame(window, page and page.body.frame or nil)
 end
 
+--- Every tab whose part is on, built now: as the window joins the manager (`joining`), or while
+--- it holds the window, for a part switched on since. Built in sight of the cursor in combat, a
+--- tab's frames would make the game look for stops from inside Spoken's call, which it refuses.
+function Pad.BuildTabs(joining)
+	if not (joining or joined) or CombatRestricted() then return end
+	for key, tab in pairs(C.tabs) do
+		if Enabled(tab) then Panel(key) end
+	end
+end
+
 --- Join the manager while the window is shown under the controller UI, and leave it otherwise.
 --- Run on show and hide, and again once combat ends.
 function Pad.Settle()
@@ -2017,11 +2035,7 @@ function Pad.Settle()
 	if want ~= joined then
 		joined = want
 		if want then
-			-- Built in sight of the cursor, a tab's frames would make the game look for stops from
-			-- inside Spoken's call, which combat refuses: build them all before it can look.
-			for key, tab in pairs(C.tabs) do
-				if Enabled(tab) then Panel(key) end
-			end
+			Pad.BuildTabs(true)
 			manager:FrameShown(window)
 		else
 			manager:FrameHidden(window)
@@ -2647,6 +2661,7 @@ function C.NewPage(parent, addon, play, report, look)
 	self.body = body
 	Pad.NoStop(body.bar)
 	table.insert(Pad.pages, self)
+	if not self.noFace then self:MakeFace() end
 	local mark = frame:CreateTexture(nil, "BORDER")
 	mark:SetPoint("CENTER", body.frame, "CENTER")
 	mark:Hide()
@@ -2934,17 +2949,22 @@ end
 --- Play, and its mark in the middle.
 --- onSubtitle(), where given, is what a click on the line under the title does (the map panel's
 --- area story returns to its zone's with it); without it the line is plain words.
-function Page:Show(entry)
-	-- Made on first need: nil is not yet made, false is made and failed, which is not tried again.
-	if self.headFace == nil and (not self.noFace or entry.face) then
-		local ok, made = false, nil
-		if _G.Spoken and Spoken.CreateSpeakerFace then
-			ok, made = pcall(Spoken.CreateSpeakerFace, Spoken, self.frame, FACE_SIZE)
-			if not ok then print("|cffff5555Spoken|r: " .. tostring(made)) end
-		end
-		self.headFace = ok and made or false
-		if made and ok then made:SetPoint("TOPLEFT", self.frame, "TOPLEFT", PAD, -(self.top - 4)) end
+-- The round picture by the title; false is made and failed. Made with the page, not on first show:
+-- a page first shown in combat under the controller UI would build it in sight of the cursor,
+-- which combat refuses. A `noFace` page, the map's, is outside the window and makes it on need.
+function Page:MakeFace()
+	local ok, made = false, nil
+	if _G.Spoken and Spoken.CreateSpeakerFace then
+		ok, made = pcall(Spoken.CreateSpeakerFace, Spoken, self.frame, FACE_SIZE)
+		if not ok then print("|cffff5555Spoken|r: " .. tostring(made)) end
 	end
+	self.headFace = ok and made or false
+	if not (made and ok) then return end
+	made:SetPoint("TOPLEFT", self.frame, "TOPLEFT", PAD, -(self.top - 4))
+end
+
+function Page:Show(entry)
+	if self.headFace == nil and (not self.noFace or entry.face) then self:MakeFace() end
 	local face = self.headFace or nil
 	if face and self.noFace then
 		face:SetShown(entry.face and true or false)

@@ -433,6 +433,23 @@ Close()
 Expect("closing the window closes its filter too", pad:IsShown(), false)
 Run(pad, "OnHide")
 
+---------------------------------------------------------------- the filter arrow with the mouse
+-- The game's menu, opened from an addon's arrow under the controller UI, taints the manager.
+Open()
+C.window:FocusGamepad()
+presses = {}
+filter:GetScript("OnMouseDown")(filter, "LeftButton")
+Expect("a mouse click on the filter arrow opens the controller's own filter", pad:IsShown(), true)
+Expect("...not the game's menu", #presses, 0)
+filter:GetScript("OnMouseDown")(filter, "LeftButton")
+Run(pad, "OnHide")
+Expect("...and a second click closes it", pad:IsShown(), false)
+Close()
+
+---------------------------------------------------------------- faces
+Expect("a page makes its speaker's face with the page, not when first shown in a fight",
+    page.headFace ~= nil, true)
+
 ---------------------------------------------------------------- the right stick
 Open()
 calls = {}
@@ -469,6 +486,12 @@ end
 Expect("a tab never opened is built before the window joins the controller",
     builtAt ~= nil and joinedAt ~= nil and builtAt < joinedAt, true)
 Expect("...but not the tab of a part switched off", Called("built off"), false)
+local lateOn = false
+C:Register("late", { label = "Late", order = 5, enabled = function() return lateOn end,
+    build = function() Record("built late") end })
+lateOn = true
+C:Relayout()
+Expect("a part switched on while the window is open has its tab built then", Called("built late"), true)
 Close()
 
 local failures = Failures()
