@@ -1042,6 +1042,9 @@ def export_locale_text(lang, path, verbose=True):
 
     Both of a gendered line's variants are kept. They read differently on screen and name
     the same file, to which the addon adds the player's gender itself.
+
+    The language's current NPC, object and item names go in the same file, for the pack to
+    name a speaker who is not on screen.
     """
     from tts_cli.locale_text import write_locale_text
 
@@ -1061,24 +1064,30 @@ def export_locale_text(lang, path, verbose=True):
             )
             lines = [{"lineId": line_id, "originalText": original, "localeText": text}
                      for line_id, original, text in cur.fetchall()]
+            cur.execute(
+                """select "kind", "entityId", "name" from "entity_name"
+                    where "lang" = %s and "isCurrent" and "name" <> ''
+                      and "kind" in ('creature', 'gameobject', 'item')
+                    order by "kind", "entityId" """,
+                (lang,),
+            )
+            names = [{"kind": kind, "entityId": entity_id, "name": name}
+                     for kind, entity_id, name in cur.fetchall()]
     finally:
         conn.close()
 
-    write_locale_text(path, lang, lines)
+    write_locale_text(path, lang, lines, names)
     if verbose:
-        print(f"wrote {path}: {len(lines)} {lang} gossip lines with client text")
+        print(f"wrote {path}: {len(lines)} {lang} gossip lines with client text, "
+              f"{len(names)} names")
     return lines
 
 
 def export_giver_names(corpus_path, out_dir, verbose=True):
     """Every other language's quest-giver names -> one addon Lua file per language.
 
-    See tts_cli/giver_names.py. The name is the newest one a client showed rather than the
-    live one, for the reason export_locale_text takes localeText: a translator's edit changes
-    how a name is spoken, and what the addon shows must be what the client shows. A name a
-    translator kept from a player's client ('observed') comes before the dump's, which is
-    older than the client. The site decides which names to offer by the same rule; if the two
-    differ, names are offered again or shipped wrong.
+    See tts_cli/giver_names.py. The name is each language's current one, whoever wrote it: names
+    are only displayed, and respellings for the voice live in the lexicon, never here.
     """
     from tts_cli.giver_names import KINDS, givers, write_every_language
     from tts_cli.ignores import load_pack_ignored
@@ -1089,13 +1098,9 @@ def export_giver_names(corpus_path, out_dir, verbose=True):
     try:
         with conn, conn.cursor() as cur:
             cur.execute(
-                """select distinct on ("lang", "kind", "entityId")
-                          "lang", "kind", "entityId", "name"
+                """select "lang", "kind", "entityId", "name"
                      from "entity_name"
-                    where "lang" <> %s and "origin" in ('observed', 'extracted')
-                      and "kind" = any(%s)
-                    order by "lang", "kind", "entityId", ("origin" = 'observed') desc,
-                             "version" desc""",
+                    where "lang" <> %s and "isCurrent" and "kind" = any(%s)""",
                 (LANG, list(KINDS)),
             )
             by_lang = {}

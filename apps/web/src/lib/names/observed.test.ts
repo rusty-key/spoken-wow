@@ -73,30 +73,24 @@ afterAll(async () => {
 });
 
 describe("a name a player's client shows", () => {
-  it("is offered where the addon shows the English", async () => {
+  it("is offered where the language has no name yet", async () => {
     expect(await recordObservedNames([seen("Alba Lunaclara")], "user:a")).toBe(1);
     expect(await waiting()).toMatchObject([
-      { entityId: String(alba), name: "Alba Lunaclara", english: "Alba Fairmoon", shown: null, uploaders: 1 },
+      { entityId: String(alba), name: "Alba Lunaclara", english: "Alba Fairmoon", currentName: null, uploaders: 1 },
     ]);
   });
 
-  it("is offered where a contribution named it but no client name was kept", async () => {
-    await nameVersion("esMX", 1, "contributed", "Alba Lunaclara", true);
-    await recordObservedNames([seen("Alba Lunaclara")], "user:a");
-    expect(await waiting()).toMatchObject([{ name: "Alba Lunaclara", spoken: "Alba Lunaclara" }]);
-  });
-
-  it("is not offered where the addon shows it already, whatever a translator made it sound like", async () => {
-    await nameVersion("esMX", 1, "extracted", "Alba Lunaclara", false);
-    await nameVersion("esMX", 2, "edited", "Alba Lunaclára", true);
+  it("is not offered where the current name already matches, whoever wrote it", async () => {
+    await nameVersion("esMX", 1, "extracted", "Alba la vieja", false);
+    await nameVersion("esMX", 2, "edited", "Alba Lunaclara", true);
     expect(await recordObservedNames([seen("Alba Lunaclara")], "user:a")).toBe(0);
     expect(await waiting()).toEqual([]);
   });
 
-  it("is offered where the game renamed what the dump had", async () => {
+  it("is offered where the game renamed the current name", async () => {
     await nameVersion("esMX", 1, "extracted", "Alba la vieja", true);
     await recordObservedNames([seen("Alba Lunaclara")], "user:a");
-    expect(await waiting()).toMatchObject([{ name: "Alba Lunaclara", shown: "Alba la vieja" }]);
+    expect(await waiting()).toMatchObject([{ name: "Alba Lunaclara", currentName: "Alba la vieja" }]);
   });
 
   it("counts each uploader once", async () => {
@@ -116,26 +110,17 @@ describe("a name a player's client shows", () => {
     expect((await waiting()).map((row) => row.name)).toEqual(["Alba"]);
   });
 
-  it("is shown once kept, and a translator's edit stays how it is spoken", async () => {
+  it("becomes the current name once kept, over a translator's edit too", async () => {
     await nameVersion("esMX", 1, "extracted", "Alba la vieja", false);
     await nameVersion("esMX", 2, "edited", "Alba la viéja", true);
     await recordObservedNames([seen("Alba Lunaclara")], "user:a");
     const [row] = await waiting();
     expect(await acceptObservedName(row.id, "esMX", user.id)).toEqual({ ok: true });
-    expect((await versions()).at(-1)).toEqual({ version: 3, origin: "observed", name: "Alba Lunaclara", isCurrent: false });
+    expect((await versions()).at(-1)).toEqual({ version: 3, origin: "observed", name: "Alba Lunaclara", isCurrent: true });
     expect(await waiting()).toEqual([]);
-    expect((await listObservedNames("esMX", "accepted")).find((r) => r.id === row.id)).toMatchObject({ shown: "Alba Lunaclara" });
-  });
-
-  it("becomes the live name where no translator edited it", async () => {
-    await nameVersion("esMX", 1, "contributed", "Alba Lunaclara", true);
-    await recordObservedNames([seen("Alba Lunaclara")], "user:a");
-    const [row] = await waiting();
-    await acceptObservedName(row.id, "esMX", user.id);
-    expect(await versions()).toEqual([
-      { version: 1, origin: "contributed", name: "Alba Lunaclara", isCurrent: false },
-      { version: 2, origin: "observed", name: "Alba Lunaclara", isCurrent: true },
-    ]);
+    expect((await listObservedNames("esMX", "accepted")).find((r) => r.id === row.id)).toMatchObject({
+      currentName: "Alba Lunaclara",
+    });
   });
 
   it("stays dropped when sent again, until reopened", async () => {

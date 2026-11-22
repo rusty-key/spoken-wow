@@ -8,7 +8,7 @@ the corpus, and building a pack from audio/ once `make quests-sounds` has assemb
     import-corpus corpus/corpus.json.gz -> Postgres         DANGEROUS: once, into an empty database
     import-npc-bodies  world DB -> Postgres npc_body         after init-db, or into production
     export-corpus Postgres -> corpus/corpus.json.gz         before a build; its only writer
-    export-locale-text  Postgres -> one language's gossip text   before its Gossip pack
+    export-locale-text  Postgres -> one language's gossip text and names   before its Gossip pack
     export-giver-names  Postgres -> the addon's translated quest-giver names   after import-locale
     export-gossip-text  Postgres -> the addon's gossip text per client locale, and aliases
     export-chatter-lines  corpus -> the addon's World Chatter lines             after export-corpus
@@ -24,7 +24,7 @@ from tts_cli.factions import (DEFAULT_FACTIONS_PATH, PACKS, load_sides, pack_ste
                               pack_title)
 from tts_cli.gossip_text import DEFAULT_ALIASES_PATH, load_aliases
 from tts_cli.ignores import DEFAULT_IGNORED_PATH, DEFAULT_OVERRIDES_PATH, load_pack_ignored
-from tts_cli.locale_text import load_locale_text
+from tts_cli.locale_text import load_locale_names, load_locale_text
 from tts_cli.store import DEFAULT_STORE_DIR
 
 # init-db and extract are imported inside their branches: they pull in
@@ -72,7 +72,7 @@ exp.add_argument("--check", action="store_true",
 
 lxt = subparsers.add_parser(
     "export-locale-text",
-    help="One language's gossip text as its client shows it -> a file build --locale-text reads.")
+    help="One language's gossip text as its client shows it, and its names -> a file build --locale-text reads.")
 lxt.add_argument("--lang", required=True, help="e.g. esMX")
 lxt.add_argument("--out", required=True, help="e.g. build/quests/esMX/locale-text.json.gz")
 
@@ -123,7 +123,7 @@ bld.add_argument("--toc-extra", action="append", default=[], metavar="KEY=VALUE"
                       "and a language Spoken does not build in its names.")
 bld.add_argument("--locale-text", default=None,
                  help="A file export-locale-text wrote for --language; adds that language's "
-                      "gossip tables, loaded only on a client in it. Gossip pack only.")
+                      "gossip and name tables, loaded only on a client in it. Gossip pack only.")
 
 ins = subparsers.add_parser(
     "install", help="Copy the built module into a WoW AddOns folder.")
@@ -210,7 +210,7 @@ elif args.mode == "build":
             raise SystemExit(f"--toc-extra is X-KEY=VALUE on one line, not '{pair}'")
         return key, value
 
-    locale_text = None
+    locale_text, locale_names = None, []
     if args.locale_text:
         # The client-locale tables ship once per language, in the pack that holds its gossip -
         # its Gossip pack, or its All pack when it ships as one: a faction pack carrying them
@@ -218,6 +218,7 @@ elif args.mode == "build":
         if args.pack not in ("gossip", "all"):
             raise SystemExit(f"--locale-text is for the gossip or all pack, not '{args.pack}'")
         lang, locale_text = load_locale_text(args.locale_text)
+        locale_names = load_locale_names(args.locale_text)
         if lang != args.language:
             raise SystemExit(f"{args.locale_text} holds {lang} text, not --language "
                              f"{args.language}'s")
@@ -239,7 +240,8 @@ elif args.mode == "build":
                           title=args.module_title or pack_title(args.pack),
                           language=args.language, locale_text=locale_text,
                           icon_language=args.icon_language,
-                          toc_extra=[toc_extra(pair) for pair in args.toc_extra])
+                          toc_extra=[toc_extra(pair) for pair in args.toc_extra],
+                          locale_names=locale_names)
     print(f"\nbuilt {report['moduleDir']}")
     print(f"  audio files {report['audioFiles']} ({report['audioFormat']}, pack: {args.pack})")
     for name, rows in sorted(report["tableRows"].items()):

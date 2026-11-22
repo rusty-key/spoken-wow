@@ -1,8 +1,6 @@
 /**
- * A name is compared with the one the addon shows, not the current one: a translator's edit says
- * how a name is spoken, and comparing against it would offer the client's spelling on every
- * upload. The giver-name export picks the shown name by the same rule; if the two differ, names
- * are offered again or shipped wrong.
+ * A name is offered where it differs from the language's current name, which is what the
+ * giver-name export ships to the addon.
  */
 import "server-only";
 
@@ -21,23 +19,14 @@ export function hasObservedNames(lang: Lang): boolean {
 }
 
 /** `lang` is an SQL expression, so the English and the row's own language share one lookup. */
-function currentNameSql(alias: string, lang: string): string {
+function currentNameSql(alias: string, lang = `${alias}."lang"`): string {
   return `(select e."name" from "entity_name" e
             where e."kind" = ${alias}."kind" and e."entityId" = ${alias}."entityId"
               and e."lang" = ${lang} and e."isCurrent")`;
 }
 
-/** The name the addon shows for `alias`'s kind, entityId and lang; null where it shows the English. */
-export function shownNameSql(alias: string): string {
-  return `(select n."name" from "entity_name" n
-            where n."kind" = ${alias}."kind" and n."entityId" = ${alias}."entityId" and n."lang" = ${alias}."lang"
-              and n."origin" in ('observed', 'extracted')
-            order by (n."origin" = 'observed') desc, n."version" desc
-            limit 1)`;
-}
-
 /**
- * Offers every name a sighting carries that the addon would not show, under `uploader`.
+ * Offers every name a sighting carries that differs from the current one, under `uploader`.
  * English is left out: its names are the corpus's. So is an NPC with no English name, which
  * nothing on the site lists. Returns how many names this uploader newly vouched for.
  */
@@ -57,7 +46,7 @@ export async function recordObservedNames(sightings: readonly Sighting[], upload
      ), offered as (
        select s.* from sent s
         where ${currentNameSql("s", `'${BASE_LANG}'`)} is not null
-          and ${shownNameSql("s")} is distinct from s."name"
+          and ${currentNameSql("s")} is distinct from s."name"
      ), saved as (
        insert into "name_contribution" ("kind", "entityId", "lang", "name")
        select "kind", "entityId", "lang", "name" from offered
@@ -82,29 +71,26 @@ export type NameContribution = {
   /** How many uploaders sent it: accounts, Manager installs, or anonymous files. */
   uploaders: number;
   english: string | null;
-  /** What the addon shows in the language now; null where it shows the English. */
-  shown: string | null;
-  /** What the site speaks it as, where a translator's edit differs from `shown`. */
-  spoken: string | null;
+  /** The language's current name; null where it has none and the addon shows the English. */
+  currentName: string | null;
   updatedAt: string;
 };
 
 type Row = Omit<NameContribution, "updatedAt"> & { updatedAt: Date };
 
 /**
- * A language's names of one status, most vouched for first. New ones the addon already shows,
- * because an import or another kept name caught up, are left out: nothing is left to decide.
+ * A language's names of one status, most vouched for first. New ones the current name already
+ * matches, because an edit, an import or another kept name caught up, are left out.
  */
 export async function listObservedNames(lang: Lang, status: ContributionStatus): Promise<NameContribution[]> {
   const rows = await query<Row>(
     `select c."id", c."kind", c."entityId", c."name", c."status", c."updatedAt",
             (select count(*) from "name_contribution_uploader" u where u."contributionId" = c."id")::int as "uploaders",
             ${currentNameSql("c", `'${BASE_LANG}'`)} as "english",
-            ${shownNameSql("c")} as "shown",
-            ${currentNameSql("c", `c."lang"`)} as "spoken"
+            ${currentNameSql("c")} as "currentName"
        from "name_contribution" c
       where c."lang" = $1 and c."status" = $2
-        and (c."status" <> 'new' or ${shownNameSql("c")} is distinct from c."name")
+        and (c."status" <> 'new' or ${currentNameSql("c")} is distinct from c."name")
       order by "uploaders" desc, c."updatedAt" desc`,
     [lang, status],
   );
@@ -114,7 +100,7 @@ export async function listObservedNames(lang: Lang, status: ContributionStatus):
 export async function countObservedNames(lang: Lang): Promise<number> {
   const rows = await query<{ count: number }>(
     `select count(*)::int as "count" from "name_contribution" c
-      where c."lang" = $1 and c."status" = 'new' and ${shownNameSql("c")} is distinct from c."name"`,
+      where c."lang" = $1 and c."status" = 'new' and ${currentNameSql("c")} is distinct from c."name"`,
     [lang],
   );
   return rows[0]?.count ?? 0;
@@ -128,10 +114,7 @@ export async function observedNameLang(id: number): Promise<string | null> {
 
 export type ResolveOutcome = { ok: true } | { ok: false; reason: "not-found" };
 
-/**
- * Made current unless a translator's edit is: the edit says how the name is spoken, and keeping
- * a client's spelling must not undo it.
- */
+/** Kept, the name becomes the language's current one. */
 export async function acceptObservedName(id: number, lang: Lang, userId: string): Promise<ResolveOutcome> {
   return withTextTeam(lang, async (client, team) => {
     const { rows } = await client.query<{ kind: ObservedKind; entityId: string; name: string }>(
@@ -146,26 +129,18 @@ export async function acceptObservedName(id: number, lang: Lang, userId: string)
     await client.query(`select pg_advisory_xact_lock(hashtext($1))`, [
       `entity_name:${found.kind}:${found.entityId}:${lang}`,
     ]);
-    const { rows: current } = await client.query<{ origin: string }>(
-      `select "origin" from "entity_name"
-        where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "isCurrent" for update`,
+    await client.query(
+      `update "entity_name" set "isCurrent" = false
+        where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "isCurrent"`,
       [found.kind, found.entityId, lang],
     );
-    const live = current[0]?.origin !== "edited";
-    if (live) {
-      await client.query(
-        `update "entity_name" set "isCurrent" = false
-          where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "isCurrent"`,
-        [found.kind, found.entityId, lang],
-      );
-    }
     const { rows: written } = await client.query<{ version: number }>(
       `insert into "entity_name"
          ("kind", "entityId", "lang", "version", "isCurrent", "origin", "name", "editedBy", "note")
-       select $1, $2, $3, coalesce(max("version"), 0) + 1, $4, 'observed', $5, $6, $7
+       select $1, $2, $3, coalesce(max("version"), 0) + 1, true, 'observed', $4, $5, $6
          from "entity_name" where "kind" = $1 and "entityId" = $2 and "lang" = $3
        returning "version"`,
-      [found.kind, found.entityId, lang, live, found.name, userId, `name contribution #${id}`],
+      [found.kind, found.entityId, lang, found.name, userId, `name contribution #${id}`],
     );
     await client.query(
       `update "name_contribution" set "status" = 'accepted', "resolvedBy" = $2, "updatedAt" = now() where "id" = $1`,

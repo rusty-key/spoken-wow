@@ -232,16 +232,12 @@ def exported_esmx(tmp_path):
     return path.read_text(encoding="utf-8") if path.exists() else ""
 
 
-def test_a_name_kept_from_a_players_client_is_shown_before_the_dumps(names_db, tmp_path):
+def test_each_language_ships_its_current_name_whoever_wrote_it(names_db, tmp_path):
     name_version(names_db, 1, "extracted", "Alba la vieja", False)
-    name_version(names_db, 2, "observed", "Alba Lunaclara", False)
-    # An import of the old dump afterwards records beside it, and a translator's edit says how
-    # it is spoken: neither is what the client shows.
-    name_version(names_db, 3, "extracted", "Alba la vieja", False)
-    name_version(names_db, 4, "edited", "Alba Lunaclára", True)
+    name_version(names_db, 2, "edited", "Alba Lunaclara", True)
     assert f'[{KEPT}] = "Alba Lunaclara"' in exported_esmx(tmp_path)
 
 
-def test_a_contributed_name_alone_is_not_shown(names_db, tmp_path):
+def test_a_contributed_name_ships_too(names_db, tmp_path):
     name_version(names_db, 1, "contributed", "Alba Lunaclara", True)
-    assert KEPT not in exported_esmx(tmp_path)
+    assert f'[{KEPT}] = "Alba Lunaclara"' in exported_esmx(tmp_path)

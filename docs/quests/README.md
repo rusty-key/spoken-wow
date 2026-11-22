@@ -1121,14 +1121,12 @@ file after every logout is one voice.
 
 The envelope also carries the client's locale and the name it shows for the NPC, and is kept
 again when that name changes, so a giver a patch renames reaches the site too. In a language
-other than English, a name the addon would not show is offered on `/contributions/names`
-(`name_contribution`, `lib/names/observed.ts`), one row per name with a count of its uploaders.
-A translator keeps it or drops it; a dropped name stays dropped when it is sent again. A kept
-name is written to `entity_name` as `observed`: live unless a translator's edit is, since an
-edit says how the name is spoken. An `import-locale` records the dump's name beside an
-`observed` one rather than over it, because the dump is older than the client that showed it.
-"The name the addon would show" is the giver-name export's rule below, so a name already shipped
-is never offered again.
+other than English, a name that differs from the language's current one is offered on
+`/contributions/names` (`name_contribution`, `lib/names/observed.ts`), one row per name with a
+count of its uploaders. A translator keeps it or drops it; a dropped name stays dropped when it
+is sent again. A kept name becomes the current one in `entity_name`, as `observed`. An
+`import-locale` records the dump's name beside an `observed` one rather than over it, because
+the dump is older than the client that showed it.
 
 The same text pasted again — by the same player or a different one — bumps a count on the
 existing row rather than filing a second one; different text under the same key stays its own
@@ -2044,16 +2042,21 @@ client measured it. An error in the hook is logged and never reaches the client'
 A quest-log play button has no NPC to ask who is speaking. The dialog names its speaker with
 `UnitName("questnpc")` in the client's own language; the log looks the giver up in the pack
 (`NPCIDLookupByQuestID` and its object and item twins) and names them from
-`NPCNameLookupByNPCID`, which is built from the English corpus. So the addon itself ships every
-other language's giver names, `Locale/Names/<lang>.lua`, each returning before it builds
-anything on a client in another locale, and `DataModules:GetObjectName` asks them first. They
-live in the addon rather than in the packs because the name follows the client, not the voice:
-a German client with English packs still shows German names. `make quests-export-giver-names`
+`NPCNameLookupByNPCID`, which is built from the English corpus. A language's pack carries that
+language's own names beside its gossip text: `export-locale-text` writes the language's current
+NPC, object and item names into `locale-text.json.gz`, and the Gossip (or All) pack builds them
+into `ClientLocaleLookups`, loaded only on a client in that locale, for the entities the corpus
+names. `DataModules:GetObjectName` asks those first, so a translator's edit or a name kept on
+`/contributions/names` reaches players with the language's next pack release.
+
+The addon also ships every other language's giver names, `Locale/Names/<lang>.lua`, each returning before it builds
+anything on a client in another locale, and `DataModules:GetObjectName` asks them after the
+packs. They cover a pack built before packs carried names, and a client whose language's pack is
+not installed. `make quests-export-giver-names`
 writes them from `entity_name` (`tts_cli/giver_names.py`), after an `import-locale` or after
 translators keep names on `/contributions/names`, along with a `Names.xml` that lists them all.
-Each name is the newest one a translator kept from a player's client (`observed`), else the
-newest the dump had (`extracted`), whether or not it is the live version: a translator's edit
-changes how a name is spoken, not what the client shows. Forever's `.toc` lists each file with
+Each name is the language's current one, whoever wrote it: names are only displayed, and
+respellings for the voice live in the lexicon. Forever's `.toc` lists each file with
 `[AllowLoadTextLocale <lang>]`, as it does the gossip text, so the client loads only its own; the
 classic `.toc` files load `Names.xml`. The export stops with the lines to add or remove when
 Forever's `.toc` does not list exactly the files it wrote. Only

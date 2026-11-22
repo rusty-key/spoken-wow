@@ -59,19 +59,24 @@ export default function NameContributionTable({ initial }: { initial: NameContri
             </div>
 
             <div className="min-w-0">
-              <p className="bs-label">Shown now</p>
-              {row.shown ? (
-                <p className="bs-text">{row.shown}</p>
+              <p className="bs-label">Current name</p>
+              {row.currentName ? (
+                <p className="bs-text">{row.currentName}</p>
               ) : (
-                <p className="bs-text text-muted-foreground">The English name</p>
+                <p className="bs-text">
+                  {row.english ?? "none"}
+                  <span
+                    className="text-muted-foreground ml-2 rounded-full border px-1.5 text-[11px] font-medium"
+                    title="This language has no name for it yet"
+                  >
+                    English
+                  </span>
+                </p>
               )}
-              {row.spoken && row.spoken !== row.shown ? (
-                <p className="text-muted-foreground mt-1 text-xs">Spoken as {row.spoken}</p>
-              ) : null}
             </div>
 
             <div className="min-w-0">
-              <p className="bs-label">Their game shows</p>
+              <p className="bs-label">Contributed name</p>
               <p className="bs-text">{row.name}</p>
             </div>
 
