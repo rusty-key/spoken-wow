@@ -84,6 +84,13 @@ Expect("entering a Spoken page off a button not on screen puts the cursor on the
     cursor.target == first, true)
 Expect("...through the settings window's target", cursor.targetFor == _G.SettingsPanel, true)
 Expect("...which is the Quests card, not a button over the rows", page.layout.entries[2].label, "Quests")
+-- A checkbox row is one stop, its band: the cursor passes over the box itself.
+local questsLayout = _G.SpokenQuestsOptionsPanel.layout
+local enable = questsLayout.entries[1]
+Expect("Quests' page starts with Enable, a row with a band", tostring(enable.label) .. " "
+    .. tostring(enable.frame.layoutHit ~= nil), "Enable true")
+Expect("...and its first row for the cursor is that band, not the box",
+    questsLayout:FirstRow() == enable.frame.layoutHit, true)
 -- Scrolled past the Quests card, the page's first row in view is Gossip's.
 local view = page.layout.parent.layoutScroller.frame
 view.verticalScroll = -page.layout.entries[2].frame.layoutY + 1
