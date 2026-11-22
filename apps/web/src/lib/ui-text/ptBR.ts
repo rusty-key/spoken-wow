@@ -691,7 +691,6 @@ const ptBR: Dictionary = {
       batchQueuedOne: "pôs 1 fala na fila de regeração",
       batchQueuedMany: "pôs {n} falas na fila de regeração",
       batchStopped: "parou um lote",
-      batchStoppedCancellingOne: "parou um lote, cancelando 1 fala",
       batchStoppedCancellingMany: "parou um lote, cancelando {n} falas",
       queueStoppedOne: "parou {m}, cancelando 1 fala",
       queueStoppedMany: "parou {m}, cancelando {n} falas",
@@ -750,6 +749,7 @@ const ptBR: Dictionary = {
       npcResolvedMan: "definiu que {name} é homem",
       typeChanged: "{action} {subject}",
       typeChangedDefault: "mudou {subject}",
+      typeChangedDefaultAction: "mudou",
       grantAdded: "deu {capability} a {name}",
       grantRemoved: "tirou {capability} de {name}",
       inviteSent: "convidou {email} como {capabilities}",
@@ -820,17 +820,6 @@ const ptBR: Dictionary = {
         requests: "Pedidos de equipe",
         contribution: "contribuição {id}",
       },
-      /** O que o número de um bloco recolhido conta. */
-      nouns: {
-        takeOne: "versão",
-        takeMany: "versões",
-        fileOne: "arquivo",
-        fileMany: "arquivos",
-        batchOne: "lote",
-        batchMany: "lotes",
-        lineOne: "fala",
-        lineMany: "falas",
-      },
     },
   },
   release: {
@@ -869,7 +858,7 @@ const ptBR: Dictionary = {
     takeAsPage: "Aceitar o texto do jogador como as palavras desta página",
     addAsWording: "Manter o nosso texto e adicionar o do jogador como outra redação deste momento",
     addBeside: "Manter o nosso texto e colocar o do jogador ao lado: como outra redação, ou uma para cada gênero de jogador",
-    showMore: "Mostrar mais",
+    showMore: "Mostrar mais {n} de {m}",
   },
   contribute: {
     title: "Contribuir",

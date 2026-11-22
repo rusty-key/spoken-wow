@@ -592,7 +592,6 @@ const esMX: Dictionary = {
       batchQueuedOne: "puso 1 línea en la cola para regenerarla",
       batchQueuedMany: "puso {n} líneas en la cola para regenerarlas",
       batchStopped: "detuvo un lote",
-      batchStoppedCancellingOne: "detuvo un lote y canceló 1 línea",
       batchStoppedCancellingMany: "detuvo un lote y canceló {n} líneas",
       queueStoppedOne: "detuvo {m} y canceló 1 línea",
       queueStoppedMany: "detuvo {m} y canceló {n} líneas",
@@ -651,6 +650,7 @@ const esMX: Dictionary = {
       npcResolvedMan: "definió que {name} es un hombre",
       typeChanged: "{action} {subject}",
       typeChangedDefault: "cambió {subject}",
+      typeChangedDefaultAction: "cambió",
       grantAdded: "dio {capability} a {name}",
       grantRemoved: "quitó {capability} a {name}",
       inviteSent: "invitó a {email} como {capabilities}",
@@ -720,17 +720,6 @@ const esMX: Dictionary = {
         packs: "Paquetes de la comunidad",
         requests: "Solicitudes de equipo",
         contribution: "contribución {id}",
-      },
-      /** El sustantivo de lo que cuenta un grupo plegado. */
-      nouns: {
-        takeOne: "toma",
-        takeMany: "tomas",
-        fileOne: "archivo",
-        fileMany: "archivos",
-        batchOne: "lote",
-        batchMany: "lotes",
-        lineOne: "línea",
-        lineMany: "líneas",
       },
     },
   },
@@ -869,7 +858,7 @@ const esMX: Dictionary = {
     addAsWording: "Conservar nuestro texto y agregar el del jugador como otra redacción de este momento",
     addBeside:
       "Conservar nuestro texto y agregar el del jugador al lado: como otra redacción, o una por cada género de jugador",
-    showMore: "Mostrar más",
+    showMore: "Mostrar {n} más de {m}",
   },
   contribute: {
     title: "Contribuir",

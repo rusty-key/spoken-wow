@@ -690,7 +690,6 @@ const koKR: Dictionary = {
       batchQueuedOne: "대사 1개를 재생성 대기열에 넣었다",
       batchQueuedMany: "대사 {n}개를 재생성 대기열에 넣었다",
       batchStopped: "배치를 중지했다",
-      batchStoppedCancellingOne: "배치를 중지하고 대사 1개를 취소했다",
       batchStoppedCancellingMany: "배치를 중지하고 대사 {n}개를 취소했다",
       queueStoppedOne: "{m}를 중지하고 대사 1개를 취소했다",
       queueStoppedMany: "{m}를 중지하고 대사 {n}개를 취소했다",
@@ -749,6 +748,7 @@ const koKR: Dictionary = {
       npcResolvedMan: "{name}을(를) 남자로 지정했다",
       typeChanged: "{action} {subject}",
       typeChangedDefault: "변경: {subject}",
+      typeChangedDefaultAction: "변경",
       grantAdded: "{name}에게 {capability} 권한을 주었다",
       grantRemoved: "{name}에게서 {capability} 권한을 회수했다",
       inviteSent: "{email}을(를) {capabilities}(으)로 초대했다",
@@ -819,17 +819,6 @@ const koKR: Dictionary = {
         requests: "팀 신청",
         contribution: "기여 {id}",
       },
-      /** 접힌 묶음의 개수가 무엇을 세는지입니다. */
-      nouns: {
-        takeOne: "테이크",
-        takeMany: "테이크",
-        fileOne: "파일",
-        fileMany: "파일",
-        batchOne: "배치",
-        batchMany: "배치",
-        lineOne: "대사",
-        lineMany: "대사",
-      },
     },
   },
   release: {
@@ -868,7 +857,7 @@ const koKR: Dictionary = {
     takeAsPage: "플레이어의 텍스트를 이 페이지의 문구로 채택",
     addAsWording: "우리 텍스트를 유지하고 플레이어의 텍스트를 이 장면의 또 다른 표현으로 추가",
     addBeside: "우리 텍스트를 유지하고 플레이어의 텍스트를 옆에 추가: 또 다른 표현으로, 또는 플레이어 성별마다 하나씩",
-    showMore: "더 보기",
+    showMore: "{m}개 중 {n}개 더 보기",
   },
   contribute: {
     title: "기여",

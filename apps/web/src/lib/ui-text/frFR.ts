@@ -592,7 +592,6 @@ const frFR: Dictionary = {
       batchQueuedOne: "a mis 1 réplique en file de régénération",
       batchQueuedMany: "a mis {n} répliques en file de régénération",
       batchStopped: "a arrêté un lot",
-      batchStoppedCancellingOne: "a arrêté un lot en annulant 1 réplique",
       batchStoppedCancellingMany: "a arrêté un lot en annulant {n} répliques",
       queueStoppedOne: "a arrêté {m} en annulant 1 réplique",
       queueStoppedMany: "a arrêté {m} en annulant {n} répliques",
@@ -651,6 +650,7 @@ const frFR: Dictionary = {
       npcResolvedMan: "a défini que {name} est un homme",
       typeChanged: "{action} {subject}",
       typeChangedDefault: "a modifié {subject}",
+      typeChangedDefaultAction: "a modifié",
       grantAdded: "a donné {capability} à {name}",
       grantRemoved: "a retiré {capability} à {name}",
       inviteSent: "a invité {email} comme {capabilities}",
@@ -720,17 +720,6 @@ const frFR: Dictionary = {
         packs: "Packs communautaires",
         requests: "Demandes d'équipe",
         contribution: "contribution {id}",
-      },
-      /** Les mots dont un groupe replié compte les éléments. */
-      nouns: {
-        takeOne: "prise",
-        takeMany: "prises",
-        fileOne: "fichier",
-        fileMany: "fichiers",
-        batchOne: "lot",
-        batchMany: "lots",
-        lineOne: "réplique",
-        lineMany: "répliques",
       },
     },
   },
@@ -869,7 +858,7 @@ const frFR: Dictionary = {
     addAsWording: "Garder notre texte et ajouter celui du joueur comme une autre formulation de ce moment",
     addBeside:
       "Garder notre texte et placer celui du joueur à côté : comme une autre formulation, ou une par genre de joueur",
-    showMore: "Afficher plus",
+    showMore: "Afficher {n} de plus sur {m}",
   },
   contribute: {
     title: "Contribuer",

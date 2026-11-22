@@ -440,7 +440,10 @@ export default function CorrectionTable({
       {initial.length > limit ? (
         <div className="px-4 py-3">
           <button type="button" className="bs-btn bs-btn-text" onClick={() => setLimit((shown) => shown + CORRECTIONS_SHOWN)}>
-            Show {Math.min(CORRECTIONS_SHOWN, initial.length - limit)} more of {initial.length - limit}
+            {fill(t.corrections.showMore, {
+              n: Math.min(CORRECTIONS_SHOWN, initial.length - limit),
+              m: initial.length - limit,
+            })}
           </button>
         </div>
       ) : null}

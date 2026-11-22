@@ -74,9 +74,9 @@ function bodyWords(d: Record<string, unknown>): string {
 }
 
 /** An NPC an activity names, by name or else by kind and id. */
-function speakerName(d: Record<string, unknown>): string {
+function speakerName(d: Record<string, unknown>, anNpc: string): string {
   const id = num(d.npcId);
-  return str(d.npcName) ?? (id === null ? "an NPC" : `${str(d.npcType) ?? "NPC"} ${id}`);
+  return str(d.npcName) ?? (id === null ? anNpc : `${str(d.npcType) ?? "NPC"} ${id}`);
 }
 
 /** "a → b", or whichever half is known: rows backfilled from older tables carry neither. */
@@ -268,19 +268,19 @@ export function describe(row: ActivityRow, t: UiText["activity"]["events"]): { w
         : { what: fill(t.npcUnsplit, { name: str(d.npcName) ?? row.subject ?? "" }), quote: null };
     case "npc.speaker_added":
       return {
-        what: fill(t.npcSpeakerAdded, { speaker: speakerName(d), subject: row.subject ?? "" }),
+        what: fill(t.npcSpeakerAdded, { speaker: speakerName(d, t.anNode), subject: row.subject ?? "" }),
         quote: null,
       };
     case "npc.speaker_removed":
       return {
-        what: fill(t.npcSpeakerRemoved, { speaker: speakerName(d), subject: row.subject ?? "" }),
+        what: fill(t.npcSpeakerRemoved, { speaker: speakerName(d, t.anNode), subject: row.subject ?? "" }),
         quote: null,
       };
     case "npc.speaker_replaced":
       return {
         what: fill(t.npcSpeakerReplaced, {
-          speaker: speakerName(d),
-          from: speakerName((d.from ?? {}) as Record<string, unknown>),
+          speaker: speakerName(d, t.anNode),
+          from: speakerName((d.from ?? {}) as Record<string, unknown>, t.anNode),
           subject: row.subject ?? "",
         }),
         quote: null,
@@ -304,7 +304,7 @@ export function describe(row: ActivityRow, t: UiText["activity"]["events"]): { w
     case "type.changed":
       return {
         what: fill(t.typeChanged, {
-          action: str(d.action)?.replace("-", " ") ?? t.typeChangedDefault.replace(" {subject}", ""),
+          action: str(d.action)?.replace("-", " ") ?? t.typeChangedDefaultAction,
           subject: row.subject ?? "",
         }),
         quote: [str(d.gender), str(d.flavor), str(d.voice)].filter(Boolean).join(" · ") || null,

@@ -596,7 +596,6 @@ const deDE: Dictionary = {
       batchQueuedOne: "stellte 1 Zeile zur Neuerzeugung in die Warteschlange",
       batchQueuedMany: "stellte {n} Zeilen zur Neuerzeugung in die Warteschlange",
       batchStopped: "stoppte eine Charge",
-      batchStoppedCancellingOne: "stoppte eine Charge und brach 1 Zeile ab",
       batchStoppedCancellingMany: "stoppte eine Charge und brach {n} Zeilen ab",
       queueStoppedOne: "stoppte {m} und brach 1 Zeile ab",
       queueStoppedMany: "stoppte {m} und brach {n} Zeilen ab",
@@ -655,6 +654,7 @@ const deDE: Dictionary = {
       npcResolvedMan: "legte fest, dass {name} ein Mann ist",
       typeChanged: "{action} {subject}",
       typeChangedDefault: "änderte {subject}",
+      typeChangedDefaultAction: "änderte",
       grantAdded: "gab {name} {capability}",
       grantRemoved: "entzog {name} {capability}",
       inviteSent: "lud {email} als {capabilities} ein",
@@ -724,17 +724,6 @@ const deDE: Dictionary = {
         packs: "Community-Pakete",
         requests: "Team-Anträge",
         contribution: "Beitrag {id}",
-      },
-      /** Die Worte, von denen die Zahl eines zusammengefalteten Laufs zählt. */
-      nouns: {
-        takeOne: "Take",
-        takeMany: "Takes",
-        fileOne: "Datei",
-        fileMany: "Dateien",
-        batchOne: "Charge",
-        batchMany: "Chargen",
-        lineOne: "Zeile",
-        lineMany: "Zeilen",
       },
     },
   },
@@ -873,7 +862,7 @@ const deDE: Dictionary = {
     addAsWording: "Unseren Text behalten und den des Spielers als weitere Formulierung dieses Moments hinzufügen",
     addBeside:
       "Unseren Text behalten und den des Spielers daneben setzen: als weitere Formulierung oder je eine für jedes Spielergeschlecht",
-    showMore: "Mehr anzeigen",
+    showMore: "{n} weitere von {m} anzeigen",
   },
   contribute: {
     title: "Beitragen",

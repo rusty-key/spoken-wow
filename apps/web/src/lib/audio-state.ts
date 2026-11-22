@@ -13,14 +13,6 @@ export const AUDIO_STATES = ["missing", "stale", "current"] as const;
 
 export type AudioState = (typeof AUDIO_STATES)[number];
 
-// The filter pill reads "Audio outdated". The URL keeps the value (?state=stale), which is what
-// places and readables links already carry.
-export const AUDIO_STATE_LABELS: Record<AudioState, string> = {
-  missing: "missing",
-  stale: "outdated",
-  current: "up to date",
-};
-
 /**
  * What the audio buttons show: every filter applied except the audio state, so pressing Missing
  * does not zero the Outdated count beside it. `all` is not the sum of the three, because a line

@@ -592,7 +592,6 @@ const ruRU: Dictionary = {
       batchQueuedOne: "поставил 1 строку в очередь на переозвучку",
       batchQueuedMany: "поставил строки ({n}) в очередь на переозвучку",
       batchStopped: "остановил партию",
-      batchStoppedCancellingOne: "остановил партию, отменив 1 строку",
       batchStoppedCancellingMany: "остановил партию, отменив строки ({n})",
       queueStoppedOne: "остановил очередь ({m}), отменив 1 строку",
       queueStoppedMany: "остановил очередь ({m}), отменив строки ({n})",
@@ -651,6 +650,7 @@ const ruRU: Dictionary = {
       npcResolvedMan: "указал, что {name} мужчина",
       typeChanged: "{action} {subject}",
       typeChangedDefault: "изменил {subject}",
+      typeChangedDefaultAction: "изменил",
       grantAdded: "дал {name} доступ ({capability})",
       grantRemoved: "забрал у {name} доступ ({capability})",
       inviteSent: "пригласил {email} с правами: {capabilities}",
@@ -720,17 +720,6 @@ const ruRU: Dictionary = {
         packs: "Наборы сообщества",
         requests: "Заявки на команды",
         contribution: "материал {id}",
-      },
-      /** Слова, количество которых показывает свёрнутая группа. */
-      nouns: {
-        takeOne: "дубль",
-        takeMany: "дублей",
-        fileOne: "файл",
-        fileMany: "файлов",
-        batchOne: "партия",
-        batchMany: "партий",
-        lineOne: "строка",
-        lineMany: "строк",
       },
     },
   },
@@ -870,7 +859,7 @@ const ruRU: Dictionary = {
     addAsWording: "Оставить наш текст и добавить текст игрока как другую формулировку этого момента",
     addBeside:
       "Оставить наш текст и поставить текст игрока рядом: как другую формулировку или по одной на каждый пол игрока",
-    showMore: "Показать больше",
+    showMore: "Показать ещё {n} из {m}",
   },
   contribute: {
     title: "Прислать текст",

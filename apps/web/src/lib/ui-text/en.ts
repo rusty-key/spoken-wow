@@ -605,7 +605,6 @@ export const EN = {
       batchQueuedOne: "queued 1 line for regeneration",
       batchQueuedMany: "queued {n} lines for regeneration",
       batchStopped: "stopped a batch",
-      batchStoppedCancellingOne: "stopped a batch, cancelling 1 line",
       batchStoppedCancellingMany: "stopped a batch, cancelling {n} lines",
       queueStoppedOne: "stopped {m}, cancelling 1 line",
       queueStoppedMany: "stopped {m}, cancelling {n} lines",
@@ -664,6 +663,8 @@ export const EN = {
       npcResolvedMan: "set who {name} is as a man",
       typeChanged: "{action} {subject}",
       typeChangedDefault: "changed {subject}",
+      /** Just the verb, for the case where the log carries no action of its own. */
+      typeChangedDefaultAction: "changed",
       grantAdded: "gave {name} {capability}",
       grantRemoved: "took {capability} from {name}",
       inviteSent: "invited {email} as {capabilities}",
@@ -733,17 +734,6 @@ export const EN = {
         packs: "Community packs",
         requests: "Team requests",
         contribution: "contribution {id}",
-      },
-      /** The words a folded run's count is of. */
-      nouns: {
-        takeOne: "take",
-        takeMany: "takes",
-        fileOne: "file",
-        fileMany: "files",
-        batchOne: "batch",
-        batchMany: "batches",
-        lineOne: "line",
-        lineMany: "lines",
       },
     },
   },
@@ -883,7 +873,7 @@ export const EN = {
     takeAsPage: "Take the player's text as this page's words",
     addAsWording: "Keep our text and add the player's as another wording of this moment",
     addBeside: "Keep our text and add the player's beside it: as another wording, or one for each player gender",
-    showMore: "Show more",
+    showMore: "Show {n} more of {m}",
   },
   /** The Contribute page. Its maps are keyed by the parser's field and error names, not by English. */
   contribute: {
