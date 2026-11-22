@@ -162,6 +162,38 @@ function Gather:SeenCount()
     return #Store().Seen
 end
 
+--- How Sent.lua names a sent envelope: its sum and its length in bytes, read without hashing it.
+--- Nil for anything that is not an envelope. Two lines of one length can share a sum (the checksum
+--- multiplies by 31, so "Aa" and "BB" agree), and a line kept after the send that matches one sent
+--- is dropped unsent. A stronger mark would mean hashing every line here at login.
+function Gather:SentMark(envelope)
+    -- From near the end: the sum is the last line, and a line is a few kilobytes to scan at login.
+    local sum = type(envelope) == "string" and envelope:match("\nsum=(%d+)\n$", math.max(1, #envelope - 32))
+    return sum and string.format("%s:%d", sum, #envelope) or nil
+end
+
+--- Drop every line SpokenContributions/Sent.lua lists. The game saved the file before it loaded
+--- Sent.lua, so a line kept since is not listed and stays. Sightings stay: they are how SeeSpeaker
+--- knows a zone is told already, and without them every visit would send the same zone again.
+---@return number dropped
+function Gather:DropSent()
+    local sent = rawget(_G, "SpokenContributionsSent")
+    if type(sent) ~= "table" or next(sent) == nil then
+        return 0
+    end
+    local lines, kept = Store().Lines, {}
+    for _, entry in ipairs(lines) do
+        local mark = self:SentMark(entry.envelope)
+        if not (mark and sent[mark]) then
+            kept[#kept + 1] = entry
+        end
+    end
+    if #kept < #lines then
+        Store().Lines = kept
+    end
+    return #lines - #kept
+end
+
 --- Forget everything gathered. The addon cannot see the upload happen, so this is the
 --- player's to press once they have sent the file.
 function Gather:Clear()
