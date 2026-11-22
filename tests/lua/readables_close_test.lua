@@ -52,6 +52,7 @@ local B = LoadReadables()
 B:InitDB()
 B:SetupSource()
 dofile(READABLES .. "Data/Books.lua")
+require("readables_minted_fixture")(B)
 SpokenReadablesData.index["William's Shipment"][1][B:ChecksumOf(LETTER)] = 15
 
 ---------------------------------------------------------------- readable items entering the bags
