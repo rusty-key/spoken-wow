@@ -14,9 +14,13 @@
  * the words themselves are a native speaker's call, and changing one reaches every line at once
  * (and marks its takes stale, which is what they then are).
  *
- * The languages a game client runs in keep their words here and win over any row's. A team's
- * language keeps its own in `language."playerWords"`, which its text maintainers edit on the site
- * and which must be registered before its text is spoken.
+ * The languages a game client runs in keep default words here. A language's row
+ * (`language."playerWords"`), which its text maintainers edit on the site, wins over them, and
+ * is a team's language's only words; it must be registered before the text is spoken.
+ *
+ * ruRU wraps a token in the client's declension escape, `|3-6($c)`: the client prints the class
+ * in grammatical case 6. A reader's `cases` give the word for each case; a case with none keeps
+ * the whole escape, so the gate refuses the line rather than voice "|3-6(путник)".
  *
  * About nine tokens in ten are the reader being addressed ("Gut gemacht, $C."), where any
  * "adventurer" reads naturally. The rest read as awkwardly as the English does and are fixed
@@ -75,13 +79,21 @@ const WORDS = {
 const registeredKey = Symbol.for("spoken.playerWords");
 const registered = (globalThis[registeredKey] ??= { byLang: new Map() });
 
-/** Whether `lang`'s words are kept here, so a row's are never read. */
+/** Whether Spoken has default words for `lang`, which a row's words replace. */
 export function hasBuiltinPlayerWords(lang) {
   return Object.hasOwn(WORDS, lang);
 }
 
+export function hasRegisteredPlayerWords(lang) {
+  return registered.byLang.has(lang);
+}
+
+export function builtinPlayerWordsOf(lang) {
+  return hasBuiltinPlayerWords(lang) ? WORDS[lang] : null;
+}
+
 export function playerWordsOf(lang) {
-  return (hasBuiltinPlayerWords(lang) ? WORDS[lang] : registered.byLang.get(lang)) ?? null;
+  return registered.byLang.get(lang) ?? builtinPlayerWordsOf(lang);
 }
 
 /** Replaces every registered language's words: `entries` is [code, words] pairs, words as stored. */
@@ -89,7 +101,7 @@ export function registerPlayerWords(entries) {
   const byLang = new Map();
   for (const [lang, words] of entries) {
     const valid = validPlayerWords(words);
-    if (valid && !hasBuiltinPlayerWords(lang)) byLang.set(lang, valid);
+    if (valid) byLang.set(lang, valid);
   }
   registered.byLang = byLang;
 }
@@ -105,6 +117,7 @@ export function registerPlayerWordRows(rows) {
 export const WORD_LIMIT = 40;
 const REQUIRED = ["name", "race"];
 const OPTIONAL = ["nameGenitive", "classPlural"];
+const CASE = /^[1-9]$/;
 
 function validWord(value) {
   if (typeof value !== "string") return null;
@@ -127,7 +140,29 @@ function validForms(value) {
     if (word === null) return null;
     if (word) forms[key] = word;
   }
+  if (value.cases != null) {
+    const cases = validCases(value.cases);
+    if (cases === null) return null;
+    if (cases) forms.cases = cases;
+  }
   return forms;
+}
+
+/** `{ "1": { name?, race? }, ... }` without its empty words: undefined when none is left, null when invalid. */
+function validCases(value) {
+  if (typeof value !== "object" || Array.isArray(value)) return null;
+  const cases = {};
+  for (const n of Object.keys(value).sort()) {
+    if (!CASE.test(n) || !value[n] || typeof value[n] !== "object") return null;
+    const declined = {};
+    for (const key of REQUIRED) {
+      const word = optionalWord(value[n][key]);
+      if (word === null) return null;
+      if (word) declined[key] = word;
+    }
+    if (Object.keys(declined).length) cases[n] = declined;
+  }
+  return Object.keys(cases).length ? cases : undefined;
 }
 
 /** An optional word: undefined when absent or empty, null when unspeakable. */
@@ -136,8 +171,9 @@ function optionalWord(value) {
 }
 
 /**
- * Words as `{ m: { name, race, nameGenitive?, classPlural? }, f: {...}, quantity? }`, trimmed, or
- * null when any is missing, empty, longer than WORD_LIMIT, or holds a `$`, `:`, `;` or line break.
+ * Words as `{ m: { name, race, nameGenitive?, classPlural?, cases? }, f: {...}, quantity? }`,
+ * trimmed, or null when any is missing, empty, longer than WORD_LIMIT, or holds a `$`, `:`, `;` or
+ * line break, or a case is not a digit 1 to 9.
  * `quantity` is what a Craftsman's Writ's `$2oa` says.
  */
 export function validPlayerWords(value) {
@@ -157,12 +193,15 @@ const ALWAYS_CAPITAL = new Set(["deDE"]);
 // not the same one.
 const GLUED = String.raw`(?![\p{sc=Han}\p{sc=Hangul}\p{sc=Hiragana}\p{sc=Katakana}])\p{L}`;
 // Not followed by a glued letter: see "glued" above.
-const TOKEN = new RegExp(String.raw`\$([NnCcRr])(?!${GLUED})`, "gu");
+// Not inside a declension escape: one without its case's word must keep its `$` for the gate.
+const UNDECLINED = String.raw`(?<!\|3-\d+\()`;
+const TOKEN = new RegExp(String.raw`${UNDECLINED}\$([NnCcRr])(?!${GLUED})`, "gu");
+const DECLINED = /\|3-(\d+)\(\$([NnCcRr])\)/g;
 // Not $R: "des Reisenden" is no glued s, so "$Rs" stays refused.
-const TOKEN_GENITIVE = /\$([NnCc])s(?!\p{L})/gu;
+const TOKEN_GENITIVE = new RegExp(String.raw`${UNDECLINED}\$([NnCc])s(?!\p{L})`, "gu");
 // Not $N or $R: the class is the only glued plural seen in frFR text. Not before an apostrophe
 // either: "$cs'il" is "$c s'il" with its space lost, not a plural.
-const TOKEN_CLASS_PLURAL = /\$[Cc]s(?![\p{L}'’])/gu;
+const TOKEN_CLASS_PLURAL = new RegExp(String.raw`${UNDECLINED}\$[Cc]s(?![\p{L}'’])`, "gu");
 // $gmale:female; and ruRU's $gmale:female:c; whose third field names the token the
 // adjective agrees with. The import resolves the two-field form already; the three-field
 // form slips past its pattern and arrives here. No branch ends a sentence: one whose `;` was
@@ -265,6 +304,10 @@ export function speakPlayerTokens(text, lang, playerGender = null) {
 
   const side = playerGender === "f" ? "$2" : "$1";
   let spoken = text.replace(DOUBLED, "$").replace(GENDER, side).replace(SWAPPED, side);
+  spoken = spoken.replace(DECLINED, (whole, n, token, at, all) => {
+    const word = words.cases?.[n]?.[token.toUpperCase() === "R" ? "race" : "name"];
+    return word ? cased(word, at, all) : whole;
+  });
   const genitive = words.nameGenitive;
   if (genitive) {
     spoken = spoken.replace(TOKEN_GENITIVE, (_, _token, at, whole) =>

@@ -34,6 +34,16 @@ describe("textHints", () => {
     expect(textHints("Bringt <Federn. <Er gibt $5w ab.>", "deDE")).toEqual(["unspeakable < or > — won't be voiced"]);
   });
 
+  it("names a declension escape Player words has no case for, whole", () => {
+    expect(textHints("Приветствую, |3-6($c).", "ruRU")).toEqual([
+      "undeclined |3-6($c) — won't be voiced until Player words has its case",
+    ]);
+    // q:93319:complete, the contributor's class in place of $c.
+    expect(textHints("Спасибо, |3-6(Охотник).", "ruRU")).toEqual([
+      "undeclined |3-6(Охотник) — won't be voiced until Player words has its case",
+    ]);
+  });
+
   it("flags the gap a gender branch resolved to nothing leaves", () => {
     // q:92703:complete.
     expect(textHints("…danken kann, . Ich habe gefunden.", "deDE")).toEqual([

@@ -26,7 +26,11 @@ export const validPlayerWords = words.validPlayerWords as (value: unknown) => Pl
 
 export const PLAYER_WORD_LIMIT = words.WORD_LIMIT as number;
 
-/** Whether `lang`'s words are code, which a row cannot change. */
+/** Whether Spoken has default words for `lang`, which a row's words replace. */
 export const hasBuiltinPlayerWords = words.hasBuiltinPlayerWords as (lang: string) => boolean;
+
+export const hasRegisteredPlayerWords = words.hasRegisteredPlayerWords as (lang: string) => boolean;
+
+export const builtinPlayerWordsOf = words.builtinPlayerWordsOf as (lang: string) => PlayerWords | null;
 
 export const playerWordsOf = words.playerWordsOf as (lang: string) => PlayerWords | null;

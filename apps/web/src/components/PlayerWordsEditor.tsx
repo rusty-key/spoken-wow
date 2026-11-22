@@ -5,15 +5,15 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { Lang, PlayerForms, PlayerWords } from "@/lib/lang";
+import type { DeclinedForms, Lang, PlayerForms, PlayerWords } from "@/lib/lang";
 import { withLang } from "@/lib/lang";
 import { PLAYER_WORD_LIMIT } from "@/lib/player-words";
 import { send } from "@/lib/send";
 
 type Reader = "m" | "f";
-type Field = keyof PlayerForms;
-
-const EMPTY: PlayerForms = { name: "", race: "", nameGenitive: "", classPlural: "" };
+type Field = "name" | "race" | "nameGenitive" | "classPlural";
+type CaseRow = { n: string; name: string; race: string };
+type Draft = Record<Reader, Record<Field, string> & { cases: CaseRow[] }> & { quantity: string };
 
 const FIELDS: { key: Field; label: string; hint: string; required: boolean }[] = [
   { key: "name", label: "Name and class ($N, $C)", hint: "adventurer", required: true },
@@ -27,30 +27,68 @@ const READERS: { key: Reader; label: string }[] = [
   { key: "f", label: "Female reader" },
 ];
 
+function draftForms(forms: PlayerForms | undefined): Draft[Reader] {
+  return {
+    name: forms?.name ?? "",
+    race: forms?.race ?? "",
+    nameGenitive: forms?.nameGenitive ?? "",
+    classPlural: forms?.classPlural ?? "",
+    cases: Object.entries(forms?.cases ?? {}).map(([n, declined]) => ({
+      n,
+      name: declined.name ?? "",
+      race: declined.race ?? "",
+    })),
+  };
+}
+
+function draftOf(words: PlayerWords | null): Draft {
+  return { m: draftForms(words?.m), f: draftForms(words?.f), quantity: words?.quantity ?? "" };
+}
+
+function formsOf(draft: Draft[Reader]): PlayerForms {
+  const { cases: rows, ...words } = draft;
+  const cases: DeclinedForms = {};
+  for (const row of rows) {
+    if (row.n.trim()) cases[row.n.trim()] = { name: row.name, race: row.race };
+  }
+  return { ...words, cases };
+}
+
 /** A language's player words, for its text maintainers: what every recording says for the reader. */
-export default function PlayerWordsEditor({ lang, initial }: { lang: Lang; initial: PlayerWords | null }) {
+export default function PlayerWordsEditor({
+  lang,
+  initial,
+  defaults,
+  saved: hasRow,
+}: {
+  lang: Lang;
+  initial: PlayerWords | null;
+  /** Spoken's own words for the language, which Reset returns to. */
+  defaults: PlayerWords | null;
+  /** Whether the language's row holds words, so Remove or Reset has something to clear. */
+  saved: boolean;
+}) {
   const router = useRouter();
-  const [words, setWords] = useState<PlayerWords>({
-    m: { ...EMPTY, ...initial?.m },
-    f: { ...EMPTY, ...initial?.f },
-    quantity: initial?.quantity ?? "",
-  });
+  const [words, setWords] = useState<Draft>(() => draftOf(initial));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const update = (change: (was: PlayerWords) => PlayerWords) => {
+  const update = (change: (was: Draft) => Draft) => {
     setSaved(false);
     setWords(change);
   };
+  const updateCases = (reader: Reader, change: (rows: CaseRow[]) => CaseRow[]) =>
+    update((was) => ({ ...was, [reader]: { ...was[reader], cases: change(was[reader].cases) } }));
 
-  async function save(next: PlayerWords | null) {
+  async function save(next: Draft | null) {
     setBusy(true);
     setError(null);
-    const result = await send(withLang(lang, "/api/languages/player-words"), "PUT", { words: next });
+    const body = next && { m: formsOf(next.m), f: formsOf(next.f), quantity: next.quantity };
+    const result = await send(withLang(lang, "/api/languages/player-words"), "PUT", { words: body });
     setBusy(false);
     if (!result.ok) return setError(result.error);
-    if (!next) setWords({ m: { ...EMPTY }, f: { ...EMPTY }, quantity: "" });
+    if (!next) setWords(draftOf(defaults));
     setSaved(true);
     router.refresh();
   }
@@ -72,12 +110,16 @@ export default function PlayerWordsEditor({ lang, initial }: { lang: Lang; initi
               label={field.label}
               hint={field.hint}
               required={field.required}
-              value={words[reader.key][field.key] ?? ""}
+              value={words[reader.key][field.key]}
               onChange={(value) =>
                 update((was) => ({ ...was, [reader.key]: { ...was[reader.key], [field.key]: value } }))
               }
             />
           ))}
+          <CaseRows
+            rows={words[reader.key].cases}
+            onChange={(change) => updateCases(reader.key, change)}
+          />
         </fieldset>
       ))}
       <fieldset className="flex flex-col gap-2">
@@ -86,7 +128,7 @@ export default function PlayerWordsEditor({ lang, initial }: { lang: Lang; initi
           label="A writ's count ($2oa)"
           hint="Optional: an order of"
           required={false}
-          value={words.quantity ?? ""}
+          value={words.quantity}
           onChange={(value) => update((was) => ({ ...was, quantity: value }))}
         />
       </fieldset>
@@ -100,13 +142,71 @@ export default function PlayerWordsEditor({ lang, initial }: { lang: Lang; initi
         <Button type="submit" disabled={busy}>
           Save
         </Button>
-        {initial && (
+        {hasRow && (
           <Button type="button" variant="outline" disabled={busy} onClick={() => save(null)}>
-            Remove
+            {defaults ? "Reset" : "Remove"}
           </Button>
         )}
       </div>
     </form>
+  );
+}
+
+/** Declined forms: the word a `|3-N($c)` or `|3-N($r)` says, by its case number N. */
+function CaseRows({
+  rows,
+  onChange,
+}: {
+  rows: CaseRow[];
+  onChange: (change: (rows: CaseRow[]) => CaseRow[]) => void;
+}) {
+  const set = (at: number, change: Partial<CaseRow>) =>
+    onChange((was) => was.map((row, index) => (index === at ? { ...row, ...change } : row)));
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      <span>Declined forms (|3-N)</span>
+      {rows.map((row, index) => (
+        <div key={index} className="grid grid-cols-[4rem_1fr_1fr_auto] items-center gap-2">
+          <Input
+            aria-label="Case"
+            required
+            inputMode="numeric"
+            pattern="[1-9]"
+            maxLength={1}
+            placeholder="6"
+            value={row.n}
+            onChange={(event) => set(index, { n: event.target.value })}
+          />
+          <Input
+            aria-label="Name and class in this case"
+            maxLength={PLAYER_WORD_LIMIT}
+            placeholder="$N, $C"
+            value={row.name}
+            onChange={(event) => set(index, { name: event.target.value })}
+          />
+          <Input
+            aria-label="Race in this case"
+            maxLength={PLAYER_WORD_LIMIT}
+            placeholder="$R"
+            value={row.race}
+            onChange={(event) => set(index, { race: event.target.value })}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onChange((was) => was.filter((_, at) => at !== index))}
+          >
+            Remove
+          </Button>
+        </div>
+      ))}
+      <div>
+        <Button type="button" variant="outline" size="sm" onClick={() => onChange((was) => [...was, { n: "", name: "", race: "" }])}>
+          Add a case
+        </Button>
+      </div>
+    </div>
   );
 }
 

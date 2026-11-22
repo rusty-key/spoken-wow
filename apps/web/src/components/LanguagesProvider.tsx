@@ -5,7 +5,8 @@ import type { ReactNode } from "react";
 import { type LanguageInfo, registerLanguages } from "@/lib/lang";
 
 /**
- * Teaches the browser's registry (lib/lang.ts) the languages beyond the built-in ones.
+ * Teaches the browser's registry (lib/lang.ts) the languages beyond the built-in ones, and the
+ * player words a built-in's row holds.
  *
  * Registers while rendering, not in an effect: a child rendered in the same pass must already
  * know a language's name. Browser only: on the server loadLanguages owns the shared registry, and

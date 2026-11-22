@@ -574,7 +574,12 @@ English, "algumas unidades de" in ptBR, and "несколько" plus the second
 forms (`порции:порций`). A team's language says what its text maintainers set beside its player
 words on `/<lang>/player-words`. A language without words for it keeps the token and stays
 unvoiceable.
-Contributions triage shows any token still left after this, a bare `<` or `>`, and a gap
+ruRU wraps a token in the client's declension escape, `|3-6($c)`, which the game prints in
+grammatical case 6 (`|3-1` genitive, `|3-3` accusative, `|3-6` in address). Each reader's declined
+forms on `/<lang>/player-words` give the word per case number. An escape whose case has no word,
+or one around a word rather than a token (`|3-6(Друид)`, a contributor's own class), stays
+unvoiceable.
+Contributions triage shows any token or declension escape still left after this, a bare `<` or `>`, and a gap
 before `.` or `,` or a mid-sentence double space where a gender branch came through empty,
 above the row's text, so a line that would never be voiced is seen before it is accepted.
 Doing this at send time rather than in the rows covers every way a

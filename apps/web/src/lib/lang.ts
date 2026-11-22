@@ -25,14 +25,22 @@ export type LanguageInfo = {
   /** The code the speech provider takes as language_code. */
   provider: string;
   client: boolean;
-  /** What its row says $N, $C and $R are spoken as. Absent on a built-in, whose words are code. */
+  /** What its row says $N, $C and $R are spoken as, over a built-in's own. */
   playerWords?: PlayerWords | null;
   /** UTF-8 bytes per character at worst, for fish.audio's list price; null for the script's default. */
   bytesPerCharacter?: number | null;
 };
 
+/** A declension escape's case, `|3-6($c)`, by its number: what $N and $C, and $R, say in it. */
+export type DeclinedForms = Record<string, { name?: string; race?: string }>;
 /** One reader's words: `name` for $N and $C, `race` for $R. */
-export type PlayerForms = { name: string; race: string; nameGenitive?: string; classPlural?: string };
+export type PlayerForms = {
+  name: string;
+  race: string;
+  nameGenitive?: string;
+  classPlural?: string;
+  cases?: DeclinedForms;
+};
 /** `quantity` is what a Craftsman's Writ's `$2oa` says, for either reader. */
 export type PlayerWords = { m: PlayerForms; f: PlayerForms; quantity?: string };
 
@@ -72,14 +80,21 @@ const builtinByCode = new Map<string, LanguageInfo>(BUILTIN.map((locale) => [loc
  */
 const registryKey = Symbol.for("spoken.languages");
 /** `langs` and `extrasList` are the sorted lists, built once per registration. */
-type Registry = { extras: Map<string, LanguageInfo>; langs?: readonly Lang[]; extrasList?: readonly LanguageInfo[] };
+type Registry = {
+  extras: Map<string, LanguageInfo>;
+  /** Built-ins whose row holds words, which travel to the browser beside the extras. */
+  worded?: readonly LanguageInfo[];
+  langs?: readonly Lang[];
+  extrasList?: readonly LanguageInfo[];
+};
 type RegistryHolder = { [registryKey]?: Registry };
 const registry: Registry = ((globalThis as RegistryHolder)[registryKey] ??= { extras: new Map() });
 
-/** Replaces the languages beyond the built-in ones. A built-in's code in the list is ignored. */
+/** Replaces the languages beyond the built-in ones. Of a built-in's code in the list, only its player words count. */
 export function registerLanguages(list: readonly LanguageInfo[]): void {
   registry.extras = new Map(list.filter((info) => !builtinByCode.has(info.code)).map((info) => [info.code, info]));
-  registerPlayerWords([...registry.extras.values()].map((info) => [info.code, info.playerWords ?? null]));
+  registry.worded = list.filter((info) => builtinByCode.has(info.code) && info.playerWords);
+  registerPlayerWords(list.map((info) => [info.code, info.playerWords ?? null]));
   registry.langs = undefined;
   registry.extrasList = undefined;
 }
@@ -87,6 +102,11 @@ export function registerLanguages(list: readonly LanguageInfo[]): void {
 /** The registered languages beyond the built-in ones: all a client needs, since it has the rest. */
 export function registeredExtras(): readonly LanguageInfo[] {
   return (registry.extrasList ??= [...registry.extras.values()].sort((a, b) => a.code.localeCompare(b.code)));
+}
+
+/** What the browser registers: the extras, and the built-ins whose row holds player words. */
+export function registeredForBrowser(): readonly LanguageInfo[] {
+  return [...registeredExtras(), ...(registry.worded ?? [])];
 }
 
 /** Built-ins in their order, then the registered ones by code. */
