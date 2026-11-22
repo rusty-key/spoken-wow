@@ -38,7 +38,10 @@ const esMX: Dictionary = {
   },
   interface: {
     label: "Idioma de la interfaz",
-    hint: "Las palabras de este sitio. No cambia el idioma que mantienes, que es el código de idioma en cada página de administración.",
+    hint:
+      "Las palabras de Backstage, guardadas en tu cuenta. No cambia el idioma que mantienes, que es el código de idioma en cada página de administración.",
+    followPage: "El idioma de la propia página",
+    saveFailed: "No se pudo guardar. Inténtalo de nuevo.",
   },
   admin: {
     everyLanguage: "todos los idiomas",

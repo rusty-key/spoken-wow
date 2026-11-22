@@ -38,7 +38,10 @@ const zhTW: Dictionary = {
   },
   interface: {
     label: "介面語言",
-    hint: "這個網站上的文字。它不會改變你正在維護的語言，那是每個管理頁面裡的語言代碼。",
+    hint:
+      "後台介面上的文字，儲存在你的帳號裡。它不會改變你正在維護的語言，那是每個管理頁面裡的語言代碼。",
+    followPage: "跟隨頁面本身的語言",
+    saveFailed: "儲存失敗，請再試一次。",
   },
   admin: {
     everyLanguage: "所有語言",

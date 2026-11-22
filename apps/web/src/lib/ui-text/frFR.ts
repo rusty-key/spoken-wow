@@ -38,7 +38,10 @@ const frFR: Dictionary = {
   },
   interface: {
     label: "Langue de l'interface",
-    hint: "Les mots de ce site. Cela ne change pas la langue que vous maintenez : c'est le code de langue indiqué sur chaque page d'administration.",
+    hint:
+      "Les mots de Backstage, conservés dans votre compte. Cela ne change pas la langue que vous maintenez : c'est le code de langue indiqué sur chaque page d'administration.",
+    followPage: "La langue de la page elle-même",
+    saveFailed: "Impossible d'enregistrer. Réessayez.",
   },
   admin: {
     everyLanguage: "toutes les langues",

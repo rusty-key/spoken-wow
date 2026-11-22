@@ -38,7 +38,10 @@ const deDE: Dictionary = {
   },
   interface: {
     label: "Sprache der Oberfläche",
-    hint: "Die Wörter auf dieser Seite. Das ändert nicht die Sprache, die du pflegst, die steht als Sprachcode auf jeder Admin-Seite.",
+    hint:
+      "Die Wörter in Backstage, gespeichert in deinem Konto. Das ändert nicht die Sprache, die du pflegst, die steht als Sprachcode auf jeder Admin-Seite.",
+    followPage: "Sprache der Seite selbst",
+    saveFailed: "Konnte nicht gespeichert werden. Versuch es noch einmal.",
   },
   admin: {
     everyLanguage: "alle Sprachen",

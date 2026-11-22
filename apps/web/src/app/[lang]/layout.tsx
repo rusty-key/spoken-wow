@@ -18,7 +18,7 @@ import { BannerShown } from "@/components/TeamPicker";
 import UserMenu from "@/components/UserMenu";
 import { UiTextProvider } from "@/components/UiTextProvider";
 import { langTag, registeredExtras } from "@/lib/lang";
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
 import { uiText } from "@/lib/ui-text";
 import { cn } from "@/lib/utils";
 import { body, display } from "@/components/landing/fonts";
@@ -61,9 +61,10 @@ export default async function RootLayout({
   // database down. Only the languages beyond the built-in ones travel to the browser.
   const extras = registeredExtras();
   const acting = await actingIn(lang);
-  // The page's own words. `lang` is the interface language -- the `[lang]` segment -- and an
-  // admin page's `?lang=` is the language its team maintains, which may be another.
-  const text = await uiText(lang);
+  // Backstage's words in the language this person reads it in, which is their own setting and
+  // only falls back to the `[lang]` segment. An admin page's `?lang=` is the language its team
+  // maintains -- a third question, which never reaches this one.
+  const text = await uiText(await readingLang(lang));
   return (
     // Dark-only for now: this is a tool for listening to game dialog, and the light
     // palette is untested. The shadcn tokens make flipping it a one-line change.

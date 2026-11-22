@@ -19,6 +19,7 @@ import { isEnabled } from "@/lib/languages/store";
 import { currentSession } from "@/lib/session";
 import { viewerOf } from "@/lib/grants/store";
 import { worksIn } from "@/lib/permissions";
+import { uiLangOf } from "@/lib/users/ui-language";
 
 /**
  * Whether the person asking may see a language that is switched off: an admin, or anybody
@@ -35,6 +36,23 @@ async function mayPreview(lang: Lang): Promise<boolean> {
  */
 export async function worksHere(lang: Lang): Promise<boolean> {
   return mayPreview(lang);
+}
+
+/**
+ * The language a page is READ in: the reader's own setting when they have one, else the
+ * `[lang]` segment.
+ *
+ * A setting travels with the person, so a volunteer who reads Chinese opens a German team's
+ * dashboard in Chinese. Without one -- a signed-out visitor, or somebody who never chose --
+ * the segment decides, which is what every page did before the setting existed.
+ *
+ * Only the interface reads this. `lang` stays the page's own language for everything else:
+ * the lines it lists, the team it names, the packs it links.
+ */
+export async function readingLang(fallback: Lang): Promise<Lang> {
+  const session = await currentSession();
+  if (!session) return fallback;
+  return (await uiLangOf(session.user.id)) ?? fallback;
 }
 
 /** Cached per render: the layout and the page under it both ask, of the same language. */

@@ -5,7 +5,7 @@ import ContributeForm from "@/components/ContributeForm";
 import UploadBroadcastCache from "@/components/UploadBroadcastCache";
 import UploadGathered from "@/components/UploadGathered";
 import { auth } from "@/lib/auth";
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
 import { Contained } from "@/components/Width";
 import { uiText } from "@/lib/ui-text";
 
@@ -24,13 +24,14 @@ import { uiText } from "@/lib/ui-text";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
-  const t = (await uiText(await pageLang(params))).contribute;
+  const pageLangCode = await pageLang(params);
+  const t = (await uiText(await readingLang(pageLangCode))).contribute;
   return { title: `${t.title} · Spoken`, description: t.lede };
 }
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);
-  const t = (await uiText(lang)).contribute;
+  const t = (await uiText(await readingLang(lang))).contribute;
   const session = await auth.api.getSession({ headers: await headers() });
   // The name if they have one, the email otherwise: better to say "Filed as you@example.com"
   // than "Filed as ." for an account that never set a display name.
