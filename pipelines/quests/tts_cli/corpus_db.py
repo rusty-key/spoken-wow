@@ -1073,9 +1073,8 @@ def export_locale_text(lang, path, verbose=True):
 def export_giver_names(corpus_path, out_dir, verbose=True):
     """Every other language's quest-giver names -> one addon Lua file per language.
 
-    See tts_cli/giver_names.py. The name is the newest *extracted* version rather than the
-    live one, for the reason export_locale_text takes localeText: a translator's edit changes
-    how a name is spoken, and what the addon shows must be what the client shows.
+    A translator's pronunciation edits must not replace client-facing names. An accepted
+    client contribution fills a gap in the extract until the next import.
     """
     from tts_cli.giver_names import KINDS, givers, write_every_language
     from tts_cli.ignores import load_pack_ignored
@@ -1089,9 +1088,11 @@ def export_giver_names(corpus_path, out_dir, verbose=True):
                 """select distinct on ("lang", "kind", "entityId")
                           "lang", "kind", "entityId", "name"
                      from "entity_name"
-                    where "lang" <> %s and "origin" = 'extracted'
+                    where "lang" <> %s
+                      and ("origin" = 'extracted' or ("origin" = 'contributed' and "isCurrent"))
                       and "kind" = any(%s)
-                    order by "lang", "kind", "entityId", "version" desc""",
+                    order by "lang", "kind", "entityId", ("origin" = 'extracted') desc,
+                             "version" desc""",
                 (LANG, list(KINDS)),
             )
             by_lang = {}

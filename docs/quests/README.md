@@ -2038,13 +2038,19 @@ other language's giver names, `Locale/Names/<lang>.lua`, each returning before i
 anything on a client in another locale, and `DataModules:GetObjectName` asks them first. They
 live in the addon rather than in the packs because the name follows the client, not the voice:
 a German client with English packs still shows German names. `make quests-export-giver-names`
-writes them from `entity_name` (`tts_cli/giver_names.py`), after an `import-locale`, along with
-a `Names.xml` that lists them all. Forever's `.toc` lists each file with
+writes them from `entity_name` (`tts_cli/giver_names.py`) after locale imports or accepting
+contributions with new client names, along with a `Names.xml` that lists them all. Forever's `.toc` lists each file with
 `[AllowLoadTextLocale <lang>]`, as it does the gossip text, so the client loads only its own; the
 classic `.toc` files load `Names.xml`. The export stops with the lines to add or remove when
 Forever's `.toc` does not list exactly the files it wrote. Only
 names that differ from the English are written, since vmangos leaves untranslated names empty;
 a giver missing from a file is read in English.
+
+The export prefers the newest extracted name. Where the dump has none, a current contributed
+name supplies what a player's client showed. Editorial and community names are not client
+names, and a retired contribution stays excluded. This selection applies to every locale
+and to creatures, gameobjects and items. Refresh the corpus export before exporting giver
+names so newly accepted quest givers are included.
 
 That log's details view gets a button of its own, beside Back, which says `Play` and says
 `Stop` while it is reading. The list's buttons cannot follow a quest into it — a frame has one

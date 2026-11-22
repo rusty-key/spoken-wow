@@ -1,14 +1,18 @@
 """The addon's translated quest-giver names, which export-giver-names writes."""
 import glob
+import gzip
+import json
 import os
 import re
 
 from test_gossip_text import ADDON, FOREVER, toc
 import pytest
 
-from tts_cli.giver_names import (check_forever_toc, forever_toc_mismatch, givers, localized_names,
+from tts_cli import corpus_db
+from tts_cli.giver_names import (KINDS, check_forever_toc, forever_toc_mismatch, givers, localized_names,
                                  lua_string, render, write_every_language, write_giver_names,
                                  write_names_xml)
+from tts_cli.gossip_text import CLIENT_LOCALES
 
 
 def line(source, kind, npc_id, name, quest_id=1):
@@ -182,3 +186,111 @@ def test_a_giver_named_only_by_a_placeholder_has_no_english_name():
     # A language that has a name for it writes it: there is no English to fall back on.
     assert localized_names(found, {("gameobject", "649051"): "Kiste"}) == {
         "creature": {}, "gameobject": {649051: "Kiste"}, "item": {}}
+
+
+@pytest.fixture
+def name_store(monkeypatch):
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        pytest.skip("needs DATABASE_URL for the giver-name export query")
+    psycopg2 = pytest.importorskip("psycopg2")
+    conn = psycopg2.connect(url)
+    # Shadow the corpus table so the exporter exercises real SQL without changing stored names.
+    with conn.cursor() as cur:
+        cur.execute("""create temporary table "entity_name" (
+                         "lang" text, "kind" text, "entityId" text, "name" text,
+                         "origin" text, "version" integer, "isCurrent" boolean)""")
+    monkeypatch.setattr(corpus_db, "connect", lambda: conn)
+    yield conn
+    if not conn.closed:
+        conn.rollback()
+        conn.close()
+
+
+def store_name(conn, name, *, kind="creature", entity_id=253092, lang="esMX",
+               origin="contributed", version=1, current=True):
+    with conn.cursor() as cur:
+        cur.execute("""insert into "entity_name"
+                         ("lang", "kind", "entityId", "name", "origin", "version", "isCurrent")
+                       values (%s, %s, %s, %s, %s, %s, %s)""",
+                    (lang, kind, str(entity_id), name, origin, version, current))
+
+
+def exported_names(tmp_path):
+    corpus = {"lines": [
+        line("accept", "creature", 253092, "Alba Fairmoon", 92745),
+        line("accept", "creature", 253279, "Alba Fairmoon", 92819),
+        line("accept", "gameobject", 253092, "A Notice", 92746),
+        line("accept", "item", 253092, "A Letter", 92747),
+    ]}
+    source = tmp_path / "corpus.json.gz"
+    with gzip.open(source, "wt", encoding="utf-8") as handle:
+        json.dump(corpus, handle)
+    folder = tmp_path / "names"
+    folder.mkdir()
+    corpus_db.export_giver_names(str(source), str(folder), verbose=False)
+    return {path.stem: path.read_text(encoding="utf-8") for path in folder.glob("*.lua")}
+
+
+@pytest.mark.parametrize("kind", KINDS)
+@pytest.mark.parametrize("lang", CLIENT_LOCALES)
+def test_export_includes_client_contributed_names_for_every_giver_kind(name_store, tmp_path, kind, lang):
+    name = "Alba Lunaclara" if (kind, lang) == ("creature", "esMX") else f"Nom observé {lang} {kind}"
+    store_name(name_store, name, kind=kind, lang=lang)
+    assert f'[253092] = "{name}"' in exported_names(tmp_path)[lang]
+
+
+def test_export_includes_other_npcs_with_the_same_gap(name_store, tmp_path):
+    store_name(name_store, "Alba Lunaclara")
+    store_name(name_store, "Alba Lunaclara", entity_id=253279)
+    text = exported_names(tmp_path)["esMX"]
+    assert '[253092] = "Alba Lunaclara"' in text
+    assert '[253279] = "Alba Lunaclara"' in text
+
+
+def test_export_keeps_the_newest_extract_under_an_editorial_name(name_store, tmp_path):
+    store_name(name_store, "Older client name", origin="extracted", current=False)
+    store_name(name_store, "Current client name", origin="extracted", version=2, current=False)
+    store_name(name_store, "Pronunciation for the voice", origin="edited", version=3)
+    text = exported_names(tmp_path)["esMX"]
+    assert '[253092] = "Current client name"' in text
+    assert "Older client name" not in text
+    assert "Pronunciation for the voice" not in text
+
+
+def test_export_prefers_the_extract_over_a_later_live_contribution(name_store, tmp_path):
+    store_name(name_store, "Extracted client name", origin="extracted", current=False)
+    store_name(name_store, "Contributed client name", version=2)
+    text = exported_names(tmp_path)["esMX"]
+    assert '[253092] = "Extracted client name"' in text
+    assert "Contributed client name" not in text
+
+
+@pytest.mark.parametrize("origin,current", [("edited", True), ("community", True), ("contributed", False)])
+def test_export_does_not_turn_editorial_or_retired_names_into_client_names(
+    name_store, tmp_path, origin, current,
+):
+    store_name(name_store, "Not a live observed name", origin=origin, current=current)
+    assert exported_names(tmp_path) == {}
+
+
+def test_export_uses_the_current_contribution_after_a_name_is_restored(name_store, tmp_path):
+    store_name(name_store, "Accepted client name")
+    store_name(name_store, "Retired client name", version=2, current=False)
+    text = exported_names(tmp_path)["esMX"]
+    assert '[253092] = "Accepted client name"' in text
+    assert "Retired client name" not in text
+
+
+def test_export_keeps_locales_and_giver_kinds_separate(name_store, tmp_path):
+    for kind in ("creature", "gameobject", "item"):
+        store_name(name_store, f"Spanish {kind}", kind=kind)
+    store_name(name_store, "French creature", lang="frFR")
+    store_name(name_store, "English creature", lang="enUS")
+    tables = exported_names(tmp_path)
+    assert set(tables) == {"esMX", "frFR"}
+    for kind in ("creature", "gameobject", "item"):
+        assert f'[253092] = "Spanish {kind}"' in tables["esMX"]
+    assert "French creature" not in tables["esMX"]
+    assert '[253092] = "French creature"' in tables["frFR"]
+    assert "Spanish creature" not in tables["frFR"]
