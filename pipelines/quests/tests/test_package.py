@@ -102,14 +102,18 @@ def test_spoken_ships_with_its_modules_for_blizzard_clients(player_built):
     names, files = player_built[f"{PLAYER}-{version}.zip"]
     tocs = tocs_in(files, PLAYER)
     assert sorted(tocs) == sorted(f"{PLAYER}/{PLAYER}{suffix}.toc" for suffix in FLAVORS)
-    # Spoken, the folder whose only job is to name the gathered-lines file
-    # (addons/SpokenContributions/SpokenContributions.toc): one .toc and its icon, no Lua, and the three
-    # modules and Spoken Bosses: one download with everything in it.
+    # One download must include every module and the contribution acknowledgement file.
     assert {entry.split("/", 1)[0] for entry in names} == {PLAYER, "SpokenContributions",
                                                           "Spoken_Quests", "Spoken_Readables", "Spoken_Places",
                                                           "Spoken_Bosses"}
     assert sorted(name for name in names if name.startswith("SpokenContributions/") and not name.endswith("/")) \
-        == ["SpokenContributions/SpokenContributions.toc", "SpokenContributions/icon.tga"]
+        == ["SpokenContributions/Sent.lua", "SpokenContributions/SpokenContributions.toc",
+            "SpokenContributions/icon.tga"]
+    contributions_toc = files["SpokenContributions/SpokenContributions.toc"].decode("utf-8")
+    assert "Sent.lua" in contributions_toc.splitlines()
+    sent_lua = files["SpokenContributions/Sent.lua"].decode("utf-8")
+    assert [line.strip() for line in sent_lua.splitlines()
+            if line.strip() and not line.lstrip().startswith("--")] == ["SpokenContributionsSent = {}"]
 
 
 def test_the_compendium_files_are_spoken_s_alone():
