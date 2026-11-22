@@ -46,6 +46,10 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **Download, Report and the settings questions keep the controller working.** They open in
   Spoken's own window, which B closes. *([nobbs](https://github.com/nobbs))*
 - **Copy Settings From and Delete Profile ask first.** *([nobbs](https://github.com/nobbs))*
+- **Previous Line replays recent playback.** The narrator keeps a short history after lines finish or
+  are skipped, adds Previous controls to the player styles and DialogueUI rows, and exposes the
+  action through `/sp previous` and a bindable key.
+  *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.11.0 — 2026-11-21
 

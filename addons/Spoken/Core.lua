@@ -527,6 +527,7 @@ local function RegisterSlashCommand()
         local lines = {
             { "/sp replay", L.BIND_PLAYPAUSE },
             { "/sp skip", L.BIND_SKIP },
+            { "/sp previous", L.BIND_PREVIOUS },
             { "/sp stopall", L.BIND_STOP },
             { "/sp mute on | off", L.BIND_MUTE },
             { "/sp style subtitles | small | large | dialogueui | voice", L.OPT_PLAYER_STYLE },
@@ -553,6 +554,8 @@ local function RegisterSlashCommand()
             SoundQueue:RemoveAllSoundsFromQueue()
         elseif command == "skip" then
             SoundQueue:Skip()
+        elseif command == "previous" or command == "prev" then
+            SoundQueue:Previous()
         elseif verb == "mute" and (rest == "" or rest == "on" or rest == "off") then
             if rest == "" then SoundQueue:ToggleMuted() else SoundQueue:SetMuted(rest == "on") end
             print("Spoken: " .. L.BIND_MUTE .. " " .. (SoundQueue:IsMuted() and L.ON or L.OFF))
