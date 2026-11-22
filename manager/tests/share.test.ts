@@ -210,7 +210,6 @@ describe('Sent.lua', () => {
     fs.rmSync(file)
     fs.mkdirSync(file)
     expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })).toEqual({ outcome: 'nothing', unread: [file] })
-    // Another account's file changes while A's is still unreadable.
     write(contributionsFile(game, 'B'), savedVariables([summed(2)]))
     expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })).toEqual({ outcome: 'sent', count: 1, unread: [file] })
     expect(fs.readFileSync(sentFile(game), 'utf8')).toBe(listed(summed(1), summed(2)))
@@ -365,7 +364,6 @@ describe('ManagerService sharing', () => {
 
 describe('writeTextAtomic', () => {
   it('never makes the folder it writes into', () => {
-    // The installer moves a folder aside while it updates; making it again would block the new one.
     const gone = path.join(tmpDir(), 'SpokenContributions')
     expect(() => writeTextAtomic(path.join(gone, 'Sent.lua'), 'x')).toThrow()
     expect(fs.existsSync(gone)).toBe(false)

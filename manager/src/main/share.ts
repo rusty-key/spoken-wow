@@ -118,9 +118,8 @@ async function stamp(file: string): Promise<LocalFile | null> {
 }
 
 /**
- * Writes the list unless the file already holds it, and records the file as written. Without
- * `changed`, a file still as last written is not read at all. A failure is only logged: the lines
- * then stay in the game's file until a later poll writes the list.
+ * Without `changed`, a file still as last written is not read at all. A failure is only logged: the
+ * lines then stay in the game's file until a later poll writes the list.
  */
 async function writeSentFile(ledger: ShareLedger, file: string, marks: Iterable<string>, changed: boolean): Promise<void> {
   const before = ledger.lists[file]
