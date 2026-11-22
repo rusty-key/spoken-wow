@@ -2,7 +2,7 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
-## Unreleased
+## 3.12.1 — 2026-11-22
 
 - **Queue counts pulse without an error when a line is added while Spoken is stopped.** *([anon1231823](https://github.com/anon1231823))*
 - **Collecting lines also notes each speaker's name as your game shows it,** so translators can
