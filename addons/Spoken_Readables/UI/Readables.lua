@@ -101,16 +101,7 @@ local function Places()
 	local data = SpokenReadables:Data()
 	local packs = SpokenReadables.GetAudioPacks and SpokenReadables:GetAudioPacks() or {}
 	if placesData == data and placesPacks == packs then return placesView or {} end
-	local places = {}
-	for id, place in pairs(_G.SpokenReadablesPlaces and SpokenReadablesPlaces.books or {}) do places[id] = place end
-	local client = SpokenReadables.GetClientLanguage and SpokenReadables:GetClientLanguage()
-	for _, pack in ipairs(packs) do
-		if not client or not SpokenReadables.PackLanguage or SpokenReadables:PackLanguage(pack) == client then
-			for id, place in pairs(pack.bookPlaces or {}) do
-				if not places[id] then places[id] = place end
-			end
-		end
-	end
+	local places = SpokenReadables:BookPlaces()
 	placesData, placesPacks, placesView = data, packs, places
 	return places
 end

@@ -71,7 +71,7 @@ end
 
 -- Bump when the quest-to-readable lookup changes so characters that already ran an older
 -- backfill are rescanned automatically after an addon update.
-local QUEST_BACKFILL_VERSION = 5
+local QUEST_BACKFILL_VERSION = 6
 
 local function CompletedQuests()
 	local completed = {}
@@ -100,7 +100,7 @@ function SpokenReadables:BackfillQuestReadables()
 		return
 	end
 	local completed = CompletedQuests()
-	local places = _G.SpokenReadablesPlaces and SpokenReadablesPlaces.books
+	local places = self:BookPlaces()
 	if not completed then return end
 	if places then
 		for book, place in pairs(places) do

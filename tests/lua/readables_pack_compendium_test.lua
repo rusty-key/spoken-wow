@@ -73,5 +73,10 @@ B:ShowReadables(BOOK)
 Expect("a missing translation falls back to the English pack", B.readables.page.body.text.text,
     "Mountaineer Gretchen's report.")
 B.GetTextLanguage = getTextLanguage
+_G.C_QuestLog = { GetAllCompletedQuestIDs = function() return { 98323 } end }
+SpokenReadablesCharacter.found = {}
+SpokenReadablesCharacter.questReadableBackfill = 5
+B:BackfillQuestReadables()
+Expect("completed pack-only quest rewards are backfilled", B:IsBookFound(BOOK), true)
 
 assert(Failures() == 0, "readables pack checks failed")

@@ -317,6 +317,19 @@ function SpokenReadables:Data()
 	return _G.SpokenReadablesData
 end
 
+function SpokenReadables:BookPlaces()
+	local places = {}
+	for id, place in pairs(_G.SpokenReadablesPlaces and SpokenReadablesPlaces.books or {}) do places[id] = place end
+	for _, pack in ipairs(self:GetAudioPacks()) do
+		if self:PackLanguage(pack) == self:GetClientLanguage() then
+			for id, place in pairs(pack.bookPlaces or {}) do
+				if not places[id] then places[id] = place end
+			end
+		end
+	end
+	return places
+end
+
 --- The readable owned by an item, if the item is a text-bearing note or book.
 ---
 --- The item table is generated with the corpus. Checking the page text here keeps an item
