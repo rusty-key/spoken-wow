@@ -104,6 +104,7 @@ const de: Dictionary = {
         "Wähle Anvisieren oder Besiegen unter „Geschichte eines Bosses anzeigen“",
       ],
       browse: "Bosse durchsuchen",
+      position: "Position im Bosse-Beispiel",
     },
     examplesLabel: "Beispiele: {part}",
     noVoice:
