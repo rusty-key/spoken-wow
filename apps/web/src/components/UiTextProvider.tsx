@@ -7,9 +7,9 @@ import { EN, type UiText } from "@/lib/ui-text/en";
 /**
  * Backstage's words, for client components.
  *
- * The layout provides them from the `[lang]` segment, which is the page's reading language --
- * never `?lang=`, which is the language a team maintains. Defaulted to English rather than
- * throwing, so a component rendered outside the layout (a test, a story) still reads.
+ * In the reader's interface language (readingLang), never `?lang=`, which names the team an
+ * admin page acts on. Defaulted to English rather than throwing, so a component rendered
+ * outside the layout (a test, a story) still reads.
  */
 const Context = createContext<UiText>(EN);
 

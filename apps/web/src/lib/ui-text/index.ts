@@ -7,12 +7,7 @@ import type { Lang } from "@/lib/lang";
 import { EN, type UiText } from "./en";
 
 /**
- * Backstage's words in the language the reader reads it in.
- *
- * THE SETTING BEATS THE ADDRESS. A person who saved "Chinese" reads Chinese whatever link
- * they arrived by, including a German team's dashboard -- which is the whole reason the
- * choice lives on the account. Without one, the page reads its `[lang]` segment, which is
- * what every page did before the setting existed and what a signed-out visitor still gets.
+ * Backstage's words in one language, as readingLang picks it.
  *
  * A dictionary covers as much as its team wants; whatever it leaves out reads English. That is
  * unlike lib/site-text, whose dictionaries must be complete: a player reading the front page in

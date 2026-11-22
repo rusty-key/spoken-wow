@@ -2,11 +2,10 @@
  * The language a person reads Backstage in.
  *
  * It belongs to the person, not to the page: a volunteer who reads Chinese may look after a
- * German team, and opening that team's dashboard used to turn the interface German with it.
- * Kept on the account so it follows them between links, browsers and machines.
+ * German team. Kept on the account so it follows them between links, browsers and machines.
  *
- * No row, or a null column, means no choice: the page reads the `[lang]` segment, which is
- * what every page did before this existed and what a signed-out visitor still gets.
+ * No row, or a null column, means no choice: the page reads its `[lang]` segment, as a
+ * signed-out visitor's does.
  */
 import "server-only";
 

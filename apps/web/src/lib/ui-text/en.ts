@@ -27,9 +27,6 @@ const ENGLISH = {
     signIn: "Sign in",
     register: "Register",
     signOut: "Sign out",
-    settings: "Settings",
-    language: "Language",
-    off: " (off)",
     admin: "Admin",
     /* The pages a signed-in volunteer reaches, by the name the page gives itself. */
     voices: "Voices",
@@ -128,7 +125,6 @@ const ENGLISH = {
     releaseTextChanges: "{n} text changes",
     releaseNever: "Never released from here: the first release sends everything live",
     contributions: "Contributions to review",
-    contributionsQuests: "Quests {n}",
     contributionsCorrections: " ({n} new texts, {m} corrections)",
     reports: "Open audio reports",
     missing: "Missing audio",

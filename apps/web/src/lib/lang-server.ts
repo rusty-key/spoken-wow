@@ -39,21 +39,20 @@ export async function worksHere(lang: Lang): Promise<boolean> {
 }
 
 /**
- * The language a page is READ in: the reader's own setting when they have one, else the
- * `[lang]` segment.
+ * The language Backstage's words are READ in: the reader's own setting when they have one, else
+ * the `[lang]` segment. A volunteer who reads Chinese opens a German team's dashboard in Chinese.
  *
- * A setting travels with the person, so a volunteer who reads Chinese opens a German team's
- * dashboard in Chinese. Without one -- a signed-out visitor, or somebody who never chose --
- * the segment decides, which is what every page did before the setting existed.
+ * Only Backstage's words follow this. The front page never asks: it reads in its address's
+ * language for everyone. And `lang` stays the page's own language for everything else: the lines
+ * it lists, the team it names, the packs it links.
  *
- * Only the interface reads this. `lang` stays the page's own language for everything else:
- * the lines it lists, the team it names, the packs it links.
+ * Cached per render: the layout, the page and its metadata all ask.
  */
-export async function readingLang(fallback: Lang): Promise<Lang> {
+export const readingLang = cache(async (fallback: Lang): Promise<Lang> => {
   const session = await currentSession();
   if (!session) return fallback;
   return (await uiLangOf(session.user.id)) ?? fallback;
-}
+});
 
 /** Cached per render: the layout and the page under it both ask, of the same language. */
 const visible = cache(async (lang: Lang): Promise<boolean> => {
