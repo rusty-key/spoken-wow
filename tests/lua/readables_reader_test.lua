@@ -27,6 +27,7 @@ local B = LoadReadables()
 B:InitDB()
 B:SetupSource()
 dofile(READABLES .. "Data/Books.lua")
+require("readables_minted_fixture")(B)
 
 -- Two real pages of one real book: the Hillsbrad Town Registry, whose first page names the
 -- town and whose second lists its debts.
