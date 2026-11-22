@@ -3,9 +3,11 @@
 // Spoken keeps every line it had no voice for in WTF/Account/<account>/SavedVariables/
 // SpokenContributions.lua (addons/Spoken/Gather.lua). The site's /contribute page takes that file
 // by hand; this reads it in the player's place and sends the envelopes in it to the same route.
-// It only reads: WTF is the game's, and the game writes the file from memory at every logout, so
-// anything changed in it would come back anyway. What was sent is remembered here instead, as
-// hashes in share.json, with the random install id the site counts players by.
+// It never writes there: WTF is the game's, and the game writes the file from memory at every
+// logout, so anything changed in it would come back anyway. What was sent is remembered here
+// instead, as hashes in share.json, with the random install id the site counts players by. To
+// empty the file, the lines sent are listed in Interface/AddOns/SpokenContributions/Sent.lua, which
+// the game only reads, and Spoken drops them at the next login (Gather:DropSent).
 //
 // No electron imports, so it can be tested the way state.ts is.
 import crypto from 'node:crypto'
@@ -35,7 +37,12 @@ export interface ShareLedger {
   sent: Record<string, string>
   lastSent?: { at: string; count: number }
   /** Each file's size and time as last read, so a poll reads only what the game has rewritten. */
-  seen: Record<string, LocalFile>
+  seen: Record<string, SeenFile>
+}
+
+export interface SeenFile extends LocalFile {
+  /** The sentMark of each envelope in the file that was sent, so Sent.lua is built without reading it again. */
+  marks?: string[]
 }
 
 function ledgerFile(dataPath: string): string {
@@ -57,9 +64,15 @@ export function loadLedger(dataPath: string): ShareLedger {
     installId: id,
     sent: records(raw.sent, (x): x is string => typeof x === 'string'),
     ...(last && typeof last.at === 'string' && typeof last.count === 'number' ? { lastSent: { at: last.at, count: last.count } } : {}),
-    seen: records(raw.seen, (x): x is LocalFile => {
-      const s = x as { size?: unknown; mtimeMs?: unknown }
-      return typeof x === 'object' && x !== null && typeof s.size === 'number' && typeof s.mtimeMs === 'number'
+    seen: records(raw.seen, (x): x is SeenFile => {
+      const s = x as { size?: unknown; mtimeMs?: unknown; marks?: unknown }
+      return (
+        typeof x === 'object' &&
+        x !== null &&
+        typeof s.size === 'number' &&
+        typeof s.mtimeMs === 'number' &&
+        (s.marks === undefined || (Array.isArray(s.marks) && s.marks.every((m) => typeof m === 'string')))
+      )
     })
   }
 }
@@ -70,6 +83,44 @@ export function saveLedger(dataPath: string, ledger: ShareLedger): void {
 
 export function hashEnvelope(envelope: string): string {
   return sha256Text(envelope).slice(0, 32)
+}
+
+/**
+ * What Gather:SentMark makes of the envelope in the game: its `sum=` and its length in bytes. The
+ * addon has no sha256 to hand, and hashing every line at login would stall it; the sum is already
+ * on the envelope's last line. Null for one without a sum, which the addon never drops.
+ */
+export function sentMark(envelope: string): string | null {
+  const sum = /\nsum=(\d+)\n$/.exec(envelope)
+  return sum ? `${sum[1]}:${Buffer.byteLength(envelope, 'utf8')}` : null
+}
+
+/** The Lua Sent.lua holds: the marks as keys of SpokenContributionsSent, sorted so an unchanged list writes the same bytes. */
+export function sentLua(marks: Iterable<string>): string {
+  const keys = [...new Set(marks)].sort().map((m) => `["${m}"]=true,`)
+  return `-- Written by the Spoken Manager: the lines it sent, which Spoken drops at login.\nSpokenContributionsSent = {\n${keys.join('\n')}${keys.length ? '\n' : ''}}\n`
+}
+
+/**
+ * Writes the game's Sent.lua when its contents changed. Only into a SpokenContributions folder
+ * that is there and not linked: a linked one is a developer's checkout. A failure is logged and
+ * left for the next send, since the lines then only stay in the file a while longer.
+ */
+async function writeSentFile(game: GameInstall, marks: Iterable<string>): Promise<void> {
+  const folder = findEntrySync(game.addOnsPath, 'SpokenContributions')
+  if (!folder) return
+  const dir = path.join(game.addOnsPath, folder)
+  const file = path.join(dir, findEntrySync(dir, 'Sent.lua') ?? 'Sent.lua')
+  if ((await isLinked(dir)) || (await isLinked(file))) return
+  const text = sentLua(marks)
+  try {
+    if ((await fs.promises.readFile(file, 'utf8').catch(() => null)) === text) return
+    const tmp = `${file}.${process.pid}.tmp`
+    await fs.promises.writeFile(tmp, text, 'utf8')
+    await fs.promises.rename(tmp, file)
+  } catch (err) {
+    log('Sharing: could not write', file, err)
+  }
 }
 
 /** Every SpokenContributions.lua of a game, one per account, matched ignoring case. Linked folders and files are skipped. */
@@ -139,17 +190,25 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
   const fresh = new Map<string, string>()
   const seen: ShareLedger['seen'] = {}
   const unread: string[] = []
+  /** Each file read this time: the hash and sentMark of every envelope in it. */
+  const read = new Map<string, Map<string, string | null>>()
+  const filesOf = new Map<GameInstall, string[]>()
   for (const game of opts.games) {
-    for (const file of await findContributionFiles(game)) {
+    const files = await findContributionFiles(game)
+    filesOf.set(game, files)
+    for (const file of files) {
       let st: fs.Stats
       try {
         st = await fs.promises.stat(file)
       } catch {
         continue
       }
-      seen[file] = { size: st.size, mtimeMs: st.mtimeMs }
       const before = ledger.seen[file]
-      if (!opts.all && before && before.size === st.size && before.mtimeMs === st.mtimeMs) continue
+      if (!opts.all && before && before.size === st.size && before.mtimeMs === st.mtimeMs) {
+        seen[file] = before
+        continue
+      }
+      seen[file] = { size: st.size, mtimeMs: st.mtimeMs }
       let text: string
       try {
         text = await fs.promises.readFile(file, 'utf8')
@@ -159,23 +218,33 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
         delete seen[file]
         continue
       }
+      const inFile = new Map<string, string | null>()
       for (const e of envelopesFromSavedVariables(text)) {
         const h = hashEnvelope(e)
+        inFile.set(h, sentMark(e))
         if (!ledger.sent[h]) fresh.set(h, e)
       }
+      read.set(file, inFile)
     }
   }
   // Replaced whole: a file that went away is forgotten, so it is read again if it comes back.
   // Written only when it changed: a poll that found nothing new leaves share.json alone.
-  const done = (result: SendResult): SendResult => {
+  const done = async (result: SendResult): Promise<SendResult> => {
+    const before = ledger.seen
+    for (const [file, inFile] of read) {
+      const marks = [...inFile].flatMap(([h, mark]) => (mark && ledger.sent[h] ? [mark] : []))
+      seen[file] = { ...seen[file]!, ...(marks.length ? { marks } : {}) }
+    }
     if (JSON.stringify(seen) !== JSON.stringify(ledger.seen)) {
       ledger.seen = seen
       saveLedger(opts.dataPath, ledger)
     }
+    // A file that could not be read keeps its marks from before: its lines were sent all the same.
+    for (const [game, files] of filesOf) await writeSentFile(game, files.flatMap((f) => (seen[f] ?? before[f])?.marks ?? []))
     return result
   }
-  const read = unread.length ? { unread } : {}
-  if (fresh.size === 0) return done({ outcome: 'nothing', ...read })
+  const unreadPart = unread.length ? { unread } : {}
+  if (fresh.size === 0) return done({ outcome: 'nothing', ...unreadPart })
 
   const doFetch = opts.fetchImpl ?? fetch
   const hashes = [...fresh.keys()]
@@ -204,7 +273,7 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
     ledger.lastSent = { at, count }
     saveLedger(opts.dataPath, ledger)
   }
-  return done({ outcome: 'sent', count, ...read })
+  return done({ outcome: 'sent', count, ...unreadPart })
 }
 
 /** A new install id; what was sent stays sent. */

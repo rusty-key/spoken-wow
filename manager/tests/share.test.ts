@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { CHANNELS } from '../src/shared/api'
 import type { GameInstall, SharingStatus } from '../src/shared/types'
 import { ManagerService, SHARE_BACKOFF_MS } from '../src/main/service'
-import { findContributionFiles, hashEnvelope, LEDGER_CAP, loadLedger, saveLedger, sendPending } from '../src/main/share'
+import { findContributionFiles, hashEnvelope, LEDGER_CAP, loadLedger, saveLedger, sendPending, sentLua, sentMark } from '../src/main/share'
 import { loadSettings, sanitizeSettings } from '../src/main/state'
 import { makeGame, tmpDir, write } from './helpers'
 
@@ -154,6 +154,77 @@ describe('sendPending', () => {
     expect(Object.keys(sent)).toHaveLength(LEDGER_CAP)
     expect(sent.old0).toBeUndefined()
     expect(sent[hashEnvelope(envelope(1))]).toBeDefined()
+  })
+})
+
+describe('Sent.lua', () => {
+  /** An envelope with its own sum, as Gather:SentMark reads it. */
+  const summed = (n: number): string => `!SPOKEN1 quests\nquest=${n}\ntext<<\nLíne ${n}.\n>>\nsum=${1000 + n}\n`
+
+  function sentFile(game: GameInstall): string {
+    return path.join(game.addOnsPath, 'SpokenContributions', 'Sent.lua')
+  }
+
+  function addon(game: GameInstall): void {
+    write(path.join(game.addOnsPath, 'SpokenContributions', 'SpokenContributions.toc'), '## SavedVariables: SpokenContributionsDB\nSent.lua\n')
+  }
+
+  it('marks an envelope by its sum and its length in bytes, as the addon does', () => {
+    // The same envelope and mark as gather_test.lua's, so the two sides cannot drift apart.
+    expect(sentMark('!SPOKEN1 quests\ntext<<\nCafé.\n>>\nsum=42\n')).toBe('42:40')
+    expect(sentMark('!SPOKEN1 quests\n')).toBeNull()
+    expect(sentLua(['2:5', '1:5', '2:5'])).toBe('-- Written by the Spoken Manager: the lines it sent, which Spoken drops at login.\nSpokenContributionsSent = {\n["1:5"]=true,\n["2:5"]=true,\n}\n')
+  })
+
+  it("lists every account's sent lines, and only the lines still in the files", async () => {
+    const { game, dataPath } = await setup()
+    addon(game)
+    write(contributionsFile(game, 'A'), savedVariables([summed(1), summed(2)]))
+    write(contributionsFile(game, 'B'), savedVariables([summed(3)]))
+    const site = fakeSite()
+    await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })
+    expect(fs.readFileSync(sentFile(game), 'utf8')).toBe(sentLua([summed(1), summed(2), summed(3)].map((e) => sentMark(e)!)))
+
+    // The game dropped the sent lines at login and kept a new one: Sent.lua lists that one once it is sent.
+    write(contributionsFile(game, 'A'), savedVariables([summed(4)]))
+    await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })
+    expect(fs.readFileSync(sentFile(game), 'utf8')).toBe(sentLua([summed(3), summed(4)].map((e) => sentMark(e)!)))
+  })
+
+  it('lists nothing the site refused', async () => {
+    const { game, dataPath } = await setup()
+    addon(game)
+    write(contributionsFile(game, 'A'), savedVariables([summed(1)]))
+    await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: fakeSite([500]).fetchImpl })
+    expect(fs.existsSync(sentFile(game))).toBe(false)
+  })
+
+  it('keeps listing the lines of a file it could not read this time', async () => {
+    const { game, dataPath } = await setup()
+    addon(game)
+    const file = contributionsFile(game, 'A')
+    write(file, savedVariables([summed(1)]))
+    const site = fakeSite()
+    await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })
+    fs.rmSync(file)
+    fs.mkdirSync(file)
+    expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl, all: true })).toEqual({ outcome: 'nothing', unread: [file] })
+    expect(fs.readFileSync(sentFile(game), 'utf8')).toBe(sentLua([sentMark(summed(1))!]))
+  })
+
+  it('writes nowhere without the SpokenContributions folder, and never into a linked one', async () => {
+    const { game, dataPath } = await setup()
+    write(contributionsFile(game, 'A'), savedVariables([summed(1)]))
+    await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: fakeSite().fetchImpl })
+    expect(fs.existsSync(path.join(game.addOnsPath, 'SpokenContributions'))).toBe(false)
+
+    const checkout = tmpDir()
+    write(path.join(checkout, 'Sent.lua'), 'SpokenContributionsSent = {}\n')
+    fs.mkdirSync(game.addOnsPath, { recursive: true })
+    fs.symlinkSync(checkout, path.join(game.addOnsPath, 'SpokenContributions'), 'junction')
+    write(contributionsFile(game, 'A'), savedVariables([summed(1), summed(2)]))
+    await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: fakeSite().fetchImpl })
+    expect(fs.readFileSync(path.join(checkout, 'Sent.lua'), 'utf8')).toBe('SpokenContributionsSent = {}\n')
   })
 })
 
