@@ -26,6 +26,14 @@ function currentNameSql(alias: string, lang = `${alias}."lang"`): string {
 }
 
 /**
+ * The name a client in `alias`'s language shows today. An import stores nothing where the dump
+ * leaves the name untranslated, and there the client shows the English.
+ */
+function shownNameSql(alias: string): string {
+  return `coalesce(${currentNameSql(alias)}, ${currentNameSql(alias, `'${BASE_LANG}'`)})`;
+}
+
+/**
  * Offers every name a sighting carries that differs from the current one, under `uploader`.
  * English is left out: its names are the corpus's. So is an NPC with no English name, which
  * nothing on the site lists. Returns how many names this uploader newly vouched for.
@@ -46,7 +54,7 @@ export async function recordObservedNames(sightings: readonly Sighting[], upload
      ), offered as (
        select s.* from sent s
         where ${currentNameSql("s", `'${BASE_LANG}'`)} is not null
-          and ${currentNameSql("s")} is distinct from s."name"
+          and ${shownNameSql("s")} is distinct from s."name"
      ), saved as (
        insert into "name_contribution" ("kind", "entityId", "lang", "name")
        select "kind", "entityId", "lang", "name" from offered
@@ -90,7 +98,7 @@ export async function listObservedNames(lang: Lang, status: ContributionStatus):
             ${currentNameSql("c")} as "currentName"
        from "name_contribution" c
       where c."lang" = $1 and c."status" = $2
-        and (c."status" <> 'new' or ${currentNameSql("c")} is distinct from c."name")
+        and (c."status" <> 'new' or ${shownNameSql("c")} is distinct from c."name")
       order by "uploaders" desc, c."updatedAt" desc`,
     [lang, status],
   );
@@ -100,7 +108,7 @@ export async function listObservedNames(lang: Lang, status: ContributionStatus):
 export async function countObservedNames(lang: Lang): Promise<number> {
   const rows = await query<{ count: number }>(
     `select count(*)::int as "count" from "name_contribution" c
-      where c."lang" = $1 and c."status" = 'new' and ${currentNameSql("c")} is distinct from c."name"`,
+      where c."lang" = $1 and c."status" = 'new' and ${shownNameSql("c")} is distinct from c."name"`,
     [lang],
   );
   return rows[0]?.count ?? 0;
@@ -166,7 +174,7 @@ export async function rejectObservedName(id: number, lang: Lang, userId: string)
   return withTextTeam(lang, async (client, team) => {
     const { rows } = await client.query<{ kind: ObservedKind; entityId: string; name: string }>(
       `update "name_contribution" set "status" = 'rejected', "resolvedBy" = $3, "updatedAt" = now()
-        where "id" = $1 and "lang" = $2
+        where "id" = $1 and "lang" = $2 and "status" = 'new'
        returning "kind", "entityId", "name"`,
       [id, lang, userId],
     );

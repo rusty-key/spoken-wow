@@ -158,6 +158,19 @@ describe("a name a player's client shows", () => {
     ]);
   });
 
+  it("is not offered where the language has no name and the client shows the English", async () => {
+    expect(await recordObservedNames([seen("Alba Fairmoon")], "user:a")).toBe(0);
+    expect(await waiting()).toEqual([]);
+  });
+
+  it("cannot be dropped once kept", async () => {
+    await recordObservedNames([seen("Alba Lunaclara")], "user:a");
+    const [row] = await waiting();
+    await acceptObservedName(row.id, "esMX", user.id);
+    expect(await rejectObservedName(row.id, "esMX", user.id)).toEqual({ ok: false, reason: "not-found" });
+    expect((await listObservedNames("esMX", "accepted")).map((r) => r.id)).toContain(row.id);
+  });
+
   it("is decided only in its own language", async () => {
     await recordObservedNames([seen("Alba Lunaclara")], "user:a");
     const [row] = await waiting();
