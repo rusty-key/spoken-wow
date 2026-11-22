@@ -1212,7 +1212,7 @@ do
             button.glyph.roundLayoutToNearestPixel == nil and button.bar.roundLayoutToNearestPixel == nil, true)
     end
     eject.scripts.OnEnter(eject)
-    Expect("eject explains the Eject action", GameTooltip.lines[1], env.L.MIN_EJECT)
+    Expect("eject explains the Eject action", GameTooltip.lines[1], env.L.BIND_EJECT)
     for _, style in ipairs({ "classic", "minimal", "subtitle" }) do
         env.Addon:SetPlayerStyle(style)
         F:RefreshConfig()

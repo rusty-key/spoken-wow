@@ -254,7 +254,7 @@ local function StepButton(parent, name, direction)
     if step.bar.SetColorTexture then step.bar:SetColorTexture(1, 0.82, 0, 0.85) end
     -- Squared once the bar exists, so EllesmereUI keeps it with the glyph.
     if Ellesmere then Ellesmere:When(function(skin) Actions.Square(skin, step) end) end
-    local tip = eject and L.MIN_EJECT or (back and L.BIND_SKIP_BACKWARD or L.BIND_SKIP_FORWARD)
+    local tip = eject and L.BIND_EJECT or (back and L.BIND_SKIP_BACKWARD or L.BIND_SKIP_FORWARD)
     step:SetScript("OnEnter", function()
         step.glyph:SetAlpha(1)
         GameTooltip:SetOwner(step, "ANCHOR_TOP")
