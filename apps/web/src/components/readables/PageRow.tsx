@@ -8,6 +8,7 @@ import FilterLink from "@/components/FilterLink";
 import { ChevronDownIcon, PlayIcon } from "lucide-react";
 
 import { RowActions, StateWord, type RowAction } from "@/components/catalogue/RowParts";
+import { useUiText } from "@/components/UiTextProvider";
 import { useState } from "react";
 
 import ReportsBadge from "@/components/ReportsBadge";
@@ -122,6 +123,7 @@ export function PageRow({
   onOverrideAnswered,
 }: Props) {
   const playable = line.state !== "missing";
+  const t = useUiText();
   const [expanded, setExpanded] = useState(false);
   // Missing or outdated audio makes generating the row's task: a gold button, not a menu item.
   const needsTake = canRegenerate && line.generatable && (line.state === "missing" || line.state === "stale");
@@ -182,7 +184,7 @@ export function PageRow({
             {line.override && (
               <span
                 className={cn("cat-override", !expanded && "line-clamp-1")}
-                title="What your team's audio says"
+                title={t.catalogue.row.overrideSays}
               >
                 {line.override.text}
               </span>
@@ -226,7 +228,7 @@ export function PageRow({
           the question this screen is most often asked. */}
       <td className="whitespace-nowrap">
         {state?.phase === "busy" ? (
-          <StateWord tone="skip">Generating…</StateWord>
+          <StateWord tone="skip">{t.catalogue.row.generating}</StateWord>
         ) : state?.phase === "error" ? (
           <StateWord tone="error">{state.message}</StateWord>
         ) : state?.phase === "done" ? (
@@ -253,7 +255,7 @@ export function PageRow({
         {/* Beneath the state rather than inside it: the text has not moved, so this page is
             `current` and dirty at once, and one word cannot say both. */}
         {line.dirty && (
-          <div className="text-amber-300" title="Cut before a pronunciation it speaks was changed">
+          <div className="text-amber-300" title={t.catalogue.row.pronunciationMoved}>
             pronunciation
           </div>
         )}

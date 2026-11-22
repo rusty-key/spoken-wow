@@ -48,7 +48,8 @@ export default function TeamDashboard({ lang, data, access }: { lang: Lang; data
   const to = (path: string) => localeHref(lang, path);
   // An admin page takes the team from `?lang=` and keeps the reader's site language.
   const siteLang = useLang();
-  const t = useUiText().dashboard;
+  const text = useUiText();
+  const t = text.dashboard;
   const { contributions: c, reports, missing } = data;
   const reportTotal = CATEGORIES.reduce((sum, category) => sum + reports[category], 0);
   const contributionTotal = c.sections.quests + c.sections.readables + c.sections.places;
@@ -167,7 +168,7 @@ export default function TeamDashboard({ lang, data, access }: { lang: Lang; data
           <ul className="py-1">
             {data.recent.map((run) => {
               const { row } = run;
-              const { what, quote } = run.count > 1 ? summary(run, t) : describe(row);
+              const { what, quote } = run.count > 1 ? summary(run, t) : describe(row, text.activity.events);
               // Each end on its own: a run from 23:40 to 00:20 spans two days.
               const at = (iso: string) =>
                 date(iso, new Date(iso).toDateString() === new Date().toDateString() ? WHEN : DAY);

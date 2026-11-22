@@ -3,7 +3,9 @@
 import { MoreHorizontalIcon } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
+import { useUiText } from "@/components/UiTextProvider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { fill } from "@/lib/site-text/format";
 import { cn } from "@/lib/utils";
 
 export type RowAction = {
@@ -39,6 +41,7 @@ export function RowActions({
   /** The open-reports chip, which stays in sight. */
   badge?: ReactNode;
 }) {
+  const t = useUiText().catalogue.row.actions;
   const [open, setOpen] = useState(false);
   // A picked item runs once the popover has closed, with focus put back on More by hand: the
   // popover hands focus to the page, and a dialog opened before that loses it and returns focus
@@ -68,14 +71,14 @@ export function RowActions({
       {inMenu.length > 0 && (
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
-            <button ref={trigger} type="button" className="bs-btn bs-btn-text cat-act cat-more" aria-label={`More actions for ${subject}`} title="More actions">
+            <button ref={trigger} type="button" className="bs-btn bs-btn-text cat-act cat-more" aria-label={fill(t.moreFor, { subject })} title={t.more}>
               <MoreHorizontalIcon aria-hidden="true" />
             </button>
           </PopoverTrigger>
           <PopoverContent
             align="end"
             className="cat-menu w-auto min-w-48 p-1"
-            aria-label={`More actions for ${subject}`}
+            aria-label={fill(t.moreFor, { subject })}
             onCloseAutoFocus={(event) => {
               const action = picked.current;
               if (!action) return;
@@ -121,21 +124,24 @@ export function BatchGenerate({
 }: {
   total: number;
   state: "missing" | "stale" | "current" | undefined;
-  noun: [string, string];
+  /** Which word the count is of: lines, or pages. */
+  noun: "line" | "page";
   onClick: () => void;
 }) {
+  const t = useUiText().catalogue.row.batch;
   const count = total.toLocaleString();
-  const what = total === 1 ? noun[0] : noun[1];
+  const what =
+    noun === "page" ? (total === 1 ? t.pageOne : t.pageMany) : total === 1 ? t.one : t.many;
   if (state === "missing" || state === "stale") {
     return (
       <button type="button" className="bs-btn bs-btn-primary ml-auto" onClick={onClick}>
-        {state === "missing" ? `Generate audio for ${count} ${what}` : `Regenerate ${count} outdated ${what}`}
+        {fill(state === "missing" ? t.generate : t.regenerateOutdated, { count, what })}
       </button>
     );
   }
   return (
     <button type="button" className="bs-btn ml-auto" onClick={onClick}>
-      Regenerate all {count} {what}
+      {fill(t.regenerateAll, { count, what })}
     </button>
   );
 }

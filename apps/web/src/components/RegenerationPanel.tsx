@@ -4,6 +4,8 @@ import { Loader2, Pause, Play, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 import {
   Dialog,
   DialogContent,
@@ -63,6 +65,7 @@ export default function RegenerationPanel({
   /** Called when the panel is closed, so the page can drop its own note. */
   onDismiss: () => void;
 }) {
+  const t = useUiText().catalogue.queue;
   const [confirming, setConfirming] = useState(false);
   // Held while a pause or resume is in flight, so a second click cannot undo the first before
   // the poll has shown what it did.
@@ -116,15 +119,15 @@ export default function RegenerationPanel({
           {active && !paused && <Loader2 className="size-4 shrink-0 animate-spin" />}
 
           <span className="font-medium">
-            {paused ? "Paused" : active ? "Regenerating" : stopped ? "Stopped" : "Finished"}
+            {paused ? t.paused : active ? t.regenerating : stopped ? t.stopped : t.finished}
           </span>
 
           <span className="text-muted-foreground font-mono text-xs">
             {n(attempted)}/{n(total)}
             {/* The number in flight is the visible proof this is no longer sequential. */}
-            {running > 0 && <span> · {n(running)} at once</span>}
-            {failed > 0 && <span className="text-destructive"> · {n(failed)} failed</span>}
-            {cancelled > 0 && <span> · {n(cancelled)} cancelled</span>}
+            {running > 0 && <span> · {fill(t.atOnce, { n: n(running) })}</span>}
+            {failed > 0 && <span className="text-destructive"> · {fill(t.failed, { n: n(failed) })}</span>}
+            {cancelled > 0 && <span> · {fill(t.cancelled, { n: n(cancelled) })}</span>}
           </span>
 
           <span className="text-muted-foreground ml-auto font-mono text-xs">
@@ -132,10 +135,10 @@ export default function RegenerationPanel({
                 would understate the total and look like a bargain. */}
             {/* Each provider in its own unit, side by side and never summed: a total that
                 added dollars to credits would be wrong without looking wrong. */}
-            {(snapshot.credits > 0 || snapshot.costUsd === 0) && `${n(snapshot.credits)} credits`}
+            {(snapshot.credits > 0 || snapshot.costUsd === 0) && fill(t.credits, { n: n(snapshot.credits) })}
             {snapshot.credits > 0 && snapshot.costUsd > 0 && " · "}
             {snapshot.costUsd > 0 && usd(snapshot.costUsd)}
-            {snapshot.unpriced > 0 && ` · ${n(snapshot.unpriced)} unpriced`}
+            {snapshot.unpriced > 0 && ` · ${fill(t.unpriced, { n: n(snapshot.unpriced) })}`}
           </span>
 
           {(active || pauses.length > 0) && (
@@ -143,8 +146,8 @@ export default function RegenerationPanel({
               size="icon-xs"
               variant="ghost"
               disabled={toggling}
-              aria-label={pauses.length > 0 ? "Resume the queue" : "Pause the queue"}
-              title={pauses.length > 0 ? "Resume" : "Pause, keeping what is waiting"}
+              aria-label={pauses.length > 0 ? t.resume : t.pause}
+              title={pauses.length > 0 ? t.resumeShort : t.pauseShort}
               onClick={() => {
                 setToggling(true);
                 void (pauses.length > 0 ? resumeQueue() : pauseQueue()).finally(() =>
@@ -159,7 +162,7 @@ export default function RegenerationPanel({
           <Button
             size="icon-xs"
             variant="ghost"
-            aria-label={active ? "Stop the queue" : "Dismiss"}
+            aria-label={active ? t.stop : t.dismiss}
             onClick={() => {
               if (active) {
                 setConfirming(true);
@@ -237,7 +240,7 @@ export default function RegenerationPanel({
       <Dialog open={confirming && active} onOpenChange={setConfirming}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Stop the queue?</DialogTitle>
+            <DialogTitle>{t.stopTitle}</DialogTitle>
             <DialogDescription>
               {/* No count: Stop reaches only the languages the caller regenerates in, so
                   the queue's pending total can be more than this cancels. */}

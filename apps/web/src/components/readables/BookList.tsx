@@ -2,6 +2,8 @@
 
 import { Fragment, useMemo } from "react";
 
+import { useUiText } from "@/components/UiTextProvider";
+
 import { BookHeader, PageRow, type RowState } from "@/components/readables/PageRow";
 import type { ResultLine } from "@/lib/readables/search";
 
@@ -88,6 +90,7 @@ export function BookList({
   onOverrideAnswered,
   onRename,
 }: Props) {
+  const t = useUiText();
   const groupRows = useMemo(() => bookRuns(lines), [lines]);
 
   return (
@@ -107,15 +110,15 @@ export function BookList({
         <thead>
           <tr>
             <th>
-              <span className="sr-only">Play</span>
+              <span className="sr-only">{t.catalogue.columns.play}</span>
             </th>
-            <th>Page text</th>
-            <th>Page</th>
-            <th>Audio</th>
-            {showMadeBy && <th>Made by</th>}
-            {showRecordings && <th>Voice actor</th>}
+            <th>{t.catalogue.columns.pageText}</th>
+            <th>{t.catalogue.columns.page}</th>
+            <th>{t.catalogue.columns.audio}</th>
+            {showMadeBy && <th>{t.catalogue.columns.madeBy}</th>}
+            {showRecordings && <th>{t.catalogue.columns.voiceActor}</th>}
             <th>
-              <span className="sr-only">Actions</span>
+              <span className="sr-only">{t.catalogue.columns.actions}</span>
             </th>
           </tr>
         </thead>

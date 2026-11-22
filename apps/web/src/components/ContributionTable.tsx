@@ -20,6 +20,8 @@
  * reason to make that crossing at all.
  */
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 import { langName, localeHref, type Lang } from "@/lib/lang";
 import { CheckIcon, ChevronDownIcon, CircleAlertIcon, ClockIcon, SearchIcon, WrenchIcon, XIcon, EyeIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -238,6 +240,7 @@ export default function ContributionTable({
   const { pending, push } = usePendingPush();
   const when = useLocalDates();
   const router = useRouter();
+  const t = useUiText();
   const lang = useLang();
   const roster = useMemo(() => new Roster(rosterData), [rosterData]);
   const labels = useMemo(() => bookLabels(books), [books]);
@@ -562,13 +565,13 @@ export default function ContributionTable({
     <>
       <div className="mb-5">
         <Tabs
-          label="Status"
+          label={t.contributions.status}
           onGo={push}
           active={status === "new" ? (bucket === "blocked" ? "waiting" : "review") : status}
           tabs={[
             {
               value: "review",
-              label: "To review",
+              label: t.contributions.toReview,
               href: localeHref(lang, contributionsHref(filters, { status: "new", bucket: "ready" })),
               count: status === "new" ? bucketCounts.ready : undefined,
             },
@@ -578,14 +581,14 @@ export default function ContributionTable({
               ? [
                   {
                     value: "waiting",
-                    label: "Waiting on an admin",
+                    label: t.contributions.waitingOnAdmin,
                     href: localeHref(lang, contributionsHref(filters, { status: "new", bucket: "blocked" })),
                     count: status === "new" ? bucketCounts.blocked : undefined,
                   },
                 ]
               : []),
-            { value: "accepted", label: "Accepted", href: localeHref(lang, contributionsHref(filters, { status: "accepted" })) },
-            { value: "rejected", label: "Rejected", href: localeHref(lang, contributionsHref(filters, { status: "rejected" })) },
+            { value: "accepted", label: t.contributions.accepted, href: localeHref(lang, contributionsHref(filters, { status: "accepted" })) },
+            { value: "rejected", label: t.contributions.rejected, href: localeHref(lang, contributionsHref(filters, { status: "rejected" })) },
           ]}
         />
       </div>
@@ -595,27 +598,27 @@ export default function ContributionTable({
           <input
             type="search"
             value={query}
-            placeholder={source === "quests" ? "Find an NPC, quest or phrase" : "Find a phrase"}
-            aria-label="Search"
+            placeholder={source === "quests" ? t.contributions.searchQuests : t.contributions.searchAny}
+            aria-label={t.contributions.search}
             onChange={(event) => setQuery(event.target.value)}
           />
         </label>
         {shownCounts && !waitingTab ? (
           <Chips
-            label="Show"
+            label={t.contributions.show}
             onGo={push}
             active={show}
             tabs={[
-              { value: "all", label: "All", href: localeHref(lang, contributionsHref(filters, { show: "all" })) },
+              { value: "all", label: t.contributions.showAll, href: localeHref(lang, contributionsHref(filters, { show: "all" })) },
               {
                 value: "lines",
-                label: "New lines",
+                label: t.contributions.newLines,
                 href: localeHref(lang, contributionsHref(filters, { show: "lines" })),
                 count: shownCounts.lines,
               },
               {
                 value: "corrections",
-                label: "Corrections",
+                label: t.contributions.corrections,
                 href: localeHref(lang, contributionsHref(filters, { show: "corrections" })),
                 count: shownCounts.corrections,
               },
@@ -628,13 +631,13 @@ export default function ContributionTable({
           aria-expanded={showFilters}
           onClick={() => setShowFilters((open) => !open)}
         >
-          More filters <ChevronDownIcon className={cn("size-3.5 transition-transform", showFilters && "rotate-180")} aria-hidden />
+          {t.contributions.moreFilters} <ChevronDownIcon className={cn("size-3.5 transition-transform", showFilters && "rotate-180")} aria-hidden />
         </button>
         {show === "corrections" ? null : (
           <label className="bs-search h-[34px] w-auto pr-2">
-            <span className="text-sm">{status === "new" && bucket === "ready" ? "Within groups:" : "Order:"}</span>
+            <span className="text-sm">{status === "new" && bucket === "ready" ? t.contributions.withinGroups : t.contributions.orderPrefix}</span>
             <select
-              aria-label="Order"
+              aria-label={t.contributions.order}
               value={`${sort.column}:${sort.direction}`}
               onChange={(event) => {
                 const [column, direction] = event.target.value.split(":") as [ContributionSort["column"], ContributionSort["direction"]];
@@ -670,14 +673,14 @@ export default function ContributionTable({
               <span className="text-muted-foreground">{message}</span>
             </li>
           ))}
-          {bulkOutcome.refused.length > 10 ? <li className="text-muted-foreground">and {bulkOutcome.refused.length - 10} more</li> : null}
+          {bulkOutcome.refused.length > 10 ? <li className="text-muted-foreground">{fill(t.contributions.andMore, { n: bulkOutcome.refused.length - 10 })}</li> : null}
         </ul>
       ) : null}
       {showFilters ? (
         <div className="mb-5 flex flex-wrap items-center gap-2">
           {namesSpeaker(source) ? (
             <FilterChip
-              label="search in"
+              label={t.contributions.searchIn}
               value={searchIn === "any" ? undefined : searchIn}
               options={SEARCH_IN_OPTIONS}
               onChange={(next) => go({ searchIn: (next ?? "any") as Filter })}
@@ -685,13 +688,13 @@ export default function ContributionTable({
           ) : null}
           {source === "quests" ? (
             <MultiFilterChip
-              label="stage"
+              label={t.contributions.stage}
               values={stage}
               options={STAGE_CHIP_OPTIONS}
               onChange={(next) => go({ stage: next as StageFilter | undefined })}
             />
           ) : null}
-          <FilterChip label="build" value={build} options={builds} onChange={(next) => go({ build: next })} />
+          <FilterChip label={t.contributions.build} value={build} options={builds} onChange={(next) => go({ build: next })} />
           {/* The build goes with it: a build belongs to one client, so it would match nothing. */}
           <ClientSelect value={client} onChange={(next) => go({ client: next, build: undefined })} />
         </div>
@@ -703,12 +706,12 @@ export default function ContributionTable({
             quiet
             tone="neutral"
             icon={<ClockIcon />}
-            title="Waiting on an admin"
+            title={t.contributions.waitingOnAdmin}
             count={bucketCounts.blocked}
             description={
               canAnswerNpc
-                ? "These lines need a voice settled for their NPC before anyone can keep them. Answer the NPC on a row and it moves to To review."
-                : "Not yours to decide: these lines need a voice settled for their NPC first, and only an admin can do that. Each row says what is missing. Once it is settled, the line moves to To review by itself."
+                ? t.contributions.waitingOnAdminDescriptionMine
+                : t.contributions.waitingOnAdminDescriptionOther
             }
           >
             {waitingSummary.length > 0 ? (
@@ -716,11 +719,11 @@ export default function ContributionTable({
                 <table className="bs-table min-w-[640px]">
                   <thead>
                     <tr>
-                      <th>Why it waits</th>
-                      <th>What an admin does</th>
-                      <th>Example</th>
-                      <th className="bs-num">Lines</th>
-                      <th className="bs-num">Waiting since</th>
+                      <th>{t.contributions.whyItWaits}</th>
+                      <th>{t.contributions.whatAdminDoes}</th>
+                      <th>{t.contributions.example}</th>
+                      <th className="bs-num">{t.contributions.lines}</th>
+                      <th className="bs-num">{t.contributions.waitingSince}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -949,6 +952,7 @@ const ReviewRow = memo(function ReviewRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [dropping, setDropping] = useState(false);
+  const t = useUiText();
   const [showNote, setShowNote] = useState(false);
   const hold = busy || locked;
   const keepable = current !== "accepted" && bucket === "ready" && acceptHold === null;
@@ -1069,7 +1073,7 @@ const ReviewRow = memo(function ReviewRow({
               {canAnswerNpc ? (
                 <MissingNpcForm busy={npcBusy} onSave={(answer) => void onNameNpc(row.id, answer)} />
               ) : (
-                <span className="bs-who-sub">No NPC named</span>
+                <span className="bs-who-sub">{t.contributions.noNpcNamed}</span>
               )}
             </div>
           )
@@ -1089,7 +1093,7 @@ const ReviewRow = memo(function ReviewRow({
       </div>
 
       <div className="min-w-0">
-        <p className="bs-label">English</p>
+        <p className="bs-label">{t.contributions.english}</p>
         {row.english ? (
           <p className="bs-text bs-text-en">
             <TokenText text={row.english} />
@@ -1107,7 +1111,7 @@ const ReviewRow = memo(function ReviewRow({
             rows={Math.min(8, Math.max(3, Math.ceil(draft.length / 60)))}
             value={draft}
             lang={row.locale.slice(0, 2)}
-            aria-label="Edit the line before keeping it"
+            aria-label={t.contributions.editBeforeKeeping}
             onChange={(event) => setDraft(event.target.value)}
           />
         ) : (
@@ -1135,7 +1139,7 @@ const ReviewRow = memo(function ReviewRow({
           ) : check.findings.length === 0 ? (
             <li className="bs-finding bs-finding-ok">
               <CheckIcon className="size-3.5" aria-hidden />
-              <span>Passes every check</span>
+              <span>{t.contributions.passesChecks}</span>
             </li>
           ) : (
             check.findings.map((finding) => (
@@ -1159,7 +1163,7 @@ const ReviewRow = memo(function ReviewRow({
           {row.client.label} · {row.locale}
           {row.client.buildNumber ? ` · ${row.client.buildNumber}` : null}
         </span>
-        {row.pack ? <span title="The language of the voice packs the player was hearing">heard in {row.pack}</span> : null}
+        {row.pack ? <span title={t.contributions.heardInHint}>{fill(t.contributions.heardIn, { pack: row.pack })}</span> : null}
         <span className="inline-flex items-center gap-1">
           Sent by <SendersButton id={row.id} count={row.count} />
         </span>
@@ -1169,17 +1173,17 @@ const ReviewRow = memo(function ReviewRow({
             {showNote ? "Hide the player's note" : "Player left a note"}
           </button>
         ) : null}
-        {found !== undefined ? <span>We already have text for this key</span> : null}
+        {found !== undefined ? <span>{t.contributions.alreadyHaveText}</span> : null}
       </div>
       {showNote && row.body ? (
         <div className="bs-aside">
-          <p className="bs-label">What the player said was wrong</p>
+          <p className="bs-label">{t.contributions.playerSaidWrong}</p>
           <p className="bs-text">{row.body}</p>
         </div>
       ) : null}
       {found !== undefined && current === "new" ? (
         <div className="bs-aside">
-          <p className="bs-label">Already on file</p>
+          <p className="bs-label">{t.contributions.alreadyOnFile}</p>
           <p className="bs-text">{found}</p>
         </div>
       ) : null}
@@ -1270,6 +1274,7 @@ function MissingNpcForm({
   busy: boolean;
   onSave: (answer: { npcKind: NpcRowKind; npcId: number; npcName: string }) => void;
 }) {
+  const t = useUiText();
   const [npcKind, setNpcKind] = useState<NpcRowKind>("creature");
   const [npcId, setNpcId] = useState("");
   const [npcName, setNpcName] = useState("");
@@ -1298,14 +1303,14 @@ function MissingNpcForm({
         required
         inputMode="numeric"
         pattern="\d+"
-        placeholder="id"
+        placeholder={t.contributions.id}
         value={npcId}
         onChange={(event) => setNpcId(event.target.value)}
         className="h-7 w-20 rounded border bg-transparent px-1.5 text-xs"
       />
       <input
         required
-        placeholder="name"
+        placeholder={t.contributions.name}
         value={npcName}
         onChange={(event) => setNpcName(event.target.value)}
         className="h-7 w-32 rounded border bg-transparent px-1.5 text-xs"
@@ -1335,6 +1340,7 @@ function MatchCell({
   locked: boolean;
   onSave: (answer: MatchAnswer) => void;
 }) {
+  const t = useUiText();
   const [choice, setChoice] = useState("");
   const [pageNumber, setPageNumber] = useState(String(book.number ?? 1));
   const picked = books.get(choice.trim());
@@ -1410,8 +1416,8 @@ function MatchCell({
           <input
             required
             list={READABLES_LIST}
-            aria-label="Book"
-            placeholder="Book"
+            aria-label={t.contributions.book}
+            placeholder={t.contributions.book}
             value={choice}
             onChange={(event) => setChoice(event.target.value)}
             className="h-7 w-40 rounded border bg-transparent px-1.5 text-xs"
@@ -1421,7 +1427,7 @@ function MatchCell({
             disabled={isNew}
             inputMode="numeric"
             pattern="\d+"
-            aria-label="page"
+            aria-label={t.contributions.page}
             value={pageNumber}
             onChange={(event) => setPageNumber(event.target.value)}
             className="h-7 w-10 rounded border bg-transparent px-1.5 text-xs"
@@ -1434,7 +1440,7 @@ function MatchCell({
               variant="ghost"
               className="h-7 px-1.5 text-xs"
               disabled={busy}
-              title="None of these: accepting this row starts a new book"
+              title={t.contributions.newBook}
               onClick={() => onSave({ newBook: true })}
             >
               New book

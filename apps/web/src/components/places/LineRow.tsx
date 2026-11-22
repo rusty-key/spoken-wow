@@ -8,6 +8,7 @@ import FilterLink from "@/components/FilterLink";
 import { ChevronDownIcon, PlayIcon } from "lucide-react";
 
 import { RowActions, StateWord, type RowAction } from "@/components/catalogue/RowParts";
+import { useUiText } from "@/components/UiTextProvider";
 import { useState } from "react";
 
 import ReportsBadge from "@/components/ReportsBadge";
@@ -127,6 +128,7 @@ export function LineRow<L extends ExplorerLine>({
   // English standing in for the language is not this language's text to override, and the
   // route refuses it.
   const overridable = !unwritten && line.translated !== false;
+  const t = useUiText();
   const [expanded, setExpanded] = useState(false);
   // Missing or outdated audio makes generating the row's task: a gold button, not a menu item.
   const needsTake = canRegenerate && !unwritten && (line.state === "missing" || line.state === "stale");
@@ -180,7 +182,7 @@ export function LineRow<L extends ExplorerLine>({
           {/* An untranslated line shows the English in its place, marked as such, so the
               reader still sees what the line is about and that it is waiting to be written. */}
           {unwritten ? (
-            <span className="text-muted-foreground min-w-0 flex-1 italic">No story in this language yet.</span>
+            <span className="text-muted-foreground min-w-0 flex-1 italic">{t.catalogue.row.noStory}</span>
           ) : (
             <div className="min-w-0 flex-1">
               <span className={cn("block whitespace-pre-wrap", !expanded && "line-clamp-1")}>
@@ -191,7 +193,7 @@ export function LineRow<L extends ExplorerLine>({
               {line.override && (
                 <span
                   className={cn("cat-override", !expanded && "line-clamp-1")}
-                  title="What your team's audio says"
+                  title={t.catalogue.row.overrideSays}
                 >
                   {line.override.text}
                 </span>
@@ -244,7 +246,7 @@ export function LineRow<L extends ExplorerLine>({
         {/* The regeneration outcome replaces the state: once a line has just been made,
             "no audio" is stale and confusing rather than merely redundant. */}
         {state?.phase === "busy" ? (
-          <StateWord tone="skip">Generating…</StateWord>
+          <StateWord tone="skip">{t.catalogue.row.generating}</StateWord>
         ) : state?.phase === "error" ? (
           <StateWord tone="error">{state.message}</StateWord>
         ) : state?.phase === "done" ? (
@@ -266,7 +268,7 @@ export function LineRow<L extends ExplorerLine>({
         {/* Beneath the state rather than inside it: the text has not moved, so this line is
             `current` and dirty at once, and one word cannot say both. */}
         {line.dirty && !unwritten && (
-          <div className="text-amber-300" title="Cut before a pronunciation it speaks was changed">
+          <div className="text-amber-300" title={t.catalogue.row.pronunciationMoved}>
             pronunciation
           </div>
         )}

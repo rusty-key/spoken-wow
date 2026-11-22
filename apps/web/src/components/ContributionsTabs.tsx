@@ -1,13 +1,8 @@
 import { Chips } from "@/components/backstage/Tabs";
+import { useUiText } from "@/components/UiTextProvider";
 import type { PendingCounts } from "@/lib/contributions/pending";
 import { SECTIONS, type Section } from "@/lib/contributions/query";
 import { localeHref, type Lang } from "@/lib/lang";
-
-const SECTION_LABELS: Record<Section, string> = {
-  quests: "Quests & gossip",
-  readables: "Readables",
-  places: "Places",
-};
 
 /**
  * The sections of /contributions as chips, each with how many new rows wait in it, corrections to
@@ -22,13 +17,14 @@ export default function ContributionsTabs({
   section: Section;
   pending?: PendingCounts;
 }) {
+  const t = useUiText().pages;
   return (
     <Chips
-      label="Section"
+      label={t.sections}
       active={section}
       tabs={SECTIONS.map((key) => ({
         value: key,
-        label: SECTION_LABELS[key],
+        label: t.tabs[key],
         href: localeHref(lang, `/contributions/${key}`),
         count: pending?.sections[key],
       }))}

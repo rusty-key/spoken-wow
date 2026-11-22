@@ -3,10 +3,10 @@
 import { SearchIcon, SlidersHorizontalIcon, XIcon } from "lucide-react";
 import { useId, useRef, useState, type ReactNode, type Ref } from "react";
 
+import { useUiText } from "@/components/UiTextProvider";
 import { AUDIO_STATES, type AudioState, type StateCounts } from "@/lib/audio-state";
+import { fill } from "@/lib/site-text/format";
 import { cn } from "@/lib/utils";
-
-const AUDIO_BUTTONS: Record<AudioState, string> = { missing: "Missing", stale: "Outdated", current: "Up to date" };
 
 export type StatusOption = {
   key: string;
@@ -68,6 +68,8 @@ export function CatalogueSearch({
   onClearAll: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const text = useUiText();
+  const t = text.catalogue.search;
   // Done hides itself with the panel, so focus would fall to the page without this.
   const toggle = useRef<HTMLButtonElement>(null);
   const panelId = useId();
@@ -86,7 +88,7 @@ export function CatalogueSearch({
           type="search"
           value={query}
           placeholder={placeholder}
-          aria-label="Search"
+          aria-label={t.label}
           autoFocus
           onChange={(event) => onQueryChange(event.target.value)}
           onKeyDown={(event) => {
@@ -98,14 +100,14 @@ export function CatalogueSearch({
         {scope}
       </div>
 
-      <div className="cat-row" role="group" aria-label="Audio">
+      <div className="cat-row" role="group" aria-label={t.fields.state}>
         <button
           type="button"
           className="bs-chip"
           aria-pressed={allPressed}
           onClick={onShowAll}
         >
-          All
+          {t.all}
           <Count value={audio.counts?.all} />
         </button>
         {AUDIO_STATES.map((state) => (
@@ -117,7 +119,7 @@ export function CatalogueSearch({
             onClick={() => audio.onState(audio.state === state ? undefined : state)}
           >
             <i className={cn("cat-dot", `cat-dot-${state}`)} aria-hidden="true" />
-            {AUDIO_BUTTONS[state]}
+            {text.catalogue.facets.audio[state]}
             <Count value={audio.counts?.[state]} />
           </button>
         ))}
@@ -143,7 +145,7 @@ export function CatalogueSearch({
           onClick={() => setOpen((was) => !was)}
         >
           <SlidersHorizontalIcon aria-hidden="true" />
-          Filters
+          {t.filters}
           {inPanel > 0 ? <span className="cat-badge">{inPanel}</span> : null}
         </button>
       </div>
@@ -151,9 +153,9 @@ export function CatalogueSearch({
       <div id={panelId} hidden={!open} className="cat-panel">
         <div className="cat-fieldsets">{groups}</div>
         <div className="cat-panel-foot">
-          <span>The list updates as you change a filter, and the link keeps them.</span>
+          <span>{t.note}</span>
           <button type="button" className="bs-btn bs-btn-text" onClick={onClearAll}>
-            Clear filters
+            {t.clear}
           </button>
           <button
             type="button"
@@ -163,23 +165,23 @@ export function CatalogueSearch({
               toggle.current?.focus();
             }}
           >
-            Done
+            {t.done}
           </button>
         </div>
       </div>
 
       {active.length > 0 ? (
-        <div className="cat-active" role="group" aria-label="Filters in force">
+        <div className="cat-active" role="group" aria-label={t.inForce}>
           {active.map((filter) => (
             <span key={filter.key} className="cat-pill">
               <b>{filter.label}</b> {filter.value}
-              <button type="button" aria-label={`Remove ${filter.label} filter`} onClick={filter.onRemove}>
+              <button type="button" aria-label={fill(t.remove, { label: filter.label })} onClick={filter.onRemove}>
                 <XIcon aria-hidden="true" />
               </button>
             </span>
           ))}
           <button type="button" className="cat-clear" onClick={onClearAll}>
-            Clear filters
+            {t.clear}
           </button>
         </div>
       ) : null}
@@ -217,7 +219,7 @@ export function FilterSelect({
   value,
   options,
   onChange,
-  any = "Any",
+  any,
 }: {
   label: string;
   value: string | undefined;
@@ -226,6 +228,7 @@ export function FilterSelect({
   any?: string;
 }) {
   const known = value === undefined || options.some((option) => option.value === value);
+  const anyLabel = any ?? useUiText().catalogue.search.any;
   return (
     <FilterField label={label}>
       <select
@@ -234,7 +237,7 @@ export function FilterSelect({
         value={value ?? ""}
         onChange={(event) => onChange(event.target.value === "" ? undefined : event.target.value)}
       >
-        <option value="">{any}</option>
+        <option value="">{anyLabel}</option>
         {/* A deep-linked value missing from the list stays selected rather than silently dropped. */}
         {!known && value !== undefined ? <option value={value}>{value}</option> : null}
         {options.map((option) => (
@@ -253,7 +256,7 @@ export function FilterSegments({
   value,
   options,
   onChange,
-  any = "Any",
+  any,
 }: {
   label: string;
   value: string | undefined;
@@ -261,7 +264,8 @@ export function FilterSegments({
   onChange: (value: string | undefined) => void;
   any?: string;
 }) {
-  const all: { value: string | undefined; label: string }[] = [{ value: undefined, label: any }, ...options];
+  const anyLabel = any ?? useUiText().catalogue.search.any;
+  const all: { value: string | undefined; label: string }[] = [{ value: undefined, label: anyLabel }, ...options];
   return (
     <FilterField label={label}>
       <div className="cat-seg" role="group" aria-label={label}>
@@ -393,8 +397,9 @@ export function ScopeSelect({
   options: readonly Option[];
   onChange: (value: string) => void;
 }) {
+  const t = useUiText().catalogue.search;
   return (
-    <select className="cat-scope" aria-label="Search in" value={value} onChange={(event) => onChange(event.target.value)}>
+    <select className="cat-scope" aria-label={t.scope} value={value} onChange={(event) => onChange(event.target.value)}>
       {options.map((option) => (
         <option key={option.value} value={option.value}>
           {option.label}

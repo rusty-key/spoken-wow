@@ -8,8 +8,10 @@ import { Untranslated, UntranslatedMark } from "@/components/Untranslated";
 import FilterLink from "@/components/FilterLink";
 import { useLang } from "@/components/LangProvider";
 import { langName, localeHref } from "@/lib/lang";
-import { SOURCE_LABELS } from "@/lib/line-fields";
+import { fill } from "@/lib/site-text/format";
 import { RowActions, StateWord, type RowAction } from "@/components/catalogue/RowParts";
+import { useUiText } from "@/components/UiTextProvider";
+import type { UiText } from "@/lib/ui-text/en";
 import { ChevronDownIcon, MessageSquareIcon, MessageSquareQuoteIcon, PlayIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -28,16 +30,15 @@ import { wowheadEntityUrl, wowheadQuestUrl } from "@/lib/wowhead";
  *
  * Reads `voiceable` rather than the corpus's `generatable`, because an override can rescue a
  * line the extractor gave up on: once the stage direction is gone, its absence is a gap like
- * any other rather than an expected skip.
+ * any other rather than an expected skip. The words are the reader's, so only the kind is
+ * decided here.
  */
-function absence(line: ResultLine): { kind: "gap" | "skip"; label: string } | null {
+function absence(line: ResultLine): { kind: "gap" | "skip"; skipReason: string | null } | null {
   if (line.hasAudio) return null;
   // An unvoiceable line is an expected absence, not a gap: text with unresolved $ / <> tokens
   // would be read aloud verbatim, and an untranslated line has nothing to voice.
-  if (!line.voiceable) {
-    return { kind: "skip", label: line.skipReason ?? "not voiced" };
-  }
-  return { kind: "gap", label: "no audio" };
+  if (!line.voiceable) return { kind: "skip", skipReason: line.skipReason ?? null };
+  return { kind: "gap", skipReason: null };
 }
 
 /**
@@ -46,30 +47,19 @@ function absence(line: ResultLine): { kind: "gap" | "skip"; label: string } | nu
  * minus - nothing to do here yet - and gossip, which the game marks with no overhead icon
  * at all, gets a grey speech bubble instead of a fourth punctuation mark nobody would read.
  */
-const QUEST_MARKS: Record<string, { glyph: string; label: string }> = {
-  accept: { glyph: "!", label: "quest offered" },
-  complete: { glyph: "?", label: "quest turn-in" },
-  progress: { glyph: "−", label: "quest in progress" },
+const QUEST_MARKS: Record<string, { glyph: string; source: string }> = {
+  accept: { glyph: "!", source: "accept" },
+  complete: { glyph: "?", source: "complete" },
+  progress: { glyph: "−", source: "progress" },
 };
 
-/**
- * What a follow-up line is, in words, for the mark's tooltip and the quest column.
- *
- * "Accepted or turned in" rather than whichever one it was: the corpus row keeps the quest
- * but not which of its two scripts says the line, and one line can be said by both. The
- * addon's FollowupLines.lua still has start/end, so a row could say which if that ever
- * reaches the corpus.
- */
-const FOLLOWUP_LABEL = "said in chat after the quest is accepted or turned in";
-const CHATTER_LABEL = "said in chat in the world, with no quest behind it";
-
-function SourceMark({ source }: { source: string }) {
+function SourceMark({ source, t }: { source: string; t: UiText["catalogue"]["row"]["marks"] }) {
   // Gossip's bubble, because this is an NPC talking rather than a quest dialog, but in the
   // quest marks' amber: it only happens because of a quest, and the row names which.
   if (source === "followup") {
     return (
       <span
-        title={FOLLOWUP_LABEL}
+        title={t.followup}
         aria-label="follow-up"
         className="mt-1 flex w-3.5 shrink-0 justify-center"
       >
@@ -80,7 +70,7 @@ function SourceMark({ source }: { source: string }) {
 
   if (source === "chatter") {
     return (
-      <span title={CHATTER_LABEL} aria-label={SOURCE_LABELS.chatter} className="mt-1 flex w-3.5 shrink-0 justify-center">
+      <span title={t.chatter} aria-label={t.chatter} className="mt-1 flex w-3.5 shrink-0 justify-center">
         <MessageSquareQuoteIcon className="size-3.5 text-zinc-400" />
       </span>
     );
@@ -88,7 +78,7 @@ function SourceMark({ source }: { source: string }) {
 
   if (source === "gossip") {
     return (
-      <span title="gossip" aria-label="gossip" className="mt-1 flex w-3.5 shrink-0 justify-center">
+      <span title={t.gossip} aria-label={t.gossip} className="mt-1 flex w-3.5 shrink-0 justify-center">
         <MessageSquareIcon className="size-3.5 text-zinc-400" />
       </span>
     );
@@ -99,7 +89,7 @@ function SourceMark({ source }: { source: string }) {
 
   return (
     <span
-      title={mark.label}
+      title={t[mark.source as keyof typeof t] as string}
       aria-label={source}
       className="mt-px w-3.5 shrink-0 text-center text-sm leading-5 font-bold text-amber-400"
     >
@@ -191,6 +181,7 @@ export function SpeakerHeader({
   npcHref: (line: ResultLine) => string;
 }) {
   const lang = useLang();
+  const t = useUiText().catalogue.row;
   return (
     <tr className="cat-group">
       <th colSpan={columns} scope="colgroup">
@@ -198,11 +189,11 @@ export function SpeakerHeader({
           href={npcHref(line)}
           onApply={() => onNarrowToNpc(line)}
           className="cat-group-name"
-          title={`Show only ${line.npcName}`}
+          title={fill(t.showOnlyNpc, { name: line.npcName })}
         >
           <Untranslated missing={line.missing?.npcName}>{line.npcName}</Untranslated>
         </FilterLink>
-        {onRename && <RenameButton label={`Name ${line.npcName}`} onClick={() => onRename(line, "npc")} />}
+        {onRename && <RenameButton label={fill(t.nameNpc, { name: line.npcName })} onClick={() => onRename(line, "npc")} />}
         {/* The voice slot is spelled race-gender-flavor: it says whose voice reads these lines. */}
         <span className="cat-group-meta">
           {[line.race, line.gender, line.flavor].filter(Boolean).join(" · ")}
@@ -211,7 +202,7 @@ export function SpeakerHeader({
           {showNpcPage && (
             <>
               {" "}
-              <a href={localeHref(lang, npcPageHref(line.npcId))} title="Open this NPC on the NPCs page" className="underline underline-offset-2">
+              <a href={localeHref(lang, npcPageHref(line.npcId))} title={t.openNpc} className="underline underline-offset-2">
                 npc
               </a>
             </>
@@ -256,6 +247,8 @@ export default function LineRow({
   questHref,
   onClearDirty,
 }: Props) {
+  const text = useUiText();
+  const t = text.catalogue.row;
   const missing = absence(line);
   const [expanded, setExpanded] = useState(false);
   const lang = useLang();
@@ -276,9 +269,9 @@ export default function LineRow({
   // button; on current audio it stays in the menu, where remaking a fine take is a deliberate act.
   const needsTake = canRegenerate && (missing?.kind === "gap" || (!missing && stale));
   const generate: RowAction = {
-    label: missing ? "Generate" : "Regenerate",
-    aria: `${missing ? "Generate" : "Regenerate"} ${subject}`,
-    disabled: blocked ?? (state?.phase === "busy" ? "Generating already" : undefined),
+    label: missing ? t.generate : t.regenerate,
+    aria: missing ? fill(t.actions.generateFor, { subject }) : fill(t.actions.regenerateFor, { subject }),
+    disabled: blocked ?? (state?.phase === "busy" ? t.generatingAlready : undefined),
     emphasis: needsTake,
     onClick: () => onRegenerate(line),
   };
@@ -287,13 +280,13 @@ export default function LineRow({
     // Outside the canRegenerate gate: reporting is what a player who cannot sign in has.
     // Hidden only when the line has no address the report page could resolve.
     ...(onReport && targetForLine(line)
-      ? [{ label: "Report a problem", aria: `Report a problem with ${subject}`, onClick: () => onReport(line) }]
+      ? [{ label: t.report, aria: fill(t.actions.reportFor, { subject }), onClick: () => onReport(line) }]
       : []),
     ...(onIgnore
       ? [
           {
-            label: line.ignored ? "Ignored" : "Never voice this line",
-            aria: `${line.ignored ? "Ignored" : "Never voice this line"}: ${subject}`,
+            label: line.ignored ? t.ignored : t.ignore,
+            aria: line.ignored ? fill(t.actions.ignoredFor, { subject }) : fill(t.actions.ignoreFor, { subject }),
             title: line.ignored ? `Ignored: ${line.ignored}` : undefined,
             marked: Boolean(line.ignored),
             onClick: () => onIgnore(line),
@@ -304,30 +297,30 @@ export default function LineRow({
     ...(canRegenerate && dirty
       ? [
           {
-            label: "Clear the pronunciation mark",
-            aria: `Clear the pronunciation mark on ${subject}`,
-            title: "The take stays; only the mark goes",
+            label: t.clearMark,
+            aria: fill(t.actions.clearMarkFor, { subject }),
+            title: t.clearMarkTitle,
             onClick: () => onClearDirty(line),
           },
         ]
       : []),
     ...(onRename && line.questId !== null
-      ? [{ label: "Name the quest", aria: `Name the quest ${line.questId}`, onClick: () => onRename(line, "quest") }]
+      ? [{ label: t.nameQuest, aria: fill(t.actions.nameQuestFor, { id: line.questId }), onClick: () => onRename(line, "quest") }]
       : []),
     ...(onAddSpeaker
-      ? [{ label: "Add another speaker", aria: `Add another speaker: another NPC who says ${subject}`, onClick: () => onAddSpeaker(line) }]
+      ? [{ label: t.addSpeaker, aria: fill(t.actions.addSpeakerFor, { subject }), onClick: () => onAddSpeaker(line) }]
       : []),
     ...(onReplaceSpeaker
       ? [
           {
-            label: "Replace the speaker",
-            aria: `Replace the speaker: put another NPC in ${line.npcName}'s place on this line`,
+            label: t.replaceSpeaker,
+            aria: fill(t.actions.replaceSpeakerFor, { name: line.npcName }),
             onClick: () => onReplaceSpeaker(line),
           },
         ]
       : []),
     ...(onRemoveSpeaker && !line.soleSpeaker
-      ? [{ label: "Remove this speaker", aria: `Remove this speaker: take ${line.npcName} off this line`, onClick: () => onRemoveSpeaker(line) }]
+      ? [{ label: t.removeSpeaker, aria: fill(t.actions.removeSpeakerFor, { name: line.npcName }), onClick: () => onRemoveSpeaker(line) }]
       : []),
   ];
 
@@ -340,7 +333,7 @@ export default function LineRow({
           disabled={!line.hasAudio}
           onClick={() => onPlay(line)}
           title={line.hasAudio ? `Play ${line.audioPath}` : undefined}
-          aria-label={`Play ${subject}`}
+          aria-label={fill(text.catalogue.columns.play + " {subject}", { subject })}
           className="cat-play"
         >
           <PlayIcon />
@@ -349,10 +342,10 @@ export default function LineRow({
 
       <td>
         <div className="cat-line">
-          <SourceMark source={line.source} />
+          <SourceMark source={line.source} t={t.marks} />
           {/* A $g line is split per player gender, and the two rows differ by a word. */}
           {line.playerGender && (
-            <span className="cat-pg" title={`To ${line.playerGender === "m" ? "male" : "female"} player`}>
+            <span className="cat-pg" title={line.playerGender === "m" ? t.toMale : t.toFemale}>
               {line.playerGender === "m" ? "M" : "F"}
             </span>
           )}
@@ -377,25 +370,25 @@ export default function LineRow({
                 // ?status=accepted: the review page opens on new contributions, which never holds
                 // the accepted one this line came from.
                 href={localeHref(lang, `/contributions/quests?status=accepted#contribution-${line.contributionId}`)}
-                title="Accepted from a player's contribution"
+                title={t.contributedTitle}
                 className="underline underline-offset-2"
               >
-                contributed
+                {t.contributed}
               </a>
             ) : null}
-            {line.ignored && <span title={line.ignored}>ignored</span>}
+            {line.ignored && <span title={line.ignored}>{t.ignoredMark}</span>}
             {line.narration && (
-              <span className="text-sky-300" title="A narrator reads this line's stage directions">
-                narration
+              <span className="text-sky-300" title={t.narrationTitle}>
+                {t.narration}
               </span>
             )}
-            {line.override && !line.narrationRestored && !stale && <span title="This line's spoken text was rewritten">rewritten</span>}
+            {line.override && !line.narrationRestored && !stale && <span title={t.rewrittenTitle}>{t.rewritten}</span>}
           </span>
           {/* A row click reaches no keyboard, so expanding needs a real control too. */}
           <button
             aria-expanded={expanded}
-            aria-label={expanded ? "Collapse this line" : "Show the whole line"}
-            title={expanded ? "Collapse" : "Show the whole line"}
+            aria-label={expanded ? t.collapse : t.showWhole}
+            title={expanded ? t.collapseShort : t.showWhole}
             onClick={() => setExpanded((open) => !open)}
             className="cat-expand"
           >
@@ -411,42 +404,39 @@ export default function LineRow({
               href={questHref(line)}
               onApply={() => onNarrowToQuest(line)}
               className="cat-two-top hover:underline"
-              title={`Show only quest ${line.questId}`}
+              title={fill(t.showOnlyQuest, { id: line.questId })}
             >
-              <Untranslated missing={line.missing?.questTitle}>{line.questTitle ?? `Quest ${line.questId}`}</Untranslated>
+              <Untranslated missing={line.missing?.questTitle}>{line.questTitle ?? fill(t.questFallback, { id: line.questId })}</Untranslated>
             </FilterLink>
             <span className="cat-two-sub">
-              {SOURCE_WORDS[line.source] ?? line.source} · quest {line.questId} <WowheadLink href={wowheadQuestUrl(line.questId)} />
+              {t.sourceWords[line.source as keyof typeof t.sourceWords] ?? line.source} · {fill(t.questId, { id: line.questId })} <WowheadLink href={wowheadQuestUrl(line.questId)} />
             </span>
           </>
         ) : (
           // Gossip and chat have no quest: the BroadcastText ids they speak stand in its place.
           <>
-            <span className="cat-two-top">{SOURCE_LABELS[line.source === "chatter" ? "chatter" : "gossip"]}</span>
+            <span className="cat-two-top">{text.catalogue.facets.source[line.source === "chatter" ? "chatter" : "gossip"]}</span>
             <span className="cat-two-sub">
               {line.broadcast?.length
                 ? line.broadcast.map(({ id, matchedBy }, index) => (
                     <span
                       key={id}
                       title={
-                        matchedBy === "text"
-                          ? "Matched by English text: one of the ids that read this way"
-                          : "The world database names this id for an NPC saying this text"
+                        matchedBy === "text" ? t.matchedByText : t.namedByWorld
                       }
                     >
-                      {index > 0 ? ", " : "broadcast "}
-                      {id}
+                      {index > 0 ? `, ${id}` : fill(t.broadcast, { id })}
                     </span>
                   ))
-                : "no broadcast id"}
+                : t.noBroadcast}
               {line.moment?.map((sibling) => (
                 <a
                   key={sibling}
                   href={localeHref(lang, `/quests?line=${encodeURIComponent(sibling)}`)}
                   className="underline underline-offset-2"
-                  title={`Same moment: ${sibling}, the same id in the same voice, kept as a line of its own`}
+                  title={fill(t.sameMomentTitle, { id: sibling })}
                 >
-                  {" · same moment"}
+                  {" · "}{t.sameMoment}
                 </a>
               ))}
             </span>
@@ -454,8 +444,8 @@ export default function LineRow({
         )}
         {/* Per line, not on the speaker heading: an admin attaches a speaker to one line. */}
         {line.added && (
-          <span className="cat-two-sub" title="Added by hand, not from the game data">
-            speaker added by hand
+          <span className="cat-two-sub" title={t.speakerAddedTitle}>
+            {t.speakerAdded}
           </span>
         )}
       </td>
@@ -463,18 +453,18 @@ export default function LineRow({
       <td className="whitespace-nowrap">
         {/* What just happened replaces the state: after a regeneration "no audio" is wrong. */}
         {state?.phase === "busy" ? (
-          <StateWord tone="skip">Generating…</StateWord>
+          <StateWord tone="skip">{t.generating}</StateWord>
         ) : state?.phase === "error" ? (
           <StateWord tone="error">{state.message}</StateWord>
         ) : state?.phase === "done" ? (
           <StateWord tone="current">v{state.version}</StateWord>
         ) : missing ? (
-          <StateWord tone={missing.kind === "gap" ? "missing" : "skip"} title={missing.kind === "skip" ? "This line is never voiced" : undefined}>
-            {missing.label}
+          <StateWord tone={missing.kind === "gap" ? "missing" : "skip"} title={missing.kind === "skip" ? t.notVoiced : undefined}>
+            {missing.skipReason ?? (missing.kind === "gap" ? t.noAudio : t.notVoiced)}
           </StateWord>
         ) : stale ? (
-          <StateWord tone="stale" title="Made from text that has since changed">
-            audio outdated
+          <StateWord tone="stale" title={t.outdated}>
+            {t.outdated}
           </StateWord>
         ) : (
           // Which take is live, and the way to any other: the label is the control.
@@ -489,8 +479,8 @@ export default function LineRow({
         )}
         {/* Beneath the state: a line can be current and dirty at once, and one word cannot say both. */}
         {dirty && (
-          <div className="cat-state cat-state-stale mt-0.5" title="Cut before a pronunciation it speaks was changed">
-            pronunciation moved
+          <div className="cat-state cat-state-stale mt-0.5" title={t.pronunciationMoved}>
+            {t.pronunciationMoved}
           </div>
         )}
       </td>
@@ -508,9 +498,9 @@ export default function LineRow({
           <a
             href={localeHref(lang, "/contributions/quests")}
             className="cat-hint"
-            title="Players send this line's text from their game. Once it is accepted on the review page, it can be voiced."
+            title={t.waitingForTextHint}
           >
-            Waiting for {langName(lang)} text
+            {fill(t.waitingForText, { lang: langName(lang) })}
           </a>
         )}
         <RowActions
@@ -520,9 +510,9 @@ export default function LineRow({
             ...(canRegenerate && !line.missing?.text
               ? [
                   {
-                    label: "Edit",
-                    aria: `Edit the spoken text of ${subject}`,
-                    title: "Edit what this line says out loud",
+                    label: t.edit,
+                    aria: fill(t.actions.editFor, { subject }),
+                    title: t.editTitle,
                     marked: line.override !== null,
                     onClick: () => onEditText(line),
                   },
