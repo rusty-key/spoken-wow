@@ -497,7 +497,8 @@ Expect("...the quest text with it, its height shorter by as much",
 Expect("...the row just left of it, on its middle", controls.frame.anchor and controls.frame.anchor.relativeTo == closeButton
     and controls.frame.anchor.point .. " " .. controls.frame.anchor.relativePoint .. " " .. controls.frame.anchor.x
     .. " " .. controls.frame.anchor.y, "RIGHT LEFT -4 0")
-Expect("...Play left of Skip", play.anchor and play.anchor.relativeTo == skip and play.anchor.relativePoint, "LEFT")
+Expect("...Play left of Previous, Previous left of Skip", play.anchor and play.anchor.relativeTo == controls.previous
+    and controls.previous.anchor.relativeTo == skip and play.anchor.relativePoint, "LEFT")
 local open = controls.open
 Expect("...and left of Play, Open in Azeroth's Compendium, for a quest the tab lists", open ~= nil and open:IsShown()
     and open.anchor and open.anchor.relativeTo == play and open.questID, 101)
@@ -610,8 +611,8 @@ dui.PlayButton = false
 Bridge:Refresh()
 Expect("with the setting off Play is not there", play:IsShown(), false)
 Expect("...and DialogueUI's own button is given back", DUI.TTSButton:GetAlpha(), 0.6)
-Expect("...the row one button narrower, Open in Azeroth's Compendium moving up beside Skip",
-    controls.frame:GetWidth() .. " " .. tostring(open and open.anchor and open.anchor.relativeTo == skip),
+Expect("...the row one button narrower, Open in Azeroth's Compendium moving up beside Previous",
+    controls.frame:GetWidth() .. " " .. tostring(open and open.anchor and open.anchor.relativeTo == controls.previous),
     "100 true")
 dui.PlayButton = true
 Bridge:Refresh()
@@ -748,7 +749,7 @@ Expect("...on DialogueUI's window, which UIParent's hiding leaves up", icon and 
 local _, _, controls = Bridge:PlayButtonState()
 controls = controls or { frame = stub.Widget("Frame"), play = stub.Widget("Button"), skip = stub.Widget("Button") }
 Expect("...at the top right, rightmost in Spoken's row after Play, Previous and Skip", icon.anchor and icon.anchor.point
-    .. " " .. tostring(icon.anchor.relativeTo == controls.frame) .. " " .. tostring(controls.previous.anchor ~= nil and controls.previous.anchor.relativeTo == icon),
+    .. " " .. tostring(icon.anchor.relativeTo == controls.frame) .. " " .. tostring(controls.skip.anchor ~= nil and controls.skip.anchor.relativeTo == icon),
     "RIGHT true true")
 Expect("...as large as they are", icon:GetWidth() .. " " .. icon:GetScale(),
     controls.play:GetWidth() .. " " .. controls.play:GetScale())

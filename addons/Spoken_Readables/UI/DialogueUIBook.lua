@@ -258,8 +258,8 @@ function Book:Place()
 		list[i] = nil
 	end
 	if row.report:IsShown() then table.insert(list, row.report) end
-	if row.previous:IsShown() then table.insert(list, row.previous) end
 	if row.skip:IsShown() then table.insert(list, row.skip) end
+	if row.previous:IsShown() then table.insert(list, row.previous) end
 	if row.play:IsShown() then table.insert(list, row.play) end
 	if row.open and row.open:IsShown() then table.insert(list, row.open) end
 	local close = view.CloseButton

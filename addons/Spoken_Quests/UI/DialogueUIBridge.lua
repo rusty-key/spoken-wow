@@ -537,8 +537,8 @@ local function PlaceRow(force)
     if report and report:IsShown() then
         table.insert(list, report)
     end
-    table.insert(list, row.previous)
     table.insert(list, row.skip)
+    table.insert(list, row.previous)
     if row.play:IsShown() then
         table.insert(list, row.play)
     end
