@@ -1,5 +1,6 @@
 import os
 
+from tts_cli.lua import lua_global
 from tts_cli.store import AUDIO_EXTENSIONS
 
 DATAMODULE_TABLE_GUARD_CLAUSE = 'if not VoiceOver or not VoiceOver.DataModules then return end'
@@ -34,7 +35,7 @@ def write_sound_length_table_lua(module_name: str, sound_folder_path: str, outpu
     # every player.
     with open(output_folder_path + '/sound_length_table.lua', "w") as f:
         f.write(DATAMODULE_TABLE_GUARD_CLAUSE + "\n")
-        f.write(f"{module_name}.SoundLengthLookupByFileName = {{\n")
+        f.write(f"{lua_global(module_name)}.SoundLengthLookupByFileName = {{\n")
         for key, value in sorted(soundDict.items()):
             f.write(f"    [\"{key}\"] = {value},\n")
         f.write("}\n")

@@ -25,7 +25,7 @@
 // an exact string match is both available and the most precise thing on offer.
 //
 // Some locales have no Era translation and their table comes out empty. That is
-// a real answer -- Italian Classic runs on English area names -- not a failure.
+// a real answer -- that client runs on English area names -- not a failure.
 //
 // It also writes tools/seed/area-names.json: every corpus zone and subzone's name in
 // each language, same-as-English ones included, zones from UiMap and subzones from
@@ -37,10 +37,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { aliasesOf, emitAliases, zoneAliasesOf } from "../lib/aliases.mjs";
+import { aliasesOf, emitAliases, withoutUnresolved, zoneAliasesOf } from "../lib/aliases.mjs";
 import { areaNames, mapNames } from "../lib/area-names.mjs";
 import { ERA_BUILD, FOREVER_BUILD, wagoTable as fetchTable } from "../../../lib/wago.mjs";
-import { BASE_LOCALE, isClientLocale, LOCALES } from "../lib/locales.mjs";
+import { BASE_LOCALE, LOCALES } from "../lib/locales.mjs";
 import { readSubzones, readZones } from "../lib/loredata.mjs";
 import { normaliseKey, readJson, ROOT } from "../lib/wiki.mjs";
 
@@ -74,10 +74,6 @@ async function main() {
 
   for (const locale of LOCALES) {
     if (locale.code === BASE_LOCALE) continue;
-    // No client runs in it, so no client shows its names and nothing needs an alias. Asked
-    // anyway, wago.tools answers a locale the game never shipped in English, which would
-    // seed English names as that language's own.
-    if (!isClientLocale(locale.code)) continue;
 
     const rows = await fetchTable("AreaTable", { build, locale: locale.code });
     const maps = await fetchTable("UiMap", { build, locale: locale.code });
@@ -101,12 +97,12 @@ async function main() {
     const foreverRows = await fetchTable("AreaTable", { build: FOREVER_BUILD, locale: locale.code });
     const fromForever = aliasesOf(foreverEnglish, foreverRows, wanted, foreverKey);
     const fromEra = aliasesOf(english, rows, wanted, eraKey);
-    const aliases = new Map(fromForever.aliases);
+    const merged = new Map(fromForever.aliases);
     const ambiguous = new Set(fromForever.ambiguous);
     for (const [name, key] of fromEra.aliases) {
-      if (!aliases.has(name) && !ambiguous.has(name)) aliases.set(name, key);
+      if (!merged.has(name) && !ambiguous.has(name)) merged.set(name, key);
     }
-    for (const name of fromEra.ambiguous) if (!aliases.has(name)) ambiguous.add(name);
+    for (const name of fromEra.ambiguous) if (!merged.has(name)) ambiguous.add(name);
     const byZone = zoneAliasesOf(
       [
         { english: foreverEnglish, localized: foreverRows, keyOf: foreverKey },
@@ -114,6 +110,9 @@ async function main() {
       ],
       mapsOf,
     );
+    const ownNames = new Map([...fromEra.ownNames, ...fromForever.ownNames]);
+    const { aliases, dropped } = withoutUnresolved({ aliases: merged, ownNames });
+    for (const name of dropped) ambiguous.add(name);
 
     const dir = join(ROOT, "addons/Spoken_Places/Data", locale.code);
     await mkdir(dir, { recursive: true });

@@ -309,6 +309,8 @@ describe('ManagerService', () => {
     const s = svc.setSettings({ includePrereleases: true, voiceLanguage: 'deDE' })
     expect(s).toMatchObject({ includePrereleases: true, downloadsPath: '', voiceLanguage: 'deDE' })
     expect(loadSettings(svc.dataPath).voiceLanguage).toBe('deDE')
+    svc.setSettings({ voiceAuthors: { deDE: 'stimmen' } })
+    expect(new ManagerService({ dataPath: svc.dataPath, appVersion: '0.1.0', send: () => undefined }).settings.voiceAuthors).toEqual({ deDE: 'stimmen' })
     const abs = path.join(tmpDir(), 'dl')
     expect(svc.setSettings({ downloadsPath: abs }).downloadsPath).toBe(abs)
     expect(svc.downloadsPath()).toBe(abs)

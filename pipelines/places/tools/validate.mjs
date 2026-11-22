@@ -397,8 +397,8 @@ for (const lang of languages) {
 // Spoken's registry (addons/Spoken/Languages.lua) builds in the languages a game
 // client runs in, and lib/locales.mjs lists them for everything that generates
 // files for the addon. A client language in only one of them is either a language
-// nothing can be built for or a directory the addon will never load. The languages
-// no client runs in are not built in: a pack declares them.
+// nothing can be built for or a directory the addon will never load. A language no client
+// runs in is in neither: a pack declares it.
 //------------------------------------------------------------------------------
 
 {
@@ -406,7 +406,7 @@ for (const lang of languages) {
   // Only the table's own entries: the comments above it may quote the entry's shape.
   const block = languagesLua.match(/^Languages\.BUILTIN = \{\n([\s\S]*?)^\}/m);
   const luaCodes = block ? [...block[1].matchAll(/\{ code = "(\w+)"/g)].map((m) => m[1]) : [];
-  const clientCodes = LOCALES.filter((l) => l.client !== false).map((l) => l.code);
+  const clientCodes = LOCALES.map((l) => l.code);
   if (luaCodes.join(",") !== clientCodes.join(",")) {
     note(
       `Spoken's Languages.BUILTIN and the client languages of lib/locales.mjs have drifted:\n` +

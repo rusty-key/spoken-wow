@@ -46,7 +46,7 @@ Expect("a reset brings the voice back on", _G.SpokenPlacesSettings.voiceEnabled,
 Expect("...and the play buttons hear the voice is on again", notified, 1)
 
 -- Include Places Found Before is on by default: a character that explored before installing hears
--- each place once, and Forget Places Heard has something to read again. A profile that stored the
+-- each place once, and Forget Visited Places has something to read again. A profile that stored the
 -- old default's off has it turned on, once.
 Expect("a reset turns Include Places Found Before on", _G.SpokenPlacesSettings.autoplayExplored, true)
 local saved = _G.SpokenPlacesSettings

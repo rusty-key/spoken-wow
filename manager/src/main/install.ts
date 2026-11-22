@@ -9,8 +9,9 @@ import type { GameInstall, JobPhase, JobProgress, Product, ReleaseInfo } from '.
 import { SPOKEN_FOLDERS } from '../shared/products'
 import { downloadAsset, zipPathFor } from './download'
 import { PlainError, errorCode, formatBytes, isAbortError, sleep, throwIfAborted } from './errors'
+import { mainLocale, t } from './i18n'
 import {
-  LINKED_MESSAGE,
+  linkedMessage,
   allowedFolders,
   canWrite,
   checkEntryPath,
@@ -187,9 +188,9 @@ function nothingChanged(err: unknown): PlainError {
   const why = err instanceof Error ? err.message : String(err)
   const hint =
     errorCode(err) === 'EPERM' || errorCode(err) === 'EBUSY' || errorCode(err) === 'EACCES'
-      ? ' A file may be in use: close the game and anything else that has the add-on open, then try again.'
+      ? t('install.hintInUse')
       : ''
-  return new PlainError(`Nothing was changed: ${why}.${hint}`)
+  return new PlainError(t('install.nothingChanged', { why, hint }))
 }
 
 export async function applyChanges(
@@ -237,7 +238,9 @@ export async function applyChanges(
     if (failed.length > 0) {
       log('Rollback failed for:', failed.join(', '), err)
       throw new PlainError(
-        `${isAbortError(err) ? 'Cancelled, but' : 'Something went wrong, and'} the manager could not put back ${failed.join(', ')}. The previous version is in ${backupDir}. Copy it back into the AddOns folder before installing again.`
+        isAbortError(err)
+          ? t('install.rollbackCancelled', { failed: failed.join(', '), backupDir })
+          : t('install.rollbackFailed', { failed: failed.join(', '), backupDir })
       )
     }
     dropJournal(game)
@@ -322,9 +325,7 @@ export async function refuseUnresolved(game: GameInstall, ops: FsOps): Promise<v
     } catch {
       /* keep the generic path */
     }
-    throw new PlainError(
-      `An earlier change to this game's add-ons could not be undone (${failed.join(', ')}). The previous version is in ${where}. Copy it back into the AddOns folder, then try again.`
-    )
+    throw new PlainError(t('install.undoFailed', { failed: failed.join(', '), where }))
   }
 }
 
@@ -344,7 +345,7 @@ function openEntry(zf: yauzl.ZipFile, entry: yauzl.Entry): Promise<NodeJS.Readab
   })
 }
 
-const BAD_ZIP = 'The downloaded zip file is damaged or holds unsafe paths, so nothing was installed.'
+const badZip = (): string => t('install.damaged')
 
 export interface ZipLimits {
   bytes: number
@@ -361,7 +362,7 @@ export async function scanZip(zipFile: string, limits: ZipLimits): Promise<{ ent
     zf = await openZip(zipFile)
   } catch (err) {
     log('Zip open failed:', err)
-    throw new PlainError(BAD_ZIP)
+    throw new PlainError(badZip())
   }
   return new Promise((resolve, reject) => {
     let entries = 0
@@ -379,7 +380,7 @@ export async function scanZip(zipFile: string, limits: ZipLimits): Promise<{ ent
     }
     zf.on('error', (err) => {
       log('Zip read failed:', err)
-      fail(new PlainError(BAD_ZIP))
+      fail(new PlainError(badZip()))
     })
     zf.on('end', () => {
       if (finished) return
@@ -390,10 +391,10 @@ export async function scanZip(zipFile: string, limits: ZipLimits): Promise<{ ent
       entries++
       bytes += entry.uncompressedSize
       if (entries > limits.entries) {
-        return fail(new PlainError(`The zip holds more than ${limits.entries.toLocaleString('en-US')} files, more than a pack of this kind may have, so nothing was installed.`))
+        return fail(new PlainError(t('install.tooManyEntries', { entries: limits.entries.toLocaleString(mainLocale()) })))
       }
       if (bytes > limits.bytes) {
-        return fail(new PlainError(`The zip would unpack to more than ${formatBytes(limits.bytes)}, more than a pack of this kind may take, so nothing was installed.`))
+        return fail(new PlainError(t('install.tooBig', { size: formatBytes(limits.bytes) })))
       }
       zf.readEntry()
     })
@@ -414,7 +415,7 @@ async function extractZip(
     zf = await openZip(zipFile)
   } catch (err) {
     log('Zip open failed:', err)
-    throw new PlainError(BAD_ZIP)
+    throw new PlainError(badZip())
   }
   await fs.promises.mkdir(dest, { recursive: true })
   let done = 0
@@ -427,23 +428,19 @@ async function extractZip(
     if (!check.ok) {
       log(`Zip entry refused (${check.reason}): ${JSON.stringify(name)}`)
       const outside = check.reason === 'folder not allowed' || check.reason === 'file outside a folder'
-      throw new PlainError(
-        outside
-          ? `The zip holds a file or folder the manager may not install (${name.split('/')[0]}), so nothing was installed.`
-          : BAD_ZIP
-      )
+      throw new PlainError(outside ? t('install.outside', { name: name.split('/')[0] ?? name }) : badZip())
     }
     const mode = (entry.externalFileAttributes >>> 16) & 0o170000
-    if (mode === 0o120000) throw new PlainError(BAD_ZIP)
+    if (mode === 0o120000) throw new PlainError(badZip())
     if (check.directory) return
     const target = path.resolve(dest, ...check.segments)
-    if (!isInside(dest, target) || target === path.resolve(dest)) throw new PlainError(BAD_ZIP)
+    if (!isInside(dest, target) || target === path.resolve(dest)) throw new PlainError(badZip())
     await fs.promises.mkdir(path.dirname(target), { recursive: true })
     const src = await openEntry(zf, entry)
     try {
       await pipeline(src, fs.createWriteStream(target, { flags: 'wx' }), signal ? { signal } : {})
     } catch (err) {
-      if (errorCode(err) === 'EEXIST') throw new PlainError(BAD_ZIP)
+      if (errorCode(err) === 'EEXIST') throw new PlainError(badZip())
       throw err
     }
     done += entry.compressedSize
@@ -464,7 +461,7 @@ async function extractZip(
     }
     zf.on('error', (err) => {
       log('Zip read failed:', err)
-      fail(new PlainError(BAD_ZIP))
+      fail(new PlainError(badZip()))
     })
     zf.on('end', () => {
       if (finished) return
@@ -484,7 +481,7 @@ async function extractZip(
 async function verifyStaged(product: Product, dir: string): Promise<string[]> {
   const entries = await fs.promises.readdir(dir, { withFileTypes: true })
   const names = entries.filter((e) => e.isDirectory()).map((e) => e.name)
-  if (names.length === 0 || names.length !== entries.length) throw new PlainError('The zip file does not hold the folders it should, so nothing was installed.')
+  if (names.length === 0 || names.length !== entries.length) throw new PlainError(t('install.wrongFoldersPlain'))
   if (product.folders) {
     // A release from before the section was renamed holds the old folder instead.
     const legacy = product.legacy?.folders
@@ -493,19 +490,19 @@ async function verifyStaged(product: Product, dir: string): Promise<string[]> {
     const extra = names.filter((n) => !expected.includes(n))
     if (missing.length > 0 || extra.length > 0) {
       throw new PlainError(
-        `The zip file does not hold the expected folders${missing.length ? ` (missing ${missing.join(', ')})` : ''}, so nothing was installed.`
+        t('install.wrongFolders', { missing: missing.join(', ') })
       )
     }
   } else {
-    if (!names.includes('Spoken')) throw new PlainError('The zip file has no Spoken folder, so nothing was installed.')
+    if (!names.includes('Spoken')) throw new PlainError(t('install.noSpokenFolder'))
     const stray = names.filter((n) => !SPOKEN_FOLDERS.includes(n))
-    if (stray.length > 0) throw new PlainError(`The zip holds a folder the manager may not install (${stray[0]}), so nothing was installed.`)
+    if (stray.length > 0) throw new PlainError(t('install.strayFolder', { folder: stray[0] ?? '' }))
   }
   if (!product.folders || product.kind === 'community') {
     // Spoken's folders and a community pack must each be a loadable add-on; an official voice pack's toc is not required here.
     for (const n of names) {
       if (!(await exists(path.join(dir, n, `${n}.toc`)))) {
-        throw new PlainError(`The zip file is incomplete (${n}\\${n}.toc is missing), so nothing was installed.`)
+        throw new PlainError(t('install.incomplete', { name: n }))
       }
     }
   }
@@ -517,15 +514,13 @@ async function verifyStaged(product: Product, dir: string): Promise<string[]> {
 
 export async function checkWritable(game: GameInstall): Promise<void> {
   if (!(await canWrite(game.addOnsPath))) {
-    throw new PlainError(
-      `The manager cannot write to ${game.addOnsPath}. Check that the folder is not read-only and that your account may change it.`
-    )
+    throw new PlainError(t('install.notWritable', { path: game.addOnsPath }))
   }
   await fs.promises.mkdir(game.addOnsPath, { recursive: true })
   const interfaceDir = path.dirname(game.addOnsPath)
-  if (await isLinked(game.addOnsPath)) throw new PlainError(`AddOns: ${LINKED_MESSAGE}`)
-  if (await isLinked(interfaceDir)) throw new PlainError(`Interface: ${LINKED_MESSAGE}`)
-  if (await isLinked(workDir(game))) throw new PlainError(`${WORK_DIR}: ${LINKED_MESSAGE}`)
+  if (await isLinked(game.addOnsPath)) throw new PlainError(`AddOns: ${linkedMessage()}`)
+  if (await isLinked(interfaceDir)) throw new PlainError(`Interface: ${linkedMessage()}`)
+  if (await isLinked(workDir(game))) throw new PlainError(`${WORK_DIR}: ${linkedMessage()}`)
 }
 
 const RESERVED = new Set(['wtf', 'interface', 'addons', WORK_DIR])
@@ -619,11 +614,11 @@ export async function installProduct(
   if (product.kind === 'community') {
     // Stricter than the official packs: a checksum is required, and the only folder is the pack's own.
     if (!release.digest || !/^sha256:[0-9a-f]{64}$/i.test(release.digest)) {
-      throw new PlainError('This community pack has no checksum, so the manager will not install it.')
+      throw new PlainError(t('install.communityNoChecksum'))
     }
     const only = product.folders?.[0]
     if (product.folders?.length !== 1 || !only || !only.startsWith('SpokenCommunity_') || SPOKEN_FOLDERS.includes(only)) {
-      throw new PlainError('This community pack has no valid folder name, so the manager will not install it.')
+      throw new PlainError(t('install.communityBadName'))
     }
   }
   await checkWritable(game)
@@ -687,9 +682,9 @@ export async function installProduct(
     // Look at every target before changing any.
     for (const folder of folders) {
       const target = path.join(addOns, folder)
-      if (await isLinked(target)) throw new PlainError(`${folder}: ${LINKED_MESSAGE}`)
+      if (await isLinked(target)) throw new PlainError(`${folder}: ${linkedMessage()}`)
       if ((await exists(target)) && !(await fs.promises.stat(target)).isDirectory()) {
-        throw new PlainError(`${folder} in the AddOns folder is a file, not a folder, so it was left alone.`)
+        throw new PlainError(t('install.fileNotFolder', { folder }))
       }
     }
 
@@ -749,7 +744,7 @@ export async function uninstallProduct(game: GameInstall, product: Product, ctx:
   for (const folder of wanted) {
     const target = path.join(game.addOnsPath, folder)
     if (!(await exists(target))) continue
-    if (await isLinked(target)) throw new PlainError(`${folder}: ${LINKED_MESSAGE}`)
+    if (await isLinked(target)) throw new PlainError(`${folder}: ${linkedMessage()}`)
     if (!(await fs.promises.stat(target)).isDirectory()) continue
     present.push(folder)
   }

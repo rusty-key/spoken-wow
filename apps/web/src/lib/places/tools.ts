@@ -42,6 +42,7 @@ import * as storeModule from "@tools/voice/store.mjs";
 import * as normaliseModule from "@tools/voice/normalise.mjs";
 import * as namingModule from "@tools/voice/naming.mjs";
 import * as wikiModule from "@tools/lib/wiki.mjs";
+import zonesSeed from "@tools/seed/zones.json";
 
 // buildCatalogue() is deliberately NOT re-exported. It reads the committed Lua, which is an
 // export of lore_line and therefore at best as fresh as the table; the app builds its
@@ -77,6 +78,7 @@ export const toSpokenText = normaliseModule.toSpokenText as (
   text: string,
   rules: Record<string, string>,
 ) => string;
+export const hasBrackets = normaliseModule.hasBrackets as (text: string) => boolean;
 export const loadPronunciation = normaliseModule.loadPronunciation as () => Promise<
   Record<string, string>
 >;
@@ -88,3 +90,5 @@ export const makeShort = wikiModule.makeShort as (full: string, limit?: number) 
 
 export const durationOf = storeModule.durationOf as (path: string) => Promise<number>;
 
+/** seed/zones.json: every Classic Era zone map by uiMapID, the continents and the world among them. */
+export const zoneSeed = zonesSeed as unknown as Record<string, { name: string } | string[]>;

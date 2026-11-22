@@ -7,7 +7,7 @@
  *
  * An entry says how a name sounds in one of two ways, and the choice is not cosmetic:
  *
- *   ipa    a phoneme rule. Exact, and honoured by eleven_v3 and eleven_flash_v2 only - every
+ *   ipa    a phoneme rule. Exact, but honoured only by the models in PHONEME_SYNTAX - every
  *          other model silently ignores it and speaks the default pronunciation.
  *   alias  a respelling. Approximate, because it is only as good as the reader's guess at
  *          the new spelling, but honoured by every model.
@@ -20,11 +20,27 @@
 export const CONFIDENCES = ["high", "check"] as const;
 export type Confidence = (typeof CONFIDENCES)[number];
 
-/** Models that honour phoneme rules. Everything else ignores the dictionary entirely. */
-export const PHONEME_MODELS = ["eleven_v3", "eleven_flash_v2"] as const;
+/**
+ * The inline IPA form each phoneme model reads; every model not listed ignores phoneme rules.
+ * ElevenLabs documents ssml only for eleven_flash_v2 and slash only for eleven_v4, so v3 keeps
+ * the tag it was always previewed with and v4_turbo follows v4.
+ */
+export const PHONEME_SYNTAX = {
+  eleven_v3: "ssml",
+  eleven_v4: "slash",
+  eleven_v4_turbo: "slash",
+  eleven_flash_v2: "ssml",
+} as const satisfies Record<string, "ssml" | "slash">;
+
+export type PhonemeModel = keyof typeof PHONEME_SYNTAX;
+export const PHONEME_MODELS = Object.keys(PHONEME_SYNTAX) as PhonemeModel[];
+
+export function phonemeSyntax(modelId: string): "ssml" | "slash" | undefined {
+  return Object.hasOwn(PHONEME_SYNTAX, modelId) ? PHONEME_SYNTAX[modelId as PhonemeModel] : undefined;
+}
 
 export function honoursPhonemes(modelId: string): boolean {
-  return (PHONEME_MODELS as readonly string[]).includes(modelId);
+  return phonemeSyntax(modelId) !== undefined;
 }
 
 export type LexiconEntry = {

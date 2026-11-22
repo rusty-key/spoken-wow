@@ -12,7 +12,7 @@
  */
 import { requireAdminSession } from "@/lib/generation/authz";
 import { contributionLocale, observationMeta, setContributionNpc } from "@/lib/contributions/store";
-import { isLang } from "@/lib/lang";
+import { knownLang } from "@/lib/languages/catalogue";
 import { INT32_MAX, NPC_ROW_KINDS, type NpcRowKind } from "@/lib/npc/npc";
 import { observedFrom, resolveNpc } from "@/lib/npc/resolve";
 import type { NpcResolution } from "@/lib/npc/store";
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
   try {
     // Read back through observationMeta, as every other reader of the row does, so what gets
     // resolved is exactly what triage, accept and the export will see.
-    resolution = await resolveNpc(observedFrom(observationMeta(recorded)), isLang(locale) ? locale : null);
+    resolution = await resolveNpc(observedFrom(observationMeta(recorded)), await knownLang(locale));
   } catch {
     resolution = null;
   }

@@ -14,8 +14,8 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 
+import type { Lang } from "@/lib/lang";
 import { resolveRange, type Range, type RangeRequest } from "@/lib/range";
-import { writeAtomic } from "@/lib/takes/bytes";
 
 export type ArchiveMode = "disk" | "dual" | "r2";
 
@@ -40,8 +40,14 @@ export type BlobStore = {
   put(key: string, data: Buffer, contentType: string): Promise<void>;
   /** Null when there is no such object. */
   get(key: string, range?: RangeRequest): Promise<BlobRead | null>;
-  /** Where a browser fetches the object. */
-  url(key: string): string;
+  /** The object's size, null when there is none. */
+  head(key: string): Promise<{ size: number } | null>;
+  /** Only ever for `probe/` and `quarantine/`: nothing deletes a take or a recording. */
+  delete(key: string): Promise<void>;
+  /** Where a browser fetches the object; null for a private bucket, which `presign` answers for. */
+  url(key: string): string | null;
+  /** An address that answers `method` for `expiresSec` seconds without credentials. */
+  presign(key: string, options: { method: "GET" | "HEAD"; expiresSec: number }): Promise<string>;
 };
 
 export function sha256Of(data: Buffer): string {
@@ -72,42 +78,130 @@ async function sendWithRetries(send: () => Promise<Response>): Promise<Response>
   return send();
 }
 
-export function r2Blobs(env: {
-  accountId: string;
+type S3Config = {
+  /** Scheme and host, no path: `https://<account>.r2.cloudflarestorage.com`, `https://s3.eu-west-1.amazonaws.com`. */
+  endpoint: string;
+  /** `auto` for R2 and GCS. */
+  region: string;
+  bucket: string;
   accessKeyId: string;
   secretAccessKey: string;
-  bucket: string;
-  publicUrl: string;
-}): BlobStore {
+  /** Ends in `/`. Null for a private bucket. */
+  publicUrl: string | null;
+  /** `endpoint/bucket/key` when true, `bucket.endpoint/key` when false. */
+  pathStyle: boolean;
+  /** False for a provider that ignores If-None-Match on a PUT: a HEAD comes first instead. */
+  conditionalPut: boolean;
+};
+
+export class BodyLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BodyLimitError";
+  }
+}
+
+/**
+ * A bucket's body read whole, within `maxBytes` and `deadlineMs`: a team's bucket is not trusted to
+ * send a small body, or to send it at all. Past either it is cancelled, and a BodyLimitError
+ * thrown; with `truncate`, the first `maxBytes` are kept instead of the size failing.
+ */
+export async function readBounded(
+  body: ReadableStream<Uint8Array>,
+  { maxBytes, deadlineMs, truncate = false }: { maxBytes: number; deadlineMs: number; truncate?: boolean },
+): Promise<Buffer> {
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  let timer: NodeJS.Timeout | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new BodyLimitError(`no whole answer within ${deadlineMs / 1000}s`)), deadlineMs);
+  });
+  deadline.catch(() => {});
+  try {
+    for (;;) {
+      const { done, value } = await Promise.race([reader.read(), deadline]);
+      if (done) return Buffer.concat(chunks);
+      if (size + value.byteLength > maxBytes) {
+        if (!truncate) throw new BodyLimitError(`more than ${maxBytes} bytes`);
+        chunks.push(value.subarray(0, maxBytes - size));
+        await reader.cancel().catch(() => {});
+        return Buffer.concat(chunks);
+      }
+      size += value.byteLength;
+      chunks.push(value);
+    }
+  } catch (error) {
+    await reader.cancel().catch(() => {});
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** How long a bucket has to answer a request, its upload included. */
+const ANSWER_MS = 120_000;
+
+/** Any bucket that speaks S3's API with SigV4: R2, AWS S3, B2, Wasabi, GCS's interoperability keys, MinIO. */
+export function s3Blobs(env: S3Config): BlobStore {
   let client: import("aws4fetch").AwsClient | undefined;
-  const signed = async (input: string, init?: RequestInit) => {
+  const awsClient = async () => {
     if (!client) {
       const { AwsClient } = await import("aws4fetch");
       client = new AwsClient({
         accessKeyId: env.accessKeyId,
         secretAccessKey: env.secretAccessKey,
         service: "s3",
-        region: "auto",
+        region: env.region || "auto",
       });
     }
+    return client;
+  };
+  const signed = async (input: string, init?: RequestInit) => {
     // Fetch the bytes themselves, not the signed Request: Next's fetch sends a Request's body
     // as a chunked stream, and R2 refuses a PUT without a Content-Length.
-    const request = await client.sign(input, init);
-    return fetch(request.url, { method: request.method, headers: request.headers, body: init?.body });
+    const request = await (await awsClient()).sign(input, init);
+    // ANSWER_MS bounds the answer, not the body: a reader bounds that (readBounded). A redirect
+    // is never followed: it could reach a host the endpoint check never saw.
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(new Error(`${env.bucket} did not answer within ${ANSWER_MS / 1000}s`)), ANSWER_MS);
+    try {
+      return await fetch(request.url, {
+        method: request.method,
+        headers: request.headers,
+        body: init?.body,
+        redirect: "manual",
+        signal: abort.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
   };
-  const base = `https://${env.accountId}.r2.cloudflarestorage.com/${env.bucket}`;
+  const endpoint = new URL(env.endpoint);
+  const base = env.pathStyle
+    ? `${endpoint.protocol}//${endpoint.host}/${env.bucket}`
+    : `${endpoint.protocol}//${env.bucket}.${endpoint.host}`;
   const at = (key: string) => `${base}/${key.split("/").map(encodeURIComponent).join("/")}`;
   const fail = async (what: string, key: string, res: Response): Promise<never> => {
-    throw new Error(`R2 ${what} ${key}: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+    // A taste of the bucket's error, never more: it may send a body without end.
+    const said = res.body ? (await readBounded(res.body, { maxBytes: 1024, deadlineMs: 5_000, truncate: true }).catch(() => null)) : null;
+    throw new Error(`${env.bucket} ${what} ${key}: HTTP ${res.status} ${said?.toString("utf8").slice(0, 200) ?? ""}`);
   };
-  const publicBase = env.publicUrl.endsWith("/") ? env.publicUrl : `${env.publicUrl}/`;
+  const publicBase = env.publicUrl && (env.publicUrl.endsWith("/") ? env.publicUrl : `${env.publicUrl}/`);
   const lengthOf = async (key: string, res: Response): Promise<number> => {
     const length = res.headers.get("content-length");
     return length === null ? fail("GET (no Content-Length)", key, res) : Number(length);
   };
+  const head = async (key: string) => {
+    const res = await signed(at(key), { method: "HEAD" });
+    if (res.status === 404) return null;
+    if (!res.ok) await fail("HEAD", key, res);
+    return { size: await lengthOf(key, res) };
+  };
 
   return {
     async put(key, data, contentType) {
+      if (!env.conditionalPut && (await head(key))) return;
       const send = () => signed(at(key), {
         method: "PUT",
         body: new Uint8Array(data),
@@ -127,7 +221,7 @@ export function r2Blobs(env: {
       if (res.status === 409) {
         const answer = await res.text();
         if (answer.includes("<Code>ObjectLockedByBucketPolicy</Code>")) return;
-        throw new Error(`R2 PUT ${key}: HTTP 409 ${answer.slice(0, 200)}`);
+        throw new Error(`${env.bucket} PUT ${key}: HTTP 409 ${answer.slice(0, 200)}`);
       }
       if (!res.ok) await fail("PUT", key, res);
     },
@@ -139,9 +233,9 @@ export function r2Blobs(env: {
       if (res.status === 416) {
         await res.body?.cancel();
         // A 416 need not say how big the object is, and the answer to the client must.
-        const head = await signed(at(key), { method: "HEAD" });
-        if (!head.ok) await fail("HEAD", key, head);
-        return { size: await lengthOf(key, head), contentType, range: null, body: null };
+        const found = await head(key);
+        if (!found) return null;
+        return { size: found.size, contentType, range: null, body: null };
       }
       if (!res.ok) await fail("GET", key, res);
       if (res.status === 206) {
@@ -152,15 +246,47 @@ export function r2Blobs(env: {
       }
       return { size: await lengthOf(key, res), contentType, range: null, body: res.body };
     },
-    url: (key) => `${publicBase}${key}`,
+    head,
+    async delete(key) {
+      const res = await signed(at(key), { method: "DELETE" });
+      if (!res.ok && res.status !== 404) await fail("DELETE", key, res);
+      else await res.body?.cancel();
+    },
+    url: (key) => (publicBase ? `${publicBase}${key}` : null),
+    async presign(key, { method, expiresSec }) {
+      const address = new URL(at(key));
+      address.searchParams.set("X-Amz-Expires", String(expiresSec));
+      const request = await (await awsClient()).sign(address.toString(), { method, aws: { signQuery: true } });
+      return request.url;
+    },
   };
 }
 
-/** `refusePut` answers every PUT as an R2 outage does. */
+/** Our archive bucket. */
+export function r2Blobs(env: {
+  accountId: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  bucket: string;
+  publicUrl: string;
+}): BlobStore {
+  return s3Blobs({
+    endpoint: `https://${env.accountId}.r2.cloudflarestorage.com`,
+    region: "auto",
+    bucket: env.bucket,
+    accessKeyId: env.accessKeyId,
+    secretAccessKey: env.secretAccessKey,
+    publicUrl: env.publicUrl,
+    pathStyle: true,
+    conditionalPut: true,
+  });
+}
+
+/** `refusePut` answers every PUT as an outage does. A null `publicUrl` is a private bucket. */
 export function memoryBlobs({
   publicUrl = "https://archive.test/",
   refusePut = false,
-}: { publicUrl?: string; refusePut?: boolean } = {}): BlobStore & {
+}: { publicUrl?: string | null; refusePut?: boolean } = {}): BlobStore & {
   objects: Map<string, { data: Buffer; contentType: string }>;
 } {
   const objects = new Map<string, { data: Buffer; contentType: string }>();
@@ -179,7 +305,17 @@ export function memoryBlobs({
       const bytes = range ? object.data.subarray(range.start, range.end + 1) : object.data;
       return { size, contentType: object.contentType, range, body: new Blob([new Uint8Array(bytes)]).stream() };
     },
-    url: (key) => `${publicUrl}${key}`,
+    async head(key) {
+      const object = objects.get(key);
+      return object ? { size: object.data.byteLength } : null;
+    },
+    async delete(key) {
+      objects.delete(key);
+    },
+    url: (key) => (publicUrl === null ? null : `${publicUrl}${key}`),
+    async presign(key, { method, expiresSec }) {
+      return `https://signed.test/${key}?method=${method}&expires=${expiresSec}`;
+    },
   };
 }
 
@@ -228,51 +364,15 @@ export function archive(): BlobStore {
   return fromEnv;
 }
 
-/** The whole object, for a caller that needs its bytes rather than a response. */
-export async function blobBytes(key: string): Promise<Buffer | null> {
-  const object = await archive().get(key);
-  return object?.body ? Buffer.from(await new Response(object.body).arrayBuffer()) : null;
-}
-
-/**
- * Both writes have finished when this returns, so the caller's row comes after them. The hash
- * comes back only once its object is in the bucket, and is what the row records: the backfill
- * copies exactly the rows without one.
- *
- * In `dual` the volume is still the record, so a failed PUT is logged and the row is left for
- * the backfill rather than failing a take the provider was already paid for.
- */
-export async function keep(
-  prefix: BlobPrefix,
-  data: Buffer,
-  contentType: string,
-  diskPath: string,
-): Promise<string | null> {
-  const sha256 = sha256Of(data);
-  const mode = archiveMode();
-  const put = async () => {
-    if (mode === "disk") return null;
-    try {
-      await archive().put(blobKey(prefix, sha256), data, contentType);
-      return sha256;
-    } catch (error) {
-      if (mode === "r2") throw error;
-      console.error(`archiving ${prefix}/${sha256.slice(0, 12)} failed, left for the backfill:`, error);
-      return null;
-    }
-  };
-  const [kept] = await Promise.all([put(), mode !== "r2" && writeAtomic(diskPath, data)]);
-  return kept;
-}
-
 export type Stored =
   /** The file may be missing; the reader finds out. */
   | { kind: "file"; path: string; prefix: BlobPrefix }
-  | { kind: "blob"; key: string }
+  /** `lang` is the language whose row names the object: a read prefers its team's own copy. */
+  | { kind: "blob"; key: string; lang?: Lang }
   | { kind: "gone" };
 
-export function blobOrFile(prefix: BlobPrefix, sha256: string | null, file: string | null): Stored {
-  if (readsBlobs() && sha256) return { kind: "blob", key: blobKey(prefix, sha256) };
+export function blobOrFile(prefix: BlobPrefix, sha256: string | null, file: string | null, lang?: Lang): Stored {
+  if (readsBlobs() && sha256) return { kind: "blob", key: blobKey(prefix, sha256), lang };
   return file ? { kind: "file", path: file, prefix } : { kind: "gone" };
 }
 

@@ -13,9 +13,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { envelopesFromSavedVariables } from '@site-contributions/saved-variables'
 import { chunksOf } from '@site-contributions/upload'
-import type { GameInstall } from '../shared/types'
+import type { GameInstall, SendResult } from '../shared/types'
 import { findEntrySync, isLinked } from './guard'
 import type { LocalFile } from './packs-plan'
+import { t } from './i18n'
 import { sha256Text } from './packs-remote'
 import { log, readJsonFile, writeJsonAtomic } from './state'
 
@@ -111,13 +112,6 @@ export interface SendOptions {
   all?: boolean
 }
 
-export type SendResult =
-  | { outcome: 'sent'; count: number }
-  /** Nothing new: no file changed, or every envelope in them was sent before. */
-  | { outcome: 'nothing' }
-  | { outcome: 'rate-limited'; count: number }
-  | { outcome: 'failed'; count: number; error: string }
-
 function remember(ledger: ShareLedger, hashes: Iterable<string>, at: string): void {
   for (const h of hashes) {
     // Deleted first so a hash sent again moves to the newest end.
@@ -144,6 +138,7 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
   /** The envelopes not sent yet, by hash. */
   const fresh = new Map<string, string>()
   const seen: ShareLedger['seen'] = {}
+  const unread: string[] = []
   for (const game of opts.games) {
     for (const file of await findContributionFiles(game)) {
       let st: fs.Stats
@@ -160,6 +155,7 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
         text = await fs.promises.readFile(file, 'utf8')
       } catch (err) {
         log('Sharing: could not read', file, err)
+        unread.push(file)
         delete seen[file]
         continue
       }
@@ -178,7 +174,8 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
     }
     return result
   }
-  if (fresh.size === 0) return done({ outcome: 'nothing' })
+  const read = unread.length ? { unread } : {}
+  if (fresh.size === 0) return done({ outcome: 'nothing', ...read })
 
   const doFetch = opts.fetchImpl ?? fetch
   const hashes = [...fresh.keys()]
@@ -196,10 +193,10 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
       })
     } catch (err) {
       opts.signal?.throwIfAborted()
-      return { outcome: 'failed', count, error: `The site could not be reached (${err instanceof Error ? err.message : String(err)}).` }
+      return { outcome: 'failed', count, error: t('share.reachSite', { why: err instanceof Error ? err.message : String(err) }) }
     }
     if (res.status === 429) return { outcome: 'rate-limited', count }
-    if (!res.ok) return { outcome: 'failed', count, error: `The site answered ${res.status}.` }
+    if (!res.ok) return { outcome: 'failed', count, error: t('share.siteStatus', { status: res.status }) }
     const at = new Date().toISOString()
     // Chunks keep the envelopes' order, so the chunk's hashes are the next ones in line.
     remember(ledger, hashes.slice(count, count + chunk.length), at)
@@ -207,7 +204,7 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
     ledger.lastSent = { at, count }
     saveLedger(opts.dataPath, ledger)
   }
-  return done({ outcome: 'sent', count })
+  return done({ outcome: 'sent', count, ...read })
 }
 
 /** A new install id; what was sent stays sent. */

@@ -94,7 +94,7 @@ function SpokenReadables:SetupOptions()
 	layout:ShowWhen(silent, function() return Spoken:SilentNote("readables") ~= nil end)
 	-- The packs to get are the voice language's; any pack installed is listed too. Not the
 	-- fallback's to get: it buried the one that mattered. But a voice language with no pack of its
-	-- own (itIT) is heard in the fallback's, so that is the one to get there.
+	-- own is heard in the fallback's, so that is the one to get there.
 	local function Installed(addon)
 		for _, pack in ipairs(SpokenReadables:GetAudioPacks()) do
 			if pack.addon == addon then return true end

@@ -103,6 +103,31 @@ local function Source()
 	return nil
 end
 
+--------------------------------------------------------------------------------
+-- A dungeon's story for another addon (Spoken:PlayStory("instance", map))
+--------------------------------------------------------------------------------
+
+--- The area mapID, key that tells the story of the instance map `map`, from Spoken's dungeon table,
+--- or nil where none does.
+function SpokenPlaces:InstanceStory(map)
+	local dungeons = _G.SpokenDungeons and SpokenDungeons.dungeons
+	local story = map and dungeons and dungeons[map] and dungeons[map].story
+	if story then return story[1], story[2] end
+end
+
+local function InstanceKeys(map)
+	local mapID, key = SpokenPlaces:InstanceStory(map)
+	return mapID and { "s:" .. mapID .. ":" .. key } or {}
+end
+
+-- The story's clip where it is voiced, Places is on and reads aloud, and the area is not locked.
+local function InstanceClip(map)
+	local mapID, key = SpokenPlaces:InstanceStory(map)
+	if not (SpokenPlaces:IsVoiceEnabled() and SpokenPlaces:IsPartOn()) then return nil end
+	if SpokenPlaces.IsLocked and SpokenPlaces:IsLocked(mapID, key) then return nil end
+	return SpokenPlaces:NewLoreSound(mapID, key)
+end
+
 -- Registers with the player. Runs once the world is up, after the player itself has
 -- loaded; everything here degrades to "no narration" when it has not.
 function SpokenPlaces:SetupAudio()
@@ -146,6 +171,10 @@ function SpokenPlaces:SetupAudio()
 	Spoken:RegisterCallback("AUDIO_CHANGED", function()
 		SpokenPlaces:NotifyAudioChanged()
 	end)
+
+	if Spoken.RegisterStoryTeller then
+		Spoken:RegisterStoryTeller("instance", { source = self.source, Keys = InstanceKeys, Clip = InstanceClip })
+	end
 
 	-- Switched off or on in Spoken's settings: the map panel follows, and so does the Compendium's
 	-- Places tab.
@@ -208,6 +237,7 @@ function SpokenPlaces:GetAudioPacks(lang)
 				-- is English, which is the same default Sounds.lua applies. Filled in
 				-- here, once, so nothing that reads a pack from this list re-applies it.
 				pack.language = pack.language or "enUS"
+				pack.voice = self:PackVoice(pack)
 				if lang == nil or pack.language == lang then
 					table.insert(packs, pack)
 				end
@@ -236,6 +266,7 @@ function SpokenPlaces:GetAudioPacks(lang)
 		legacy.quality = legacy.quality or "standard"
 		legacy.bitrate = legacy.bitrate or 0
 		legacy.language = legacy.language or "enUS"
+		legacy.voice = legacy.language
 		if lang == nil or legacy.language == lang then
 			table.insert(packs, legacy)
 		end
@@ -294,35 +325,77 @@ function SpokenPlaces:GetFallbackLanguage()
 	return fallback or "enUS"
 end
 
--- The pack narration plays from: one in the voice language, else one in the fallback language,
--- else nil.
---
--- Between two packs of one language (a retired 64 kbps pack beside the current one), the one
--- /spp audio chose, kept as a folder name rather than an index: a player who uninstalls the
--- high-quality pack should fall back to whatever is left instead of pointing at whichever pack
--- happens to occupy that slot afterwards.
-function SpokenPlaces:GetActiveAudioPack()
-	local packs = self:GetAudioPacks(self:GetVoiceLanguage())
-	local fallback = self:GetFallbackLanguage()
-	if #packs == 0 and fallback then
-		packs = self:GetAudioPacks(fallback)
+-- The voice a pack is in: its language, or its language and team where its .toc names one
+-- ("deDE_stimmen"), as Spoken's registry read it.
+function SpokenPlaces:PackVoice(pack)
+	local Spoken = _G.Spoken
+	if Spoken and Spoken.VoiceOf and pack.addon then
+		return Spoken:VoiceOf(pack.addon, pack.language)
 	end
-	if #packs == 0 then
-		return nil
-	end
+	return pack.language
+end
 
+-- The voices narration may play in, most wanted first: the player's list on Spoken's page once
+-- set, else the voice language and the fallback, each its plain voice.
+function SpokenPlaces:GetVoiceOrder()
+	local voice, fallback = self:GetVoiceLanguage(), self:GetFallbackLanguage()
+	local Spoken = _G.Spoken
+	if Spoken and Spoken.VoiceOrder then
+		return Spoken:VoiceOrder(voice, fallback)
+	end
+	if fallback and fallback ~= voice then
+		return { voice, fallback }
+	end
+	return { voice }
+end
+
+-- The installed packs by voice, each voice's best first; a voice with none is absent. Between two
+-- packs of one voice (a retired 64 kbps pack beside the current one), the one /spp audio chose
+-- comes first, kept as a folder name rather than an index: a player who uninstalls the
+-- high-quality pack should fall back to whatever is left instead of pointing at whichever pack
+-- happens to occupy that slot afterwards. A plain voice's code is its language's, so a choice
+-- saved before there were voices keeps meaning the plain pack.
+function SpokenPlaces:GetPacksByVoice()
+	local byVoice = {}
+	for _, pack in ipairs(self:GetAudioPacks()) do
+		local packs = byVoice[pack.voice]
+		if not packs then
+			packs = {}
+			byVoice[pack.voice] = packs
+		end
+		table.insert(packs, pack)
+	end
 	local stored = self:Get("audioPack")
-	local preferred = type(stored) == "table" and stored[packs[1].language] or nil
-	if type(preferred) == "string" then
-		for i = 1, #packs do
-			if packs[i].addon == preferred then
-				return packs[i]
+	if type(stored) == "table" then
+		for voice, packs in pairs(byVoice) do
+			local preferred = stored[voice]
+			for i = 2, #packs do
+				if packs[i].addon == preferred then
+					table.insert(packs, 1, table.remove(packs, i))
+					break
+				end
 			end
 		end
 	end
+	return byVoice
+end
 
-	-- No preference, or the preferred pack is gone: best available wins.
-	return packs[1]
+-- The pack narration plays from: the best one in the first voice that has a pack, else nil. Then
+-- where that voice is in the order, the order, and the packs by voice, for GetAudioClip to go on
+-- from without gathering the packs again.
+local function ActivePack(self)
+	local order, byVoice = self:GetVoiceOrder(), self:GetPacksByVoice()
+	for i, voice in ipairs(order) do
+		local packs = byVoice[voice]
+		if packs then
+			return packs[1], i, order, byVoice
+		end
+	end
+	return nil
+end
+
+function SpokenPlaces:GetActiveAudioPack()
+	return (ActivePack(self))
 end
 
 -- Switches packs. Returns false when the name is not an installed pack, so the
@@ -335,7 +408,7 @@ function SpokenPlaces:SetActiveAudioPack(name)
 			if type(stored) ~= "table" then
 				stored = {}
 			end
-			stored[packs[i].language] = name
+			stored[packs[i].voice] = name
 			self:Set("audioPack", stored)
 			self:StopLore()
 			self:NotifyAudioChanged()
@@ -360,9 +433,14 @@ function SpokenPlaces:GetAudioPackLabel(pack)
 	if self:CanRenderLanguage(language) then
 		label = self:GetLanguageName(language)
 	end
+	-- A team's pack says whose it is: "Deutsch · Stimmen".
+	local Spoken = _G.Spoken
+	if pack.voice and pack.voice ~= language and Spoken and Spoken.VoiceName then
+		label = Spoken:VoiceName(pack.voice)
+	end
 	if pack.bitrate and pack.bitrate > 0 then
 		for _, other in ipairs(self:GetAudioPacks(language)) do
-			if other ~= pack and other.language == language then
+			if other ~= pack and other.voice == pack.voice then
 				return ("%s (%d kbps)"):format(label, pack.bitrate)
 			end
 		end
@@ -407,19 +485,19 @@ function SpokenPlaces:GetAudioClip(mapID, areaKey)
 		return nil, nil
 	end
 
-	local active = self:GetActiveAudioPack()
+	local active, at, order, byVoice = ActivePack(self)
 	if not active then
 		return nil, nil
 	end
 
-	-- The active pack, then the fallback language's, entry by entry: a German pack that has not
-	-- narrated an area yet leaves it to the English one rather than to silence, the way a quest
-	-- line falls back. The entry keys are the same in every language, so any pack names the area
-	-- alike. With Stay Silent, nothing else is tried.
-	local candidates = { active }
-	local fallback = self:GetFallbackLanguage()
-	if fallback and active.language ~= fallback then
-		for _, pack in ipairs(self:GetAudioPacks(fallback)) do
+	-- The active pack, then its voice's other packs, then each later voice's packs, entry by entry:
+	-- a German pack that has not narrated an area yet leaves it to another German pack, then to the
+	-- next voice's (English) rather than to silence, the way a quest line falls back. The entry keys
+	-- are the same in every language, so any pack names the area alike. The active pack leads its
+	-- voice's list. Past the last voice, nothing else is tried.
+	local candidates = {}
+	for i = at, #order do
+		for _, pack in ipairs(byVoice[order[i]] or {}) do
 			table.insert(candidates, pack)
 		end
 	end
@@ -440,6 +518,13 @@ end
 function SpokenPlaces:GetPackLanguage()
 	local pack = self:GetActiveAudioPack()
 	return pack and pack.language or self:GetLanguage()
+end
+
+--- The .toc Version of the pack narration plays from, as the pack registered it, or "none" with
+--- no pack: what a report says the player was hearing, so the site can tell them a newer pack is out.
+function SpokenPlaces:GetPackVersion()
+	local pack = self:GetActiveAudioPack()
+	return pack and pack.packVersion or "none"
 end
 
 -- The button the player shows under a lore clip: this addon's own Report, told which
@@ -463,7 +548,7 @@ local ACTIONS = {
 			-- Filed under the voice language, not the pack the clip came from: an entry the
 			-- active pack lacks plays the English fallback, and "no German" belongs beside
 			-- the German entry.
-			SpokenPlaces:ShowReport(clip.mapID, clip.areaKey, SpokenPlaces:GetVoiceLanguage())
+			SpokenPlaces:ShowReport(clip.mapID, clip.areaKey, SpokenPlaces:GetVoiceLanguage(), clip)
 		end,
 	}
 }
@@ -518,8 +603,7 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 	local words = spoken or (not voiced and self:PackLoreText(mapID, areaKey, language)) or (entry and entry.full)
 	-- Captions set a font file, which has none of the font object's fallbacks: lore in a script
 	-- the client's file cannot draw names the file that can. Otherwise the window's own is kept.
-	local font = self.FontFor and self:FontFor(GameFontNormal, language)
-	if font == GameFontNormal:GetFont() then font = nil end
+	local font = Spoken:ClipFont(language, self)
 	-- An area is headed by the zone Azeroth's Compendium lists it in: Razorfen Downs by The Barrens,
 	-- where its entrance is, and Strahnbrad by Alterac Mountains, their stories kept under Thousand
 	-- Needles and Hillsbrad Foothills.
@@ -529,7 +613,9 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 		path = path,
 		length = length,
 		fileName = fileName,
-		pack = pack,
+		-- The pack it plays from and its voice, which a report names.
+		packFolder = pack.addon,
+		voice = pack.voice,
 		mapID = mapID,
 		areaKey = areaKey,
 		present = {
@@ -587,7 +673,7 @@ end
 -- saying anything at all.
 function SpokenPlaces:DescribeMissingAudio()
 	if #self:GetAudioPacks() == 0 then
-		return "no voice pack installed -- get Spoken Audio: Places and Bosses to hear the lore read aloud"
+		return "no voice pack installed -- get Spoken Audio: Places to hear the lore read aloud"
 	end
 	return "no narration for this entry in the installed voice pack yet"
 end

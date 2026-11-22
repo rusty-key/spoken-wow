@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { langName, type Lang } from "@/lib/lang";
-import type { ApiToken, TokenAccess } from "@/lib/tokens/types";
+import { accessLabel, type ApiToken, type TokenAccess } from "@/lib/tokens/types";
 
 import { useApiTokens } from "./useApiTokens";
 
@@ -15,23 +15,36 @@ function dateInDays(days: number): string {
   return new Date(Date.now() + days * DAY_MS).toISOString().slice(0, 10);
 }
 
+/** A language where the person holds `text` or `regenerate`, either of which backs text access. */
+export type TokenLang = { lang: Lang; generate: boolean };
+
 const SELECT = "border-input bg-background h-9 rounded-md border px-2 text-sm";
 
 /**
- * A text maintainer's API tokens. A new token is drawn once, from the response that made it,
+ * A maintainer's API tokens. A new token is drawn once, from the response that made it,
  * and leaving the page loses it: nothing can read it back.
  */
-export default function ApiTokenSection({ langs, initial }: { langs: Lang[]; initial: ApiToken[] }) {
+export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]; initial: ApiToken[] }) {
   const { tokens, setTokens, busy, error, run, revoke } = useApiTokens(
     initial,
     (id) => `/api/profile/tokens/${id}`,
   );
   const [label, setLabel] = useState("");
-  const [lang, setLang] = useState<Lang>(langs[0]);
+  const [lang, setLang] = useState<Lang>(langs[0].lang);
   const [access, setAccess] = useState<TokenAccess>("read");
+  const [generate, setGenerate] = useState(false);
   const [expires, setExpires] = useState(() => dateInDays(90));
   const [created, setCreated] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const chosen = langs.find((entry) => entry.lang === lang) ?? langs[0];
+
+  function chooseLang(code: Lang) {
+    const next = langs.find((entry) => entry.lang === code) ?? langs[0];
+    setLang(code);
+    if (!next.generate) setGenerate(false);
+    // With generate gone, "No text" would leave nothing to create.
+    if (!next.generate && access === "none") setAccess("read");
+  }
 
   const create = () =>
     run(async () => {
@@ -40,7 +53,7 @@ export default function ApiTokenSection({ langs, initial }: { langs: Lang[]; ini
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // The end of the chosen day, so a token set to expire today is not already dead.
-        body: JSON.stringify({ label, lang, access, expiresAt: `${expires}T23:59:59Z` }),
+        body: JSON.stringify({ label, lang, access, generate, expiresAt: `${expires}T23:59:59Z` }),
       });
       const body = (await response.json()) as { token?: string; row?: ApiToken; error?: string };
       if (!response.ok || !body.token || !body.row) throw new Error(body.error ?? "could not create that token");
@@ -60,8 +73,12 @@ export default function ApiTokenSection({ langs, initial }: { langs: Lang[]; ini
       <h2 className="mb-1 font-medium">API tokens</h2>
       <p className="text-muted-foreground mb-4 text-sm">
         Lets a script or an agent read or change text in one language on your behalf. Point it at{" "}
-        <code>/api/v1</code>. Writes go live at once, under your name. A token stops working at its
-        expiry, when revoked, or when you stop being a text maintainer in its language.
+        <code>/api/v1</code>. Writes go live at once, under your name. If you are a text maintainer
+        in the token's language, it writes the original text; if not, it writes only your team's
+        overrides. A token stops working at its expiry, when revoked, or when you hold neither the
+        text grant nor the right to regenerate in its language. A generate token also queues audio,
+        which spends your own ElevenLabs or fish.audio key, and can no longer queue audio once you
+        lose the right to regenerate in its language.
       </p>
 
       {error && (
@@ -87,8 +104,8 @@ export default function ApiTokenSection({ langs, initial }: { langs: Lang[]; ini
         </label>
         <label className="flex flex-col gap-1">
           Language
-          <select value={lang} onChange={(e) => setLang(e.target.value as Lang)} className={SELECT}>
-            {langs.map((code) => (
+          <select value={lang} onChange={(e) => chooseLang(e.target.value as Lang)} className={SELECT}>
+            {langs.map(({ lang: code }) => (
               <option key={code} value={code}>
                 {langName(code)}
               </option>
@@ -98,9 +115,19 @@ export default function ApiTokenSection({ langs, initial }: { langs: Lang[]; ini
         <label className="flex flex-col gap-1">
           Access
           <select value={access} onChange={(e) => setAccess(e.target.value as TokenAccess)} className={SELECT}>
+            <option value="none">No text</option>
             <option value="read">Read</option>
             <option value="write">Read and write</option>
           </select>
+        </label>
+        <label className="flex items-center gap-2 pb-2">
+          <input
+            type="checkbox"
+            checked={generate}
+            disabled={!chosen.generate}
+            onChange={(e) => setGenerate(e.target.checked)}
+          />
+          Generate audio on my key
         </label>
         <label className="flex flex-col gap-1">
           Expires
@@ -113,7 +140,7 @@ export default function ApiTokenSection({ langs, initial }: { langs: Lang[]; ini
             className="w-40"
           />
         </label>
-        <Button onClick={create} disabled={busy || !label.trim() || !expires}>
+        <Button onClick={create} disabled={busy || !label.trim() || !expires || (access === "none" && !generate)}>
           Create token
         </Button>
       </div>
@@ -125,7 +152,8 @@ export default function ApiTokenSection({ langs, initial }: { langs: Lang[]; ini
               <span className="font-medium">{token.label}</span>
               <span className="text-muted-foreground font-mono">…{token.hint}</span>
               <span>{langName(token.lang)}</span>
-              <span>{token.access}</span>
+              <span>{accessLabel(token)}</span>
+              {token.generate && <span>generate</span>}
               <span className="text-muted-foreground">expires {token.expiresAt.slice(0, 10)}</span>
               <span className="text-muted-foreground">
                 {token.lastUsedAt ? `last used ${token.lastUsedAt.slice(0, 10)}` : "never used"}
