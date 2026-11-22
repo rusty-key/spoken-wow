@@ -6,7 +6,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 - **The player's controls now read Skip Backward, Stop or Replay, Skip Forward and Eject,** with
   Eject stopping all narration and clearing the queue like the minimap menu; Skip Forward greys out
-  when no line is waiting behind the current one.
+  when no line is waiting behind the current one. The minimap menu now offers Skip Backward too.
   *([anon1231823](https://github.com/anon1231823))*
 
 - **Queue counts pulse without an error when a line is added while Spoken is stopped.** *([anon1231823](https://github.com/anon1231823))*
