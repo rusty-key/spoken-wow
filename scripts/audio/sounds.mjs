@@ -213,6 +213,7 @@ async function writeTakeText() {
   }
   await writeFile(join(paths.out, "take-text.json"), `${JSON.stringify(texts)}\n`);
   await writeLineText(rows);
+  await writeQuestTitles();
 }
 
 // Every current line's words, recorded or not, so a quest page shows a line in the pack's language
@@ -223,6 +224,21 @@ async function writeLineText(rows) {
   const texts = {};
   for (const [stem, { text }] of currentLines(rows)) if (text) texts[stem] = writtenPlayerTokens(text);
   await writeFile(join(paths.out, "line-text.json"), `${JSON.stringify(texts)}\n`);
+}
+
+// The quests' titles in the language, for the Compendium: a client knows only the titles of quests
+// it has shown, and only in its own language.
+async function writeQuestTitles() {
+  if (lang === BASE_LANG) return;
+  const titles = Object.fromEntries(
+    psql(`select "entityId", to_json("name")::text from "entity_name"
+           where "kind" = 'quest' and "lang" = :'lang' and "isCurrent" and "name" <> ''
+           order by "entityId"`).map((row) => {
+      const [id, name] = row.split("\t");
+      return [id, JSON.parse(name)];
+    }),
+  );
+  await writeFile(join(paths.out, "quest-titles.json"), `${JSON.stringify(titles)}\n`);
 }
 
 /** The takes the folder holds, for a staged release's review; nothing without SPOKEN_SELECTED_TAKES. */

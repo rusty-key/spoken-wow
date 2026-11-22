@@ -72,6 +72,7 @@ local LOAD_ALL_MODULES = true
 ---@field WordTimesByFileName? table<string, string> Maps sound filenames to when each word of their line starts, packed as clip.present.timings takes them
 ---@field TextByFileName? table<string, string> Maps sound filenames to the words their takes were voiced from
 ---@field LineTextByFileName? table<string, string> Maps the filenames of lines with no take to their words
+---@field TitleByQuestID? table<number, string> Maps Quest ID to its title in the pack's language
 ---@field QuestFileLookupByNPCID? table<string, table<number, string>> Maps a quest line's filename and its giver's Creature ID to the line in that giver's own voice, where it differs
 ---@field QuestFileLookupByObjectID? table<string, table<number, string>> Maps a quest line's filename and its giver's GameObject ID to the line in that giver's own voice, where it differs
 ---@field GossipFileLookupByNPCSex? table<number, table<number, table<string, string>>> Maps a split Creature ID, the sex it is drawn as (UnitSex) and a gossip line's hash to the file that sex hears
@@ -1217,6 +1218,18 @@ function DataModules:LineIds(fileName)
     return { id }
 end
 
+local function PackEntry(self, language, field, keys)
+    for _, module in self:GetModules() do
+        local entries = module.METADATA.Language == language and module[field]
+        if entries then
+            for _, key in ipairs(keys) do
+                if entries[key] then return entries[key] end
+            end
+        end
+    end
+    return nil
+end
+
 --- A line's words from a voice pack in `language` that did not play it: a Polish pack's under an
 --- English voice. By the file that played and the line's own, each for the player's sex first.
 local function PackWords(self, soundData, language, field)
@@ -1225,15 +1238,7 @@ local function PackWords(self, soundData, language, field)
         table.insert(names, self:AddPlayerGenderToFilename(name))
         table.insert(names, name)
     end
-    for _, module in self:GetModules() do
-        local texts = module.METADATA.Language == language and module[field]
-        if texts then
-            for _, name in ipairs(names) do
-                if texts[name] then return texts[name] end
-            end
-        end
-    end
-    return nil
+    return PackEntry(self, language, field, names)
 end
 
 --- A line's words in the Text Language the player chose where the recording playing is in another:
@@ -1262,6 +1267,14 @@ function DataModules:TextPackText(soundData, language)
     local written = PackWords(self, soundData, language, "LineTextByFileName")
     if written then return Utils:FillPlayerTokens(written), language end
     return nil
+end
+
+--- Nil unless `language` is the one being read: only then does a pack build its table.
+---@param questID number
+---@param language string
+---@return string|nil title
+function DataModules:PackTitle(questID, language)
+    return PackEntry(self, language, "TitleByQuestID", { questID })
 end
 
 function DataModules:AddPlayerGenderToFilename(fileName)
