@@ -4,6 +4,8 @@ Spoken Launcher until 0.1.2, when it became Spoken Manager.
 
 ## Unreleased
 
+- **The Manager checks for updates every 30 minutes while it runs**, under Check for Updates
+  Automatically in Settings. *([anon1231823](https://github.com/anon1231823))*
 - **Send Now in Settings > Sharing says what it did:** how many lines it sent, or that there was
   nothing new to send. *([rusty-key](https://github.com/rusty-key))*
 

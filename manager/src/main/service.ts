@@ -65,6 +65,8 @@ export interface ServiceOptions {
 /** A catalog fetched less than this long ago is not fetched again unless forced. */
 const FRESH_MS = 5 * 60 * 1000
 
+export const UPDATE_CHECK_MS = 30 * 60 * 1000
+
 /** How often the collected-lines files are looked at while sharing is on. */
 export const SHARE_POLL_MS = 5 * 60 * 1000
 /** The waits after the 1st, 2nd, 3rd and later failed sends in a row. */
@@ -93,6 +95,7 @@ export class ManagerService {
   private shareFailures = 0
   private shareRetryAt = 0
   private shareTimer: ReturnType<typeof setInterval> | null = null
+  private updateTimer: ReturnType<typeof setInterval> | null = null
   /** share.json, read once and kept: every poll would otherwise parse up to LEDGER_CAP hashes. */
   private ledger: ShareLedger
 
@@ -194,6 +197,27 @@ export class ManagerService {
   }
 
   // ---------------------------------------------------------------- catalog
+
+  startPeriodicRefresh(): void {
+    if (this.updateTimer) return
+    this.updateTimer = setInterval(() => void this.backgroundCheck(), UPDATE_CHECK_MS)
+    this.updateTimer.unref?.()
+    void this.backgroundCheck()
+  }
+
+  /** Unlike a manual check, keeps skipping automatic updates the player cancelled or that failed. */
+  async backgroundCheck(): Promise<void> {
+    await this.ready
+    const { checkOnStart, autoUpdateContent } = this.settings
+    if (!checkOnStart && !autoUpdateContent) return
+    const [catalog, community] = await Promise.allSettled([
+      this.refreshCatalog(false),
+      checkOnStart ? this.refreshCommunity(false) : null
+    ])
+    if (catalog.status === 'rejected') log('Catalog refresh failed:', catalog.reason)
+    if (community.status === 'rejected') log('Community refresh failed:', community.reason)
+    if (catalog.status === 'fulfilled') await this.autoUpdate()
+  }
 
   refreshCatalog(force = false): Promise<Catalog> {
     if (this.refreshing) return this.refreshing
