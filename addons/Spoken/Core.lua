@@ -525,7 +525,7 @@ local function RegisterSlashCommand()
     -- page. The words before the colon are the command's own.
     local function Help()
         local lines = {
-            { "/sp replay", L.BIND_PLAYPAUSE },
+            { "/sp replay", L.BIND_STOP_REPLAY },
             { "/sp skip", L.BIND_SKIP_FORWARD },
             { "/sp previous", L.BIND_SKIP_BACKWARD },
             { "/sp stopall", L.BIND_EJECT },

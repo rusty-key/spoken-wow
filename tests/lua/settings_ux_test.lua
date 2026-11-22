@@ -781,7 +781,7 @@ function _G.GetBindingText(key) return key end
 local ctrl = false
 function _G.IsControlKeyDown() return ctrl end
 Options:UpdateRows()
-local play = Row(home, L.BIND_PLAYPAUSE)
+local play = Row(home, L.BIND_STOP_REPLAY)
 Expect("a key not set says so", play.message, L.OPT_KEY_NONE)
 Expect("...and its field takes no keys until clicked: one with a key script gets them all",
     play.scripts.OnKeyDown, nil)

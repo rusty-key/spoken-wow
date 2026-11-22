@@ -16,7 +16,7 @@ local ENTRY_ALIASES = { Previous = "SkipBackward", Skip = "SkipForward", Stop = 
 -- Compendium and the settings. `words` is the key of the entry's string, read as the menu is built:
 -- an interface pack's strings arrive after this file loads (Interface.lua).
 local PLAYER_ENTRIES = {
-    { id = "PlayPause", words = "BIND_PLAYPAUSE", order = 1, onClick = function() SoundQueue:TogglePauseQueue() end },
+    { id = "PlayPause", words = "BIND_STOP_REPLAY", order = 1, onClick = function() SoundQueue:TogglePauseQueue() end },
     { id = "SkipBackward", words = "BIND_SKIP_BACKWARD", order = 2, onClick = function() SoundQueue:Previous() end },
     { id = "SkipForward",  words = "BIND_SKIP_FORWARD",  order = 3, onClick = function() SoundQueue:Skip() end },
     { id = "Eject",        words = "BIND_EJECT",          order = 4, onClick = function() SoundQueue:RemoveAllSoundsFromQueue() end },
