@@ -38,9 +38,12 @@ describe("textHints", () => {
     expect(textHints("Приветствую, |3-6($c).", "ruRU")).toEqual([
       "undeclined |3-6($c) — won't be voiced until Player words has its case",
     ]);
+  });
+
+  it("names a declension escape around a word as client-filled, since no case declines it", () => {
     // q:93319:complete, the contributor's class in place of $c.
     expect(textHints("Спасибо, |3-6(Охотник).", "ruRU")).toEqual([
-      "undeclined |3-6(Охотник) — won't be voiced until Player words has its case",
+      "client-filled |3-6(Охотник) — won't be voiced; put $c, $n or $r back inside",
     ]);
   });
 

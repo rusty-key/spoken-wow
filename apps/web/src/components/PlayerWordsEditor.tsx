@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +12,10 @@ import { send } from "@/lib/send";
 
 type Reader = "m" | "f";
 type Field = "name" | "race" | "nameGenitive" | "classPlural";
-type CaseRow = { n: string; name: string; race: string };
-type Draft = Record<Reader, Record<Field, string> & { cases: CaseRow[] }> & { quantity: string };
+type Declined = Required<DeclinedForms[string]>;
+/** One case number for both readers, so a case cannot be given to one and forgotten for the other. */
+type CaseRow = { n: string } & Record<Reader, Declined>;
+type Draft = Record<Reader, Record<Field, string>> & { cases: CaseRow[]; quantity: string };
 
 const FIELDS: { key: Field; label: string; hint: string; required: boolean }[] = [
   { key: "name", label: "Name and class ($N, $C)", hint: "adventurer", required: true },
@@ -22,37 +24,58 @@ const FIELDS: { key: Field; label: string; hint: string; required: boolean }[] =
   { key: "classPlural", label: "Class plural ($cs)", hint: "Optional: French's aventuriers", required: false },
 ];
 
-const READERS: { key: Reader; label: string }[] = [
-  { key: "m", label: "Male reader, and every line that does not branch" },
-  { key: "f", label: "Female reader" },
+const DECLINED: { key: keyof Declined; label: string }[] = [
+  { key: "name", label: "$N, $C" },
+  { key: "race", label: "$R" },
 ];
 
-function draftForms(forms: PlayerForms | undefined): Draft[Reader] {
+const READERS: { key: Reader; other: Reader; label: string; aria: string }[] = [
+  { key: "m", other: "f", label: "Male", aria: "male" },
+  { key: "f", other: "m", label: "Female", aria: "female" },
+];
+
+function draftFields(forms: PlayerForms | undefined): Record<Field, string> {
   return {
     name: forms?.name ?? "",
     race: forms?.race ?? "",
     nameGenitive: forms?.nameGenitive ?? "",
     classPlural: forms?.classPlural ?? "",
-    cases: Object.entries(forms?.cases ?? {}).map(([n, declined]) => ({
-      n,
-      name: declined.name ?? "",
-      race: declined.race ?? "",
-    })),
   };
 }
 
-function draftOf(words: PlayerWords | null): Draft {
-  return { m: draftForms(words?.m), f: draftForms(words?.f), quantity: words?.quantity ?? "" };
+function draftCases(words: PlayerWords | null): CaseRow[] {
+  const numbers = new Set([...Object.keys(words?.m.cases ?? {}), ...Object.keys(words?.f.cases ?? {})]);
+  const declined = (reader: Reader, n: string): Declined => {
+    const forms = words?.[reader].cases?.[n];
+    return { name: forms?.name ?? "", race: forms?.race ?? "" };
+  };
+  return [...numbers].sort().map((n) => ({ n, m: declined("m", n), f: declined("f", n) }));
 }
 
-function formsOf(draft: Draft[Reader]): PlayerForms {
-  const { cases: rows, ...words } = draft;
-  const cases: DeclinedForms = {};
-  for (const row of rows) {
-    if (row.n.trim()) cases[row.n.trim()] = { name: row.name, race: row.race };
-  }
-  return { ...words, cases };
+function draftOf(words: PlayerWords | null): Draft {
+  return {
+    m: draftFields(words?.m),
+    f: draftFields(words?.f),
+    cases: draftCases(words),
+    quantity: words?.quantity ?? "",
+  };
 }
+
+function formsOf(draft: Draft, reader: Reader): PlayerForms {
+  const cases: DeclinedForms = {};
+  for (const row of draft.cases) {
+    if (row.n.trim()) cases[row.n.trim()] = row[reader];
+  }
+  return { ...draft[reader], cases };
+}
+
+/** A case number on two rows: words are stored by number, so the second would silently replace the first. */
+function repeatedCase(cases: CaseRow[]): string | undefined {
+  const numbers = cases.map((row) => row.n.trim());
+  return numbers.find((n, at) => n && numbers.indexOf(n) !== at);
+}
+
+const emptyCase = (): CaseRow => ({ n: "", m: { name: "", race: "" }, f: { name: "", race: "" } });
 
 /** A language's player words, for its text maintainers: what every recording says for the reader. */
 export default function PlayerWordsEditor({
@@ -78,13 +101,19 @@ export default function PlayerWordsEditor({
     setSaved(false);
     setWords(change);
   };
-  const updateCases = (reader: Reader, change: (rows: CaseRow[]) => CaseRow[]) =>
-    update((was) => ({ ...was, [reader]: { ...was[reader], cases: change(was[reader].cases) } }));
+  const setWord = (reader: Reader, field: Field, value: string) =>
+    update((was) => ({ ...was, [reader]: { ...was[reader], [field]: value } }));
+  const updateCases = (change: (cases: CaseRow[]) => CaseRow[]) =>
+    update((was) => ({ ...was, cases: change(was.cases) }));
+  const patchCase = (at: number, patch: (row: CaseRow) => Partial<CaseRow>) =>
+    updateCases((cases) => cases.map((row, index) => (index === at ? { ...row, ...patch(row) } : row)));
 
   async function save(next: Draft | null) {
+    const twice = next && repeatedCase(next.cases);
+    if (twice) return setError(`Case ${twice} is listed twice.`);
     setBusy(true);
     setError(null);
-    const body = next && { m: formsOf(next.m), f: formsOf(next.f), quantity: next.quantity };
+    const body = next && { m: formsOf(next, "m"), f: formsOf(next, "f"), quantity: next.quantity };
     const result = await send(withLang(lang, "/api/languages/player-words"), "PUT", { words: body });
     setBusy(false);
     if (!result.ok) return setError(result.error);
@@ -95,43 +124,107 @@ export default function PlayerWordsEditor({
 
   return (
     <form
-      className="flex max-w-xl flex-col gap-6"
+      className="flex max-w-3xl flex-col gap-6"
       onSubmit={(event) => {
         event.preventDefault();
         save(words);
       }}
     >
-      {READERS.map((reader) => (
-        <fieldset key={reader.key} className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-semibold">{reader.label}</legend>
-          {FIELDS.map((field) => (
-            <WordRow
-              key={field.key}
-              label={field.label}
-              hint={field.hint}
-              required={field.required}
-              value={words[reader.key][field.key]}
-              onChange={(value) =>
-                update((was) => ({ ...was, [reader.key]: { ...was[reader.key], [field.key]: value } }))
-              }
-            />
-          ))}
-          <CaseRows
-            rows={words[reader.key].cases}
-            onChange={(change) => updateCases(reader.key, change)}
-          />
-        </fieldset>
-      ))}
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-semibold">Every reader</legend>
-        <WordRow
-          label="A writ's count ($2oa)"
-          hint="Optional: an order of"
-          required={false}
+      <p className="text-muted-foreground text-xs">A line that does not branch on the reader says the male words.</p>
+      <div className="grid grid-cols-[14rem_1fr_1fr] items-center gap-x-3 gap-y-2 text-sm">
+        <span />
+        {READERS.map((reader) => (
+          <span key={reader.key} className="font-semibold">
+            {reader.label}
+          </span>
+        ))}
+        {FIELDS.map((field) => (
+          <Fragment key={field.key}>
+            <span>{field.label}</span>
+            {READERS.map((reader) => (
+              <Input
+                key={reader.key}
+                aria-label={`${field.label}, ${reader.aria}`}
+                required={field.required}
+                maxLength={PLAYER_WORD_LIMIT}
+                placeholder={field.hint}
+                value={words[reader.key][field.key]}
+                onChange={(event) => setWord(reader.key, field.key, event.target.value)}
+              />
+            ))}
+          </Fragment>
+        ))}
+
+        <span className="col-span-3 mt-4 font-semibold">Declined forms (|3-N)</span>
+        {words.cases.map((row, index) => (
+          <Fragment key={index}>
+            <div className="col-span-3 flex items-center gap-2">
+              <label className="flex items-center gap-2">
+                Case
+                <Input
+                  className="w-14"
+                  required
+                  inputMode="numeric"
+                  pattern="[1-9]"
+                  maxLength={1}
+                  placeholder="6"
+                  value={row.n}
+                  onChange={(event) => {
+                    const n = event.target.value;
+                    patchCase(index, () => ({ n }));
+                  }}
+                />
+              </label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => updateCases((cases) => cases.filter((_, at) => at !== index))}
+              >
+                Remove
+              </Button>
+            </div>
+            {DECLINED.map((kind) => (
+              <Fragment key={kind.key}>
+                <span className="pl-4">{kind.label}</span>
+                {READERS.map((reader) => (
+                  <Input
+                    key={reader.key}
+                    aria-label={`Case ${row.n || "N"} ${kind.label}, ${reader.aria}`}
+                    // A word for one reader only leaves the other reader's lines unvoiced.
+                    required={row[reader.other][kind.key].trim() !== ""}
+                    maxLength={PLAYER_WORD_LIMIT}
+                    value={row[reader.key][kind.key]}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      patchCase(index, (was) => ({ [reader.key]: { ...was[reader.key], [kind.key]: value } }));
+                    }}
+                  />
+                ))}
+              </Fragment>
+            ))}
+          </Fragment>
+        ))}
+        <div className="col-span-3">
+          <Button type="button" variant="outline" size="sm" onClick={() => updateCases((cases) => [...cases, emptyCase()])}>
+            Add a case
+          </Button>
+        </div>
+
+        <span className="col-span-3 mt-4 font-semibold">Every reader</span>
+        <span>A writ&apos;s count ($2oa)</span>
+        <Input
+          aria-label="A writ's count ($2oa)"
+          className="col-span-2"
+          maxLength={PLAYER_WORD_LIMIT}
+          placeholder="Optional: an order of"
           value={words.quantity}
-          onChange={(value) => update((was) => ({ ...was, quantity: value }))}
+          onChange={(event) => {
+            const value = event.target.value;
+            update((was) => ({ ...was, quantity: value }));
+          }}
         />
-      </fieldset>
+      </div>
       {error && (
         <p role="alert" className="text-destructive text-sm">
           {error}
@@ -149,84 +242,5 @@ export default function PlayerWordsEditor({
         )}
       </div>
     </form>
-  );
-}
-
-/** Declined forms: the word a `|3-N($c)` or `|3-N($r)` says, by its case number N. */
-function CaseRows({
-  rows,
-  onChange,
-}: {
-  rows: CaseRow[];
-  onChange: (change: (rows: CaseRow[]) => CaseRow[]) => void;
-}) {
-  const set = (at: number, change: Partial<CaseRow>) =>
-    onChange((was) => was.map((row, index) => (index === at ? { ...row, ...change } : row)));
-  return (
-    <div className="flex flex-col gap-2 text-sm">
-      <span>Declined forms (|3-N)</span>
-      {rows.map((row, index) => (
-        <div key={index} className="grid grid-cols-[4rem_1fr_1fr_auto] items-center gap-2">
-          <Input
-            aria-label="Case"
-            required
-            inputMode="numeric"
-            pattern="[1-9]"
-            maxLength={1}
-            placeholder="6"
-            value={row.n}
-            onChange={(event) => set(index, { n: event.target.value })}
-          />
-          <Input
-            aria-label="Name and class in this case"
-            maxLength={PLAYER_WORD_LIMIT}
-            placeholder="$N, $C"
-            value={row.name}
-            onChange={(event) => set(index, { name: event.target.value })}
-          />
-          <Input
-            aria-label="Race in this case"
-            maxLength={PLAYER_WORD_LIMIT}
-            placeholder="$R"
-            value={row.race}
-            onChange={(event) => set(index, { race: event.target.value })}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => onChange((was) => was.filter((_, at) => at !== index))}
-          >
-            Remove
-          </Button>
-        </div>
-      ))}
-      <div>
-        <Button type="button" variant="outline" size="sm" onClick={() => onChange((was) => [...was, { n: "", name: "", race: "" }])}>
-          Add a case
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function WordRow(props: {
-  label: string;
-  hint: string;
-  required: boolean;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="grid grid-cols-[14rem_1fr] items-center gap-3 text-sm">
-      <span>{props.label}</span>
-      <Input
-        required={props.required}
-        maxLength={PLAYER_WORD_LIMIT}
-        placeholder={props.hint}
-        value={props.value}
-        onChange={(event) => props.onChange(event.target.value)}
-      />
-    </label>
   );
 }

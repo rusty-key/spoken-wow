@@ -74,8 +74,11 @@ const WORDS = {
   zhTW: { m: { name: "冒險者", race: "旅行者" }, f: { name: "冒險者", race: "旅行者" } },
 };
 
-// The database's words for languages beyond WORDS, by code. On globalThis because the site loads
-// this module once per bundle layer.
+/** The client's declension escape, `|3-6(`, whose case has no word when it reaches the gate. */
+export const DECLENSION = /\|3-\d+\(/;
+
+// The words in each language's row, by code, built-ins included. On globalThis because the site
+// loads this module once per bundle layer.
 const registeredKey = Symbol.for("spoken.playerWords");
 const registered = (globalThis[registeredKey] ??= { byLang: new Map() });
 
@@ -90,6 +93,17 @@ export function hasRegisteredPlayerWords(lang) {
 
 export function builtinPlayerWordsOf(lang) {
   return hasBuiltinPlayerWords(lang) ? WORDS[lang] : null;
+}
+
+/** Whether `words` say what Spoken's own words for `lang` say. */
+export function isBuiltinPlayerWords(lang, words) {
+  const builtin = builtinPlayerWordsOf(lang);
+  return builtin !== null && samePlayerWords(words, builtin);
+}
+
+/** Whether two sets of words say the same, once trimmed and stripped of empty words. */
+export function samePlayerWords(a, b) {
+  return JSON.stringify(validPlayerWords(a)) === JSON.stringify(validPlayerWords(b));
 }
 
 export function playerWordsOf(lang) {
@@ -194,7 +208,7 @@ const ALWAYS_CAPITAL = new Set(["deDE"]);
 const GLUED = String.raw`(?![\p{sc=Han}\p{sc=Hangul}\p{sc=Hiragana}\p{sc=Katakana}])\p{L}`;
 // Not followed by a glued letter: see "glued" above.
 // Not inside a declension escape: one without its case's word must keep its `$` for the gate.
-const UNDECLINED = String.raw`(?<!\|3-\d+\()`;
+const UNDECLINED = String.raw`(?<!${DECLENSION.source})`;
 const TOKEN = new RegExp(String.raw`${UNDECLINED}\$([NnCcRr])(?!${GLUED})`, "gu");
 const DECLINED = /\|3-(\d+)\(\$([NnCcRr])\)/g;
 // Not $R: "des Reisenden" is no glued s, so "$Rs" stays refused.

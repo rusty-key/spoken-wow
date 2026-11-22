@@ -16,7 +16,7 @@ import { spokenFromTemplate } from "./tokens";
 
 // Up to the next space, so a lost `;` names the branch rather than the rest of the line. Not
 // inside a declension escape, which gets its own hint.
-const LEFTOVER = /(?<!\|3-\d+\()\$\S{0,30}/g;
+const LEFTOVER = new RegExp(String.raw`(?<!${DECLENSION.source})\$\S{0,30}`, "g");
 const DECLINED = new RegExp(String.raw`${DECLENSION.source}[^)]{0,30}\)?`, "g");
 // Blizzard's English writes "Hmm. . .it says", German "Hm ... vielleicht": an ellipsis, not a gap.
 const SPACED_ELLIPSIS = /\.(?:[ \u00a0]?\.){2,}/g;
@@ -36,7 +36,12 @@ export function textHints(text: string, locale: string): string[] {
   const hints = new Set<string>();
   for (const token of judged.match(LEFTOVER) ?? []) hints.add(`unspoken token ${token} — won't be voiced`);
   for (const escape of judged.match(DECLINED) ?? []) {
-    hints.add(`undeclined ${escape} — won't be voiced until Player words has its case`);
+    // Only a token inside is declined; a word inside is the contributor's own class or race.
+    hints.add(
+      escape.includes("($")
+        ? `undeclined ${escape} — won't be voiced until Player words has its case`
+        : `client-filled ${escape} — won't be voiced; put $c, $n or $r back inside`,
+    );
   }
   // Named even beside a token: fixing only the token would still leave the line refused.
   if (/[<>]/.test(judged)) hints.add("unspeakable < or > — won't be voiced");

@@ -31,6 +31,12 @@ export const hasBuiltinPlayerWords = words.hasBuiltinPlayerWords as (lang: strin
 
 export const hasRegisteredPlayerWords = words.hasRegisteredPlayerWords as (lang: string) => boolean;
 
+export const DECLENSION = words.DECLENSION as RegExp;
+
+export const samePlayerWords = words.samePlayerWords as (a: unknown, b: unknown) => boolean;
+
+export const isBuiltinPlayerWords = words.isBuiltinPlayerWords as (lang: string, value: unknown) => boolean;
+
 export const builtinPlayerWordsOf = words.builtinPlayerWordsOf as (lang: string) => PlayerWords | null;
 
 export const playerWordsOf = words.playerWordsOf as (lang: string) => PlayerWords | null;

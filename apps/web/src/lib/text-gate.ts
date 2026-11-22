@@ -22,7 +22,7 @@
  */
 
 import { BASE_LANG, type Lang } from "./lang";
-import { speakPlayerTokens } from "./player-words";
+import { DECLENSION, speakPlayerTokens } from "./player-words";
 import { isModelVoice } from "./voices/voices";
 
 /** Kept as a string, character for character, so the two files can be diffed by eye. */
@@ -45,7 +45,7 @@ export function withoutDirections(text: string, spaceBefore = false): string {
   return text.replace(spaceBefore ? DIRECTION_SPACED : DIRECTION, "");
 }
 
-export const DECLENSION = /\|3-\d+\(/;
+export { DECLENSION };
 
 export function hasInvalidChars(text: string): boolean {
   const spoken = withoutDirections(text);
