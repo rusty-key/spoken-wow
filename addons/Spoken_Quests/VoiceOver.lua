@@ -227,9 +227,9 @@ local function MarkQuestSnapshotRead(event, questID)
     end
 end
 
--- With Read After Accepting on, an automatic read waits for QUEST_ACCEPTED or QUEST_TURNED_IN, the
--- newest page of each quest kept for each. A held read outlives its window by SNAPSHOT_LIFETIME,
--- because the server's answer to an accept or a turn-in arrives after the window has closed.
+-- With Read After Accepting on, an automatic read waits for QUEST_ACCEPTED or QUEST_TURNED_IN: the
+-- offer for the one, the reward page for the other, newest of each quest kept. A held read outlives
+-- its window by SNAPSHOT_LIFETIME, because the server's answer arrives after the window has closed.
 local heldReads = {}
 
 local function PruneHeldReads()
@@ -245,7 +245,10 @@ end
 local function HoldRead(soundData)
     PruneHeldReads()
     local event = EVENT_OF_SOUND[soundData.event]
-    -- A progress page followed by its reward page is one turn-in: only the reward page is read.
+    -- "Have you got the items?" is never what a player who handed the quest in wants to hear.
+    if event == "QUEST_PROGRESS" then
+        return
+    end
     local commit = event == "QUEST_DETAIL" and "accept" or "turnin"
     for i = #heldReads, 1, -1 do
         local held = heldReads[i]
@@ -256,16 +259,19 @@ local function HoldRead(soundData)
     table.insert(heldReads, { commit = commit, event = event, soundData = soundData })
 end
 
---- The quest `questID` was accepted (`commit` "accept") or handed in ("turnin"): its held reads
---- start, and its event snapshots are spent, or the replay after this would read them again.
+--- The quest `questID` was accepted (`commit` "accept") or handed in ("turnin"): its held read
+--- starts, and its event snapshots are spent, or the replay after this would read them again.
+--- With no `questID` (the Forever client hides it in instances and combat) the newest held read of
+--- that kind is the one the player just committed to.
 local function ReleaseHeldReads(commit, questID)
     PruneHeldReads()
-    for i = 1, #heldReads do
+    for i = #heldReads, 1, -1 do
         local held = heldReads[i]
-        if held and held.commit == commit and held.soundData.questID == questID then
+        local heldID = held.soundData.questID
+        if held.commit == commit and (not questID or heldID == questID) then
             table.remove(heldReads, i)
             for _, snapshot in ipairs(questSnapshots) do
-                if snapshot.event == held.event and snapshot.questID == questID then
+                if snapshot.event == held.event and snapshot.questID == heldID then
                     snapshot.dispatched = true
                 end
             end
@@ -688,8 +694,9 @@ function Addon:OnInitialize()
         if global.Compendium then global.Compendium.FoundOnly = nil end
     end
     self:FoldGreetingsHeardByGUID()
-    -- Read After Accepting replaced Read When Window Closes. Its players wanted the line after the
-    -- window, not during it, so they keep that; dropping the key alone would read on open again.
+    -- Read After Accepting replaced Read When Window Closes. Its players still hear the line after
+    -- the window, though no longer for a quest they declined; dropping the key alone would read on
+    -- open again.
     for _, profile in pairs(self.db.sv and self.db.sv.profiles or {}) do
         local audio = profile.Audio
         if audio and audio.ReadAfterClose ~= nil then
@@ -1066,6 +1073,8 @@ function Addon:OnInitialize()
         QUEST_ACCEPTED = { QUEST_DETAIL = true },
         QUEST_TURNED_IN = { QUEST_PROGRESS = true, QUEST_COMPLETE = true },
     }
+    -- Read After Accepting reads a hand-in's reward page, never its progress page.
+    local REWARD_ONLY = { QUEST_COMPLETE = true }
     self.questEventRecorderFrame = CreateFrame("Frame")
     for _, event in ipairs({ "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_FINISHED",
         "QUEST_ACCEPTED", "QUEST_TURNED_IN" }) do
@@ -1097,14 +1106,18 @@ function Addon:OnInitialize()
             elseif event == "QUEST_TURNED_IN" then
                 self:MarkQuestTurnedIn(questID)
             end
-            if type(questID) ~= "number" or questID == 0 then
+            local usableID = type(questID) == "number" and questID ~= 0 and questID or nil
+            if not self.dataModulesPending then
+                ReleaseHeldReads(event == "QUEST_ACCEPTED" and "accept" or "turnin", usableID)
+            end
+            if not usableID or self.dataModulesPending then
                 return
             end
-            if self.dataModulesPending then
-                return
+            local events = REPLAYED_ON[event]
+            if event == "QUEST_TURNED_IN" and self.db.profile.Audio.ReadAfterAccept then
+                events = REWARD_ONLY
             end
-            ReleaseHeldReads(event == "QUEST_ACCEPTED" and "accept" or "turnin", questID)
-            local succeeded, replayError = pcall(ReplayQuestSnapshots, event, questID, REPLAYED_ON[event])
+            local succeeded, replayError = pcall(ReplayQuestSnapshots, event, questID, events)
             if not succeeded then
                 Debug:Record("auto-watcher-error", tostring(replayError))
             end

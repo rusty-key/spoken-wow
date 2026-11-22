@@ -4,8 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **Read After Accepting replaces Read When Window Closes.** A quest reads once you accept or hand it
-  in, and quests you close without either stay quiet. *([anon1231823](https://github.com/anon1231823))*
+- **With Read After Accepting on, a quest reads once you accept or hand it in.** It replaces Read
+  When Window Closes. *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.12.1 — 2026-11-22
 

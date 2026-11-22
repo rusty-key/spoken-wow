@@ -270,6 +270,41 @@ CloseWindow()
 stub.Advance(3)
 Expect("read-after-accept leaves a turn-in walked away from quiet", "")
 
+-- Complete Quest clicked before the reward page was read: the hand-in reads the reward page alone,
+-- never the progress page's "have you got the items?".
+StartScenario()
+OpenOffer("QuestFrameProgressPanel", "QUEST_PROGRESS")
+stub.Advance(3)
+OpenOffer("QuestFrameRewardPanel", "QUEST_COMPLETE")
+stub.Advance(0.2)
+CloseWindow()
+stub.FireEvent("QUEST_TURNED_IN", afterAccept, 0, 0)
+stub.Advance(3)
+Expect("read-after-accept reads only the reward page of a quick hand-in",
+    string.format("%d-complete", afterAccept))
+
+-- The Forever client hides the quest ID in instances and combat: the accept or hand-in still
+-- releases what the player just committed to.
+StartScenario()
+OpenOffer()
+stub.Advance(3)
+CloseWindow()
+stub.Secrets(afterAccept)
+stub.FireEvent("QUEST_ACCEPTED", afterAccept)
+stub.Secrets()
+stub.Advance(3)
+Expect("read-after-accept reads an offer whose accept hides its quest ID", string.format("%d-accept", afterAccept))
+
+StartScenario()
+OpenOffer("QuestFrameRewardPanel", "QUEST_COMPLETE")
+stub.Advance(3)
+CloseWindow()
+stub.Secrets(afterAccept)
+stub.FireEvent("QUEST_TURNED_IN", afterAccept, 0, 0)
+stub.Secrets()
+stub.Advance(3)
+Expect("read-after-accept reads a hand-in that hides its quest ID", string.format("%d-complete", afterAccept))
+
 -- Stop When Window Closes does not cut a line that starts after its window: here the accept
 -- arrives before the close, as some clients send it.
 VO.Addon.db.profile.Audio.StopAudioOnDisengage = true
