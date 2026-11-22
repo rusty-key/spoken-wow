@@ -362,6 +362,11 @@ function MinimalPlayer:Dress()
     Transcript:SetStyle(look.words)
 end
 
+local function SetItemEnabled(item, on)
+    if on then item:Enable(); item.text:SetAlpha(1)
+    else item:Disable(); item.text:SetAlpha(.35) end
+end
+
 function MinimalPlayer:UpdateControls()
     if not self.clip then return end
     local paused = SoundQueue:IsPaused()
@@ -373,13 +378,10 @@ function MinimalPlayer:UpdateControls()
     self:Count(Waiting())
     local pausable = Actions.SetPausable(self.buttons)
     self.menuPlay.text:SetText(paused and L.REPLAY or L.STOP)
-    for _, button in ipairs({ self.menuPlay, self.menuSkip, self.menuStop }) do
-        if pausable then button:Enable(); button.text:SetAlpha(1)
-        else button:Disable(); button.text:SetAlpha(.35) end
+    for _, item in ipairs({ self.menuPlay, self.menuSkip, self.menuStop }) do
+        SetItemEnabled(item, pausable)
     end
-    local previous = Actions.SetPreviousable(self.previous)
-    if previous then self.menuPrevious:Enable(); self.menuPrevious.text:SetAlpha(1)
-    else self.menuPrevious:Disable(); self.menuPrevious.text:SetAlpha(.35) end
+    SetItemEnabled(self.menuPrevious, self.previous.canAct())
 end
 
 --- Puts the tail after the title: the title is cut short, not it.

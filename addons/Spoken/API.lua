@@ -854,11 +854,6 @@ function Spoken:GetNowPlaying()
     return SoundQueue:GetNowPlaying()
 end
 
---- The most recent line available to Previous, or nil when its short history is empty.
-function Spoken:GetPrevious()
-    return SoundQueue:GetPrevious()
-end
-
 function Spoken:CanPrevious()
     return SoundQueue:CanPrevious()
 end

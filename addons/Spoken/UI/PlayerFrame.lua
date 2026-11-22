@@ -419,7 +419,6 @@ function PlayerFrame:UpdateControls()
     self.tail:SetStopped(SoundQueue:IsPaused())
     self.tail:SetCount(Waiting())
     Actions.SetPausable(self.buttons)
-    Actions.SetPreviousable(self.previous)
     self:LayoutHeader()
 end
 

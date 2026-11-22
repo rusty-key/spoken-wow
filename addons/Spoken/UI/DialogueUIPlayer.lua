@@ -604,7 +604,6 @@ function Skin:UpdateControls(relayout)
     self.tail:SetStopped(paused)
     self:Count(Waiting())
     Actions.SetPausable(self.buttons)
-    Actions.SetPreviousable(self.previous)
     if relayout then self:LayoutControls() end
 end
 

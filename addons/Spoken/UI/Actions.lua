@@ -196,23 +196,17 @@ function Actions.SetPlayGlyph(button, state)
     button.state, button.playing = state, state == "stop"
 end
 
---- Dims and disables `buttons` while the line at the head cannot be stopped. Returns whether it can.
+--- Dims and disables `buttons` while the line at the head cannot be stopped, or for one with
+--- its own `canAct()`, while that says no. Returns whether the head can be stopped.
 function Actions.SetPausable(buttons)
     local pausable = SoundQueue:CanBePaused()
     for _, button in ipairs(buttons) do
-        button:SetAlpha(pausable and 1 or .4)
-        if pausable then button:Enable() else button:Disable() end
+        local on = pausable
+        if button.canAct then on = button.canAct() end
+        button:SetAlpha(on and 1 or .4)
+        if on then button:Enable() else button:Disable() end
     end
     return pausable
-end
-
---- Dims and disables the Previous button when the short playback history is empty or the head
---- cannot be stopped. Returns whether it can act.
-function Actions.SetPreviousable(button)
-    local available = SoundQueue:CanPrevious()
-    button:SetAlpha(available and 1 or .4)
-    if available then button:Enable() else button:Disable() end
-    return available
 end
 
 --- Skip the line playing, with the click a window's Skip makes.
@@ -228,51 +222,50 @@ function Actions.Previous()
     return previous
 end
 
---- Skip: the round button with the play glyph against a bar, the usual "next" mark.
-function Actions.SkipButton(parent, name)
-    local skip = Actions.RoundButton(parent, 10, name, true)
-    Actions.Glyph(skip.glyph, "play")
-    skip.glyph:ClearAllPoints()
-    skip.glyph:SetPoint("CENTER", -2, 0)
-    skip.bar = skip:CreateTexture(nil, "ARTWORK")
+-- Skip, or with `back` Previous: the play glyph against a bar, mirrored to point back.
+local function StepButton(parent, name, back)
+    local step = Actions.RoundButton(parent, 10, name, true)
+    Actions.Glyph(step.glyph, "play")
+    if back then step.glyph:SetTexCoord(PLAY_RIGHT, PLAY_LEFT, PLAY_TOP, PLAY_BOTTOM) end
+    step.glyph:ClearAllPoints()
+    step.glyph:SetPoint("CENTER", back and 2 or -2, 0)
+    step.bar = step:CreateTexture(nil, "ARTWORK")
     local P = SpokenLayout and SpokenLayout.Pixels
-    skip.bar:SetSize(P and P(skip, 2) or 2, P and P(skip, 9) or 9)
-    skip.bar:SetPoint("LEFT", skip.glyph, "RIGHT", 0, 0)
-    if skip.bar.SetColorTexture then skip.bar:SetColorTexture(1, 0.82, 0, 0.85) end
+    step.bar:SetSize(P and P(step, 2) or 2, P and P(step, 9) or 9)
+    if back then
+        step.bar:SetPoint("RIGHT", step.glyph, "LEFT", 0, 0)
+    else
+        step.bar:SetPoint("LEFT", step.glyph, "RIGHT", 0, 0)
+    end
+    if step.bar.SetColorTexture then step.bar:SetColorTexture(1, 0.82, 0, 0.85) end
     -- Squared once the bar exists, so EllesmereUI keeps it with the glyph.
-    if Ellesmere then Ellesmere:When(function(skin) Actions.Square(skin, skip) end) end
-    skip:SetScript("OnClick", Actions.Skip)
-    skip:SetScript("OnEnter", function()
-        skip.glyph:SetAlpha(1)
-        GameTooltip:SetOwner(skip, "ANCHOR_TOP")
-        GameTooltip:SetText(L.BIND_SKIP)
+    if Ellesmere then Ellesmere:When(function(skin) Actions.Square(skin, step) end) end
+    local tip = back and L.BIND_PREVIOUS or L.BIND_SKIP
+    step:SetScript("OnEnter", function()
+        step.glyph:SetAlpha(1)
+        GameTooltip:SetOwner(step, "ANCHOR_TOP")
+        GameTooltip:SetText(tip)
         GameTooltip:Show()
     end)
+    return step
+end
+
+--- Skip: the round button with the play glyph against a bar, the usual "next" mark.
+function Actions.SkipButton(parent, name)
+    local skip = StepButton(parent, name)
+    skip:SetScript("OnClick", Actions.Skip)
     return skip
 end
 
---- Previous: the round button with the game's left-arrow glyph.
 function Actions.PreviousButton(parent, name)
-    -- Build the exact Skip control first, then mirror its triangle and bar.
-    local previous = Actions.SkipButton(parent, name)
-    previous.glyph:SetTexCoord(PLAY_RIGHT, PLAY_LEFT, PLAY_TOP, PLAY_BOTTOM)
-    previous.glyph:ClearAllPoints()
-    previous.glyph:SetPoint("CENTER", 2, 0)
-    previous.bar:ClearAllPoints()
-    previous.bar:SetPoint("RIGHT", previous.glyph, "LEFT", 0, 0)
+    local previous = StepButton(parent, name, true)
+    previous.canAct = function() return SoundQueue:CanPrevious() end
     previous:SetScript("OnClick", function()
         local replayed = Actions.Previous()
-        -- The queue callback refreshes the narrator asynchronously on the real client; update
-        -- the clicked control immediately so the last available history entry cannot be clicked
-        -- again while the new line is being laid out.
-        Actions.SetPreviousable(previous)
+        -- Greyed at once: the windows redraw on the queue's callback, a frame later, and the
+        -- last line of the history must not be clickable twice meanwhile.
+        Actions.SetPausable({ previous })
         return replayed
-    end)
-    previous:SetScript("OnEnter", function()
-        previous.glyph:SetAlpha(1)
-        GameTooltip:SetOwner(previous, "ANCHOR_TOP")
-        GameTooltip:SetText(L.BIND_PREVIOUS)
-        GameTooltip:Show()
     end)
     return previous
 end

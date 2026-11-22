@@ -970,7 +970,6 @@ end
 function Subtitle:UpdatePause()
     Actions.SetPlayGlyph(self.pause, Actions.HeadState())
     Actions.SetPausable({ self.pause, self.previous, self.skip })
-    Actions.SetPreviousable(self.previous)
 end
 
 -- Locked, the subtitle lets clicks through to the world but still knows the pointer is over

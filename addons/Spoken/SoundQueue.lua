@@ -80,7 +80,6 @@ function SoundQueue:GetPrevious()
     return self.history[#self.history]
 end
 
---- Whether Previous can act on the current queue state.
 function SoundQueue:CanPrevious()
     local current = self:GetCurrentSound()
     return self:GetPrevious() ~= nil and (not current or self:CanBePaused())
@@ -213,21 +212,14 @@ end
 -- Silence the head but keep its place: it replays from the start when Advance next
 -- reaches it, since the client has no seek. Shared by the two things allowed to cut a
 -- clip off without ending it -- a human pressing Play, and a gate closing on it.
-local function StopKeeping(head)
+-- With `quiet`, its stopCallback does not run: the line stays queued, and a source reads that
+-- callback as the line being dropped (a book drops the pages after it).
+local function StopKeeping(head, quiet)
     SoundUtils:StopSound(head)
     CancelSpeakTimer(head)
-    if head.stopCallback then
+    if head.stopCallback and not quiet then
         head.stopCallback(head, false)
     end
-    Callbacks:Fire("CLIP_STOPPED", head, false)
-end
-
--- Silence the head for Previous, which plays a line before it and then lets it speak again.
--- Its stopCallback does not run: the line has not left the queue, and a source reads that
--- callback as the line being dropped, as a book does for the pages after it.
-local function RewindKeeping(head)
-    SoundUtils:StopSound(head)
-    CancelSpeakTimer(head)
     Callbacks:Fire("CLIP_STOPPED", head, false)
 end
 
@@ -290,8 +282,7 @@ local REMOVE_FADE_MS = 400
 
 ---@param clip SpokenClip
 ---@param finishedPlaying? boolean
----@param remember? boolean  Keep this completed or skipped clip for Previous.
-function SoundQueue:RemoveSoundFromQueue(clip, finishedPlaying, remember)
+function SoundQueue:RemoveSoundFromQueue(clip, finishedPlaying)
     if not clip then
         return false
     end
@@ -312,7 +303,7 @@ function SoundQueue:RemoveSoundFromQueue(clip, finishedPlaying, remember)
     end
 
     clip.rewound = nil
-    if remember then
+    if finishedPlaying then
         Remember(clip)
     end
 
@@ -374,7 +365,8 @@ function SoundQueue:Skip()
     local head = self:GetCurrentSound()
     if not head or not self:CanBePaused() then return false end
     self:SetPaused(false)
-    return self:RemoveSoundFromQueue(head, false, true)
+    Remember(head)
+    return self:RemoveSoundFromQueue(head)
 end
 
 --------------------------------------------------------------------------------
@@ -484,7 +476,7 @@ end
 -- followed by its own next part, which is not in the queue yet, so what waits now is not next.
 local function AfterSpoken(clip)
     local function Finish()
-        SoundQueue:RemoveSoundFromQueue(clip, true, true)
+        SoundQueue:RemoveSoundFromQueue(clip, true)
     end
     local _, nextClip = FirstPlayable(2)
     if not nextClip and not clip.continues then
@@ -721,7 +713,7 @@ end
 --- Admit a clip. Returns the clip, or nil and why not.
 ---@param clip SpokenClip
 ---@param source table
----@param front boolean
+---@param front boolean|number  At the head, or at this index.
 function SoundQueue:Add(clip, source, front)
     if not clip then
         return nil, "no clip"
@@ -763,7 +755,7 @@ function SoundQueue:Add(clip, source, front)
     -- A source of words alone makes every line of it one.
     clip.textOnly = clip.textOnly or source.textOnly
     if front then
-        table.insert(self.sounds, 1, clip)
+        table.insert(self.sounds, front == true and 1 or math.min(front, #self.sounds + 1), clip)
     else
         table.insert(self.sounds, clip)
     end
@@ -854,39 +846,38 @@ function SoundQueue:PlayNow(clip, source)
     return self:IsPlaying()
 end
 
---- Play the line heard last ahead of the current one, which then speaks again from its start,
---- followed by whatever was waiting. Pressed during a replay, it reaches one line further back.
---- With nothing queued, it replays the last line heard. A line that cannot be queued now is
---- dropped from the history, so the next press reaches an older one.
+--- Play the line heard last ahead of the current one, which then speaks again from its start.
+--- Pressed during a replay, it reaches one line further back. A line the queue refuses is dropped
+--- from the history, so the next press reaches an older one.
 function SoundQueue:Previous()
     if not self:CanPrevious() then return false end
     local previous = table.remove(self.history)
-    local source = previous.source
-    -- Asked before the head is touched: the queue refusing the replay after the head was
-    -- silenced would restart the head for nothing.
-    local refused = WhyRefused(source, previous)
-        or (IsQueued(previous.key) and "duplicate")
-        or (IsLow(previous) and AnyNormalQueued() and "outranked")
-    if refused then
-        Callbacks:Fire("AUDIO_CHANGED")
-        return false, refused
-    end
-
     local head = self:GetCurrentSound()
-    if head then
-        head.rewound = true
-        if head.nextSoundTimer then
-            RewindKeeping(head)
-        end
-    end
-    self:SetPaused(false)
+    local headRewound = head and head.rewound
+    if head then head.rewound = true end
     previous.rewound = true
-    local added, reason = self:Add(previous, source, true)
+    -- Admitted behind the head, so a refusal leaves the head speaking; only then moved in front.
+    local added, reason = self:Add(previous, previous.source, 2)
     if not added then
-        self:Advance()
+        previous.rewound = nil
+        if head then head.rewound = headRewound end
         Callbacks:Fire("AUDIO_CHANGED")
         return false, reason
     end
+    if self.sounds[1] ~= previous then
+        if head.nextSoundTimer then
+            StopKeeping(head, true)
+        end
+        for index, queued in ipairs(self.sounds) do
+            if queued == previous then
+                MoveToFront(index)
+                break
+            end
+        end
+    end
+    self:SetPaused(false)
+    self:Advance()
+    Callbacks:Fire("AUDIO_CHANGED")
     return true
 end
 
@@ -909,7 +900,7 @@ function SoundQueue:PauseQueue()
     -- Stopped in the pause after a line has spoken to its end: that line is over, and it is the
     -- next one Stop holds. Replay then plays the next line rather than the one already heard.
     if head and head.nextSoundTimer and head.spokenAt and GetTime() >= head.spokenAt then
-        self:RemoveSoundFromQueue(head, true, true)
+        self:RemoveSoundFromQueue(head, true)
         -- It was the last: there is nothing left to hold, and the removal took the stop off.
         if self:IsEmpty() then
             return true
