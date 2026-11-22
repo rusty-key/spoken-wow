@@ -555,7 +555,7 @@ local function RegisterSlashCommand()
             SoundQueue:Skip()
         elseif verb == "mute" and (rest == "" or rest == "on" or rest == "off") then
             if rest == "" then SoundQueue:ToggleMuted() else SoundQueue:SetMuted(rest == "on") end
-            print("Spoken: " .. (SoundQueue:IsMuted() and L.AUDIO_MUTED or L.AUDIO_UNMUTED))
+            print("Spoken: " .. L.BIND_MUTE .. " " .. (SoundQueue:IsMuted() and L.ON or L.OFF))
         elseif command == "compendium" then
             Options:ToggleCompendium()
         elseif (verb == "narrator" or verb == "words" or verb == "transcript") and (rest == "" or rest == "on" or rest == "off") then

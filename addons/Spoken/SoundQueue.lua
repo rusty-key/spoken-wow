@@ -43,8 +43,7 @@ setfenv(1, SpokenEnv)
 ---@field handle number|nil
 ---@field source table
 ---@field nextSoundTimer any  Set ONLY while actually speaking. The liveness test.
----@field silent? boolean  Set when this clip is playing without a voice file.
----@field mutedWhilePlaying? boolean  Set when mute interrupted an audible clip.
+---@field silent? true|"cut"  No voice: true from the start (words alone, or muted); "cut" when mute stopped it. Unmute replays only a cut line.
 
 SoundQueue = {
     soundIdCounter = 0,
@@ -119,7 +118,7 @@ end
 
 function SoundQueue:CanBePaused()
     local current = self:GetCurrentSound()
-    return not self:IsPlaying() or current.handle ~= nil or current.textOnly == true or current.silent == true
+    return not self:IsPlaying() or current.handle ~= nil or current.silent ~= nil
 end
 
 local function CountFor(source)
@@ -510,9 +509,8 @@ function SoundQueue:PlaySound(clip)
     local channel = SpeakingChannel(clip)
     -- A text-only line has nothing to play and leaves the game's dialogue alone.
     local muted = self:IsMuted()
-    clip.silent = muted or nil
-    clip.mutedWhilePlaying = nil
-    local willPlay = clip.textOnly or muted or SoundUtils:PlaySound(clip, channel)
+    clip.silent = (clip.textOnly or muted) and true or nil
+    local willPlay = clip.silent or SoundUtils:PlaySound(clip, channel)
     if not willPlay then
         Discard(clip, "missing")
         self:Advance()
@@ -521,7 +519,7 @@ function SoundQueue:PlaySound(clip)
 
     -- A line read off an NPC's window cuts its voice; one starting elsewhere (a zone's story) fades it.
     -- One of words alone lifts a mute a line before it took.
-    if clip.textOnly or muted then
+    if clip.silent then
         self:MuteGameDialogue(nil)
     else
         self:MuteGameDialogue(channel, clip.cutsGameDialogue)
@@ -662,11 +660,11 @@ local function WhyRefused(source, clip)
     if Sources:IsTurnedOff(source) then
         return L.PART_TURNED_OFF
     end
-    if source.textOnly or clip.textOnly then
+    if source.textOnly or clip.textOnly or SoundQueue:IsMuted() then
         return nil
     end
     local channel = source:GetChannel()
-    local inaudible = not SoundQueue:IsMuted() and SoundUtils:WhyInaudible(channel)
+    local inaudible = SoundUtils:WhyInaudible(channel)
     if inaudible and not SoundUtils:IsMutedByPlayer(channel) then
         return inaudible
     end
@@ -882,22 +880,18 @@ function SoundQueue:SetMuted(value)
         Addon.db.char.IsMuted = value
     end
 
+    local head = self:GetCurrentSound()
     if value then
-        local head = self:GetCurrentSound()
-        if head and head.nextSoundTimer then
-            local interrupted = not head.silent and not head.textOnly
-            head.silent = true
-            head.mutedWhilePlaying = interrupted or nil
+        if head and head.nextSoundTimer and not head.silent then
+            head.silent = "cut"
             SoundUtils:StopSound(head)
             StopWatching(head)
         end
         self:MuteGameDialogue(nil)
     else
-        local head = self:GetCurrentSound()
-        if head and head.mutedWhilePlaying and head.nextSoundTimer
+        if head and head.silent == "cut" and head.nextSoundTimer
             and (not head.spokenAt or GetTime() < head.spokenAt) then
             CancelSpeakTimer(head)
-            head.silent, head.mutedWhilePlaying = nil, nil
         end
         self:Advance()
     end

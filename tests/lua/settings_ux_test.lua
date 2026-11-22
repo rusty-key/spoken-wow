@@ -333,12 +333,12 @@ do
     env.print = function(text) table.insert(said, text) end
     SlashCmdList.SPOKEN("mute")
     Expect("/sp mute toggles mute on", Q:IsMuted(), true)
-    Expect("...and says so", said[1], "Spoken: " .. L.AUDIO_MUTED)
+    Expect("...and says so", said[1], "Spoken: " .. L.BIND_MUTE .. " " .. L.ON)
     SlashCmdList.SPOKEN("mute on")
     Expect("/sp mute on keeps it on", Q:IsMuted(), true)
     SlashCmdList.SPOKEN("mute off")
     Expect("/sp mute off turns it off", Q:IsMuted(), false)
-    Expect("...and says so", said[3], "Spoken: " .. L.AUDIO_UNMUTED)
+    Expect("...and says so", said[3], "Spoken: " .. L.BIND_MUTE .. " " .. L.OFF)
     SlashCmdList.SPOKEN("mute of")
     Expect("a word mute does not know changes nothing", Q:IsMuted(), false)
     env.print = print_

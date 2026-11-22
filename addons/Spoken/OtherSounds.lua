@@ -149,7 +149,7 @@ function OtherSounds:Sync()
     if not cfg then return end
     local head = SoundQueue:GetCurrentSound()
     local muted = SoundQueue:IsMuted()
-    if cfg.Enabled and head and not head.textOnly and not head.silent and not muted and SoundQueue:IsPlaying() then
+    if cfg.Enabled and head and not head.silent and SoundQueue:IsPlaying() then
         CancelTimer(self, "settleTimer")
         local voice = head.source and head.source:GetChannel() or Sources:PlayerChannel()
         -- Also when the volumes are on their way back up: a line that starts then turns
