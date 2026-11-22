@@ -1,0 +1,7 @@
+{
+  "worktree": {
+    "setup": [
+      "for f in .env apps/web/.env.local; do if [ -e \"$PASEO_SOURCE_CHECKOUT_PATH/$f\" ]; then ln -sfn \"$PASEO_SOURCE_CHECKOUT_PATH/$f\" \"$f\"; fi; done"
+    ]
+  }
+}
