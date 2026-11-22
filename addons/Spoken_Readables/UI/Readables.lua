@@ -57,6 +57,10 @@ local EVENT_NAMES = { winterveil = "EVENT_WINTER_VEIL", harvestfestival = "EVENT
 local function EventLabel(key) return EVENT_NAMES[key] and L[EVENT_NAMES[key]] or key end
 local TYPES, TYPE_NAMES = SpokenReadables.TYPES, SpokenReadables.TYPE_NAMES
 local function TypeLabel(type) return L[(TYPE_NAMES[type] or TYPE_NAMES.other).all] end
+local function IDBefore(a, b)
+	if type(a) == type(b) then return a < b end
+	return type(a) == "number"
+end
 
 local TYPE_ICONS = {
 	book = "INV_Misc_Book_09", journal = "INV_Misc_Book_11", letter = "INV_Letter_15", note = "INV_Misc_Note_01",
@@ -64,8 +68,9 @@ local TYPE_ICONS = {
 	grave = "INV_Misc_Bone_HumanSkull_01", exhibit = "INV_Misc_Statue_01", picture = "INV_Misc_Map_01",
 	other = "INV_Misc_QuestionMark",
 }
-local function TypeIcon(type)
-	return { objectOrItem = true, icon = [[Interface\Icons\]] .. (TYPE_ICONS[type] or TYPE_ICONS.other), bullet = "book" }
+local function TypeIcon(type, book)
+	local icon = book and SpokenReadables:ItemIcon(book)
+	return { objectOrItem = true, icon = icon or ([[Interface\Icons\]] .. (TYPE_ICONS[type] or TYPE_ICONS.other)), bullet = "book" }
 end
 local READABLES_ICON = { objectOrItem = true, icon = C.ICON, bullet = "book" }
 local filter = ""
@@ -74,9 +79,31 @@ local filter = ""
 -- What there is
 --------------------------------------------------------------------------------
 
+local booksData, booksPacks, booksView
 local function Books()
 	local data = SpokenReadables:Data()
-	return data and data.books or {}
+	local packs = SpokenReadables:GetClientPacks()
+	if booksData == data and booksPacks == packs then return booksView or {} end
+	local books = {}
+	for id, book in pairs(data and data.books or {}) do books[id] = book end
+	local client = SpokenReadables.GetClientLanguage and SpokenReadables:GetClientLanguage()
+	for _, pack in ipairs(packs) do
+		if not client or not SpokenReadables.PackLanguage or SpokenReadables:PackLanguage(pack) == client then
+			for id in pairs(pack.books or {}) do books[id] = SpokenReadables:BookById(id) end
+		end
+	end
+	booksData, booksPacks, booksView = data, packs, books
+	return books
+end
+
+local placesData, placesPacks, placesView
+local function Places()
+	local data = SpokenReadables:Data()
+	local packs = SpokenReadables:GetClientPacks()
+	if placesData == data and placesPacks == packs then return placesView or {} end
+	local places = SpokenReadables:BookPlaces()
+	placesData, placesPacks, placesView = data, packs, places
+	return places
 end
 
 -- Each readable's title for the rows being built: they are asked for it while sorting and for
@@ -105,12 +132,17 @@ local Dungeon, DungeonName = C.Dungeon, C.DungeonName
 -- not carry is left out everywhere: places.mjs drops the Deprecated and TEST items no one can
 -- find, and counting them would keep every total out of reach. Built once: the data is fixed for
 -- the session.
-local index
+local index, indexBooks
 local function Index()
-	if index then return index end
+	local books = Books()
+	if index and indexBooks == books then return index end
+	indexBooks = books
+	titles = {}
 	index = { zones = {}, dungeons = {}, events = {}, wide = {}, unknown = {}, types = {}, all = {}, typeOf = {},
 		at = {}, eventOf = {} }
-	local places = _G.SpokenReadablesPlaces and SpokenReadablesPlaces.books or {}
+	local places = Places()
+	local data = SpokenReadables:Data()
+	local baseBooks = data and data.books or {}
 	local function Add(mapID, type, id, map)
 		local zone = index.zones[mapID] or {}
 		index.zones[mapID] = zone
@@ -125,6 +157,9 @@ local function Index()
 	end
 	for id in pairs(Books()) do
 		local place = places[id]
+		-- Locale packs can carry a voiced book the English corpus does not yet have. Keep it
+		-- discoverable until the pack or corpus export supplies a place.
+		if not place and not baseBooks[id] then place = { type = "other" } end
 		if place or not _G.SpokenReadablesPlaces then
 			index.all[id] = true
 			local type = place and TYPE_NAMES[place.type] and place.type or "other"
@@ -172,7 +207,7 @@ local function Index()
 	end
 	local function ByTitle(a, b)
 		local ta, tb = Title(a), Title(b)
-		if ta == tb then return a < b end
+	if ta == tb then return IDBefore(a, b) end
 		return ta < tb
 	end
 	for _, zone in pairs(index.zones) do
@@ -204,7 +239,7 @@ local function Nth()
 	end
 	for _, ids in pairs(byTitle) do
 		if #ids > 1 then
-			table.sort(ids)
+			table.sort(ids, IDBefore)
 			for i, id in ipairs(ids) do nth[id] = i end
 		end
 	end
@@ -408,7 +443,9 @@ local function EachText(id, each)
 	local data = SpokenReadables:Data()
 	for _, pageId in ipairs(Books()[id].pages) do
 		local text = SpokenReadables:PackPageText(pageId, SpokenReadables:GetTextLanguage())
-			or SpokenReadables:TextLanguagePageText(pageId) or (data.pages[pageId] and data.pages[pageId].text)
+			or SpokenReadables:TextLanguagePageText(pageId)
+			or (data.pages[pageId] and data.pages[pageId].text)
+			or SpokenReadables:PackPageText(pageId, SpokenReadables.BASE_LANGUAGE)
 		if text and text ~= "" and each(text) then return true end
 	end
 	return false
@@ -857,7 +894,7 @@ local function ShowEntry()
 	end
 	if selection.book then
 		local id = selection.book
-		local place = _G.SpokenReadablesPlaces and SpokenReadablesPlaces.books[id] or {}
+		local place = Places()[id] or {}
 		local where
 		if place.event then
 			where = L.GROUP_EVENTS
@@ -869,12 +906,12 @@ local function ShowEntry()
 			where = L.GROUP_UNKNOWN
 		end
 		if not Found(id) and not Unlocked() then
-			page:Show({ title = Name(id), subtitle = where, text = L.READABLE_NOT_FOUND, icon = TypeIcon(Index().typeOf[id]) })
+			page:Show({ title = Name(id), subtitle = where, text = L.READABLE_NOT_FOUND, icon = TypeIcon(Index().typeOf[id], id) })
 			return
 		end
 		local words = Words(id)
 		page:Show({ title = Name(id), subtitle = where, text = words, target = id,
-			icon = TypeIcon(Index().typeOf[id]), unwritten = words == "" })
+			icon = TypeIcon(Index().typeOf[id], id), unwritten = words == "" })
 		return
 	end
 	-- A zone, a continent, a group, a type: where it is and what it holds. A kind of writing across

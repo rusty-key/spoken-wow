@@ -10,7 +10,7 @@ import { dirname } from "node:path";
 import pg from "pg";
 
 import { loadEnv } from "../../lib/env.mjs";
-import { booksLua } from "./lib/lua.mjs";
+import { booksLua, luaTableId } from "./lib/lua.mjs";
 
 // The repo-root .env holds the shared credentials, this pipeline's .env whatever is its
 // own; neither is read unless a command like this one asks for it, because lib/ is
@@ -27,13 +27,19 @@ const pool = new pg.Pool({ connectionString: url });
 
 try {
   const { rows } = await pool.query(
-    `select p."pageTextId" as "pageId", p."bookId"::int as "bookId", p."pageNumber",
+    `select case when p."pageTextId" is not null then p."pageTextId"::text
+                   else substr(p."lineId", 3) end as "pageId",
+            p."pageTextId" is not null as "numeric", p."bookId" as "bookId", p."pageNumber",
             count(*) over (partition by p."bookId")::int as "pageCount", l."title", l."text",
+            coalesce((select n."name" from "entity_name" n
+                       where n."kind" = case p."ownerKind" when 'object' then 'gameobject' else 'item' end
+                         and n."entityId" = p."ownerIds"[1]::text and n."lang" = $1 and n."isCurrent"
+                       limit 1), l."title") as "bookTitle",
             p."ownerKind", p."ownerIds"
        from "book_page" p
        join "book_line" l on l."lineId" = p."lineId" and l."lang" = $1 and l."isCurrent"
-      where p."aliasOf" is null and p."pageTextId" is not null
-      order by p."bookId"::int, p."pageNumber"`,
+      where p."aliasOf" is null
+      order by p."bookId", p."pageNumber"`,
     [LANG],
   );
 
@@ -43,6 +49,11 @@ try {
     throw new Error(
       "book_line holds no English pages -- run: make readables-extract && make readables-import",
     );
+  }
+
+  for (const row of rows) {
+    if (row.numeric) row.pageId = Number(row.pageId);
+    row.bookId = luaTableId(row.bookId);
   }
 
   await mkdir(dirname(OUT), { recursive: true });

@@ -51,6 +51,24 @@ test("another language's is build output, never in English's folder", () => {
 });
 
 const CLIPS = [{ pageId: 15, file: "15", durationSec: 2.5 }];
+test("unavailable pack-only books have no discoverable metadata", () => {
+  const entries = localeEntries([
+    { pageId: "ntest", bookId: "ntest", pageNumber: 1, numeric: false, inEnglish: false,
+      ownTitle: "TEST Example", texts: ["Test words."], ownerKind: "item", ownerIds: [999] },
+    { pageId: "nreal", bookId: "nreal", pageNumber: 1, numeric: false, inEnglish: false,
+      ownTitle: "A Report", texts: ["Real words."], ownerKind: "item", ownerIds: [998] },
+  ], []);
+  const lua = packLua("enUS", [], entries);
+  assert.doesNotMatch(lua, /ntest|TEST Example|\[999\]/);
+  assert.match(lua, /nreal/);
+});
+test("pack ownership excludes the shared Plain Letter item", () => {
+  const entries = { known: [], extra: [{ pageId: "nletter", bookId: "nbook", pageNumber: 1,
+    titles: ["A Letter"], texts: ["Hello."], ownerKind: "item", ownerIds: [8383, 2794] }] };
+  const lua = packLua("enUS", [], entries);
+  assert.doesNotMatch(lua, /\[8383\]/);
+  assert.match(lua, /\[2794\] = "nbook"/);
+});
 const PAGES = [
   { pageId: "15", numeric: true, bookId: "15", pageNumber: 1, ownerKind: "object", ownerIds: [7, 8], inEnglish: true, texts: ["Hola."] },
   { pageId: "16", numeric: true, bookId: "15", pageNumber: 2, ownerKind: "item", ownerIds: [9], inEnglish: true, texts: ["Adiós."] },
@@ -93,6 +111,7 @@ test("English's pack carries no index: the addon's own is English", () => {
 });
 
 const MINTED = "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11";
+const GRETCHEN = "nfc676562-fb40-4845-8cbe-6ddd8269c620";
 
 test("a pack keeps pages English lacks out of the index older addons read", () => {
   const lua = packLua("esES", [
@@ -100,14 +119,25 @@ test("a pack keeps pages English lacks out of the index older addons read", () =
     { pageId: MINTED, file: MINTED, durationSec: 2 },
   ], {
     known: [{ pageId: 38, bookId: 38, pageNumber: 1, titles: ["Nota de Wiley"], texts: ["Mantorrecio:"] }],
-    extra: [{ pageId: MINTED, bookId: "n1", pageNumber: 1, titles: ["Instrucciones"], texts: ["Trotamundos"] }],
+    extra: [{ pageId: MINTED, bookId: "n1", pageNumber: 1, titles: ["Instrucciones"], texts: ["Trotamundos"],
+      ownerKind: "item", ownerIds: [280430] }],
   });
   const index = lua.slice(lua.indexOf("\tindex = {"), lua.indexOf("\tloose = {"));
   assert.ok(!index.includes("n0b8f4e2a"));
   assert.match(lua, /\textraIndex = \{/);
   assert.match(lua, new RegExp(`\\tplaces = \\{\\n\\t\\t\\["${MINTED}"\\] = \\{ book = "n1", number = 1 \\},`));
-  assert.match(lua, /\tbooks = \{\n\t\t\["n1"\] = \{ pages = \{ "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11" \} \},/);
+  assert.match(lua, /\tbooks = \{\n\t\t\["n1"\] = \{ pages = \{ "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11" \}, title = "Instrucciones" \},/);
+  assert.match(lua, /\titems = \{\n\t\t\[280430\] = "n1",/);
   assert.match(lua, /\["n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11"\] = \{ file = "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11", len = 2/);
+});
+
+test("a hand-placed locale-only book carries its Compendium place", () => {
+  const lua = packLua("esMX", [{ pageId: GRETCHEN, file: GRETCHEN, durationSec: 2 }], {
+    known: [],
+    extra: [{ pageId: GRETCHEN, bookId: GRETCHEN, pageNumber: 1, titles: ["Informe del montaraz Gretchen"],
+      texts: ["Informe."], ownerKind: "item", ownerIds: [280430] }],
+  });
+  assert.match(lua, new RegExp(`\\tbookPlaces = \\{\\n\\t\\t\\["${GRETCHEN}"\\] = \\{ kind = "carried", type = "journal", quests = \\{ 98323 \\}, zones = \\{ 1426 \\} \\},`));
 });
 
 test("English's pack carries the English pages Books.lua lacks, and no empty index", () => {
