@@ -199,33 +199,29 @@ export class ManagerService {
 
   // ---------------------------------------------------------------- catalog
 
-  /** Runs `backgroundCheck` every UPDATE_CHECK_MS while the manager is running. */
+  /** Runs `backgroundCheck` now and every UPDATE_CHECK_MS after. */
   startPeriodicRefresh(): void {
     if (this.updateTimer) return
     this.updateTimer = setInterval(() => void this.backgroundCheck(), UPDATE_CHECK_MS)
     this.updateTimer.unref?.()
-  }
-
-  stopPeriodicRefresh(): void {
-    if (!this.updateTimer) return
-    clearInterval(this.updateTimer)
-    this.updateTimer = null
+    void this.backgroundCheck()
   }
 
   /**
-   * A check nobody asked for, under the same settings as the one at startup. Unlike a manual check it leaves alone the
-   * automatic updates the player cancelled or that failed, so they are not queued again every half hour.
+   * The check at startup and on the timer. Unlike a manual check it keeps skipping the automatic updates the player
+   * cancelled or that failed, so they are not queued again every half hour.
    */
   async backgroundCheck(): Promise<void> {
     await this.ready
     const { checkOnStart, autoUpdateContent } = this.settings
+    if (!checkOnStart && !autoUpdateContent) return
     const [catalog, community] = await Promise.allSettled([
-      checkOnStart || autoUpdateContent ? this.fetchCatalog() : null,
-      checkOnStart ? this.refreshCommunity(true) : null
+      this.refreshCatalog(false),
+      checkOnStart ? this.refreshCommunity(false) : null
     ])
-    if (catalog.status === 'rejected') log('Background catalog check failed:', catalog.reason)
-    if (community.status === 'rejected') log('Background community check failed:', community.reason)
-    if (catalog.status === 'fulfilled' && catalog.value) await this.autoUpdate()
+    if (catalog.status === 'rejected') log('Catalog refresh failed:', catalog.reason)
+    if (community.status === 'rejected') log('Community refresh failed:', community.reason)
+    if (catalog.status === 'fulfilled') await this.autoUpdate()
   }
 
   refreshCatalog(force = false): Promise<Catalog> {
@@ -234,21 +230,15 @@ export class ManagerService {
       const age = Date.now() - Date.parse(this.catalog.fetchedAt)
       if (age >= 0 && age < FRESH_MS) return Promise.resolve(this.effectiveCatalog())
     }
-    const fetching = this.fetchCatalog()
-    if (!force) return fetching
+    this.refreshing = this.doRefresh().finally(() => {
+      this.refreshing = null
+    })
+    if (!force) return this.refreshing
     this.autoSkip.clear()
-    return fetching.then(async (catalog) => {
+    return this.refreshing.then(async (catalog) => {
       await this.autoUpdate()
       return catalog
     })
-  }
-
-  /** The refresh in flight, or a new one. */
-  private fetchCatalog(): Promise<Catalog> {
-    this.refreshing ??= this.doRefresh().finally(() => {
-      this.refreshing = null
-    })
-    return this.refreshing
   }
 
   private async doRefresh(): Promise<Catalog> {

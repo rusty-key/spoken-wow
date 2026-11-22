@@ -266,7 +266,6 @@ if (!app.requestSingleInstanceLock()) {
   // update installed on quit) never lands in the middle of swapping folders.
   let quitting = false
   app.on('before-quit', (event) => {
-    service?.stopPeriodicRefresh()
     if (quitting || !service || service.jobs.active().length === 0) return
     quitting = true
     event.preventDefault()
@@ -316,15 +315,6 @@ if (!app.requestSingleInstanceLock()) {
 
     mainWindow = createWindow(process.argv.includes(HIDDEN_ARG) && service.settings.minimizeToTray)
 
-    if (service.settings.checkOnStart || service.settings.autoUpdateContent) {
-      void service.ready
-        .then(() => service?.refreshCatalog(false))
-        .then(() => service?.autoUpdate())
-        .catch((err) => log('Catalog refresh failed:', err))
-    }
-    if (service.settings.checkOnStart) {
-      void service.ready.then(() => service?.refreshCommunity(false)).catch((err) => log('Community refresh failed:', err))
-    }
     const svc = service
     void startUpdater({
       isPackaged: app.isPackaged,

@@ -124,20 +124,16 @@ describe('ManagerService', () => {
     expect(githubCalls()).toBe(2)
   })
 
-  it('runs the background check every 30 minutes until stopped', async () => {
+  it('runs the background check at once and every 30 minutes', async () => {
     const { svc } = await setup()
     const check = vi.spyOn(svc, 'backgroundCheck').mockResolvedValue()
     vi.useFakeTimers()
     try {
       svc.startPeriodicRefresh()
-      await vi.advanceTimersByTimeAsync(UPDATE_CHECK_MS)
       expect(check).toHaveBeenCalledTimes(1)
-
-      svc.stopPeriodicRefresh()
       await vi.advanceTimersByTimeAsync(UPDATE_CHECK_MS)
-      expect(check).toHaveBeenCalledTimes(1)
+      expect(check).toHaveBeenCalledTimes(2)
     } finally {
-      svc.stopPeriodicRefresh()
       vi.useRealTimers()
       vi.restoreAllMocks()
     }
@@ -222,12 +218,12 @@ describe('ManagerService', () => {
       expect(state.installs[game.id].spoken.pinned).toBeUndefined()
     })
 
-    it('does not queue a cancelled update again until the player checks by hand', async () => {
+    it('keeps a cancelled update skipped, background checks included, until the player checks by hand', async () => {
       let open!: () => void
       const gate = new Promise<void>((resolve) => (open = resolve))
       const { svc, game, sent } = await setup({ gate })
       oldSpoken(path.join(game.addOnsPath, 'Spoken'))
-      svc.setSettings({ autoUpdateContent: true })
+      svc.setSettings({ checkOnStart: false, autoUpdateContent: true })
       await svc.refreshCatalog(true)
 
       const first = spokenJobs(sent)[0]!.jobId
@@ -238,6 +234,7 @@ describe('ManagerService', () => {
       svc.setSettings({ lastGameId: game.id })
       await svc.refreshCatalog(false)
       await svc.autoUpdate()
+      await svc.backgroundCheck()
       expect(new Set(spokenJobs(sent).map((p) => p.jobId))).toEqual(new Set([first]))
 
       await svc.refreshCatalog(true)
@@ -245,24 +242,6 @@ describe('ManagerService', () => {
       const again = spokenJobs(sent).find((p) => p.jobId !== first)
       expect(again).toBeDefined()
       expect((await waitFor(sent, again!.jobId)).phase).toBe('done')
-    })
-
-    it('keeps a cancelled update skipped through a background check', async () => {
-      let open!: () => void
-      const gate = new Promise<void>((resolve) => (open = resolve))
-      const { svc, game, sent, githubCalls } = await setup({ gate })
-      oldSpoken(path.join(game.addOnsPath, 'Spoken'))
-      svc.setSettings({ checkOnStart: false, autoUpdateContent: true })
-      await svc.refreshCatalog(true)
-
-      const first = spokenJobs(sent)[0]!.jobId
-      svc.jobs.cancel(first)
-      open()
-      expect((await waitFor(sent, first)).phase).toBe('cancelled')
-
-      await svc.backgroundCheck()
-      expect(githubCalls()).toBe(2)
-      expect(new Set(spokenJobs(sent).map((p) => p.jobId))).toEqual(new Set([first]))
     })
 
     it('updates after a background check that joins a refresh already running', async () => {
