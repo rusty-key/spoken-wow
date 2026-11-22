@@ -232,7 +232,7 @@ async function writeQuestTitles() {
   if (lang === BASE_LANG) return;
   const titles = Object.fromEntries(
     psql(`select "entityId", to_json("name")::text from "entity_name"
-           where "kind" = 'quest' and "lang" = :'lang' and "isCurrent"
+           where "kind" = 'quest' and "lang" = :'lang' and "isCurrent" and "name" <> ''
            order by "entityId"`).map((row) => {
       const [id, name] = row.split("\t");
       return [id, JSON.parse(name)];

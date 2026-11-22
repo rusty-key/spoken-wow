@@ -1017,7 +1017,8 @@ function QuestsTab:Keep(moment, text, title)
     kept[id] = kept[id] or {}
     if type(title) == "string" and title ~= "" then
         kept[id].title = title
-        titles[id] = title
+        -- Asked again, not set: a pack's title comes before the client's.
+        titles[id] = nil
     end
     if type(text) == "string" and text ~= "" then
         kept[id][moment] = { text = Generalise(text, English(id)[moment]), sex = Sex() }

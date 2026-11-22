@@ -72,6 +72,7 @@ local LOAD_ALL_MODULES = true
 ---@field WordTimesByFileName? table<string, string> Maps sound filenames to when each word of their line starts, packed as clip.present.timings takes them
 ---@field TextByFileName? table<string, string> Maps sound filenames to the words their takes were voiced from
 ---@field LineTextByFileName? table<string, string> Maps the filenames of lines with no take to their words
+---@field TitleByQuestID? table<number, string> Maps Quest ID to its title in the pack's language
 ---@field QuestFileLookupByNPCID? table<string, table<number, string>> Maps a quest line's filename and its giver's Creature ID to the line in that giver's own voice, where it differs
 ---@field QuestFileLookupByObjectID? table<string, table<number, string>> Maps a quest line's filename and its giver's GameObject ID to the line in that giver's own voice, where it differs
 ---@field GossipFileLookupByNPCSex? table<number, table<number, table<string, string>>> Maps a split Creature ID, the sex it is drawn as (UnitSex) and a gossip line's hash to the file that sex hears
