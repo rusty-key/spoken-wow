@@ -38,8 +38,43 @@ export function luaTableId(id) {
   return /^\d+$/.test(value) ? Number(value) : value;
 }
 
+const LUA_ID = String.raw`(?:\d+|"(?:[^"\\]|\\.)*")`;
+const parseLuaId = (id) => id.startsWith('"') ? id.slice(1, -1) : Number(id);
+
+/** Parse the Books.lua sections consumed by the Places generator. */
+export function readableLua(source) {
+  const bookPart = source.slice(source.indexOf("\tbooks = {"));
+  const books = new Map();
+  const parseLuaIds = (text) => [...text.matchAll(new RegExp(LUA_ID, "g"))].map(([id]) => parseLuaId(id));
+  for (const m of bookPart.matchAll(new RegExp(`\\[(${LUA_ID})\\] = \\{ title = "((?:[^"\\\\]|\\\\.)*)", pages = \\{ ([^}]*) \\}`, "g"))) {
+    books.set(parseLuaId(m[1]), { title: m[2], pages: parseLuaIds(m[3]) });
+  }
+  const pageBook = new Map();
+  for (const [id, book] of books) for (const page of book.pages) pageBook.set(page, id);
+  if (books.size === 0) throw new Error("no books found");
+  const pageText = new Map();
+  const pagePart = source.slice(source.indexOf("\tpages = {"), source.indexOf("\tbooks = {"));
+  for (const m of pagePart.matchAll(new RegExp(`\\[(${LUA_ID})\\] = \\{ book = ${LUA_ID}, number = \\d+, text = "((?:[^"\\\\]|\\\\.)*)"`, "g"))) {
+    pageText.set(parseLuaId(m[1]), m[2]);
+  }
+  return { books, pageBook, pageText };
+}
+
 export function compareIds(a, b) {
   return typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b));
+}
+
+/** A Places.lua book record, with numeric and minted ids written in their Lua forms. */
+export function placeLua(id, { kind, type, quests = [], event, wide = false, zones = [], dungeons = [] }) {
+  const parts = [`kind = "${kind}"`, `type = "${type}"`];
+  if (quests.length) parts.push(`quests = { ${quests.join(", ")} }`);
+  if (event) parts.push(`event = "${event}"`);
+  if (wide) parts.push("wide = true");
+  else if (zones.length) {
+    parts.push(`zones = { ${zones.join(", ")} }`);
+    if (dungeons.length) parts.push(`dungeons = { ${dungeons.join(", ")} }`);
+  }
+  return `\t\t[${luaId(id)}] = { ${parts.join(", ")} },`;
 }
 
 /**
