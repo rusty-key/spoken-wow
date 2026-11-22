@@ -117,7 +117,7 @@ Spoken plays through the game's **Master Volume** by default; **Volume Follows**
 
 ## Can Spoken go quiet when I'm in Discord voice chat?
 
-No: the game gives addons no way to see a Discord voice channel. Stop it yourself with the **Stop or Replay** or **Stop All** keys (in the Spoken category of Key Bindings), `/sp stopall`, or the minimap button. To stop a part reading at all, turn it off under **What Spoken Reads**. **Read in Battlegrounds**, under While Spoken Reads, keeps Spoken quiet in battlegrounds and arenas.
+No: the game gives addons no way to see a Discord voice channel. Stop it yourself with the **Stop or Replay** or **Eject** keys (in the Spoken category of Key Bindings), `/sp stopall`, or the minimap button. To stop a part reading at all, turn it off under **What Spoken Reads**. **Read in Battlegrounds**, under While Spoken Reads, keeps Spoken quiet in battlegrounds and arenas.
 
 ## Place stories stop when I enter combat
 

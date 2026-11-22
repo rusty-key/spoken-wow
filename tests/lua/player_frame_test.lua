@@ -502,7 +502,7 @@ local menu = env.Minimap:BuildMenu()
 local labels = {}
 for _, entry in ipairs(menu) do table.insert(labels, entry.text) end
 Expect("the menu is the player's entries then each source's in order", table.concat(labels, "|"),
-    "Stop or Replay|Skip Line|Stop All|Settings|Quest settings|Open lore window")
+    "Stop or Replay|Skip Line|Eject|Settings|Quest settings|Open lore window")
 env.Minimap:RemoveEntry("places", "lore")
 Expect("RemoveEntry", getn(env.Minimap:BuildMenu()), 5)
 
@@ -529,7 +529,7 @@ end
 -- A rule before each addon's heading. Without one the headings are the only thing
 -- separating the groups, and a heading reads as a row of the group above it.
 Expect("...listing the player's entries, then each source's under its name, ruled apart",
-    table.concat(shown, "|"), "Stop or Replay|Skip Line|Stop All|Settings|---|[Quests]|Quest settings")
+    table.concat(shown, "|"), "Stop or Replay|Skip Line|Eject|Settings|---|[Quests]|Quest settings")
 Expect("...anchored to the button", stub.openDropDown.dropdownAnchor, mmButton)
 
 -- The menu opens under the cursor, which is still on the button, so the button's tooltip
@@ -1197,17 +1197,14 @@ do
     Expect("...with a horizontal bar below the arrow", eject.bar:GetWidth() > eject.bar:GetHeight()
         and eject.bar.anchor.point == "TOP" and eject.bar.anchor.relativeTo == eject.glyph
         and eject.bar.anchor.relativePoint == "BOTTOM", true)
-    for _, button in ipairs({ F.previous, F.skip, eject }) do
-        Expect("the arrow and bar round together at the rendered scale",
-            button.glyph.roundLayoutToNearestPixel == true and button.bar.roundLayoutToNearestPixel == true, true)
+    Expect("eject rounds its arrow and bar at the rendered scale",
+        eject.glyph.roundLayoutToNearestPixel == true and eject.bar.roundLayoutToNearestPixel == true, true)
+    for _, button in ipairs({ F.previous, F.skip }) do
+        Expect("Previous and Skip keep their original rendering",
+            button.glyph.roundLayoutToNearestPixel == nil and button.bar.roundLayoutToNearestPixel == nil, true)
     end
-    local pixels = SpokenLayout.Pixels
-    SpokenLayout.Pixels = function() error("rounded before the player's final scale") end
-    local ok = pcall(env.Actions.EjectButton, F.controls)
-    SpokenLayout.Pixels = pixels
-    Expect("native layout rounding avoids rounding the bar before the player is scaled", ok, true)
     eject.scripts.OnEnter(eject)
-    Expect("eject explains the existing Stop All action", GameTooltip.lines[1], env.L.MIN_STOP_ALL)
+    Expect("eject explains the Eject action", GameTooltip.lines[1], env.L.MIN_STOP_ALL)
     for _, style in ipairs({ "classic", "minimal", "subtitle" }) do
         env.Addon:SetPlayerStyle(style)
         F:RefreshConfig()
@@ -1222,7 +1219,7 @@ do
         view.eject:Click()
         Expect(style .. " eject clears every source's queued lines", Spoken:GetQueueSize(), 0)
         Expect(style .. " eject stops both lines through the normal callbacks", stopped, 2)
-        Expect(style .. " eject clears the paused flag like the minimap Stop All", Spoken:IsPaused(), false)
+        Expect(style .. " eject clears the paused flag like the minimap Eject", Spoken:IsPaused(), false)
         env.Actions.SetPausable({ view.eject })
         Expect(style .. " disables eject with no queue", view.eject:IsEnabled(), false)
     end

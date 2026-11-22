@@ -235,7 +235,7 @@ local function StepButton(parent, name, direction)
     step.glyph:SetPoint("CENTER", eject and 0 or (back and 2 or -2), eject and 2 or 0)
     step.bar = step:CreateTexture(nil, "ARTWORK")
     local width, height = eject and 9 or 2, eject and 2 or 9
-    if step.bar.SetRoundLayoutToNearestPixel then
+    if eject and step.bar.SetRoundLayoutToNearestPixel then
         -- The player applies its scale after building these textures; round at layout time.
         step.glyph:SetRoundLayoutToNearestPixel(true)
         step.bar:SetRoundLayoutToNearestPixel(true)
