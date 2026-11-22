@@ -28,7 +28,31 @@ function read(raw: string) {
 
 describe("a sighting", () => {
   it("reads the envelope the addon writes", () => {
-    expect(read(captured)).toEqual({ npcType: "creature", npcId: 12345, zones: [1411] });
+    expect(read(captured)).toEqual({
+      npcType: "creature",
+      npcId: 12345,
+      zones: [1411],
+      locale: "enUS",
+      name: "Deathguard Linnea",
+    });
+  });
+
+  it("reads an older addon's, which has no locale and no name", () => {
+    expect(read(seen("npc=creature:5\nzones=1411\n"))).toEqual({
+      npcType: "creature",
+      npcId: 5,
+      zones: [1411],
+      locale: null,
+      name: null,
+    });
+  });
+
+  it("drops a name no game shows, and keeps where the NPC was met", () => {
+    expect(read(seen(`locale=esMX\nnpc=creature:5\nzones=1411\nname=${"a".repeat(201)}\n`))).toMatchObject({
+      zones: [1411],
+      locale: "esMX",
+      name: null,
+    });
   });
 
   it("is gathered, but no contribution", () => {
@@ -36,7 +60,7 @@ describe("a sighting", () => {
   });
 
   it("keeps each zone once, gameobjects too", () => {
-    expect(read(seen("npc=gameobject:7\nzones=1413,1411,1413\n"))).toEqual({
+    expect(read(seen("npc=gameobject:7\nzones=1413,1411,1413\n"))).toMatchObject({
       npcType: "gameobject",
       npcId: 7,
       zones: [1413, 1411],

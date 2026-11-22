@@ -15,7 +15,7 @@ const post = 990_000_002;
 let clock = Date.now();
 // confirmedSightings keeps a minute; each read here is a minute after the last.
 const fresh = () => (clock += 120_000);
-const sighting = (npcId: number, zones: number[]) => ({ npcType: "creature" as const, npcId, zones });
+const sighting = (npcId: number, zones: number[]) => ({ npcType: "creature" as const, npcId, zones, locale: null, name: null });
 
 afterEach(async () => {
   await db().query(`delete from "npc_sighting" where "npcId" in ($1, $2)`, [thork, post]);
