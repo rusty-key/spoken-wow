@@ -29,18 +29,17 @@ function Text:Current()
 	-- DialogueUI already supplies a copy control on both kinds of window.
 	if Visible(_G.DUIQuestFrame) or Visible(_G.DUIBookFrame) then return nil end
 	local books = _G.SpokenReadables
+	local frame, kind, text
 	if Visible(_G.ItemTextFrame) and books and not books:IsMail() then
-		return ItemTextFrame, "readables", NotSecret(ItemTextGetText())
+		frame, kind, text = ItemTextFrame, "readables", NotSecret(ItemTextGetText())
+	else
+		local quests = _G.VoiceOver
+		if not (quests and quests.Contribute and quests.Contribute.CurrentText) then return nil end
+		frame = Visible(_G.QuestFrame) and QuestFrame or Visible(_G.GossipFrame) and GossipFrame or nil
+		kind, text = "quests", frame and quests.Contribute:CurrentText()
 	end
-	local quests = _G.VoiceOver
-	if not (quests and quests.Contribute and quests.Contribute.CurrentText) then return nil end
-	local frame
-	if Visible(_G.QuestFrame) then
-		frame = QuestFrame
-	elseif Visible(_G.GossipFrame) then
-		frame = GossipFrame
-	end
-	return frame, "quests", frame and quests.Contribute:CurrentText()
+	if type(text) ~= "string" or text == "" then return nil end
+	return frame, kind, text
 end
 
 local function QuestItems(lines, source, count)
@@ -59,8 +58,12 @@ local function QuestItems(lines, source, count)
 	end
 end
 
-local function NPCDetails(lines, quests)
-	if Visible(_G.QuestFrameGreetingPanel) then
+local function NPCDetails(lines)
+	local greeting = Visible(_G.QuestFrameGreetingPanel)
+	if greeting then
+		local guid = VoiceOver.Utils:GetNPCGUID()
+		Add(lines, "NPC", VoiceOver.Utils:ReadIDFromGUID(guid))
+		Add(lines, "Name", VoiceOver.Utils:GetNPCName())
 		Add(lines, "event", "greeting")
 		if GetNumAvailableQuests and GetAvailableQuestInfo then
 			for index = 1, GetNumAvailableQuests() or 0 do
@@ -71,10 +74,6 @@ local function NPCDetails(lines, quests)
 		if GetNumActiveQuests and GetActiveQuestID then
 			for index = 1, GetNumActiveQuests() or 0 do Add(lines, "Active Quest", GetActiveQuestID(index)) end
 		end
-	end
-	if not Visible(_G.QuestFrameGreetingPanel) and Visible(_G.QuestFrame) then
-		local item, name = quests.Contribute:QuestItem()
-		if item then Add(lines, "ItemID", tostring(item) .. (name and " " .. name or "")) end
 	end
 	if Visible(_G.QuestFrameProgressPanel) and GetQuestItemInfo and GetNumQuestItems then
 		QuestItems(lines, "required", GetNumQuestItems())
@@ -88,27 +87,18 @@ local function NPCDetails(lines, quests)
 			if id then Add(lines, "OptionID", tostring(id) .. (name and " " .. name or "")) end
 		end
 	end
-	if Visible(_G.QuestFrameGreetingPanel) then
-		local guid = quests.Utils:GetNPCGUID()
-		Add(lines, "NPC", quests.Utils:ReadIDFromGUID(guid))
-		Add(lines, "Name", quests.Utils:GetNPCName())
-	end
 end
 
 function Text:Payload(kind, text)
 	local envelope, key
 	if kind == "readables" then
 		envelope, key = SpokenReadables:CaptureContribution()
-	else
+	elseif not Visible(_G.QuestFrameGreetingPanel) then
+		-- On a greeting, Capture can only find the last gossip, which the API still answers with.
 		envelope, key = VoiceOver.Contribute:Capture()
 	end
 	local lines = {}
-	-- Item diagnostics must agree with the contribution's identification of the opened item.
-	local _, fields, capturedText = Spoken.Contribute:Parse(envelope)
-	-- A greeting panel can replace a gossip page while its old API text still answers.
-	if kind == "quests" and Visible(_G.QuestFrameGreetingPanel) and capturedText ~= text then
-		fields, key = nil, nil
-	end
+	local _, fields = Spoken.Contribute:Parse(envelope)
 	for _, field in ipairs(fields or {}) do Add(lines, field[1], field[2]) end
 	Add(lines, "Spoken key", key)
 	if kind == "readables" then
@@ -119,7 +109,7 @@ function Text:Payload(kind, text)
 			if opener.kind == "object" then Add(lines, "object", opener.id) end
 		end
 	else
-		NPCDetails(lines, VoiceOver)
+		NPCDetails(lines)
 	end
 	lines[#lines + 1] = ""
 	lines[#lines + 1] = text
@@ -128,8 +118,8 @@ end
 
 function Text:Show()
 	local frame, kind, text = self:Current()
-	if not frame or type(text) ~= "string" or text == "" then return end
-	Developer.Box:Show(self:Payload(kind, text), L.BOX_TITLE_TEXT, frame)
+	if not frame then return end
+	Developer.Box:Show(self:Payload(kind, text), L.BOX_TITLE_TEXT, frame, self)
 end
 
 function Text:Watch(frame)
@@ -169,8 +159,8 @@ function Text:Position(frame, kind)
 end
 
 function Text:Refresh()
-	local frame, kind, text = self:Current()
-	if not frame or type(text) ~= "string" or text == "" then
+	local frame, kind = self:Current()
+	if not frame then
 		if self.button then self.button:Hide() end
 		return
 	end
@@ -193,7 +183,7 @@ end
 local function SetOn(value)
 	Developer:DB().copyText = value and true or false
 	Text:Refresh()
-	if not Text:IsOn() then Developer.Box:Hide(L.BOX_TITLE_TEXT) end
+	if not Text:IsOn() then Developer.Box:Hide(Text) end
 end
 
 function Text:Setup()
@@ -204,17 +194,15 @@ function Text:Setup()
 		"GOSSIP_SHOW", "GOSSIP_CLOSED", "QUEST_FINISHED", "ITEM_TEXT_READY", "ITEM_TEXT_CLOSED", "ADDON_LOADED" }) do
 		watcher:RegisterEvent(event)
 	end
-	watcher:SetScript("OnEvent", function()
+	local function Sync()
 		for _, name in ipairs(HOSTS) do
 			self:Watch(_G[name])
 		end
 		self:Refresh()
-	end)
-	self.watcher = watcher
-	for _, name in ipairs(HOSTS) do
-		self:Watch(_G[name])
 	end
-	self:Refresh()
+	watcher:SetScript("OnEvent", Sync)
+	self.watcher = watcher
+	Sync()
 end
 
 if Spoken then

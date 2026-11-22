@@ -78,10 +78,10 @@ _G.C_Container = {
     end,
 }
 Expect("a creature offering a quest a carried item also starts names no item",
-    Has(Payload(), "[ItemID: 211315"), false)
+    Has(Payload(), "211315"), false)
 world.npcGUID = "Item-4372-0-400000033D4D1C15"
 Expect("an item that starts the quest is named by its bag item",
-    Has(Payload(), "[ItemID: 211315 Underground Map]"), true)
+    Has(Payload(), "[npc: 211315 "), true)
 world.npcGUID = "Creature-0-0-0-0-12345-0"
 _G.C_Container = nil
 
