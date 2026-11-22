@@ -267,6 +267,10 @@ end
 --- Skip: the round button with the play glyph against a bar, the usual "next" mark.
 function Actions.SkipButton(parent, name)
     local skip = StepButton(parent, name)
+    -- Skip Forward advances to a waiting line; Eject is the control that ends the current one.
+    skip.canAct = function()
+        return SoundQueue:GetQueueSize() > 1 and SoundQueue:CanBePaused()
+    end
     skip:SetScript("OnClick", Actions.Skip)
     return skip
 end

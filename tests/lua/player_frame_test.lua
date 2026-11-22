@@ -1208,13 +1208,22 @@ do
     for _, style in ipairs({ "classic", "minimal", "subtitle" }) do
         env.Addon:SetPlayerStyle(style)
         F:RefreshConfig()
+        local view = style == "classic" and F or style == "minimal" and env.MinimalPlayer or env.Subtitle
+        local controls = view.buttons or { view.pause, view.previous, view.skip, view.eject }
+        quests:Enqueue(H.Clip({ present = { transcript = "A single narrated quest line." } }))
+        stub.Advance(0.1)
+        env.Actions.SetPausable(controls)
+        Expect(style .. " disables Skip Forward without a next line", view.skip:IsEnabled(), false)
+        Expect(style .. " greys Skip Forward without a next line", view.skip:GetAlpha(), .4)
+        Expect(style .. " keeps Eject enabled for the current line", view.eject:IsEnabled(), true)
+        view.eject:Click()
+        Expect(style .. " Eject ends the only queued line", Spoken:GetQueueSize(), 0)
         local stopped = 0
         local function OnStop() stopped = stopped + 1 end
         quests:Enqueue(H.Clip({ stopCallback = OnStop, present = { transcript = "A narrated quest line." } }))
         places:Enqueue(H.Clip({ stopCallback = OnStop, present = { transcript = "A narrated place line." } }))
         stub.Advance(0.1)
         Spoken:Pause()
-        local view = style == "classic" and F or style == "minimal" and env.MinimalPlayer or env.Subtitle
         Expect(style .. " enables eject for a stopped queue", view.eject:IsEnabled(), true)
         view.eject:Click()
         Expect(style .. " eject clears every source's queued lines", Spoken:GetQueueSize(), 0)
