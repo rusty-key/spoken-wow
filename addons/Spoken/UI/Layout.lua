@@ -745,6 +745,7 @@ end
 local function NoStop(frame)
     Navigate(function() SmartNavigation_MarkFrameIgnored(frame) end)
 end
+Layout.NoStop = NoStop
 
 -- Where the cursor counts a stop and draws itself: just left of `at`. It goes up or down only to
 -- a stop within 45 degrees of straight, nearest first, counting each where its anchor points

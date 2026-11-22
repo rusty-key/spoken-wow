@@ -138,6 +138,13 @@ stub.world.playerMapID = 9999
 Tab:Open()
 local panel = Tab.panel
 local page = panel.page
+-- Built detached, out of the game's hook on CreateFrame, the parts' buttons are found only by a
+-- look the window asks for: made with the page, they are there when it first looks.
+local partPlays = 0
+for _, child in ipairs({ page.body.child:GetChildren() }) do
+    if child.moment then partPlays = partPlays + 1 end
+end
+Expect("the parts' Play buttons are made with the page, before any quest is shown", partPlays, 3)
 local function StartedOnlyTicked() return stub.OpenDropdown(panel.filterMenu)[1].checked and true or false end
 Expect("Started Only is on for a profile that never set it", StartedOnlyTicked(), true)
 Expect("Unlock Unstarted Quests is off for a profile that never set it", VO.Addon.db.global.Compendium.UnlockUnfound == true, false)
