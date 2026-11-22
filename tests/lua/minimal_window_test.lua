@@ -84,7 +84,15 @@ Expect("...all the way", Try(function() return M.stopped:GetAlpha() end), 1)
 quests:Enqueue(Line("Three"))
 Expect("a line added while stopped waits, the queue still stopped", Try(function()
     return tostring(env.SoundQueue:IsPaused()) .. "|" .. M.count:GetText() end), "true|· +2")
-M:Tick(0.15)
+local burst = M.tail.pulse.burst
+local SetText = burst.SetText
+-- The client rejects SetText until a newly created FontString has a font.
+burst.SetText = function(self, text)
+    assert(self.fontFile, "FontString:SetText(): Font not set")
+    return SetText(self, text)
+end
+M:Tick(0.009)
+M:Tick(0.141)
 Expect("...the count swelling, lit, over the count itself", Try(function()
     local pulse = M.tail.pulse
     local size = pulse.burst.fontSize

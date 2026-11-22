@@ -2,6 +2,10 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Queue counts pulse without an error when a line is added while Spoken is stopped.** *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.12.0 — 2026-11-22
 
 - **Previous Line replays what just played,** from the player, `/sp previous` or a key you bind.
