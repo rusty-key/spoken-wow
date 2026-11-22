@@ -251,7 +251,7 @@ holding any when the variable is not a site's `/api/archive/` route. The
 
 Players could download a team's packs from its bucket instead: manifests would carry a base address
 and each file's key, the Manager would follow them (it fetches `blobs/<sha>` from the channel today,
-`manager/src/main/packs-sync.ts`), older Managers would need those packs kept out of their sight,
+`apps/manager/src/main/packs-sync.ts`), older Managers would need those packs kept out of their sight,
 and the bucket would need a public address. Decision 4 leaves the channel as it is. A team that wants
 full independence can list a community pack (migration 0106): a zip hosted anywhere, named by URL
 and hash.

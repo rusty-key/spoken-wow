@@ -81,7 +81,7 @@ updates Spoken first when the installed one is older.
 
 ## Run it from source
 
-You need Node 22 and npm. Work in this folder (`manager/`):
+You need Node 22 and npm. Work in this folder (`apps/manager/`):
 
     npm ci
     npm run dev          # the app, with live reload

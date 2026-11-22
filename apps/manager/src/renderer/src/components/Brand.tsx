@@ -12,7 +12,7 @@ import logoAnniversary from '../assets/games/logo-anniversary.png'
 import logoEra from '../assets/games/logo-era.png'
 import logoForever from '../assets/games/logo-forever.png'
 
-// The games' own logos, key art and icons, from warcraft.wiki.gg (see manager/CREDITS.md).
+// The games' own logos, key art and icons, from warcraft.wiki.gg (see apps/manager/CREDITS.md).
 // `pos` is where the art is anchored in its box, `filter` how far it is darkened.
 interface GameImages {
   logo: string

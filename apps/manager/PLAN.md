@@ -115,7 +115,7 @@ installer, per-user, no admin) and updated with electron-updater from GitHub Rel
 download manager with a UI needs nothing the platform lacks.
 
 ```
-manager/
+apps/manager/
   src/shared/      types and the IPC contract (the one file both sides import)
   src/main/        main process
     games.ts         discover installs; read .build.info / .flavor.info; persist added folders
@@ -185,7 +185,7 @@ first run creates `manager-latest` as a normal release that is not marked "lates
 
 `npm test` (vitest) for the core, `npm run typecheck`, and a manual pass in the running window
 with a throw-away AddOns folder. Not part of the repo's `ci.yaml` or its pnpm workspace: the manager
-has its own `package-lock.json`, its own folder, `manager/`, and its own workflow, `manager.yml`,
+has its own `package-lock.json`, its own folder, `apps/manager/`, and its own workflow, `manager.yml`,
 which runs typecheck, tests and build on Windows, macOS and Linux.
 
 The tests run the logic of every system on any machine: discovery, case rules, the running-game
