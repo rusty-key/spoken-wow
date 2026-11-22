@@ -79,7 +79,7 @@ export function localeEntries(pages, names) {
       ownerKind: page.ownerKind, ownerIds: page.ownerIds };
     (page.inEnglish && page.numeric ? known : extra).push(entry);
   }
-  return { known, extra };
+  return { known: canBeHad(known), extra: canBeHad(extra) };
 }
 
 /**

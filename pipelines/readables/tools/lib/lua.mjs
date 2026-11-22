@@ -156,9 +156,9 @@ export function canBeHad(entries) {
   const texts = new Map();
   for (const entry of entries) {
     if (!texts.has(entry.bookId)) texts.set(entry.bookId, []);
-    texts.get(entry.bookId).push(entry.text);
+    texts.get(entry.bookId).push(entry.text ?? entry.texts?.join("\n"));
   }
-  return entries.filter((entry) => !cannotBeHad(entry.title, texts.get(entry.bookId), entry.bookId));
+  return entries.filter((entry) => !cannotBeHad(entry.title ?? entry.titles?.[0], texts.get(entry.bookId), entry.bookId));
 }
 
 /**

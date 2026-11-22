@@ -51,6 +51,17 @@ test("another language's is build output, never in English's folder", () => {
 });
 
 const CLIPS = [{ pageId: 15, file: "15", durationSec: 2.5 }];
+test("unavailable pack-only books have no discoverable metadata", () => {
+  const entries = localeEntries([
+    { pageId: "ntest", bookId: "ntest", pageNumber: 1, numeric: false, inEnglish: false,
+      ownTitle: "TEST Example", texts: ["Test words."], ownerKind: "item", ownerIds: [999] },
+    { pageId: "nreal", bookId: "nreal", pageNumber: 1, numeric: false, inEnglish: false,
+      ownTitle: "A Report", texts: ["Real words."], ownerKind: "item", ownerIds: [998] },
+  ], []);
+  const lua = packLua("enUS", [], entries);
+  assert.doesNotMatch(lua, /ntest|TEST Example|\[999\]/);
+  assert.match(lua, /nreal/);
+});
 test("pack ownership excludes the shared Plain Letter item", () => {
   const entries = { known: [], extra: [{ pageId: "nletter", bookId: "nbook", pageNumber: 1,
     titles: ["A Letter"], texts: ["Hello."], ownerKind: "item", ownerIds: [8383, 2794] }] };
