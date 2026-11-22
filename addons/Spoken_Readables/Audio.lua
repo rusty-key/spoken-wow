@@ -35,7 +35,7 @@ local TYPE_ICONS = {
 -- Item metadata can be absent while browsing, so the page and queued clip share the type fallback.
 function SpokenReadables:ReadableIcon(kind, bookID)
 	local icon, crop
-	if bookID and self:ItemForBook(bookID) then icon, crop = self:ItemIcon(bookID) end
+	if bookID then icon, crop = self:ItemIcon(bookID) end
 	if not icon then
 		icon = kind and ([[Interface\Icons\]] .. (TYPE_ICONS[kind] or TYPE_ICONS.other)) or BOOK_TEXTURE
 	end

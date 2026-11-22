@@ -307,7 +307,9 @@ end
 
 --- Nil for a world object.
 function SpokenReadables:ItemIcon(bookID)
-	return Spoken:ItemIcon(self:ItemForBook(bookID))
+	local itemID = self:ItemForBook(bookID)
+	if not itemID then return nil end
+	return Spoken:ItemIcon(itemID)
 end
 
 --- Spoken's site, or nil when Spoken is not loaded: no page is read aloud without it, so there
