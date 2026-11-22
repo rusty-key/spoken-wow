@@ -178,7 +178,8 @@ for _, client in ipairs({ "11509", "16001" }) do
     Leave()
     _G.Spoken:SetPartOn("gossip", true)
 
-    -- Gossip audio continues after its window closes; Stop When Window Closes is for quest audio.
+    -- Stop When Window Closes stops gossip as its window closes, and a quest giver's greeting too,
+    -- as its quest frame closes.
     VO.Addon.db.profile.Audio.GossipFrequency = Frequency.Always
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = true
     stub.ShowGossip(GREETING, { BANK })
@@ -188,12 +189,11 @@ for _, client in ipairs({ "11509", "16001" }) do
     stub.HidePanels()
     stub.FireEvent("GOSSIP_CLOSED")
     stub.Advance(0.1)
-    Expect(client .. ": gossip continues after its window closes", _G.Spoken:GetCurrent() ~= nil, true)
-    _G.Spoken:StopAll()
+    Expect(client .. ": gossip stops as its window closes, under Stop When Window Closes",
+        _G.Spoken:GetCurrent(), nil)
     stub.Advance(1)
     Played(played)
 
-    -- Quest-giver greetings use the same gossip player, and also continue after their frame closes.
     world.questID = 0
     world.greetingText = GREETING
     stub.ShowPanel("QuestFrameGreetingPanel")
@@ -203,8 +203,8 @@ for _, client in ipairs({ "11509", "16001" }) do
     stub.ShowPanel(nil)
     stub.FireEvent("QUEST_FINISHED")
     stub.Advance(0.1)
-    Expect(client .. ": ...and continues as its window closes, under Stop When Window Closes",
-        _G.Spoken:GetCurrent() ~= nil, true)
+    Expect(client .. ": ...and a greeting stops as its quest frame closes",
+        _G.Spoken:GetCurrent(), nil)
     stub.Advance(10)
     Played(played)
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
