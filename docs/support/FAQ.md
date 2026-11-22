@@ -168,7 +168,7 @@ Press the **Report** (bug) button on the subtitles or the window while the line 
 
 ## How do I report a bug or a Lua error?
 
-First update Spoken, since many errors are already fixed. Then post in the **#bugs-forever-era** forum on the Discord (https://spoken.quest/discord) with your client (Forever, Classic Era or Anniversary), your Spoken version, the full error text and the steps that cause it. The output of `/sp diagnostics` helps. Issues are also welcome on GitHub: https://github.com/rusty-key/spoken-wow/issues
+First update Spoken, since many errors are already fixed. Then post in the **#bugs** forum on the Discord (https://spoken.quest/discord) with your client (Forever, Classic Era or Anniversary), your Spoken version, the full error text and the steps that cause it. The output of `/sp diagnostics` helps. Issues are also welcome on GitHub: https://github.com/rusty-key/spoken-wow/issues
 
 ## How can I send lines that have no voice?
 

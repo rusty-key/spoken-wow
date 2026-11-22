@@ -21,7 +21,7 @@ import { FAQ_PATH, loadFaq } from "./support.mjs";
 const KNOWN = new Set([
   "Quests", "Gossip", "Places", "Bosses", "Readables", "Alliance", "Horde", "Shared", "All",
   "Spoken: English", "Spoken Manager", "CurseForge app", "By hand", "DialogueUI", "Immersion",
-  "Windows", "macOS", "Linux", "#bugs-forever-era",
+  "Windows", "macOS", "Linux", "#bugs",
 ]);
 
 // Commands that are not one of Spoken's words: the game's own, and /sp help, which is what /sp
