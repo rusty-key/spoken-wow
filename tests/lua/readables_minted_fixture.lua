@@ -7,5 +7,10 @@ return function(B)
     data.pages[page] = { book = book, number = 1, text = text }
     data.owners.item[277976] = book
     data.index["Mechanic's Log"] = { [1] = { [B:ChecksumOf(text)] = page } }
+    if _G.SpokenReadablesPlaces then
+        SpokenReadablesPlaces.books[2786].quests = { 8228 }
+        SpokenReadablesPlaces.books[2859].quests = { 8996 }
+        SpokenReadablesPlaces.books[book] = { kind = "carried", type = "journal", quests = { 97277 }, zones = { 1426 } }
+    end
     return book
 end
