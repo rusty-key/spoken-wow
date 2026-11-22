@@ -24,6 +24,7 @@ import { isClientLocale } from "../../../lib/locales.mjs";
 import { releaseTeamSql } from "../../../lib/release-team.mjs";
 import { packTimes } from "../../../lib/word-times.mjs";
 import { canBeHad, compareIds, indexLua, luaId, pageIndex, placeLua, quote } from "./lua.mjs";
+import { namesOneBook } from "./owners.mjs";
 import { PLAYER_WORDS_SQL, registerPlayerWordRows } from "../../../lib/player-words.mjs";
 import { handPlace } from "./hand.mjs";
 import { shownPage } from "./text.mjs";
@@ -140,6 +141,7 @@ export function packLua(lang, clips, entries = null) {
         if (hand.type && hand.zones.length) bookPlaces.set(e.bookId, hand);
         if (e.ownerKind === "item") {
           for (const item of e.ownerIds ?? []) {
+            if (!namesOneBook("item", item)) continue;
             const previous = items.get(item);
             items.set(item, previous !== undefined && previous !== e.bookId ? null : e.bookId);
           }

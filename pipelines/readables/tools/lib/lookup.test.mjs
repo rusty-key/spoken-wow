@@ -51,6 +51,13 @@ test("another language's is build output, never in English's folder", () => {
 });
 
 const CLIPS = [{ pageId: 15, file: "15", durationSec: 2.5 }];
+test("pack ownership excludes the shared Plain Letter item", () => {
+  const entries = { known: [], extra: [{ pageId: "nletter", bookId: "nbook", pageNumber: 1,
+    titles: ["A Letter"], texts: ["Hello."], ownerKind: "item", ownerIds: [8383, 2794] }] };
+  const lua = packLua("enUS", [], entries);
+  assert.doesNotMatch(lua, /\[8383\]/);
+  assert.match(lua, /\[2794\] = "nbook"/);
+});
 const PAGES = [
   { pageId: "15", numeric: true, bookId: "15", pageNumber: 1, ownerKind: "object", ownerIds: [7, 8], inEnglish: true, texts: ["Hola."] },
   { pageId: "16", numeric: true, bookId: "15", pageNumber: 2, ownerKind: "item", ownerIds: [9], inEnglish: true, texts: ["Adiós."] },
