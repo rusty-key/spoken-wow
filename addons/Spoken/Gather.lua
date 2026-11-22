@@ -163,7 +163,9 @@ function Gather:SeenCount()
 end
 
 --- How Sent.lua names a sent envelope: its sum and its length in bytes, read without hashing it.
---- Nil for anything that is not an envelope.
+--- Nil for anything that is not an envelope. Two lines of one length can share a sum (the checksum
+--- multiplies by 31, so "Aa" and "BB" agree), and a line kept after the send that matches one sent
+--- is dropped unsent. A stronger mark would mean hashing every line here at login.
 function Gather:SentMark(envelope)
     -- From near the end: the sum is the last line, and a line is a few kilobytes to scan at login.
     local sum = type(envelope) == "string" and envelope:match("\nsum=(%d+)\n$", math.max(1, #envelope - 32))

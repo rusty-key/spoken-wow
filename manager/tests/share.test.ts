@@ -5,7 +5,7 @@ import { CHANNELS } from '../src/shared/api'
 import type { GameInstall, SharingStatus } from '../src/shared/types'
 import { ManagerService, SHARE_BACKOFF_MS } from '../src/main/service'
 import { findContributionFiles, hashEnvelope, LEDGER_CAP, loadLedger, saveLedger, sendPending, sentLua, sentMark } from '../src/main/share'
-import { loadSettings, sanitizeSettings } from '../src/main/state'
+import { loadSettings, sanitizeSettings, writeTextAtomic } from '../src/main/state'
 import { makeGame, tmpDir, write } from './helpers'
 
 /** An envelope as the addon writes it; the manager never checks the sum, the site does. */
@@ -200,7 +200,7 @@ describe('Sent.lua', () => {
     expect(fs.existsSync(sentFile(game))).toBe(false)
   })
 
-  it('keeps listing the lines of a file it could not read this time', async () => {
+  it('keeps listing the lines of a file it cannot read, however many polls in a row', async () => {
     const { game, dataPath } = await setup()
     addon(game)
     const file = contributionsFile(game, 'A')
@@ -209,7 +209,37 @@ describe('Sent.lua', () => {
     await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })
     fs.rmSync(file)
     fs.mkdirSync(file)
-    expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl, all: true })).toEqual({ outcome: 'nothing', unread: [file] })
+    expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })).toEqual({ outcome: 'nothing', unread: [file] })
+    // Another account's file changes while A's is still unreadable.
+    write(contributionsFile(game, 'B'), savedVariables([summed(2)]))
+    expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })).toEqual({ outcome: 'sent', count: 1, unread: [file] })
+    expect(fs.readFileSync(sentFile(game), 'utf8')).toBe(listed(summed(1), summed(2)))
+  })
+
+  it('writes the list again when an update puts back the empty one, though no file changed', async () => {
+    const { game, dataPath } = await setup()
+    addon(game)
+    write(contributionsFile(game, 'A'), savedVariables([summed(1)]))
+    const site = fakeSite()
+    await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })
+    write(sentFile(game), 'SpokenContributionsSent = {}\n')
+    await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })
+    expect(fs.readFileSync(sentFile(game), 'utf8')).toBe(listed(summed(1)))
+
+    // Left as written, it is not read again: a poll that changed nothing leaves share.json alone.
+    const ledgerFile = path.join(dataPath, 'share.json')
+    fs.utimesSync(ledgerFile, 1, 1)
+    await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })
+    expect(fs.statSync(ledgerFile).mtimeMs).toBe(1000)
+  })
+
+  it('lists no sightings, which the addon keeps', async () => {
+    const { game, dataPath } = await setup()
+    addon(game)
+    const sighting = '!SPOKEN1 seen\nnpc=creature:1\nzones=1\nsum=5\n'
+    write(contributionsFile(game, 'A'), savedVariables([summed(1), sighting]))
+    await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: fakeSite().fetchImpl })
+    expect(sentMark(sighting)).toBeNull()
     expect(fs.readFileSync(sentFile(game), 'utf8')).toBe(listed(summed(1)))
   })
 
@@ -330,5 +360,14 @@ describe('ManagerService sharing', () => {
     expect(await running).toBeNull()
     release()
     expect(Object.keys(loadLedger(dataPath).sent)).toEqual([])
+  })
+})
+
+describe('writeTextAtomic', () => {
+  it('never makes the folder it writes into', () => {
+    // The installer moves a folder aside while it updates; making it again would block the new one.
+    const gone = path.join(tmpDir(), 'SpokenContributions')
+    expect(() => writeTextAtomic(path.join(gone, 'Sent.lua'), 'x')).toThrow()
+    expect(fs.existsSync(gone)).toBe(false)
   })
 })

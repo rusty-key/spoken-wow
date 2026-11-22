@@ -17,12 +17,16 @@ export function readJsonFile<T>(file: string, fallback: T): T {
 }
 
 export function writeJsonAtomic(file: string, data: unknown): void {
+  fs.mkdirSync(path.dirname(file), { recursive: true })
   writeTextAtomic(file, JSON.stringify(data, null, 2))
 }
 
-/** Writes to a temp file next to the target, then renames it over, so a crash never leaves half a file. */
+/**
+ * Writes to a temp file next to the target, then renames it over, so a crash never leaves half a file.
+ * Throws when the folder is missing rather than making it: one the installer has just moved aside
+ * would be made again, and the installer could not move the new one in.
+ */
 export function writeTextAtomic(file: string, text: string): void {
-  fs.mkdirSync(path.dirname(file), { recursive: true })
   const tmp = `${file}.${process.pid}.${Date.now()}.tmp`
   try {
     fs.writeFileSync(tmp, text, 'utf8')

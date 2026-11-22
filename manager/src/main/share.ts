@@ -38,6 +38,8 @@ export interface ShareLedger {
   lastSent?: { at: string; count: number }
   /** Each file's size and time as last read, so a poll reads only what the game has rewritten. */
   seen: Record<string, SeenFile>
+  /** Each Sent.lua's size and time as last written, so a poll notices an update putting back the empty one. */
+  lists: Record<string, LocalFile>
 }
 
 export interface SeenFile extends LocalFile {
@@ -56,6 +58,11 @@ function records<T>(v: unknown, ok: (x: unknown) => x is T): Record<string, T> {
   return Object.fromEntries(Object.entries(v).filter(([, x]) => ok(x))) as Record<string, T>
 }
 
+function isLocalFile(x: unknown): x is LocalFile {
+  const s = x as { size?: unknown; mtimeMs?: unknown }
+  return typeof x === 'object' && x !== null && typeof s.size === 'number' && typeof s.mtimeMs === 'number'
+}
+
 export function loadLedger(dataPath: string): ShareLedger {
   const raw = readJsonFile<Record<string, unknown>>(ledgerFile(dataPath), {})
   const id = typeof raw.installId === 'string' && UUID_V4.test(raw.installId) ? raw.installId : ''
@@ -64,15 +71,10 @@ export function loadLedger(dataPath: string): ShareLedger {
     installId: id,
     sent: records(raw.sent, (x): x is string => typeof x === 'string'),
     ...(last && typeof last.at === 'string' && typeof last.count === 'number' ? { lastSent: { at: last.at, count: last.count } } : {}),
+    lists: records(raw.lists, isLocalFile),
     seen: records(raw.seen, (x): x is SeenFile => {
-      const s = x as { size?: unknown; mtimeMs?: unknown; marks?: unknown }
-      return (
-        typeof x === 'object' &&
-        x !== null &&
-        typeof s.size === 'number' &&
-        typeof s.mtimeMs === 'number' &&
-        (s.marks === undefined || (Array.isArray(s.marks) && s.marks.every((m) => typeof m === 'string')))
-      )
+      const marks = (x as { marks?: unknown }).marks
+      return isLocalFile(x) && (marks === undefined || (Array.isArray(marks) && marks.every((m) => typeof m === 'string')))
     })
   }
 }
@@ -87,11 +89,12 @@ export function hashEnvelope(envelope: string): string {
 
 /**
  * Must equal Gather:SentMark: the envelope's `sum=` and its length in bytes. Not the sha256, which
- * the addon would have to compute for every line at login.
+ * the addon would have to compute for every line at login. Null for a sighting, which the addon
+ * keeps, and for anything without a sum.
  */
 export function sentMark(envelope: string): string | null {
   const sum = /\nsum=(\d+)\n$/.exec(envelope)
-  return sum ? `${sum[1]}:${Buffer.byteLength(envelope, 'utf8')}` : null
+  return sum && !/^!SPOKEN\d+ seen\n/.test(envelope) ? `${sum[1]}:${Buffer.byteLength(envelope, 'utf8')}` : null
 }
 
 /** Sorted, so an unchanged list writes the same bytes and Sent.lua is left alone. */
@@ -100,20 +103,34 @@ export function sentLua(marks: Iterable<string>): string {
   return `-- Written by the Spoken Manager: the lines it sent, which Spoken drops at login.\nSpokenContributionsSent = {\n${keys.join('\n')}${keys.length ? '\n' : ''}}\n`
 }
 
-/**
- * Never into a linked folder, which is a developer's checkout. A failure is only logged: the lines
- * then stay in the file until a later send writes the list.
- */
-async function writeSentFile(game: GameInstall, marks: Iterable<string>): Promise<void> {
+/** The game's Sent.lua; null without a SpokenContributions folder, or with a linked one, which is a developer's checkout. */
+async function sentFileOf(game: GameInstall): Promise<string | null> {
   const folder = findEntrySync(game.addOnsPath, 'SpokenContributions')
-  if (!folder) return
+  if (!folder) return null
   const dir = path.join(game.addOnsPath, folder)
   const file = path.join(dir, findEntrySync(dir, 'Sent.lua') ?? 'Sent.lua')
-  if ((await isLinked(dir)) || (await isLinked(file))) return
+  return (await isLinked(dir)) || (await isLinked(file)) ? null : file
+}
+
+async function stamp(file: string): Promise<LocalFile | null> {
+  const st = await fs.promises.stat(file).catch(() => null)
+  return st && { size: st.size, mtimeMs: st.mtimeMs }
+}
+
+/**
+ * Writes the list unless the file already holds it, and records the file as written. Without
+ * `changed`, a file still as last written is not read at all. A failure is only logged: the lines
+ * then stay in the game's file until a later poll writes the list.
+ */
+async function writeSentFile(ledger: ShareLedger, file: string, marks: Iterable<string>, changed: boolean): Promise<void> {
+  const before = ledger.lists[file]
+  const now = await stamp(file)
+  if (!changed && before && now && before.size === now.size && before.mtimeMs === now.mtimeMs) return
   const text = sentLua(marks)
   try {
-    if ((await fs.promises.readFile(file, 'utf8').catch(() => null)) === text) return
-    writeTextAtomic(file, text)
+    if ((await fs.promises.readFile(file, 'utf8').catch(() => null)) !== text) writeTextAtomic(file, text)
+    const written = await stamp(file)
+    if (written) ledger.lists[file] = written
   } catch (err) {
     log('Sharing: could not write', file, err)
   }
@@ -211,7 +228,8 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
       } catch (err) {
         log('Sharing: could not read', file, err)
         unread.push(file)
-        delete seen[file]
+        // A size no file has, so it is read again next time; its marks stay, as its lines were sent all the same.
+        seen[file] = { size: -1, mtimeMs: -1, ...(before?.marks ? { marks: before.marks } : {}) }
         continue
       }
       const inFile = new Map<string, string>()
@@ -225,22 +243,23 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
     }
   }
   // Replaced whole: a file that went away is forgotten, so it is read again if it comes back.
-  // Written only when it changed: a poll that found nothing new leaves share.json and Sent.lua
-  // alone. An unchanged file's entry is the ledger's own object, so comparing them is enough.
+  // Written only when it changed: a poll that found nothing new leaves share.json alone. An
+  // unchanged file's entry is the ledger's own object, so comparing them is enough.
   const done = async (result: SendResult): Promise<SendResult> => {
     for (const [file, inFile] of read) {
       const marks = [...inFile].flatMap(([h, mark]) => (ledger.sent[h] ? [mark] : []))
       if (marks.length) seen[file]!.marks = marks
     }
     const files = Object.keys(seen)
-    if (files.length !== Object.keys(ledger.seen).length || files.some((f) => seen[f] !== ledger.seen[f])) {
-      // A file that could not be read keeps its marks from before: its lines were sent all the same.
-      const marksOf = (f: string): string[] => (seen[f] ?? ledger.seen[f])?.marks ?? []
-      const sentFiles = [...filesOf].map(([game, paths]) => [game, paths.flatMap(marksOf)] as const)
-      ledger.seen = seen
-      saveLedger(opts.dataPath, ledger)
-      if (read.size) for (const [game, marks] of sentFiles) await writeSentFile(game, marks)
+    let dirty = files.length !== Object.keys(ledger.seen).length || files.some((f) => seen[f] !== ledger.seen[f])
+    ledger.seen = seen
+    const lists = JSON.stringify(ledger.lists)
+    for (const [game, paths] of filesOf) {
+      const file = await sentFileOf(game)
+      if (file) await writeSentFile(ledger, file, paths.flatMap((f) => seen[f]?.marks ?? []), read.size > 0)
     }
+    dirty ||= JSON.stringify(ledger.lists) !== lists
+    if (dirty) saveLedger(opts.dataPath, ledger)
     return result
   }
   const unreadPart = unread.length ? { unread } : {}
