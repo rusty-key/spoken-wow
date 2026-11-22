@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { booksLua, indexLua, luaTableId, pageIndex, placeLua, quote } from "./lua.mjs";
+import { booksLua, indexLua, luaTableId, pageIndex, placeLua, quote, readableLua } from "./lua.mjs";
+import { handPlace } from "./hand.mjs";
+import { generatedPlace } from "./places.mjs";
 import { pageChecksum } from "./naming.mjs";
 
 const GOZWIN = "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8";
@@ -124,15 +126,12 @@ test("database ids keep numeric keys numeric and minted keys quoted", () => {
   assert.equal(luaTableId("nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"), "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8");
 });
 
-test("the places generator writes a minted journal's quest metadata", async () => {
-  const oldFixture = process.env.PLACES_FIXTURE;
-  process.env.PLACES_FIXTURE = "gozwin";
-  const moduleUrl = new URL("../places.mjs?fixture-gozwin", import.meta.url);
-  await import(moduleUrl);
-  const output = globalThis.__spokenPlacesFixture;
-  delete globalThis.__spokenPlacesFixture;
-  if (oldFixture === undefined) delete process.env.PLACES_FIXTURE;
-  else process.env.PLACES_FIXTURE = oldFixture;
+test("the places generator writes a minted journal's quest metadata", () => {
+  const { books, pageText } = readableLua(booksLua([{ pageId: "npage", bookId: GOZWIN,
+    pageNumber: 1, title: "Synthetic Journal", text: "Fixture words." }]));
+  const hand = handPlace(GOZWIN);
+  const output = placeLua(GOZWIN, generatedPlace({ id: GOZWIN, book: books.get(GOZWIN),
+    kind: hand.kind, spots: hand.zones, hand, pageText, questRewards: new Map([[GOZWIN, new Set(hand.quests)]]) }));
   assert.equal(output,
     `\t\t["${GOZWIN}"] = { kind = "carried", type = "journal", quests = { 97277 }, zones = { 1426 } },`);
 });

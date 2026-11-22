@@ -70,6 +70,7 @@ SpokenReadablesSettings.compendiumFoundOnly = false
 B:SetupSource()
 dofile(READABLES .. "Data/Books.lua")
 dofile(READABLES .. "Data/Places.lua")
+require("readables_minted_fixture")(B)
 local L = B.L
 Expect("Fishing Tournament keeps its direct reward quest", SpokenReadablesPlaces.books[2786].quests[1], 8228)
 Expect("Brazier of Invocation keeps its direct reward quest", SpokenReadablesPlaces.books[2859].quests[1], 8996)
