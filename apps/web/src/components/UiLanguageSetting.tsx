@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { useUiText } from "@/components/UiTextProvider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { allLangs, type Lang } from "@/lib/lang";
+import { allLangs, BASE_LANG, type Lang } from "@/lib/lang";
 import { nativeName } from "@/lib/site-text/names";
 
 /**
@@ -15,18 +15,20 @@ import { nativeName } from "@/lib/site-text/names";
 export default function UiLanguageSetting({ initial }: { initial: Lang | null }) {
   const t = useUiText().interface;
   const refresh = useRouter().refresh;
-  const [saved, setSaved] = useState<Lang | null>(initial);
+  // No saved choice reads in English, so the list shows it as chosen.
+  const [saved, setSaved] = useState<Lang>(initial ?? BASE_LANG);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function choose(next: string) {
-    const value = next === FALLBACK ? null : (next as Lang);
+    const value = next as Lang;
     setBusy(true);
     setError(null);
     const response = await fetch("/api/profile/ui-language", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ lang: value }),
+      // English is the default, so choosing it clears the choice rather than saving one.
+      body: JSON.stringify({ lang: value === BASE_LANG ? null : value }),
     }).catch(() => null);
     setBusy(false);
     if (!response?.ok) {
@@ -43,12 +45,11 @@ export default function UiLanguageSetting({ initial }: { initial: Lang | null })
     <section className="flex max-w-md flex-col gap-1.5 text-sm">
       <label className="flex items-center gap-3">
         <span className="text-muted-foreground w-24 shrink-0">{t.label}</span>
-        <Select value={saved ?? FALLBACK} onValueChange={choose} disabled={busy}>
+        <Select value={saved} onValueChange={choose} disabled={busy}>
           <SelectTrigger size="sm" className="w-48">
             <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper">
-            <SelectItem value={FALLBACK}>{t.followPage}</SelectItem>
             {allLangs().map((code) => (
               <SelectItem key={code} value={code}>
                 {nativeName(code)}
@@ -66,6 +67,3 @@ export default function UiLanguageSetting({ initial }: { initial: Lang | null })
     </section>
   );
 }
-
-/** The value meaning "no choice": the page's own language decides. Not a language code. */
-const FALLBACK = "auto";

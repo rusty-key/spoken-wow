@@ -9,9 +9,9 @@ import { pageLang, readingLang } from "@/lib/lang-server";
 import { uiText } from "@/lib/ui-text";
 
 /**
- * Every page past the front page. Its words follow the reader's own interface language, else
- * the `[lang]` segment. An admin page's `?lang=` names the team it acts on and never reaches
- * this.
+ * Every page past the front page. Its words follow readingLang: the signed-in reader's interface
+ * language, and the `[lang]` segment only for a signed-out visitor. An admin page's `?lang=` names
+ * the team it acts on and never reaches this.
  */
 export default async function BackstageLayout({
   children,

@@ -30,7 +30,6 @@ const zhCN: Dictionary = {
   interface: {
     label: "界面语言",
     hint: "后台界面上的文字，保存在你的账号里。它不会改变你正在维护的语言，那由每个管理页面的语言代码决定。",
-    followPage: "跟随页面自身的语言",
     saveFailed: "保存失败，请重试。",
   },
   admin: {
