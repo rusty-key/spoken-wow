@@ -31,7 +31,6 @@ describe("previewOf", () => {
     const preview = previewOf(envelope);
     expect(preview.ok).toBe(true);
     if (!preview.ok) return;
-    // `key` travels beside the label so a caller need not match on translated words.
     expect(preview.rows).toContainEqual({ key: "quest", label: "Quest", value: "9123" });
     expect(preview.text).toContain("Убей шестерых.");
   });

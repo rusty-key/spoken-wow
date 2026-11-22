@@ -1,11 +1,5 @@
 import type { Dictionary } from "./index";
 
-/**
- * Backstage en français : l'interface de ceux qui maintiennent le pack vocal frFR.
- *
- * Partiel par construction -- ce que ce fichier omet se lit en anglais -- il grandit donc page
- * par page sans jamais être « inachevé » au point de casser une compilation.
- */
 const frFR: Dictionary = {
   hub: "Backstage",
   menu: {

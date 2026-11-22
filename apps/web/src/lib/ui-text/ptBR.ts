@@ -1,11 +1,5 @@
 import type { Dictionary } from "./index";
 
-/**
- * Backstage in Brazilian Portuguese: the interface of whoever maintains the ptBR voice pack.
- *
- * Partial by design -- whatever this file leaves out reads English -- so it grows a page at a
- * time without ever being "unfinished" in a way that breaks a build.
- */
 const ptBR: Dictionary = {
   hub: "Backstage",
   menu: {

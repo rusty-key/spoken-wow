@@ -198,12 +198,7 @@ export default function TeamDashboard({ lang, data, access }: { lang: Lang; data
   );
 }
 
-/**
- * What a run of several rows says, in one line: how many, of what, where.
- *
- * The folded wording is this page's own (t.folded), falling back to FOLDABLE's English for a
- * kind no language has named yet -- a run still has to say something.
- */
+/** What a run of several rows says, in one line: how many, of what, where. */
 function summary(run: ActivityRun, t: UiText["dashboard"]): { what: string; quote: string | null } {
   const n = `${run.count.toLocaleString()}${run.atLeast ? "+" : ""}`;
   const where = run.row.source ? fill(t.inSection, { section: t.sections[run.row.source] }) : "";

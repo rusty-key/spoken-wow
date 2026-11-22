@@ -1,9 +1,6 @@
 /**
- * The language a person reads Backstage in.
- *
- * POST `{ lang }` saves it; `{ lang: null }` clears it, so the page falls back to its `[lang]`
- * segment. Any signed-in person may set their own -- it changes nothing about what they may
- * see or do, only the words on the buttons.
+ * POST `{ lang }` saves the reader's interface language; `{ lang: null }` clears it. Open to any
+ * signed-in person: it changes only the words, never what they may see or do.
  */
 import { bad, bodyOf, objectOf } from "@/lib/api-body";
 import { isLang, type Lang } from "@/lib/lang";

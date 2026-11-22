@@ -1,11 +1,5 @@
 import type { Dictionary } from "./index";
 
-/**
- * Backstage en español de Latinoamérica: la interfaz de quien mantiene el paquete de voz esMX.
- *
- * Parcial a propósito: lo que este archivo no cubre se lee en inglés, así que crece página por
- * página sin quedar nunca "a medias" de una forma que rompa una compilación.
- */
 const esMX: Dictionary = {
   hub: "Backstage",
   menu: {

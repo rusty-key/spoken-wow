@@ -1,11 +1,5 @@
 import type { Dictionary } from "./index";
 
-/**
- * Backstage in Traditional Chinese (Taiwan): the interface of whoever maintains the zhTW voice pack.
- *
- * Partial by design -- whatever this file leaves out reads English -- so it grows a page at a
- * time without ever being "unfinished" in a way that breaks a build.
- */
 const zhTW: Dictionary = {
   hub: "後台",
   menu: {

@@ -45,8 +45,7 @@ export function previewOf(raw: string, text: UiText["contribute"] = EN.contribut
   const check = checkEnvelope(parsed.value);
   if (!check.ok) return { ok: false, message: check.message };
 
-  // `key` travels beside the label: a caller that looks a field up must not have to know what
-  // the label is called in the reader's language.
+  // `key` beside the label, so no caller matches on translated words.
   const rows = Object.entries(parsed.value.fields).map(([key, value]) => ({
     key,
     label: text.fieldLabels[key] ?? key,

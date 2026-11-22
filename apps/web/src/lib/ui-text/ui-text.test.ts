@@ -29,7 +29,7 @@ describe("Backstage's dictionaries", () => {
     for (const [path, text] of english) {
       expect(text.trim(), path).not.toBe("");
       expect(text, path).not.toContain("\uFFFD");
-      // The site's dictionaries ban it; a translated sentence should not smuggle one in.
+      // No em dashes in the site's text.
       expect(text, path).not.toContain("\u2014");
     }
   });
@@ -42,8 +42,7 @@ describe("Backstage's dictionaries", () => {
     describe(code, () => {
       it("translates every key English has, with the same placeholders", async () => {
         const mine = new Map(leaves((await import(`./${code}`)).default));
-        // A backstage dictionary may cover less than English -- what it leaves out reads
-        // English -- but a key it does write must be one English has, spelled the same.
+        // Partial is fine, but a key English lacks is a typo that would never render.
         expect([...mine.keys()].filter((path) => !english.has(path))).toEqual([]);
         for (const [path, text] of mine) {
           expect(text.trim(), path).not.toBe("");
@@ -69,9 +68,7 @@ describe("Backstage's dictionaries", () => {
 
   it("reads English for a team's language, which has no dictionary and needs none", async () => {
     const { uiText } = await import("./index");
-    // itIT, viVN and the like are teams' languages: not built in, registered in the `language`
-    // table by whoever asked for them. Nobody has to write them a file to open Backstage in
-    // one -- the page reads English, which is what a volunteer there expects anyway.
+    // Teams' languages are not built in and have no file: Backstage reads English for them.
     for (const code of ["itIT", "viVN", "jaJP", "plPL"]) {
       expect(await uiText(code), code).toEqual(EN);
     }
@@ -97,7 +94,6 @@ describe("Backstage's dictionaries", () => {
     const zh = await uiText("zhCN");
     expect(zh.admin.tabs.dashboard).toBe("概览");
     expect(zh.hub).toBe("后台");
-    // A language a client runs in, so the interface can be read in it.
     expect(BUILTIN.some((language) => language.code === "zhCN")).toBe(true);
   });
 });

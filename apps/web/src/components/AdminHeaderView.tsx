@@ -137,7 +137,6 @@ export default function AdminHeaderView({
 
 function Title({ lang, team, tab }: { lang: Lang | null; team: ActingTeamName | null | undefined; tab: AdminTab }) {
   const t = useUiText().admin;
-  // No language's team behind it: the page is the site owner's, and its title names that.
   if (!lang) {
     const siteWide: Record<AdminTab, string> = {
       dashboard: t.tabs.dashboard,

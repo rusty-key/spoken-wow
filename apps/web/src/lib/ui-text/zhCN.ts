@@ -1,11 +1,5 @@
 import type { Dictionary } from "./index";
 
-/**
- * Backstage in Simplified Chinese: the interface of whoever maintains the zhCN voice pack.
- *
- * Partial by design -- whatever this file leaves out reads English -- so it grows a page at a
- * time without ever being "unfinished" in a way that breaks a build.
- */
 const zhCN: Dictionary = {
   hub: "后台",
   menu: {

@@ -24,9 +24,6 @@ import { cn } from "@/lib/utils";
  * What every visitor gets, signed in or not: the explorers, and the page an addon's
  * Contribute button leads to -- which is also where a player uploads what they gathered, and
  * had no way in from the site itself.
- *
- * Labelled through `t`, so the bar reads in the page's language: the list itself is built in
- * the component, since the words come from the provider.
  */
 const SECTIONS = [
   { href: "/quests", key: "quests" },

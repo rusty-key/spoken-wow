@@ -9,14 +9,7 @@ import type { DeepPartial } from "@/lib/site-text/types";
 
 import { EN, type UiText } from "./en";
 
-/**
- * Backstage's words in one language, as readingLang picks it.
- *
- * A dictionary covers as much as its team wants; whatever it leaves out reads English. That is
- * unlike lib/site-text, whose dictionaries must be complete: a player reading the front page in
- * their language should never meet a stray English sentence, while a volunteer who wants a
- * Chinese interface is helped by one even while it is half done.
- */
+/** Backstage's words in one language: its dictionary over English, which fills every gap. */
 const LOADERS: Record<string, () => Promise<{ default: Dictionary }>> = {
   deDE: () => import("./deDE"),
   esES: () => import("./esES"),

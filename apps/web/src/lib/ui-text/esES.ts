@@ -1,11 +1,5 @@
 import type { Dictionary } from "./index";
 
-/**
- * Backstage en español de España: la interfaz de quien mantiene el paquete de voz esES.
- *
- * Parcial a propósito: lo que este archivo no incluye se lee en inglés, así que crece página a
- * página sin quedar nunca "a medias" de una forma que rompa la compilación.
- */
 const esES: Dictionary = {
   hub: "Backstage",
   menu: {

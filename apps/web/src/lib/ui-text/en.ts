@@ -1,15 +1,9 @@
 /**
- * Backstage's words, in English.
+ * Backstage's words, in English. Separate from lib/site-text because a Backstage dictionary may
+ * be partial, reading English for whatever it leaves out; the front page's must be complete.
  *
- * SEPARATE FROM lib/site-text, on purpose. The front page's dictionaries are complete: a
- * translation there is either done or the test fails, because the front page is what a player
- * in that language reads. Backstage is read by volunteers, most of whom work in English
- * whatever language they maintain -- so a language here may cover as much or as little as its
- * team wants, and whatever it leaves out reads English. That is the whole difference, and it
- * is why this file is not a section of EN.
- *
- * Plain strings only, so a dictionary can cross from a server page to a client component as
- * props, and `{name}` for anything interpolated: a sentence cut into pieces does not translate.
+ * Plain strings, so a dictionary can cross to client components as props, and `{name}` for
+ * anything interpolated: a sentence cut into pieces does not translate.
  */
 import type { DecodeError, ParseError } from "@/lib/contributions/envelope";
 
@@ -24,7 +18,6 @@ export const EN = {
     register: "Register",
     signOut: "Sign out",
     admin: "Admin",
-    /* The pages a signed-in volunteer reaches, by the name the page gives itself. */
     voices: "Voices",
     pronunciation: "Pronunciation",
     reports: "Reports",
@@ -42,7 +35,6 @@ export const EN = {
       contribute: "Contribute",
     },
   },
-  /** The setting that changes this dictionary, named after what it changes. */
   interface: {
     label: "Interface language",
     hint: "The words on Backstage, kept with your account. It does not change the language you maintain, which is the code in each admin page.",
@@ -71,11 +63,8 @@ export const EN = {
     teamTitle: "{lang} team",
   },
   /**
-   * The team dashboard: the one page a language's maintainer opens every day.
-   *
-   * Its words are here rather than in lib/admin or lib/reports because those constants are read
-   * where there is no interface at all -- a release notification's subject line, an email -- and
-   * a sentence there must not change with who is looking at it.
+   * The team dashboard. Its labels are copied here, not read from lib/admin or lib/reports: those
+   * also go into notifications and emails, which must not change with who is reading.
    */
   dashboard: {
     openIn: "Open in {lang}",
@@ -95,10 +84,7 @@ export const EN = {
     unnamed: "unnamed",
     /** How a folded run says where it happened: " in Quests". */
     inSection: " in {section}",
-    /**
-     * A run of several rows, folded into one line. Partial: a kind with no wording here reads
-     * FOLDABLE's English, so a new activity kind needs no dictionary entry to be readable.
-     */
+    /** Partial: a kind with no wording here reads FOLDABLE's English. */
     folded: {
       "take.generated": "generated {n} takes",
       "take.restored": "restored {n} older takes",
@@ -113,7 +99,6 @@ export const EN = {
       "lexicon.added": "added {n} pronunciations",
       "lexicon.edited": "changed {n} pronunciations",
     } as Record<string, string>,
-    /* The four things waiting, each with the line under it saying how much and of what. */
     release: "Release {section}",
     reviewRelease: "Review release",
     releaseChanges: "{n} lines changed that players don't have yet",
@@ -127,7 +112,6 @@ export const EN = {
     missingCapped: "among the lines players hear in silence most",
     missingHeard: "lines players heard in silence",
     missingTop: "top: {line}, heard by {n} players",
-    /* The four sections, as a task names the one it is about. */
     sections: {
       quests: "Quests",
       places: "Places",
@@ -143,7 +127,6 @@ export const EN = {
       wrong_text: "Read text that is not what the NPC says",
       other: "Something else",
     },
-    /* What a capability is called where the dashboard shows who holds it. */
     capabilities: {
       text: "text maintainer",
       edit: "edit",
@@ -154,12 +137,7 @@ export const EN = {
       record: "voice actor",
     },
   },
-  /**
-   * The Contribute page, which a player usually reaches from the addon with no account.
-   *
-   * `linkProblems` and `fieldLabels` are keyed by the parser's own error names and field names,
-   * not by English: a key missing here reads English from the maps in ContributeForm.
-   */
+  /** The Contribute page. Its maps are keyed by the parser's field and error names, not by English. */
   contribute: {
     title: "Contribute",
     lede: "Send the game's text for what Spoken hasn't narrated yet. A person reviews every line, so answers take a while.",
@@ -206,7 +184,6 @@ export const EN = {
     gameLanguage: "Game language",
     noCacheFiles: "No DBCache files there. They are in Cache/ADB/<language>/.",
     cacheEmpty: "Those files hold no NPC text. Talk to a few NPCs, log out, and pick them again.",
-    /* The fields a pasted link names, by the parser's key. */
     fieldLabels: {
       quest: "Quest",
       event: "Moment",
@@ -228,7 +205,6 @@ export const EN = {
       readerClass: "Your class",
       readerRace: "Your race",
     } as Record<string, string>,
-    /* What a pasted link's trouble is, by the parser's error name. */
     linkProblems: {
       truncated: "That link was cut short. Copy the whole link from the game again.",
       checksum: "That link was changed after it was copied. Copy it again without editing it.",
@@ -237,7 +213,6 @@ export const EN = {
       oversize: "That is far larger than anything the addon produces.",
       malformed: "That link does not carry an addon's contribution. Copy it from the game again.",
     } satisfies Record<ParseError, string>,
-    /* What an opened link's trouble is, by the decoder's error name. */
     decodeProblems: {
       malformed: "That link is missing its payload. Copy the whole link from the game again.",
       corrupt: "That link looks broken -- copy it from the game again.",

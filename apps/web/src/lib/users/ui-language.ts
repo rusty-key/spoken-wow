@@ -1,11 +1,6 @@
 /**
- * The language a person reads Backstage in.
- *
- * It belongs to the person, not to the page: a volunteer who reads Chinese may look after a
- * German team. Kept on the account so it follows them between links, browsers and machines.
- *
- * No row, or a null column, means no choice: the page reads its `[lang]` segment, as a
- * signed-out visitor's does.
+ * The language a person reads Backstage in, kept on the account so it follows them between
+ * links and machines. No row means no choice.
  */
 import "server-only";
 
@@ -28,10 +23,7 @@ export const uiLangOf = cache(async (userId: string): Promise<Lang | null> => {
   return code && isLang(code) ? code : null;
 });
 
-/**
- * Saves the choice. `null` clears it, so the fallback applies again -- done as a delete rather
- * than a null write, since a row with no choice says nothing a missing row does not.
- */
+/** `null` clears the choice by deleting the row: a row with no choice says nothing a missing row does not. */
 export async function setUiLang(userId: string, lang: Lang | null): Promise<void> {
   if (lang === null) {
     await query(`delete from "user_setting" where "userId" = $1`, [userId]);

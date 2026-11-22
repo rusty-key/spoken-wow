@@ -9,15 +9,8 @@ import { allLangs, type Lang } from "@/lib/lang";
 import { nativeName } from "@/lib/site-text/names";
 
 /**
- * The language Backstage is read in, saved on the account.
- *
- * Unlike the header's switcher, which moves the page between `[lang]` segments (where a page
- * lives and what its lines are in), this changes only the words on the buttons -- so it is on
- * the profile page, beside the other things that belong to the person, and it survives the
- * next link they open.
- *
- * "The page's own language" is the fallback, not a synonym for English: it is what somebody
- * with no setting gets, and what a signed-out visitor gets.
+ * The language Backstage is read in, saved on the account. Unlike the header's switcher, it
+ * changes only the words, never the `[lang]` segment, so it survives the next link opened.
  */
 export default function UiLanguageSetting({ initial }: { initial: Lang | null }) {
   const t = useUiText().interface;
@@ -42,9 +35,7 @@ export default function UiLanguageSetting({ initial }: { initial: Lang | null })
       return;
     }
     setSaved(value);
-    // The words on this page are already rendered from the old choice; a refresh re-renders
-    // the server tree, which is what reads the setting. Not a full reload: the page keeps
-    // its scroll and its state.
+    // The server tree reads the setting, so it must re-render; a refresh keeps scroll and state.
     refresh();
   }
 

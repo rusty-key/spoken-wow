@@ -1,11 +1,5 @@
 import type { Dictionary } from "./index";
 
-/**
- * Backstage auf Deutsch: die Oberfläche für alle, die das deDE-Sprachpaket pflegen.
- *
- * Absichtlich unvollständig möglich, was hier fehlt, liest Englisch. So wächst die Datei
- * Seite für Seite, ohne dass ein halber Stand den Build bricht.
- */
 const deDE: Dictionary = {
   hub: "Backstage",
   menu: {
