@@ -7,6 +7,12 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **`/sp mute [on | off]` and a Mute Spoken Audio key silence Spoken without disabling its
   features.** Lines still queue and show their subtitles and narrator text, one after another, while
   muted. The key has no default; set it in Spoken's settings or the game's key bindings. *([Trusty565](https://github.com/Trusty565))*
+- **Spoken's pages are listed under it in Settings, AddOns, from the start.** A controller can now
+  reach every page; a mouse click on the minus still folds them away.
+  *([rusty-key](https://github.com/rusty-key))*
+- **The controller can enter Spoken's settings pages.** In Settings, AddOns, confirming or
+  pressing right on Spoken or one of its pages goes to the page's first row.
+  *([rusty-key](https://github.com/rusty-key))*
 - **Forget Places Heard is now Forget Visited Places, and asks before it clears.** The button
   shows how many places the character has heard, and the question says how many it will forget.
   *([Ozzadar](https://github.com/Ozzadar))*

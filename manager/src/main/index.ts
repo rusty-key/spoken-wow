@@ -311,18 +311,10 @@ if (!app.requestSingleInstanceLock()) {
     registerIpc(service, PAGE, () => updaterState)
     void service.init()
     service.startSharing()
+    service.startPeriodicRefresh()
 
     mainWindow = createWindow(process.argv.includes(HIDDEN_ARG) && service.settings.minimizeToTray)
 
-    if (service.settings.checkOnStart || service.settings.autoUpdateContent) {
-      void service.ready
-        .then(() => service?.refreshCatalog(false))
-        .then(() => service?.autoUpdate())
-        .catch((err) => log('Catalog refresh failed:', err))
-    }
-    if (service.settings.checkOnStart) {
-      void service.ready.then(() => service?.refreshCommunity(false)).catch((err) => log('Community refresh failed:', err))
-    }
     const svc = service
     void startUpdater({
       isPackaged: app.isPackaged,

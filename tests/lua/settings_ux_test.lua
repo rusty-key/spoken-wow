@@ -857,6 +857,8 @@ do
         Expect("...given again when it shows, as the game drops text set before then", box:GetText(),
             "https://spoken.quest/discord")
         box.focused, box.highlighted = false, false
+        -- A page waits hidden until the settings window shows it, and a click needs it on screen.
+        _G.SpokenOptionsPanel:Show()
         links[3].scripts.OnMouseUp(links[3])
         Expect("a click on the icon selects the address", box.focused and box.highlighted, true)
         box:SetText("typed over")

@@ -79,6 +79,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/background_sound_test.lua
 	@$(LUA) tests/lua/parts_test.lua
 	@$(LUA) tests/lua/settings_ux_test.lua
+	@$(LUA) tests/lua/settings_controller_test.lua
 	@$(LUA) tests/lua/settings_art_test.lua
 	@for lang in enUS deDE esES esMX frFR ptBR ruRU koKR zhCN zhTW; do $(LUA) tests/lua/settings_fit_test.lua $$lang || exit 1; done
 	@$(LUA) tests/lua/settings_audit_test.lua

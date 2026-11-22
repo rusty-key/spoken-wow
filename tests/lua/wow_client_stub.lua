@@ -168,7 +168,8 @@ local function Widget(kind, name)
     end
     function w:IsVisible()
         if self.name == "UIParent" then return true end
-        if self.name then return world.panels[self.name] and true or false end
+        -- Only a frame's global name counts: an addon may keep its own `name` field on a frame.
+        if type(self.name) == "string" then return world.panels[self.name] and true or false end
         return self.shown
     end
     function w:IsShown() return self:IsVisible() end
@@ -686,9 +687,15 @@ _G.GRAY_FONT_COLOR = { r = 0.5, g = 0.5, b = 0.5 }
 _G.UIDropDownMenu_Initialize = nil
 -- The Settings API as 11509 exposes it.
 M.settingsCategories = {}
+-- A category folds its subcategories until something expands it (Blizzard_Category.lua).
+local function SettingsCategory(c)
+    function c:SetExpanded(expanded) self.expanded = expanded end
+    function c:IsExpanded() return self.expanded end
+    return c
+end
 M.modernSettings = {
-    RegisterCanvasLayoutCategory = function(frame, name) local c = { frame = frame, name = name, GetID = function() return name end }; table.insert(M.settingsCategories, c); return c end,
-    RegisterCanvasLayoutSubcategory = function(parent, frame, name) local c = { frame = frame, name = name, parent = parent }; table.insert(M.settingsCategories, c); return c end,
+    RegisterCanvasLayoutCategory = function(frame, name) local c = SettingsCategory({ frame = frame, name = name, GetID = function() return name end }); table.insert(M.settingsCategories, c); return c end,
+    RegisterCanvasLayoutSubcategory = function(parent, frame, name) local c = SettingsCategory({ frame = frame, name = name, parent = parent }); table.insert(M.settingsCategories, c); return c end,
     RegisterAddOnCategory = function() end,
     OpenToCategory = function() return true end,
 }
