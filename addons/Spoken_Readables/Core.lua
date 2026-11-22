@@ -156,7 +156,7 @@ function SpokenReadables:MarkBookRead(book)
 	SpokenReadablesCharacter.read[book] = true
 end
 
---- Remember that this character has opened `book`, whether or not it was read aloud.
+--- Remember that this character has received or opened `book`, whether or not it was read aloud.
 function SpokenReadables:MarkBookFound(book)
 	if not book or not SpokenReadablesCharacter then
 		return
@@ -184,7 +184,7 @@ function SpokenReadables:HasBookText(bookID)
 	return false
 end
 
---- Whether this character has found `book`: opened it in the world. Hearing it from the
+--- Whether this character has found `book`: received or opened it in the world. Hearing it from the
 --- Compendium does not count.
 function SpokenReadables:IsBookFound(book)
 	if not book or not SpokenReadablesCharacter then
