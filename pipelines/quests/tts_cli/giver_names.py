@@ -7,11 +7,11 @@ NPCNameLookupByNPCID -- which is built from the English corpus, so a German clie
 read "Farmer Furlbrow" under a German quest title, where the dialog, which asks the live
 unit, reads "Bauer Furlbrow".
 
-So the addon itself ships every other language's names for those givers, one file per
-language that returns before it builds anything on a client in another one. Not the packs:
-the name is what the *client* shows, whatever language the player chose to hear, and most
-players on a German client install the English packs. And a pack is ~300 MB to re-release
-for a name, where the addon is a few hundred kilobytes.
+A language's pack carries that language's names (build.locale_name_tables), and the addon
+asks it first. The addon also ships every other language's names for those givers, one file per
+language that returns before it builds anything on a client in another one: the name is what
+the *client* shows, whatever language the player chose to hear, and most players on a German
+client install the English packs, which carry no German.
 
 Only names that differ from the English are written. vmangos leaves a locale column empty
 where the name is not translated -- "Eagan Peltskinner" is Eagan Peltskinner in German too --
@@ -23,7 +23,7 @@ does the query.
 import os
 import re
 
-from tts_cli.build import build_tables
+from tts_cli.build import NAME_TABLES, build_tables
 from tts_cli.lua import lua_string
 
 LANG_FILE = re.compile(r"^[a-z]{2}[A-Z]{2}\.lua$")
@@ -46,9 +46,9 @@ end
 
 #: kind -> (the pack's questlog table, the pack's name table), as build_tables names them.
 PACK_TABLES = {
-    "creature": ("questlog_npc_lookups", "npc_name_lookups"),
-    "gameobject": ("questlog_object_lookups", "object_name_lookups"),
-    "item": ("questlog_item_lookups", "item_name_lookups"),
+    "creature": ("questlog_npc_lookups", NAME_TABLES["creature"]),
+    "gameobject": ("questlog_object_lookups", NAME_TABLES["gameobject"]),
+    "item": ("questlog_item_lookups", NAME_TABLES["item"]),
 }
 #: The kinds of quest giver the pack's questlog tables carry, as entity_name names them.
 KINDS = tuple(PACK_TABLES)

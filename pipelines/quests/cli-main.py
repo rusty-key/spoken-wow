@@ -24,7 +24,7 @@ from tts_cli.factions import (DEFAULT_FACTIONS_PATH, PACKS, load_sides, pack_ste
                               pack_title)
 from tts_cli.gossip_text import DEFAULT_ALIASES_PATH, load_aliases
 from tts_cli.ignores import DEFAULT_IGNORED_PATH, DEFAULT_OVERRIDES_PATH, load_pack_ignored
-from tts_cli.locale_text import load_locale_names, load_locale_text
+from tts_cli.locale_text import load_locale_text
 from tts_cli.store import DEFAULT_STORE_DIR
 
 # init-db and extract are imported inside their branches: they pull in
@@ -217,8 +217,7 @@ elif args.mode == "build":
         # too would be the same megabytes three more times.
         if args.pack not in ("gossip", "all"):
             raise SystemExit(f"--locale-text is for the gossip or all pack, not '{args.pack}'")
-        lang, locale_text = load_locale_text(args.locale_text)
-        locale_names = load_locale_names(args.locale_text)
+        lang, locale_text, locale_names = load_locale_text(args.locale_text)
         if lang != args.language:
             raise SystemExit(f"{args.locale_text} holds {lang} text, not --language "
                              f"{args.language}'s")

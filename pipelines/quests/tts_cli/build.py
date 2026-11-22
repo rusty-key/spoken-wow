@@ -427,28 +427,30 @@ def locale_tables(corpus: dict, rows: list, ignored=()) -> dict:
             for kind, (filename, table_name) in LOCALE_TABLES.items()}
 
 
-#: The name tables a language's pack gets a client-locale copy of, by entity_name kind.
-LOCALE_NAME_TABLES = {
-    "creature": ("npc_name_lookups", "NPCNameLookupByNPCID"),
-    "gameobject": ("object_name_lookups", "ObjectNameLookupByObjectID"),
-    "item": ("item_name_lookups", "ItemNameLookupByItemID"),
+#: kind -> the name table build_tables writes for it, as entity_name names the kinds.
+NAME_TABLES = {
+    "creature": "npc_name_lookups",
+    "gameobject": "object_name_lookups",
+    "item": "item_name_lookups",
 }
 
 
 def locale_name_tables(tables: dict, names: list) -> dict:
-    """One language's names for the entities the English name tables hold, as {output
-    filename: (lua table name, data)}. An entity the corpus never names is left out: nothing
-    in the addon asks for it."""
-    localized = {kind: {} for kind in LOCALE_NAME_TABLES}
-    for row in names:
-        if row["kind"] not in LOCALE_NAME_TABLES or not str(row["entityId"]).isdigit():
-            continue
-        entity_id = int(row["entityId"])
-        filename, _ = LOCALE_NAME_TABLES[row["kind"]]
-        if entity_id in tables[filename][1]:
-            localized[row["kind"]][entity_id] = row["name"]
-    return {filename: (table_name, localized[kind])
-            for kind, (filename, table_name) in LOCALE_NAME_TABLES.items() if localized[kind]}
+    """One language's names for the entities `tables`' English name tables hold, as {output
+    filename: (lua table name, data)}. An entity the corpus never names is left out, as is a
+    name the same as the English, which the English table already answers."""
+    out = {}
+    for kind, filename in NAME_TABLES.items():
+        table_name, english = tables[filename]
+        data = {}
+        for row in names:
+            entity_id = str(row["entityId"])
+            if row["kind"] == kind and entity_id.isdigit() and row["name"] \
+                    and english.get(int(entity_id), row["name"]) != row["name"]:
+                data[int(entity_id)] = row["name"]
+        if data:
+            out[filename] = (table_name, data)
+    return out
 
 
 def write_lua_table(path: str, module_name: str, table_name: str, data,
