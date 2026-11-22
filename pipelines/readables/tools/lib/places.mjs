@@ -83,6 +83,32 @@ export function dungeonsOf(spots, entrance) {
   return out.sort((a, b) => a - b);
 }
 
+/** The Places.lua fields derived for one readable after the database lookups are complete. */
+export function generatedPlace({ id, book, kind, spots, zonesByHand = {}, pageText = new Map(),
+  questRewards = new Map(), events = new Map(), hand = {}, bookItems = new Map(), itemIcon = new Map(),
+  wideLimit = 8, placeOf = (zone) => zone, instanceZone = {} }) {
+  const texts = book.pages.map((page) => pageText.get(page) ?? "");
+  if (cannotBeHad(book.title, texts, id)) return null;
+  const located = new Set(spots);
+  if (!located.size) for (const zone of zonesByHand[id] ?? []) located.add(zone);
+  const zones = new Set([...located].map(placeOf));
+  const dungeons = dungeonsOf(located, instanceZone);
+  const wide = zones.size > wideLimit;
+  const type = hand.type ?? typeOf({ title: book.title, world: kind === "world", texts,
+    icons: (bookItems.get(id) ?? []).map((item) => itemIcon.get(item) ?? "") });
+  const rewards = questRewards.get(id);
+  return {
+    id,
+    kind,
+    type,
+    quests: rewards ? [...rewards].sort((a, b) => a - b) : [],
+    event: events.get(id),
+    wide,
+    zones: [...zones].sort((a, b) => a - b),
+    dungeons,
+  };
+}
+
 // The quests Forever has: one the corpus voices or the client's QuestV2 lists. The repack's
 // quest_template also carries Cataclysm's rows (24900-29021), whose items gave readables zones
 // Forever never hands them out in. QuestV2 alone will not do: it lacks hundreds of quests the corpus
