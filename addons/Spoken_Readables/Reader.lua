@@ -559,9 +559,13 @@ function SpokenReadables:BookById(bookId)
 
 	local extra = {}
 	local seen = {}
+	local title = book and book.title
 	for _, id in ipairs(book and book.pages or {}) do seen[id] = true end
 	for _, pack in ipairs(packs) do
 		local entry = type(pack.books) == "table" and pack.books[bookId]
+		if not title and self:PackLanguage(pack) == self:GetClientLanguage() then
+			title = entry and entry.title
+		end
 		for _, id in ipairs(entry and entry.pages or {}) do
 			if not seen[id] then
 				seen[id] = true
@@ -585,7 +589,7 @@ function SpokenReadables:BookById(bookId)
 		if order[a][1] ~= order[b][1] then return order[a][1] < order[b][1] end
 		return order[a][2] < order[b][2]
 	end)
-	return { title = book and book.title, pages = pages }
+	return { title = title, pages = pages }
 end
 
 --- The book a page belongs to: its title and its pages in reading order.
