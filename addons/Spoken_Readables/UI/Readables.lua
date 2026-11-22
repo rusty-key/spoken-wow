@@ -449,7 +449,9 @@ local function EachText(id, each)
 	local data = SpokenReadables:Data()
 	for _, pageId in ipairs(Books()[id].pages) do
 		local text = SpokenReadables:PackPageText(pageId, SpokenReadables:GetTextLanguage())
-			or SpokenReadables:TextLanguagePageText(pageId) or (data.pages[pageId] and data.pages[pageId].text)
+			or SpokenReadables:TextLanguagePageText(pageId)
+			or (data.pages[pageId] and data.pages[pageId].text)
+			or SpokenReadables:PackPageText(pageId, SpokenReadables.BASE_LANGUAGE)
 		if text and text ~= "" and each(text) then return true end
 	end
 	return false

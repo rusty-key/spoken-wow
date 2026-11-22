@@ -67,5 +67,11 @@ Expect("the locale-pack readable is placed in Dun Morogh",
     B.readables.page.sub.text.text:find("Dun Morogh", 1, true) ~= nil, true)
 Expect("the locale-pack readable resolves back to its item", B:ItemForBook(BOOK), 280430)
 Expect("a pack-only English readable keeps its title", B:BookById(BOOK).title, "Mountaineer Gretchen's Report")
+local getTextLanguage = B.GetTextLanguage
+B.GetTextLanguage = function() return "esMX", true end
+B:ShowReadables(BOOK)
+Expect("a missing translation falls back to the English pack", B.readables.page.body.text.text,
+    "Mountaineer Gretchen's report.")
+B.GetTextLanguage = getTextLanguage
 
 assert(Failures() == 0, "readables pack checks failed")
