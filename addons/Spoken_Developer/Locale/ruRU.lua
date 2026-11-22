@@ -26,7 +26,6 @@ L.OPT_LOG_COMMANDS = "/spoken log: показать журнал\n/spoken log co
 L.OPT_CHAT_SECTION = "Сообщения в чате"
 L.OPT_TESTING_SECTION = "Тестирование"
 L.OPT_COPY_TEXT = "Копировать текст"
-L.OPT_COPY_TEXT_TIP = "Показывает кнопку копирования в окнах заданий, диалогов и читаемых объектов. Инструмент разработчика; по умолчанию выключен."
 L.BOX_TITLE_TEXT = "Текст Spoken - Ctrl+A, затем Ctrl+C для копирования"
 -- Under the commands: how to ask an AI agent, a question and the steps to take.
 L.OPT_LOG_AGENT_TITLE = "Как поручить ИИ-агенту прочитать журналы?"

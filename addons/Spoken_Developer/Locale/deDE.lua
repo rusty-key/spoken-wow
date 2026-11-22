@@ -26,7 +26,6 @@ L.OPT_LOG_COMMANDS = "/spoken log: zeigt es\n/spoken log copy: kopiert es mit de
 L.OPT_CHAT_SECTION = "Chatmeldungen"
 L.OPT_TESTING_SECTION = "Testen"
 L.OPT_COPY_TEXT = "Text kopieren"
-L.OPT_COPY_TEXT_TIP = "Zeigt eine Kopierschaltfläche in Quest-, Gesprächs- und Lesefenstern. Entwicklerwerkzeug; standardmäßig aus."
 L.BOX_TITLE_TEXT = "Spoken-Text - Strg+A, dann Strg+C zum Kopieren"
 -- Under the commands: how to ask an AI agent, a question and the steps to take.
 L.OPT_LOG_AGENT_TITLE = "Wie lässt man einen KI-Agenten die Protokolle lesen?"

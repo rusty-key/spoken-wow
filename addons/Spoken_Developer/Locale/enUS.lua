@@ -27,7 +27,6 @@ L.OPT_LOG_COMMANDS = "/spoken log: shows it\n/spoken log copy: copies it, with t
 L.OPT_CHAT_SECTION = "Chat Messages"
 L.OPT_TESTING_SECTION = "Testing"
 L.OPT_COPY_TEXT = "Copy Text"
-L.OPT_COPY_TEXT_TIP = "Show a copy button on quest, gossip and readable windows. Developer tool; off by default."
 L.BOX_TITLE_TEXT = "Spoken text - Ctrl+A, then Ctrl+C to copy"
 -- Under the commands: how to ask an AI agent, a question and the steps to take.
 L.OPT_LOG_AGENT_TITLE = "How to use an AI agent to read the logs?"

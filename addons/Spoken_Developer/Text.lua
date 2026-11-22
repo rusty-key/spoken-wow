@@ -219,7 +219,7 @@ end
 
 if Spoken then
 	Spoken:AddDeveloperSettings(function(layout)
-		layout:Checkbox(L.OPT_COPY_TEXT, L.OPT_COPY_TEXT_TIP, function() return Text:IsOn() end, SetOn)
+		layout:Checkbox(L.OPT_COPY_TEXT, nil, function() return Text:IsOn() end, SetOn)
 		return function() SetOn(false) end
 	end, "testing", 0)
 end

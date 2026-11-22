@@ -26,7 +26,6 @@ L.OPT_LOG_COMMANDS = "/spoken log: mostra o registro\n/spoken log copy: copia co
 L.OPT_CHAT_SECTION = "Mensagens no chat"
 L.OPT_TESTING_SECTION = "Testes"
 L.OPT_COPY_TEXT = "Copiar texto"
-L.OPT_COPY_TEXT_TIP = "Mostra um botão de cópia nas janelas de missões, conversas e textos de leitura. Ferramenta de desenvolvimento; desativada por padrão."
 L.BOX_TITLE_TEXT = "Texto do Spoken - Ctrl+A e depois Ctrl+C para copiar"
 -- Under the commands: how to ask an AI agent, a question and the steps to take.
 L.OPT_LOG_AGENT_TITLE = "Como usar um agente de IA para ler os registros?"

@@ -26,7 +26,6 @@ L.OPT_LOG_COMMANDS = "/spoken log: 기록 보기\n/spoken log copy: 진단과 �
 L.OPT_CHAT_SECTION = "채팅 메시지"
 L.OPT_TESTING_SECTION = "테스트"
 L.OPT_COPY_TEXT = "텍스트 복사"
-L.OPT_COPY_TEXT_TIP = "퀘스트, 대화 및 읽을거리 창에 복사 버튼을 표시합니다. 개발자 도구이며 기본적으로 꺼져 있습니다."
 L.BOX_TITLE_TEXT = "Spoken 텍스트 - Ctrl+A를 누른 다음 Ctrl+C로 복사"
 -- Under the commands: how to ask an AI agent, a question and the steps to take.
 L.OPT_LOG_AGENT_TITLE = "AI 에이전트로 기록을 읽게 하려면?"

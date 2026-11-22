@@ -26,7 +26,6 @@ L.OPT_LOG_COMMANDS = "/spoken log：显示日志\n/spoken log copy：连同诊�
 L.OPT_CHAT_SECTION = "聊天信息"
 L.OPT_TESTING_SECTION = "测试"
 L.OPT_COPY_TEXT = "复制文本"
-L.OPT_COPY_TEXT_TIP = "在任务、对话和阅读窗口中显示复制按钮。开发者工具，默认关闭。"
 L.BOX_TITLE_TEXT = "Spoken 文本 - 按 Ctrl+A，再按 Ctrl+C 复制"
 -- Under the commands: how to ask an AI agent, a question and the steps to take.
 L.OPT_LOG_AGENT_TITLE = "如何让 AI 代理读取日志？"
