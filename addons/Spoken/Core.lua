@@ -445,7 +445,7 @@ function Addon:SetPlayerHost(host)
     -- The subtitles go over the host too, and pass its clicks through.
     if Subtitle.frame then
         self:ApplyHost(Subtitle.frame)
-        Subtitle:Mouse()
+        Subtitle:UpdateControls()
     end
 end
 

@@ -69,7 +69,8 @@ or Row by Row, and no Off.
 Stopping freezes the text. Replay restarts it with the recording. Skipping
 shows the next clip's text, and a clip without text hides the captions. After the line's title the
 windows and the subtitles say why a line waits, "(Stopped)" and the "+N" lines waiting behind it;
-pointing at "+N" lists them (see [`PLAYER-STYLES.md`](PLAYER-STYLES.md)).
+pointing at "+N" in the window styles lists them. The subtitle count stays mouse-transparent
+(see [`PLAYER-STYLES.md`](PLAYER-STYLES.md)).
 
 ## Settings language
 

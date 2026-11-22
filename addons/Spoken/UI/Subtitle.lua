@@ -34,16 +34,14 @@ local PICTURE, PICTURE_GAP, LABEL_GAP = 36, 8, 6
 -- The progress line spans this share of the band.
 local PROGRESS_SHARE = 0.45
 local SIZE_EASE = 10
--- The controls shown on hover: the windows' round pause button, skip, and Report.
-local CONTROL_SIZE, CONTROL_GAP = 24, 4
+local CONTROL_SIZE, CONTROL_GAP, CONTROL_OFFSET = 24, 4, 2
 local CONTROLS_FADE = .15
 local UTF8_CHAR = "[%z\1-\127\194-\244][\128-\191]*"
 
 local function Config()
     return Addon:Profile("Transcript")
 end
--- The player's lock covers this frame too: locked, it is click-through. So does hosting:
--- the clicks belong to the host's window.
+-- A hosted subtitle follows its host's position and size.
 local function Locked()
     return Addon:IsFrameLocked() or Addon.playerHost ~= nil
 end
@@ -257,18 +255,8 @@ function Subtitle:Build()
     -- The strata Addon:ApplyHost restores when the host lets go.
     frame.spokenBaseStrata = "LOW"
     frame:SetClampedToScreen(true)
-    -- Dragged anywhere on the screen, drawn to its edges and its middle (Snap).
-    frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart", function()
-        if Locked() then return end
-        Snap.Start(frame, { locked = Locked, place = function(left, top, width) self:Drop(left, top, width) end })
-    end)
-    frame:SetScript("OnDragStop", function() Snap.Stop() end)
-    -- The words do nothing when clicked: a subtitle mid-screen is clicked by accident all the
-    -- time. Play or pause and Report come up beside it under the pointer (Subtitle:BuildControls).
-    -- No right-click menu either: a right-drag here is the camera turning.
-    -- The wheel sizes it only with Ctrl held (Subtitle:TakeWheel): without, it zooms the camera.
-    frame:SetScript("OnMouseWheel", function(_, delta) self:Wheel(delta) end)
+    frame:EnableMouse(false)
+    frame:EnableMouseWheel(false)
     frame:SetScript("OnUpdate", function(_, elapsed) self:Tick(elapsed) end)
     frame:Hide()
     self:BuildControls()
@@ -278,7 +266,7 @@ function Subtitle:Build()
     -- Hung from the top, so an eased height grows downward.
     self.shadow:SetPoint("TOP", frame, "TOP", 0, 0)
     -- Hung from the background's foot, so the buttons follow it as it eases to a new size.
-    self.controls:SetPoint("TOP", self.shadow, "BOTTOM", 0, -2)
+    self.controls:SetPoint("TOP", self.shadow, "BOTTOM", 0, -CONTROL_OFFSET)
 
     -- One frame for the row over the words, so Show Name and Title hides it whole.
     local row = CreateFrame("Frame", nil, frame)
@@ -340,7 +328,6 @@ function Subtitle:Build()
     end
     self.heldDot:SetText("·")
     self.moreDot:SetText("·")
-    self.moreHover = Actions.WaitingHover(self.more)
     self.morePulse = Actions.Pulse(self.more)
     self.waiting = 0
 
@@ -460,7 +447,6 @@ function Subtitle:PlaceRow(left)
         local dot, text, shown = part[1], part[2], part[3]
         dot:SetShown(shown and last and true or false)
         text:SetShown(shown)
-        if text == self.more then self.moreHover:SetShown(shown) end
         if shown then
             text:ClearAllPoints()
             if last then
@@ -637,12 +623,14 @@ function Subtitle:Fit()
     if not self.rowLeft then self.rowLeft = self.rowWant end
     self:PlaceRow(self.rowLeft)
     local height = self.rowsHeight
-    self.frame:SetSize(widest + PAD * 2, math.max(48, height))
     self.shadowWant = { w = widest + SHADOW_REACH * 2, h = math.max(48, height) }
     if not self.shadowSize then
         self.shadowSize = { w = self.shadowWant.w, h = self.shadowWant.h }
         self.shadow:SetSize(self.shadowSize.w, self.shadowSize.h)
     end
+    -- The grabber must stay on-screen, including while the shadow shrinks between pages.
+    self.frame:SetSize(math.max(widest + PAD * 2, self.controls:GetWidth()),
+        math.max(self.shadowWant.h, self.shadowSize.h) + CONTROL_OFFSET + CONTROL_SIZE)
 end
 
 --- Where the page's `n`th word starts and ends among the rows' characters (the rows drop the
@@ -858,7 +846,7 @@ function Subtitle:Update()
         self:Build()
     end
     self.shadow:SetAlpha(Config().SubtitleShadow or .5)
-    self:Mouse()
+    self:UpdateControls()
     local scale = Config().SubtitleScale or 1
     -- Within a hair: the client keeps the scale as a float, and the setting is a double.
     if math.abs((self.frame.spokenBaseScale or 0) - scale) > .001 then
@@ -897,9 +885,6 @@ function Subtitle:Update()
     end
 end
 
---- The Report icon, as the windows have it in their corner: beside the subtitle's top right,
---- level with the speaker's name, outside the words so it covers none of them. Not on the
---- sample, which has no line to report; hidden by the same setting as the windows' icon.
 function Subtitle:Corner(clip)
     local action = Actions:CornerAction(clip)
     local button = self.reportButton
@@ -912,23 +897,59 @@ function Subtitle:Corner(clip)
         button:Hide()
         self.report = nil
     end
-    -- As wide as the buttons it shows, so the row stays centred under the subtitle.
-    local count = action and 4 or 3
-    self.controls:SetWidth(CONTROL_SIZE * count + CONTROL_GAP * (count - 1))
+    local row = { self.mover }
+    -- Preview can be positioned without exposing playback actions for an unrelated queue.
+    for _, control in ipairs({ self.pause, self.previous, self.skip }) do
+        control:SetShown(not self.sample)
+        if not self.sample then row[#row + 1] = control end
+    end
+    if action then row[#row + 1] = button end
+    Actions.LayOutRow(self.controls, row, CONTROL_GAP)
+    self:Fit()
 end
 
 --- They fade in while the pointer is over the subtitle or them, and out after it leaves (Tick).
 function Subtitle:BuildControls()
     local frame = self.frame
     local controls = CreateFrame("Frame", nil, frame)
-    controls:SetSize(CONTROL_SIZE * 4 + CONTROL_GAP * 3, CONTROL_SIZE)
+    controls:SetSize(CONTROL_SIZE * 5 + CONTROL_GAP * 4, CONTROL_SIZE)
     controls:SetFrameLevel(frame:GetFrameLevel() + 2)
     controls:SetAlpha(0)
     controls:Hide()
     self.controls, self.controlsAlpha = controls, 0
+    controls:SetScript("OnMouseWheel", function(_, delta) self:Wheel(delta) end)
+    controls:EnableMouseWheel(false)
 
-    local pause = Actions.StopButton(controls, nil, function() self:UpdatePause() end)
-    pause:SetPoint("LEFT", controls, "LEFT", 0, 0)
+    local mover = Actions.RoundButton(controls, 16)
+    mover:SetPoint("LEFT", controls, "LEFT", 0, 0)
+    mover.glyph:SetTexture([[Interface\AddOns\Spoken\Textures\PortraitFrameAtlas]])
+    mover.glyph:SetTexCoord(462 / 512, 1, 462 / 512, 1)
+    mover:RegisterForDrag("LeftButton")
+    mover:SetScript("OnDragStart", function()
+        if Locked() then return end
+        Actions.HideTipFor(mover)
+        Snap.Start(frame, { locked = Locked, place = function(left, top, width) self:Drop(left, top, width) end })
+    end)
+    mover:SetScript("OnDragStop", function() self:StopMoving() end)
+    mover:HookScript("OnEnter", function()
+        if not Locked() then SetCursor([[Interface\Cursor\UI-Cursor-Move]]) end
+        GameTooltip:SetOwner(mover, "ANCHOR_TOP")
+        GameTooltip:SetText(L.OPT_STYLE_SUBTITLE)
+        GameTooltip:AddLine(Locked() and L.OPT_LOCK_FRAME or L.QUEUE_DRAG_HINT, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    mover:HookScript("OnLeave", function() SetCursor(nil) end)
+    self.mover = mover
+    local function HideControls()
+        self:StopMoving()
+        Actions.DropWheel(controls)
+        Actions.HideTipFor(mover)
+    end
+    controls:SetScript("OnHide", HideControls)
+    frame:SetScript("OnHide", HideControls)
+
+    local pause = Actions.StopButton(controls, nil, function() self:UpdateControls() end)
+    pause:SetPoint("LEFT", mover, "RIGHT", CONTROL_GAP, 0)
     self.pause = pause
 
     local previous = Actions.PreviousButton(controls)
@@ -938,7 +959,7 @@ function Subtitle:BuildControls()
     local skip = Actions.SkipButton(controls)
     skip:SetPoint("LEFT", previous, "RIGHT", CONTROL_GAP, 0)
     self.skip = skip
-    self:UpdatePause()
+    self:UpdateControls()
 
     -- Report, in the same ring, with the action's own bug icon: what the windows show in their
     -- corner, and what it does is the action's, as there.
@@ -963,38 +984,41 @@ end
 --- Ctrl-wheel steps Subtitle Size, Ctrl-Shift-wheel Text Size (Actions.WheelSize). Its top stays
 --- where it is: Place counts it in the screen's units.
 function Subtitle:Wheel(delta)
+    if Locked() then return end
     local text = Actions.WheelSize(delta, "SubtitleScale")
-    if text then Actions.WheelTip(self.frame, text) end
+    if text then Actions.WheelTip(self.controls, text) end
 end
 
-function Subtitle:UpdatePause()
+function Subtitle:UpdateControls()
     Actions.SetPlayGlyph(self.pause, Actions.HeadState())
     Actions.SetPausable({ self.pause, self.previous, self.skip })
+    local locked = Locked()
+    self.mover:SetAlpha(locked and .4 or 1)
+    if locked then
+        self.mover:Disable()
+        self:StopMoving()
+    else
+        self.mover:Enable()
+    end
 end
 
--- Locked, the subtitle lets clicks through to the world but still knows the pointer is over
--- it, where the client can tell the two apart, so its controls still come up.
-function Subtitle:Mouse()
-    local frame = self.frame
-    if frame.SetMouseClickEnabled and frame.SetMouseMotionEnabled then
-        frame:SetMouseMotionEnabled(true)
-        frame:SetMouseClickEnabled(not Locked())
-    else
-        frame:EnableMouse(not Locked())
-    end
+function Subtitle:StopMoving()
+    if Snap.Active() ~= self.frame then return end
+    Snap.Stop()
+    SetCursor(nil)
 end
 
 --- It takes the wheel only while Ctrl is held over it, unlocked: otherwise the wheel zooms the
 --- camera. Asked every frame, since Ctrl goes down only just before the wheel turns.
 function Subtitle:TakeWheel()
-    Actions.TakeWheel(self.frame, Locked())
+    Actions.TakeWheel(self.controls, Locked() or not self.frame:IsShown())
 end
 
 -- The controls toward shown while the pointer is over the subtitle or them, and toward
 -- hidden otherwise; hidden outright once faded, so they cannot be clicked unseen.
 function Subtitle:FadeControls(elapsed)
     local controls = self.controls
-    local over = not self.sample and (Actions.PointerOver(self.frame) or Actions.PointerOver(controls))
+    local over = Snap.Active() == self.frame or Actions.PointerOver(self.frame) or Actions.PointerOver(controls)
     if over and not controls:IsShown() then controls:Show() end
     local target = over and 1 or 0
     local step = (elapsed or 0) / CONTROLS_FADE
@@ -1036,8 +1060,7 @@ function Subtitle:Tick(elapsed)
     self.poll = (self.poll or 0) + elapsed
     if self.poll >= .2 then
         self.poll = 0
-        self:Mouse()
-        self:UpdatePause()
+        self:UpdateControls()
     end
 end
 
@@ -1155,6 +1178,7 @@ function Subtitle:Animate(elapsed)
             size.w, size.h = want.w, want.h
         end
         self.shadow:SetSize(size.w, size.h)
+        self.frame:SetHeight(math.max(want.h, size.h) + CONTROL_OFFSET + CONTROL_SIZE)
     end
 
 end

@@ -46,10 +46,10 @@ All of it is in `addons/Spoken/UI/`, one copy for every module.
   and "+N", the lines waiting behind it. The reason is what `SoundQueue:GetHeldReason` answers:
   "(Waiting for the NPC to finish speaking.)" under NPC Voice Before Reading, and for a place story
   Places reads by itself, "(Waiting for combat to end.)" or "(Waiting for the cinematic to end.)".
-  A story you ask for with Play does not wait. Pointing at "+N" opens a tooltip, Up Next, with
+  A story you ask for with Play does not wait. In the window styles, pointing at "+N" opens a tooltip, Up Next, with
   the waiting lines in the order they will play, each with its title and who says it, at most
   twelve (`Actions.WaitingTip`). Clicking "+N" does nothing, and a click on it reaches the window
-  under it. A line queued while Spoken is stopped waits, as every line does, and the count says
+  under it. The subtitle count is display-only. A line queued while Spoken is stopped waits, as every line does, and the count says
   so: it swells, lit gold with a glow behind it, and settles back (`Actions.Pulse`). Skip plays the
   waiting line; Replay plays the stopped one first. A count that grows while lines play only fades
   in.
@@ -62,15 +62,17 @@ All of it is in `addons/Spoken/UI/`, one copy for every module.
 - **Show Progress Bar**: a progress line under the words, for the subtitles and every window. Off by default.
 - **Dragging** a window or the subtitles draws it to the screen's edges and middle, and the DialogueUI
   window to its resting place too, with a gold guide line where it holds. Holding Shift drags it free.
-- **Lock Position**: the windows and the subtitles cannot be dragged or resized, and clicks on
-  them pass through to the game; their buttons still work. **Reset Positions**, under Fix a
+- **Lock Position**: the windows and the subtitles cannot be dragged or resized, including through
+  the subtitle grabber; their playback buttons still work. Locked windows pass clicks through,
+  and the subtitle display always passes mouse input through. **Reset Positions**, under Fix a
   Problem, forgets the places saved for the Small, Large and DialogueUI windows and the subtitles.
-- **Ctrl and the mouse wheel** over the Small Window, the DialogueUI window or the subtitles step
+- **Ctrl and the mouse wheel** over the Small Window, the DialogueUI window or the subtitle controls step
   their size (Window Size, or Subtitle Size) by 5 points; Ctrl, Shift and the wheel step Word Size
   by 1. Both stay within their sliders' ranges (`SIZES` in `Core.lua`), show the new value in a
   tooltip beside the pointer, and do nothing while Lock Position is on, when the wheel scrolls the
   words instead. The words pass a Ctrl wheel on to their window (`frame.spokenWheel`) and scroll
-  without it. Over the subtitles without Ctrl the wheel zooms the camera. The Large Window has
+  without it. Over the subtitle text the wheel always reaches the game; over its controls it does
+  so without Ctrl, or while locked. The Large Window has
   no wheel sizing. A note on Spoken's page says so under the sizes (`WINDOW_WHEEL_HINT`,
   `SUBTITLE_WHEEL_HINT`).
 - **Bronze Border**, on Forever, under Look: the round buttons' rings, the faces' rings, the Large
@@ -130,11 +132,13 @@ they do in the windows.
   miss.
 - **Show Name and Title** off leaves the row out; it still says "(Stopped)", with "+N" after it
   when lines wait behind the stop, or why a line waits, and Hide Portrait waits on it.
-- The words do nothing when clicked, and there is no right-click menu: a subtitle in the middle
-  of the screen is clicked by accident, and a right-drag there is the camera turning. Stop or
-  Replay, Previous, Skip and Report fade in under it while the pointer is over it.
-- Dragged by its words, it moves anywhere on the screen and keeps its place. It is drawn to the
-  screen's edges and middle, with a gold guide line where it holds; Shift drags it free.
+- The text display, including its name, portrait and waiting count, passes clicks, drags and wheel
+  input through to the game. Hovering over it reveals the grabber, Stop or Replay, Previous,
+  Skip and Report below it.
+- Drag the grabber to move the subtitle and controls together. The controls stay visible during
+  the drag and remain within the screen. The position is saved, with snapping to the screen's
+  edges and middle and a gold guide line where it holds; Shift drags it free. Lock Position dims
+  and disables the grabber without moving the other buttons. Preview shows just the grabber.
 - It shows once the voice has begun, or while the line is stopped or held back, so that it can
   say why nothing is being read.
 

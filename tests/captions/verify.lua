@@ -532,6 +532,9 @@ do
     Check(point=='TOP' and relativeTo==S.shadow and relativePoint=='BOTTOM','the buttons sit in a row under the background, easing with it')
     local tall=S.frame:GetHeight()
     cfg.SubtitleProgress=false; S:Update()
+    Check(S.controls:GetBottom()>=S.frame:GetBottom()-.001,
+        'the drag bounds include the controls while the shadow shrinks')
+    S:Animate(1)
     Check(not S.track:IsShown() and S.frame:GetHeight()<tall,'turned off, the progress line goes and the subtitle closes up')
     cfg.SubtitleProgress=true; S:Update()
 end
@@ -578,6 +581,11 @@ frameCfg.HiddenActions.report=nil
 S:Corner(nil)
 Click()
 Check(not Q:IsPaused(),'clicking the words does nothing: they are too easily clicked by accident')
+Check(S.frame.mouseEnabled==false and S.frame.wheelEnabled==false,
+    'the subtitle display passes every mouse button and wheel through, even unlocked')
+Check(not S.frame.scripts.OnDragStart and not S.frame.scripts.OnMouseWheel,
+    'the text has no movement or sizing action')
+Check(S.mover and S.mover:GetParent()==S.controls,'the hover controls have a separate grabber')
 Check(not S.controls:IsShown(),'the controls are hidden until the pointer comes')
 local saved=MouseIsOver
 MouseIsOver=function(frame) return frame==S.frame end
@@ -602,19 +610,24 @@ local centre=UIParent:GetWidth()/2
 Check(math.abs(S.frame:GetTop()-336)<.001,'the subtitle starts at its default height')
 local shift=true
 IsShiftKeyDown=function() return shift end
-S.frame:Fire('OnDragStart')
+S.mover:Fire('OnDragStart')
+Play(.3)
+Check(E.Snap.Active()==S.frame and S.controls:IsShown() and S.controls:GetAlpha()==1,
+    'the controls stay visible during a drag after the pointer leaves their bounds')
 cursor[1],cursor[2]=100,80; E.Snap.Move()
 Check(math.abs(S.frame:GetTop()-416)<.001 and math.abs(S.frame:GetCenter()-centre-100)<.001,
-    'dragging moves the subtitle with the cursor, up and sideways')
-cursor[2]=164; E.Snap.Move(); S.frame:Fire('OnDragStop'); cursor[1],cursor[2]=0,0
+    'dragging the grabber moves the subtitle with the cursor, up and sideways')
+Check(math.abs(S.controls:GetCenter()-S.frame:GetCenter())<.001,
+    'the controls move with the subtitle and stay centred')
+cursor[2]=164; E.Snap.Move(); S.mover:Fire('OnDragStop'); cursor[1],cursor[2]=0,0
 Check(math.abs(S.frame:GetTop()-500)<.001 and math.abs(S.frame:GetCenter()-centre-100)<.001
     and E.Addon:Layout().Subtitle.top==500 and math.abs(E.Addon:Layout().Subtitle.x-100)<.001,
     'a dragged subtitle stays where it was dropped')
-S.frame:Fire('OnDragStart'); cursor[2]=5000; E.Snap.Move(); S.frame:Fire('OnDragStop'); cursor[2]=0
+S.mover:Fire('OnDragStart'); cursor[2]=5000; E.Snap.Move(); S.mover:Fire('OnDragStop'); cursor[2]=0
 Check(math.abs(S.frame:GetTop()-UIParent:GetHeight())<.001,'it cannot be dragged off the top of the screen')
 shift=false
 S:Reset(); S:Place()
-S.frame:Fire('OnDragStart'); cursor[1]=4; E.Snap.Move(); S.frame:Fire('OnDragStop'); cursor[1]=0
+S.mover:Fire('OnDragStart'); cursor[1]=4; E.Snap.Move(); S.mover:Fire('OnDragStop'); cursor[1]=0
 Check(math.abs(S.frame:GetCenter()-centre)<.001 and E.Addon:Layout().Subtitle.x==0,
     'a subtitle dropped near the middle of the screen holds on it')
 shift=true
@@ -624,9 +637,23 @@ cfg.SubtitleScale=1.5; T:RefreshConfig()
 Check(S.frame:GetScale()==1.5 and math.abs(S.frame:GetTop()*1.5-500)<.001
     and math.abs(S.frame:GetCenter()*1.5-droppedCenter)<.001,'a bigger subtitle stays where it was put')
 cfg.SubtitleScale=1; T:RefreshConfig()
+frameCfg.LockFrame=true; E.PlayerFrame:RefreshConfig(); Play(.25)
+local lockedWidth=S.controls:GetWidth()
+S.mover:Fire('OnDragStart'); cursor[2]=100; S.mover:Fire('OnDragStop'); cursor[2]=0
+Check(not S.mover:IsEnabled() and S.mover:GetAlpha()<1 and E.Snap.Active()==nil
+    and math.abs(S.frame:GetTop()-500)<.001,'Lock Position disables the grabber and prevents movement')
+S.pause:Fire('OnClick')
+Check(Q:IsPaused(),'the Stop button still works while position is locked')
+S.pause:Fire('OnClick')
+Check(not Q:IsPaused(),'Replay still works while position is locked')
+frameCfg.LockFrame=false; E.PlayerFrame:RefreshConfig(); Play(.25)
+Check(S.mover:IsEnabled() and S.mover:GetAlpha()==1 and S.controls:GetWidth()==lockedWidth,
+    'unlocking restores the grabber without shifting playback buttons')
+S.mover:Fire('OnDragStart')
 frameCfg.LockFrame=true; E.PlayerFrame:RefreshConfig()
-S.frame:Fire('OnDragStart'); cursor[2]=100; S.frame:Fire('OnDragStop'); cursor[2]=0
-Check(math.abs(S.frame:GetTop()-500)<.001,'locking the window locks the subtitle')
+if E.Snap.Active() then E.Snap.Move() end
+Play(.25)
+Check(E.Snap.Active()==nil and math.abs(S.frame:GetTop()-500)<.001,'locking during a drag stops it in place')
 frameCfg.LockFrame=false; E.PlayerFrame:RefreshConfig()
 source:Enqueue(Clip('short','Aye.',2)); Q:Skip()
 Check(S.switching and S.title:GetText()~='NPC short','skipping fades the last line out first, as a line ending on its own does')
@@ -634,6 +661,19 @@ Play(.55)
 Check(S.title:GetText()=='NPC short' and S.wanted and S.frame:GetAlpha()<1,'...then the next fades in')
 Check(math.abs(S.frame:GetCenter()-droppedCenter)<.001 and math.abs(S.frame:GetTop()-500)<.001,
     'a shorter line stays centred where the subtitle was put')
+cfg.SubtitleName=false; cfg.SubtitleScale=1.5; T:RefreshConfig(); S:Animate(1)
+Check(S.frame:GetWidth()>=S.controls:GetWidth(),'a short subtitle keeps room for its controls')
+S.mover:Fire('OnDragStart'); cursor[1],cursor[2]=-5000,-5000; E.Snap.Move(); S.mover:Fire('OnDragStop')
+Check(S.controls:GetLeft()>=-.001 and S.controls:GetBottom()>=-.001,
+    'the grabber stays reachable at the bottom and left edges at a larger scale')
+cursor[1],cursor[2]=0,0
+S.mover:Fire('OnDragStart'); cursor[1]=5000; E.Snap.Move(); S.mover:Fire('OnDragStop'); cursor[1]=0
+Check(S.controls:GetRight()*S.frame:GetEffectiveScale()<=UIParent:GetWidth()+.001,
+    'the controls also stay on-screen at the right edge')
+cfg.SubtitleName=true; cfg.SubtitleScale=1; T:RefreshConfig()
+S.mover:Fire('OnDragStart'); S.frame:Hide()
+Check(E.Snap.Active()==nil,'hiding the subtitle releases its active drag')
+S.frame:Show()
 Q:RemoveAllSoundsFromQueue()
 Check(S.frame:IsShown() and not S.wanted,'stopping fades the subtitle out')
 Play(.6)
@@ -671,8 +711,19 @@ Check(E.Addon:Layout().Subtitle==nil and math.abs(S.frame:GetCenter()-UIParent:G
 S:ShowSample(true)
 Check(S.frame:IsShown() and S.title:GetText()=='Sample subtitle' and Typed()==E.L.SUBTITLE_SAMPLE_TEXT,
     'the sample shows a whole subtitle with nothing playing')
-source:Enqueue(Clip('real',line,10))
+local beforePreview=S.frame:GetTop()
+MouseIsOver=function(frame) return frame==S.frame end
+Play(.2)
+Check(S.controls:IsShown() and S.mover:IsEnabled() and not S.pause:IsShown()
+    and not S.previous:IsShown() and not S.skip:IsShown() and not S.reportButton:IsShown()
+    and S.controls:GetWidth()==S.mover:GetWidth(),'the preview reveals just its grabber')
+S.mover:Fire('OnDragStart'); cursor[2]=50; E.Snap.Move(); S.mover:Fire('OnDragStop'); cursor[2]=0
+Check(math.abs(S.frame:GetTop()-beforePreview-50)<.001,'the preview moves through its grabber')
+MouseIsOver=saved
+source:Enqueue(Clip('real',line,10)); Play(.55)
 Check(not S:IsShowingSample() and S.title:GetText()=='NPC real','a real line takes the place of the sample')
+Check(S.pause:IsShown() and S.previous:IsShown() and S.skip:IsShown(),
+    'real narration restores the playback controls after preview')
 Q:RemoveAllSoundsFromQueue(); Play(.6)
 S:ShowSample(true); S:ShowSample(false); Play(.6)
 Check(not S.frame:IsShown(),'hiding the sample hides the subtitle')
@@ -941,10 +992,10 @@ do
         button.Disable=function(b) b.enabled=false end
     end
     Q.CanBePaused=function() return false end
-    S:UpdatePause()
+    S:UpdateControls()
     Check(S.pause:GetAlpha()==.4 and S.pause.enabled==false and S.skip:GetAlpha()==.4 and S.skip.enabled==false,
         'a line the client cannot stop leaves its buttons faint and still')
-    Q.CanBePaused=CanBePaused; S:UpdatePause()
+    Q.CanBePaused=CanBePaused; S:UpdateControls()
     Check(S.pause:GetAlpha()==1 and S.pause.enabled==true,'...and live again with one it can')
     Q:RemoveAllSoundsFromQueue(); Play(.6)
     E.Addon:SetPlayerStyle(style); E.PlayerFrame:RefreshConfig(); T:RefreshConfig()

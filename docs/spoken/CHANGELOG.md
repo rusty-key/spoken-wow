@@ -2,6 +2,11 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Subtitles always pass mouse input through.** Move them with the grabber in their hover controls;
+  Lock Position disables movement. *([Praxeomatic](https://github.com/Praxeomatic))*
+
 ## 3.12.0 — 2026-11-22
 
 - **Previous Line replays what just played,** from the player, `/sp previous` or a key you bind.
