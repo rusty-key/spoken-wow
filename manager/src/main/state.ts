@@ -16,12 +16,16 @@ export function readJsonFile<T>(file: string, fallback: T): T {
   }
 }
 
-/** Writes to a temp file next to the target, then renames it over, so a crash never leaves half a file. */
 export function writeJsonAtomic(file: string, data: unknown): void {
+  writeTextAtomic(file, JSON.stringify(data, null, 2))
+}
+
+/** Writes to a temp file next to the target, then renames it over, so a crash never leaves half a file. */
+export function writeTextAtomic(file: string, text: string): void {
   fs.mkdirSync(path.dirname(file), { recursive: true })
   const tmp = `${file}.${process.pid}.${Date.now()}.tmp`
   try {
-    fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8')
+    fs.writeFileSync(tmp, text, 'utf8')
     fs.renameSync(tmp, file)
   } catch (err) {
     try {

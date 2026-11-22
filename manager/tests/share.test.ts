@@ -158,8 +158,9 @@ describe('sendPending', () => {
 })
 
 describe('Sent.lua', () => {
-  /** An envelope with its own sum, as Gather:SentMark reads it. */
   const summed = (n: number): string => `!SPOKEN1 quests\nquest=${n}\ntext<<\nLíne ${n}.\n>>\nsum=${1000 + n}\n`
+
+  const listed = (...envelopes: string[]): string => sentLua(envelopes.map((e) => sentMark(e)!))
 
   function sentFile(game: GameInstall): string {
     return path.join(game.addOnsPath, 'SpokenContributions', 'Sent.lua')
@@ -183,12 +184,12 @@ describe('Sent.lua', () => {
     write(contributionsFile(game, 'B'), savedVariables([summed(3)]))
     const site = fakeSite()
     await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })
-    expect(fs.readFileSync(sentFile(game), 'utf8')).toBe(sentLua([summed(1), summed(2), summed(3)].map((e) => sentMark(e)!)))
+    expect(fs.readFileSync(sentFile(game), 'utf8')).toBe(listed(summed(1), summed(2), summed(3)))
 
     // The game dropped the sent lines at login and kept a new one: Sent.lua lists that one once it is sent.
     write(contributionsFile(game, 'A'), savedVariables([summed(4)]))
     await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl })
-    expect(fs.readFileSync(sentFile(game), 'utf8')).toBe(sentLua([summed(3), summed(4)].map((e) => sentMark(e)!)))
+    expect(fs.readFileSync(sentFile(game), 'utf8')).toBe(listed(summed(3), summed(4)))
   })
 
   it('lists nothing the site refused', async () => {
@@ -209,7 +210,7 @@ describe('Sent.lua', () => {
     fs.rmSync(file)
     fs.mkdirSync(file)
     expect(await sendPending({ dataPath, games: [game], appVersion: '0.1.0', fetchImpl: site.fetchImpl, all: true })).toEqual({ outcome: 'nothing', unread: [file] })
-    expect(fs.readFileSync(sentFile(game), 'utf8')).toBe(sentLua([sentMark(summed(1))!]))
+    expect(fs.readFileSync(sentFile(game), 'utf8')).toBe(listed(summed(1)))
   })
 
   it('writes nowhere without the SpokenContributions folder, and never into a linked one', async () => {

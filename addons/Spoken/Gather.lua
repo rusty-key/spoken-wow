@@ -165,17 +165,18 @@ end
 --- How Sent.lua names a sent envelope: its sum and its length in bytes, read without hashing it.
 --- Nil for anything that is not an envelope.
 function Gather:SentMark(envelope)
-    local sum = type(envelope) == "string" and envelope:match("\nsum=(%d+)\n$")
+    -- From near the end: the sum is the last line, and a line is a few kilobytes to scan at login.
+    local sum = type(envelope) == "string" and envelope:match("\nsum=(%d+)\n$", math.max(1, #envelope - 32))
     return sum and string.format("%s:%d", sum, #envelope) or nil
 end
 
---- Drop every line the Spoken Manager sent. The game saved the file before it loaded Sent.lua, so a
---- line kept since is not in `sent` and stays. Sightings stay: they are how SeeSpeaker knows a zone is told already, and
---- without them every visit would gather and send the same zone again.
----@param sent table|nil  mark -> true, from Sent.lua
+--- Drop every line SpokenContributions/Sent.lua lists. The game saved the file before it loaded
+--- Sent.lua, so a line kept since is not listed and stays. Sightings stay: they are how SeeSpeaker
+--- knows a zone is told already, and without them every visit would send the same zone again.
 ---@return number dropped
-function Gather:DropSent(sent)
-    if type(sent) ~= "table" then
+function Gather:DropSent()
+    local sent = rawget(_G, "SpokenContributionsSent")
+    if type(sent) ~= "table" or next(sent) == nil then
         return 0
     end
     local lines, kept = Store().Lines, {}
@@ -185,7 +186,9 @@ function Gather:DropSent(sent)
             kept[#kept + 1] = entry
         end
     end
-    Store().Lines = kept
+    if #kept < #lines then
+        Store().Lines = kept
+    end
     return #lines - #kept
 end
 

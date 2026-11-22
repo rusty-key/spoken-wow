@@ -820,7 +820,7 @@ loader:SetScript("OnEvent", function(_, ev, name)
         Addon:BuildVoiceList()
         Addon:Enable()
         Addon:RetireOldFolders()
-        Gather:DropSent(rawget(_G, "SpokenContributionsSent"))
+        Gather:DropSent()
         WatchPausedQueue()
         -- A stop belongs to the line it stopped, which a reload drops, so a session never starts stopped.
         SoundQueue:SetPaused(false)

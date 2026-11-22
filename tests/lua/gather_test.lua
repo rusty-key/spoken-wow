@@ -58,6 +58,7 @@ Expect("...dropping the oldest first", lines[1].key, "cap:6")
 Expect("...and keeping the newest", lines[#lines].key, "cap:" .. (Gather.CAP + 5))
 Gather:Clear()
 Expect("Clear forgets everything", Gather:Count(), 0)
+Expect("...the sightings too", Gather:SeenCount(), 0)
 
 -- The same envelope and mark as manager/tests/share.test.ts's, so the two sides cannot drift apart.
 local cafe = "!SPOKEN1 quests\ntext<<\nCafé.\n>>\nsum=42\n"
@@ -67,12 +68,13 @@ Gather:Add("sent", cafe)
 Gather:Add("kept", "!SPOKEN1 quests\nsum=7\n")
 Gather:Add("bare", "no sum")
 Gather:See("creature:9", { 1 }, "!SPOKEN1 seen\nsum=42\n")
-Expect("DropSent drops the lines the Manager sent", Gather:DropSent({ ["42:40"] = true, ["7:99"] = true }), 1)
+Expect("DropSent does nothing without Sent.lua", Gather:DropSent(), 0)
+_G.SpokenContributionsSent = { ["42:40"] = true, ["7:99"] = true }
+Expect("...and drops the lines the Manager sent", Gather:DropSent(), 1)
 Expect("...and keeps the rest, in order", _G.SpokenContributionsDB.Lines[1].key .. "," .. _G.SpokenContributionsDB.Lines[2].key, "kept,bare")
 Expect("...and the sightings", Gather:SeenCount(), 1)
-Expect("...and does nothing without Sent.lua", Gather:DropSent(nil), 0)
+_G.SpokenContributionsSent = nil
 Gather:Clear()
-Expect("...the sightings too", Gather:SeenCount(), 0)
 Gather:SetEnabled(false)
 
 ------------------------------------------------------------------------------- quests

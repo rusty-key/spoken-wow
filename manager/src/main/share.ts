@@ -20,7 +20,7 @@ import { findEntrySync, isLinked } from './guard'
 import type { LocalFile } from './packs-plan'
 import { t } from './i18n'
 import { sha256Text } from './packs-remote'
-import { log, readJsonFile, writeJsonAtomic } from './state'
+import { log, readJsonFile, writeJsonAtomic, writeTextAtomic } from './state'
 
 export const SHARE_URL = 'https://spoken.quest/api/contributions/batch'
 
@@ -86,25 +86,23 @@ export function hashEnvelope(envelope: string): string {
 }
 
 /**
- * What Gather:SentMark makes of the envelope in the game: its `sum=` and its length in bytes. The
- * addon has no sha256 to hand, and hashing every line at login would stall it; the sum is already
- * on the envelope's last line. Null for one without a sum, which the addon never drops.
+ * Must equal Gather:SentMark: the envelope's `sum=` and its length in bytes. Not the sha256, which
+ * the addon would have to compute for every line at login.
  */
 export function sentMark(envelope: string): string | null {
   const sum = /\nsum=(\d+)\n$/.exec(envelope)
   return sum ? `${sum[1]}:${Buffer.byteLength(envelope, 'utf8')}` : null
 }
 
-/** The Lua Sent.lua holds: the marks as keys of SpokenContributionsSent, sorted so an unchanged list writes the same bytes. */
+/** Sorted, so an unchanged list writes the same bytes and Sent.lua is left alone. */
 export function sentLua(marks: Iterable<string>): string {
   const keys = [...new Set(marks)].sort().map((m) => `["${m}"]=true,`)
   return `-- Written by the Spoken Manager: the lines it sent, which Spoken drops at login.\nSpokenContributionsSent = {\n${keys.join('\n')}${keys.length ? '\n' : ''}}\n`
 }
 
 /**
- * Writes the game's Sent.lua when its contents changed. Only into a SpokenContributions folder
- * that is there and not linked: a linked one is a developer's checkout. A failure is logged and
- * left for the next send, since the lines then only stay in the file a while longer.
+ * Never into a linked folder, which is a developer's checkout. A failure is only logged: the lines
+ * then stay in the file until a later send writes the list.
  */
 async function writeSentFile(game: GameInstall, marks: Iterable<string>): Promise<void> {
   const folder = findEntrySync(game.addOnsPath, 'SpokenContributions')
@@ -115,9 +113,7 @@ async function writeSentFile(game: GameInstall, marks: Iterable<string>): Promis
   const text = sentLua(marks)
   try {
     if ((await fs.promises.readFile(file, 'utf8').catch(() => null)) === text) return
-    const tmp = `${file}.${process.pid}.tmp`
-    await fs.promises.writeFile(tmp, text, 'utf8')
-    await fs.promises.rename(tmp, file)
+    writeTextAtomic(file, text)
   } catch (err) {
     log('Sharing: could not write', file, err)
   }
@@ -190,8 +186,8 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
   const fresh = new Map<string, string>()
   const seen: ShareLedger['seen'] = {}
   const unread: string[] = []
-  /** Each file read this time: the hash and sentMark of every envelope in it. */
-  const read = new Map<string, Map<string, string | null>>()
+  /** Each file read this time: the sentMark of every envelope in it that has one, by hash. */
+  const read = new Map<string, Map<string, string>>()
   const filesOf = new Map<GameInstall, string[]>()
   for (const game of opts.games) {
     const files = await findContributionFiles(game)
@@ -218,29 +214,33 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
         delete seen[file]
         continue
       }
-      const inFile = new Map<string, string | null>()
+      const inFile = new Map<string, string>()
       for (const e of envelopesFromSavedVariables(text)) {
         const h = hashEnvelope(e)
-        inFile.set(h, sentMark(e))
+        const mark = sentMark(e)
+        if (mark) inFile.set(h, mark)
         if (!ledger.sent[h]) fresh.set(h, e)
       }
       read.set(file, inFile)
     }
   }
   // Replaced whole: a file that went away is forgotten, so it is read again if it comes back.
-  // Written only when it changed: a poll that found nothing new leaves share.json alone.
+  // Written only when it changed: a poll that found nothing new leaves share.json and Sent.lua
+  // alone. An unchanged file's entry is the ledger's own object, so comparing them is enough.
   const done = async (result: SendResult): Promise<SendResult> => {
-    const before = ledger.seen
     for (const [file, inFile] of read) {
-      const marks = [...inFile].flatMap(([h, mark]) => (mark && ledger.sent[h] ? [mark] : []))
-      seen[file] = { ...seen[file]!, ...(marks.length ? { marks } : {}) }
+      const marks = [...inFile].flatMap(([h, mark]) => (ledger.sent[h] ? [mark] : []))
+      if (marks.length) seen[file]!.marks = marks
     }
-    if (JSON.stringify(seen) !== JSON.stringify(ledger.seen)) {
+    const files = Object.keys(seen)
+    if (files.length !== Object.keys(ledger.seen).length || files.some((f) => seen[f] !== ledger.seen[f])) {
+      // A file that could not be read keeps its marks from before: its lines were sent all the same.
+      const marksOf = (f: string): string[] => (seen[f] ?? ledger.seen[f])?.marks ?? []
+      const sentFiles = [...filesOf].map(([game, paths]) => [game, paths.flatMap(marksOf)] as const)
       ledger.seen = seen
       saveLedger(opts.dataPath, ledger)
+      if (read.size) for (const [game, marks] of sentFiles) await writeSentFile(game, marks)
     }
-    // A file that could not be read keeps its marks from before: its lines were sent all the same.
-    for (const [game, files] of filesOf) await writeSentFile(game, files.flatMap((f) => (seen[f] ?? before[f])?.marks ?? []))
     return result
   }
   const unreadPart = unread.length ? { unread } : {}
