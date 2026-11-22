@@ -325,9 +325,10 @@ Expect("combat starting leaves the box while the buttons can still be given back
 lockdown = true
 search:SetFocus()
 Expect("typing in combat, the box takes no buttons", caught, false)
-search:ClearFocus()
 lockdown = false
 stub.FireEvent("PLAYER_REGEN_ENABLED")
+Expect("...but takes them once combat ends, still typing, or nothing could leave it", caught, true)
+search:ClearFocus()
 gamepadUI = false
 search:SetFocus()
 Expect("with the controller UI off, the box takes no buttons", caught, false)
@@ -492,6 +493,15 @@ C:Register("late", { label = "Late", order = 5, enabled = function() return late
 lateOn = true
 C:Relayout()
 Expect("a part switched on while the window is open has its tab built then", Called("built late"), true)
+local fightOn = false
+C:Register("fight", { label = "Fight", order = 6, enabled = function() return fightOn end,
+    build = function() Record("built fight") end })
+restricted, fightOn = true, true
+C:Relayout()
+Expect("a part switched on in combat waits to have its tab built", Called("built fight"), false)
+restricted = false
+stub.FireEvent("PLAYER_REGEN_ENABLED")
+Expect("...and has it built once combat ends", Called("built fight"), true)
 Close()
 
 local failures = Failures()

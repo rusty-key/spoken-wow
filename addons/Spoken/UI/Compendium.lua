@@ -1937,6 +1937,7 @@ local function AfterCombat()
 		else
 			Pad.fighting = nil
 			Pad.Settle()
+			Pad.CatchSearch()
 		end
 	end)
 	-- Combat's start comes before the game holds addons back: the last moment to let go of keys.
@@ -2045,6 +2046,8 @@ function Pad.Settle()
 	if Pad.refindLater then Pad.Refind() end
 	-- A tab changed or the window folded in combat left the right stick where it was.
 	Pad.Retarget()
+	-- A part switched on in combat has its tab built only now.
+	Pad.BuildTabs()
 	if Pad.SettleFilter then Pad.SettleFilter() end
 end
 
@@ -2168,12 +2171,17 @@ do
 		box:HookScript("OnEditFocusGained", function(self)
 			searching = self
 			CatchPad(self, true)
-			if self.padCaught then AfterCombat() end
+			if GamepadUI() then AfterCombat() end
 		end)
 		box:HookScript("OnEditFocusLost", function(self)
 			if searching == self then searching = nil end
 			if self.padCaught then CatchPad(self, false) end
 		end)
+	end
+
+	-- A box focused in combat could not take the controller's buttons then, and kept them all.
+	function Pad.CatchSearch()
+		if searching and not searching.padCaught then CatchPad(searching, true) end
 	end
 
 	-- Only a box holding the controller's buttons: one typed in with a keyboard keeps its focus.
