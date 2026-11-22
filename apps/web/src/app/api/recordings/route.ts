@@ -12,6 +12,7 @@
  * per request and one bad file fails alone. Buffered through formData() as the voice samples
  * route is; nginx's limit for /api/recordings/ is set to match (deploy/web/nginx-spoken-api.conf).
  */
+import { storageRefusalResponse } from "@/lib/blobs/keep";
 import { requireIn } from "@/lib/generation/authz";
 import { MAX_RECORDING_BYTES } from "@/lib/recordings/match";
 import { commitRecording, listRecordings, removeRecording } from "@/lib/recordings/store";
@@ -32,6 +33,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const { lang, session, denied } = await requireIn(request, "record");
   if (denied) return denied;
+  // Before the upload is read: a team that keeps its audio only in its own bucket and has none
+  // switched on could keep nothing of it.
+  const refused = await storageRefusalResponse(lang);
+  if (refused) return refused;
 
   let form: FormData;
   try {

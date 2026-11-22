@@ -34,8 +34,7 @@ from tts_cli.giver_names import lua_string
 from tts_cli.naming import (gossip_hash_from_line_id, gossip_stem_rank, quest_moment_stem,
                             quest_stem_from_line_id, several_wordings)
 
-#: Every client locale but English, whose text is the packs' own tables. Italian is no
-#: client's locale.
+#: Every client locale but English, whose text is the packs' own tables.
 CLIENT_LOCALES = ("deDE", "esES", "esMX", "frFR", "koKR", "ptBR", "ruRU", "zhCN", "zhTW")
 
 #: kind -> the addon table it is filed under, as the packs name them.

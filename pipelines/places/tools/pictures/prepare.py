@@ -96,11 +96,13 @@ def stretched(rng, h, w, along_x, octaves=4):
     return np.asarray(Image.fromarray(small.astype(np.float32)).resize((w, h), Image.BICUBIC))
 
 
-def make_mask(index):
+def make_mask(index, size=None, left_shallower=None):
     """Where the paint reaches: solid in the middle, failing toward each edge in dry-brush streaks
-    that run along that side, broken into specks, with a few spatters past it."""
+    that run along that side, broken into specks, with a few spatters past it. `size` is (width,
+    height), the pictures' own by default; `left_shallower` replaces LEFT_SHALLOWER."""
     rng = seeded(f"mask{index}")
-    pw, ph = MASK_W, MASK_H
+    pw, ph = size or (MASK_W, MASK_H)
+    shallower = LEFT_SHALLOWER if left_shallower is None else left_shallower
     yy, xx = np.mgrid[0:ph, 0:pw].astype(np.float64)
     across = np.minimum(xx, pw - 1 - xx)   # in from the left or right side
     down = np.minimum(yy, ph - 1 - yy)     # in from the top or bottom
@@ -113,7 +115,7 @@ def make_mask(index):
     # Shallower along the left side, which lines up with the text below: there a deep edge read as
     # the picture sitting out of line with the words.
     left = (1 - along) * np.clip((pw / 2 - xx) / 24, 0, 1)
-    scale = 1 - LEFT_SHALLOWER * left
+    scale = 1 - shallower * left
     depth = (3 + noise(rng, ph, pw, 3, 2) * 16) * scale
     reach = np.clip((inset - depth + (streak - 0.5) * 26 * scale) / (14 * scale), 0, 1)
 
@@ -175,6 +177,13 @@ def crop(im, place=None):
     return im.crop((left, 0, left + cw, h))
 
 
+def paint_thinning(mask, blur):
+    """How far the paint fades toward the paper, 0..0.75, round a mask's edge: the mask blurred by
+    `blur` px, the more the nearer the paint runs out."""
+    soft = ndimage.gaussian_filter(mask, blur)
+    return 0.75 * np.clip(1 - soft, 0, 1) ** 0.8
+
+
 def prepare(im, mask, place=None):
     """The banner at the shipped size, warmed a touch toward the parchment, and thinning to the
     paper where the paint runs out at the edges (the mask's fading band)."""
@@ -187,9 +196,8 @@ def prepare(im, mask, place=None):
     grain = 0.65 * speck + 0.35 * noise(rng, H, W, 3, 16)
     img *= (1 - GRAIN * (grain - 0.5) * 2)[..., None]
     mask = np.asarray(Image.fromarray(mask.astype(np.float32)).resize((W, H), Image.BILINEAR))
-    soft = ndimage.gaussian_filter(mask, 3 * W / MASK_W)
-    thin = np.clip(1 - soft, 0, 1) ** 0.8
-    img = img + (PARCHMENT - img) * (0.75 * thin)[..., None]
+    thin = paint_thinning(mask, 3 * W / MASK_W)
+    img = img + (PARCHMENT - img) * thin[..., None]
     out = Image.fromarray((np.clip(img, 0, 1) * 255).astype(np.uint8))
     return out.filter(ImageFilter.UnsharpMask(radius=1, percent=40, threshold=2))
 

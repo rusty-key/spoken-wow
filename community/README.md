@@ -24,7 +24,7 @@ replace it.
 | Field | Rule |
 | --- | --- |
 | Pack id | Lower-case letters and digits, with single hyphens between words. At most 48 characters. It names the pack's folder and cannot change. |
-| Language | A language code of the form `xxYY`: two lower-case letters, then two upper-case ones, such as `deDE`, `itIT` or `heIL`. |
+| Language | A language code of the form `xxYY`: two lower-case letters, then two upper-case ones, such as `deDE`, `plPL` or `heIL`. |
 | Section | `quests`, `places` or `readables`. |
 | Title, Author | Plain text, 1 to 80 characters. |
 | Description | Plain text, 1 to 400 characters. |
@@ -91,6 +91,11 @@ has checked that the language's name draws, so a lore pack must set `X-Spoken-La
 one in a script the game's fonts lack, such as Hebrew, must also set `X-Spoken-LanguageFont`.
 
 Right-to-left text is the pack's job: ship the text in visual order.
+
+Words with no voice, for every section at once, are a text pack instead:
+[`docs/contributors/TEXT-PACKS.md`](../docs/contributors/TEXT-PACKS.md). Spoken's own windows and
+settings in another language are an interface pack:
+[`docs/contributors/INTERFACE-PACKS.md`](../docs/contributors/INTERFACE-PACKS.md).
 
 The Manager's community list takes quests, places and readables packs only, so a
 bosses pack cannot be listed there yet.

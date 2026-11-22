@@ -32,9 +32,34 @@ local filter = ""
 -- What there is
 --------------------------------------------------------------------------------
 
--- A boss's or a dungeon's name in the client's language, else English.
+-- A boss's or a dungeon's name in the client's language, else English: the name the game shows,
+-- which matching it reads (MapLore.lua, Leatrix.lua, OpenMap.lua).
 local function Name(entry)
 	return entry[GetLocale and GetLocale() or "enUS"] or entry[1]
+end
+
+-- The Text Language where the player chose one, else nil: on Auto every page reads as it always did.
+local function ChosenLanguage()
+	local code, chosen = Spoken:TextLanguage()
+	return chosen and code or nil
+end
+
+-- What a data entry (Data/Bosses.lua's boss, Data/Stories.lua's story) has in `language`: English
+-- is its first, or the whole of a story that is only English; any other is under its code.
+local function In(entry, language)
+	if language == "enUS" then return type(entry) == "table" and entry[1] or entry end
+	return type(entry) == "table" and entry[language] or nil
+end
+
+-- The boss `boss` of `map` as a page and a list name it: in the Text Language, a text pack's name
+-- else the one Data/Bosses.lua has in it, and the client's otherwise.
+local function ShownName(map, boss)
+	local language = ChosenLanguage()
+	if language then
+		local known = Spoken:TextIn(language, "bosses", "names", map, boss.key) or In(boss, language)
+		if known then return known end
+	end
+	return Name(boss)
 end
 
 local index
@@ -92,8 +117,18 @@ local function Found(map, key)
 	return Bosses:IsBossFound(map, key)
 end
 
-local function Unlocked()
+--- Whether Unlock Unfound Bosses is on: every boss openable, met or not.
+function Bosses:IsUnlocked()
 	return SpokenBossesSettings ~= nil and SpokenBossesSettings.unlockUnfound == true
+end
+
+local function Unlocked()
+	return Bosses:IsUnlocked()
+end
+
+-- Whether a boss's page and model are shown: met, or Unlock Unfound Bosses is on.
+function Bosses:IsRevealed(map, key)
+	return Found(map, key) or Unlocked()
 end
 
 local function OnlyFound()
@@ -170,13 +205,33 @@ local function CoreStory(map, key)
 	return text, language
 end
 
--- A pack's words win only on a boss core already has.
+-- The story in the Text Language the player chose: a voice pack's words in it, which are what its
+-- voice says, else a text pack's, else Data/Stories.lua's own. Nil where none has it. The second
+-- value is true for a text pack's, which no recording says, the third for a voice pack's.
+local function ChosenStory(map, key, language)
+	local voiced = Bosses.PackStoryText and Bosses:PackStoryText(map, key, language)
+	if voiced then return voiced, nil, true end
+	local packed = Spoken:TextIn(language, "bosses", "stories", map, key)
+	if packed then return packed, true end
+	local stories = _G.SpokenBossStories
+	local text = In(stories and stories[map] and stories[map][key], language)
+	if type(text) == "string" and text ~= "" then return text end
+	return nil
+end
+
+-- A pack's words win only on a boss core already has, but for the Text Language the player chose,
+-- whose words may be the only ones. The third value is true where they are a text pack's, the
+-- fourth where they are a voice pack's.
 local function Story(map, key)
+	local chosen = ChosenLanguage()
+	local words, unsaid, voiced
+	if chosen then words, unsaid, voiced = ChosenStory(map, key, chosen) end
+	if words then return words, chosen, unsaid, voiced end
 	local text, language = CoreStory(map, key)
 	if not text then return nil end
 	local locale = GetLocale and GetLocale()
 	local packed = locale and Bosses:PackStoryText(map, key, locale)
-	if packed then return packed, locale end
+	if packed then return packed, locale, nil, true end
 	return text, language
 end
 
@@ -186,7 +241,7 @@ local function Creature(map, key)
 	return known and known[map] and known[map][key]
 end
 
--- The creature is the fallback for clients that cannot set a display directly.
+-- The display draws the model; the creature is for the portrait.
 local function Model(map, key)
 	local entry = Creature(map, key)
 	return entry and entry.display and { creatureID = entry.creature, displayID = entry.display }
@@ -240,8 +295,9 @@ local function DungeonRows(zone, map, nest, whole)
 	local at = world and nest or nest + 1
 	for _, boss in ipairs(open and Index().zones[zone][map] or {}) do
 		local met = Found(map, boss.key)
-		if (met or not OnlyFound()) and (whole or Matches(Name(boss))) then
-			table.insert(inside, { kind = "boss", leaf = true, map = map, key = boss.key, label = Name(boss), nest = at,
+		local name = ShownName(map, boss)
+		if (met or not OnlyFound()) and (whole or Matches(name)) then
+			table.insert(inside, { kind = "boss", leaf = true, map = map, key = boss.key, label = name, nest = at,
 				locked = not met and not Unlocked(), done = met,
 				missing = (met or Unlocked()) and not Complete(map, boss.key) })
 		end
@@ -356,7 +412,15 @@ local REPORT = {
 	title = REPORT_LABEL,
 }
 Bosses.ReportAction = REPORT
-Bosses.Name, Bosses.Model, Bosses.Unlocked = Name, Model, Unlocked
+Bosses.Name = Name
+
+--- The font file to write `code` (the Text Language by default) in where a page uses `fontObject`,
+--- or nil where none draws it: a text pack's language may need its own.
+function Bosses:FontFor(fontObject, code)
+	code = code or (Spoken and Spoken.TextLanguage and Spoken:TextLanguage()) or "enUS"
+	if Spoken and Spoken.FontForLanguage then return Spoken:FontForLanguage(fontObject, code, self) end
+	return fontObject and fontObject.GetFont and fontObject:GetFont() or nil
+end
 -- The narrator's Report is about what was heard, so it files under the clip's language.
 local NARRATOR_REPORT = {
 	id = "report",
@@ -364,7 +428,7 @@ local NARRATOR_REPORT = {
 	label = REPORT_LABEL,
 	anchor = "topright",
 	tooltip = function(tooltip) tooltip:SetText(REPORT_LABEL) end,
-	onClick = function(clip) Bosses:ShowReport(clip.mapID, clip.bossKey, clip.language) end,
+	onClick = function(clip) Bosses:ShowReport(clip.mapID, clip.bossKey, clip.language, clip) end,
 }
 
 local function Boss(map, key)
@@ -395,7 +459,7 @@ local SECTION_ICON = { objectOrItem = true, icon = Bosses.ICON, bullet = "boss" 
 --- The story of the boss `key` of `map` as a line for Spoken's narrator: voiced where an installed
 --- pack has it (Audio.lua), else words alone; nil where it has none.
 function Bosses:StoryClip(map, key)
-	local story, language = Story(map, key)
+	local story, language, unsaid, voiced = Story(map, key)
 	if not story then return nil end
 	local boss = Boss(map, key)
 	if not boss then return nil end
@@ -408,7 +472,7 @@ function Bosses:StoryClip(map, key)
 		length = math.max(LEAST_SECONDS, words / READING_SPEED),
 		present = {
 			header = Index().world[map] and MapName(BossZone(map, key)) or DungeonName(map),
-			label = Name(boss),
+			label = ShownName(map, boss),
 			transcript = story,
 			bullet = BossBullet(map),
 			portrait = model and { kind = "model", creatureID = model.creatureID, displayID = model.displayID }
@@ -416,12 +480,22 @@ function Bosses:StoryClip(map, key)
 			actions = { NARRATOR_REPORT },
 		},
 	}
+	-- A text pack's language may need a font the game's lacks.
+	clip.present.font = Spoken:ClipFont(language, self)
 	local recording = self.GetAudioClip and self:GetAudioClip(map, key)
 	clip.language = recording and recording.language or language
 	if recording then
 		clip.path, clip.length = recording.path, recording.len or clip.length
-		-- Timed to the recording's own words, so not under a story in another language.
-		if language == recording.language then clip.present.timings = recording.times end
+		-- The pack it plays from and its voice, which a report names.
+		clip.packFolder, clip.voice = recording.packFolder, recording.voice
+		-- Timed to the recording's own words, so not under a story in another language, nor under a
+		-- text pack's words in its language.
+		if language == recording.language and not unsaid then
+			clip.present.timings = recording.times
+			-- A voice pack's words are the playing pack's own: another pack of the language, the
+			-- best of it, may say it otherwise.
+			if voiced and recording.text then clip.present.transcript = recording.text end
+		end
 	else
 		clip.textOnly = true
 	end
@@ -449,8 +523,8 @@ local function Unknown(map)
 	return unknown[BossBullet(map)]
 end
 
--- A boss's portrait, at the left of its name on the page's header.
-local function Portrait(map, key)
+--- A boss's portrait, at the left of its name on the page's header.
+function Bosses:Portrait(map, key)
 	local model = Model(map, key)
 	-- A portrait only from a known appearance: asked of the client, a creature it has not met answers
 	-- with the player's own face.
@@ -464,6 +538,25 @@ local function Portrait(map, key)
 	return portrait
 end
 
+--- The line under a boss's name: the dungeon, and where it is. A map the client does not list has
+--- no zone to name.
+function Bosses:Where(map, key)
+	local dungeon = DungeonName(map)
+	local zone = BossZone(map, key)
+	if zone and Index().world[map] then return L.BOSS_IN_FMT:format(MapName(zone)) end
+	if not dungeon then return "" end
+	local where = L.BOSS_IN_FMT:format(dungeon)
+	return zone and (where .. " · " .. MapName(zone)) or where
+end
+
+--- A boss's page header, the same in the Compendium and on the map panel: { title, subtitle, icon,
+--- model, revealed }. A boss not revealed has its own portrait and no model.
+function Bosses:Head(map, boss)
+	local revealed = self:IsRevealed(map, boss.key)
+	return { title = ShownName(map, boss), subtitle = self:Where(map, boss.key), icon = self:Portrait(map, boss.key),
+		model = revealed and Model(map, boss.key) or nil, revealed = revealed }
+end
+
 local function ShowEntry()
 	if not page then return end
 	if not selection then
@@ -474,14 +567,13 @@ local function ShowEntry()
 		local map, key = selection.map, selection.key
 		local boss = Boss(map, key)
 		if not boss then return end
-		local where = Index().world[map] and L.BOSS_IN_FMT:format(MapName(BossZone(map, key)))
-			or (L.BOSS_IN_FMT:format(DungeonName(map)) .. " · " .. MapName(Index().zoneOf[map]))
-		if not Found(map, key) and not Unlocked() then
-			page:Show({ title = Name(boss), subtitle = where, text = L.BOSS_NOT_FOUND, icon = Unknown(map) })
+		local head = Bosses:Head(map, boss)
+		if not head.revealed then
+			page:Show({ title = head.title, subtitle = head.subtitle, text = L.BOSS_NOT_FOUND, icon = head.icon })
 			return
 		end
 		local story = Story(map, key)
-		page:Show({ title = Name(boss), subtitle = where, icon = Portrait(map, key), model = Model(map, key),
+		page:Show({ title = head.title, subtitle = head.subtitle, icon = head.icon, model = head.model,
 			text = story or C.NotWritten(), unwritten = story == nil, target = story and { map, key } or nil })
 		return
 	end
@@ -594,10 +686,7 @@ local function Build(panel)
 	Bosses.bosses, Bosses.list = panel, list
 end
 
---- Open the bosses, on where the player stands now, unless they chose something here.
-function Bosses:ShowBosses()
-	if not SpokenCompendium then return end
-	if selection == landed then selection = nil end
+local function OpenTab()
 	if list then
 		list:ClearSearch()
 		filter = ""
@@ -605,6 +694,25 @@ function Bosses:ShowBosses()
 	SpokenCompendium:Open("bosses")
 	SpokenCompendium:Expand()
 	Bosses:RefreshBosses(true)
+end
+
+--- Open the bosses, on where the player stands now, unless they chose something here.
+function Bosses:ShowBosses()
+	if not SpokenCompendium then return end
+	if selection == landed then selection = nil end
+	OpenTab()
+end
+
+--- Open the Compendium on one boss's page, its dungeon and continent opened round it. A boss Found
+--- Only leaves out has no row: the bosses open where the player stands.
+function Bosses:ShowBoss(map, key)
+	if not (SpokenCompendium and Boss(map, key)) then return end
+	if OnlyFound() and not Found(map, key) then return Bosses:ShowBosses() end
+	selection = { boss = true, map = map, key = key }
+	if not Index().world[map] then dungeonOpen[map] = true end
+	local zone = BossZone(map, key)
+	if zone then OpenAround(zone) end
+	OpenTab()
 end
 
 function Bosses:SetupBosses()

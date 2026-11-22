@@ -30,6 +30,10 @@
 // SPOKEN_CLIP_POINTERS=1 writes pointers instead (scripts/lib/clip-pointer.mjs), for a Manager
 // pack built without its clips on this machine. A quests pointer names the take's encoding, the Ogg
 // its pack ships, and durations.json carries what the build would otherwise read from the clips.
+//
+// SPOKEN_SELECTED_TAKES=<file> writes there, once the folder is made, the takes it holds, as
+// { <take file>: { version, sha256 } }: what a staged release built from, which its review plays
+// (scripts/manager/release.mjs --stage).
 import { execFileSync } from "node:child_process";
 import { constants, existsSync, readdirSync } from "node:fs";
 import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
@@ -41,8 +45,10 @@ import { assignFiles } from "../../pipelines/places/tools/voice/naming.mjs";
 import { packTimes } from "../../pipelines/lib/word-times.mjs";
 import { archiveOf, ENCODING_PROFILE, sourceOf } from "../lib/archives.mjs";
 import { pointerText, writePointers } from "../lib/clip-pointer.mjs";
-import { eachParallel } from "../lib/download.mjs";
-import { CURRENT_TEXT_SQL, NAMED_QUESTS_SQL, currentTextFor, namedBy } from "./relevant.mjs";
+import { archiveBase, eachParallel, fetchRetrying } from "../lib/download.mjs";
+import { releaseTeamSql } from "../../pipelines/lib/release-team.mjs";
+import { PLAYER_WORDS_SQL, registerPlayerWordRows, writtenPlayerTokens } from "../../pipelines/lib/player-words.mjs";
+import { CURRENT_TEXT_SQL, NAMED_QUESTS_SQL, currentLines, currentTextFor, namedBy } from "./relevant.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -94,27 +100,38 @@ function psql(sql) {
     .filter(Boolean);
 }
 
+// Whether a team's own bucket holds the clip (docs/platform/STORAGE.md): a database from before
+// migration 0114 has no such table, and every clip is in ours.
+const teamBuckets = psql(`select to_regclass('archive_object') is not null`)[0] === "t";
+const inTeamBucket = (prefix, sha) =>
+  // Landed copies only: a waiting one is read from our quarantine, so its 404 is a loss, not a deletion.
+  teamBuckets ? `exists (select 1 from "archive_object" a where a."prefix" = '${prefix}' and a."sha256" = ${sha} and not a."pending")::text` : `'false'`;
+
 // A quests file carries its extension and the other two do not; the archive directory is the file
 // without it either way. Only quests takes have an Ogg.
 const listing = psql(`select t."file", coalesce(t."archiveFile", ''),
                              coalesce(array_to_json(t."wordTimes")::text, ''), coalesce(t."sha256", ''),
                              coalesce(e."encodedSha256", ''), coalesce(e."bytes"::text, ''), coalesce(e."durationSec"::text, ''),
-                             coalesce(to_json(t."shownText")::text, '')
+                             coalesce(to_json(t."shownText")::text, ''),
+                             ${inTeamBucket("takes", `t."sha256"`)}, ${inTeamBucket("encodings", `e."encodedSha256"`)},
+                             t."version"
                         from "take" t
                         left join "take_encoding" e
                           on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = :'profile'
                        where t."source" = :'source' and t."lang" = :'lang' and t."isCurrent"
-                         and t."teamId" = team_of_lang(:'lang')
+                         -- the release's team, else the one with plain packs, so a build outside a release reads what it always did
+                         and t."teamId" = ${releaseTeamSql(`:'lang'`)}
                        order by t."file"`);
 
 // A live take's archive path: its bucket object, or the take's own directory (its file without
 // the extension) holding the archive file. Blank when the take's clip was never kept.
 const takes = listing.map((row) => {
-  const [file, name, times, sha256, encodedSha256, bytes, durationSec, shownText] = row.split("\t");
+  const [file, name, times, sha256, encodedSha256, bytes, durationSec, shownText, teamTake, teamEncoding, version] = row.split("\t");
   const stem = file.replace(/\.mp3$/, "");
   return {
     file, stem, sha256, archived: sourceOf("takes", sha256, name ? join(prefix, stem, name) : ""), times,
     encodedSha256, bytes, durationSec, shownText: shownText ? JSON.parse(shownText) : null,
+    teamTake: teamTake === "true", teamEncoding: teamEncoding === "true", version: Number(version),
   };
 });
 
@@ -133,7 +150,8 @@ function bossesShipped() {
   const files = new Set(psql(`select t."file" from "take" t
                                 join "boss" b on t."lineId" = 'boss:' || b."map" || ':' || b."key"
                                where t."source" = :'source' and t."lang" = :'lang' and t."isCurrent"
-                                 and t."teamId" = team_of_lang(:'lang')
+                                 -- the release's team, else the one with plain packs, so a build outside a release reads what it always did
+                                 and t."teamId" = ${releaseTeamSql(`:'lang'`)}
                                  and not b."retired"`));
   return (stem) => files.has(stem);
 }
@@ -143,6 +161,15 @@ const relevant =
     : section === "bosses" ? bossesShipped()
     : () => true;
 const live = takes.filter((take) => relevant(take.stem));
+
+// Whether an archive address is a site's archive route rather than a bucket's own address.
+function throughSite(url) {
+  try {
+    return /\/api\/archive\/?$/.test(new URL(url).pathname);
+  } catch {
+    return false;
+  }
+}
 const unnamed = takes.length - live.length;
 
 if (list) {
@@ -172,6 +199,8 @@ async function writeWordTimes() {
 }
 
 async function writeTakeText() {
+  // A team's language keeps its words in the database, and the site spoke the take's text with them.
+  registerPlayerWordRows(psql(PLAYER_WORDS_SQL).map((row) => row.split("\t")));
   const rows = psql(CURRENT_TEXT_SQL).map((row) => {
     const [stem, text, playerGender] = row.split("\t");
     return { stem, text: JSON.parse(text), playerGender };
@@ -183,8 +212,44 @@ async function writeTakeText() {
     if (text) texts[take.stem] = text;
   }
   await writeFile(join(paths.out, "take-text.json"), `${JSON.stringify(texts)}\n`);
+  await writeLineText(rows);
+  await writeQuestTitles();
 }
 
+// Every current line's words, recorded or not, so a quest page shows a line in the pack's language
+// before anyone voiced it. Its tokens are left for the addon to fill, in the forms it fills. English
+// ships its words in the addon itself.
+async function writeLineText(rows) {
+  if (lang === BASE_LANG) return;
+  const texts = {};
+  for (const [stem, { text }] of currentLines(rows)) if (text) texts[stem] = writtenPlayerTokens(text);
+  await writeFile(join(paths.out, "line-text.json"), `${JSON.stringify(texts)}\n`);
+}
+
+// The quests' titles in the language, for the Compendium: a client knows only the titles of quests
+// it has shown, and only in its own language.
+async function writeQuestTitles() {
+  if (lang === BASE_LANG) return;
+  const titles = Object.fromEntries(
+    psql(`select "entityId", to_json("name")::text from "entity_name"
+           where "kind" = 'quest' and "lang" = :'lang' and "isCurrent" and "name" <> ''
+           order by "entityId"`).map((row) => {
+      const [id, name] = row.split("\t");
+      return [id, JSON.parse(name)];
+    }),
+  );
+  await writeFile(join(paths.out, "quest-titles.json"), `${JSON.stringify(titles)}\n`);
+}
+
+/** The takes the folder holds, for a staged release's review; nothing without SPOKEN_SELECTED_TAKES. */
+async function writeSelection(held) {
+  const file = process.env.SPOKEN_SELECTED_TAKES;
+  if (!file) return;
+  const selected = Object.fromEntries(held.map((take) => [take.file, { version: take.version, sha256: take.sha256 || null }]));
+  await writeFile(file, `${JSON.stringify(selected)}\n`);
+}
+
+/** Writes the quests pointers and returns the live takes left out, by file. */
 async function writeEncodingPointers(pointed) {
   // Encoding one here instead would make players download it again: oggenc's bytes differ every run.
   const lacking = pointed.filter((take) => !take.encodedSha256 || !take.durationSec);
@@ -193,18 +258,47 @@ async function writeEncodingPointers(pointed) {
     for (const { file, sha256 } of lacking.slice(0, 10)) console.error(`  ${file} (${sha256})`);
     process.exit(1);
   }
-  let done = 0;
-  await eachParallel(pointed, async ({ stem, encodedSha256, bytes }) => {
-    await writeFile(join(paths.out, `${stem}.ogg`), pointerText(encodedSha256, bytes, "encodings"));
-    if (++done % 5000 === 0) console.log(`  ${done}/${pointed.length} pointers`);
+  // A team may delete from its own bucket, and its line then ships unvoiced rather than stopping
+  // the release. Only those are looked for: an Ogg in ours is there.
+  const gone = new Set();
+  const unreachable = [];
+  await eachParallel(pointed.filter((take) => take.teamEncoding), async ({ file, encodedSha256 }) => {
+    const res = await fetchRetrying(`${archiveBase(process.env.SPOKEN_ARCHIVE_URL)}encodings/${encodedSha256}`, (u) => fetch(u, { method: "HEAD" }));
+    // Only a 404 is a deletion. Anything else (a wrong archive address, the site down) stops the
+    // build, rather than shipping every team-kept line silent.
+    if (res.status === 404) gone.add(file);
+    else if (!res.ok) unreachable.push(`${file}: HTTP ${res.status}`);
   });
-  const durations = Object.fromEntries(pointed.map(({ stem, durationSec }) => [stem, Number(durationSec)]));
+  if (unreachable.length) {
+    console.error(`error: ${unreachable.length} team-kept Oggs could not be checked, e.g.:`);
+    for (const line of unreachable.slice(0, 5)) console.error(`  ${line}`);
+    process.exit(1);
+  }
+  if (gone.size) console.warn(`  ${gone.size} live takes left out: their team deleted the Ogg from its bucket, e.g. ${[...gone][0]}`);
+  let done = 0;
+  await eachParallel(pointed.filter((take) => !gone.has(take.file)), async ({ stem, encodedSha256, bytes }) => {
+    await writeFile(join(paths.out, `${stem}.ogg`), pointerText(encodedSha256, bytes, "encodings"));
+    if (++done % 5000 === 0) console.log(`  ${done}/${pointed.length - gone.size} pointers`);
+  });
+  const durations = Object.fromEntries(pointed.filter((take) => !gone.has(take.file)).map(({ stem, durationSec }) => [stem, Number(durationSec)]));
   await writeFile(join(paths.out, "durations.json"), `${JSON.stringify(durations)}\n`);
+  return gone;
 }
 
 if (process.env.SPOKEN_CLIP_POINTERS) {
   if (!process.env.SPOKEN_ARCHIVE_URL) {
     console.error("SPOKEN_CLIP_POINTERS needs SPOKEN_ARCHIVE_URL");
+    process.exit(1);
+  }
+  // A take kept in its team's own bucket is reached only through a site's /api/archive/, which
+  // finds each object wherever it is kept. Our bucket's own address answers 404 for it, which reads
+  // as the team's deletion: Places, Readables and Bosses would stop on it, and quests ship it silent.
+  const teamKept = live.filter((take) => take.teamTake || take.teamEncoding);
+  if (teamKept.length && !throughSite(process.env.SPOKEN_ARCHIVE_URL)) {
+    console.error(
+      `error: ${teamKept.length} live takes are kept in their team's own bucket, e.g. ${teamKept[0].file}, which only a ` +
+        `site's archive route reaches: set SPOKEN_ARCHIVE_URL to <site>/api/archive/, not ${process.env.SPOKEN_ARCHIVE_URL}`,
+    );
     process.exit(1);
   }
   const unhashed = live.filter((take) => take.archived && !take.sha256);
@@ -215,19 +309,27 @@ if (process.env.SPOKEN_CLIP_POINTERS) {
   const pointed = live.filter((take) => take.sha256);
   await Promise.all([...new Set(pointed.map(({ stem }) => dirname(join(paths.out, stem))))].map((dir) => mkdir(dir, { recursive: true })));
   let absent = [];
+  let leftOut = new Set();
   if (section === "quests") {
-    await writeEncodingPointers(pointed);
+    leftOut = await writeEncodingPointers(pointed);
     await writeWordTimes();
     await writeTakeText();
   } else absent = await writePointers(pointed.map(({ stem, sha256 }) => ({ sha256, target: join(paths.out, `${stem}.mp3`) })), process.env.SPOKEN_ARCHIVE_URL);
-  console.log(`${section}: ${pointed.length - absent.length} pointers in ${paths.out.slice(ROOT.length + 1)}`);
+  console.log(`${section}: ${pointed.length - absent.length - leftOut.size} pointers in ${paths.out.slice(ROOT.length + 1)}`);
   if (unnamed) console.log(`  ${unnamed} live takes left out: no current line names their file, no lore their place, or their boss is retired`);
   if (live.length > pointed.length) console.log(`  ${live.length - pointed.length} live takes had their clip discarded before the archive kept every take; shipped silent`);
+  // Every Places, Readables and Bosses clip is named by its lookup, which a missing file fails, so a
+  // clip its team deleted stops the build too, named as such: the team voices the line again.
+  // Only quests leave such a line out (writeEncodingPointers).
   if (absent.length) {
+    const teamTargets = new Set(pointed.filter((take) => take.teamTake).map(({ stem }) => join(paths.out, `${stem}.mp3`)));
+    const deleted = absent.filter(({ target, reason }) => teamTargets.has(target) && reason === "HTTP 404");
+    if (deleted.length) console.error(`  ${deleted.length} live takes were deleted from their team's bucket: regenerate them, e.g. ${deleted[0].target}`);
     console.error(`  ${absent.length} live takes are not in the archive, e.g.:`);
     for (const { target, reason } of absent.slice(0, 5)) console.error(`    ${target}: ${reason}`);
     process.exit(1);
   }
+  await writeSelection(pointed.filter((take) => !leftOut.has(take.file)));
   process.exit(0);
 }
 
@@ -274,3 +376,4 @@ if (missing.length) {
   console.error(`  Fetch them with:  make ${section}-pull-live${lang === BASE_LANG ? "" : ` LOCALE=${lang}`}`);
   process.exit(1);
 }
+await writeSelection(live.filter((take) => take.archived));

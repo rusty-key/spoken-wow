@@ -32,6 +32,11 @@ export type ActivityEvent<K extends ActivityKind = ActivityKind> = {
   subject?: string | null;
   lineId?: string | null;
   detail: ActivityDetail[K];
+  /**
+   * The team the act is filed under. Undefined is the team whoever is acting works in; null, and
+   * an act by somebody in no team of it, is filed under none.
+   */
+  team?: TeamId | null;
 };
 
 /**
@@ -73,7 +78,7 @@ export async function recordActivities(
   }
 }
 
-/** A language nobody owns has no team to file under, so its act is kept with none. */
+/** An act in a language the actor works in no team of has no team to file under, so it is kept with none. */
 function rowsOf(events: ActivityEvent[], owners: Map<Lang, TeamId>): string {
   return JSON.stringify(
     events.map((event) => ({
@@ -84,7 +89,7 @@ function rowsOf(events: ActivityEvent[], owners: Map<Lang, TeamId>): string {
       lineId: event.lineId ?? null,
       detail: event.detail,
       actorId: event.actorId,
-      teamId: (event.lang && owners.get(event.lang)) || null,
+      teamId: event.team !== undefined ? event.team : (event.lang && owners.get(event.lang)) || null,
     })),
   );
 }
@@ -143,11 +148,13 @@ export type ActivityFilter = {
 };
 
 /**
- * Kinds of every language's that only a global admin reads: account events, and community
- * packs, whose moderation page a team admin cannot open. A team admin shown them would read
- * rejection reasons and owner hand-overs that are not theirs, and follow links that 404.
+ * Kinds of every language's that only a global admin reads: account events, community packs,
+ * whose moderation page a team admin cannot open, and team requests, which are logged without a
+ * language and must not leak a pending request into a language team's log. A team admin shown
+ * them would read rejection reasons and owner hand-overs that are not theirs, and follow links
+ * that 404.
  */
-const GLOBAL_ONLY_PREFIXES = ["user.", "pack."];
+const GLOBAL_ONLY_PREFIXES = ["user.", "pack.", "request."];
 
 /** SQL true when alias `a`'s row is one a viewer who is not a global admin may see. */
 const NOT_GLOBAL_ONLY = GLOBAL_ONLY_PREFIXES.map((prefix) => `a."kind" not like '${prefix}%'`).join(" and ");

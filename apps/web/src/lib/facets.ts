@@ -7,10 +7,14 @@
  * Being closed sets also makes them a whitelist, which is what lets /api/search take these
  * straight from a query string.
  *
+ * The zones are the ones players' sightings name (lib/quests/sightings.ts), asked
+ * on every call rather than kept with the roster, since sightings arrive between roster moves.
+ *
  * `source` and `npcType` are absent on purpose: they are closed unions on CorpusLine, so
  * their lists live next to the type in lib/search.ts.
  */
 import type { Lang } from "./lang";
+import { offeredZones, type QuestZone } from "./quests/sightings";
 import type { Roster } from "./voices/roster";
 import { loadRoster } from "./voices/roster-store";
 import { GENDERS } from "./voices/voices";
@@ -29,12 +33,13 @@ export type Facets = {
    * so a partial selection (a race with no gender) narrows by the same filter.
    */
   flavorScopes: { race: string; gender: string; flavor: string }[];
+  zones: readonly QuestZone[];
 };
 
 const sorted = (values: Iterable<string>) => [...new Set(values)].sort((a, b) => a.localeCompare(b));
 
 /** Per roster: /api/search asks on every request, and the roster is one instance until it moves. */
-const built = new WeakMap<Roster, Facets>();
+const built = new WeakMap<Roster, Omit<Facets, "zones">>();
 
 export async function facets(lang: Lang): Promise<Facets> {
   const roster = await loadRoster(lang);
@@ -50,5 +55,5 @@ export async function facets(lang: Lang): Promise<Facets> {
     };
     built.set(roster, value);
   }
-  return value;
+  return { ...value, zones: await offeredZones() };
 }

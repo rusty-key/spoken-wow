@@ -1,7 +1,10 @@
 # AGENTS.md
 
-Repo-wide rules. Each section also has its own file, which applies on top of this one:
-`docs/quests/CLAUDE.md`, `docs/gossip/AGENTS.md`, `docs/places/AGENTS.md` (Spoken Places), `docs/readables/AGENTS.md` (Spoken Readables).
+Repo-wide rules for every agent (each `CLAUDE.md` only imports the `AGENTS.md` beside it). Each
+section also has its own file, which applies on top of this one; read it before touching that section:
+`docs/quests/AGENTS.md`, `docs/gossip/AGENTS.md`, `docs/places/AGENTS.md` (Spoken Places), `docs/readables/AGENTS.md` (Spoken Readables).
+Each section's `README.md` beside its guide is the detailed prose reference. Check it before
+inferring behaviour from code.
 Gossip, in `Spoken_Quests`, reads the `g:` lines the quests pipeline builds, so the quests guide
 covers how they are made. Spoken has no guide; `docs/spoken/` holds its changelog and reference pages.
 
@@ -22,12 +25,16 @@ covers how they are made. Spoken has no guide; `docs/spoken/` holds its changelo
 - `apps/web`: the site, `spoken.quest`, a Next.js app backed by Postgres. It imports
   `pipelines/places` and `pipelines/readables` (`@tools/*` and `@readables-tools/*`), so a change there is
   a change to the site.
+- `apps/brann`: Brann Bronzebeard, the Discord bot. He answers support questions from
+  `docs/support/FAQ.md` and files Discord bug reports as issues. He runs on the droplet beside the
+  site and deploys with it.
 - `pipelines/`: `quests` is Python, `places` and `readables` are Node, and `lib` holds the `.mjs`
   modules they and the site share.
 - `publishers/<section>/*.md`: every store page. `make descriptions` regenerates the READMEs
   built from them; never edit a generated README by hand.
 - `deploy/web`: the `/srv` tree, nginx vhosts, migrations runner and runbook.
-- `docs/<section>/`: each section's README, changelog and agent guide. `docs/spoken/` is
+- `docs/<section>/`: each section's README, changelog and agent guide. `docs/manager/` holds
+  only Spoken Manager's changelog; its README is `manager/README.md`. `docs/spoken/` is
   Spoken's.
 
 ## Branches and checks
@@ -61,9 +68,11 @@ droplet, through the site. Do not add a generation flag to a CLI. `make places-l
 credits, even with `--dry-run`.
 
 **Data only comes home from production.** The take archive is the only audio and only the
-site writes it: `audio-history/` on the droplet's volume, and the `spoken-archive` R2 bucket,
-whose objects are named by their SHA-256 (`apps/web/src/lib/blobs/store.ts`). Nothing deletes
-from the bucket's `takes/` or `recordings/`. The `<section>-pull-*` targets never delete anything.
+site writes it: `audio-history/` on the droplet's volume, the `spoken-archive` R2 bucket, and the
+buckets teams bring themselves (`docs/platform/STORAGE.md`). Objects are named by their SHA-256
+(`apps/web/src/lib/blobs/store.ts`). Nothing deletes from our bucket's `takes/` or `recordings/`.
+A team's own bucket is the team's: we recommend the same rule there and do not enforce it, and the
+site never deletes an archive object from it. The `<section>-pull-*` targets never delete anything.
 The `<section>-sync` targets replace local tables and are destructive, so confirm before
 running one. `sounds` directories are assembled from the live takes before a build and are
 never the record. Audio stays out of git; `.gitignore` says which directories cannot be
@@ -120,10 +129,38 @@ its date.
 - Spoken, its modules and `SpokenContributions` move together, in every `.toc`, both
   `Environment.lua` `AddonVersion` literals included. Their notes go in
   `docs/spoken/CHANGELOG.md`, and they release as the `spoken/vX` tag.
+- Spoken Manager versions on its own, in `manager/package.json`. Its notes go in
+  `docs/manager/CHANGELOG.md`, and it releases as the `manager/vX` tag.
 - Sound packs version on their own, with sections in their section's changelog.
 - `Spoken_Developer` has its own version, and nothing releases it.
 - Release scripts look for the exact `## <version>` heading and fail without it, so a release
   must not ship with the notes still under `## Unreleased`.
+
+### Writing the notes
+
+Players read the notes in Discord and on the store pages, so a change gets one short bullet.
+
+- Start with a bold sentence saying what the player sees now, using the names the game or the
+  Manager shows them. Add one more sentence only if the player needs it: where to find the
+  change, or what to do. Aim for 25 words or fewer before the credit.
+- A fix says what works now, not what was wrong or why.
+- Leave out how it works, why it was built, code, files and internal names, edge cases, and
+  anything players don't see. An API change for other addon authors may name the function.
+- One bullet per change a player would notice. Fold small related changes into one, and leave
+  out changes nobody would miss.
+- End with the credit: `*([login](https://github.com/login))*`.
+
+Too long:
+
+> **Voices, in order.** Voice Language and If a Voice Is Missing are now one list in the Language
+> section of Spoken's page: as many voices as you like, moved up and down, removed, and added
+> with Add a Voice. A line plays in the first voice that has it, and past the last Spoken stays
+> silent. Your choice carries over as the first two voices.
+
+Enough:
+
+> **Choose as many voices as you like, in order,** under Language in Spoken's settings. A line
+> plays in the first voice that has it.
 
 ## Working agreements
 
@@ -182,5 +219,14 @@ that restate the line. Keep identifiers, flags and issue numbers exact.
 
 Comment the *why*, never the *what*: name the failure a line prevents, not what the line
 does. No commented-out code, no history, no pointers to sibling code.
-`.claude/skills/comment-cleanup/SKILL.md` has the full rules; run `/comment-cleanup` in Claude
-Code before asking for review.
+`.agents/skills/comment-cleanup/SKILL.md` has the full rules; run the `comment-cleanup` skill
+before asking for review.
+
+## Agent skills
+
+The repo's skills live in `.agents/skills/<name>/SKILL.md`, where Codex and other agents
+following the Agent Skills standard find them. `.claude/skills` is a symlink to that folder for
+Claude Code, so edit only `.agents/skills`, and keep skill text free of one agent's tool names. On
+Windows, git checks the symlink out as a plain file unless symlinks are on (Developer Mode and
+`git config core.symlinks true`). Skills keep per-maintainer settings and logs in
+`~/.config/spoken/<lang>/` (`.agents/skills/spoken-lang-daily/state.mjs`).

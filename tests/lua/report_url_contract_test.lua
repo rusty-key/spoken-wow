@@ -30,7 +30,7 @@ end
 local D = {}
 assert(loadfile(BOSSES .. "Core.lua"))("Spoken_Bosses", D)
 
--- English, a language of each script, and Italian, which no client runs in.
+-- English and a language of each script.
 local urls = {
     R:Link(R:TargetForQuest(9123, E.SoundEvent.QuestAccept)),
     R:Link(R:TargetForQuest(9123, E.SoundEvent.QuestProgress), "deDE"),
@@ -44,7 +44,7 @@ local urls = {
     Z:ReportURL(1411, "valley of trials", "esMX"),
     Z:ReportURL(1413, "razorfen downs", "koKR"),
     B:ReportURL(261),
-    B:ReportURL(261, "itIT"),
+    B:ReportURL(261, "ptBR"),
     D:ReportURL(36, "edwin vancleef"),
     D:ReportURL(409, "majordomo executus", "frFR"),
 }

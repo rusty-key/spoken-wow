@@ -165,18 +165,23 @@ function M.ShowBoss(mapID, found)
 	if not mapID or not _G.SpokenPlaces or not SpokenPlaces.ShowMapStory then
 		return false
 	end
+	local head = Bosses:Head(found.map, found.boss)
 	local story = Bosses:StoryClip(found.map, found.key)
 	local target = story and { found.map, found.key } or nil
 	local text = story and story.present and story.present.transcript or SpokenCompendium.NotWritten()
-	if not Bosses:IsBossFound(found.map, found.key) and not Bosses.Unlocked() then
+	if not head.revealed then
 		text = Bosses.L.BOSS_NOT_FOUND
 		target = nil
 	end
 	return M.Show(mapID, {
-		title = M.BossName(found.boss),
-		subtitle = SpokenCompendium.DungeonName(found.map) or "",
+		title = head.title,
+		subtitle = head.subtitle,
 		panelTitle = SpokenPlaces.L and SpokenPlaces.L.BOSS_LORE_TITLE or "Boss lore",
-		model = Bosses.Model(found.map, found.key),
+		icon = head.icon,
+		face = true,
+		-- A boss not revealed may have no row to land on.
+		open = head.revealed and function() Bosses:ShowBoss(found.map, found.key) end or nil,
+		model = head.model,
 		text = text,
 		target = target,
 		play = PLAY,

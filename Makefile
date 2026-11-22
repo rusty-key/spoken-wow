@@ -19,13 +19,14 @@
 
 LUA ?= $(shell command -v luajit || command -v lua5.1)
 
-.PHONY: help test test-player contribute-fixtures lint package-all \
+.PHONY: help test test-player contribute-fixtures lint interface-template interface-check package-all \
         package-spoken package-spoken-all release-spoken release-spoken-dry \
         release-spoken-all release-spoken-all-dry \
         descriptions descriptions-check descriptions-published \
         character-models dungeons bosses-extract bosses-export bosses-check bosses-sync bosses-check-synced \
+        bosses-cameras bosses-nudges \
         bosses-pull-live bosses-sounds bosses-lookup bosses-validate-audio bosses-package-audio \
-        bosses-full-release \
+        bosses-full-release bosses-upload-dry bosses-upload bosses-icon \
         audio-release audio-release-dry \
         manager-publish manager-publish-dry manager-release manager-gc manager-gc-dry
 
@@ -54,6 +55,9 @@ readables-%:
 test-player: ## Run the addons' Lua tests (needs luajit)
 	@[ -n "$(LUA)" ] || { echo "No luajit found: brew install luajit"; exit 1; }
 	@$(LUA) tests/lua/languages_test.lua
+	@$(LUA) tests/lua/text_packs_test.lua
+	@$(LUA) tests/lua/interface_packs_test.lua
+	@$(LUA) tests/lua/interface_strings_test.lua
 	@$(LUA) tests/lua/quest_dispatch_test.lua
 	@$(LUA) tests/lua/quest_autoplay_test.lua
 	@$(LUA) tests/lua/gossip_part_test.lua
@@ -75,14 +79,19 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/background_sound_test.lua
 	@$(LUA) tests/lua/parts_test.lua
 	@$(LUA) tests/lua/settings_ux_test.lua
+	@$(LUA) tests/lua/settings_controller_test.lua
 	@$(LUA) tests/lua/settings_art_test.lua
-	@for lang in enUS deDE esES esMX frFR ptBR ruRU koKR zhCN zhTW itIT viVN; do $(LUA) tests/lua/settings_fit_test.lua $$lang || exit 1; done
+	@$(LUA) tests/lua/compendium_gamepad_test.lua
+	@$(LUA) tests/lua/settings_gamepad_test.lua
+	@$(LUA) tests/lua/quests_gamepad_copy_test.lua
+	@for lang in enUS deDE esES esMX frFR ptBR ruRU koKR zhCN zhTW; do $(LUA) tests/lua/settings_fit_test.lua $$lang || exit 1; done
 	@$(LUA) tests/lua/settings_audit_test.lua
 	@$(LUA) tests/lua/queue_test.lua
 	@$(LUA) tests/lua/battlegrounds_test.lua
 	@$(LUA) tests/lua/secret_values_test.lua
 	@$(LUA) tests/lua/developer_hooks_test.lua
 	@$(LUA) tests/lua/developer_log_test.lua
+	@$(LUA) tests/lua/developer_camera_test.lua
 	@$(LUA) tests/lua/quests_log_test.lua
 	@$(LUA) tests/lua/sources_test.lua
 	@$(LUA) tests/lua/api_contract_test.lua
@@ -191,20 +200,31 @@ contribute-fixtures:
 
 test: test-player ## Everything: the site, the Node and Python pipelines, the addons
 	@pnpm -r test
-	@node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs scripts/maintainers/*.test.mjs pipelines/lib/*.test.mjs
+	@node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs scripts/maintainers/*.test.mjs scripts/db/*.test.mjs pipelines/lib/*.test.mjs
 	@[ -x pipelines/quests/.venv/bin/python ] || { \
 	  echo "No venv at pipelines/quests/.venv -- see the comment above 'test' in the Makefile"; \
 	  exit 1; }
 	@cd pipelines/quests && ./.venv/bin/python -m pytest -q
+	@python3 -m unittest discover -s pipelines/places/tools/bosses -p "test_*.py"
 
 lint: ## The checks CI gates on
 	@pnpm -r typecheck
 	@node scripts/check-addon-xml.mjs
 	@./scripts/spoken/check-changelog.sh
+	@./scripts/manager/check-changelog.sh
 	@node pipelines/places/tools/validate.mjs
 	@node scripts/descriptions.mjs --check
 	@node pipelines/places/tools/locale/check-strings.mjs
+	@node apps/brann/src/faq-check.mjs
 	@node pipelines/places/tools/locale/build-languages.mjs --check
+
+# An interface pack's makers start from every English string and check what they made against them
+# (docs/contributors/INTERFACE-PACKS.md). LANG is the pack's code, PACK its folder.
+interface-template: ## Print an interface pack's Lua with every string in English (LANG=plPL)
+	@$(LUA) scripts/interface/strings.lua template $(LANG)
+
+interface-check: ## Check an interface pack's strings against the English (LANG=plPL PACK=<folder>)
+	@$(LUA) scripts/interface/strings.lua check $(LANG) $(PACK)
 
 # The store project pages, for every addon. One tool over publishers/*/ rather than one
 # per project: the pages are the same shape, and a second copy of this would be a second place
@@ -242,6 +262,13 @@ bosses-export: ## Write Spoken_Bosses' Bosses, Creatures and Stories Lua from th
 	@node pipelines/places/tools/bosses/export.mjs
 bosses-check: ## Confirm the committed Spoken_Bosses data matches the database
 	@node pipelines/places/tools/bosses/export.mjs --check
+
+# The game frames each boss model itself: Cameras.lua holds only the lens and each display's model file, read
+# from the Forever tables in ~/Documents/forever-db/csv (see docs/places/BOSSES.md).
+bosses-cameras: ## Write Spoken_Bosses' Data/Cameras.lua (the lens and each display's model file)
+	@python3 pipelines/places/tools/bosses/model_cameras.py
+bosses-nudges: ## Write Spoken_Bosses' Data/CameraNudges.lua from the saved edits (FILE=Spoken_Developer.lua)
+	@python3 pipelines/places/tools/bosses/import_edits.py $(FILE)
 
 include make/droplet.mk
 
@@ -282,18 +309,35 @@ bosses-validate-audio: ## Check SpokenBossesAudio's lookup, mp3s and live takes 
 bosses-package-audio: bosses-check-synced bosses-sounds bosses-lookup bosses-validate-audio ## Build the bosses sound-pack zip into dist/ (LOCALE=xx)
 	@LOCALE="$(BOSSES_LOCALE)" ./scripts/bosses/package-audio.sh
 
-# GitHub only: CurseForge has no bosses project, and English's pack reaches it inside the Places
-# project's zip, Spoken Audio: Places and Bosses, with the next places-full-release. The version is
-# SpokenBossesAudio.toc's (a language's, its page's), and its `## <version> — bosses-audio` section
-# in docs/bosses/CHANGELOG.md is the notes.
-bosses-full-release: require-droplet ## Sync, pull live takes, build and GitHub-release the bosses sound pack (LOCALE=xx)
+# To the pack's CurseForge project and to GitHub, as the places pack goes (make/places.mk). The
+# version is SpokenBossesAudio.toc's (a language's, its page's), and its `## <version> —
+# bosses-audio` section in docs/bosses/CHANGELOG.md is the notes for both.
+bosses-full-release: require-droplet ## Sync, pull live takes, build and upload the bosses sound pack (LOCALE=xx)
 	@$(MAKE) --no-print-directory bosses-sync
 	@$(MAKE) --no-print-directory bosses-pull-live LOCALE=$(LOCALE)
 	@$(MAKE) --no-print-directory bosses-package-audio LOCALE=$(LOCALE)
-	@./scripts/audio-github-release.sh --dry-run bosses $(BOSSES_LOCALE)
-	@printf 'Release the bosses pack on GitHub? [y/N] '; \
+	@$(MAKE) --no-print-directory bosses-upload-dry LOCALE=$(LOCALE)
+	@printf 'Upload the bosses pack to CurseForge and GitHub? [y/N] '; \
 	  read -r answer; [ "$$answer" = y ] || { echo aborted; exit 1; }
+	@$(MAKE) --no-print-directory bosses-upload LOCALE=$(LOCALE)
+
+# For a dist/ already built: release-packs.yaml builds and uploads in separate steps.
+bosses-upload-dry: ## Show what bosses-full-release would upload from dist/ (LOCALE=xx)
+	@./scripts/places/release.sh --dry-run --section=bosses --lang=$(BOSSES_LOCALE) audio
+	@./scripts/audio-github-release.sh --dry-run bosses $(BOSSES_LOCALE)
+bosses-upload: ## Upload the bosses pack in dist/ as bosses-full-release does, building nothing (LOCALE=xx)
+	@./scripts/places/release.sh --section=bosses --lang=$(BOSSES_LOCALE) audio
 	@./scripts/audio-github-release.sh bosses $(BOSSES_LOCALE)
+
+# The in-game addon list reads a TGA or BLP, never the PNGs in pipelines/bosses/assets/, so the
+# icon is converted and committed, as places' and readables' are. Both addons carry the same
+# icon: they install as a pair. A language's pack wears it with its badge: package-audio.sh and
+# the Manager's stage-pack.mjs copy spoken-bosses-<locale>.tga over it.
+bosses-icon: ## Rebuild both bosses addons' AddonIcon.tga and the languages' badged TGAs from pipelines/bosses/assets (needs ffmpeg)
+	@python3 pipelines/places/tools/make-icon.py pipelines/bosses/assets/spoken-bosses-512.png addons/Spoken_Bosses/Textures/AddonIcon.tga
+	@cp addons/Spoken_Bosses/Textures/AddonIcon.tga addons/SpokenBossesAudio/Textures/AddonIcon.tga
+	@echo "==> copied to addons/SpokenBossesAudio/Textures/AddonIcon.tga"
+	@for png in pipelines/bosses/assets/spoken-bosses-??[A-Z][A-Z]-512.png; do python3 pipelines/places/tools/make-icon.py "$$png" "$${png%-512.png}.tga"; done
 
 character-models: ## Print how to regenerate apps/web/src/lib/npc/character-models.json
 	@sed -n '2,10p' scripts/character-models.mjs | sed -e 's/^\/\/ //' -e 's/^\/\/$$//'
@@ -335,8 +379,8 @@ manager-publish-dry: ## Show what the manager channel would get from dist/ (ONLY
 manager-publish: ## Publish dist/'s manager packs to the manager channel (ONLY_PRESENT=1: only what is built)
 	@node scripts/manager/cli.mjs publish $(if $(ONLY_PRESENT),--present) $(if $(ALLOW_REMOVALS),--allow-removals)
 
-manager-release: ## One section and language onto the manager channel, with no clips here (SECTION=, LOCALE=, DRY_RUN=1)
-	@node scripts/manager/release.mjs $(SECTION) $(or $(LOCALE),enUS) $(if $(DRY_RUN),--dry-run) $(if $(ALLOW_REMOVALS),--allow-removals)
+manager-release: ## One section and language onto the manager channel, with no clips here (SECTION=, LOCALE=, TEAM=, DRY_RUN=1)
+	@node scripts/manager/release.mjs $(SECTION) $(or $(LOCALE),enUS) $(if $(TEAM),--team=$(TEAM)) $(if $(DRY_RUN),--dry-run) $(if $(ALLOW_REMOVALS),--allow-removals)
 
 manager-gc-dry: ## Show what manager-gc would delete
 	@node scripts/manager/cli.mjs gc --dry-run

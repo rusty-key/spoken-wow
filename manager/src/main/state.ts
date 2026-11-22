@@ -3,7 +3,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { currentProductId } from '../shared/products'
-import { DEFAULT_SETTINGS, SETTING_CHOICES, type Settings } from '../shared/types'
+import { cleanVoiceAuthors, DEFAULT_SETTINGS, SETTING_CHOICES, type Settings } from '../shared/types'
+import { normalizeProxy } from './proxy'
 
 // ---------------------------------------------------------------- files
 
@@ -15,12 +16,20 @@ export function readJsonFile<T>(file: string, fallback: T): T {
   }
 }
 
-/** Writes to a temp file next to the target, then renames it over, so a crash never leaves half a file. */
 export function writeJsonAtomic(file: string, data: unknown): void {
   fs.mkdirSync(path.dirname(file), { recursive: true })
+  writeTextAtomic(file, JSON.stringify(data, null, 2))
+}
+
+/**
+ * Writes to a temp file next to the target, then renames it over, so a crash never leaves half a file.
+ * Throws when the folder is missing rather than making it: one the installer has just moved aside
+ * would be made again, and the installer could not move the new one in.
+ */
+export function writeTextAtomic(file: string, text: string): void {
   const tmp = `${file}.${process.pid}.${Date.now()}.tmp`
   try {
-    fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8')
+    fs.writeFileSync(tmp, text, 'utf8')
     fs.renameSync(tmp, file)
   } catch (err) {
     try {
@@ -46,6 +55,11 @@ export function sanitizeSettings(raw: unknown, base: Settings = DEFAULT_SETTINGS
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]) {
     const v = r[key]
     if (v === undefined) continue
+    if (key === 'voiceAuthors') {
+      const authors = cleanVoiceAuthors(v)
+      if (authors) out.voiceAuthors = authors
+      continue
+    }
     const want = typeof DEFAULT_SETTINGS[key]
     if (typeof v !== want) continue
     if (typeof v === 'string' && v.length > 2000) continue
@@ -55,8 +69,23 @@ export function sanitizeSettings(raw: unknown, base: Settings = DEFAULT_SETTINGS
   return out
 }
 
+/** The loaded settings, with the proxy written down in the form both network stacks read: a hand-edited
+ * `socks5h://` would otherwise sit in the window while the traffic used another address. */
 export function loadSettings(dataPath: string): Settings {
-  return sanitizeSettings(readJsonFile<unknown>(settingsFile(dataPath), {}))
+  const settings = sanitizeSettings(readJsonFile<unknown>(settingsFile(dataPath), {}))
+  settings.proxy = readProxySetting(settings.proxy)
+  return settings
+}
+
+/** The stored address, or '' when it cannot be used: a bad one must not keep the manager from opening. */
+function readProxySetting(setting: string): string {
+  try {
+    return normalizeProxy(setting)
+  } catch {
+    // Without the address: it can carry credentials in other tools' habits.
+    log('Dropping the saved proxy: it is not an address the manager can use.')
+    return ''
+  }
 }
 
 export function saveSettings(dataPath: string, settings: Settings): void {

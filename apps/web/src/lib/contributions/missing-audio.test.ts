@@ -38,14 +38,14 @@ describe("installIdFrom", () => {
 });
 
 describe("hitFrom", () => {
-  it("needs a pack language the site serves, and keeps a well-formed version only", () => {
-    expect(hitFrom(submission({ pack: "deDE", packVersion: "2.3.0" }), "q:1:accept")).toEqual({
+  it("needs a pack language the site serves, and keeps a well-formed version only", async () => {
+    expect(await hitFrom(submission({ pack: "deDE", packVersion: "2.3.0" }), "q:1:accept")).toEqual({
       lineId: "q:1:accept",
       packLang: "deDE",
       packVersion: "2.3.0",
     });
-    expect(hitFrom(submission({ pack: "xxXX" }), "q:1:accept")).toBeNull();
-    expect(hitFrom(submission({ pack: "deDE", packVersion: "a b" }), "q:1:accept")?.packVersion).toBeNull();
+    expect(await hitFrom(submission({ pack: "xxXX" }), "q:1:accept")).toBeNull();
+    expect((await hitFrom(submission({ pack: "deDE", packVersion: "a b" }), "q:1:accept"))?.packVersion).toBeNull();
   });
 });
 

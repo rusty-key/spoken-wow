@@ -58,9 +58,16 @@ async function rosterData(client: PoolClient): Promise<RosterData> {
   };
 }
 
-/** Cached per render because each check is a transaction of four round trips. */
-export const loadRoster = cache(async (lang: Lang): Promise<Roster> => {
-  const team = await teamOrEnglish(lang);
+/** The roster `lang` is voiced with, as the acting team. */
+export async function loadRoster(lang: Lang): Promise<Roster> {
+  return rosterOf(await teamOrEnglish(lang));
+}
+
+/**
+ * Cached per render because each check is a transaction of four round trips. Keyed by team, not
+ * language: one render can read another team's roster (asTeam) beside the acting one's.
+ */
+const rosterOf = cache(async (team: TeamId): Promise<Roster> => {
   const [{ stamp }] = await queryIn<{ stamp: string }>(team, `select ${ROSTER_STAMP} as "stamp"`);
   const memo = (holder[cacheKey] ??= new Map());
   const hit = memo.get(team);

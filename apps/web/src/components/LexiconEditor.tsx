@@ -2,7 +2,7 @@
 
 import { useLang } from "@/components/LangProvider";
 import { withLang, type Lang } from "@/lib/lang";
-import { Check, Pencil, RefreshCw, Search, Trash2, Undo2 } from "lucide-react";
+import { Check, Loader2, Pencil, RefreshCw, Search, Trash2, Undo2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -15,16 +15,20 @@ import { fishUse, type FishUse } from "@/lib/generation/fish-lexicon";
 import { PREVIEW_MODES, type PreviewMode } from "@/lib/generation/preview-modes";
 import type { CacheState } from "@/lib/generation/preview";
 import { Toaster, useToast } from "@/components/ui/toast";
+import { useSettled } from "@/components/useSettled";
 import { readablesHref, questsHref, placesHref } from "@/lib/links";
 import {
   honoursPhonemes,
   kindOf,
   LexiconError,
+  PHONEME_MODELS,
   validateLexicon,
   type LexiconEntry,
 } from "@/lib/generation/lexicon";
 
 type Saved = EffectiveLexicon & { syncError?: string | null };
+
+const PHONEME_MODEL_LIST = new Intl.ListFormat("en", { type: "conjunction" }).format(PHONEME_MODELS);
 
 const MODE_LABELS: Record<PreviewMode, string> = {
   word: "Word",
@@ -32,6 +36,9 @@ const MODE_LABELS: Record<PreviewMode, string> = {
 };
 
 const EMPTY_CACHE: CacheState = { word: false, sentence: false };
+
+/** Which previews exist, and why the account's voices could not be read if they could not. */
+type CacheRead = { cache: Record<string, CacheState>; error: string | null };
 
 /**
  * What every field in an open row shares.
@@ -214,7 +221,7 @@ function usePreview(onCached: (grapheme: string, mode: PreviewMode) => void) {
 export default function LexiconEditor(props: {
   initial: EffectiveLexicon;
   modelId: string;
-  initialCache: Record<string, CacheState>;
+  initialCache: Promise<CacheRead> | null;
 }) {
   // A shell, because useToast has to find a provider above the component that calls it and
   // the editor itself is what raises the toasts.
@@ -233,8 +240,12 @@ function Editor({
   initial: EffectiveLexicon;
   /** The model generation actually uses, which decides whether any of this takes effect. */
   modelId: string;
-  /** Which previews already exist, resolved on the server. See previewCache. */
-  initialCache: Record<string, CacheState>;
+  /**
+   * Which previews already exist, resolved on the server (see previewCache) and streamed in
+   * after the page, since it waits on the ElevenLabs account. Null when there is no account
+   * to read, which leaves every preview unmarked.
+   */
+  initialCache: Promise<CacheRead> | null;
 }) {
   const lang = useLang();
   const [saved, setSaved] = useState<Saved>(initial);
@@ -256,11 +267,25 @@ function Editor({
   const [removed, setRemoved] = useState<{ entry: LexiconEntry; index: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Seeded from the server and kept up to date as previews are rendered, so a re-roll button
-  // lights up the moment the take it would replace exists.
-  const [cache, setCache] = useState(initialCache);
+  // What the server found, plus what has been rendered since, so a re-roll button lights up
+  // the moment the take it would replace exists - even while the server's answer is pending.
+  const read = useSettled(initialCache);
+  const reading = initialCache !== null && read === undefined;
+  const readError = read && ("error" in read ? read.error : read.value.error);
+  const [rendered, setRendered] = useState<Record<string, CacheState>>({});
+  const cache = useMemo(() => {
+    const merged = { ...(read && "value" in read ? read.value.cache : {}) };
+    for (const [grapheme, state] of Object.entries(rendered)) {
+      const found = merged[grapheme] ?? EMPTY_CACHE;
+      merged[grapheme] = {
+        word: found.word || state.word,
+        sentence: found.sentence || state.sentence,
+      };
+    }
+    return merged;
+  }, [read, rendered]);
   const preview = usePreview((grapheme, mode) =>
-    setCache((current) => ({
+    setRendered((current) => ({
       ...current,
       [grapheme]: { ...(current[grapheme] ?? EMPTY_CACHE), [mode]: true },
     })),
@@ -437,6 +462,19 @@ function Editor({
         onRetry={() => void send("POST")}
       />
 
+      {reading && (
+        <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
+          <Loader2 className="size-3 animate-spin" aria-hidden />
+          Reading your ElevenLabs account to see which previews are already rendered…
+        </p>
+      )}
+      {readError && (
+        <p role="alert" className="text-destructive text-xs">
+          Could not read your ElevenLabs account, so no preview is marked as already rendered:{" "}
+          {readError}
+        </p>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <Input
           value={query}
@@ -587,7 +625,7 @@ function SyncBanner({
       <Banner tone="warn">
         <span>
           Generation uses <code>{modelId}</code>, which ignores phoneme rules — only{" "}
-          <code>eleven_v3</code> and <code>eleven_flash_v2</code> honour them. {phonemes} entries
+          {PHONEME_MODEL_LIST} honour them. {phonemes} entries
           written in IPA are skipped; the respelled ones still apply. Switch the model on Voices,
           or respell those entries.
         </span>
@@ -832,7 +870,7 @@ function Row({
               className="size-7 shrink-0 text-sm"
               title={
                 ipa
-                  ? "Writing IPA. Only eleven_v3 and eleven_flash_v2 honour it — click for a respelling."
+                  ? `Writing IPA. Only ${PHONEME_MODEL_LIST} honour it — click for a respelling.`
                   : "Respelling it as it should be said. Click to write IPA instead."
               }
               aria-label={ipa ? "Switch to a respelling" : "Switch to IPA"}

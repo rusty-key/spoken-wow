@@ -10,11 +10,13 @@ import { windowChrome } from './chrome'
 import type { SecretBox } from './contributor-store'
 import { isAllowedExternalUrl } from './external'
 import { registerIpc } from './ipc'
+import { proxyConfig } from './proxy'
+import { proxyRoute } from './proxy-agent'
 import { ManagerService } from './service'
 import { HIDDEN_ARG, updateLinuxAutostart } from './startup'
 import { initLog, log } from './state'
 import { isOurPage as isOurPageUrl, type AppPage } from './trust'
-import { startUpdater } from './updater'
+import { fetchWithLimit, managerUpdateOnTheWire, startUpdater } from './updater'
 import { t } from './i18n'
 
 app.setName('Spoken Manager')
@@ -38,10 +40,42 @@ function broadcast(channel: string, payload: unknown): void {
 
 // Node's own fetch (undici) brings the whole main process down when a server closes the connection while a large
 // body is held back because the disk write is slower (`assert(!this.paused)` in Parser.finish, uncaught). Chromium's
-// network stack does not, and it also uses the system proxy. `no-store`: the packs are not worth a copy in its cache.
+// network stack does not, and it follows the session's proxy. `no-store`: the packs are not worth a copy in its cache.
 // `omit`: net.fetch would otherwise keep and resend cookies, and the Manager sends only the request and a User-Agent.
-const chromiumFetch: typeof fetch = (input, init) =>
-  net.fetch(input instanceof URL ? input.href : input, { ...init, cache: 'no-store', credentials: 'omit' })
+//
+// Every request waits for the proxy: `closeAllConnections` would cut off one sent while it is being set.
+let proxyReady: Promise<void> = Promise.resolve()
+const chromiumFetch: typeof fetch = async (input, init) => {
+  await proxyReady
+  return net.fetch(input instanceof URL ? input.href : input, { ...init, cache: 'no-store', credentials: 'omit' })
+}
+
+// An empty setting leaves Node going direct: its fetch cannot read the system proxy. `dispatcher` is not part of
+// the DOM's RequestInit, hence the casts.
+const nodeFetch: typeof fetch = async (input, init) => {
+  const route = await proxyRoute(service?.settings.proxy ?? '')
+  if (!route) return fetch(input, init)
+  type Args = Parameters<typeof route.fetch>
+  return (await route.fetch(input as Args[0], { ...init, dispatcher: route.agent } as Args[1])) as unknown as Response
+}
+
+/**
+ * Both sessions need the address: `net.fetch` sends through the default one, electron-updater through its own.
+ * Closing the connections makes the change take effect now rather than once the pools idle.
+ */
+function applyChromiumProxy(setting: string): Promise<void> {
+  const config = proxyConfig(setting)
+  const sessions = [session.defaultSession, session.fromPartition('electron-updater', { cache: false })]
+  return Promise.all(
+    sessions.map((ses) =>
+      ses
+        .setProxy(config ?? { mode: 'system' })
+        .then(() => ses.closeAllConnections())
+        // The traffic stays on the old route; the window still shows what the player asked for.
+        .catch((err) => log('Could not set the proxy:', err))
+    )
+  ).then(() => undefined)
+}
 
 const secretBox: SecretBox = {
   available: () => safeStorage.isEncryptionAvailable(),
@@ -143,7 +177,10 @@ function syncTray(enabled: boolean): void {
   )
 }
 
-function startupSettingsChanged(settings: Settings, previous: Settings): void {
+function applySettings(settings: Settings, previous: Settings): void {
+  if (settings.proxy !== previous.proxy) {
+    proxyReady = applyChromiumProxy(settings.proxy)
+  }
   const startupChanged = settings.startAtLogin !== previous.startAtLogin || settings.minimizeToTray !== previous.minimizeToTray
   const languageChanged = settings.uiLanguage !== previous.uiLanguage
   if (!startupChanged && !languageChanged) return
@@ -256,37 +293,37 @@ if (!app.requestSingleInstanceLock()) {
       send: broadcast,
       fetchImpl: chromiumFetch,
       // Node's fetch, because net.fetch cannot do this traffic: an Origin header makes it send a CORS preflight and
-      // fail the request, and a Content-Length on a streamed upload is an invalid argument to it. The crash noted at
-      // chromiumFetch needs a large response body, and these answers are short.
-      contributorFetch: fetch,
+      // fail the request, and a Content-Length on a streamed upload is an invalid argument to it. Node's crash on a
+      // held-back body needs a large response, and these answers are short.
+      contributorFetch: nodeFetch,
       secretBox,
       ...(shareUrl ? { shareUrl } : {}),
       ...(siteUrl ? { siteUrl } : {}),
-      settingsChanged: startupSettingsChanged
+      settingsChanged: applySettings,
+      // The manager's own update downloads outside `jobs`, and a proxy change would close its connections.
+      busyElsewhere: managerUpdateOnTheWire
     })
     syncTray(service.settings.minimizeToTray)
+    // Empty needs nothing: both sessions start on the system proxy. An unusable saved address was dropped on load.
+    if (service.settings.proxy) proxyReady = applyChromiumProxy(service.settings.proxy)
     // Refreshes the login item's path, which an update or reinstall can move.
     if (service.settings.startAtLogin) applyAutoStart(service.settings)
     registerIpc(service, PAGE, () => updaterState)
     void service.init()
     service.startSharing()
+    service.startPeriodicRefresh()
 
     mainWindow = createWindow(process.argv.includes(HIDDEN_ARG) && service.settings.minimizeToTray)
 
-    if (service.settings.checkOnStart || service.settings.autoUpdateContent) {
-      void service.ready
-        .then(() => service?.refreshCatalog(false))
-        .then(() => service?.autoUpdate())
-        .catch((err) => log('Catalog refresh failed:', err))
-    }
-    if (service.settings.checkOnStart) {
-      void service.ready.then(() => service?.refreshCommunity(false)).catch((err) => log('Community refresh failed:', err))
-    }
     const svc = service
     void startUpdater({
       isPackaged: app.isPackaged,
       appVersion: app.getVersion(),
       autoUpdateManager: () => svc.settings.autoUpdateManager,
+      // Chromium's fetch, so the feed read follows the proxy too.
+      fetchText: (url) => fetchWithLimit(url, chromiumFetch),
+      // electron-updater sends through a session of its own, so it has to wait for the proxy separately.
+      proxyReady: () => proxyReady,
       send: (state) => {
         updaterState = state
         broadcast(CHANNELS.updaterState, state)

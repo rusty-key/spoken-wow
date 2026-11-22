@@ -11,7 +11,6 @@ type RegistryPack = {
   name: string;
   folder: string;
   curseforge: string | null;
-  bundledIn: string | null;
   slug: string;
   release: string;
   github: boolean;
@@ -30,7 +29,7 @@ describe("the landing page's pack list", () => {
         section: pack.section,
         lang: pack.lang,
         name: pack.name,
-        curseforge: pack.curseforge ? pack.slug : pack.bundledIn,
+        curseforge: pack.curseforge ? pack.slug : null,
         release: pack.github ? pack.release : null,
       }));
 
@@ -79,7 +78,7 @@ describe("packDownloads", () => {
   });
 
   it("finds a part by its folder, whatever the part is labelled", () => {
-    expect(partOf(packFor("quests", "itIT"), "SpokenQuestsAudioShared_itIT")?.label).toBe("Quests");
-    expect(partOf(packFor("quests", "itIT"), "SpokenQuestsAudio_itIT")).toBeUndefined();
+    expect(partOf(packFor("quests", "frFR"), "SpokenQuestsAudioGossip_frFR")?.label).toBe("Gossip");
+    expect(partOf(packFor("quests", "frFR"), "SpokenQuestsAudio_frFR")).toBeUndefined();
   });
 });

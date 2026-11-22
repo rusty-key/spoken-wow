@@ -106,7 +106,7 @@ B:RememberPageText(ONLY_ENGLISH, "deDE", "Die zweite Seite.")
 Expect("D. ...but not where the client showed that page: the Text Language's words, over the fallback clip",
     B:ClipFor(ONLY_ENGLISH).present.transcript, "Die zweite Seite.")
 Expect("D. ...which is still the English recording", B:ClipFor(ONLY_ENGLISH).language, "enUS")
-SpokenReadablesSettings.voiceLanguage = "itIT"
+SpokenReadablesSettings.voiceLanguage = "jaJP"
 Expect("D. ...the same words whichever voice the fallback stands in for",
     B:ClipFor(ONLY_ENGLISH).present.transcript, "Die zweite Seite.")
 Expect("D. ...and the same for the page the German pack records",
@@ -179,28 +179,28 @@ Expect("E. a German report goes to the German page", B:ReportURL(PAGE, "deDE"),
 _G.Spoken, _G.SpokenEnv = nil, nil
 
 ---------------------------------------------------------------- F. a language no client runs in
--- Italian has no index of its own: the page is found by the English client's and read from
--- the Italian pack, captions included. No client runs in Italian, so its players are on an
+-- Japanese has no index of its own: the page is found by the English client's and read from
+-- the Japanese pack, captions included. No client runs in Japanese, so its players are on an
 -- English one and read along in the voice's words, not the client's.
-local ITALIAN = { addon = "SpokenReadablesAudio_itIT", language = "itIT", pages = {
-    [PAGE] = { file = "15", len = 2, text = "Prima pagina italiana." } } }
-B = Install({ ENGLISH, ITALIAN }, "enUS")
+local JAPANESE = { addon = "SpokenReadablesAudio_jaJP", language = "jaJP", pages = {
+    [PAGE] = { file = "15", len = 2, text = "Saisho no peji." } } }
+B = Install({ ENGLISH, JAPANESE }, "enUS")
 Expect("F. on Auto an English client hears English", B:GetVoiceLanguage(), "enUS")
-SpokenReadablesSettings.voiceLanguage = "itIT"
+SpokenReadablesSettings.voiceLanguage = "jaJP"
 SpokenReadablesData.index["Registry"][1][B:ChecksumOf("English first page.")] = PAGE
 stub.ShowPage({ title = "Registry", number = 1, text = "English first page." })
 Expect("F. the English index finds the page", B:PageOnScreen(), PAGE)
-Expect("F. ...and the Italian pack reads it", B:ClipFor(PAGE).language, "itIT")
-Expect("F. ...captioned in the Italian pack's own words, not the English client's",
-    B:ClipFor(PAGE).present.transcript, "Prima pagina italiana.")
-ITALIAN.pages[PAGE].text = nil
-B = Install({ ENGLISH, ITALIAN }, "enUS")
-SpokenReadablesSettings.voiceLanguage = "itIT"
-Expect("F. ...and in English where the Italian pack has no words for the page",
+Expect("F. ...and the Japanese pack reads it", B:ClipFor(PAGE).language, "jaJP")
+Expect("F. ...captioned in the Japanese pack's own words, not the English client's",
+    B:ClipFor(PAGE).present.transcript, "Saisho no peji.")
+JAPANESE.pages[PAGE].text = nil
+B = Install({ ENGLISH, JAPANESE }, "enUS")
+SpokenReadablesSettings.voiceLanguage = "jaJP"
+Expect("F. ...and in English where the Japanese pack has no words for the page",
     B:ClipFor(PAGE).present.transcript, "English first page.")
-B = Install({ ENGLISH, ITALIAN }, "itIT")
-Expect("F. a client claiming Italian is not taken at its word", B:GetClientLanguage(), "enUS")
-Expect("F. Italian is not a client language", B:IsClientLanguage("itIT"), false)
+B = Install({ ENGLISH, JAPANESE }, "jaJP")
+Expect("F. a client claiming Japanese is not taken at its word", B:GetClientLanguage(), "enUS")
+Expect("F. Japanese is not a client language", B:IsClientLanguage("jaJP"), false)
 
 ---------------------------------------------------------------- F1. the pack list
 -- A pack registered before it is in this version's format is listed once it is.
@@ -374,7 +374,8 @@ do
     Expect("...one on stone shows a stone tablet", Bk:ClipFor(PAGE).present.portrait.texture, Bk.MATERIALS.Stone)
     -- The bags are Spoken's to search (Spoken:BagItemIcon); this test loads Readables alone.
     local spoken = _G.Spoken
-    _G.Spoken = { BagItemIcon = function(_, name) return name == "Worn Tablet" and 133741 or nil, { 0, 1, 0, 1 } end }
+    _G.Spoken = { BagItemIcon = function(_, name) return name == "Worn Tablet" and 133741 or nil, { 0, 1, 0, 1 } end,
+        ClipFont = function() return nil end }
     Expect("...and a book from the bags its own icon", Bk:ClipFor(PAGE).present.portrait.texture, 133741)
     -- The next page of the open book is built while another is open (the one before it ends, or
     -- DialogueUI has left the game on the last): it keeps the book's picture.
@@ -390,6 +391,77 @@ B = Install({ ENGLISH })
 SpokenReadablesData.pages[PAGE].text = "Greetings, $gbrother:sister;. $N, you are ready."
 Expect("an English caption's tokens are subtitled as the clip says them",
     B:ClipFor(PAGE).present.transcript, "Greetings, brother. Adventurer, you are ready.")
+
+---------------------------------------------------------------- T. a text pack's words
+-- Polish has no voice and no client: a text pack (Spoken's Texts.lua) brings its words, read where
+-- Polish is the Text Language whatever the voice.
+local function Polish(B)
+    H.ReadText("plPL")
+    Spoken:RegisterText("plPL", "readables", { pages = { [PAGE] = "Pierwsza strona po polsku." },
+        titles = { [1] = "Rejestr" } })
+end
+B = Install({ ENGLISH })
+Expect("T. on Auto an English voice is captioned in English", B:ClipFor(PAGE).present.transcript, "English first page.")
+Polish(B)
+clip = B:ClipFor(PAGE)
+Expect("T. Polish chosen, the English voice is captioned in the text pack's words", clip.present.transcript,
+    "Pierwsza strona po polsku.")
+Expect("...timed by estimate, as they are not the recording's", clip.present.timings, nil)
+Expect("...titled in Polish", clip.present.label, "Rejestr")
+Expect("...and still reported as the English recording it is", clip.language, "enUS")
+Expect("T. a page the pack has no words for is captioned in English", B:ClipFor(ONLY_ENGLISH).present.transcript,
+    "English second page.")
+Expect("T. the Compendium reads the Polish words", B:TextLanguagePageText(PAGE), "Pierwsza strona po polsku.")
+Expect("...and the title", B:TitleIn(1, PAGE, "plPL"), "Rejestr")
+Expect("T. words alone are no recording: nothing to play without a voice pack", (function()
+    local alone = Install({})
+    Polish(alone)
+    return tostring(alone:ClipFor(PAGE)) .. " " .. tostring(alone:HasAudio(PAGE))
+end)(), "nil false")
+local POLISH_VOICE = { addon = "SpokenReadablesAudio_plPL", language = "plPL", pages = {
+    [PAGE] = { file = "15", len = 2, text = "Słowa nagrania.", times = "0 .5" } } }
+B = Install({ ENGLISH, POLISH_VOICE })
+SpokenReadablesSettings.voiceLanguage = "plPL"
+Polish(B)
+clip = B:ClipFor(PAGE)
+Expect("T. a Polish voice's own words beat the text pack's", clip.present.transcript, "Słowa nagrania.")
+Expect("...timed by the recording", clip.present.timings, "0 .5")
+
+---------------------------------------------------------------- V. voices: a language, or a language and a team
+-- The stimmen team's German pack beside the plain one, its team in its .toc as Spoken scans it.
+do
+    local OTHER = 17
+    stub.SetAddOns({
+        { folder = "SpokenReadablesAudio_deDE_stimmen", meta = { ["X-SpokenReadables-Language"] = "deDE",
+            ["X-Spoken-Team"] = "stimmen", ["X-Spoken-TeamName"] = "Stimmen" } },
+        { folder = "SpokenReadablesAudio_deDE", meta = { ["X-SpokenReadables-Language"] = "deDE" } },
+    })
+    local STIMMEN = { addon = "SpokenReadablesAudio_deDE_stimmen", language = "deDE", pages = {
+        [PAGE] = { file = "s15", len = 3 }, [OTHER] = { file = "s17", len = 3 } } }
+    local PLAIN = { addon = "SpokenReadablesAudio_deDE", language = "deDE", pages = {
+        [PAGE] = { file = "15", len = 2 }, [ONLY_ENGLISH] = { file = "16", len = 2 } } }
+    local ENGLISH_ONLY = { addon = "SpokenReadablesAudio", pages = { [PAGE] = { file = "e15", len = 1 },
+        [ONLY_ENGLISH] = { file = "e16", len = 1 }, [OTHER] = { file = "e17", len = 1 } } }
+    B = Install({ ENGLISH_ONLY, PLAIN, STIMMEN }, "deDE")
+    SpokenReadablesData.pages[OTHER] = { book = 1, number = 3, text = "Third." }
+    local function Path(page) local c = B:ClipFor(page); return c and c.path or nil end
+    Spoken:SetVoiceOrder({ "deDE_stimmen", "deDE", "enUS" })
+    Expect("V. team first: the team's take", Path(PAGE), [[Interface\AddOns\SpokenReadablesAudio_deDE_stimmen\Sounds\s15.mp3]])
+    Expect("V. ...in German", B:ClipFor(PAGE).language, "deDE")
+    Expect("V. ...naming the pack that played", B:ClipFor(PAGE).packFolder, "SpokenReadablesAudio_deDE_stimmen")
+    Expect("V. ...and its voice", B:ClipFor(PAGE).voice, "deDE_stimmen")
+    Expect("V. team first: its length", B:PageLength(PAGE), 3)
+    Expect("V. a page the team lacks comes from the plain pack", Path(ONLY_ENGLISH),
+        [[Interface\AddOns\SpokenReadablesAudio_deDE\Sounds\16.mp3]])
+    Spoken:SetVoiceOrder({ "deDE" })
+    Expect("V. plain German: the plain pack", Path(PAGE), [[Interface\AddOns\SpokenReadablesAudio_deDE\Sounds\15.mp3]])
+    Expect("V. plain German: never the team's, even where only it has the page", Path(OTHER), nil)
+    Expect("V. ...so there is no audio for it", B:HasAudio(OTHER), false)
+    Spoken:SetVoiceOrder({ "deDE_stimmen", "enUS" })
+    Expect("V. the team's voice then English: never the plain pack", Path(ONLY_ENGLISH),
+        [[Interface\AddOns\SpokenReadablesAudio\Sounds\e16.mp3]])
+    stub.ResetAddOns()
+end
 
 stub.SetLocale("enUS")
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

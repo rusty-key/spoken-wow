@@ -1,11 +1,11 @@
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { productById, PRODUCTS } from '../src/shared/products'
+import { productById, PRODUCTS, productsFor } from '../src/shared/products'
 import { DEFAULT_SETTINGS, type ReleaseInfo } from '../src/shared/types'
 import { emptyCatalog } from '../src/main/catalog'
 import { isChannelRelease } from '../src/shared/channel'
 import { channelRelease, revToIso, withChannel } from '../src/main/packs-catalog'
-import type { ChannelIndex } from '../src/main/packs-remote'
+import type { ChannelIndex, ChannelIndexV2 } from '../src/main/packs-remote'
 import { savePackState } from '../src/main/packs-state'
 import type { StateFile } from '../src/main/state'
 import { computeStatuses } from '../src/main/status'
@@ -88,6 +88,20 @@ describe('withChannel', () => {
     const cat = withChannel({ ...emptyCatalog(), releases: { 'places-audio-frFR': [gh], 'places-audio-deDE': [{ ...gh, productId: 'places-audio-deDE' }] } }, PRODUCTS, index, BASE)
     expect(cat.releases['places-audio-frFR']).toEqual([gh])
     expect(cat.releases['places-audio-deDE']?.[0]?.tag).toBe('channel/20261018T000000Z')
+  })
+  it("offers a team's pack and the language's side by side", () => {
+    const stimmen = { slug: 'stimmen', name: 'Stimmen', official: false }
+    const v2: ChannelIndexV2 = {
+      generatedAt: '',
+      languages: {},
+      packs: {
+        SpokenPlacesAudio_deDE: { ...entry('20261018T000000Z'), lang: 'deDE', section: 'places', pack: null, team: null },
+        SpokenPlacesAudio_deDE_stimmen: { ...entry('20261019T000000Z'), lang: 'deDE', section: 'places', pack: null, team: stimmen }
+      }
+    }
+    const cat = withChannel(emptyCatalog(), productsFor(v2), v2, BASE)
+    expect(cat.releases['places-audio-deDE']?.[0]?.tag).toBe('channel/20261018T000000Z')
+    expect(cat.releases['places-audio-deDE-stimmen']?.[0]?.tag).toBe('channel/20261019T000000Z')
   })
 })
 

@@ -106,17 +106,6 @@ export const PACKS: readonly Pack[] = [
   },
   {
     section: "quests",
-    lang: "itIT",
-    name: "Spoken Quests Audio: Italian",
-    curseforge: null,
-    release: "quests-audio-itIT",
-    split: [
-      { label: "Quests", slug: "spoken-italian-audio-quests-shared", folder: "SpokenQuestsAudioShared_itIT", name: "Spoken Italian Audio: Quests - Shared" },
-      { label: "Gossip", slug: "spoken-italian-audio-gossip", folder: "SpokenQuestsAudioGossip_itIT", name: "Spoken Italian Audio: Gossip" },
-    ],
-  },
-  {
-    section: "quests",
     lang: "ptBR",
     name: "Spoken Quests Audio: Portuguese",
     curseforge: null,
@@ -174,7 +163,7 @@ export const PACKS: readonly Pack[] = [
   {
     section: "places",
     lang: "enUS",
-    name: "Spoken Audio: Places and Bosses",
+    name: "Spoken Audio: Places",
     curseforge: "spoken-audio-places",
     release: "places-audio",
   },
@@ -313,12 +302,11 @@ export const PACKS: readonly Pack[] = [
     release: "readables-audio-zhTW",
   },
 
-  // On CurseForge inside Spoken Audio: Places and Bosses, which carries its folder.
   {
     section: "bosses",
     lang: "enUS",
     name: "Spoken Audio: Bosses",
-    curseforge: "spoken-audio-places",
+    curseforge: "spoken-audio-bosses",
     release: "bosses-audio",
   },
   { section: "bosses", lang: "deDE", name: "Spoken German Audio: Bosses", curseforge: "spoken-german-audio-bosses", release: "bosses-audio-deDE" },

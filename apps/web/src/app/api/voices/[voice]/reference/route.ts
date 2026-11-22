@@ -6,6 +6,7 @@
  * fish.audio key -- the rule every other paid action here follows. It costs a fraction of a
  * cent, but a server-wide key would still leave "who paid" with no answer.
  */
+import { storageRefusalResponse } from "@/lib/blobs/keep";
 import { requireApiKey } from "@/lib/generation/authz";
 import { elevenLabsCode } from "@/lib/lang";
 import { requireVoiceManager, requireVoiceViewer } from "@/lib/voices/authz";
@@ -38,6 +39,10 @@ export async function POST(request: Request, context: Context) {
   const checked = await requireVoiceManager(request, voice);
   if (checked.denied) return checked.denied;
   const { lang, session } = checked;
+  // Before the transcription is paid for: a team that keeps its audio only in its own bucket and
+  // has none switched on could keep nothing of it.
+  const refused = await storageRefusalResponse(lang);
+  if (refused) return refused;
 
   const body = (await request.json().catch(() => ({}))) as {
     sample?: unknown;

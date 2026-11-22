@@ -113,7 +113,7 @@ function SpokenReadables:InitDB()
 	-- a particular character did. An alt walking into the same library hears it fresh.
 	SpokenReadablesCharacter = SpokenReadablesCharacter or {}
 	SpokenReadablesCharacter.read = SpokenReadablesCharacter.read or {}
-	-- Opened, heard or not: what Azeroth's Compendium counts as found. Kept apart from `read`,
+	-- Opened or carried, heard or not: what Azeroth's Compendium counts as found. Kept apart from `read`,
 	-- which Read Only Once goes by, so opening a book with autoplay off does not stop it being
 	-- read the next time, and Play in the Compendium does not find one. A character from before
 	-- `found` was kept had only `read` to say what it opened, so that is carried over once.
@@ -156,7 +156,7 @@ function SpokenReadables:MarkBookRead(book)
 	SpokenReadablesCharacter.read[book] = true
 end
 
---- Remember that this character has opened `book`, whether or not it was read aloud.
+--- Remember that this character has opened or carried `book`, whether or not it was read aloud.
 function SpokenReadables:MarkBookFound(book)
 	if not book or not SpokenReadablesCharacter then
 		return
@@ -168,8 +168,8 @@ function SpokenReadables:MarkBookFound(book)
 	if self.readables and self.readables:IsVisible() and self.RefreshReadables then self:RefreshReadables() end
 end
 
---- Whether this character has found `book`: opened it in the world. Hearing it from the
---- Compendium does not count.
+--- Whether this character has found `book`: opened it in the world or carried its item.
+--- Hearing it from the Compendium does not count.
 function SpokenReadables:IsBookFound(book)
 	if not book or not SpokenReadablesCharacter then
 		return false
@@ -289,6 +289,25 @@ end
 --- worth answering for rather than indexing into nil from four call sites.
 function SpokenReadables:Data()
 	return _G.SpokenReadablesData
+end
+
+--- Where two items own one book the lowest id wins, so its icon does not change with `pairs`
+--- order between reloads.
+function SpokenReadables:ItemForBook(bookID)
+	if not self.itemForBook then
+		self.itemForBook = {}
+		local data = self:Data()
+		for itemID, owner in pairs(data and data.owners and data.owners.item or {}) do
+			local held = self.itemForBook[owner]
+			if held == nil or itemID < held then self.itemForBook[owner] = itemID end
+		end
+	end
+	return self.itemForBook[bookID]
+end
+
+--- Nil for a world object.
+function SpokenReadables:ItemIcon(bookID)
+	return Spoken:ItemIcon(self:ItemForBook(bookID))
 end
 
 --- Spoken's site, or nil when Spoken is not loaded: no page is read aloud without it, so there

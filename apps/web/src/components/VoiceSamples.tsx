@@ -164,7 +164,7 @@ export default function VoiceSamples({
   const pauseValid =
     Number.isFinite(pauseSeconds) && pauseSeconds >= 0 && pauseSeconds <= MAX_PAUSE;
   return (
-    <div className="bg-muted/30 border-t px-4 py-3">
+    <div>
       {samples.length === 0 ? (
         <p className="text-muted-foreground mb-3 text-sm">
           No clips yet.{" "}

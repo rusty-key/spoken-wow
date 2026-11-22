@@ -10,7 +10,7 @@ local _, SpokenPlaces = ...
 -- esMX shares this file: nothing in these strings varies by region. Both codes
 -- register the same table, so check-strings.mjs (which reads one file per code)
 -- reports esMX as untranslated -- that report is about files, not runtime.
-if GetLocale() ~= "esES" and GetLocale() ~= "esMX" then
+if not Spoken:InterfaceIn("esES", "esMX") then
 	return
 end
 
@@ -31,10 +31,6 @@ L.OPT_AUTOPLAY_GAP = "Volver a leer tras"
 L.OPT_GAP_1D = "1 día"
 L.OPT_GAP_1W = "1 semana"
 L.OPT_GAP_1MO = "1 mes"
-L.OPT_LANG_RELOAD = "Escribe /reload para cambiar a él."
-L.OPT_LANGUAGE = "Idioma del texto"
-L.OPT_LANG_AUTO_FMT = "Automático (%1$s)"
-L.OPT_LANG_SET_FMT = "Las historias estarán en %1$s cuando se recargue la interfaz."
 L.OPT_LANG_PROFILE_FMT = "Este perfil lee las historias en %1$s. Escribe /reload para cambiar."
 L.OPT_REPORT_PROBLEM = "Informar de un problema"
 L.MENU_LORE_WINDOW = "Abrir el Compendio de Azeroth"
@@ -67,7 +63,7 @@ L.CMD_VOICE = "  /spp voice      -- «Leer historias en voz alta», activar o de
 L.CMD_AUTOPLAY = "  /spp autoplay   -- «Leer automáticamente», activar o desactivar"
 L.CMD_AUDIO = "  /spp audio      -- los paquetes de voces instalados"
 L.CMD_LANG = "  /spp lang       -- Idioma del texto: lista, o cambia con /spp lang <code> o auto"
-L.CMD_FORGET = "  /spp forget     -- Olvidar lugares oídos"
+L.CMD_FORGET = "  /spp forget     -- Olvidar lugares visitados"
 
 
 -- Added in the settings, subtitles and Zone Lore release.
@@ -85,15 +81,16 @@ L.REASON_MAP_PANEL = "Activa «Historia junto al mapa» para usar esto."
 L.OPT_DOWNLOAD_ADDRESS = "Copia esta dirección en tu navegador para descargar el paquete de voces."
 
 -- Reading history
-L.OPT_FORGET_PLACES = "Olvidar lugares oídos"
+L.OPT_FORGET_PLACES = "Olvidar lugares visitados"
 L.OPT_FORGET_PLACES_DONE = "Se ha borrado la lista de lugares oídos de este personaje."
+L.OPT_FORGET_PLACES_CONFIRM = "Olvidarás %d lugares."
+L.OPT_FORGET_PLACES_CONFIRM_ONE = "Olvidarás 1 lugar."
+L.OPT_FORGET = "Olvidar"
 
 -- Fixing a problem
 
 -- Starting over
 L.OPT_RESET_PAGE_CONFIRM = "¿Restablecer todos los ajustes de Lugares a su valor predeterminado?"
-L.OPT_RELOAD_NOW = "Recargar ahora"
-L.OPT_LATER = "Más tarde"
 
 -- Lore of Azeroth and Zone Lore
 L.COMPENDIUM_PLACES = "Lugares"

@@ -21,6 +21,10 @@ What Places adds to Spoken:
   `entry` may provide its own `target`, `play` and `reportAction` actions.
   `PlayLore` and `ShowLoreFor` check neither the lock nor the part, so an addon checks
   `Spoken:IsPartOn("places")` and `IsLocked` before calling them.
+  These methods are not frozen. An addon that only wants a dungeon's story read calls Spoken's
+  `HasStory`, `PlayStory`, `IsPlayingStory` and `StopStory` with `"instance"` and the instance
+  map (`addons/Spoken/API.lua`); Places builds the clip (`InstanceClip` in `Audio.lua`), checking
+  the part, the lock and the voice pack itself.
 
 The Enable switch on the Places page is Spoken's switch for the part (`Spoken:IsPartOn("places")`).
 With it off the map panel, its side tab and the Compendium tab go away.
@@ -41,15 +45,19 @@ One page, Game Menu, Options, AddOns, Spoken, Places:
 | | Story Panel Width | `panelWidth` | 360 |
 | | Show Pictures | `showPictures` | on |
 | | Read Stories Aloud | `voiceEnabled` | on |
-| | Text Language | `language` | Auto |
 | Voice Packs | one row per language, Play a Test Line | | |
-| Reading History | Forget Places Heard | | |
+| Reading History | Forget Visited Places | | |
 
 Defaults resets the settings in the table, the tab's two filters, the folded panel and the two
-Developer settings. It leaves Text Language, the chosen voice pack, Unlock Undiscovered Places and
+Developer settings. It leaves the chosen voice pack, Unlock Undiscovered Places and
 Text Size. Two Compendium settings are on Spoken's own page, in its Compendium section: Text Size (`Spoken:CompendiumFontSize()`, one size
 for every tab and the map panel) and Unlock Undiscovered Places (`showUndiscovered`, off by
-default). Spoken's Language section holds Voice Language and If a Voice Is Missing, and its While
+default). Spoken's Language section holds Voice Language, If a Voice Is Missing and Text Language,
+which every module reads (`Spoken:TextLanguage()`, Spoken's `Texts.lua`). This page had its own
+Text Language (`language`) until then. Spoken takes a profile's choice before it fixes the
+session's language (`Texts:TakePlacesChoice`), unless the profile has one of its own already, and
+this page drops its copy the first time the profile is bound (`SpokenPlaces:MoveLanguageToSpoken`),
+moving it there itself where Spoken could not see it. Its While
 Spoken Reads section holds Read in Battlegrounds. Under Spoken's Developer page are Places Debug
 Messages (`debug`) and Offer Unfinished Translations (`languagePreview`).
 
@@ -75,8 +83,9 @@ every player reads English and nothing errors.
 
 | Kind | Setting | What it decides |
 | --- | --- | --- |
-| Client locale | the game's own | The area names the game reports (so which `Data/<locale>/Aliases.lua` is used) and the interface strings (`Locale/<locale>.lua`, English where a key is missing). |
-| Text language | Text Language, `/spp lang` | The words of the stories on the map panel, the Compendium and the lookup tables, and of the captions and subtitles of the line playing, whatever the voice. The voice's words only where the Text Language has none for the place. |
+| Client locale | the game's own | The area names the game reports (so which `Data/<locale>/Aliases.lua` is used). |
+| Interface language | Spoken's Interface Language | The interface strings: an interface pack's (`Locale/Interface.lua`), then the built-in language's `Locale/<locale>.lua` (the client's on Auto), then English. |
+| Text language | Spoken's Text Language, `/spp lang` | The words of the stories on the map panel, the Compendium and the lookup tables, and of the captions and subtitles of the line playing, whatever the voice. The voice's words only where the Text Language has none for the place. |
 | Voice language | Spoken's Voice Language | The voice pack that reads. |
 
 Places follows Spoken's Voice Language and If a Voice Is Missing (`Audio.lua`, `GetVoiceLanguage`,
@@ -87,8 +96,11 @@ a language pins it on every client.
 
 - A language is offered only when `Data/Languages.lua` marks it ready (every story translated, and
   an alias table where a client runs in it) and the client's fonts can draw it
-  (`CanRenderLanguage`). The lore menu lists the finished built-in languages, plus any pack
-  language whose `.toc` says `X-SpokenPlaces-Lore: 1`, each only where the fonts can draw it.
+  (`CanRenderLanguage`, Spoken's `Texts:CanRender`). Spoken's Text Language lists every built-in
+  language the fonts can draw, plus any language an installed voice pack or a text pack brings
+  (`docs/contributors/TEXT-PACKS.md`). Places reads one only where it is ready here, or a pack
+  says `X-SpokenPlaces-Lore: 1`, and Auto otherwise. A text pack's `places` tables are taken as a lore pack's are,
+  through `RegisterLoreData`, so a text pack with no places leaves the stories on Auto.
   Interface strings are not required, because each key falls back to English.
   The fonts are asked by drawing the language's own name, and for the two Chinese the characters
   only that one has (a language's `sample` in Spoken's list, none of them in a Korean font's
@@ -114,7 +126,7 @@ a language pins it on every client.
   pack's `.toc` must also say `X-SpokenPlaces-Language: <code>`, even with no `Sounds.lua`, because
   `ShouldLoadLanguage` reads that key before it accepts the text. A
   pack's `X-Spoken-LanguageFont` draws its name and lore pages; without one, Places tries the
-  stock `ARIALN.TTF`, which draws Vietnamese on most clients but no script the game lacks. Right-to-left text is the pack's job: ship it in visual order.
+  stock `ARIALN.TTF`, which draws most accented Latin on most clients but no script the game lacks. Right-to-left text is the pack's job: ship it in visual order.
   The built-in list must equal the client languages in `pipelines/lib/locales.mjs`; `validate.mjs`
   checks it.
 
@@ -212,7 +224,7 @@ The game announces a discovery once per character, and Places reads that message
   started reading, from any route, by the wall clock (`time()`): `GetTime()` starts from zero at
   every restart, and a month outlasts one. A time ahead of the clock counts as long ago. With it on,
   a discovery of a place read within the wait reads nothing, and Include Places Found Before makes
-  no difference, so the panel greys it out. Forget Places Heard clears `readAt` too.
+  no difference, so the panel greys it out. Forget Visited Places clears `readAt` too.
 - Include Places Found Before also reads on zone change, once per place, for a character that
   explored before installing. `heard` records places when a clip starts, not when it is queued.
   It was off by default, and every profile stored that off; loading a profile turns it on once
@@ -221,8 +233,9 @@ The game announces a discovery once per character, and Places reads that message
   its valley and then its zone, which the game announces only later. Nothing reads the zone or a
   subzone, on a zone change or at login, until the greeting is settled (it queued, or there is
   nothing it will queue, or its eight tries are spent), so the zone never plays ahead of the
-  valley; a valley already waiting in the queue counts as the greeting. Forget Places Heard (and
-  `/spp forget`) clears `heard` and `greeted`, never `visited`. The button is greyed while Read
+  valley; a valley already waiting in the queue counts as the greeting. Forget Visited Places
+  shows how many places are in `heard` and asks first, then (as `/spp forget` does) clears `heard`
+  and `greeted`. Despite its name it never clears `visited`. The button is greyed while Read
   Automatically or Read Stories Aloud is off, as nothing reads the list then.
 - Entering a dungeon or raid reads its story, once per character (`heard`), with Read
   Automatically and Include Smaller Areas on. Inside an instance the client gives no map for the

@@ -705,6 +705,85 @@ local function PlaceBand(layout, hit, top)
     Put(hit, layout.parent, layout.left, top)
 end
 
+-- The game refuses an addon's SmartNavigation calls while combat holds addons back
+-- (SecureHelper.lua), showing its "action blocked" error once for each.
+local function CombatRestricted()
+    return C_RestrictedActions and C_RestrictedActions.IsAddOnRestrictionActive and Enum
+        and Enum.AddOnRestrictionType
+        and C_RestrictedActions.IsAddOnRestrictionActive(Enum.AddOnRestrictionType.Combat) or false
+end
+Layout.CombatRestricted = CombatRestricted
+
+-- What combat refused, run once it ends. A page is built once, so a row skipped in combat
+-- would keep the game's stops for the session.
+local afterCombat, afterCombatFrame = {}, nil
+
+local function AfterCombat(run)
+    if not afterCombatFrame then
+        afterCombatFrame = CreateFrame("Frame")
+        afterCombatFrame:SetScript("OnEvent", function(self)
+            self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+            local waiting = afterCombat
+            afterCombat = {}
+            for _, each in ipairs(waiting) do each() end
+        end)
+    end
+    table.insert(afterCombat, run)
+    afterCombatFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+end
+
+-- Run `set` on the controller UI's cursor now, or once combat ends.
+local function Navigate(set)
+    if not (SmartNavigation_MarkFrameIgnored and SMART_NAV_INPUT_DIRECTION and CreateAnchor) then return end
+    if CombatRestricted() then
+        AfterCombat(function() Navigate(set) end)
+        return
+    end
+    set()
+end
+
+local function NoStop(frame)
+    Navigate(function() SmartNavigation_MarkFrameIgnored(frame) end)
+end
+Layout.NoStop = NoStop
+
+-- Where the cursor counts a stop and draws itself: just left of `at`. It goes up or down only to
+-- a stop within 45 degrees of straight, nearest first, counting each where its anchor points
+-- (SmartNavigation.lua, GetButtonInfoInDirection). So every stop in a page's column is counted
+-- by the column's left, its label's or its own, or the rows and the buttons under them are two
+-- columns and up and down skip between them.
+local function CountAt(frame, at)
+    SmartNavigation_SetCustomCursorAnchorPointForFrame(frame, CreateAnchor("RIGHT", at, "LEFT", -7))
+end
+
+-- A stop in the page's column with no label, a button or a link: counted at its own left.
+local function ColumnStop(frame)
+    frame.layoutStop = true
+    Navigate(function() CountAt(frame, frame) end)
+end
+
+-- Make a row one stop for the controller UI's cursor, as the game's own settings rows are
+-- (Blizzard_SettingControls.lua): its band, with the cursor just left of its label, and nothing
+-- on the frames in `controls`. `step(forward)` is what left and right do, and the cursor stays;
+-- a row with none keeps right from leaving it, as the game's checkbox does. `open` is what A
+-- does, for a band whose click does nothing. The game reads a function override inside a secure
+-- call and only while combat does not hold addons back (SmartNavigation.lua,
+-- HandleNavigationInput).
+local function OneStop(hit, controls, caption, step, open)
+    Navigate(function()
+        local dir = SMART_NAV_INPUT_DIRECTION
+        for _, frame in ipairs(controls) do SmartNavigation_MarkFrameIgnored(frame) end
+        CountAt(hit, caption)
+        if step then
+            SmartNavigation_AddJumpNavigationOverride(hit, dir.LEFT, function() step(false); return true end)
+            SmartNavigation_AddJumpNavigationOverride(hit, dir.RIGHT, function() step(true); return true end)
+        else
+            SmartNavigation_AddIgnoreInputNavigationOverride(hit, dir.RIGHT)
+        end
+        if open then hit.OnSmartNavClick = open end
+    end)
+end
+
 -- A checkbox: the game's settings checkbox (SettingsCheckboxTemplate), 30 by 29 -- the minimal
 -- box and its tick, and the greyed tick for one switched off -- or the classic template where
 -- the client has not got the atlases. `size` is the classic one's.
@@ -742,6 +821,8 @@ local function NewButton(parent, label)
     return button
 end
 Layout.NewButton = NewButton
+-- Where a row's label or button starts, for a page that draws a row of its own (Custom).
+Layout.LABEL_X = LABEL_X
 
 --- A setting's name: the game's gold, GameFontNormal, or GameFontNormalSmall for an option
 --- under another (SettingsListElementMixin).
@@ -907,6 +988,138 @@ function Layout:Highlight(row)
     glow:Show()
 end
 
+-- Under the controller UI an addon showing a StaticPopup taints the game's gamepad popup
+-- handling: once the popup closes, the d-pad no longer moves on the settings page. There the
+-- question goes to a dialog of Spoken's own instead.
+local function GamepadUI()
+    if InputUtil and InputUtil.IsGamepadUIEnabled then return InputUtil.IsGamepadUIEnabled() and true or false end
+    return GetCVar and GetCVar("InputDeviceInterfaceStyle") == "1" or false
+end
+--- Whether Forever's controller UI is on: the one check Spoken and its modules share.
+Layout.IsGamepadUI = GamepadUI
+
+--- Let the controller drive `frame` while it is shown, with B pressing `close`. The controller
+--- moves only between windows the frame controls manager knows of, so the frame registers as a
+--- popup, as Blizzard's own (GuildInviteFrame, ReadyCheck) do: focus moves to it on show and back
+--- to the window under it on hide. The manager refuses addons in combat: a frame closed then is
+--- handed back once combat ends, or the manager keeps it listed as shown and does not move the
+--- focus to it when it opens again.
+local function Manager()
+    return GamepadUI() and GamepadMode and GamepadMode.FrameControlsManager or nil
+end
+
+local function HandBack(frame)
+    local manager = Manager()
+    if not manager then frame.followed = nil; return end
+    if CombatRestricted() then
+        AfterCombat(function()
+            if frame.followed and not frame:IsShown() then HandBack(frame) end
+        end)
+        return
+    end
+    frame.followed = nil
+    manager:HandlePopupHide(frame)
+end
+
+function Layout.FollowController(frame, close)
+    frame.CloseButton = close
+    frame:HookScript("OnShow", function(self)
+        if self.followed then return end
+        local manager = Manager()
+        if manager and not CombatRestricted() then
+            self.followed = true
+            manager:HandlePopupShown(self)
+        end
+    end)
+    frame:HookScript("OnHide", function(self)
+        if self.followed then HandBack(self) end
+    end)
+end
+
+local prompt
+
+local function BuildPrompt()
+    -- Drawn as the game's own popup is (GameDialogBaseMixin:OnLoad, StaticPopupTemplate): the
+    -- dark dialog background under the diamond-cornered border, a tooltip-edged box to type in,
+    -- and the controller's glyphs on the buttons.
+    local frame = CreateFrame("Frame", "SpokenLayoutPrompt", UIParent)
+    frame:SetSize(320, 110)
+    frame:SetPoint("TOP", UIParent, "TOP", 0, -135)
+    frame:SetFrameStrata("FULLSCREEN_DIALOG")
+    frame:SetToplevel(true)
+    frame:EnableMouse(true)
+    local back = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
+    back:SetAtlas("UI-DialogBox-Background-Dark")
+    back:SetPoint("TOPLEFT", 7, -7)
+    back:SetPoint("BOTTOMRIGHT", -7, 7)
+    local border = frame:CreateTexture(nil, "BACKGROUND", nil, -4)
+    border:SetAtlas("UI-DiamondDialogBox-Border")
+    border:SetAllPoints(frame)
+    frame:Hide()
+    if UISpecialFrames then table.insert(UISpecialFrames, "SpokenLayoutPrompt") end
+
+    local text = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    text:SetPoint("TOP", frame, "TOP", 0, -18)
+    text:SetWidth(290)
+
+    local input = CreateFrame("EditBox", nil, frame, "TooltipBackdropTemplate")
+    input:SetFontObject(ChatFontNormal)
+    input:SetTextInsets(6, 6, 0, 0)
+    input:SetSize(150, 24)
+    input:SetPoint("TOP", text, "BOTTOM", 0, -10)
+    input:SetAutoFocus(false)
+
+    local accept = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    accept:SetSize(128, 21)
+    accept:SetPoint("BOTTOMRIGHT", frame, "BOTTOM", -6, 16)
+    local cancel = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    cancel:SetSize(128, 21)
+    cancel:SetPoint("BOTTOMLEFT", frame, "BOTTOM", 6, 16)
+    Layout.FollowController(frame, cancel)
+    -- A presses whichever button the cursor is on, and it starts on Accept unless there is a
+    -- name to type first; B always cancels.
+    local glyph
+    if GamepadMode and GamepadMode.AddGamepadIconToButton then
+        glyph = GamepadMode.AddGamepadIconToButton(accept, GAMEPAD_FACE_BOTTOM)
+        GamepadMode.AddGamepadIconToButton(cancel, GAMEPAD_FACE_RIGHT)
+    end
+
+    prompt = { frame = frame, text = text, input = input, accept = accept, cancel = cancel, glyph = glyph }
+    accept:SetScript("OnClick", function()
+        local run, typed = prompt.run, prompt.asking and input:GetText() or nil
+        frame:Hide()
+        if run then run(typed) end
+    end)
+    cancel:SetScript("OnClick", function() frame:Hide() end)
+    input:SetScript("OnEnterPressed", function() accept:Click() end)
+    input:SetScript("OnEscapePressed", function() frame:Hide() end)
+    frame:HookScript("OnHide", function() prompt.run = nil end)
+end
+
+local function ShowPrompt(question, acceptLabel, cancelLabel, run, asking)
+    if not prompt then BuildPrompt() end
+    prompt.text:SetText(question)
+    prompt.accept:SetText(acceptLabel)
+    prompt.cancel:SetText(cancelLabel)
+    prompt.asking = asking
+    prompt.input:SetText("")
+    prompt.input:SetShown(asking)
+    if prompt.glyph then prompt.glyph:SetShown(not asking) end
+    prompt.frame:SetHeight((prompt.text.GetStringHeight and prompt.text:GetStringHeight() or 14)
+        + (asking and 92 or 60))
+    prompt.run = run
+    prompt.frame:Show()
+end
+
+--- Ask for a line of text: under the controller UI only, in Spoken's own dialog, where it runs
+--- `accept(text)` on the first button and returns true. Elsewhere it returns false and the
+--- caller asks as before.
+function Layout.Ask(question, acceptLabel, cancelLabel, accept)
+    if not GamepadUI() then return false end
+    ShowPrompt(question, acceptLabel, cancelLabel, accept, true)
+    return true
+end
+
 -- One popup each for every panel that loads this file, so the names are the file's own.
 -- The callback lives here rather than on the dialog: how a dialog hands its data back to
 -- OnAccept differs across the clients this file loads on.
@@ -914,6 +1127,10 @@ local pendingAccept
 
 --- Ask before doing something that cannot be undone. `accept` runs on the first button.
 function Layout.Confirm(question, acceptLabel, cancelLabel, accept)
+    if GamepadUI() then
+        ShowPrompt(question, acceptLabel, cancelLabel, accept, false)
+        return
+    end
     if not (StaticPopupDialogs and StaticPopup_Show) then
         accept()
         return
@@ -998,6 +1215,7 @@ function Layout:Checkbox(label, tooltip, read, write, apply)
         if box:IsEnabled() and box.Click then box:Click() end
     end)
     hit.layoutControl, box.layoutHit = box, hit
+    OneStop(hit, { box }, box.text)
     Tooltip(box, label, tooltip)
     Tooltip(hit, label, tooltip)
     self:Index(box, label, tooltip)
@@ -1086,6 +1304,12 @@ function Layout:Slider(label, minValue, maxValue, step, read, write, apply, show
     frame.layoutSetEnabled = setEnabled
     frame.layoutLabel, frame.layoutValue = caption, value
     hit.layoutControl, frame.layoutHit, slider.layoutHit = frame, hit, hit
+    OneStop(hit, { frame }, caption, function(forward)
+        if slider.IsEnabled and not slider:IsEnabled() then return end
+        local current = slider:GetValue() + (forward and step or -step)
+        slider:SetValue(math.max(minValue, math.min(maxValue, current)))
+        Sound(ON)
+    end)
     Tooltip(hit, label, tooltip)
     Tooltip(frame, label, tooltip)
     Tooltip(slider, label, tooltip)
@@ -1143,6 +1367,7 @@ function Layout:Cycle(label, tooltip, values, read, write, apply, describe)
     end)
     Script(button, "OnShow", Sync)
     button.layoutSync = Sync
+    ColumnStop(button)
     Tooltip(button, nil, tooltip)
     self:Index(button, label, tooltip)
     Sync()
@@ -1184,6 +1409,22 @@ local function Refont(fontString, path)
     elseif file then
         fontString:SetFontObject(FaceObject(file, size, flags))
     end
+end
+
+-- Draw an entry of the game's menu in `face`. Menu buttons are pooled, also with other addons' and
+-- the game's menus, so an entry with no face puts back the font a previous entry's face replaced,
+-- and each entry puts it back when its button goes back to the pool.
+local function FaceEntry(element, face)
+    if not (element and element.AddInitializer) then return end
+    element:AddInitializer(function(button) Refont(button.fontString, face) end)
+    if element.AddResetter then
+        element:AddResetter(function(button) Refont(button.fontString, nil) end)
+    end
+end
+
+-- Draw an entry of the classic menu in `face`, where it is given one.
+local function FaceInfo(info, face)
+    if face then info.fontObject = FaceObject(face) end
 end
 
 --- A dropdown: the game's settings dropdown, with steppers either side (SettingsDropdownWithButtons
@@ -1230,16 +1471,7 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe, f
             for _, value in ipairs(Resolve(values)) do
                 local element = root:CreateRadio(describe(value), function() return Chosen(value, read()) end,
                     function() Choose(value) end, value)
-                -- Menu buttons are pooled, also with other addons' and the game's menus, so an
-                -- entry with no face puts back the font a previous entry's face replaced, and each
-                -- entry puts it back when its button goes back to the pool.
-                if fontOf and element and element.AddInitializer then
-                    local face = fontOf(value)
-                    element:AddInitializer(function(button) Refont(button.fontString, face) end)
-                    if element.AddResetter then
-                        element:AddResetter(function(button) Refont(button.fontString, nil) end)
-                    end
-                end
+                if fontOf then FaceEntry(element, fontOf(value)) end
             end
         end)
         Sync = function()
@@ -1266,8 +1498,7 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe, f
                 local info = UIDropDownMenu_CreateInfo()
                 info.text = describe(value)
                 info.checked = Chosen(value, current)
-                local face = fontOf and fontOf(value)
-                if face then info.fontObject = FaceObject(face) end
+                FaceInfo(info, fontOf and fontOf(value))
                 info.func = function()
                     Choose(value)
                     if CloseDropDownMenus then CloseDropDownMenus() end
@@ -1287,6 +1518,18 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe, f
     control.layoutSetEnabled = setEnabled
     control.layoutLabel = caption
     hit.layoutControl, control.layoutHit = control, hit
+    -- The game's settings dropdown takes the same keys (SettingsDropdownControlMixin).
+    if dropdown then
+        OneStop(hit, { control }, caption, function(forward)
+            local arrow = forward and control.IncrementButton or control.DecrementButton
+            if arrow then arrow:Click() end
+        end, function()
+            if dropdown:IsEnabled() then
+                dropdown:MouseDown()
+                dropdown:MouseUp()
+            end
+        end)
+    end
     Tooltip(hit, label, tooltip)
     self:Index(control, label, tooltip)
     Sync()
@@ -1305,6 +1548,48 @@ end
 --- centred window too, where the title sits across the middle. Its text may change:
 --- Layout.FitButton sizes it again.
 local HEADING_LINE = 17      -- GameFontHighlightLarge's line
+
+-- A control's stop for the controller UI's cursor: its row's band, or the control where that is
+-- a button or a ColumnStop (a link, a status). Nil for a note or a control out of sight.
+local function StopOf(control)
+    local stop = control.layoutHit or control
+    if not (stop.IsVisible and stop:IsVisible()) then return nil end
+    local kind = stop.GetObjectType and stop:GetObjectType()
+    if stop == control.layoutHit or stop.layoutStop or kind == "Button" or kind == "CheckButton" then
+        return stop
+    end
+end
+
+local function RowStop(row)
+    if not (row.shown and row.control) then return nil end
+    return StopOf(row.control)
+end
+
+--- The page's first row on screen with a stop for the controller's cursor: a row in the page's
+--- column, not a button beside a section's title, and not one scrolled above the view.
+function Layout:FirstRow()
+    local view = self.parent.layoutScroller
+    local scrolled = view and view.frame:GetVerticalScroll() or 0
+    for _, entry in ipairs(self.entries) do
+        local frame = entry.frame
+        local stop = frame.layoutY and -frame.layoutY >= scrolled and StopOf(frame)
+        if stop then return stop end
+    end
+end
+
+-- Down from a button at the page's right, Defaults or a section's, is the first of `rows()` with
+-- a stop: the rows are counted by their labels at the left, too far aside for straight down.
+local function DownToFirstRow(button, rows)
+    Navigate(function()
+        SmartNavigation_AddJumpNavigationOverride(button, SMART_NAV_INPUT_DIRECTION.DOWN, function()
+            for _, row in ipairs(rows()) do
+                local stop = RowStop(row)
+                if stop then return stop end
+            end
+        end)
+    end)
+end
+
 function Layout:HeadingButton(label, onClick, tooltip)
     local section = self.current
     local parent, layout = self.parent, self
@@ -1329,6 +1614,7 @@ function Layout:HeadingButton(label, onClick, tooltip)
         button:Hide()
     end
     section.button = button
+    DownToFirstRow(button, function() return section.rows end)
     return button
 end
 
@@ -1346,6 +1632,7 @@ function Layout:Button(label, width, onClick, tooltip)
     button.layoutNatural = button:GetWidth()
     Script(button, "OnClick", onClick)
     Above(button, parent)
+    ColumnStop(button)
     Tooltip(button, label, tooltip)
     self:Index(button, label, tooltip)
     local section = self.current
@@ -1395,6 +1682,195 @@ function Layout:Custom(frame, height, fit)
         Put(frame, parent, x - reach, top)
     end)
     return frame
+end
+
+-- An ordered list's buttons: the chat frame's scroll arrows and the panel's close cross, which
+-- every client has, as the game's fonts draw no arrow or cross of their own.
+local ORDER_BUTTON = 24
+local ORDER_ART = {
+    up = [[Interface\ChatFrame\UI-ChatIcon-ScrollUp-]],
+    down = [[Interface\ChatFrame\UI-ChatIcon-ScrollDown-]],
+    remove = [[Interface\Buttons\UI-Panel-MinimizeButton-]],
+}
+local ORDER_ROW = 26        -- a voice's line, a row's height
+local ORDER_ADD_GAP = 4     -- between the last line and the add button
+local ORDER_WIDTH = 360     -- the most the names and their buttons take
+local orderedMenus = 0
+
+local function OrderButton(parent, art, tip)
+    local button = CreateFrame("Button", nil, parent)
+    button:SetSize(ORDER_BUTTON, ORDER_BUTTON)
+    button:SetNormalTexture(ORDER_ART[art] .. "Up")
+    button:SetPushedTexture(ORDER_ART[art] .. "Down")
+    button:SetDisabledTexture(ORDER_ART[art] .. "Disabled")
+    button:SetHighlightTexture([[Interface\Buttons\UI-Common-MouseHilight]], "ADD")
+    Above(button, parent)
+    Tooltip(button, nil, tip)
+    return button
+end
+
+--- A list the player orders: a line for each of `read()`'s values, named by `describe(value)` (in
+--- `fontOf(value)`'s font where it gives one), with buttons to move it earlier or later and to
+--- remove it, and under the last an add button offering `choices()` not in the list. `write(list)`
+--- is given a new array after every change. The list keeps at least one value. `words` holds the
+--- buttons' words (`add`, `earlier`, `later`, `remove`) and `available(value)`, false greying a
+--- value out: one kept in the list that cannot be had now.
+function Layout:OrderedList(label, tooltip, read, write, choices, describe, fontOf, words)
+    self:Columns(nil)
+    local parent, layout = self.parent, self
+    describe = describe or tostring
+    local hit = Band(parent, ORDER_ROW)
+    local caption = Caption(parent, label)
+    local add = NewButton(parent, words.add)
+    FitToLabel(add, 0)
+    Above(add, parent)
+    local regions = { hit, caption, add }
+    local lines, list = {}, {}
+
+    local function Change(changed)
+        write(changed)
+        layout:Refresh()
+    end
+    local function Moved(i, by)
+        local changed = {}
+        for index, value in ipairs(list) do changed[index] = value end
+        changed[i], changed[i + by] = changed[i + by], changed[i]
+        Change(changed)
+    end
+    local function Removed(i)
+        if #list < 2 then return end
+        local changed = {}
+        for index, value in ipairs(list) do
+            if index ~= i then table.insert(changed, value) end
+        end
+        Change(changed)
+    end
+    local function Line(i)
+        if lines[i] then return lines[i] end
+        local line = {}
+        line.name = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        line.name:SetHeight(ORDER_ROW)
+        line.name:SetJustifyH("LEFT")
+        line.name:SetJustifyV("MIDDLE")
+        if line.name.SetWordWrap then line.name:SetWordWrap(false) end
+        line.up = OrderButton(parent, "up", words.earlier)
+        line.down = OrderButton(parent, "down", words.later)
+        line.remove = OrderButton(parent, "remove", words.remove)
+        Script(line.up, "OnClick", function() Sound(CLICK); Moved(i, -1) end)
+        Script(line.down, "OnClick", function() Sound(CLICK); Moved(i, 1) end)
+        Script(line.remove, "OnClick", function() Sound(CLICK); Removed(i) end)
+        for _, region in ipairs({ line.name, line.up, line.down, line.remove }) do table.insert(regions, region) end
+        lines[i] = line
+        return line
+    end
+    -- What the add button offers: every choice the list has not got.
+    local function Offered()
+        local have, offered = {}, {}
+        for _, value in ipairs(list) do have[value] = true end
+        for _, value in ipairs(Resolve(choices)) do
+            if not have[value] then table.insert(offered, value) end
+        end
+        return offered
+    end
+    local function Added(value)
+        local changed = {}
+        for index, each in ipairs(list) do changed[index] = each end
+        table.insert(changed, value)
+        Change(changed)
+    end
+
+    local menu
+    local function OpenMenu()
+        if MenuUtil and MenuUtil.CreateContextMenu then
+            MenuUtil.CreateContextMenu(add, function(_, root)
+                for _, value in ipairs(Offered()) do
+                    local element = root:CreateButton(describe(value), function() Added(value) end)
+                    if fontOf then FaceEntry(element, fontOf(value)) end
+                end
+            end)
+            return
+        end
+        if not (UIDropDownMenu_Initialize and ToggleDropDownMenu) then
+            -- No menu at all: each click adds the next voice the list has not got.
+            local offered = Offered()
+            if offered[1] then Added(offered[1]) end
+            return
+        end
+        if not menu then
+            orderedMenus = orderedMenus + 1
+            menu = CreateFrame("Frame", "SpokenLayoutOrderedMenu" .. orderedMenus, parent, "UIDropDownMenuTemplate")
+            UIDropDownMenu_Initialize(menu, function(_, level)
+                for _, value in ipairs(Offered()) do
+                    local info = UIDropDownMenu_CreateInfo()
+                    info.text = describe(value)
+                    info.notCheckable = true
+                    FaceInfo(info, fontOf and fontOf(value))
+                    info.func = function()
+                        Added(value)
+                        if CloseDropDownMenus then CloseDropDownMenus() end
+                    end
+                    UIDropDownMenu_AddButton(info, level)
+                end
+            end, "MENU")
+        end
+        ToggleDropDownMenu(1, nil, menu, add, 0, 0)
+    end
+    Script(add, "OnClick", function() Sound(CLICK); OpenMenu() end)
+
+    local function Sync()
+        list = {}
+        for index, value in ipairs(read() or {}) do list[index] = value end
+        for i, value in ipairs(list) do
+            local line = Line(i)
+            line.name:SetText(describe(value))
+            Refont(line.name, fontOf and fontOf(value) or nil)
+            local grey = words.available and not words.available(value)
+            local color = grey and GREY or WHITE
+            line.name:SetTextColor(color[1], color[2], color[3])
+            if i > 1 then line.up:Enable() else line.up:Disable() end
+            if i < #list then line.down:Enable() else line.down:Disable() end
+            if #list > 1 then line.remove:Enable() else line.remove:Disable() end
+        end
+        if #Offered() > 0 then add:Enable() else add:Disable() end
+    end
+    -- The control is the whole list, lines and add button, which is the row's height.
+    local control = CreateFrame("Frame", nil, parent)
+    table.insert(regions, control)
+    -- A pack installed since the page was last shown is offered: the client fires no refresh.
+    Script(control, "OnShow", function() Sync() end)
+    hit.layoutControl, control.layoutHit = control, hit
+    control.layoutSync, control.layoutLabel, control.layoutLines, control.layoutAdd = Sync, caption, lines, add
+    control.layoutList = function() return list end
+    control.layoutOffered = Offered
+    Tooltip(hit, label, tooltip)
+    self:Index(control, label, tooltip)
+    Sync()
+    local function Height() return math.max(1, #list) * ORDER_ROW + ORDER_ADD_GAP + BUTTON_HEIGHT end
+    local row = self:AddRow(ORDER_ROW, control, regions, function(top, x)
+        PlaceBand(self, hit, top)
+        PlaceLabel(self, caption, x, top)
+        local start = self:Middle() + DROPDOWN_X
+        local width = math.min(ORDER_WIDTH, self.left + self:Width() - start)
+        local nameWidth = width - ORDER_BUTTON * 3
+        for i, line in ipairs(lines) do
+            local y = top - (i - 1) * ORDER_ROW
+            local buttonY = y - math.floor((ORDER_ROW - ORDER_BUTTON) / 2)
+            line.name:SetWidth(nameWidth)
+            Put(line.name, parent, start, y)
+            Put(line.up, parent, start + nameWidth, buttonY)
+            Put(line.down, parent, start + nameWidth + ORDER_BUTTON, buttonY)
+            Put(line.remove, parent, start + nameWidth + ORDER_BUTTON * 2, buttonY)
+            local shown = i <= #list
+            for _, region in ipairs({ line.name, line.up, line.down, line.remove }) do
+                if shown then region:Show() else region:Hide() end
+            end
+        end
+        Put(add, parent, start, top - math.max(1, #list) * ORDER_ROW - ORDER_ADD_GAP)
+        control:SetSize(width, Height())
+        Put(control, parent, start, top)
+    end)
+    row.measure = Height
+    return control
 end
 
 --------------------------------------------------------------------------------
@@ -2111,6 +2587,9 @@ function Layout:Link(item)
     Tooltip(frame, item.title, item.tooltip)
     Tooltip(box, item.title, item.tooltip)
     frame.layoutLink, frame.icon, frame.box = item, icon, box
+    -- One stop: A on the icon selects the address, as a click does.
+    ColumnStop(frame)
+    NoStop(box)
     self:Index(frame, item.title, item.tooltip)
     self:AddRow(LINK_FRAME, frame, { frame, box }, function(top)
         local x = self.left + LABEL_X
@@ -2129,6 +2608,7 @@ function Layout:Status(read)
     local parent = self.parent
     local badge = NewBadge(parent)
     Updater(self, function() badge:Set(read()) end)
+    ColumnStop(badge)
     self:AddRow(STATUS_HEIGHT, badge, { badge }, function(top, x) Put(badge, parent, x + LABEL_X, top) end)
     return badge
 end
@@ -2149,6 +2629,7 @@ function Layout:Badge(label, read, tooltip, hug)
     Tooltip(hit, label, tooltip)
     Updater(self, function() badge:Set(read()) end)
     badge.layoutLabel = caption
+    OneStop(hit, { badge }, caption)
     self:AddRow(ROW_HEIGHT, badge, { hit, badge, caption }, function(top, x)
         PlaceBand(self, hit, top)
         PlaceLabel(self, caption, x, top)
@@ -2187,6 +2668,10 @@ function Layout:Download(label, read, buttonLabel, onClick, tooltip)
         field.layoutGet = get
     end
     Updater(self, Show)
+    -- A on the row is its Download button while the pack is missing.
+    OneStop(hit, { field, button }, caption, nil, function()
+        if field.layoutGet then button:Click() end
+    end)
     -- Found by search, so "voice pack" leads to the list.
     self:Index(field, label, tooltip)
     self:AddRow(ROW_HEIGHT, field, { hit, field, button, caption }, function(top, x)
@@ -2217,6 +2702,7 @@ function Layout:Key(label, read, set, tooltip, labels)
     local field = NewBadge(parent, true)
     Above(field, parent)
     hit.layoutControl, field.layoutHit, field.layoutLabel = field, hit, caption
+    OneStop(hit, { field }, caption)
     Tooltip(hit, label, tooltip)
     Tooltip(field, label, tooltip)
     local layout = self
@@ -2388,6 +2874,11 @@ function Layout:Defaults(onClick, label, tooltip)
     Script(button, "OnClick", onClick)
     Above(button, holder)
     Tooltip(button, label, tooltip)
+    DownToFirstRow(button, function()
+        local rows = {}
+        EachRow(self, function(row) table.insert(rows, row) end)
+        return rows
+    end)
     self.defaults = button
     self.dirty = true
     return button
@@ -2549,6 +3040,8 @@ local function BuildScrollBar(view, parent)
     end
 
     local thumb = CreateFrame("Button", nil, bar)
+    -- A drag the controller cannot make; its cursor scrolls the page to the row it is on.
+    NoStop(thumb)
     thumb:SetWidth(barWidth)
     thumb:SetHeight(MIN_THUMB)
     thumb:SetPoint("TOP", bar, "TOP", 0, 0)

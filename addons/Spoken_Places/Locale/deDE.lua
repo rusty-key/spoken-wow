@@ -7,7 +7,7 @@
 
 local _, SpokenPlaces = ...
 
-if GetLocale() ~= "deDE" then
+if not Spoken:InterfaceIn("deDE") then
 	return
 end
 
@@ -28,10 +28,6 @@ L.OPT_AUTOPLAY_GAP = "Erneut vorlesen nach"
 L.OPT_GAP_1D = "1 Tag"
 L.OPT_GAP_1W = "1 Woche"
 L.OPT_GAP_1MO = "1 Monat"
-L.OPT_LANG_RELOAD = "Tippe /reload, um zu ihr zu wechseln."
-L.OPT_LANGUAGE = "Textsprache"
-L.OPT_LANG_AUTO_FMT = "Automatisch (%1$s)"
-L.OPT_LANG_SET_FMT = "Nach dem Neuladen des Interfaces sind die Geschichten auf %1$s."
 L.OPT_LANG_PROFILE_FMT = "Dieses Profil liest die Geschichten auf %1$s vor. Tippe /reload, um zu wechseln."
 L.OPT_REPORT_PROBLEM = "Problem melden"
 L.MENU_LORE_WINDOW = "„Kompendium von Azeroth“ öffnen"
@@ -64,13 +60,16 @@ L.CMD_VOICE = "  /spp voice      -- „Geschichten vorlesen“ an oder aus"
 L.CMD_AUTOPLAY = "  /spp autoplay   -- „Automatisch vorlesen“ an oder aus"
 L.CMD_AUDIO = "  /spp audio      -- die installierten Sprachpakete"
 L.CMD_LANG = "  /spp lang       -- Textsprache: Liste, oder wechseln mit /spp lang <code> oder auto"
-L.CMD_FORGET = "  /spp forget     -- Gehörte Orte vergessen"
+L.CMD_FORGET = "  /spp forget     -- Besuchte Orte vergessen"
 
 
 -- Added in this release (deDE).
 L.REASON_VOICE = "Schalte „Geschichten vorlesen“ ein, um dies zu nutzen."
-L.OPT_FORGET_PLACES = "Gehörte Orte vergessen"
+L.OPT_FORGET_PLACES = "Besuchte Orte vergessen"
 L.OPT_FORGET_PLACES_DONE = "Die Liste gehörter Orte dieses Charakters wurde gelöscht."
+L.OPT_FORGET_PLACES_CONFIRM = "Du vergisst %d Orte."
+L.OPT_FORGET_PLACES_CONFIRM_ONE = "Du vergisst 1 Ort."
+L.OPT_FORGET = "Vergessen"
 L.OPT_DOWNLOAD_ADDRESS = "Kopiere diese Adresse in deinen Webbrowser, um das Sprachpaket herunterzuladen."
 L.OTHER_LANDS = "Andere Länder"
 L.BATTLEGROUNDS = "Schlachtfelder"
@@ -89,8 +88,6 @@ L.REASON_DISCOVERY = "Schalte „Automatisch vorlesen“ ein, um dies zu nutzen.
 L.REASON_EVERY_VISIT = "Schalte „Bei jedem Besuch vorlesen“ aus, um dies zu nutzen."
 L.REASON_MAP_PANEL = "Schalte „Geschichte neben der Karte“ ein, um dies zu nutzen."
 L.OPT_RESET_PAGE_CONFIRM = "Jede Einstellung für Orte auf den Standard zurücksetzen?"
-L.OPT_RELOAD_NOW = "Jetzt neu laden"
-L.OPT_LATER = "Später"
 L.OPT_PAGE_TITLE = "Orte"
 L.OPT_DEV_DEBUG = "Debug: Orte"
 L.OPT_DEV_PREVIEW = "Unfertige Übersetzungen"

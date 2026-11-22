@@ -3,7 +3,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CHANNELS } from '../src/shared/api'
 import type { Catalog, JobProgress } from '../src/shared/types'
-import { ManagerService } from '../src/main/service'
+import { ManagerService, UPDATE_CHECK_MS } from '../src/main/service'
 import { loadSettings, saveState } from '../src/main/state'
 import { makeGame, makeGameFolders, serveBuffer, sha256, startServer, tmpDir, toc, write, yazlZip, type TestServer } from './helpers'
 
@@ -124,6 +124,28 @@ describe('ManagerService', () => {
     expect(githubCalls()).toBe(2)
   })
 
+  it('runs the background check at once and every 30 minutes', async () => {
+    const { svc } = await setup()
+    const check = vi.spyOn(svc, 'backgroundCheck').mockResolvedValue()
+    vi.useFakeTimers()
+    try {
+      svc.startPeriodicRefresh()
+      expect(check).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(UPDATE_CHECK_MS)
+      expect(check).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+      vi.restoreAllMocks()
+    }
+  })
+
+  it('checks nothing in the background with update checks and automatic updates off', async () => {
+    const { svc, githubCalls } = await setup()
+    svc.setSettings({ checkOnStart: false, autoUpdateContent: false })
+    await svc.backgroundCheck()
+    expect(githubCalls()).toBe(0)
+  })
+
   describe('automatic content updates', () => {
     const spokenJobs = (sent: { channel: string; payload: unknown }[]) => jobsFor(sent, 'spoken')
     const oldSpoken = (dir: string) => write(path.join(dir, 'Spoken.toc'), toc('Spoken', '3.4.0'))
@@ -196,12 +218,12 @@ describe('ManagerService', () => {
       expect(state.installs[game.id].spoken.pinned).toBeUndefined()
     })
 
-    it('does not queue a cancelled update again until the player checks by hand', async () => {
+    it('keeps a cancelled update skipped, background checks included, until the player checks by hand', async () => {
       let open!: () => void
       const gate = new Promise<void>((resolve) => (open = resolve))
       const { svc, game, sent } = await setup({ gate })
       oldSpoken(path.join(game.addOnsPath, 'Spoken'))
-      svc.setSettings({ autoUpdateContent: true })
+      svc.setSettings({ checkOnStart: false, autoUpdateContent: true })
       await svc.refreshCatalog(true)
 
       const first = spokenJobs(sent)[0]!.jobId
@@ -212,6 +234,7 @@ describe('ManagerService', () => {
       svc.setSettings({ lastGameId: game.id })
       await svc.refreshCatalog(false)
       await svc.autoUpdate()
+      await svc.backgroundCheck()
       expect(new Set(spokenJobs(sent).map((p) => p.jobId))).toEqual(new Set([first]))
 
       await svc.refreshCatalog(true)
@@ -219,6 +242,18 @@ describe('ManagerService', () => {
       const again = spokenJobs(sent).find((p) => p.jobId !== first)
       expect(again).toBeDefined()
       expect((await waitFor(sent, again!.jobId)).phase).toBe('done')
+    })
+
+    it('updates after a background check that joins a refresh already running', async () => {
+      const { svc, game, sent } = await setup()
+      oldSpoken(path.join(game.addOnsPath, 'Spoken'))
+      svc.setSettings({ checkOnStart: false, autoUpdateContent: true })
+      await svc.ready
+      const running = svc.refreshCatalog(false)
+      await svc.backgroundCheck()
+      await running
+      const job = spokenJobs(sent)[0]!.jobId
+      expect((await waitFor(sent, job)).phase).toBe('done')
     })
   })
 
@@ -285,6 +320,8 @@ describe('ManagerService', () => {
     const s = svc.setSettings({ includePrereleases: true, voiceLanguage: 'deDE' })
     expect(s).toMatchObject({ includePrereleases: true, downloadsPath: '', voiceLanguage: 'deDE' })
     expect(loadSettings(svc.dataPath).voiceLanguage).toBe('deDE')
+    svc.setSettings({ voiceAuthors: { deDE: 'stimmen' } })
+    expect(new ManagerService({ dataPath: svc.dataPath, appVersion: '0.1.0', send: () => undefined }).settings.voiceAuthors).toEqual({ deDE: 'stimmen' })
     const abs = path.join(tmpDir(), 'dl')
     expect(svc.setSettings({ downloadsPath: abs }).downloadsPath).toBe(abs)
     expect(svc.downloadsPath()).toBe(abs)

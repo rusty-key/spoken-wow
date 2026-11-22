@@ -1,12 +1,13 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { formatBytes, formatDate, formatTime } from '../format'
+import { proxyFieldAfter, shouldWriteProxy } from '../proxy-field'
 import { api, errorText } from '../api'
 import { GameIcon } from '../components/Brand'
 import { Select, Switch } from '../components/Controls'
 import { useAddGame } from '../components/EmptyGames'
 import { RestartButton } from '../components/RestartButton'
 import { IconChevron, IconChevronRight, IconDownload, IconGames, IconGear, IconHeart, IconInfo, IconRefresh, IconUser } from '../components/Icons'
-import type { Settings, UiLanguage } from '@shared/types'
+import type { SendResult, Settings, UiLanguage } from '@shared/types'
 import { UI_LANGUAGES } from '@shared/types'
 import { languageName } from '@shared/products'
 import { useStore } from '../store'
@@ -164,9 +165,35 @@ function UpdatesSection(): ReactNode {
 }
 
 function GeneralSection(): ReactNode {
-  const { state } = useStore()
+  const { state, actions } = useStore()
   const { settings } = state
   const set = useSetSettings()
+  const [proxyError, setProxyError] = useState('')
+  // Held here until it is left or Enter is pressed: saving on every key would rebuild the connections each time.
+  const [proxy, setProxy] = useState(settings.proxy)
+  /** Counts saves and clears, so only the newest can write the field. */
+  const proxySeq = useRef(0)
+  /** The number of the last write that came back, so a pending one is not mistaken for a settled draft. */
+  const proxyDone = useRef(0)
+  /**
+   * Shows what the main process saved, which it normalizes: typing `127.0.0.1:10808` over a stored
+   * `http://127.0.0.1:10808` would otherwise leave the two apart. Only the newest write may touch the field or
+   * show an error, so an older save cannot land after a newer one.
+   */
+  const writeProxy = (value: string): void => {
+    const submitted = proxy
+    const seq = ++proxySeq.current
+    setProxyError('')
+    void actions
+      .setSettings({ proxy: value })
+      .then((next) => setProxy((typed) => proxyFieldAfter({ seq, newest: proxySeq.current, submitted, typed, saved: next.proxy }) ?? typed))
+      .catch((e) => seq === proxySeq.current && setProxyError(errorText(e)))
+      .finally(() => (proxyDone.current = seq))
+  }
+  const saveProxy = (): void => {
+    const draft = proxy.trim()
+    if (shouldWriteProxy({ submitted: draft, stored: settings.proxy, newest: proxySeq.current, done: proxyDone.current })) writeProxy(draft)
+  }
   return (
     <section aria-labelledby="set-general">
       <h2 id="set-general" className="settings-h">
@@ -185,6 +212,37 @@ function GeneralSection(): ReactNode {
         <Switch checked={settings.startAtLogin} onChange={(v) => set({ startAtLogin: v })} label={S.settings.startAtLogin} text={S.settings.startAtLoginText} />
         <Switch checked={settings.minimizeToTray} onChange={(v) => set({ minimizeToTray: v })} label={S.settings.minimizeToTray} text={S.settings.minimizeToTrayText} />
       </div>
+      <h3 className="settings-h settings-h-sub">{S.settings.network}</h3>
+      <p className="settings-text">{S.settings.proxyText}</p>
+      <div className="path-line">
+        <input
+          className="input"
+          spellCheck={false}
+          autoComplete="off"
+          aria-label={S.settings.proxy}
+          placeholder={S.settings.proxyPlaceholder}
+          value={proxy}
+          onChange={(e) => setProxy(e.target.value)}
+          onBlur={saveProxy}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur()
+          }}
+        />
+        {settings.proxy && (
+          <button
+            type="button"
+            className="link"
+            onClick={() => writeProxy('')}
+          >
+            {S.settings.useSystemProxy}
+          </button>
+        )}
+      </div>
+      {proxyError && (
+        <p className="text-error" role="alert">
+          {proxyError}
+        </p>
+      )}
     </section>
   )
 }
@@ -272,7 +330,18 @@ function SharingSection(): ReactNode {
   const { sharing } = state
   const on = state.settings.sharing === 'on'
   const [reset, setReset] = useState(false)
+  const [result, setResult] = useState<SendResult | null>(null)
   const last = sharing.lastSent
+  const sendNow = async (): Promise<void> => {
+    setResult(null)
+    setResult(await actions.shareNow())
+  }
+  // A later send, or Sharing going off, makes the click's result stale. Failures show as sharing.error.
+  useEffect(() => {
+    if (sharing.sending || !on) setResult(null)
+  }, [sharing.sending, on])
+  const resultText = result?.outcome === 'sent' ? S.settings.sendDone(result.count) : result?.outcome === 'nothing' ? S.settings.sendNothing : null
+  const unread = result && 'unread' in result ? (result.unread?.length ?? 0) : 0
   const resetId = async (): Promise<void> => {
     await api().resetShareId()
     setReset(true)
@@ -299,13 +368,23 @@ function SharingSection(): ReactNode {
         </p>
       )}
       <div className="setting-actions">
-        <button type="button" className="btn" onClick={() => void actions.shareNow()} disabled={!on || sharing.sending} aria-busy={sharing.sending}>
+        <button type="button" className="btn" onClick={() => void sendNow()} disabled={!on || sharing.sending} aria-busy={sharing.sending}>
           {S.settings.sendNow}
         </button>
         <button type="button" className="btn" onClick={() => void resetId()}>
           {S.settings.resetId}
         </button>
       </div>
+      {resultText && (
+        <p className="status status-ok-text setting-result" role="status">
+          {resultText}
+        </p>
+      )}
+      {unread > 0 && (
+        <p className="status status-warn setting-result" role="status">
+          {S.settings.sendUnread(unread)}
+        </p>
+      )}
       {reset && (
         <p className="status status-ok-text setting-result" role="status">
           {S.settings.resetDone}

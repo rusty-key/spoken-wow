@@ -31,6 +31,10 @@ Fix the source and regenerate. Never hand-edit the output.
   a change to a translation or to the keys of `Locale/enUS.lua`.
 - `addons/Spoken/Data/Dungeons.lua` comes from `pipelines/lib/dungeons.json` (`make dungeons`).
 - `addons/SpokenPlacesAudio/Data/Sounds.lua` is the pack's lookup table (`make places-lookup`).
+- `addons/Spoken_Bosses/Data/Cameras.lua` holds the lens and the model file of each display, read from the
+  Forever tables (`make bosses-cameras`), and `Data/CameraNudges.lua` is made from the camera edits saved in
+  the game by `/spokenbosscam` (`make bosses-nudges`). The game frames each boss itself; a change to how it
+  does changes what every nudge means: see [BOSSES.md](BOSSES.md).
 - `addons/SpokenPlacesAudio/Sounds/` and `build/places/<lang>/` are assembled by `make places-sounds`
   from the live takes. They are not a store.
 
@@ -72,7 +76,6 @@ make lint                 # what CI gates on
   `addons/Spoken_Places/Audio.lua`. That is a format number, unrelated to either `.toc` version.
   Bump it only when the pack's data shape changes.
 - `make places-full-release` chains sync, pull-live, package-audio and the upload, and asks
-  before uploading. English's CurseForge zip also carries the bosses pack (Spoken Audio: Places
-  and Bosses), so an English run builds that first; GitHub's stays Places only. See
-  [VOICE.md](VOICE.md).
-- `scripts/places/release.sh` uploads the English pack, or one language's pack with `--lang`.
+  before uploading. See [VOICE.md](VOICE.md).
+- `scripts/places/release.sh` uploads the English pack, or one language's pack with `--lang`, and
+  the bosses' pack with `--section=bosses`.

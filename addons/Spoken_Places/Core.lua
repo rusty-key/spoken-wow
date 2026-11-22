@@ -53,7 +53,7 @@ local defaults = {
 	autoplay = true,
 	autoplaySubzones = true,
 	-- On, because the game announces a discovery once per character: off, a character who
-	-- explored before installing hears nothing there, and Forget Places Heard reads nothing again.
+	-- explored before installing hears nothing there, and Forget Visited Places reads nothing again.
 	-- A new character hears its zone right after its valley at login, and a place it has heard,
 	-- from the Play button too, is not read again when the game announces its discovery.
 	autoplayExplored = true,
@@ -865,7 +865,7 @@ local function CmdStatus()
 	if pack then
 		SpokenPlaces:Print("voice pack: %s -- %s", pack.addon, SpokenPlaces:GetAudioPackLabel(pack))
 	else
-		SpokenPlaces:Print("|cffffcc00no voice pack installed|r -- install Spoken Audio: Places and Bosses to hear the lore")
+		SpokenPlaces:Print("|cffffcc00no voice pack installed|r -- install Spoken Audio: Places to hear the lore")
 	end
 
 	if SpokenPlaces:Get("debug") then
@@ -927,7 +927,7 @@ local function CmdAudioPack(arg)
 		-- Named by CurseForge project, not by folder: a player with the pre-rename pack has a
 		-- ZoneLoreAudio folder, and saying that name sends them looking for a project that no
 		-- longer exists.
-		SpokenPlaces:Print("  install Spoken Audio: Places and Bosses alongside Spoken Places")
+		SpokenPlaces:Print("  install Spoken Audio: Places alongside Spoken Places")
 		return
 	end
 

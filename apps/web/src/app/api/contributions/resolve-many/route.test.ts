@@ -79,6 +79,38 @@ describe("POST /api/contributions/resolve-many", () => {
     expect(statuses.map((row) => row.status)).toEqual(["rejected", "rejected"]);
   });
 
+  it("records one reason on every row a bulk reject landed on", async () => {
+    const { rows } = await asSystem.query<{ id: number }>(
+      `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip")
+       values ('readables', '3', 'raw', $2, 'Words.', $1), ('readables', '4', 'raw', $3, 'More.', $1)
+       returning "id"`,
+      [ip, `${dedup}-reason-a`, `${dedup}-reason-b`],
+    );
+    const ids = rows.map((row) => row.id);
+    expect((await POST(post({ ids, status: "rejected", reason: "Not German" }))).status).toBe(200);
+    const reasons = async () =>
+      (await asSystem.query<{ rejectReason: string | null }>(`select "rejectReason" from "contribution" where "id" = any($1::int[])`, [ids])).rows.map(
+        (row) => row.rejectReason,
+      );
+    expect(await reasons()).toEqual(["Not German", "Not German"]);
+    // Reopening clears them.
+    expect((await POST(post({ ids, status: "new" }))).status).toBe(200);
+    expect(await reasons()).toEqual([null, null]);
+  });
+
+  it("leaves a row decided since the page was loaded as it was", async () => {
+    // A reject, which the route sends straight to the resolve: only the locked status check refuses it.
+    const { rows } = await asSystem.query<{ id: number }>(
+      `insert into "contribution" ("source", "key", "raw", "dedup", "text", "ip", "status")
+       values ('readables', '5', 'raw', $2, 'Words.', $1, 'accepted') returning "id"`,
+      [ip, `${dedup}-decided`],
+    );
+    const { results } = await (await POST(post({ ids: [rows[0].id], status: "rejected" }))).json();
+    expect(results[rows[0].id]).toEqual({ ok: false, error: "Someone decided this line meanwhile; reload to see it." });
+    const { rows: after } = await asSystem.query(`select "status" from "contribution" where "id" = $1`, [rows[0].id]);
+    expect(after[0].status).toBe("accepted");
+  });
+
   describe("accepting readables rows", () => {
     let base: number;
     let lineIds: string[] = [];
@@ -177,10 +209,10 @@ describe("POST /api/contributions/resolve-many", () => {
       expect(await statusOf(known)).toBe("new");
     });
 
-    it("leaves a correction to the Corrections tab", async () => {
+    it("leaves a correction to the changes to lines we already have", async () => {
       const correction = await readablesRow("enUS", `Words won ${base}.`, { book: `Tome ${base}`, number: "1" });
       const { results } = await (await POST(post({ ids: [correction], status: "accepted" }))).json();
-      expect(results[correction]).toMatchObject({ ok: false, error: expect.stringContaining("Corrections tab") });
+      expect(results[correction]).toMatchObject({ ok: false, error: expect.stringContaining("changes to lines we already have") });
       expect(await statusOf(correction)).toBe("new");
     });
 

@@ -49,6 +49,16 @@ soundData = { fileName = THRALL }
 VO.EasterEggs:Apply(soundData)
 Expect("egg without a pack names an addon", soundData.module.METADATA.AddonName, "Spoken_Quests")
 
+soundData = { fileName = THRALL, filePath = "pack-path", language = "deDE" }
+Expect("a German take is not swapped", VO.EasterEggs:Apply(soundData) or soundData.filePath, "pack-path")
+
+-- Saved on with its row hidden: it must not play what the player can no longer turn off.
+local audio = VO.Addon.db.profile.Audio
+audio.VoiceLanguage, audio.FallbackLanguage = "deDE", "none"
+soundData = { fileName = THRALL }
+Expect("no swap without English among the voices", VO.EasterEggs:Apply(soundData), false)
+audio.VoiceLanguage, audio.FallbackLanguage = nil, nil
+
 -- And the swap is actually wired into the resolve, not just callable on its own. Keyed on a
 -- quest file name here only because that is the one PrepareSound can be handed directly.
 VO.DataModules:Register("TestPack", {

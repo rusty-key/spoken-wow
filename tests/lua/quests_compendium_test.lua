@@ -138,6 +138,13 @@ stub.world.playerMapID = 9999
 Tab:Open()
 local panel = Tab.panel
 local page = panel.page
+-- Built detached, out of the game's hook on CreateFrame, the parts' buttons are found only by a
+-- look the window asks for: made with the page, they are there when it first looks.
+local partPlays = 0
+for _, child in ipairs({ page.body.child:GetChildren() }) do
+    if child.moment then partPlays = partPlays + 1 end
+end
+Expect("the parts' Play buttons are made with the page, before any quest is shown", partPlays, 3)
 local function StartedOnlyTicked() return stub.OpenDropdown(panel.filterMenu)[1].checked and true or false end
 Expect("Started Only is on for a profile that never set it", StartedOnlyTicked(), true)
 Expect("Unlock Unstarted Quests is off for a profile that never set it", VO.Addon.db.global.Compendium.UnlockUnfound == true, false)
@@ -258,7 +265,7 @@ local function RowFor(label)
     for _, row in ipairs(rows) do if row.shown ~= false and row.row and row.row.label == label then return row end end
 end
 -- Parts drawn for a style the row is not in now: a row reused from a banner for a line or a
--- quest must not keep the banner's art or a rail.
+-- quest must not keep the banner's art.
 local function Leftovers()
     Shown()
     local out, reused = {}, 0
@@ -269,11 +276,6 @@ local function Leftovers()
                 reused = reused + 1
                 for i, part in ipairs(row.bannerParts) do
                     if part.shown ~= false then table.insert(out, item.label .. " banner part " .. i) end
-                end
-            end
-            for i, rail in ipairs(row.rails or {}) do
-                if rail.shown ~= false and i > (item.style ~= "banner" and item.nest or 0) then
-                    table.insert(out, item.label .. " rail")
                 end
             end
         end
@@ -303,22 +305,21 @@ Expect("...a banner across the list, its name as it is", RowFor("Eastern Kingdom
     and RowFor("Eastern Kingdoms").label.text, "Eastern Kingdoms")
 Expect("...counting the quests completed out of all", RowFor("Eastern Kingdoms").count.text:match("^1/%d+$") ~= nil, true)
 local banner = RowFor("Eastern Kingdoms")
-Expect("...drawn as the objective tracker's campaign header, the Alliance's for an Alliance character",
-    banner.headMiddle:IsShown() and banner.headMiddle.texture, "file:Objective-Header-CampaignAlliance")
-Expect("...without the crest at its left end: its middle from past it", banner.headMiddle.texCoord[1], 64 / 274)
-Expect("...its left end the right one turned round", banner.headLeft.texCoord[1] == banner.headRight.texCoord[2]
-    and banner.headLeft.texCoord[2] == banner.headRight.texCoord[1] and banner.headLeft.texCoord[1] > banner.headLeft.texCoord[2]
+Expect("...drawn as the professions window's header bar", banner.headMiddle:IsShown() and banner.headMiddle.texture,
+    [[Interface\AddOns\Spoken\Textures\HeaderBar]])
+Expect("...its middle between the rounded ends, 24 texels of 256 each", banner.headMiddle.texCoord[1] .. " " .. banner.headMiddle.texCoord[2],
+    24 / 256 .. " " .. 232 / 256)
+Expect("...its ends the bar's own, not turned round", banner.headLeft.texCoord[1] == 0 and banner.headLeft.texCoord[2] == 24 / 256
+    and banner.headRight.texCoord[1] == 232 / 256 and banner.headRight.texCoord[2] == 1
     and banner.headLeft:IsShown() and banner.headRight:IsShown(), true)
-Expect("...the quest log's collapse on it while open",
-    SpokenEnv.Version.Variant == "era" and banner.toggle.texture or banner.toggle.atlas,
-    SpokenEnv.Version.Variant == "era" and [[Interface\Buttons\UI-MinusButton-Up]] or "questlog-icon-shrink")
+Expect("...the ends as wide as the bar's rounding at the row's height: 24 of 64 texels", banner.headLeft.width .. " " .. banner.headLeft.height,
+    28 * 24 / 64 .. " 28")
+Expect("...a minus on it while open, white art in the bar's gold", banner.toggle.texture .. "|" .. table.concat(banner.toggle.vertexColor, ","),
+    [[Interface\AddOns\Spoken\Textures\HeaderMinus]] .. "|1,0.82,0")
 Expect("...its numbers ending in the column a zone line's do", banner.count.anchor.point .. " " .. banner.count.anchor.x .. "|"
     .. RowFor("Elwynn Forest").count.anchor.point .. " " .. RowFor("Elwynn Forest").count.anchor.x, "RIGHT -12|RIGHT -12")
-faction = "Horde"
-Tab:Refresh()
-Expect("...the Horde's for a Horde character", RowFor("Eastern Kingdoms").headMiddle.texture, "file:Objective-Header-CampaignHorde")
-faction = "Alliance"
-Tab:Refresh()
+Expect("...a zone's numbers 2 over its line's middle, the name's foot, its name 1 over, from the numbers' height",
+    RowFor("Elwynn Forest").count.anchor.y .. " " .. RowFor("Elwynn Forest").label.anchor.y, "2 -1")
 Expect("...each zone a line inside it, with no picture or bar", RowFor("Elwynn Forest").row.style == "group" and RowFor("Elwynn Forest").row.nest, 0)
 Expect("...then a banner each for the quests no zone holds: Classes, Professions, Holidays and Events, Other",
     list:find("|Classes|Professions|Holidays and Events|Other$") ~= nil and not Has(list, "Mage")
@@ -330,8 +331,8 @@ Expect("...with no picture or bar of its own: its picture is on its page",
     elwynn.icon == nil and elwynn.track == nil and elwynn.fill == nil and elwynn.face == nil, true)
 Expect("...a plus or minus before its name", elwynn.toggle:IsShown(), true)
 Expect("...a step in from the continent's banner", elwynn.indent, 20.4)
-Expect("...chosen, the list's own light full with its gold edge", elwynn.selected and elwynn.wash:IsShown()
-    and elwynn.wash.alpha == 1 and elwynn.edge:IsShown(), true)
+Expect("...chosen, a yellow light of its own over it, not the pointer's white, and no gold edge",
+    elwynn.selected and elwynn.chosenWash:IsShown() and not elwynn.wash:IsShown() and not elwynn.edge:IsShown(), true)
 local elwynnTotal = tonumber(elwynn.count.text:match("/(%d+)"))
 Expect("...the share completed after them", elwynn.count.text, "1/" .. elwynnTotal .. " · " .. math.floor(100 / elwynnTotal) .. "%")
 _G.BreakUpLargeNumbers = function(n) return "<" .. n .. ">" end
@@ -347,7 +348,6 @@ Expect("...its page saying where it is and counting its quests, on one line",
 local city = RowFor("Stormwind City")
 Expect("a city is a line inside its zone's line", city ~= nil and city.row.style == "group" and city.row.nest, 1)
 Expect("...indented under it, 16 further in", city.indent - elwynn.indent, 16)
-Expect("...with the line down the open zone's contents beside it", city.rails[1]:IsShown() and city.rails[1].anchor.x, 32.4)
 Expect("...not chosen or under the pointer, no light on it", city.wash:IsShown(), false)
 city.scripts.OnEnter(city)
 Expect("...under the pointer, the list's light over it", city.wash:IsShown(), true)
@@ -542,9 +542,10 @@ RowOf(CANDLES).scripts.OnClick(RowOf(CANDLES))
 Expect("its page: its title", page.title.text, "Kobold Candles")
 Expect("...where it is, then the quest mark and In progress", page.sub.text.text,
     "In Elwynn Forest · |TInterface\\GossipFrame\\ActiveQuestIcon:0|t " .. L.QUEST_IN_PROGRESS)
-Expect("...and its offer alone: no part for its progress", #page.body.lastParts .. " "
-    .. page.body.lastParts[1].heading .. " "
-    .. tostring((PageWords() or ""):find("Did you gather those candles yet?", 1, true)), "1 " .. L.QUEST_PART_ACCEPT .. " nil")
+Expect("...its offer, then its progress", #page.body.lastParts .. " "
+    .. page.body.lastParts[1].heading .. " " .. page.body.lastParts[2].heading .. " "
+    .. tostring((PageWords() or ""):find(SpokenQuestsText[CANDLES].progress, 1, true) ~= nil),
+    "2 " .. L.QUEST_PART_ACCEPT .. " " .. L.QUEST_PART_PROGRESS .. " true")
 Expect("...not the hand-in before it is completed: it tells how the quest ends",
     (PageWords() or ""):find("Thanks for the candles", 1, true) == nil
     and page.body.lastParts[#page.body.lastParts].heading ~= L.QUEST_PART_COMPLETE, true)
@@ -978,7 +979,7 @@ Spoken:StopAll()
 VO.Player:PlayNow({ event = VO.Enums.SoundEvent.QuestAccept, questID = NECKLACE })
 play.scripts.OnClick(play)
 Expect("a part played while another quest's line speaks waits behind it", Names(), "85-accept,7-accept")
-Expect("...its Play still Play", play.pageState, "play")
+Expect("...its Play showing the plus while it waits", play.pageState, "queued")
 play.scripts.OnClick(play)
 Expect("...a second click leaving it where it is", Names(), "85-accept,7-accept")
 Spoken:Pause()
@@ -1020,6 +1021,46 @@ do
         page.body.lastParts[#page.body.lastParts].text, "Pack words.")
     Expect("...leaving the shipped words alone, which matching reads", SpokenQuestsText[KOBOLDS].complete, nil)
     testPack.TextByFileName = nil
+    -- A Spanish client, its Spanish pack with no recording of a line but its words: those, not
+    -- the English.
+    stub.SetLocale("esMX")
+    local packLanguage = testPack.METADATA.Language
+    testPack.METADATA.Language = "esMX"
+    testPack.LineTextByFileName = { ["60-accept"] = "Hola, $N." }
+    Click("Kobold Candles")
+    Expect("a line no pack recorded shows the words its pack in the client's language carries",
+        PartOf(L.QUEST_PART_ACCEPT).text, "Hola, " .. UnitName("player") .. ".")
+    testPack.LineTextByFileName = nil
+    Click("Kobold Candles")
+    Expect("...and the English where that pack has none", PartOf(L.QUEST_PART_ACCEPT).text ~= nil
+        and PartOf(L.QUEST_PART_ACCEPT).text:find("Hola", 1, true) == nil, true)
+    -- Classic Era's client, as here, has no C_QuestLog.GetTitleForQuestID to ask for a quest it
+    -- has not shown: the Spanish pack's title, not the English.
+    local UNSEEN = 424242
+    testPack.TitleByQuestID = { [UNSEEN] = "Un almuerzo gratis" }
+    Expect("a quest this client never showed is titled by its pack in the client's language",
+        Tab:Title(UNSEEN), "Un almuerzo gratis")
+    -- The client's title, kept from its window, does not replace the pack's in the list.
+    local shownQuest = stub.world.questID
+    stub.world.questID = CANDLES
+    testPack.TitleByQuestID = { [CANDLES] = "Velas kóbold" }
+    Tab:Title(CANDLES)
+    Tab:Keep("accept", nil, "Velas del cliente")
+    Expect("...still the pack's once the quest's window has shown the client's", Tab:Title(CANDLES), "Velas kóbold")
+    testPack.TitleByQuestID = nil
+    Tab:Keep("accept", nil, "Velas del cliente")
+    VO.Addon.db.global.CompendiumText.esMX[CANDLES] = nil
+    stub.world.questID = shownQuest
+    testPack.METADATA.Language = packLanguage
+    stub.SetLocale("enUS")
+    -- Polish chosen as the Text Language: a text pack's words (Spoken's Texts.lua), where no pack in
+    -- Polish voices the part.
+    H.ReadText("plPL")
+    Spoken:RegisterText("plPL", "quests", { lines = { ["q:7:complete"] = "Polskie słowa, $N." } })
+    Click("Kobold Camp Cleanup")
+    Expect("Polish chosen, a text pack's words show on the part, the player named",
+        page.body.lastParts[#page.body.lastParts].text, "Polskie słowa, " .. UnitName("player") .. ".")
+    H.ReadText(nil)
     -- Two wordings of one moment: the page follows the one it shows, as Play does.
     local acceptWords = SpokenQuestsText[KOBOLDS].accept
     SpokenQuestsText[KOBOLDS].accept = "Back again."
@@ -1037,12 +1078,12 @@ do
     testPack.SoundLengthLookupByFileName["7-accept-w1"] = nil
     SpokenQuestsText[KOBOLDS].accept = acceptWords
     SpokenQuestsText[KOBOLDS].complete = words
-    local handInWords = SpokenQuestsText[CANDLES].complete
-    SpokenQuestsText[CANDLES].complete = nil
+    local handInWords, progressWords = SpokenQuestsText[CANDLES].complete, SpokenQuestsText[CANDLES].progress
+    SpokenQuestsText[CANDLES].complete, SpokenQuestsText[CANDLES].progress = nil, nil
     Click("Kobold Candles")
     Expect("a part with no words known that no pack voices is left out", #page.body.lastParts .. " "
         .. page.body.lastParts[1].heading, "1 " .. L.QUEST_PART_ACCEPT)
-    SpokenQuestsText[CANDLES].complete = handInWords
+    SpokenQuestsText[CANDLES].complete, SpokenQuestsText[CANDLES].progress = handInWords, progressWords
     -- A quest Forever has that the corpus has no lines for says nothing is written.
     local candles = SpokenQuestsText[CANDLES]
     SpokenQuestsText[CANDLES] = nil
@@ -1107,25 +1148,32 @@ Expect("...on its page, the list keeping the filter and leaving its row out", pa
 _, choices = Menu()
 choices[2].func()
 Expect("...off, everything again", Has(Shown(), "Kobold Candles") and Has(Shown(), "Westfall") and Tab:Has(CANDLES), true)
--- The page has no progress part, so a quest a pack voices only in its progress counts as unvoiced.
+-- A quest a pack voices only in its progress counts as voiced.
 do
     testPack.SoundLengthLookupByFileName["60-progress"] = 2
     testPack.NPCIDLookupByQuestID[CANDLES] = MCBRIDE
     Expect("(a pack voicing Kobold Candles' progress)",
         VO.DataModules:PrepareSound({ event = VO.Enums.SoundEvent.QuestProgress, questID = CANDLES }) and true, true)
+    -- What the packs voice is read once per set of packs; a pack gaining a line in place is not one.
+    local order = VO.Language.ResolutionOrder
+    VO.Language.ResolutionOrder = function() return { "enUS", "progress-test" } end
+    Tab:Refresh()
     _, choices = Menu()
     choices[2].func()
-    Expect("a quest a pack voices only in its progress is left out by Voiced Only", Has(Shown(), "Kobold Candles"), false)
+    Expect("a quest a pack voices only in its progress is listed by Voiced Only", Has(Shown(), "Kobold Candles"), true)
     _, choices = Menu()
     choices[2].func()
     local shift = _G.IsShiftKeyDown
     _G.IsShiftKeyDown = function() return true end
     Spoken:StopAll()
     Click("Kobold Candles")
-    Expect("...and shift-click on its row plays nothing", Spoken:GetQueueSize(), 0)
+    Expect("...and shift-click on its row plays its progress", Spoken:GetQueueSize(), 1)
     _G.IsShiftKeyDown = shift
+    Spoken:StopAll()
     testPack.SoundLengthLookupByFileName["60-progress"] = nil
     testPack.NPCIDLookupByQuestID[CANDLES] = nil
+    VO.Language.ResolutionOrder = order
+    Tab:Refresh()
 end
 -- A switch in the filter menu leaving out the chosen row tells the tab (onHidden), which says what
 -- the page shows in its place.
@@ -1391,6 +1439,16 @@ Expect("...another character's name where the player's was", (PageWords() or "")
 stub.world.playerName = "Tester"
 local kept = VO.Addon.db.global.CompendiumText
 Expect("...kept by language", kept.deDE[KOBOLDS] ~= nil and kept.enUS == nil, true)
+stub.world.questID = CANDLES
+stub.world.title = "Koboldkerzen"
+stub.world.progressText = "Habt Ihr die Kerzen schon gesammelt?"
+stub.FireEvent("QUEST_PROGRESS")
+stub.world.questID, stub.world.progressText = 0, ""
+Tab:Refresh()
+Click("Koboldkerzen")
+Expect("the progress the window showed, over the English",
+    (PageWords() or ""):find("Habt Ihr die Kerzen schon gesammelt?", 1, true) ~= nil
+    and (PageWords() or ""):find(SpokenQuestsText[CANDLES].progress, 1, true) == nil, true)
 
 -- An item starter keeps its real icon after the item has left the player's bags.
 do
@@ -1473,13 +1531,13 @@ end
 _G.C_Texture = { GetAtlasInfo = function() return nil end }
 Tab:Open(KOBOLDS)
 local plainBanner, plainCard = RowFor("Eastern Kingdoms"), RowFor("Elwynn Forest")
-Expect("with no campaign header, a banner is a dark band with gold edges", plainBanner.bannerFill:IsShown()
-    and plainBanner.headMiddle:IsShown(), false)
-Expect("...its plus or minus the older buttons", plainBanner.toggle.texture, [[Interface\Buttons\UI-MinusButton-Up]])
+Expect("with no atlases, a banner is still the shipped bar", plainBanner.headMiddle:IsShown(), true)
+Expect("...not a dark band", plainBanner.bannerFill:IsShown(), false)
+Expect("...its minus the shipped one", plainBanner.toggle.texture, [[Interface\AddOns\Spoken\Textures\HeaderMinus]])
 Click("Elwynn Forest")
 plainCard = RowFor("Elwynn Forest")
-Expect("...chosen, the list's own light full with its gold edge", plainCard.selected and plainCard.wash:IsShown()
-    and plainCard.wash.alpha == 1 and plainCard.edge:IsShown(), true)
+Expect("...chosen, a yellow light of its own, not the pointer's", plainCard.selected and plainCard.chosenWash:IsShown()
+    and not plainCard.wash:IsShown(), true)
 _G.C_Texture = { GetAtlasInfo = stub.ListAtlas }
 
 ---------------------------------------------------------------- the page in EllesmereUI's look

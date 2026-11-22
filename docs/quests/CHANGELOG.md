@@ -8,6 +8,8 @@ carries that version. The heading says which.
 
 ## Unreleased
 
+- **A language's packs carry the words of lines not voiced yet,** so the Compendium shows them in
+  that language rather than in English. *([rusty-key](https://github.com/rusty-key))*
 - **The quest packs load faster after login.** Alliance, Horde and Shared no longer carry the
   gossip tables, about 4 MB of Lua each that only the Gossip pack's lines use.
   *([Merryfett](https://github.com/Merryfett))*

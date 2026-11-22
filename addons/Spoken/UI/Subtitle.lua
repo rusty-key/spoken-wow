@@ -335,6 +335,7 @@ function Subtitle:Build()
     self.heldDot:SetText("·")
     self.moreDot:SetText("·")
     self.moreHover = Actions.WaitingHover(self.more)
+    self.morePulse = Actions.Pulse(self.more)
     self.waiting = 0
 
     -- Clips the words, so a line gliding past an edge is cut there, not drawn over the name row or
@@ -382,16 +383,26 @@ function Subtitle:RowHeight()
     return math.max(Pictured() and PICTURE or 0, self.title:GetStringHeight() or 0)
 end
 
+--- Whether "+N" shows: with Show Name off, only behind a stop.
+function Subtitle:CountShown(paused)
+    return (self:NameShown() or paused) and (self.waiting or 0) > 0
+end
+
+function Subtitle:CountWidth()
+    return LABEL_GAP + (self.moreDot:GetStringWidth() or 0) + LABEL_GAP + (self.more:GetStringWidth() or 0)
+end
+
 --- The row's visible width, so it centres on what shows. The title is cut to keep it within WIDTH.
 function Subtitle:RowWidth(paused)
-    -- Show Name off still shows Stopped and why the line waits: Wanted keeps such a line on screen
-    -- to say why it is not being read.
+    -- Show Name off still shows Stopped, why the line waits and, behind a stop, the count: each says
+    -- why nothing is being read.
     if not self:NameShown() then
         local width = paused and (self.pausedLabel:GetStringWidth() or 0) or 0
         if self.heldText then
             if paused then width = width + LABEL_GAP + (self.heldDot:GetStringWidth() or 0) + LABEL_GAP end
             width = width + (self.held:GetStringWidth() or 0)
         end
+        if self:CountShown(paused) then width = width + self:CountWidth() end
         return width
     end
     local start = (Pictured() and PICTURE + PICTURE_GAP or 0) + (self.title:GetStringWidth() or 0)
@@ -401,9 +412,7 @@ function Subtitle:RowWidth(paused)
     if self.heldText then
         more = LABEL_GAP + (self.heldDot:GetStringWidth() or 0) + LABEL_GAP + (self.held:GetStringWidth() or 0)
     end
-    if (self.waiting or 0) > 0 then
-        more = more + LABEL_GAP + (self.moreDot:GetStringWidth() or 0) + LABEL_GAP + (self.more:GetStringWidth() or 0)
-    end
+    if self:CountShown(paused) then more = more + self:CountWidth() end
     if self.labelText then
         local lead = LABEL_GAP + (self.dot:GetStringWidth() or 0) + LABEL_GAP
         self.label:SetWidth(0)
@@ -437,10 +446,10 @@ function Subtitle:PlaceRow(left)
         self.pausedLabel:SetPoint("TOPLEFT", self.frame, "TOP", left, textY)
     end
     -- Then why it waits and the count, each after a dot; with Show Name off and nothing before it,
-    -- why it waits starts the row, and there is no count.
+    -- why it waits starts the row, and the count shows only behind a stop.
     local last = self.shownPaused and self.pausedLabel or (named and (self.labelText and self.label or self.title))
     local parts = { { self.heldDot, self.held, self.heldText ~= nil },
-        { self.moreDot, self.more, named and (self.waiting or 0) > 0 } }
+        { self.moreDot, self.more, self:CountShown(self.shownPaused) } }
     for _, part in ipairs(parts) do
         local dot, text, shown = part[1], part[2], part[3]
         dot:SetShown(shown and last and true or false)
@@ -505,6 +514,30 @@ function Subtitle:Line(index)
     return line
 end
 
+-- A wrap can put Chinese punctuation on the next row, while the transcript keeps it with the
+-- previous character. Match the page's tokens to visible characters before row breaks change them.
+local function WordSpans(text, rows)
+    local visible, offset = {}, 0
+    for _, row in ipairs(rows) do
+        for char in row.text:gmatch(UTF8_CHAR) do
+            if not char:match("^%s$") then visible[#visible + 1] = { char = char, at = offset } end
+            offset = offset + 1
+        end
+    end
+    local spans, nextChar = {}, 1
+    local words = Transcript:Split(text)
+    for index, word in ipairs(words) do
+        local first = visible[nextChar] and visible[nextChar].at
+        for char in word.text:gmatch(UTF8_CHAR) do
+            if not visible[nextChar] or visible[nextChar].char ~= char then return nil end
+            nextChar = nextChar + 1
+        end
+        spans[index] = { first, visible[nextChar - 1].at + 1 }
+    end
+    if nextChar <= #visible then return nil end
+    return spans, offset
+end
+
 -- Each line gets a slot of its finished width, centred, and its letters are typed in from
 -- the left of it: the text fills in without re-centring or wobbling as it grows.
 function Subtitle:Layout(text)
@@ -529,6 +562,7 @@ function Subtitle:Layout(text)
         line:SetWidth(width + 2)
         line:SetText("")
     end
+    self.wordSpans, self.rowCharacters = WordSpans(text, self.rows)
     for index = #self.rows + 1, #self.lines do
         self.lines[index]:SetText("")
         self.lines[index]:Hide()
@@ -633,6 +667,11 @@ end
 --- Where the page's `n`th word starts and ends among the rows' characters (the rows drop the
 --- space at each wrap, so this counts as Reveal does): what is typed before it, and through it.
 function Subtitle:CharsSpan(n)
+    if self.wordSpans then
+        local span = self.wordSpans[n]
+        if span then return span[1], span[2] end
+        return self.rowCharacters, self.rowCharacters
+    end
     local total = 0
     for _, row in ipairs(self.rows or {}) do
         local words = row.tokens
@@ -825,8 +864,14 @@ function Subtitle:Render()
     end
     local page = self.pages[index]
     if self.sample or not Config().Typewriter then
-        self:Follow((elapsed - page.start) / math.max(.5, page.length) * page.count)
-        self:Reveal(page.count, self:LitWord(page, elapsed))
+        local lit = self:LitWord(page, elapsed)
+        local follow = (elapsed - page.start) / math.max(.5, page.length) * page.count
+        if Rolling() and lit then
+            local first, last = self:CharsSpan(lit)
+            if last > first then follow = first end
+        end
+        self:Follow(follow)
+        self:Reveal(page.count, lit)
         return
     end
     -- LoreTeller's pace: a little ahead of the voice, so each page is whole a moment before the
@@ -949,7 +994,7 @@ end
 function Subtitle:BuildControls()
     local frame = self.frame
     local controls = CreateFrame("Frame", nil, frame)
-    controls:SetSize(CONTROL_SIZE * 3 + CONTROL_GAP * 2, CONTROL_SIZE)
+    controls:SetSize(CONTROL_SIZE * 4 + CONTROL_GAP * 3, CONTROL_SIZE)
     controls:SetFrameLevel(frame:GetFrameLevel() + 2)
     controls:SetAlpha(0)
     controls:Hide()
@@ -958,11 +1003,15 @@ function Subtitle:BuildControls()
     local pause = Actions.StopButton(controls, nil, function() self:UpdatePause() end)
     pause:SetPoint("LEFT", controls, "LEFT", 0, 0)
     self.pause = pause
-    self:UpdatePause()
+
+    local previous = Actions.PreviousButton(controls)
+    previous:SetPoint("LEFT", pause, "RIGHT", CONTROL_GAP, 0)
+    self.previous = previous
 
     local skip = Actions.SkipButton(controls)
-    skip:SetPoint("LEFT", pause, "RIGHT", CONTROL_GAP, 0)
+    skip:SetPoint("LEFT", previous, "RIGHT", CONTROL_GAP, 0)
     self.skip = skip
+    self:UpdatePause()
 
     local speed = Actions.SpeedButton(controls)
     speed:SetPoint("LEFT", skip, "RIGHT", CONTROL_GAP, 0)
@@ -997,7 +1046,7 @@ end
 
 function Subtitle:UpdatePause()
     Actions.SetPlayGlyph(self.pause, Actions.HeadState())
-    Actions.SetPausable({ self.pause, self.skip })
+    Actions.SetPausable({ self.pause, self.previous, self.skip })
 end
 
 -- Locked, the subtitle lets clicks through to the world but still knows the pointer is over
@@ -1058,6 +1107,7 @@ function Subtitle:Tick(elapsed)
     if self.wanted and self.clip and StaticPortrait:Resolved() then self:ConfigurePicture(self.clip) end
     self:ShowProgress()
     self:Animate(elapsed)
+    self.morePulse:Step(elapsed)
     self:FadeControls(elapsed)
     self:TakeWheel()
     self.poll = (self.poll or 0) + elapsed
@@ -1098,10 +1148,14 @@ function Subtitle:CountWaiting()
     local waiting = self:Waiting()
     local held = self:Held()
     if waiting ~= self.waiting or held ~= self.heldText then
+        -- The count swells when it grew behind a stop. Not from Prepare: a new line on screen is
+        -- not one queued.
+        if waiting > (self.waiting or 0) and SoundQueue:IsPaused() then self.morePulse:Start() end
         -- With Show Name off the row is there only while there is something to say, so the words
         -- move for it.
-        local moves = held ~= self.heldText and not self:NameShown()
+        local counted = self:CountShown(self.shownPaused)
         self:SetWaiting(waiting)
+        local moves = (held ~= self.heldText or counted ~= self:CountShown(self.shownPaused)) and not self:NameShown()
         self:SetHeld(held)
         if moves and self.page then self:Relayout() else self:Fit() end
     end

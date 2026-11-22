@@ -12,7 +12,9 @@
  * a lexicon change with no before or after, a text edit with no previous version -- so
  * every field a backfill could not supply is optional.
  */
+import type { Lang } from "@/lib/lang";
 import type { Capability } from "@/lib/permissions";
+import type { Branch, Settings } from "@/lib/teams/found";
 
 export type ApiAudit = { tokenId: string; batchId?: string };
 
@@ -50,7 +52,7 @@ export type ActivityDetail = {
   /** `groupId` when the take was one of several cleared in one click; the page folds it there. */
   "take.acked": { groupId?: string };
   "marks.cleared": { groupId: string; count: number };
-  "batch.queued": { batchId: string; label?: string | null; count: number };
+  "batch.queued": { batchId: string; label?: string | null; count: number; apiTokenId?: string };
   /** `groupId` when one Stop stopped several batches; the page folds it under that press. */
   "batch.stopped": {
     batchId?: string;
@@ -82,14 +84,16 @@ export type ActivityDetail = {
   "text.restored": { version: number; from?: number | null };
   /** An undone first translation: the line has no current version in the language any more. */
   "text.retired": { version: number };
+  /** A team's language's player words, each reader's as "name / race"; null where it has none. */
+  "text.player_words": { before: string | null; after: string | null };
   "name.edited": { version: number; name?: string; note?: string | null } & ApiAuditDetail;
   "name.restored": { version: number; from?: number | null };
   "name.retired": { version: number };
   "lexicon.added": { after?: string };
   "lexicon.edited": { before?: string; after?: string };
   "lexicon.removed": { before?: string };
-  "override.set": { text: string; before?: string | null; contribution?: number };
-  "override.cleared": { before?: string | null };
+  "override.set": { text: string; before?: string | null; contribution?: number } & ApiAuditDetail;
+  "override.cleared": { before?: string | null } & ApiAuditDetail;
   "ignore.set": { reason?: string | null };
   "ignore.cleared": Record<string, never>;
   "setting.changed": { setting: string };
@@ -128,6 +132,7 @@ export type ActivityDetail = {
     npcId: number;
     from: { npcName?: string | null; npcType: string; npcId: number };
   };
+  "npc.direction": { npcName?: string | null; direction?: string | null };
   "type.changed": {
     action: string;
     gender?: string | null;
@@ -140,11 +145,36 @@ export type ActivityDetail = {
   // Admin.
   "grant.added": { capability: Capability };
   "grant.removed": { capability: Capability };
+  /** An invite to an address with no account; the subject is the invite id. */
+  "invite.sent": { email: string; capabilities: Capability[] };
+  "invite.resent": { email: string };
+  "invite.revoked": { email: string };
+  /** Actor: the person who accepted. The grants it gave are `grant.added`, by the inviter. */
+  "invite.accepted": { email: string; capabilities: Capability[] };
   "language.toggled": { enabled: boolean };
+  "language.added": { name: string };
   "team.created": { slug: string };
   "team.renamed": { name: string };
-  /** A language handed to another team, by team slug. */
+  /** Filed under no team, since the team is gone. */
+  /** `langs` and `counts`, its rows by table, since any team could be deleted (migration 0124). */
+  "team.deleted": {
+    slug: string;
+    members: { email: string; lang: Lang; capability: Capability }[];
+    langs?: Lang[];
+    counts?: Record<string, number>;
+    /** Its open voice reports, closed: their takes went with it. */
+    closedReports?: number;
+  };
+  /** Whether the team must keep its audio in its own bucket (docs/platform/STORAGE.md). */
+  "team.own_storage": { ownStorage: boolean };
+  /** Whether the team's releases skip review and its packs go unlabelled. */
+  "team.official": { official: boolean };
+  /** A language handed to another team, by team slug. Only older rows: a language is no longer handed over. */
   "team.language_moved": { from: string; to: string };
+  /** A team made beside the team `beside`, by slug; filed under the new team. Only older rows. */
+  "team.second_in_language": { slug: string; beside: string; settings: Settings };
+  /** A team joined a language that had teams; `from` is the slug of the team it started from. Filed under the new team. */
+  "team.joined_language": { slug: string; from: string | null };
   "contribution.resolved": { status: string; key?: string; correction?: boolean };
   "contribution.edited": { field: string; value?: unknown };
   "report.resolved": { status: string; category?: string };
@@ -153,7 +183,13 @@ export type ActivityDetail = {
 
   // Releases.
   "release.started": { section: string };
-  "release.finished": { section: string; state: "done" | "unchanged" | "failed"; version?: string };
+  /** `awaiting_review`: a team that is not official staged it, for a site owner to review. */
+  "release.finished": { section: string; state: "done" | "unchanged" | "failed" | "awaiting_review"; version?: string };
+  /** A site owner's review of a team's staged release, filed under the team; the subject is the run id. */
+  "release.approved": { section: string; version?: string };
+  "release.rejected": { section: string; reason: string; version?: string };
+  /** A site owner took a team's pack off the channel; the subject is the delist run's id. */
+  "release.delisted": { section: string };
 
   // Community packs: every language's, the subject is the pack id.
   "pack.submitted": PackSubmissionDetail;
@@ -164,6 +200,12 @@ export type ActivityDetail = {
   "pack.unlisted": { packId: string };
   /** `ownerId` null when the admin left the pack with nobody. */
   "pack.owner": { packId: string; ownerId: string | null };
+  // Team requests: site-wide, the subject is the request id.
+  "request.made": { requestId: string; lang: string; teamName: string; newLanguage: boolean };
+  "request.withdrawn": { requestId: string; lang: string };
+  /** `branch` is a Branch, or on older rows "hand-over" or "second-team". */
+  "request.approved": { requestId: string; lang: string; slug: string; branch: Branch | "hand-over" | "second-team" };
+  "request.rejected": { requestId: string; lang: string; reason?: string };
 
   // Accounts, through better-auth's admin plugin rather than this app's routes. Every
   // language's, so a global admin's alone to read: see `global` in store.ts.
@@ -227,10 +269,12 @@ const CATEGORY_OF: Record<string, Category> = {
   sample: "voices",
   npc: "voices",
   grant: "admin",
+  invite: "admin",
   language: "admin",
   team: "admin",
   release: "admin",
   pack: "admin",
+  request: "admin",
   contribution: "admin",
   report: "admin",
   user: "admin",

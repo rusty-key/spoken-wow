@@ -7,7 +7,7 @@
 
 local _, SpokenPlaces = ...
 
-if GetLocale() ~= "frFR" then
+if not Spoken:InterfaceIn("frFR") then
 	return
 end
 
@@ -28,10 +28,6 @@ L.OPT_AUTOPLAY_GAP = "Relire après"
 L.OPT_GAP_1D = "1 jour"
 L.OPT_GAP_1W = "1 semaine"
 L.OPT_GAP_1MO = "1 mois"
-L.OPT_LANG_RELOAD = "Tapez /reload pour passer à cette langue."
-L.OPT_LANGUAGE = "Langue du texte"
-L.OPT_LANG_AUTO_FMT = "Auto (%1$s)"
-L.OPT_LANG_SET_FMT = "Les récits seront en %1$s après le rechargement de l'interface."
 L.OPT_LANG_PROFILE_FMT = "Ce profil lit les récits en %1$s. Tapez /reload pour changer."
 L.OPT_REPORT_PROBLEM = "Signaler un problème"
 L.MENU_LORE_WINDOW = "Ouvrir le Compendium d'Azeroth"
@@ -64,7 +60,7 @@ L.CMD_VOICE = "  /spp voice      -- Lire les récits à voix haute, activé ou n
 L.CMD_AUTOPLAY = "  /spp autoplay   -- Lire automatiquement, activé ou non"
 L.CMD_AUDIO = "  /spp audio      -- les packs de voix installés"
 L.CMD_LANG = "  /spp lang       -- Langue du texte : liste, ou change avec /spp lang <code> ou auto"
-L.CMD_FORGET = "  /spp forget     -- Oublier les lieux entendus"
+L.CMD_FORGET = "  /spp forget     -- Oublier les lieux visités"
 
 
 -- Settings page
@@ -80,15 +76,16 @@ L.REASON_MAP_PANEL = "Activez l'option Récit à côté de la carte pour utilise
 L.OPT_DOWNLOAD_ADDRESS = "Copiez cette adresse dans votre navigateur pour télécharger le pack de voix."
 
 -- Reading history
-L.OPT_FORGET_PLACES = "Oublier les lieux entendus"
+L.OPT_FORGET_PLACES = "Oublier les lieux visités"
 L.OPT_FORGET_PLACES_DONE = "La liste des lieux entendus par ce personnage est effacée."
+L.OPT_FORGET_PLACES_CONFIRM = "Vous oublierez %d lieux."
+L.OPT_FORGET_PLACES_CONFIRM_ONE = "Vous oublierez 1 lieu."
+L.OPT_FORGET = "Oublier"
 
 -- Fix a problem
 
 -- Starting over
 L.OPT_RESET_PAGE_CONFIRM = "Remettre chaque paramètre du module Lieux à sa valeur par défaut ?"
-L.OPT_RELOAD_NOW = "Recharger maintenant"
-L.OPT_LATER = "Plus tard"
 
 -- Lore of Azeroth and Zone Lore
 L.COMPENDIUM_PLACES = "Lieux"

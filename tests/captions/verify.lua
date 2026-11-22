@@ -901,6 +901,14 @@ do
         'pages without spaces keep the transcript word ranges and timing')
     local from, through=S:CharsSpan(2)
     Check(from==1 and through==3,'the second Chinese word and its punctuation can be highlighted')
+    local wrap=S.Wrap
+    S.Wrap=function() return {'好','，世'} end
+    S:Layout('好，世')
+    S.Wrap=wrap
+    local firstStart,firstEnd=S:CharsSpan(1)
+    local secondStart,secondEnd=S:CharsSpan(2)
+    Check(firstStart==0 and firstEnd==2 and secondStart==2 and secondEnd==3,
+        'a Chinese token keeps its punctuation when a row ends before it')
     Q:RemoveAllSoundsFromQueue(); Play(.6)
     local fast=Timed('fast','aaaa bbbb cccc dddd',2,'0 .2 .4 .6')
     fast.playbackSpeed=2
@@ -993,6 +1001,24 @@ do
     Q.CanBePaused=CanBePaused; S:UpdatePause()
     Check(S.pause:GetAlpha()==1 and S.pause.enabled==true,'...and live again with one it can')
     Q:RemoveAllSoundsFromQueue(); Play(.6)
+    E.Addon:SetPlayerStyle(style); E.PlayerFrame:RefreshConfig(); T:RefreshConfig()
+end
+-- A timed word remains visible while its recording holds on it in the scrolling subtitle.
+do
+    local style=E.Addon.db.profile.Frame.Style
+    E.Addon:SetPlayerStyle('subtitle'); E.PlayerFrame:RefreshConfig(); T:RefreshConfig()
+    local beforeScroll,beforeLines,beforeTypewriter=cfg.SubtitleScroll,cfg.Lines,cfg.Typewriter
+    cfg.SubtitleScroll='line'; cfg.Lines=1; cfg.Typewriter=false
+    local wrap=S.Wrap
+    S.Wrap=function() return {'first','second','third'} end
+    local slowWord=Clip('slow-word','first second third',10)
+    slowWord.present.timings={0,8,9}
+    source:Enqueue(slowWord); Play(5)
+    Check(S:LitWord(S.pages[1],T:AudioElapsed())==1 and S.rollTarget==1,
+        'the rolling subtitle keeps the spoken word in view through a long pause')
+    S.Wrap=wrap
+    Q:RemoveAllSoundsFromQueue(); Play(.6)
+    cfg.SubtitleScroll,cfg.Lines,cfg.Typewriter=beforeScroll,beforeLines,beforeTypewriter
     E.Addon:SetPlayerStyle(style); E.PlayerFrame:RefreshConfig(); T:RefreshConfig()
 end
 print(string.format('PASS: %d checks using the real queue, both player layouts, captions, commands and quest adapter.',assertions))

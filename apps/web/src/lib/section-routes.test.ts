@@ -30,6 +30,11 @@ describe("the old section addresses", () => {
     expect(route("/frFR/books")).toBe("/frFR/readables");
   });
 
+  it("sends a language added since the build on too", () => {
+    expect(route("/jaJP/zones")).toBe("/jaJP/places");
+    expect(route("/jaJP/books/r/261")).toBe("/jaJP/readables/r/261");
+  });
+
   it("sends the contribution, sort and API pages on", () => {
     expect(route("/contributions/books")).toBe("/contributions/readables");
     expect(route("/ruRU/contributions/zones/corrections")).toBe("/ruRU/contributions/places/corrections");
@@ -42,7 +47,6 @@ describe("the old section addresses", () => {
     expect(route("/places/r/1411/razor-hill")).toBeNull();
     expect(route("/quests")).toBeNull();
     expect(route("/zonesx")).toBeNull();
-    expect(route("/xxYY/zones")).toBeNull();
     expect(route("/api/places/audio/1411/zone.mp3")).toBeNull();
   });
 

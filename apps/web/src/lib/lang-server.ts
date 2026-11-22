@@ -14,10 +14,12 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 
 import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
+import { loadLanguages } from "@/lib/languages/catalogue";
 import { isEnabled } from "@/lib/languages/store";
 import { currentSession } from "@/lib/session";
 import { viewerOf } from "@/lib/grants/store";
 import { worksIn } from "@/lib/permissions";
+import { uiLangOf } from "@/lib/users/ui-language";
 
 /**
  * Whether the person asking may see a language that is switched off: an admin, or anybody
@@ -36,6 +38,17 @@ export async function worksHere(lang: Lang): Promise<boolean> {
   return mayPreview(lang);
 }
 
+/**
+ * The language Backstage's words are read in: the reader's saved setting, else the `[lang]`
+ * segment. Only the words follow it; the front page never asks, and `lang` stays the page's
+ * language for the lines, teams and packs it shows. Cached: the layout, page and metadata all ask.
+ */
+export const readingLang = cache(async (fallback: Lang): Promise<Lang> => {
+  const session = await currentSession();
+  if (!session) return fallback;
+  return (await uiLangOf(session.user.id)) ?? fallback;
+});
+
 /** Cached per render: the layout and the page under it both ask, of the same language. */
 const visible = cache(async (lang: Lang): Promise<boolean> => {
   if (lang === BASE_LANG) return true;
@@ -53,6 +66,7 @@ export async function langParam(
 ): Promise<{ lang: Lang; denied: null } | { lang: null; denied: Response }> {
   const raw = new URL(request.url).searchParams.get("lang");
   if (raw === null || raw === "") return { lang: BASE_LANG, denied: null };
+  if (raw !== BASE_LANG) await loadLanguages();
   if (!isLang(raw)) {
     return { lang: null, denied: Response.json({ error: `unknown language ${raw}` }, { status: 400 }) };
   }
@@ -62,9 +76,15 @@ export async function langParam(
   return { lang: raw, denied: null };
 }
 
-/** A page's language, from its `[lang]` segment. Anything not servable is a 404. */
+/**
+ * A page's language, from its `[lang]` segment. Anything not servable is a 404.
+ *
+ * Both this and langParam load the languages first, a memo hit almost always, so a language
+ * created on the other worker is known here before the TTL would have reached it.
+ */
 export async function pageLang(params: Promise<{ lang: string }>): Promise<Lang> {
   const { lang } = await params;
+  if (lang !== BASE_LANG) await loadLanguages();
   if (!isLang(lang) || !(await visible(lang))) notFound();
   return lang;
 }
