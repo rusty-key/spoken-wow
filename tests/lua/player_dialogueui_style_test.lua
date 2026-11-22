@@ -504,8 +504,8 @@ local REPORT = { id = "report", icon = "Interface/HelpFrame/HelpIcon-Bug", ancho
 quests:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "One", portrait = { kind = "none" },
     actions = { REPORT } } }))
 quests:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "Two", portrait = { kind = "none" } } }))
-Expect("it has the round controls, Stop or Replay, Previous, Skip then Eject",
-    #Skin.buttons == 4 and Skin.buttons[1] == Skin.play and Skin.buttons[2] == Skin.previous
+Expect("it has the round controls, Previous, Stop or Replay, Skip then Eject",
+    #Skin.buttons == 4 and Skin.buttons[1] == Skin.previous and Skin.buttons[2] == Skin.play
     and Skin.buttons[3] == Skin.skip and Skin.buttons[4] == Skin.eject, true)
 Expect("...Skip in the subtitle's art", Skin.skip.bar ~= nil, true)
 Expect("...in the header at the right, beside the speaker and the line",

@@ -343,15 +343,15 @@ places:Enqueue(H.Clip({ present = { header = "h", label = "l", bullet = "b", por
 Expect("two actions make two buttons", #F.frame.actions.buttons, 2)
 Expect("...each its round icon", F.frame.actions.buttons[1].glyph:GetTexture() .. "|"
     .. F.frame.actions.buttons[2].glyph:GetTexture(), "Read|Report")
-ExpectOf("...in the header's controls after Stop, Previous, Skip and Eject", function()
-    return #F.row == 6 and F.row[1] == F.play and F.row[2] == F.previous and F.row[3] == F.skip
+ExpectOf("...in the header's controls after Previous, Stop, Skip and Eject", function()
+    return #F.row == 6 and F.row[1] == F.previous and F.row[2] == F.play and F.row[3] == F.skip
         and F.row[4] == F.eject and F.row[5] == F.frame.actions.buttons[1] and F.row[6]:GetParent() == F.controls
 end, true)
 F.frame.actions.buttons[1]:Click()
 Expect("clicking passes the clip", clicked ~= nil and clicked:sub(1, 5), "read:")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 quests:Enqueue(H.Clip({ present = { header = "h", label = "l", bullet = "b", portrait = { kind = "none" } } }))
-ExpectOf("no actions, Stop, Previous, Skip and Eject alone", function() return #F.frame.actions.buttons .. " " .. #F.row end, "0 4")
+ExpectOf("no actions, Previous, Stop, Skip and Eject alone", function() return #F.frame.actions.buttons .. " " .. #F.row end, "0 4")
 
 ---------------------------------------------------------------- the Talking Head's layout
 -- The window is the game's Talking Head frame as TalkingHeadUI.xml lays it out: 570 by 155, the
@@ -390,10 +390,11 @@ end, "3 false")
 ExpectOf("...above the progress line", function()
     return WordsTop() + 3 * 20 <= column:GetHeight() - F.progress.height
 end, true)
-ExpectOf("the round controls 10 inside the box's shadow at the top and the right, Stop or Replay, Previous then Skip", function()
+ExpectOf("the round controls 10 inside the box's shadow at the top and the right, Previous, Stop or Replay, Skip then Eject", function()
     local anchor = F.controls.anchor
     return anchor.point .. " " .. tostring(anchor.relativeTo == F.frame) .. " " .. anchor.x .. " " .. anchor.y
-        .. " " .. tostring(F.row[1] == F.play and F.row[2] == F.previous and F.row[3] == F.skip) .. " " .. F.play.state
+        .. " " .. tostring(F.row[1] == F.previous and F.row[2] == F.play and F.row[3] == F.skip
+            and F.row[4] == F.eject) .. " " .. F.play.state
 end, "TOPRIGHT true -22 -25 true stop")
 ExpectOf("...Skip in the subtitle's art", function() return F.skip.bar ~= nil end, true)
 ExpectOf("the progress line along the column's foot, as wide as the words", function()
@@ -1212,6 +1213,10 @@ do
         local controls = view.buttons or { view.pause, view.previous, view.skip, view.eject }
         quests:Enqueue(H.Clip({ present = { transcript = "A single narrated quest line." } }))
         stub.Advance(0.1)
+        if style == "subtitle" then
+            Expect("subtitle puts Stop after Skip Backward", view.pause.anchor.relativeTo, view.previous)
+            Expect("subtitle puts Skip Forward after Stop", view.skip.anchor.relativeTo, view.pause)
+        end
         env.Actions.SetPausable(controls)
         Expect(style .. " disables Skip Forward without a next line", view.skip:IsEnabled(), false)
         Expect(style .. " greys Skip Forward without a next line", view.skip:GetAlpha(), .4)

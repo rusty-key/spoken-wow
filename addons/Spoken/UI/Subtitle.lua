@@ -928,15 +928,15 @@ function Subtitle:BuildControls()
     self.controls, self.controlsAlpha = controls, 0
 
     local pause = Actions.StopButton(controls, nil, function() self:UpdatePause() end)
-    pause:SetPoint("LEFT", controls, "LEFT", 0, 0)
-    self.pause = pause
-
     local previous = Actions.PreviousButton(controls)
-    previous:SetPoint("LEFT", pause, "RIGHT", CONTROL_GAP, 0)
+    previous:SetPoint("LEFT", controls, "LEFT", 0, 0)
     self.previous = previous
 
+    pause:SetPoint("LEFT", previous, "RIGHT", CONTROL_GAP, 0)
+    self.pause = pause
+
     local skip = Actions.SkipButton(controls)
-    skip:SetPoint("LEFT", previous, "RIGHT", CONTROL_GAP, 0)
+    skip:SetPoint("LEFT", pause, "RIGHT", CONTROL_GAP, 0)
     self.skip = skip
     local eject = Actions.EjectButton(controls)
     eject:SetPoint("LEFT", skip, "RIGHT", CONTROL_GAP, 0)
