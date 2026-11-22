@@ -249,23 +249,6 @@ function Layout:Index(frame, label, tooltip)
     return frame
 end
 
---- The page's first row on screen that the controller's cursor can stop on: a row in the page's
---- column, not a button beside a section's title, and not one scrolled above the view. A row made
---- one stop stops on its band (OneStop), not its control.
-function Layout:FirstRow()
-    local view = self.parent.layoutScroller
-    local scrolled = view and view.frame:GetVerticalScroll() or 0
-    for _, entry in ipairs(self.entries) do
-        local frame = entry.frame
-        local stop = frame.layoutHit or frame
-        if frame.layoutY and -frame.layoutY >= scrolled and stop:IsVisible()
-            and SmartNavigation_CanFocusFrame(stop)
-            and not SmartNavigation_IsFrameIgnored(stop) then
-            return stop
-        end
-    end
-end
-
 -- The middle of a row, which the game's settings place every control against.
 function Layout:Middle()
     return self.left + math.floor(self:Width() / 2)
@@ -729,6 +712,7 @@ local function CombatRestricted()
         and Enum.AddOnRestrictionType
         and C_RestrictedActions.IsAddOnRestrictionActive(Enum.AddOnRestrictionType.Combat) or false
 end
+Layout.CombatRestricted = CombatRestricted
 
 -- What combat refused, run once it ends. A page is built once, so a row skipped in combat
 -- would keep the game's stops for the session.
@@ -758,7 +742,6 @@ local function Navigate(set)
     set()
 end
 
--- Hide a frame from the controller UI's cursor (SmartNavigation, Forever's gamepad UI).
 local function NoStop(frame)
     Navigate(function() SmartNavigation_MarkFrameIgnored(frame) end)
 end
@@ -1020,8 +1003,12 @@ Layout.IsGamepadUI = GamepadUI
 --- to the window under it on hide. The manager refuses addons in combat: a frame closed then is
 --- handed back once combat ends, or the manager keeps it listed as shown and does not move the
 --- focus to it when it opens again.
+local function Manager()
+    return GamepadUI() and GamepadMode and GamepadMode.FrameControlsManager or nil
+end
+
 local function HandBack(frame)
-    local manager = GamepadUI() and GamepadMode and GamepadMode.FrameControlsManager
+    local manager = Manager()
     if not manager then frame.followed = nil; return end
     if CombatRestricted() then
         AfterCombat(function()
@@ -1037,9 +1024,10 @@ function Layout.FollowController(frame, close)
     frame.CloseButton = close
     frame:HookScript("OnShow", function(self)
         if self.followed then return end
-        if GamepadUI() and GamepadMode and GamepadMode.FrameControlsManager and not CombatRestricted() then
+        local manager = Manager()
+        if manager and not CombatRestricted() then
             self.followed = true
-            GamepadMode.FrameControlsManager:HandlePopupShown(self)
+            manager:HandlePopupShown(self)
         end
     end)
     frame:HookScript("OnHide", function(self)
@@ -1560,15 +1548,31 @@ end
 --- Layout.FitButton sizes it again.
 local HEADING_LINE = 17      -- GameFontHighlightLarge's line
 
--- A shown row's stop for the controller UI's cursor: its band, or its control where that is a
--- button or a ColumnStop (a link, a status). Nil for a note or a row out of sight.
-local function RowStop(row)
-    local control = row.control
-    local stop = control and (control.layoutHit or control)
-    if not (row.shown and stop and stop.IsVisible and stop:IsVisible()) then return nil end
+-- A control's stop for the controller UI's cursor: its row's band, or the control where that is
+-- a button or a ColumnStop (a link, a status). Nil for a note or a control out of sight.
+local function StopOf(control)
+    local stop = control.layoutHit or control
+    if not (stop.IsVisible and stop:IsVisible()) then return nil end
     local kind = stop.GetObjectType and stop:GetObjectType()
     if stop == control.layoutHit or stop.layoutStop or kind == "Button" or kind == "CheckButton" then
         return stop
+    end
+end
+
+local function RowStop(row)
+    if not (row.shown and row.control) then return nil end
+    return StopOf(row.control)
+end
+
+--- The page's first row on screen with a stop for the controller's cursor: a row in the page's
+--- column, not a button beside a section's title, and not one scrolled above the view.
+function Layout:FirstRow()
+    local view = self.parent.layoutScroller
+    local scrolled = view and view.frame:GetVerticalScroll() or 0
+    for _, entry in ipairs(self.entries) do
+        local frame = entry.frame
+        local stop = frame.layoutY and -frame.layoutY >= scrolled and StopOf(frame)
+        if stop then return stop end
     end
 end
 

@@ -30,7 +30,9 @@ _G.SettingsPanel = {
     GetCategoryList = function() return { GetSelectedCategoryButton = function() return categoryButton end } end,
 }
 local inCombat = false
-_G.InCombatLockdown = function() return inCombat end
+_G.Enum = _G.Enum or {}
+_G.Enum.AddOnRestrictionType = { Combat = 1 }
+_G.C_RestrictedActions = { IsAddOnRestrictionActive = function() return inCombat end }
 
 _G.UISpecialFrames = _G.UISpecialFrames or {}
 stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
@@ -116,6 +118,6 @@ Enter(hidden)
 Expect("...and does nothing in combat", cursor.target, nil)
 inCombat = false
 
-_G.SmartNavigation, _G.InCombatLockdown, _G.SettingsPanel = nil, nil, nil
+_G.SmartNavigation, _G.C_RestrictedActions, _G.SettingsPanel = nil, nil, nil
 _G.SmartNavigation_CanFocusFrame, _G.SmartNavigation_IsFrameIgnored = nil, nil
 os.exit(Failures() == 0 and 0 or 1)
