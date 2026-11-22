@@ -1076,9 +1076,9 @@ def export_giver_names(corpus_path, out_dir, verbose=True):
     See tts_cli/giver_names.py. The name is the newest one a client showed rather than the
     live one, for the reason export_locale_text takes localeText: a translator's edit changes
     how a name is spoken, and what the addon shows must be what the client shows. A name a
-    translator kept from a player's client ('observed', apps/web/src/lib/names/observed.ts)
-    comes before the dump's, which is older than the client; the site's shownNameSql applies
-    the same rule to decide which names to offer.
+    translator kept from a player's client ('observed') comes before the dump's, which is
+    older than the client. The site decides which names to offer by the same rule; if the two
+    differ, names are offered again or shipped wrong.
     """
     from tts_cli.giver_names import KINDS, givers, write_every_language
     from tts_cli.ignores import load_pack_ignored

@@ -142,6 +142,20 @@ do
 
     local unitName = _G.UnitName
     _G.UnitName = function(unit) return unit == "player" and "Tester" or nil end
+    VoiceOver.Contribute:HasGap()
+    local unread = Gather:GetSeen("creature:12345")
+    Expect("a window that cannot read the name keeps the one it had", unread and unread:match("\nname=([^\n]+)\n"), "Deathguard Linnea")
+
+    _G.UnitName = function(unit)
+        if unit == "questnpc" then return "Deathguard Linnea" end
+        if unit == "npc" then return "Someone Beside Her" end
+        return unit == "player" and "Tester" or nil
+    end
+    VoiceOver.Contribute:HasGap()
+    local paired = Gather:GetSeen("creature:12345")
+    Expect("the name is read from the unit the id is", paired and paired:match("\nname=([^\n]+)\n"), "Deathguard Linnea")
+
+    _G.UnitName = function(unit) return unit == "player" and "Tester" or nil end
     world.npcGUID = "Creature-0-0-0-0-12349-0"
     VoiceOver.Contribute:HasGap()
     _G.UnitName = unitName

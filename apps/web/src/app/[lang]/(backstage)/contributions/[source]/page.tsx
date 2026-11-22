@@ -69,7 +69,7 @@ import type { Roster } from "@/lib/voices/roster";
 import { loadRoster } from "@/lib/voices/roster-store";
 import { can, isAdmin } from "@/lib/permissions";
 import { linesByPath } from "@/lib/places/catalogue";
-import { countObservedNames } from "@/lib/names/observed";
+import { countObservedNames, hasObservedNames } from "@/lib/names/observed";
 
 export const metadata: Metadata = { title: "Contributions · Spoken" };
 
@@ -342,7 +342,7 @@ export default async function Page({
   const [{ listed, states, pending }, roster, names] = await Promise.all([
     listedWithPending(status, lang, sort, source),
     loadRoster(lang),
-    lang === BASE_LANG ? undefined : countObservedNames(lang),
+    hasObservedNames(lang) ? countObservedNames(lang) : undefined,
   ]);
   const contributions = listed.filter((row, index) => tabOf(row.status, states[index]) === "contributions");
   // Every row's NPC, not just this page's: the buckets read it, and it is one query for the lot.

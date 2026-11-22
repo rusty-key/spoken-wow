@@ -2,6 +2,7 @@
  * Needs `text` in the name's language, since keeping one writes that language's name. The
  * permission comes before the existence check, so a member learns nothing about which ids exist.
  */
+import { isStatus } from "@/lib/contributions/contributions";
 import { requireCapability } from "@/lib/generation/authz";
 import { BASE_LANG } from "@/lib/lang";
 import { knownLang } from "@/lib/languages/catalogue";
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
   if (!Number.isInteger(id) || id <= 0) {
     return Response.json({ error: "unknown name" }, { status: 404 });
   }
-  if (body.status !== "accepted" && body.status !== "rejected" && body.status !== "new") {
+  if (!isStatus(body.status)) {
     return Response.json({ error: "unknown status" }, { status: 400 });
   }
 

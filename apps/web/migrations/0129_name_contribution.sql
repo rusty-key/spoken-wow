@@ -1,9 +1,6 @@
--- The names players' clients show for an NPC, waiting for a translator to keep or drop.
--- One row per name, so two clients that disagree sit side by side. Uploaders are rows of their
--- own, so the Manager sending the same file after every logout counts once.
---
--- A kept name is written to entity_name as 'observed'. An import records beside it rather than
--- over it, because a dump is older than the client that showed the name.
+-- The names players' clients show for an NPC, waiting for a translator to keep or drop. One row
+-- per name, so two clients that disagree sit side by side. Uploaders are rows of their own, so the
+-- Manager sending the same file after every logout counts once.
 --
 -- Additive: the check only widens, and the previous release reads 'observed' as any origin.
 

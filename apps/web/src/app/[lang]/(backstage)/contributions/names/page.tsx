@@ -9,22 +9,22 @@ import { Tabs } from "@/components/backstage/Tabs";
 import { auth } from "@/lib/auth";
 import { pendingCounts } from "@/lib/contributions/pending";
 import { viewerOf } from "@/lib/grants/store";
-import { BASE_LANG, isClientLang, localeHref } from "@/lib/lang";
+import { isStatus, type ContributionStatus } from "@/lib/contributions/contributions";
+import { localeHref } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
-import { countObservedNames, isNameStatus, listObservedNames, type NameStatus } from "@/lib/names/observed";
+import { countObservedNames, hasObservedNames, listObservedNames } from "@/lib/names/observed";
 import { can } from "@/lib/permissions";
 
 export const metadata: Metadata = { title: "Names · Contributions · Spoken" };
 
 export const dynamic = "force-dynamic";
 
-const STATUS_TABS: { value: NameStatus; label: string }[] = [
+const STATUS_TABS: { value: ContributionStatus; label: string }[] = [
   { value: "new", label: "To review" },
   { value: "accepted", label: "Kept" },
   { value: "rejected", label: "Dropped" },
 ];
 
-/** English has no page: its names are the corpus's. */
 export default async function Page({
   params,
   searchParams,
@@ -36,15 +36,16 @@ export default async function Page({
   const session = await auth.api.getSession({ headers: await headers() });
   // 404, so a member does not learn the page exists: keeping a name writes the language's names.
   if (!session || !can(await viewerOf(session), "text", lang)) notFound();
-  if (lang === BASE_LANG || !isClientLang(lang)) notFound();
+  if (!hasObservedNames(lang)) notFound();
 
   const { status: rawStatus } = await searchParams;
-  const status: NameStatus = isNameStatus(rawStatus) ? rawStatus : "new";
-  const [rows, waiting, pending] = await Promise.all([
+  const status: ContributionStatus = isStatus(rawStatus) ? rawStatus : "new";
+  const [rows, others, pending] = await Promise.all([
     listObservedNames(lang, status),
-    countObservedNames(lang),
+    status === "new" ? undefined : countObservedNames(lang),
     pendingCounts(lang),
   ]);
+  const waiting = others ?? rows.length;
 
   return (
     <BackstagePage

@@ -536,11 +536,10 @@ end
 -- More zones than any NPC stands in: past this, an envelope's zones are a hand-built list.
 local MAX_ZONES = 8
 
---- Keep the zone the player met the NPC on screen in, beside the zones met before, and the name
---- the client shows for it: the site learns where a speaker stands and what the game calls it, for
---- gossip and quest givers alike, whether or not any of its lines is missing. A changed name is
---- kept again, so a giver a patch renamed reaches the site. Nothing for another player, or an item,
---- which stands nowhere.
+--- Keep the zone the NPC on screen was met in, beside the zones met before, and the name the client
+--- shows, for gossip and quest givers alike, whether or not any of its lines is missing. A changed
+--- name is kept again, so a giver a patch renamed reaches the site. Nothing for another player, or
+--- an item, which stands nowhere.
 local function SeeSpeaker()
     if SharedByPlayer() then
         return
@@ -553,19 +552,23 @@ local function SeeSpeaker()
     if not (id and zone) then
         return
     end
-    local name = UnitName and NotSecret(UnitName("npc")) or nil
-    if name == "" then
-        name = nil
-    end
     local npc = format("%s:%d", kind, id)
     local _, keptZones, keptName = Spoken.Gather:GetSeen(npc)
-    local zones, met = {}, false
+    -- The same unit the id came from. A window that cannot read the name keeps the one it had.
+    local name = Utils:GetNPCName()
+    if not name or name == "" then
+        name = keptName
+    end
+    local met = false
     for _, known in ipairs(keptZones or {}) do
         met = met or known == zone
-        zones[#zones + 1] = known
     end
     if met and keptName == name then
         return
+    end
+    local zones = {}
+    for _, known in ipairs(keptZones or {}) do
+        zones[#zones + 1] = known
     end
     if not met then
         if #zones >= MAX_ZONES then

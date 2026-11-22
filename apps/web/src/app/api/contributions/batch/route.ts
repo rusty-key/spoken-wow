@@ -153,8 +153,7 @@ export async function POST(request: Request) {
   if (installId) await recordMissingAudio(installId, hits);
   if (sightings.length > 0) {
     const uploader = uploaderOf({ userId: identity.userId, installId });
-    await recordSightings(sightings, uploader);
-    await recordObservedNames(sightings, uploader);
+    await Promise.all([recordSightings(sightings, uploader), recordObservedNames(sightings, uploader)]);
   }
 
   await recordContributionHit(ip, installId);

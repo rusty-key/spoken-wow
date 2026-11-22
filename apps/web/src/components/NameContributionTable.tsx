@@ -1,26 +1,22 @@
 "use client";
 
-/**
- * Names players' clients show, beside the one the addon shows now, to keep or drop
- * (api/contributions/name). Client props are in the page payload, so rows carry no uploader.
- */
+/** Client props are in the page payload, so rows carry no uploader. */
 import { useCallback, useRef, useState } from "react";
 
 import { useLocalDates } from "@/components/useLocalDates";
-import type { NameContribution, NameStatus } from "@/lib/names/observed";
+import type { ContributionStatus } from "@/lib/contributions/contributions";
+import type { NameContribution, ObservedKind } from "@/lib/names/observed";
 
-export type NameRow = Omit<NameContribution, "status"> & { status: NameStatus };
+const KIND_LABELS: Record<ObservedKind, string> = { creature: "NPC", gameobject: "Object" };
 
-const KIND_LABELS: Record<NameRow["kind"], string> = { creature: "NPC", gameobject: "Object" };
-
-export default function NameContributionTable({ initial }: { initial: NameRow[] }) {
+export default function NameContributionTable({ initial }: { initial: NameContribution[] }) {
   const when = useLocalDates();
-  const [statuses, setStatuses] = useState<Record<number, NameStatus>>({});
+  const [statuses, setStatuses] = useState<Record<number, ContributionStatus>>({});
   const [refusals, setRefusals] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState<ReadonlySet<number>>(new Set());
   const inFlight = useRef(new Set<number>());
 
-  const resolve = useCallback(async (id: number, status: NameStatus) => {
+  const resolve = useCallback(async (id: number, status: ContributionStatus) => {
     if (inFlight.current.has(id)) return;
     inFlight.current.add(id);
     setBusy(new Set(inFlight.current));

@@ -134,8 +134,8 @@ function Gather:SetTidied()
     Store().Tidied = true
 end
 
---- Keep one NPC's sighting envelope under `npc` ("creature:3429"), with the zones and the name it
---- carries, so the next sighting compares with them without reading the envelope back. Beside the lines rather than
+--- Keep one NPC's sighting envelope under `npc` ("creature:3429"), with its zones and name, so
+--- the next sighting compares with them without reading the envelope back. Beside the lines rather than
 --- among them, so sightings never push a line out of CAP; the upload finds every envelope in the
 --- file wherever it sits. Does nothing unless the player opted in.
 ---@return boolean stored

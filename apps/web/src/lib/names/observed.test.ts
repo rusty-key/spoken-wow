@@ -150,6 +150,29 @@ describe("a name a player's client shows", () => {
     expect(await waiting()).toMatchObject([{ id: row.id, uploaders: 2 }]);
   });
 
+  it("is kept once, however often Keep is clicked", async () => {
+    await recordObservedNames([seen("Alba Lunaclara")], "user:a");
+    const [row] = await waiting();
+    const [first, second] = await Promise.all([
+      acceptObservedName(row.id, "esMX", user.id),
+      acceptObservedName(row.id, "esMX", user.id),
+    ]);
+    expect([first, second]).toContainEqual({ ok: true });
+    expect([first, second]).toContainEqual({ ok: false, reason: "not-found" });
+    expect(await versions()).toEqual([{ version: 1, origin: "observed", name: "Alba Lunaclara", isCurrent: true }]);
+  });
+
+  it("keeps two rival names at once without both taking the same version", async () => {
+    await recordObservedNames([seen("Alba Lunaclara"), seen("Alba Luna Clara")], "user:a");
+    const rows = await waiting();
+    const outcomes = await Promise.all(rows.map((row) => acceptObservedName(row.id, "esMX", user.id)));
+    expect(outcomes).toEqual([{ ok: true }, { ok: true }]);
+    expect((await versions()).map((v) => [v.version, v.isCurrent])).toEqual([
+      [1, false],
+      [2, true],
+    ]);
+  });
+
   it("is decided only in its own language", async () => {
     await recordObservedNames([seen("Alba Lunaclara")], "user:a");
     const [row] = await waiting();

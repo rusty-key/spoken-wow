@@ -1,20 +1,31 @@
 /**
- * The names players' clients show for an NPC, offered to translators. A kept one is written to
- * entity_name as 'observed', which the giver-name export ships.
- *
  * A name is compared with the one the addon shows, not the current one: a translator's edit says
  * how a name is spoken, and comparing against it would offer the client's spelling on every
- * upload. tts_cli/corpus_db.py export_giver_names applies the same rule, and the two must agree.
+ * upload. The giver-name export picks the shown name by the same rule; if the two differ, names
+ * are offered again or shipped wrong.
  */
 import "server-only";
 
 import type { Sighting } from "@/lib/contributions/sighting";
 import { recordActivity } from "@/lib/activity/store";
 import { query } from "@/lib/db";
-import { BASE_LANG, clientLang, type Lang } from "@/lib/lang";
+import type { ContributionStatus } from "@/lib/contributions/contributions";
+import { BASE_LANG, clientLang, isClientLang, type Lang } from "@/lib/lang";
 import { withTextTeam } from "@/lib/teams/store";
 
-export type ObservedKind = "creature" | "gameobject";
+export type ObservedKind = Sighting["npcType"];
+
+/** English has no names to review: its names are the corpus's. Nor does a language no client runs in. */
+export function hasObservedNames(lang: Lang): boolean {
+  return lang !== BASE_LANG && isClientLang(lang);
+}
+
+/** `lang` is an SQL expression, so the English and the row's own language share one lookup. */
+function currentNameSql(alias: string, lang: string): string {
+  return `(select e."name" from "entity_name" e
+            where e."kind" = ${alias}."kind" and e."entityId" = ${alias}."entityId"
+              and e."lang" = ${lang} and e."isCurrent")`;
+}
 
 /** The name the addon shows for `alias`'s kind, entityId and lang; null where it shows the English. */
 export function shownNameSql(alias: string): string {
@@ -45,9 +56,7 @@ export async function recordObservedNames(sightings: readonly Sighting[], upload
        select * from unnest($1::text[], $2::text[], $3::text[], $4::text[]) as s ("kind", "entityId", "lang", "name")
      ), offered as (
        select s.* from sent s
-        where exists (select 1 from "entity_name" e
-                       where e."kind" = s."kind" and e."entityId" = s."entityId"
-                         and e."lang" = '${BASE_LANG}' and e."isCurrent")
+        where ${currentNameSql("s", `'${BASE_LANG}'`)} is not null
           and ${shownNameSql("s")} is distinct from s."name"
      ), saved as (
        insert into "name_contribution" ("kind", "entityId", "lang", "name")
@@ -64,19 +73,12 @@ export async function recordObservedNames(sightings: readonly Sighting[], upload
   return vouched.length;
 }
 
-export const NAME_STATUSES = ["new", "accepted", "rejected"] as const;
-export type NameStatus = (typeof NAME_STATUSES)[number];
-
-export function isNameStatus(value: unknown): value is NameStatus {
-  return typeof value === "string" && (NAME_STATUSES as readonly string[]).includes(value);
-}
-
 export type NameContribution = {
   id: number;
   kind: ObservedKind;
   entityId: string;
   name: string;
-  status: NameStatus;
+  status: ContributionStatus;
   /** How many uploaders sent it: accounts, Manager installs, or anonymous files. */
   uploaders: number;
   english: string | null;
@@ -93,25 +95,20 @@ type Row = Omit<NameContribution, "updatedAt"> & { updatedAt: Date };
  * A language's names of one status, most vouched for first. New ones the addon already shows,
  * because an import or another kept name caught up, are left out: nothing is left to decide.
  */
-export async function listObservedNames(lang: Lang, status: NameStatus): Promise<NameContribution[]> {
+export async function listObservedNames(lang: Lang, status: ContributionStatus): Promise<NameContribution[]> {
   const rows = await query<Row>(
     `select c."id", c."kind", c."entityId", c."name", c."status", c."updatedAt",
             (select count(*) from "name_contribution_uploader" u where u."contributionId" = c."id")::int as "uploaders",
-            (select e."name" from "entity_name" e
-              where e."kind" = c."kind" and e."entityId" = c."entityId"
-                and e."lang" = '${BASE_LANG}' and e."isCurrent") as "english",
+            ${currentNameSql("c", `'${BASE_LANG}'`)} as "english",
             ${shownNameSql("c")} as "shown",
-            (select e."name" from "entity_name" e
-              where e."kind" = c."kind" and e."entityId" = c."entityId"
-                and e."lang" = c."lang" and e."isCurrent") as "spoken"
+            ${currentNameSql("c", `c."lang"`)} as "spoken"
        from "name_contribution" c
       where c."lang" = $1 and c."status" = $2
+        and (c."status" <> 'new' or ${shownNameSql("c")} is distinct from c."name")
       order by "uploaders" desc, c."updatedAt" desc`,
     [lang, status],
   );
-  return rows
-    .filter((row) => status !== "new" || row.shown !== row.name)
-    .map((row) => ({ ...row, updatedAt: row.updatedAt.toISOString() }));
+  return rows.map((row) => ({ ...row, updatedAt: row.updatedAt.toISOString() }));
 }
 
 export async function countObservedNames(lang: Lang): Promise<number> {
@@ -138,11 +135,17 @@ export type ResolveOutcome = { ok: true } | { ok: false; reason: "not-found" };
 export async function acceptObservedName(id: number, lang: Lang, userId: string): Promise<ResolveOutcome> {
   return withTextTeam(lang, async (client, team) => {
     const { rows } = await client.query<{ kind: ObservedKind; entityId: string; name: string }>(
-      `select "kind", "entityId", "name" from "name_contribution" where "id" = $1 and "lang" = $2 for update`,
+      `select "kind", "entityId", "name" from "name_contribution"
+        where "id" = $1 and "lang" = $2 and "status" = 'new' for update`,
       [id, lang],
     );
     const found = rows[0];
     if (!found) return { ok: false, reason: "not-found" };
+    // An NPC with no name in the language yet has no row to lock, and two names kept at once
+    // would both take the next version.
+    await client.query(`select pg_advisory_xact_lock(hashtext($1))`, [
+      `entity_name:${found.kind}:${found.entityId}:${lang}`,
+    ]);
     const { rows: current } = await client.query<{ origin: string }>(
       `select "origin" from "entity_name"
         where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "isCurrent" for update`,
