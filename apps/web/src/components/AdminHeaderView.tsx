@@ -6,10 +6,12 @@ import { useEffect, useState } from "react";
 import { usePendingPacks, usePendingReleases } from "@/components/GrantsProvider";
 import LocaleLink from "@/components/LocaleLink";
 import PendingCount, { packsWaiting, releasesWaiting } from "@/components/PendingCount";
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Contained } from "@/components/Width";
 import { allLangs, langName, type Lang } from "@/lib/lang";
+import { fill } from "@/lib/site-text/format";
 import type { ActingTeamName } from "@/lib/teams/store";
 import { cn } from "@/lib/utils";
 
@@ -27,8 +29,6 @@ const PATHS: Record<AdminTab, string> = {
 
 /** The site-wide tabs: they act on no one language, so they take no `?lang=`. */
 const GLOBAL: readonly AdminTab[] = ["teams", "team-releases", "packs"];
-
-const TITLES: Partial<Record<AdminTab, string>> = { teams: "Teams", "team-releases": "Team releases", packs: "Community packs" };
 
 /**
  * The top of every admin page: which language it acts on, and the way to the others.
@@ -72,17 +72,18 @@ export default function AdminHeaderView({
   }, [freshReleases, setPendingReleases]);
   const pendingPacks = fresh ?? known;
   const pendingReleases = freshReleases ?? knownReleases;
+  const t = useUiText().admin;
 
   const tabs: { tab: AdminTab; label: string; count?: { value: number; title: string } }[] = [
-    { tab: "dashboard", label: "Dashboard" },
-    { tab: "team", label: global && !lang ? "Users" : "Team" },
-    { tab: "release", label: "Release" },
-    { tab: "storage", label: "Storage" },
+    { tab: "dashboard", label: t.tabs.dashboard },
+    { tab: "team", label: global && !lang ? t.tabs.users : t.tabs.team },
+    { tab: "release", label: t.tabs.release },
+    { tab: "storage", label: t.tabs.storage },
     ...(global
       ? [
-          { tab: "teams" as const, label: "Teams" },
-          { tab: "team-releases" as const, label: "Team releases", count: releasesWaiting(pendingReleases) },
-          { tab: "packs" as const, label: "Packs", count: packsWaiting(pendingPacks) },
+          { tab: "teams" as const, label: t.tabs.teams },
+          { tab: "team-releases" as const, label: t.tabs.teamReleases, count: releasesWaiting(pendingReleases) },
+          { tab: "packs" as const, label: t.tabs.packs, count: packsWaiting(pendingPacks) },
         ]
       : []),
   ];
@@ -95,7 +96,7 @@ export default function AdminHeaderView({
         <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
           <div className="min-w-64 flex-1">
             <span className="border-primary/35 bg-primary/10 text-primary-ink rounded-md border px-2 py-0.5 font-mono text-xs">
-              {lang ?? "every language"}
+              {lang ?? t.everyLanguage}
             </span>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight text-balance">
               <Title lang={lang} team={lang && teams[lang]} tab={tab} />
@@ -111,7 +112,7 @@ export default function AdminHeaderView({
           />
         </div>
         {/* Scrolls rather than wraps on a phone: five tabs and a count are wider than one. */}
-        <nav aria-label="Admin" className="mt-5 flex gap-1 overflow-x-auto">
+        <nav aria-label={t.tabsLabel} className="mt-5 flex gap-1 overflow-x-auto">
           {tabs.map((item) => (
             <LocaleLink
               key={item.tab}
@@ -135,8 +136,21 @@ export default function AdminHeaderView({
 }
 
 function Title({ lang, team, tab }: { lang: Lang | null; team: ActingTeamName | null | undefined; tab: AdminTab }) {
-  if (!lang) return TITLES[tab] ?? "Users";
-  if (!team) return `${langName(lang)} team`;
+  const t = useUiText().admin;
+  // No language's team behind it: the page is the site owner's, and its title names that.
+  if (!lang) {
+    const siteWide: Record<AdminTab, string> = {
+      dashboard: t.tabs.dashboard,
+      team: t.tabs.users,
+      release: t.tabs.release,
+      storage: t.tabs.storage,
+      teams: t.tabs.teams,
+      "team-releases": t.tabs.teamReleases,
+      packs: t.tabs.packsTitle,
+    };
+    return siteWide[tab];
+  }
+  if (!team) return fill(t.teamTitle, { lang: langName(lang) });
   return (
     <>
       {team.name}
@@ -159,6 +173,7 @@ function LanguageSwitch({
   tab: AdminTab;
 }) {
   const [open, setOpen] = useState(false);
+  const t = useUiText().admin;
   // A site admin administers every language, so there is nobody else's to list.
   const others = global ? [] : allLangs().filter((code) => !administered.includes(code));
   const path = PATHS[GLOBAL.includes(tab) ? "team" : tab];
@@ -167,12 +182,12 @@ function LanguageSwitch({
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm">
           <Globe className="size-4" aria-hidden />
-          {lang ? "Switch language" : "Open a language team"}
+          {lang ? t.switchLanguage : t.openTeam}
           <ChevronDown className="size-3.5" aria-hidden />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="max-h-96 w-64 overflow-y-auto p-1.5">
-        <p className="text-muted-foreground px-2 pt-1.5 pb-1 text-xs">You administer</p>
+        <p className="text-muted-foreground px-2 pt-1.5 pb-1 text-xs">{t.youAdminister}</p>
         {administered.map((code) => (
           <LocaleLink
             key={code}
@@ -193,7 +208,7 @@ function LanguageSwitch({
         ))}
         {others.length > 0 && (
           <>
-            <p className="text-muted-foreground px-2 pt-3 pb-1 text-xs">Other teams (no access)</p>
+            <p className="text-muted-foreground px-2 pt-3 pb-1 text-xs">{t.otherTeams}</p>
             {others.map((code) => (
               <span key={code} className="text-muted-foreground flex justify-between px-2 py-1.5 text-sm">
                 {langName(code)}

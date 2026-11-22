@@ -25,6 +25,9 @@ import {
   takeFragment,
 } from "@/lib/contributions/envelope";
 import { browserInstallId } from "@/lib/contributions/browser-install";
+import { fill } from "@/lib/site-text/format";
+import { useUiText } from "@/components/UiTextProvider";
+import type { UiText } from "@/lib/ui-text/en";
 import { sendFailureMessage } from "@/lib/contributions/send-failure";
 
 const FIELD_LABELS: Record<string, string> = {
@@ -67,15 +70,20 @@ const LINK_MESSAGES: Record<DecodeError, string> = {
 };
 
 export type Preview =
-  | { ok: true; source: string; rows: { label: string; value: string }[]; text: string | null }
+  | { ok: true; source: string; rows: { key: string; label: string; value: string }[]; text: string | null }
   | { ok: false; message: string };
 
-/** Exported for its test: what the page will show for a given paste. */
-export function previewOf(raw: string): Preview {
+/**
+ * Exported for its test: what the page will show for a given paste.
+ *
+ * `text` is optional so the test and any caller with no reader in front of it keeps English;
+ * the page passes its own so the preview is in the language the page is being read in.
+ */
+export function previewOf(raw: string, text?: UiText["contribute"]): Preview {
   if (!raw.trim()) return { ok: false, message: "" };
 
   const parsed = parseEnvelope(raw);
-  if (!parsed.ok) return { ok: false, message: MESSAGES[parsed.error] };
+  if (!parsed.ok) return { ok: false, message: text?.linkProblems[parsed.error] ?? MESSAGES[parsed.error] };
 
   // A clean parse is not a sendable envelope: submissionFrom (via checkEnvelope) still applies
   // the key/text rules, and previously nothing here did -- a parse-only preview approved
@@ -83,14 +91,18 @@ export function previewOf(raw: string): Preview {
   const check = checkEnvelope(parsed.value);
   if (!check.ok) return { ok: false, message: check.message };
 
+  // `key` travels beside the label: a caller that looks a field up must not have to know what
+  // the label is called in the reader's language.
   const rows = Object.entries(parsed.value.fields).map(([key, value]) => ({
-    label: FIELD_LABELS[key] ?? key,
+    key,
+    label: text?.fieldLabels[key] ?? FIELD_LABELS[key] ?? key,
     value,
   }));
   return { ok: true, source: parsed.value.source, rows, text: parsed.value.text };
 }
 
 export default function ContributeForm({ signedInAs }: { signedInAs: string | null }) {
+  const t = useUiText().contribute;
   const [raw, setRaw] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +131,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
       if (result.ok) {
         setRaw(result.text);
       } else {
-        setLinkError(LINK_MESSAGES[result.error]);
+        setLinkError(t.linkProblems[result.error] ?? LINK_MESSAGES[result.error]);
       }
       setRead(true);
     });
@@ -128,7 +140,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
     };
   }, []);
 
-  const preview = previewOf(raw);
+  const preview = previewOf(raw, t);
   // A place with no lore: the addon can only name it, so what is sent is the player's own
   // description of it -- required, and in place of the optional note every other source gets.
   const isPlace = preview.ok && preview.source === "places";
@@ -162,7 +174,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
     const failure = (await response?.json().catch(() => null)) as { error?: string } | null;
     setError(
       failure?.error === "describe"
-        ? `Describe the place in a sentence or two -- at least ${DESCRIPTION_MIN} characters.`
+        ? fill(t.describeTooShort, { n: DESCRIPTION_MIN })
         : sendFailureMessage(response?.status ?? null, failure?.error),
     );
   }
@@ -181,10 +193,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
 
   if (read && !raw) {
     return (
-      <p className="text-muted-foreground text-sm">
-        For a single line: in the game, press <strong>Contribute</strong> where Spoken has no voice
-        or no lore, copy the link it shows you, and open it in your browser.
-      </p>
+      <p className="text-muted-foreground text-sm">{t.singleLine}</p>
     );
   }
 
@@ -193,7 +202,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
     // submission back, so a form that merely cleared itself would leave them with no evidence.
     return (
       <p role="status" className="rounded border p-4 text-sm">
-        Got it — thank you. It is in the queue with everything else players have sent.
+        {t.sent}
       </p>
     );
   }
@@ -207,7 +216,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
       ) : null}
 
       {preview.ok ? (
-        <section aria-label="What will be sent" className="bg-muted rounded border p-3 text-sm">
+        <section aria-label={t.previewLabel} className="bg-muted rounded border p-3 text-sm">
           <ul className="flex flex-col gap-0.5">
             {preview.rows.map((row) => (
               <li key={row.label}>
@@ -221,11 +230,8 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
 
       {isPlace ? (
         <label className="flex flex-col gap-1 text-sm">
-          Describe this place
-          <span className="text-muted-foreground text-xs">
-            Nobody has written its lore yet. What is it, who lives there, what happened there?
-            A few sentences in your own words is plenty.
-          </span>
+          {t.describePlace}
+          <span className="text-muted-foreground text-xs">{t.describePlaceHint}</span>
           <textarea
             name="description"
             value={description}
@@ -239,7 +245,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
         </label>
       ) : (
         <label className="flex flex-col gap-1 text-sm">
-          Anything to add? (optional)
+          {t.anythingToAdd}
           <textarea
             name="body"
             maxLength={COMPLAINT_MAX}
@@ -258,17 +264,17 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
       */}
       {signedInAs ? (
         <p className="text-muted-foreground text-sm">
-          Filed as <span className="text-foreground">{signedInAs}</span>.
+          {fill(t.filedAs, { name: signedInAs })}
         </p>
       ) : (
         <>
           <label className="flex flex-col gap-1 text-sm">
-            Your name (optional)
+            {t.yourName}
             <input name="name" className="bg-background rounded border px-2 py-1.5" />
           </label>
 
           <label className="flex flex-col gap-1 text-sm">
-            Your email (optional)
+            {t.yourEmail}
             <input name="email" type="email" className="bg-background rounded border px-2 py-1.5" />
           </label>
         </>
@@ -288,7 +294,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
 
       <div>
         <Button type="submit" disabled={busy || !preview.ok || (isPlace && !described)}>
-          {busy ? "Sending…" : "Send it"}
+          {busy ? t.sending : t.send}
         </Button>
       </div>
     </form>

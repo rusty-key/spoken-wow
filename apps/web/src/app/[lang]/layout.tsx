@@ -16,8 +16,10 @@ import NavigationProgress from "@/components/NavigationProgress";
 import SiteHeader from "@/components/SiteHeader";
 import { BannerShown } from "@/components/TeamPicker";
 import UserMenu from "@/components/UserMenu";
+import { UiTextProvider } from "@/components/UiTextProvider";
 import { langTag, registeredExtras } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
+import { uiText } from "@/lib/ui-text";
 import { cn } from "@/lib/utils";
 import { body, display } from "@/components/landing/fonts";
 
@@ -59,6 +61,9 @@ export default async function RootLayout({
   // database down. Only the languages beyond the built-in ones travel to the browser.
   const extras = registeredExtras();
   const acting = await actingIn(lang);
+  // The page's own words. `lang` is the interface language -- the `[lang]` segment -- and an
+  // admin page's `?lang=` is the language its team maintains, which may be another.
+  const text = await uiText(lang);
   return (
     // Dark-only for now: this is a tool for listening to game dialog, and the light
     // palette is untested. The shadcn tokens make flipping it a one-line change.
@@ -71,6 +76,7 @@ export default async function RootLayout({
         </Suspense>
         <LanguagesProvider languages={extras}>
           <LangProvider lang={lang}>
+            <UiTextProvider text={text}>
             <GrantsProvider>
               <SiteHeader>
                 <header className="bn-theme bn-nav sn">
@@ -82,7 +88,7 @@ export default async function RootLayout({
                       </Link>
                       {/* Every page past the front page is Backstage, signed in or not (the explorers
                           are public), so the tag does not wait for the session and the row never shifts. */}
-                      <span className="sn-area">Backstage</span>
+                      <span className="sn-area">{text.hub}</span>
                     </div>
                     <UserMenu />
                   </div>
@@ -96,6 +102,7 @@ export default async function RootLayout({
               )}
               <BannerShown shown={acting !== null}>{children}</BannerShown>
             </GrantsProvider>
+            </UiTextProvider>
           </LangProvider>
         </LanguagesProvider>
         {/* Cloudflare Web Analytics and Ahrefs Analytics. Production only, so local page

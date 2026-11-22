@@ -1,0 +1,252 @@
+/**
+ * Backstage's words, in English.
+ *
+ * SEPARATE FROM lib/site-text, on purpose. The front page's dictionaries are complete: a
+ * translation there is either done or the test fails, because the front page is what a player
+ * in that language reads. Backstage is read by volunteers, most of whom work in English
+ * whatever language they maintain -- so a language here may cover as much or as little as its
+ * team wants, and whatever it leaves out reads English. That is the whole difference, and it
+ * is why this file is not a section of EN.
+ *
+ * Plain strings only, so a dictionary can cross from a server page to a client component as
+ * props, and `{name}` for anything interpolated: a sentence cut into pieces does not translate.
+ */
+/**
+ * The shape is `string` at every leaf, not the literal each one happens to hold: `as const`
+ * would type `hub` as `"Backstage"`, and no translation could ever satisfy it.
+ */
+type Widened<T> = T extends string ? string : { [K in keyof T]: Widened<T[K]> };
+
+const ENGLISH = {
+  /** The tag beside the logo, on every page past the front page. */
+  hub: "Backstage",
+  menu: {
+    sections: "Sections",
+    menu: "Menu",
+    profile: "Profile",
+    signIn: "Sign in",
+    register: "Register",
+    signOut: "Sign out",
+    settings: "Settings",
+    language: "Language",
+    off: " (off)",
+    admin: "Admin",
+    /* The pages a signed-in volunteer reaches, by the name the page gives itself. */
+    voices: "Voices",
+    pronunciation: "Pronunciation",
+    reports: "Reports",
+    contributions: "Contributions",
+    playerWords: "Player words",
+    missingAudio: "Missing audio",
+    npcs: "NPCs",
+    activity: "Activity",
+    myPacks: "My packs",
+    sectionsNav: {
+      quests: "Quests",
+      places: "Places",
+      bosses: "Bosses",
+      readables: "Readables",
+      contribute: "Contribute",
+    },
+  },
+  /** The setting that changes this dictionary, named after what it changes. */
+  interface: {
+    label: "Interface language",
+    hint: "The words on this site. It does not change the language you maintain, which is the language code in each admin page.",
+  },
+  /** The admin header, its tabs, and the seven pages' own titles. */
+  admin: {
+    everyLanguage: "every language",
+    switchLanguage: "Switch language",
+    openTeam: "Open a language team",
+    youAdminister: "You administer",
+    otherTeams: "Other teams (no access)",
+    tabsLabel: "Admin",
+    tabs: {
+      dashboard: "Dashboard",
+      team: "Team",
+      users: "Users",
+      release: "Release",
+      storage: "Storage",
+      teams: "Teams",
+      teamReleases: "Team releases",
+      packs: "Packs",
+      packsTitle: "Community packs",
+    },
+    teamTitle: "{lang} team",
+  },
+  /**
+   * The team dashboard: the one page a language's maintainer opens every day.
+   *
+   * Its words are here rather than in lib/admin or lib/reports because those constants are read
+   * where there is no interface at all -- a release notification's subject line, an email -- and
+   * a sentence there must not change with who is looking at it.
+   */
+  dashboard: {
+    openIn: "Open in {lang}",
+    nothingWaiting: "Nothing waiting",
+    thingsWaiting: "{n} things waiting",
+    oneThingWaiting: "1 thing waiting",
+    clear: "Clear:",
+    thisWeek: "This week",
+    takesCut: "takes cut",
+    contributionsAccepted: "contributions accepted",
+    releaseRuns: "release runs",
+    nothingYet: "Nothing has happened in {lang} yet.",
+    allActivity: "All activity →",
+    notYours: "Not yours to open",
+    nobodyHolds: "nobody on the team holds this",
+    theSite: "The site",
+    unnamed: "unnamed",
+    /** How a folded run says where it happened: " in Quests". */
+    inSection: " in {section}",
+    /**
+     * A run of several rows, folded into one line. Partial: a kind with no wording here reads
+     * FOLDABLE's English, so a new activity kind needs no dictionary entry to be readable.
+     */
+    folded: {
+      "take.generated": "generated {n} takes",
+      "take.restored": "restored {n} older takes",
+      "take.acked": "marked {n} takes fine after a pronunciation change",
+      "recording.uploaded": "recorded {n} lines",
+      "contribution.resolved": "{status} {n} contributions",
+      "text.edited": "edited {n} texts",
+      "name.edited": "renamed {n} lines",
+      "ignore.set": "ignored {n} lines",
+      "ignore.cleared": "stopped ignoring {n} lines",
+      "override.set": "set what {n} lines say",
+      "lexicon.added": "added {n} pronunciations",
+      "lexicon.edited": "changed {n} pronunciations",
+    } as Record<string, string>,
+    /* The four things waiting, each with the line under it saying how much and of what. */
+    release: "Release {section}",
+    reviewRelease: "Review release",
+    releaseChanges: "{n} lines changed that players don't have yet",
+    releaseSplit: "{added} new, {restored} put back",
+    releaseTextChanges: "{n} text changes",
+    releaseNever: "Never released from here: the first release sends everything live",
+    contributions: "Contributions to review",
+    contributionsQuests: "Quests {n}",
+    contributionsCorrections: " ({n} new texts, {m} corrections)",
+    reports: "Open audio reports",
+    missing: "Missing audio",
+    missingCapped: "among the lines players hear in silence most",
+    missingHeard: "lines players heard in silence",
+    missingTop: "top: {line}, heard by {n} players",
+    /* The four sections, as a task names the one it is about. */
+    sections: {
+      quests: "Quests",
+      places: "Places",
+      readables: "Readables",
+      bosses: "Bosses",
+    },
+    /* A report, by the complaint it makes rather than its triage column. */
+    categories: {
+      pronunciation: "Said a word wrong",
+      wrong_voice: "Wrong voice for this character",
+      audio_quality: "Cut off, garbled or noisy",
+      missing: "No voiceover played at all",
+      wrong_text: "Read text that is not what the NPC says",
+      other: "Something else",
+    },
+    /* What a capability is called where the dashboard shows who holds it. */
+    capabilities: {
+      text: "text maintainer",
+      edit: "edit",
+      regenerate: "regenerate",
+      configure: "configure",
+      ignore: "ignore",
+      admin: "admin",
+      record: "voice actor",
+    },
+  },
+  /**
+   * The Contribute page, which a player usually reaches from the addon with no account.
+   *
+   * `linkProblems` and `fieldLabels` are keyed by the parser's own error names and field names,
+   * not by English: a key missing here reads English from the maps in ContributeForm.
+   */
+  contribute: {
+    title: "Contribute",
+    lede: "Send the game's text for what Spoken hasn't narrated yet. A person reviews every line, so answers take a while.",
+    gatheredTitle: "Everything you gathered",
+    gatheredLede: "Every line the addon collected while you played, and which zone you met each speaker in.",
+    gatheredStep1: "Turn on Gather as I play in the game, then log out or /reload.",
+    gatheredStep2: "Drop this file below:",
+    gatheredManager: "Or let the Spoken Manager send it after each logout: turn on Sharing in its settings.",
+    cacheTitle: "Game text cache",
+    cacheLede: "Helps match NPC greetings across languages. Only NPC text is sent.",
+    cacheStep1: "Log out of the game.",
+    cacheStep2: "Drop DBCache.bin and every DBCache.*.tmp file from this folder, and pick its language:",
+    singleLine: "For a single line: in the game, press Contribute where Spoken has no voice or no lore, copy the link it shows you, and open it in your browser.",
+    describePlace: "Describe this place",
+    describePlaceHint:
+      "Nobody has written its lore yet. What is it, who lives there, what happened there? A few sentences in your own words is plenty.",
+    describeTooShort: "Describe the place in a sentence or two -- at least {n} characters.",
+    anythingToAdd: "Anything to add? (optional)",
+    yourName: "Your name (optional)",
+    yourEmail: "Your email (optional)",
+    filedAs: "Filed as {name}.",
+    previewLabel: "What will be sent",
+    send: "Send it",
+    sending: "Sending…",
+    sent: "Got it, thank you. It is in the queue with everything else players have sent.",
+    dropLua: "Drop SpokenContributions.lua here",
+    dropAnother: "Drop another file, or click to choose one.",
+    orClick: "or click to choose it",
+    nothingReadable: "Nothing in that file could be read. Log out of the game once so it writes the file again, then pick it.",
+    nothingGathered:
+      "That file holds nothing gathered. It should be SpokenContributions.lua, after gathering was turned on and you logged out.",
+    whereMet: "where you met {what}",
+    couldNotBeRead: "{n} that could not be read and will be left out",
+    andMore: " and {n} more",
+    got: "Got {what}, thank you.",
+    someRefused: " {n} could not be used.",
+    clearAfter: "You can clear the collected lines in the game now: Spoken's settings, Clear Collected Lines.",
+    someArrived: "{n} of them arrived.{unused} {message} The other {rest} are still here to send.",
+    dropCache: "Drop the DBCache files or their folder here",
+    orClickThem: "or click to choose them",
+    cacheCounts: "{files} files, {texts} texts",
+    cacheSent: "Got {texts} texts: {added} new, {changed} updated. Thank you.",
+    sendAs: "Send {texts} texts as {lang}",
+    gameLanguage: "Game language",
+    noCacheFiles: "No DBCache files there. They are in Cache/ADB/<language>/.",
+    cacheEmpty: "Those files hold no NPC text. Talk to a few NPCs, log out, and pick them again.",
+    /* The fields a pasted link names, by the parser's key. */
+    fieldLabels: {
+      quest: "Quest",
+      event: "Moment",
+      npc: "Character",
+      title: "Title",
+      book: "Book",
+      number: "Page",
+      page: "Page id",
+      map: "Map",
+      zone: "Zone",
+      subzone: "Place",
+      locale: "Language",
+      build: "Client",
+      addon: "Addon",
+      x: "x",
+      y: "y",
+      reader: "Your character (not kept)",
+      readerClass: "Your class",
+      readerRace: "Your race",
+    } as Record<string, string>,
+    /* What a pasted link's trouble is, by the parser's error name. */
+    linkProblems: {
+      truncated: "That link was cut short. Copy the whole link from the game again.",
+      checksum: "That link was changed after it was copied. Copy it again without editing it.",
+      version: "That came from a newer addon than this page knows. Update the site's addons, or tell me.",
+      source: "That is not something this page can take.",
+      oversize: "That is far larger than anything the addon produces.",
+      malformed: "That link does not carry an addon's contribution. Copy it from the game again.",
+      corrupt: "That link looks broken -- copy it from the game again.",
+      unsupported: "This browser can't open this kind of link. Try it in a current browser.",
+    } as Record<string, string>,
+  },
+} as const;
+
+/** English written as a `Widened` map, so a dictionary's strings are interchangeable. */
+export const EN: Widened<typeof ENGLISH> = ENGLISH;
+export type UiText = typeof EN;
