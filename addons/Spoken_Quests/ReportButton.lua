@@ -131,9 +131,10 @@ function ReportButton:Link(target, language, file)
 end
 
 --- DialogueUI hides UIParent and the game's popups with it, so under its window the address
---- goes to Spoken's copy box, which shows over that window.
+--- goes to Spoken's copy box, which shows over that window. Under the controller UI it goes
+--- there too: never to the game's popup.
 local function ShowCopy(url)
-    if Utils:DialogueUIPage() and Spoken and Spoken.ShowContribution then
+    if Spoken and Spoken.ShowContribution and (Utils:DialogueUIPage() or (Spoken.IsGamepadUI and Spoken:IsGamepadUI())) then
         Spoken:ShowContribution(url, nil, true)
         return
     end

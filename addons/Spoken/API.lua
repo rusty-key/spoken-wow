@@ -219,6 +219,12 @@ end
 -- The same goes for the setting that hides those buttons: guard on the method, and an older
 -- player without it simply means the buttons are shown.
 
+--- Whether Forever's controller UI is on. Under it a game popup an addon opens breaks the d-pad
+--- (#165), so a feature addon shows its links in Spoken:ShowContribution instead.
+function Spoken:IsGamepadUI()
+    return Addon:IsGamepadUI()
+end
+
 --- Whether the player turned every Contribute button off in the Spoken settings.
 --- A feature addon asks this in its gap check, and re-asks on CONTRIBUTE_SETTINGS_CHANGED.
 function Spoken:AreContributeButtonsHidden()

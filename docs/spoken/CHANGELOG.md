@@ -41,6 +41,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **Read Greetings has a Once per Session choice.** An NPC greets you once each session: after a
   reload or relog it greets again. Greetings are kept per NPC, so guards that share an NPC ID share
   one greeting. *([anon1231823](https://github.com/anon1231823))*
+- **The settings pages work with the controller UI.** Each row is one stop: left and right step a
+  slider or dropdown, and A ticks or opens it. *([nobbs](https://github.com/nobbs))*
+- **Download, Report and the settings questions keep the controller working.** They open in
+  Spoken's own window, which B closes. *([nobbs](https://github.com/nobbs))*
+- **Copy Settings From and Delete Profile ask first.** *([nobbs](https://github.com/nobbs))*
 
 ## 3.11.0 — 2026-11-21
 

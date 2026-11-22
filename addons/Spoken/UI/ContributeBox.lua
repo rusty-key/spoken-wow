@@ -13,6 +13,9 @@ setfenv(1, SpokenEnv)
 -- envelope's checksum exists to catch on the far end.
 
 local WIDTH, HEIGHT = 500, 340
+-- For a link that fits on one line: the title, the hint and the line, and no more. A pack's
+-- address is one, and the full height left it a line in an empty box.
+local LINK_HEIGHT = 96
 
 -- The choice's two buttons, side by side along the bottom edge.
 local CHOICE_WIDTH = 200      -- the least either is, sized to the English labels
@@ -114,6 +117,7 @@ local function NewDialog(name, width, height, titleText)
     local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -8)
     close:SetScript("OnClick", function() frame:Hide() end)
+    SpokenLayout.FollowController(frame, close)
 
     return frame, title
 end
@@ -141,6 +145,13 @@ local function Build()
         editBox:SetFontObject(ChatFontNormal)
     end
     scroll:SetScrollChild(editBox)
+
+    -- The edit box's own font, off screen, to tell whether a link fits on one line.
+    local measure = frame:CreateFontString(nil, "ARTWORK")
+    if measure.SetFontObject then
+        measure:SetFontObject(ChatFontNormal)
+    end
+    measure:Hide()
 
     local address = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     address:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 16, 20)
@@ -201,7 +212,7 @@ local function Build()
     end)
 
     return { frame = frame, editBox = editBox, address = address, title = title, hint = hint,
-        scroll = scroll, body = body, justThis = justThis, gather = gather }
+        scroll = scroll, body = body, justThis = justThis, gather = gather, measure = measure }
 end
 
 local function BuildGatheredView()
@@ -267,9 +278,22 @@ function Spoken:SetContributeHost(frame)
     Place()
 end
 
+-- Short for a link that fits on one line, full height for anything that wraps.
+local function Fit(payload, isLink)
+    local short = false
+    if isLink and not payload:find("\n", 1, true) then
+        box.measure:SetText(payload)
+        local width = box.measure:GetStringWidth() or 0
+        short = width > 0 and width <= box.editBox:GetWidth()
+    end
+    box.frame:SetHeight(short and LINK_HEIGHT or HEIGHT)
+    box.scroll:SetPoint("BOTTOMRIGHT", box.frame, "BOTTOMRIGHT", -32, short and 16 or 56)
+end
+
 local function ShowPayload(payload, address, isLink)
     EnsureBox()
     Face(false, false)
+    Fit(payload, isLink)
     -- Shown before the focus is asked for: a hidden edit box ignores SetFocus, so the first
     -- time the box opened, the keyboard stayed with the game and a Cmd+C straight away copied
     -- nothing. Only a box that was already up -- the second contribution, or "Just this one"
@@ -296,6 +320,7 @@ end
 local function ShowProse(text, choice)
     EnsureBox()
     Face(true, choice)
+    Fit("", false)
     box.payload = nil
     box.body:SetText(text)
     box.frame:Show()
