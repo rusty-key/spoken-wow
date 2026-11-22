@@ -10,6 +10,7 @@ function M.Fresh(stub, spokenDir)
     stub.ResetTimers()
     local env = stub.LoadSpoken(spokenDir)
     env.Addon.db.char.IsPaused = false
+    env.Addon.db.char.IsMuted = false
     local quests = env.Sources:Register("quests", { title = "Quests", addon = "Spoken_Quests", order = 1 })
     local places = env.Sources:Register("places", { title = "Places", addon = "Spoken_Places", order = 2,
         queueLimit = 3, interClipGap = 0.25 })

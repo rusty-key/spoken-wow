@@ -98,6 +98,22 @@ stub.FireEvent("PLAYER_LOGIN")
 Expect("the next login puts back what a crashed session left changed", Value(), "0")
 Expect("...and forgets it", env.Addon.db.global.BackgroundSound, nil)
 
+---------------------------------------------------------------- muted
+Q:RemoveAllSoundsFromQueue(); stub.Advance(1)
+audio.KeepTalkingInBackground = true
+world.cvars[CVAR] = "0"
+Q:SetMuted(true)
+quests:Enqueue(H.Clip({ length = 3 }))
+stub.Advance(0.5)
+Expect("muted, a silent line leaves the game's setting alone", Value(), "0")
+Q:SetMuted(false)
+stub.Advance(0.5)
+Expect("unmuted mid-line, the replayed line turns it on", Value(), "1")
+Q:SetMuted(true)
+Expect("muted mid-line, the player's value is back at once", Value(), "0")
+Q:SetMuted(false)
+Q:RemoveAllSoundsFromQueue(); stub.Advance(5)
+
 ---------------------------------------------------------------- the settings page
 local row
 for _, entry in ipairs(_G.SpokenOptionsPanel and _G.SpokenOptionsPanel.layout.entries or {}) do
