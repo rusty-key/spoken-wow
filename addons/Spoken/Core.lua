@@ -480,8 +480,9 @@ end
 --- What Spoken itself says for a report: its version, the queue, the window and the modules
 --- registered. Each module's own follows it in Options:ShowDiagnostics.
 function Addon:PrintDiagnostics()
-    print(format("Spoken %s, API %d, %d queued, %s", AddonVersion, Spoken.API_VERSION,
-        SoundQueue:GetQueueSize(), SoundQueue:IsPaused() and "paused" or "playing"))
+    print(format("Spoken %s, API %d, %d queued, %s%s", AddonVersion, Spoken.API_VERSION,
+        SoundQueue:GetQueueSize(), SoundQueue:IsPaused() and "paused" or "playing",
+        SoundQueue:IsMuted() and ", muted" or ""))
     print("  " .. (Developer:Call("Describe") or "debug log: no Spoken Developer module"))
     for key, source in Sources:Iterate() do
         print(format("  source %s (%s)", key, source.addon or "?"))
@@ -527,6 +528,7 @@ local function RegisterSlashCommand()
             { "/sp replay", L.BIND_PLAYPAUSE },
             { "/sp skip", L.BIND_SKIP },
             { "/sp stopall", L.BIND_STOP },
+            { "/sp mute on | off", L.BIND_MUTE },
             { "/sp style subtitles | small | large | dialogueui | voice", L.OPT_PLAYER_STYLE },
             { "/sp narrator on | off", L.OPT_SHOW_NARRATOR },
             { "/sp rows 1 | 2", L.TRANSCRIPT_LINES },
@@ -551,6 +553,9 @@ local function RegisterSlashCommand()
             SoundQueue:RemoveAllSoundsFromQueue()
         elseif command == "skip" then
             SoundQueue:Skip()
+        elseif verb == "mute" and (rest == "" or rest == "on" or rest == "off") then
+            if rest == "" then SoundQueue:ToggleMuted() else SoundQueue:SetMuted(rest == "on") end
+            print("Spoken: " .. (SoundQueue:IsMuted() and L.AUDIO_MUTED or L.AUDIO_UNMUTED))
         elseif command == "compendium" then
             Options:ToggleCompendium()
         elseif (verb == "narrator" or verb == "words" or verb == "transcript") and (rest == "" or rest == "on" or rest == "off") then

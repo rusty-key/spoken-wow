@@ -291,7 +291,7 @@ local function CategoryTitle(cat)
     if type(loc) == "string" then return loc end
     return cat
 end
-for _, name in ipairs({ "SPOKEN_PLAYPAUSE", "SPOKEN_SKIP", "SPOKEN_STOP", "SPOKEN_MUTE", "SPOKEN_COMPENDIUM" }) do
+for _, name in ipairs({ "SPOKEN_PLAYPAUSE", "SPOKEN_SKIP", "SPOKEN_STOP", "SPOKEN_COMPENDIUM", "SPOKEN_MUTE" }) do
     local element
     for tag in bindings:gmatch("<Binding%s[^>]*>") do
         if tag:find('name="' .. name .. '"', 1, true) then element = tag end
@@ -327,6 +327,21 @@ do
     Expect("/sp narrator is its name now", env.Addon.db.profile.Transcript.Enabled, false)
     SlashCmdList.SPOKEN("narrator on")
     env.Addon:SetPlayerStyle("minimal"); Options:UpdateRows()
+    Expect("/sp help lists mute by its key's name", help:find("/sp mute on | off: " .. L.BIND_MUTE, 1, true) ~= nil, true)
+    local Q = env.SoundQueue
+    said = {}
+    env.print = function(text) table.insert(said, text) end
+    SlashCmdList.SPOKEN("mute")
+    Expect("/sp mute toggles mute on", Q:IsMuted(), true)
+    Expect("...and says so", said[1], "Spoken: " .. L.AUDIO_MUTED)
+    SlashCmdList.SPOKEN("mute on")
+    Expect("/sp mute on keeps it on", Q:IsMuted(), true)
+    SlashCmdList.SPOKEN("mute off")
+    Expect("/sp mute off turns it off", Q:IsMuted(), false)
+    Expect("...and says so", said[3], "Spoken: " .. L.AUDIO_UNMUTED)
+    SlashCmdList.SPOKEN("mute of")
+    Expect("a word mute does not know changes nothing", Q:IsMuted(), false)
+    env.print = print_
 end
 
 ---------------------------------------------------------------- collected lines

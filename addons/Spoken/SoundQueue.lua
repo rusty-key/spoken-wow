@@ -120,7 +120,6 @@ end
 function SoundQueue:CanBePaused()
     local current = self:GetCurrentSound()
     return not self:IsPlaying() or current.handle ~= nil or current.textOnly == true or current.silent == true
-        or self:IsMuted()
 end
 
 local function CountFor(source)

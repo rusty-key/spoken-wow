@@ -64,9 +64,11 @@ end
 function BackgroundSound:Sync()
     if not self:IsAvailable() then return end
     local head = SoundQueue:GetCurrentSound()
-    if Wanted() and head and SoundQueue:IsPlaying() then
+    -- Muted, a line that speaks makes no sound, so there is nothing to keep audible.
+    local muted = SoundQueue:IsMuted()
+    if Wanted() and head and not muted and SoundQueue:IsPlaying() then
         self:TurnOn()
-    elseif not Wanted() or not head then
+    elseif not Wanted() or not head or muted then
         self:PutBack()
     end
 end

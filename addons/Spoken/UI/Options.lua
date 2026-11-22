@@ -50,8 +50,8 @@ local BINDINGS = {
     { "SPOKEN_PLAYPAUSE", "BIND_PLAYPAUSE" },
     { "SPOKEN_SKIP", "BIND_SKIP" },
     { "SPOKEN_STOP", "BIND_STOP" },
-    { "SPOKEN_MUTE", "BIND_MUTE" },
     { "SPOKEN_COMPENDIUM", "BIND_COMPENDIUM" },
+    { "SPOKEN_MUTE", "BIND_MUTE" },
 }
 
 --- Name the bindings in the player's language. The category is the name of a string global the
