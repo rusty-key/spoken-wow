@@ -92,7 +92,7 @@ local function PageEnded(clip, finished)
 	local before = span and clip.length and span.before + clip.length
 	while #entry.pages > 0 do
 		local id = table.remove(entry.pages, 1)
-		local nextClip = SpokenReadables:ClipFor(id)
+		local nextClip = SpokenReadables:ClipFor(id, clip.present)
 		if nextClip then
 			Follow(nextClip)
 			nextClip.continues = #entry.pages > 0

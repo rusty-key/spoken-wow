@@ -237,7 +237,7 @@ local function TitleFirstTimings(title, text, length)
 	return timings
 end
 
-function SpokenReadables:ClipFor(pageId)
+function SpokenReadables:ClipFor(pageId, bookPresentation)
 	local bookId, number = self:PlaceOf(pageId)
 	if not bookId then
 		return nil
@@ -262,6 +262,13 @@ function SpokenReadables:ClipFor(pageId)
 				local timings
 				if recorded then
 					timings = entry.times or place.number == 1 and TitleFirstTimings(title, text, length) or nil
+				end
+				local picture, material
+				-- A reading outlives its window and must not take another open book's appearance.
+				if bookPresentation then
+					picture, material = bookPresentation.portrait, bookPresentation.material
+				else
+					picture, material = self:PagePicture(pageId), self:PageMaterial(pageId)
 				end
 				return {
 					key = "b:" .. pageId,
@@ -295,8 +302,8 @@ function SpokenReadables:ClipFor(pageId)
 						bullet = "book",
 						-- A text pack's language may need a font the game's lacks.
 						font = Spoken:ClipFont(shown, self),
-						material = self:PageMaterial(pageId),
-						portrait = self:PagePicture(pageId),
+						material = material,
+						portrait = picture,
 						actions = ACTIONS,
 					},
 					stopCallback = PageStopped,

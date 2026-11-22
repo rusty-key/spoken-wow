@@ -4,6 +4,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Notes and other readables keep their icon on every narrated page,** even after closing the readable or opening another one. *([anon1231823](https://github.com/anon1231823))*
 - **Read After Accepting no longer shows an explanatory tooltip.** *([anon1231823](https://github.com/anon1231823))*
 - **With Read After Accepting on, a quest reads once you accept or hand it in.** It replaces Read
   When Window Closes. *([anon1231823](https://github.com/anon1231823))*
