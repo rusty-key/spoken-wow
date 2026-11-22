@@ -1,12 +1,14 @@
 ## Interface: 11509, 20506, 30403, 16001
 ## Title: |cffb48cffSpoken|r |cff6cb8ffContributions|r
 ## Notes: Where Spoken keeps the lines it gathered for you. Upload SavedVariables/SpokenContributions.lua at spoken.quest/contribute.
-## Version: 3.8.7
+## Version: 3.12.1
 ## SavedVariables: SpokenContributionsDB
 ## IconTexture: Interface\AddOns\SpokenContributions\icon.tga
 ## Group: Spoken
 ## X-Part-Of: Spoken
-# No Lua at all. The client names a SavedVariables file after the addon
-# folder that declares it, never after the variable, so anything the player stored would land
-# in Spoken.lua beside its settings. This folder exists only so the file a player is told
-# to upload is named for what it holds. Gather.lua in the player reads and writes the table.
+# The client names a SavedVariables file after the addon folder that declares it, never after the
+# variable, so anything the player stored would land in Spoken.lua beside its settings. This folder
+# exists so the file a player is told to upload is named for what it holds. Gather.lua in the
+# player reads and writes the table. Sent.lua is the Spoken Manager's: outside SavedVariables,
+# because the game overwrites those from memory at every logout.
+Sent.lua

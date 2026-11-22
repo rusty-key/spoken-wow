@@ -45,6 +45,8 @@ local function Install(packs, locale)
             LookupLocale = pack.lookupLocale,
             ClientLocaleLookups = pack.clientGossip and { GossipLookupByNPCID = pack.clientGossip },
             GetSoundPath = function(_, fileName) return fileName end,
+            TextByFileName = pack.texts,
+            LineTextByFileName = pack.lineTexts,
         })
     end
     return VO
@@ -292,25 +294,25 @@ do
 end
 
 ---------------------------------------------------------------- K. a language no client runs in
--- Italian is no built-in language: a pack declares it, and then a player may choose it, but
+-- Japanese is no built-in language: a pack declares it, and then a player may choose it, but
 -- GetLocale() never says it, so Auto never lands on it -- even on a (hypothetical) client that
 -- claimed it.
-local IT_PACKS = {
+local JA_PACKS = {
     { folder = "EnglishPack", lines = EN_LINES },
-    { folder = "ItalianPack", language = "itIT", lines = { ["1-accept"] = 5.5 } },
+    { folder = "JapanesePack", language = "jaJP", lines = { ["1-accept"] = 5.5 } },
 }
-VO = Install(IT_PACKS, "enUS")
-Expect("K. an Italian pack declares Italian", VO.DataModules:GetPresentModule("ItalianPack").Language, "itIT")
+VO = Install(JA_PACKS, "enUS")
+Expect("K. a Japanese pack declares Japanese", VO.DataModules:GetPresentModule("JapanesePack").Language, "jaJP")
 Expect("K. on Auto an English client hears English", Resolve(VO, 1), "EnglishPack")
-VO.Addon.db.profile.Audio.VoiceLanguage = "itIT"
-Expect("K. chosen, Italian answers", Resolve(VO, 1), "ItalianPack")
+VO.Addon.db.profile.Audio.VoiceLanguage = "jaJP"
+Expect("K. chosen, Japanese answers", Resolve(VO, 1), "JapanesePack")
 Expect("K. ...and falls back to English where it has no clip", Resolve(VO, 2), "EnglishPack")
-VO = Install(IT_PACKS, "itIT")
-Expect("K. a client claiming Italian is not taken at its word", VO.Language:GetClientLanguage(), "enUS")
+VO = Install(JA_PACKS, "jaJP")
+Expect("K. a client claiming Japanese is not taken at its word", VO.Language:GetClientLanguage(), "enUS")
 Expect("K. ...so Auto stays English", Resolve(VO, 1), "EnglishPack")
-Expect("K. Italian is not a client language", VO.Language:IsClientLanguage("itIT"), false)
+Expect("K. Japanese is not a client language", VO.Language:IsClientLanguage("jaJP"), false)
 Expect("K. Portuguese is", VO.Language:IsClientLanguage("ptBR"), true)
-Expect("K. nor is Vietnamese, though a pack declares it", VO.Language:IsClientLanguage("viVN"), false)
+Expect("K. nor is Thai, though a pack declares it", VO.Language:IsClientLanguage("thTH"), false)
 
 ---------------------------------------------------------------- M. a language only a pack declares
 -- Hebrew is in no list of this addon: its pack names it in the .toc and Spoken's scan registers it.
@@ -461,6 +463,80 @@ local builtin = {}
 for _, locale in ipairs(VO.Language.LOCALES) do table.insert(builtin, locale.code) end
 Expect("the built-in list is the registry's", table.concat(builtin, " "),
     "enUS deDE esES esMX frFR ptBR ruRU koKR zhCN zhTW")
+
+---------------------------------------------------------------- the Text Language's voice pack, not playing
+-- Polish chosen for the words and English for the voice: the English recording plays, captioned in
+-- the Polish pack's words for the line, which beat a text pack's.
+do
+    local VO = Install({ { folder = "SpokenQuestsAudio", lines = { ["101-accept"] = 2 } },
+        { folder = "SpokenQuestsAudio_plPL", language = "plPL", lines = { ["101-accept"] = 2 },
+            texts = { ["101-accept"] = "Słowa polskiego głosu." } } })
+    _G.SpokenEnv.Addon.db.profile.Language.Voice = "enUS"
+    H.ReadText("plPL")
+    _G.Spoken:RegisterText("plPL", "quests", { lines = { ["q:101:accept"] = "Słowa pakietu tekstu." } })
+    local folder, soundData = Resolve(VO, 101)
+    Expect("Text Language Polish, voice English: the English recording plays", folder, "SpokenQuestsAudio")
+    Expect("...captioned in the Polish voice pack's words for the line, before a text pack's",
+        VO.DataModules:TextPackText(soundData), "Słowa polskiego głosu.")
+    H.ReadText(nil)
+    _G.SpokenEnv.Addon.db.profile.Language.Voice = nil
+end
+
+-- A voice pack's words of a line it has no take of are no voice's: a text pack's win over them.
+do
+    local VO = Install({ { folder = "SpokenQuestsAudio", lines = { ["101-accept"] = 2 } },
+        { folder = "SpokenQuestsAudio_plPL", language = "plPL", lines = {},
+            lineTexts = { ["101-accept"] = "Słowa bez nagrania." } } })
+    _G.SpokenEnv.Addon.db.profile.Language.Voice = "enUS"
+    H.ReadText("plPL")
+    local _, soundData = Resolve(VO, 101)
+    Expect("a voice pack's words of a line with no take caption it where nothing else has it",
+        VO.DataModules:TextPackText(soundData), "Słowa bez nagrania.")
+    _G.Spoken:RegisterText("plPL", "quests", { lines = { ["q:101:accept"] = "Słowa pakietu tekstu." } })
+    Expect("...and yield to a text pack's", VO.DataModules:TextPackText(soundData), "Słowa pakietu tekstu.")
+    H.ReadText(nil)
+    _G.SpokenEnv.Addon.db.profile.Language.Voice = nil
+end
+
+---------------------------------------------------------------- voices: a language, or a language and a team
+-- The stimmen team's German pack beside the plain one. The plain pack's priority must not put it
+-- before the team's where the player's list puts the team's first.
+do
+    local STIMMEN = { ["X-Spoken-Team"] = "stimmen", ["X-Spoken-TeamName"] = "Stimmen" }
+    local VO = Install({
+        { folder = "SpokenQuestsAudio", lines = { ["1-accept"] = 1, ["2-accept"] = 1, ["3-accept"] = 1 } },
+        { folder = "SpokenQuestsAudioShared_deDE", language = "deDE", priority = 10,
+            lines = { ["1-accept"] = 2, ["4-accept"] = 2 } },
+        { folder = "SpokenQuestsAudioShared_deDE_stimmen", language = "deDE", meta = STIMMEN,
+            lines = { ["1-accept"] = 3, ["2-accept"] = 3 } },
+    })
+    local spoken = _G.Spoken
+    Expect("team: the pack knows its voice", VO.DataModules:GetPresentModule("SpokenQuestsAudioShared_deDE_stimmen").Voice,
+        "deDE_stimmen")
+    Expect("team: ...and its team", VO.DataModules:GetPresentModule("SpokenQuestsAudioShared_deDE_stimmen").Team, "stimmen")
+    Expect("team: a plain pack has none", VO.DataModules:GetPresentModule("SpokenQuestsAudioShared_deDE").Team, nil)
+
+    spoken:SetVoiceOrder({ "deDE_stimmen", "deDE", "enUS" })
+    local folder, sound = Resolve(VO, 1)
+    Expect("team first: the team's take", folder, "SpokenQuestsAudioShared_deDE_stimmen")
+    Expect("...in its language", sound.language, "deDE")
+    Expect("team first: a line the team lacks comes from the plain pack", Resolve(VO, 4), "SpokenQuestsAudioShared_deDE")
+    Expect("team first: a line neither German pack has is English", Resolve(VO, 3), "SpokenQuestsAudio")
+
+    spoken:SetVoiceOrder({ "deDE" })
+    Expect("plain German: the plain pack's take", Resolve(VO, 1), "SpokenQuestsAudioShared_deDE")
+    Expect("plain German: never the team's, even where only it has the line", Resolve(VO, 2), nil)
+    spoken:SetVoiceOrder({ "deDE_stimmen" })
+    Expect("the team's voice alone: never the plain pack", Resolve(VO, 4), nil)
+    Expect("the pack language is the voice's", VO.DataModules:GetPackLanguage(), "deDE")
+
+    -- No list: the module's own two languages, each a plain voice.
+    local language = _G.SpokenEnv.Addon.db.profile.Language
+    language.Voices, language.Voice, language.Fallback = nil, "deDE", nil
+    Expect("no list: German is the plain pack", Resolve(VO, 1), "SpokenQuestsAudioShared_deDE")
+    Expect("no list: ...and English fills in, the team's pack never", Resolve(VO, 2), "SpokenQuestsAudio")
+    language.Voice = nil
+end
 
 stub.SetLocale("enUS")
 stub.ResetAddOns()

@@ -7,7 +7,7 @@
 
 setfenv(1, VoiceOver)
 
-if GetLocale() ~= "esES" and GetLocale() ~= "esMX" then
+if not Spoken:InterfaceIn("esES", "esMX") then
 	return
 end
 
@@ -34,7 +34,6 @@ L.OPT_CONTENT_VERSION_FMT = "%1$s"
 L.OPT_CONTENT_VERSION_UPDATE_FMT = "%2$s -> |cFF00CCFF%1$s|r"
 L.OPT_CMD_GROUP = "Comandos"
 L.OPT_STOP = "Detener"
-L.OPT_REPLAY = "Repetir"
 L.OPT_CMD_SKIP = "Omitir línea"
 L.OPT_CMD_SKIP_DESC = "Omite la voz que se está reproduciendo"
 L.OPT_CMD_READ = "Leer misión visible"
@@ -47,6 +46,8 @@ L.OPT_CMD_OPTIONS = "Configuración"
 L.OPT_CMD_OPTIONS_DESC = "Abre la página de ajustes de este módulo"
 L.OPT_PANEL_AUTOPLAY = "Leer automáticamente"
 L.OPT_PANEL_STOP_ON_CLOSE = "Detener al cerrar la ventana"
+L.OPT_PANEL_STOP_ON_ACCEPT = "Detener la narración al aceptar"
+L.OPT_PANEL_STOP_ON_ACCEPT_TIP = "Desactivado: una misión que aceptas o completas se sigue leyendo al cerrar su ventana. Si la cierras sin aceptarla, se detiene igualmente."
 L.OPT_PANEL_READ_AFTER_CLOSE = "Leer al cerrar"
 L.OPT_PANEL_READ_AFTER_ACCEPT = "Leer tras aceptar"
 L.OPT_SECTION_TRACKER = "Mostrar botón Reproducir"
@@ -54,12 +55,13 @@ L.OPT_TRACKER_QUEST_LOG = "Registro de misiones"
 L.OPT_TRACKER_OBJECTIVE = "Seguimiento de objetivos"
 L.QUEUE_HELD_GREETING = "Esperando a que el PNJ termine de hablar."
 L.OPT_SECTION_PACKS = "Paquetes de voces"
-L.OPT_PLAY = "Reproducir"
 L.OPT_DIALOG_STOP_TIP = "Dejar de leer"
 L.OPT_READ_TIP = "Leer esto en voz alta"
 L.OPT_GREETING = "Saludo"
 L.OPT_AUTOPLAY_OFF_TIP = "«Leer automáticamente» está desactivado en la página Misiones de la configuración de Spoken."
+L.OPT_PROGRESS_OFF_TIP = "«Leer el progreso de misiones» está desactivado en la página Misiones de la configuración de Spoken."
 L.OPT_NEVER_TIP = "«Leer saludos» está en «Nunca» en la página Charlas de la configuración de Spoken."
+L.OPT_MUTED_TIP = "Has silenciado a este PNJ. Quita el silencio en «PNJ silenciados», en la página «Charlas» de los ajustes de Spoken."
 L.OPT_CONTRIBUTE = "Contribuir"
 L.OPT_REPORT = "Informar"
 L.OPT_REPORT_COPY = "Spoken Quests|n|nCopia esta dirección y ábrela en tu navegador."
@@ -82,6 +84,7 @@ L.OPT_CHATTER_PAGE_TITLE = "Charla del mundo"
 L.OPT_CHATTER_NOTE = "Lee en voz alta lo que dice la gente en el mundo, como guardias y vecinos. Solo suena cuando no se está leyendo nada más, y una línea no se repite durante dos minutos."
 L.OPT_GOSSIP_MINIMAP_SETTINGS = "Configuración de Charlas"
 L.REASON_AUTOPLAY = "Activa «Leer automáticamente» para usar esto."
+L.REASON_STOP_ON_CLOSE = "Activa «Detener al cerrar la ventana» para usar esto."
 L.REASON_AUTOPLAY_ON_QUESTS = "Activa «Leer automáticamente» en la página Misiones para usar esto."
 -- UI/DialogueUIBridge.lua
 L.OPT_SECTION_DIALOGUEUI = "DialogueUI"
@@ -100,13 +103,15 @@ L.OPT_ROW_LANGUAGE = "Idioma"
 
 -- Follow-up lines
 L.OPT_PANEL_FOLLOWUP = "Leer el chat de PNJ tras misiones"
+L.OPT_PANEL_PROGRESS = "Leer el progreso de misiones"
 L.OPT_PANEL_GREETINGS = "Leer saludos"
 L.OPT_GREETING_LABEL_ALWAYS = "Cada vez"
 L.OPT_GREETING_LABEL_ONCE_QUEST = "Una vez con quien da misiones"
 L.OPT_GREETING_LABEL_ONCE_NPC = "Una vez por saludo"
+L.OPT_GREETING_LABEL_ONCE_SESSION = "Una vez por sesión"
 L.OPT_GREETING_LABEL_NEVER = "Nunca"
 L.OPT_OG_THRALL = "Discurso original de Thrall"
-L.REASON_FORGET_GREETINGS = "Pon «Leer saludos» en «Una vez por saludo» o «Una vez con quien da misiones» para usar esto."
+L.REASON_FORGET_GREETINGS = "Pon «Leer saludos» en «Una vez por saludo», «Una vez con quien da misiones» o «Una vez por sesión» para usar esto."
 L.OPT_PANEL_GAME_GREETING_FIRST = "Voz del PNJ antes de leer"
 L.GREETING_DIALOG_APART = "Spoken: volumen de Diálogo ajustado al %1$d%%, distinto de los demás controles de volumen, para que «Voz del PNJ antes de leer» sepa cuándo un PNJ ha terminado de hablar."
 L.OPT_CMD_FOLLOWUP = "Continuación"
@@ -116,6 +121,15 @@ L.OPT_CMD_CHATTER_DESC = "Repite lo que dice un PNJ en voz alta, como si acabara
 
 -- Reading history
 L.OPT_FORGET_GREETINGS_DONE = "Se ha borrado la lista de saludos oídos de este personaje."
+L.OPT_MUTE_NPC = "Silenciar las charlas de este PNJ"
+L.OPT_UNMUTE_NPC = "Activar sonido"
+L.OPT_UNMUTE_NPC_GOSSIP = "Dejar de silenciar las charlas de este PNJ"
+L.MUTE_NPC_DONE = "Los saludos automáticos de %s están ahora silenciados."
+L.UNMUTE_NPC_DONE = "Los saludos automáticos de %s ya no están silenciados."
+L.OPT_MUTED_NPCS = "PNJ silenciados"
+L.OPT_NO_MUTED_NPCS = "Ningún PNJ está silenciado. Silencia uno con el altavoz de su ventana de diálogo."
+L.OPT_FORGET_MUTED_NPCS = "Olvidar PNJ silenciados"
+L.OPT_FORGET_MUTED_NPCS_DONE = "Se ha borrado la lista de PNJ silenciados de este personaje."
 L.OPT_FORGET_GREETINGS = "Olvidar saludos oídos"
 
 -- Voice packs
@@ -165,5 +179,6 @@ L.QUESTS_MORE_FMT = " y %1$d más"
 L.QUESTS_TITLE_NTH_FMT = "%1$s (%2$d)"
 L.QUEST_IN_PROGRESS = "En curso"
 L.QUEST_PART_ACCEPT = "Descripción"
+L.QUEST_PART_PROGRESS = "Progreso"
 L.QUEST_PART_COMPLETE = "Conclusión"
 L.QUEST_PART_NO_TEXT = "No se conoce el texto de esta parte."

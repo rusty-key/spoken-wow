@@ -21,18 +21,23 @@ export type Source = (typeof SOURCES)[number];
 export type NpcType = (typeof NPC_TYPES)[number];
 
 /**
- * What the source filter shows for each value. The first four are words a reader already
- * knows and label themselves; "followup" is a frozen identifier (it names the corpus rows
- * and the followup/ folder) and reads as a typo in a dropdown, so it gets the spelling a
- * person would write. The URL keeps carrying the value, never the label.
+ * What the filters show for each source and speaker type. The corpus values are identifiers
+ * ("followup" names the corpus rows and the followup/ folder) and read as typos in a filter, so
+ * each gets the words a person would use. The URL keeps carrying the value, never the label.
  */
 export const SOURCE_LABELS: Record<Source, string> = {
-  accept: "accept",
-  progress: "progress",
-  complete: "complete",
-  gossip: "gossip",
-  followup: "follow-up",
+  accept: "Quest accept",
+  progress: "Quest progress",
+  complete: "Quest complete",
+  gossip: "Gossip",
+  followup: "Follow-up",
   chatter: "NPC chat",
+};
+
+export const NPC_TYPE_LABELS: Record<NpcType, string> = {
+  creature: "NPC",
+  gameobject: "Object",
+  item: "Item",
 };
 
 /**

@@ -44,6 +44,33 @@ B:SetupSource()
 dofile(READABLES .. "Data/Books.lua")
 SpokenReadablesData.index["William's Shipment"][1][B:ChecksumOf(LETTER)] = 15
 
+---------------------------------------------------------------- readable items in the bags
+local bagItems = {}
+_G.C_Container = {
+    GetContainerNumSlots = function(bag) return bag == 1 and 4 or 0 end,
+    GetContainerItemID = function(bag, slot) return bag == 1 and bagItems[slot] or nil end,
+}
+SpokenReadablesCharacter.found = {}
+bagItems[2] = 745 -- Report: Kobolds, a quest item in the corpus.
+stub.FireEvent("BAG_UPDATE_DELAYED")
+Expect("a carried note is found", B:IsBookFound(209), true)
+Expect("carrying a note does not start narration", #Spoken:GetQueue(), 0)
+Expect("carrying a note does not mark it heard", B:HasReadBook(209), false)
+_G.C_Container = nil
+
+SpokenReadablesData.owners.item[990003] = 209
+SpokenReadablesData.owners.item[700] = 209
+B.itemForBook = nil
+Expect("a book with two items takes the lowest id", B:ItemForBook(209), 700)
+SpokenReadablesData.owners.item[990003], SpokenReadablesData.owners.item[700] = nil, nil
+B.itemForBook = nil
+
+_G.GetItemInfoInstant = function(itemID) return itemID, "Quest", "Note", "", 123456 end
+local icon, crop = B:ItemIcon(209)
+Expect("a carried readable takes its item's icon", icon, 123456)
+Expect("the item icon comes with Spoken's crop", crop ~= nil, true)
+Expect("a world object has no item icon", B:ItemIcon(2104), nil)
+
 -- The client's CloseItemText: the window goes and ITEM_TEXT_CLOSED follows.
 local closed = 0
 _G.CloseItemText = function()

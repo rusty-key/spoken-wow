@@ -8,7 +8,7 @@ the corpus, and building a pack from audio/ once `make quests-sounds` has assemb
     import-corpus corpus/corpus.json.gz -> Postgres         DANGEROUS: once, into an empty database
     import-npc-bodies  world DB -> Postgres npc_body         after init-db, or into production
     export-corpus Postgres -> corpus/corpus.json.gz         before a build; its only writer
-    export-locale-text  Postgres -> one language's gossip text   before its Gossip pack
+    export-locale-text  Postgres -> one language's gossip text and names   before its Gossip pack
     export-giver-names  Postgres -> the addon's translated quest-giver names   after import-locale
     export-gossip-text  Postgres -> the addon's gossip text per client locale, and aliases
     export-chatter-lines  corpus -> the addon's World Chatter lines             after export-corpus
@@ -72,7 +72,7 @@ exp.add_argument("--check", action="store_true",
 
 lxt = subparsers.add_parser(
     "export-locale-text",
-    help="One language's gossip text as its client shows it -> a file build --locale-text reads.")
+    help="One language's gossip text as its client shows it, and its names -> a file build --locale-text reads.")
 lxt.add_argument("--lang", required=True, help="e.g. esMX")
 lxt.add_argument("--out", required=True, help="e.g. build/quests/esMX/locale-text.json.gz")
 
@@ -115,9 +115,15 @@ bld.add_argument("--module-title", default=None,
 bld.add_argument("--language", default=None,
                  help="The language the pack speaks, e.g. esMX. Omitted means English, and "
                       "leaves the TOC as every English pack has it.")
+bld.add_argument("--icon-language", default=None,
+                 help="The badge the pack wears, --language's unless given: enUS for a team's "
+                      "pack in a language with no badge drawn.")
+bld.add_argument("--toc-extra", action="append", default=[], metavar="KEY=VALUE",
+                 help="A TOC line to add, repeatable: a team's pack names its team (X-Spoken-Team) "
+                      "and a language Spoken does not build in its names.")
 bld.add_argument("--locale-text", default=None,
                  help="A file export-locale-text wrote for --language; adds that language's "
-                      "gossip tables, loaded only on a client in it. Gossip pack only.")
+                      "gossip and name tables, loaded only on a client in it. Gossip pack only.")
 
 ins = subparsers.add_parser(
     "install", help="Copy the built module into a WoW AddOns folder.")
@@ -198,14 +204,20 @@ elif args.mode == "export-chatter-lines":
     print(f"wrote {lines} lines across {speakers} speakers")
 
 elif args.mode == "build":
-    locale_text = None
+    def toc_extra(pair):
+        key, sep, value = pair.partition("=")
+        if not sep or not key.startswith("X-") or "\n" in value:
+            raise SystemExit(f"--toc-extra is X-KEY=VALUE on one line, not '{pair}'")
+        return key, value
+
+    locale_text, locale_names = None, []
     if args.locale_text:
         # The client-locale tables ship once per language, in the pack that holds its gossip -
         # its Gossip pack, or its All pack when it ships as one: a faction pack carrying them
         # too would be the same megabytes three more times.
         if args.pack not in ("gossip", "all"):
             raise SystemExit(f"--locale-text is for the gossip or all pack, not '{args.pack}'")
-        lang, locale_text = load_locale_text(args.locale_text)
+        lang, locale_text, locale_names = load_locale_text(args.locale_text)
         if lang != args.language:
             raise SystemExit(f"{args.locale_text} holds {lang} text, not --language "
                              f"{args.language}'s")
@@ -225,7 +237,10 @@ elif args.mode == "build":
                           ignored=load_pack_ignored(corpus, args.ignored, args.overrides),
                           include=include,
                           title=args.module_title or pack_title(args.pack),
-                          language=args.language, locale_text=locale_text)
+                          language=args.language, locale_text=locale_text,
+                          icon_language=args.icon_language,
+                          toc_extra=[toc_extra(pair) for pair in args.toc_extra],
+                          locale_names=locale_names)
     print(f"\nbuilt {report['moduleDir']}")
     print(f"  audio files {report['audioFiles']} ({report['audioFormat']}, pack: {args.pack})")
     for name, rows in sorted(report["tableRows"].items()):

@@ -74,8 +74,9 @@ _G.SpokenPlacesSettings = { language = "deDE", showPictures = false, dump = { 1,
 _G.SpokenPlacesAudioPacks = {}
 local Z = H.LoadPlaces(PLACES, {})
 local places = db.profile.Modules.Places
-Expect("Places: the language and switches are copied under the same keys",
-    places.language == "deDE" and places.showPictures == false, true)
+Expect("Places: the switches are copied under the same keys", places.showPictures, false)
+Expect("Places: the language moves to Spoken's Text Language", db.profile.Language.Text, "deDE")
+Expect("...and is not kept here as well", places.language, nil)
 Expect("Places: the developer's dump is not a setting", places.dump, nil)
 Expect("Places: a setting not saved before reads its default", Z:Get("voiceEnabled"), true)
 Expect("Places: reads and writes go to the profile's table", Z:Get("showPictures") == false and SpokenPlacesSettings == places, true)
@@ -107,11 +108,23 @@ do
     db.profile.Modules = { Places = { language = "deDE" } }
     callbacks.OnProfileChanged("OnProfileChanged", db, "Places German again")
     Expect("Places: a profile that reads the same language says nothing", #stub.chat, 0)
-    db.profile.Modules = { Places = { language = "enUS" } }
+    -- Spoken's Text Language, once the profile's own has moved there.
+    db.profile.Language.Text = "enUS"
+    db.profile.Modules = { Places = {} }
     callbacks.OnProfileChanged("OnProfileChanged", db, "Places German again")
     local said = table.concat(stub.chat, "|")
     Expect("Places: a profile that reads another language says so", said:find("English", 1, true) ~= nil and said:find("/reload", 1, true) ~= nil, true)
     Expect("Places: ...once", #stub.chat, 1)
+end
+
+-- A profile whose Text Language is set keeps it: the Places choice it also has is dropped.
+do
+    db:SetProfile("Places both")
+    db.profile.Language.Text = "frFR"
+    db.profile.Modules = { Places = { language = "deDE" } }
+    callbacks.OnProfileChanged("OnProfileChanged", db, "Places both")
+    Expect("Places: Spoken's Text Language wins over the profile's old Places one", db.profile.Language.Text, "frFR")
+    Expect("...which is dropped", db.profile.Modules.Places.language, nil)
 end
 
 -- The same for Readables, through its own bind function.
@@ -141,7 +154,7 @@ _G.SpokenPlacesSettings, _G.SpokenPlacesCharacter = nil, nil
 _G.SpokenZonesSettings, _G.SpokenZonesCharacter = { language = "frFR" }, narrated
 _G.SpokenPlacesAudioPacks = {}
 H.LoadPlaces(PLACES, {})
-Expect("Places: the settings saved as SpokenZonesSettings are the profile's", db.profile.Modules.Places.language, "frFR")
+Expect("Places: the settings saved as SpokenZonesSettings are the profile's", db.profile.Language.Text, "frFR")
 Expect("...the character's as SpokenZonesCharacter is kept", SpokenPlacesCharacter, narrated)
 Expect("...and the old names are not saved again", SpokenZonesSettings == nil and SpokenZonesCharacter == nil, true)
 

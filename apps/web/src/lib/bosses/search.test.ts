@@ -104,7 +104,7 @@ describe("search", () => {
   it("counts states and pages", () => {
     const entries = [entry({ id: "boss:36:a" }), unwritten({ id: "boss:36:b" })];
     const result = search(entries, context({ takes: new Map([["boss:36:a", take()]]) }), {}, 1, 1);
-    expect(result.counts).toEqual({ missing: 1, stale: 0, current: 1 });
+    expect(result.counts).toEqual({ all: 2, missing: 1, stale: 0, current: 1 });
     expect(result.total).toBe(2);
     expect(result.lines.map((l) => l.id)).toEqual(["boss:36:b"]);
   });

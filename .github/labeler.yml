@@ -45,7 +45,7 @@
 Manager:
   - changed-files:
       - any-glob-to-any-file:
-          - manager/**
+          - apps/manager/**
           - scripts/manager/**
 
 # Only the list: community/README.md also changes when Spoken learns a language.

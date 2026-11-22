@@ -64,8 +64,11 @@ local TYPE_ICONS = {
 	grave = "INV_Misc_Bone_HumanSkull_01", exhibit = "INV_Misc_Statue_01", picture = "INV_Misc_Map_01",
 	other = "INV_Misc_QuestionMark",
 }
-local function TypeIcon(type)
-	return { objectOrItem = true, icon = [[Interface\Icons\]] .. (TYPE_ICONS[type] or TYPE_ICONS.other), bullet = "book" }
+local function TypeIcon(type, book)
+	local icon, crop
+	if book then icon, crop = SpokenReadables:ItemIcon(book) end
+	return { objectOrItem = true, icon = icon or ([[Interface\Icons\]] .. (TYPE_ICONS[type] or TYPE_ICONS.other)),
+		iconCrop = crop, bullet = "book" }
 end
 local READABLES_ICON = { objectOrItem = true, icon = C.ICON, bullet = "book" }
 local filter = ""
@@ -82,14 +85,14 @@ end
 -- Each readable's title for the rows being built: they are asked for it while sorting and for
 -- every keystroke of a search, and on another language's client each answer walks the packs.
 local titles = {}
--- In this client's language where Spoken has it, as the page's words are.
+-- In the Text Language where Spoken has it, as the page's words are.
 local function Title(id)
 	local title = titles[id]
 	if title then return title end
 	local book = Books()[id]
 	if not book then return tostring(id) end
-	local client = SpokenReadables:GetClientLanguage()
-	title = client ~= SpokenReadables.BASE_LANGUAGE and SpokenReadables:TitleIn(id, book.pages[1], client)
+	local language = SpokenReadables:GetTextLanguage()
+	title = language ~= SpokenReadables.BASE_LANGUAGE and SpokenReadables:TitleIn(id, book.pages[1], language)
 		or book.title or tostring(id)
 	titles[id] = title
 	return title
@@ -402,13 +405,13 @@ local function AsLeft(named, build)
 end
 
 -- each(text) for every page of a readable that has words, in order, until it returns true. A page
--- is in this client's language where Spoken has its words, else in the corpus's English. A pack's
--- words come first on an English client too, so the page reads what Play says.
+-- is in the Text Language where Spoken has its words, else in the corpus's English. A pack's
+-- words come first in English too, so the page reads what Play says.
 local function EachText(id, each)
 	local data = SpokenReadables:Data()
 	for _, pageId in ipairs(Books()[id].pages) do
-		local text = SpokenReadables:PackPageText(pageId, SpokenReadables:GetClientLanguage())
-			or SpokenReadables:ClientPageText(pageId) or (data.pages[pageId] and data.pages[pageId].text)
+		local text = SpokenReadables:PackPageText(pageId, SpokenReadables:GetTextLanguage())
+			or SpokenReadables:TextLanguagePageText(pageId) or (data.pages[pageId] and data.pages[pageId].text)
 		if text and text ~= "" and each(text) then return true end
 	end
 	return false
@@ -869,12 +872,12 @@ local function ShowEntry()
 			where = L.GROUP_UNKNOWN
 		end
 		if not Found(id) and not Unlocked() then
-			page:Show({ title = Name(id), subtitle = where, text = L.READABLE_NOT_FOUND, icon = TypeIcon(Index().typeOf[id]) })
+			page:Show({ title = Name(id), subtitle = where, text = L.READABLE_NOT_FOUND, icon = TypeIcon(Index().typeOf[id], id) })
 			return
 		end
 		local words = Words(id)
 		page:Show({ title = Name(id), subtitle = where, text = words, target = id,
-			icon = TypeIcon(Index().typeOf[id]), unwritten = words == "" })
+			icon = TypeIcon(Index().typeOf[id], id), unwritten = words == "" })
 		return
 	end
 	-- A zone, a continent, a group, a type: where it is and what it holds. A kind of writing across

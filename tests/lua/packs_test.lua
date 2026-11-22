@@ -24,7 +24,7 @@ local function Page(path)
     for key, value in head:gmatch("\n?([%w_]+): ?([^\n]*)") do meta[key] = value end
     return meta
 end
-local CODES = { "deDE", "esES", "esMX", "frFR", "itIT", "koKR", "ptBR", "ruRU", "zhCN", "zhTW" }
+local CODES = { "deDE", "esES", "esMX", "frFR", "koKR", "ptBR", "ruRU", "zhCN", "zhTW" }
 local PAGES = {
     places = function(code) return "places/spoken-places-audio-" .. code:lower() .. ".md" end,
     readables = function(code) return "readables/spoken-readables-audio-" .. code:lower() .. ".md" end,

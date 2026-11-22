@@ -17,10 +17,9 @@ import { BASE_LANG, type Lang } from "../lang";
 import { fileIndex } from "../audio";
 import type { CorpusLine } from "../corpus";
 import { readAs } from "../teams/store";
-import { sentText } from "../generation/files";
+import { shapedText } from "../generation/files";
 import { spokenHash } from "../generation/spoken-hash";
-import { directionFor } from "../generation/narration";
-import { SHAPE } from "../generation/speakers/shape";
+import { npcDirections } from "../generation/npc-direction";
 import { currentConfig } from "../generation/settings";
 import { overrideOf } from "./override";
 import type { LineOverride } from "./override";
@@ -60,7 +59,16 @@ export async function staleFiles(
           where "source" = 'quests' and "lang" = $1 and "isCurrent"`,
         [lang],
       );
+  return staleAmong(rows, lang, known, index);
+}
 
+/** staleFiles over take rows the caller already holds, such as the search context's live takes. */
+export async function staleAmong(
+  rows: readonly Row[],
+  lang: Lang = BASE_LANG,
+  known?: Map<string, LineOverride>,
+  index?: Map<string, CorpusLine>,
+): Promise<Set<string>> {
   // What would be sent now: the language's overrides, and English's file rules, which another
   // language goes without, speaking with its own lexicon.
   const overrides = known ?? (await readOverrides(lang));
@@ -68,7 +76,7 @@ export async function staleFiles(
   // Once for the whole sweep, unlike regenerate.ts which reads it per line: this answers a
   // question about the takes as they stand, and a settings change landing mid-sweep would
   // only make half the answer describe a configuration that was never used to generate.
-  const { raceTags } = await currentConfig(lang);
+  const [{ raceTags }, npcDirectionOf] = await Promise.all([currentConfig(lang), npcDirections(lang)]);
 
   const stale = new Set<string>();
   for (const row of rows) {
@@ -76,14 +84,12 @@ export async function staleFiles(
     const line = lines.get(row.file);
     if (!line) continue;
     const text = overrideOf(overrides, row.file)?.text ?? line.text;
-    // Same three transforms regenerate.ts applies, in the same order: the hash is of the
-    // string that was sent, so a take of "[hic]" must be compared against "[hic]" and not
-    // "<hic>", and a dwarf take made with its accent direction against that same direction -
-    // otherwise every dwarf line reads as stale forever rather than once.
-    const pronounced = sentText(text, lang, line.playerGender);
-    // By the provider that made the take: what it would be sent now is its question.
-    const spoken = SHAPE[row.provider](pronounced, directionFor(line.voice, raceTags), raceTags);
-    if (spokenHash(spoken) !== row.spokenHash) {
+    // The string regenerate.ts sends, so a take of "[hic]" is compared against "[hic]" and not
+    // "<hic>", and a dwarf take against its accent direction and its NPC's - otherwise every
+    // dwarf line reads as stale forever rather than once. By the provider that made the take:
+    // what it would be sent now is its question.
+    const shaped = shapedText(text, lang, line, row.provider, raceTags, npcDirectionOf(line));
+    if (spokenHash(shaped) !== row.spokenHash) {
       stale.add(row.file);
     }
   }

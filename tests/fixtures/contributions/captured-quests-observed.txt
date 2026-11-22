@@ -1,8 +1,9 @@
 !SPOKEN1 quests
 addon=SpokenQuests/9.9.9
-build=1.15.9/69109
+build=1.60.1/70338
 locale=enUS
 pack=enUS
+packVersion=1.2.1
 quest=9401
 event=accept
 npc=90001 Deathguard Linnea
@@ -11,7 +12,10 @@ model=122055
 sex=2
 creature=Humanoid
 title=Nothing Heard Yet
+shown=1
+reader=Tester
+readerSex=2
 text<<
 Words with no line in the corpus.
 >>
-sum=1824332350
+sum=1843113716

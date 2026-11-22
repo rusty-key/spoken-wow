@@ -9,10 +9,13 @@
  * what may be written: a path either names a file some corpus line owns, or it does not exist.
  *
  * Text that branches on `$G` is written to the moment's lines instead (quests/moment-rewrite.ts):
- * both sides of a split moment, or a plain line split into them.
+ * both sides of a split moment, or a plain line split into them. That rewrites the original text,
+ * so it also takes `text`.
  */
 import { fileIndex } from "@/lib/audio";
 import { requireIn } from "@/lib/generation/authz";
+import { viewerOf } from "@/lib/grants/store";
+import { can } from "@/lib/permissions";
 import { branchesOnPlayerGender } from "@/lib/player-words";
 import { momentLines, rewriteMoment } from "@/lib/quests/moment-rewrite";
 import { OverrideError, validateRewrite } from "@/lib/quests/override";
@@ -20,6 +23,8 @@ import { clearOverride, writeOverride } from "@/lib/quests/overrides";
 import { QuestTextConflict } from "@/lib/quests/text";
 
 export const dynamic = "force-dynamic";
+
+const SPLIT_NEEDS_TEXT = "Splitting a line by the reader's gender changes its original text, which takes the text grant.";
 
 export async function PUT(request: Request) {
   const { session, lang, denied } = await requireIn(request, "regenerate");
@@ -44,6 +49,11 @@ export async function PUT(request: Request) {
   }
 
   if (branchesOnPlayerGender(draft.text)) {
+    // A split rewrites the moment's original lines, which every team voices: whoever holds
+    // `text` may, whatever team they work in.
+    if (!can(await viewerOf(session), "text", lang)) {
+      return Response.json({ error: SPLIT_NEEDS_TEXT }, { status: 403 });
+    }
     const variant = line.variant ?? 0;
     try {
       const rows = await momentLines(lang, line.lineId, variant);
@@ -58,7 +68,7 @@ export async function PUT(request: Request) {
     }
   }
 
-  const override = await writeOverride(lang, draft.file, draft.lineId, draft.text, session.user.id);
+  const { override } = await writeOverride(lang, draft.file, draft.lineId, draft.text, session.user.id);
   return Response.json({ override });
 }
 

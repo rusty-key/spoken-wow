@@ -21,9 +21,9 @@ The first teams are today's language maintainers, and they should not notice the
 
 ## Phases
 
-**Phase 1, built now, invisible.** Every language, English included, has exactly one team. The
-data model, isolation, roles, report routing and the Release button all exist, but every screen,
-pack and player experience looks as it does today. Phase 1 is everything in this document except
+**Phase 1, built now, invisible.** Every language, English included, has one team, equal to any it
+gains later. The data model, isolation, roles, report routing and the Release button all exist, but
+every screen, pack and player experience looks as it does today. Phase 1 is everything in this document except
 the section *Phase 2*.
 
 **Phase 2, designed now, built when a second team in one language arrives.** Team-specific pack
@@ -48,9 +48,10 @@ picker, and reports that carry the pack's team. See *Phase 2* below.
 
 - **Clients per team.** Every pack keeps shipping one `.toc` for Forever, Era and TBC. What "a team
   covers some clients" should mean is postponed.
-- **Teams' own infrastructure.** All takes and packs stay on our R2 buckets and our one channel,
-  signed with our key. Self-hosted channels, team signing keys, a publish CLI, GitHub Action
-  templates and a Manager publish button are later work.
+- **Teams' own infrastructure, beyond storage.** A team may keep its takes in its own bucket
+  ([`STORAGE.md`](STORAGE.md)), but its packs stay on our one channel, signed with our key.
+  Self-hosted channels, team signing keys, a publish CLI, GitHub Action templates and a Manager
+  publish button are later work.
 - **CurseForge and GitHub releases for teams.** `release-packs.yaml` keeps shipping today's packs
   there. Team releases reach players through the Manager only.
 - **Provider accounts per team.** Payment stays as it is: every member brings their own ElevenLabs
@@ -71,11 +72,42 @@ picker, and reports that carry the pack's team. See *Phase 2* below.
 
 ## Roles
 
+### A language's teams
+
+A language's teams are equal: none is its main team. What used to make one team "privileged" now
+only names its packs. `team_language."packName"` (migration 0123) is `plain` (`<Pack>_<lang>`) or
+`slug` (`<Pack>_<lang>_<slug>`), set when the team joins the language and never changed, so no pack a
+player has is renamed. Every team privileged before 0123 kept `plain`; every other kept `slug`. A
+team joining later gets `plain` when its slug is the language code lowercased and no team of the
+language has `plain`, else `slug`. One team per language at most has `plain`.
+
+- A language gets a team when a site owner adds it or an approved request founds one
+  (`found_lang_team`), not for being known or switched on. English alone is still given one at
+  boot. A language may have no team.
+- An invite names the team it joins. One stored before 0123 with no team, which meant the
+  privileged team, had the plain team written in.
+- A rejected contribution's lines are ignored for the whole language: a `line_ignore` row with the
+  language and no team, which every team of the language honours and anyone who may ignore there
+  may lift. A team's own ignore stays that team's.
+- `privileged` and `team_of_lang()` remain for older releases, and follow `packName`: the
+  privileged team is the one with plain packs. No script reads them.
+- The site picks no team by rank. A request works as the person's team in the language; in a
+  language with one team, as that team, whoever asks. In a language with several, somebody who works
+  in none of them has no team there: their writes refuse, and the explorer shows them a team
+  read-only (*Who sees what*).
+- A grant or an invite lands in the granter's team; a site owner's in the person's own team, else
+  the team the site owner acts in.
+- Where a language lets its teams appoint text maintainers (`textByTeam`), an admin of any of its
+  teams may. *(My call.)*
+
 ### Site owners
 
 Today's global `admin`. Above all teams: create teams and set their languages and first admin,
 appoint text maintainers, act inside any team with full rights without being a member *(my call)*,
-and delist a team's packs.
+delist a team's packs and delete a team (*Deleting a team*). A site owner acts inside a team by picking it in the explorer's team
+picker; the choice is kept per language in a cookie and lasts until they pick again. While it holds,
+every page of the language says "Working as {team}". With no pick, a site owner acts in their own
+team in the language, else the first the picker lists.
 
 ### Text maintainers
 
@@ -86,6 +118,10 @@ exactly this, so it stays a site-level grant.
   place names (`entity_name`).
 - Triage contributions and corrections from players (`contribution*`, `lib/contributions/*`).
 - Receive text reports (see *Contributions and reports*).
+- Independent of team membership: a maintainer sees the text queue whatever team they work in, and
+  text reports and contributions follow the `text` grant.
+- A maintainer's write-enabled API token writes the original text by default, whatever team they work in, and
+  their team's overrides with `"layer": "override"` when they also hold `regenerate`.
 - Appointed by site owners only. A team admin cannot appoint one, and `admin` does not imply this
   role: migration 0092 appointed everyone who held `admin`, so nobody lost anything, and a new team
   admin edits original text only once a site owner appoints them.
@@ -95,8 +131,9 @@ exactly this, so it stays a site-level grant.
 ### Audio team members
 
 Roles inside a team, per language: `regenerate`, `configure`, `ignore`, `record`, `admin`, and a
-team-level `edit` that covers the team's text overrides, audio reports and missing audio
-(definitions today in `apps/web/src/lib/permissions.ts`).
+team-level `edit` that covers the team's audio reports and missing audio
+(definitions today in `apps/web/src/lib/permissions.ts`). Overrides are written under `regenerate`
+in every team, and the original text only under `text`.
 
 - A team admin adds members and grants any team role within the team's languages, `admin` included.
   Today only a global admin may grant `configure`, `ignore`, `record` and `admin` (`canGrant`); that
@@ -113,23 +150,34 @@ team-level `edit` that covers the team's text overrides, audio reports and missi
 - The **original text** is the shared `quest_line` / `lore_line` / `book_line` / `boss_line` /
   `entity_name` text. It changes through imports (the pipelines), text maintainers and site owners.
 - `line_override` is a team's spoken text for a quest line, in any language, written with the
-  explorer's pencil by whoever holds `regenerate` there. Overrides for places, readables and bosses
-  wait for *Phase 2*.
-- When the original text of a line changes, that team's takes on the line go stale and appear in
-  the team's queue, as stale takes do today (`lib/generation/dirty.ts`). The team re-rolls or
-  overrides.
-- If the team had already overridden the line, the override is flagged **"original changed since
-  your override"**, and the team keeps or drops it. Keeping saves the same text again, which marks
+  explorer's pencil by whoever holds `regenerate` there.
+- `text_override` is a team's spoken text for a place's prose, a readable page or a boss story,
+  kept per line id and written by whoever holds `regenerate` in the language, from the override
+  button in the places, bosses and readables explorers. Only what the team's audio says changes:
+  the text shown on the site and in game stays the original, and so does every name. A readable's
+  spoken title keeps the original name too. *(User.)* A line with no text in the language cannot
+  be overridden; its text is written first, with the explorer's pencil by whoever holds `text`
+  there, or through contributions in the sections that take them.
+- A take is stale when the text the team speaks for the line changes: its override where it has
+  one, else the original. So a change to the original makes the takes of a line the team has not
+  overridden stale, and they appear in the team's queue (`lib/generation/dirty.ts`). The team
+  re-rolls or overrides.
+- If the team had already overridden the line, its takes still speak the override and stay
+  current, and the override is flagged **"original changed since your override"**: the team keeps
+  or drops it, and dropping it makes the takes stale. Keeping saves the same text again, which marks
   the new original as seen. An override saved before this flag existed stays quiet until saved again.
 
-The pencil writes an override. The one exception is text that branches on the reader's gender on a
-plain line, in any language: one file cannot say both, so saving splits the line into `:m` and `:f`,
-which changes the original every team shares. That is deliberate for now.
+In the quests explorer the pencil writes an override. In the places, readables and bosses explorers
+the pencil writes the original and the speech button writes the override. The one exception in
+quests is text that branches on the reader's gender on a plain line, in any language: one file
+cannot say both, so saving splits the line into `:m` and `:f`, which changes the original every
+team shares. That is deliberate for now, so a split needs `text` in
+the language beside `regenerate`, whatever team its holder works in.
 
-The original otherwise changes through imports and accepted corrections, in English too, so a text
-maintainer works in contributions. Editing the original directly, and a translator's way to fill in
-a line with no text, come later. Until then a `wrong_text` report that carries no replacement text
-can be answered from the site but not fixed.
+The original otherwise changes through imports and accepted corrections, in English too. For quest
+lines a text maintainer works in contributions, so a `wrong_text` report on one that carries no
+replacement text can be answered from the site but not fixed. In the places, readables and bosses
+explorers the pencil edits the original directly, a line with no text yet included.
 
 ## Contributions and reports
 
@@ -156,6 +204,11 @@ Reports are routed by their existing category (`report_category_check`, migratio
   team members are the same people, the two queues show as one page, today's triage page. Routing
   happens underneath and is only visible when the groups differ.
 - Reports that predate teams go to the language's team. *(My call.)*
+- A report that names no team (an older addon, the plain pack, the site's forms) goes to the
+  reporter's team, else the team with plain packs. In a language with several teams and none with
+  plain packs, an audio report is filed once per team, and a text report once.
+- An act is logged under the team its actor works in, unless it names its own team; by somebody in
+  no team of the language, under none.
 
 ## What is per team and what is shared
 
@@ -188,7 +241,13 @@ takes. Everything else is private to the team: take history, recordings not yet 
 clones, settings, lexicon, overrides in progress, queue, activity, audio reports and issues. Writes
 are always scoped to the team being worked in.
 
-In phase 1 there is one team per language, so the explorer shows what it shows today.
+A team's override is public on a line with a live take that speaks it, so the text shown with
+another team's takes is what they say. Otherwise it stays private. *(User.)*
+
+A language with one team shows no picker, so the explorer shows what it shows today. With several,
+every team is in the picker, none marked. Without `?team=` it plays the team the visitor works in,
+else the one with plain packs, else the first by name; a visitor in none of them hears that team
+read-only.
 
 ## Isolation with row-level security
 
@@ -200,12 +259,22 @@ In phase 1 there is one team per language, so the explorer shows what it shows t
   with `set_config(..., true)` (transaction-local). Requests do not run in a transaction today, and
   a pooled connection must never carry one team's setting into another's request. `lib/db.ts`
   (`db()`, `query()`, `inTransaction`) is where this lives.
-- The team for a request: the team the user is working in. In phase 1 that is the team voicing the
-  page's language, so no switcher is needed; a header switcher appears only for someone in two teams
-  that share a language.
+- The team for a request: the person's team in the language, else, where the language has one
+  team, that team. One person works in one team per language, so members need no switcher. A site
+  owner's pick in the team picker overrides both (see *Site owners*).
 - The queue worker sets the team from the job it runs. Jobs, batches and pauses carry the team.
-- The public cross-team read of live takes and their text goes through a narrow path (a view or
-  security-definer function returning only live rows), not by loosening the per-team policies.
+- The public cross-team read of live takes and their text goes through two security-definer
+  functions, not by loosening the per-team policies. Both answer nothing for a team that does not
+  voice the language, and only the app role may call them.
+  - `team_live_takes` returns a team's current takes in a language and source: line id, file,
+    version, spoken hash, characters, duration, bytes and date, plus the archive location the
+    server needs to serve the audio, which never reaches a browser. No credits, cost, model, voice,
+    provider, author, settings or take count, which would reveal the team's history.
+  - `team_live_overrides` returns a team's override text, keyed by line, only on lines with a
+    live take that speaks it, judged by spoken hash; on a quest line, every voice's take must.
+    No author, date or original hash. The same rule holds for a visitor who does not work in the
+    language looking at the team they are given by default: the search shows an override only
+    once a live take speaks it, and never who wrote it.
 - Migrations and the pipelines keep the owner role. Pipelines mostly touch shared data, with these
   exceptions *(my calls)*:
   - `pipelines/quests/tts_cli/corpus_db.py` seeds `voice` / `voice_assignment` rows when a new
@@ -222,7 +291,8 @@ In phase 1 there is one team per language, so the explorer shows what it shows t
 - Each team has its own roster and assignments.
 - Clone names stay as today: `slot` for English, `slot@deDE` otherwise (`lib/voices/clone-name.ts`).
   The generator finds a clone by that name in the caller's own provider account. A clash would need
-  one person in two teams voicing the same language, which cannot happen in phase 1.
+  one person in two teams voicing the same language, which cannot happen while one person works in
+  one team per language.
 
 ## Releases
 
@@ -249,9 +319,19 @@ Oggs rather than the takes.
    checks still get errors 9 hours after the press, past any run the workflow allows, is failed too.
 
 **One release at a time, site-wide.** The partial unique index `release_run_one_active` allows one
-`dispatching` or `running` row across all teams, and a second press gets a 409 naming the active
-run. A team sees only
-that another team's release is running, not its step, link or error.
+`dispatching` or `running` row across all teams. On the droplet a press while another runs is
+**queued** (migration 0121): it waits as `queued`, with the bump it asked for, and whenever a run
+settles the oldest queued one starts (`lib/releases/launch.ts` `startNext`). On the droplet a tick
+in pm2's first worker (`lib/releases/tick.ts`, started at boot by `instrumentation-node.ts`, apart from
+the regeneration queue) settles a finished job and starts the next every 15 seconds, so the queue moves
+with no release page open; a reload waits for a tick still starting a run. A queued run whose job
+cannot start ends `failed`, and the next one starts, so the queue never stalls; so does one still
+`dispatching` two minutes after it started with no job directory, which a restart between claiming
+it and spawning its job leaves. Whoever pressed it, or
+a site owner, can cancel a queued run (`DELETE /api/releases/<id>`). A run dispatched to GitHub
+Actions still gets a 409 while another is active, since the workflow's own `concurrency` group queues
+there. Promotions and delistings (below) take the same queue. A team sees only that another team's
+release is running, not its step, link or error.
 
 Manager-only mode publishes to the Manager channel alone, with no CurseForge or GitHub upload, and
 publishes the folders present in `dist/` (`ONLY_PRESENT=1`), since a build holds one section and
@@ -259,9 +339,10 @@ language. Section `bosses` is Manager-only in the workflow: it has no CurseForge
 upload target there. English places also builds the bosses pack that its zip carries, so an
 English places release publishes `SpokenBossesAudio` too.
 
-In phase 1 every team is the **privileged** team of its languages: its packs keep today's ids and
-folders (`SpokenQuestsAudioHorde_deDE`, `SpokenPlacesAudio_frFR`, …), with no team code. Older Managers
-see no change.
+A team's pack name in each language (`team_language.packName`) decides its folders. Every team
+privileged before 0123 has `plain` packs, with today's ids and folders (`SpokenQuestsAudioHorde_deDE`,
+`SpokenPlacesAudio_frFR`, …) and no team code, so older Managers see no change; every other team's
+carry its slug (*A language's teams*).
 
 Every section publishes from the droplet, whose copy of the signing key sits in
 `shared/release.env`, as PLAN.md decided.
@@ -270,12 +351,123 @@ Only quests ship Ogg Vorbis
 MP3: readables and bosses pack the files as they are, and Places copies them for its full tier and
 transcodes only its 64 kbps tier, to MP3 as well.
 
+### Team releases
+
+Every team admin can press Release; a press builds the packs of the team it was made in, read from
+that team's live takes alone. The run carries the team (`release_run.teamId`), the droplet job
+passes its slug to `release.mjs --team`, and every builder query takes the release's team
+(`pipelines/lib/release-team.mjs`, `SPOKEN_RELEASE_TEAM`). A build outside a release reads the team
+with the language's `plain` packs, and a language with none reads no team. `release.mjs` without
+`--team` (`make manager-release TEAM=`) builds for the language's only team and refuses a language
+with several. The scripts run by hand that read one team's rows (`acted.mjs`, `fetch-encodings.mjs`,
+`push-sources.sh`) take `--team` or `TEAM=` and default to the team with `plain` packs.
+
+- **Official.** `team.official` (migration 0120) is set on every team made before it, on a team a
+  site owner creates or founds with a new language, and on the team of a language a site owner adds.
+  An approved request makes a team that is not official. Only a site owner changes it, on
+  `/admin/teams`. Official decides whether a release waits for review and whether the Manager names
+  the team on its packs; it does not change pack ids.
+- **Pack ids.** A team with `plain` packs in the language builds the plain ids
+  (`SpokenPlacesAudio_jaJP`), official or not. A team with `slug` packs carries its slug after the
+  language (`SpokenPlacesAudio_deDE_stimmen`, `scripts/lib/packs.mjs` `teamFolder`). A team's slug never
+  changes: `PATCH /api/teams/[id]` takes no slug, since a new one would orphan every installed pack.
+- **Page packs stay as they were.** A team with `plain` packs whose language has a store page with
+  `manager: true` for the section builds that page's pack, with the same folders, title, version,
+  icon and `.toc` (`scripts/manager/release.golden.json` pins them).
+- **Derived packs** are every other release (`scripts/manager/release-pack.mjs`): English's Manager
+  folders for the section, each with the suffix. Their first version is `1.0.0`, later ones bump from
+  the channel. The title names the language and, with a slug, the team (`Spoken German Audio: Places
+  (Stimmen)`). The `.toc` carries `X-Spoken-Team` and `X-Spoken-TeamName` for a suffixed pack, and
+  `X-Spoken-LanguageName` and `X-Spoken-LanguageNative` for a language Spoken does not build in. A
+  language with no badged icon wears English's mark; a page pack missing its badge is still an error.
+  The language comes from the `language` table, not `pipelines/lib/locales.mjs`.
+- **Two indexes.** `index-v2.json` is the channel's record: every pack, each with `lang`, `section`,
+  `pack` (the quests side, else null) and `team` (`{ slug, name, official }`, null for a page pack),
+  and a `languages` map (`code`, `name`, `native`) for the languages it lists. `index.json` is written
+  from it in the same publish with only the ids older Managers accept, in the shape they read, so
+  they never see a team's pack. The first publish seeds `index-v2.json` from `index.json`. Spoken's
+  own zips are `publish-addon.mjs`'s, which writes `index.json`; each pack publish copies them to
+  both. A publish that fails between the two writes leaves `index.json` behind, and the next one
+  catches it up.
+- **Review.** An official team's release publishes as before and ends `done`. A release of a team
+  that is not official **stages**, decided at the press from `team.official` and kept on the row
+  (`stage`): `release.mjs --stage` uploads the blobs and signs each pack's manifest
+  (`packs/<folder>/<rev>.json`) but writes neither index, and leaves what it staged in the run's
+  directory (`staged.json`), with the takes its clip pointers were made from (`takes`, by file: version
+  and hash, which `scripts/audio/sounds.mjs` records). The site stores that on the row (`staged`, and
+  `takes` in a column of its own) and settles it `awaiting_review`, and emails the site owners. They
+  review it on `/admin/team-releases`: team, language, section, version, who pressed it, and the lines
+  whose take in the pack is not the one players have, compared with the takes of the team's release
+  players have (every line when they have none). A version or a listed release built before builds
+  recorded their takes is counted as the team's own release page counted it when its build started
+  (the takes live then). Each line plays the version built (`/api/releases/<id>/take`, a site owner's
+  alone: the take routes serve another team only its live takes), and says so where the team recut it
+  since. A link opens the explorer on `?team=<slug>`. **Approve** makes
+  the staged run `approved` and queues a `promote` run (`scripts/manager/cli.mjs promote`), which
+  writes the staged entries into both indexes; its success makes the staged run `done`, so `done`
+  keeps meaning "players have it", and the team's pending counts drop only then. An `approved`
+  version can be neither rejected nor superseded. Promotion refuses a pack whose live rev moved since it was staged
+  (each entry records the rev it was staged over), and one whose manifest is missing. A failed or
+  cancelled promotion puts the version back to `awaiting_review`, with the reason, or `superseded`
+  when a newer version of the pack came to wait meanwhile. **Reject** needs a reason, settles the run
+  `rejected`, and the team sees "Not approved: <reason>" and gets it by email. Staged blobs and
+  manifests are public by address and listed nowhere; nothing deletes them. A team admin cannot
+  approve their own version: the review routes are a site owner's.
+- **One waiting version per pack.** A team's new staged version of a section and language marks the
+  older waiting one `superseded` once it reaches `awaiting_review`, not before, so a failed build
+  leaves the waiting one in place. Every version waits, the first and every update.
+- **Delisting.** A site owner can take a team's pack (one section, language and team) off the
+  channel from the same page: a `delist` run (`scripts/manager/cli.mjs delist`) resolves the team and every folder the
+  team's pack can have, and removes them from both indexes, and its files stay. The team's release page says
+  "Delisted by a site owner."; its next approved release lists the pack again. An official team's
+  packs are not delisted here.
+- **Opened per site.** A press by a team that is not official, or whose packs carry its slug, gets
+  409 unless the site sets `SPOKEN_TEAM_RELEASES=1` and releases on the droplet (`deploy/web/README.md`,
+  *Team releases*); `release.mjs` refuses a derived pack without it. Staging sets it. Production sets it
+  only once a Manager that reads `index-v2.json` and a Spoken that orders a language's voices have
+  shipped, since no player could install such a pack before.
+
 **Today's release workflow** *(my call)*: `release-packs.yaml` stays the only Manager publisher, and
 the site starts it instead of publishing itself, so two publishers never race for one pack's revs.
 Manual dispatches still work, including the CurseForge and GitHub upload. A manual dispatch and a
 press cannot overwrite each other on the index, because only one run builds at a time and the index
 write is conditional. They can cost each other a run: GitHub's `concurrency` group keeps one pending
 run and cancels it for a newer one, so a press waiting behind a manual build can end `cancelled`.
+
+## Deleting a team
+
+A site owner can delete any team but English's from its row on `/admin/teams`
+(`lib/teams/delete.ts`). The dialog lists what goes: its packs on the channel, takes and recordings,
+voices and clones, pending generation, overrides, releases, the text reports that move and the
+open voice reports that close, its bucket, its members, and
+each language it leaves with no team. Typing the team's slug enables Delete. A team with a release
+queued, running or being listed is refused until it ends.
+
+Deleting is a job, because delisting goes through the release queue:
+
+1. The team is marked `deletingAt` (migration 0124). From then it makes nothing: no take,
+   recording, generation, member, language or release goes in under it (a trigger refuses each),
+   and its members' audio capabilities are not read. Its pending generation is cancelled and a
+   version of it waiting for review is rejected.
+2. A `delist` run is queued for each pack it has on the channel: each its releases listed and no
+   delisting has taken off since, and every section of a language where its packs are plain, since
+   `make manager-release` published those before the site ran releases. Only the droplet can run
+   them, so a team with any is refused elsewhere.
+3. When the last of them settles, the settle hook (`releases/store.ts`) deletes its rows in the
+   same transaction. Nothing is deleted while one is still to run. A failed delisting stops the
+   deletion with the reason, and the row offers a Retry, which queues them all again.
+
+Its rows go in one transaction. Its text reports move to another team of their language, the one
+with plain packs first, else wait on the language's text queue with no team. Its voice reports are
+about takes that go with it: an open one is closed (`not_an_issue`, resolved by whoever deleted the
+team), and all of them keep no team. The dialog and the `team.deleted` row count the closed ones,
+since a report has no note to say why it closed. Every other table with a
+`teamId` loses the team's rows (`DELETED`; a test checks it lists every such table), the team's
+members, languages and invites cascade, and a request it was approved from forgets it. Its audio
+capabilities are its memberships, so they go; `text` is the language's and stays. Archive objects
+stay in their bucket; only their rows go. A language left with no team is switched off, as before
+its first team, keeping its text and settings; a team joining it switches it back on. A
+`team.deleted` row in the site log names the team, its languages and members, and counts what went.
 
 ## Migration
 
@@ -285,52 +477,62 @@ run and cancels it for a newer one, so a press waiting behind a manual build can
 - Every language the English team holds but `enUS` gets a team of its own (migration 0091,
   slug the lowercased code), with every row of the language, a copy of English's roster, base
   generation settings and dismissal mark, and the site owner as its admin. In `spoken_dev` these
-  are deDE, itIT, koKR, ptBR, ruRU, viVN, zhCN and zhTW. A language switched on later gets a new
-  team with no members and the same copy of English's roster and settings (`adopt_lang`). There is no shared bucket for unmaintained languages.
+  are deDE, itIT, koKR, ptBR, ruRU, viVN, zhCN and zhTW. A language a site owner adds later gets a
+  new team with no members and the same copy of English's roster and settings (`found_lang_team`).
+  There is no shared bucket for unmaintained languages.
 - 0091 copied the audio capabilities into `team_member`, in the team that owns the language. 0092
   gave every `edit` holder the team's `edit` as well, appointed every team admin a text maintainer,
   and deleted the audio rows from `language_grant`.
-- A handover (`move_team_lang`) moves every row of a language to the new team in one transaction,
-  and refuses while a job in the language runs.
+- A handover (`move_team_lang`) moved every row of a language to the new team in one transaction,
+  and refused while a job in the language ran. The site no longer hands a language over: a team
+  joins a language beside its others, and leaves it by being removed from it or deleted.
 - Every existing per-team row moves to the team owning its language. Takes stay live; packs keep
   their names. Non-English edits made before the migration are already in the original text and
   stay there; `line_override` rows move into the English team's layer.
-- A handover gives the receiving team a copy of the old team's roster and settings if it has none.
-  Only a second team in the same language (phase 2) starts empty: original text, a roster with no
-  voices assigned, no settings or lexicon. *(My call.)*
+- A team joining a language starts as any new team does: it inherits the original text and never
+  another team's takes or text overrides, and starts from English's roster and settings as a new
+  language does, or, where the language has a team, from a copy of the first one's settings, as the
+  site owner chooses at approval. *(User.)*
 
-## Phase 2: a second team in one language
+## Phase 2: several teams in one language
 
 Designed now so phase 1 does not paint it into a corner; built when the first such team arrives.
 
-- **Pack ids.** The privileged team keeps the bare ids. Another team's packs carry its slug, for
+- **Pack ids.** The team with plain packs keeps the bare ids. Another team's packs carry its slug, for
   example `SpokenQuestsAudio_deDE_<team>`, and their `.toc` carries `X-Spoken-Team`. The index entry
   carries the team. Pack folder names are not on the frozen list in [`AGENTS.md`](../../AGENTS.md);
   line ids are, and they do not change.
-- **Manager.** The id check (`manager/src/main/packs-remote.ts:50`, mirrored at
+- **Manager.** The id check (`apps/manager/src/main/packs-remote.ts:50`, mirrored at
   `scripts/manager/publish.mjs:13`) accepts the suffix, and `SPOKEN_FOLDERS` / `products.ts` stop
   being the only list of folders the Manager may install. Today the Manager rejects the whole index
   if one entry fails that check, so team-aware Managers read a versioned index (for example
   `index-v2.json`) that carries every team's packs, while `index.json` keeps only the ids older
   Managers accept. Every release writes both.
-- **Clone names** gain the team slug for teams other than the privileged one.
-- **Player side.**
-  - Every installed pack registers with Spoken along with its team and language; Settings lists them.
-  - Per language and per section (quests, places, readables, bosses), the player marks one pack
-    primary and one fallback. A line plays from the primary; if the primary lacks it, from the
-    fallback; then today's language fallback (`addons/Spoken_Quests/Language.lua:168-176`) applies.
-  - With no choice made, the pack with the most lines is primary. The setting only appears when two
-    packs for one language are installed.
-  - This replaces folder-name order and self-declared priority in `DataModules.lua` (`SortModules`),
-    and the "one pack per language" assumptions in `Spoken_Places/Audio.lua`,
-    `Spoken_Readables/Audio.lua` and `Spoken_Bosses/Audio.lua`. The Places picker (`/spp audio`) is
-    the existing pattern to generalise.
-- **Explorer** gets a team picker per language.
-- **Reports** from the addon carry the team of the pack that played the line, so audio reports reach
-  that team. A report without a team (older addons) goes to every team voicing that language.
+- **Clone names** keep their shape while one person works in one team per language; they gain the
+  team slug only if that rule is ever lifted.
+- **Player side.** Built, with a change to this design: no primary
+  and fallback per language, but one ordered list of voices for every module.
+  - Every installed pack registers with Spoken along with its language and, from `X-Spoken-Team`
+    and `X-Spoken-TeamName`, its team (`addons/Spoken/Languages.lua`). A voice is a language
+    (`deDE`, the plain pack) or a language and a team (`deDE_stimmen`).
+  - The player orders voices on Spoken's page (`Language.Voices`, `Spoken:GetVoiceOrder`). A line
+    plays from the first voice whose pack has it, and past the last stays silent. With no list set,
+    each module keeps the voice language and fallback it had.
+  - Voice order replaces self-declared priority between packs of different teams in
+    `DataModules.lua`, and the "one pack per language" assumptions in `Spoken_Places/Audio.lua`,
+    `Spoken_Readables/Audio.lua` and `Spoken_Bosses/Audio.lua`. Packs of one voice keep their old
+    order (priority, `/spp audio`'s choice, bitrate).
+- **Explorer.** Built: a team picker per language, which plays the picked team's live takes,
+  read-only when it is not the visitor's own team.
+- **Reports** from the addon carry the team of the pack that played the line (`packTeam`, the team's
+  slug), and the site files them with that team when it voices the report's language
+  (`apps/web/src/lib/reports/store.ts`). Built. A report without a team came from a plain pack,
+  since an older addon can play no other, and is filed with the team with plain packs (*Contributions
+  and reports*).
 - **Text layer.** Per-team overrides generalise `line_override` from quest lines to every `source`.
-  The text a team voices, shows and ships is its override where present, else the original, and a
-  take's staleness is judged against that.
+  The text a team voices is its override where present, else the original, and a take's staleness
+  is judged against that. Built for the site as `text_override`: places, readables and bosses are
+  overridden from their explorers, and the text API writes them with `"layer": "override"`.
 - **Edit UI** gives text maintainers their own way to edit the original, beside the team's override.
 
 ## Left to the builder
@@ -353,6 +555,6 @@ team-owned publishing; clients per team; several English teams; team-owned stora
 releases for teams; quotas and abuse limits; review before a take or release goes live; terms of
 service; publishing community packs (`SpokenCommunity_*`).
 
-Deleting a team, and a team admin's own page for their team. Removing `line_issue` and `line_flag`,
+A team admin's own page for their team. Removing `line_issue` and `line_flag`,
 which have no readers. The English override route requiring `regenerate` rather than the team's
 `edit`.

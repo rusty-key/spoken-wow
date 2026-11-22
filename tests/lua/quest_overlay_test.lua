@@ -272,6 +272,15 @@ buttons[748]:Click()
 Expect("a Russian client names the quest-log giver in Russian", buttons[748].soundData.name, "Мулл Громовой Рог")
 stub.Advance(3)
 Expect("...and the other languages' files built nothing there", VO.GiverNames.creature[2948], "Мулл Громовой Рог")
+local pack
+for _, module in VO.DataModules:GetModules() do
+    pack = module
+    break
+end
+pack.ClientLocaleLookups = { NPCNameLookupByNPCID = { [2948] = "Мулл Громовой Рог из пакета" } }
+Expect("a language's pack names the giver before the addon's own files",
+    VO.DataModules:GetObjectName(VO.Enums.GUID.Creature, 2948), "Мулл Громовой Рог из пакета")
+pack.ClientLocaleLookups = nil
 stub.SetLocale("enUS")
 
 -- A quest a poster gives has no face to draw: its Play in the log shows the notice, as the dialog's
@@ -356,6 +365,20 @@ detailsButton:Click()
 Expect("a line waiting behind a stopped one plays when clicked",
     tostring(_G.Spoken:IsPaused()) .. " " .. tostring(table.getn(played) > before), "false true")
 _G.Spoken:StopAll()
+
+-- Behind a line that goes on, Play shows a plus: a click queues the quest's line after it, and the
+-- plus stays while it waits. Behind a stop, Play plays it at once, so it says Play.
+filler:Enqueue(require("queue_helpers").Clip({ key = "filler-long", path = "filler-long.ogg", length = 30 }))
+QuestMapFrame_ShowQuestDetails(748)
+Expect("behind a line being read, the quest's Play shows the plus",
+    tostring(detailsButton.state) .. " " .. tostring(detailsButton.glyph.texture):match("[^\\]*$"), "queue GlyphQueue")
+detailsButton:Click()
+Expect("...clicked, it queues the line, the plus staying while it waits",
+    tostring(_G.Spoken:GetQueueSize()) .. " " .. tostring(detailsButton.state), "2 queued")
+_G.Spoken:Pause()
+Expect("behind a stop, it is Play again", detailsButton.state, "play")
+_G.Spoken:StopAll()
+Expect("...and with nothing reading", detailsButton.state, "play")
 
 -- One button, rebound: showing another quest's details must not read the last one.
 QuestMapFrame_ShowQuestDetails(96130)

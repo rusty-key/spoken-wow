@@ -87,7 +87,7 @@ end
 Expect("every section heading the same distance below the section above", Distinct(headingGaps), 1)
 
 ---------------------------------------------------------------- the rows write the settings
--- A dropdown rather than a button that cycles: four named choices, and a player should be
+-- A dropdown rather than a button that cycles: five named choices, and a player should be
 -- able to see them and pick one rather than click through them.
 local db = VO.Addon.db.profile
 db.Audio.GossipFrequency = VO.Enums.GossipFrequency.Always
@@ -140,7 +140,7 @@ local entries = stub.OpenDropdown(greetings)
 local offered = {}
 for _, entry in ipairs(entries) do table.insert(offered, entry.text) end
 Expect("...offering every choice at once", table.concat(offered, "|"),
-    "Every Time|Once for Quest Givers|Once per Greeting|Never")
+    "Every Time|Once for Quest Givers|Once per Greeting|Once per Session|Never")
 Expect("...with the current one ticked", entries[1].checked, true)
 
 Expect("picking one is possible", stub.PickDropdown(greetings, "Once per Greeting"), true)
@@ -151,7 +151,7 @@ Expect("...and relabels", greetings.dropdownText, "Once per Greeting")
 -- to be the same thing, or it can never find where in the list it is.
 Expect("picking a second time works too", stub.PickDropdown(greetings, "Never"), true)
 Expect("...and stores that", db.Audio.GossipFrequency, VO.Enums.GossipFrequency.Never)
-Expect("...with the ticked entry moved", stub.OpenDropdown(greetings)[4].checked, true)
+Expect("...with the ticked entry moved", stub.OpenDropdown(greetings)[5].checked, true)
 
 ---------------------------------------------------------------- the gather switch stays in the player's settings
 -- The switch is the player's alone: quests and readables both feed the one store, so a
@@ -226,23 +226,66 @@ local function Dropdown(content, label)
 end
 Expect("the Quests page has no language of its own", Dropdown(SettingsPanel.panel.content, "Voice Language"), nil)
 local spoken = _G.SpokenOptionsPanel.content or _G.SpokenOptionsPanel
-local voice, fallback = Dropdown(spoken, "Voice Language"), Dropdown(spoken, "If a Voice Is Missing")
-Expect("the voice language is chosen on Spoken's page", voice ~= nil, true)
-Expect("...Auto by default, named with the client's language", voice and voice.dropdownText, "Auto (English)")
+local voices
+for _, child in ipairs(spoken.children) do
+    if child.layoutAdd and child.layoutLabel and child.layoutLabel.text == "Voices, in Order" then voices = child end
+end
+-- What the list shows, line by line, as the player reads it.
+local function Lines()
+    local names = {}
+    for i = 1, #voices.layoutList() do table.insert(names, voices.layoutLines[i].name.text) end
+    return table.concat(names, " | ")
+end
+local function Add(text)
+    voices.layoutAdd:Click()
+    for _, entry in ipairs(stub.dropDownEntries) do
+        if entry.text == text then entry.func(); return true end
+    end
+    stub.ResetDropDowns()
+    return false
+end
+Expect("the voices are chosen on Spoken's page", voices ~= nil, true)
+Expect("...Auto then English by default, Auto named with the client's language", Lines(), "Auto (English) | English")
 -- The menu lists the languages an installed pack declares.
 for _, code in ipairs({ "deDE", "frFR" }) do _G.SpokenEnv.Languages:Declare(code, "SpokenQuestsAudio_" .. code) end
+-- The page reads them again as it opens.
+_G.SpokenEnv.Options:UpdateRows()
 VO.Addon.db.profile.Audio.VoiceLanguage = "frFR"
-Expect("...and until it is, Quests keeps the choice it had", VO.Language:GetVoiceLanguage(), "frFR")
-Expect("...a language can be picked", stub.PickDropdown(voice, "Deutsch"), true)
+Expect("...and until they are, Quests keeps the choice it had", VO.Language:GetVoiceLanguage(), "frFR")
+Expect("...a language can be added", Add("Deutsch"), true)
+Expect("...at the end", Lines(), "Auto (English) | English | Deutsch")
+voices.layoutLines[3].up:Click()
+Expect("...and moved earlier", Lines(), "Auto (English) | Deutsch | English")
+voices.layoutLines[1].remove:Click()
+Expect("...Auto removed", Lines(), "Deutsch | English")
 Expect("...which Quests then speaks", VO.Language:GetVoiceLanguage(), "deDE")
-Expect("...and going back to Auto is possible", stub.PickDropdown(voice, "Auto (English)"), true)
+Expect("...and plays first", table.concat(VO.Language:ResolutionOrder(), ","), "deDE,enUS")
+Expect("...but not a language no installed pack declares", Add("日本語") or Add("Japanese"), false)
+voices.layoutLines[2].remove:Click()
+Expect("removing English leaves German alone", Lines(), "Deutsch")
+Expect("...past which Quests is silent", VO.Language:GetFallbackLanguage(), nil)
+Expect("...and the last voice cannot be removed", voices.layoutLines[1].remove:IsEnabled(), false)
+Expect("...nor moved", tostring(voices.layoutLines[1].up:IsEnabled()) .. " " .. tostring(voices.layoutLines[1].down:IsEnabled()),
+    "false false")
+Expect("going back to Auto is possible", Add("Auto (English)"), true)
+voices.layoutLines[2].up:Click()
+Expect("...first", Lines(), "Auto (English) | Deutsch")
 Expect("...which follows the client", VO.Language:GetVoiceLanguage(), "enUS")
-Expect("...but not a language no installed pack declares", stub.PickDropdown(voice, "Italiano")
-    or stub.PickDropdown(voice, "Italian") or stub.PickDropdown(fallback, "Italiano")
-    or stub.PickDropdown(fallback, "Italian"), false)
-Expect("the fallback language is chosen there too", fallback and fallback.dropdownText, "English")
-Expect("...and can be switched off", stub.PickDropdown(fallback, "Stay Silent"), true)
-Expect("...which Quests then honours", VO.Language:GetFallbackLanguage(), nil)
+-- A team's voice beside its language's.
+_G.SpokenEnv.Languages:Declare("deDE", "SpokenQuestsAudioShared_deDE_stimmen", { team = "stimmen", teamName = "Stimmen" })
+_G.SpokenEnv.Options:UpdateRows()
+Expect("a team's voice is offered, named for its team", Add("Deutsch · Stimmen"), true)
+voices.layoutLines[3].up:Click()
+Expect("...and listed so", Lines(), "Auto (English) | Deutsch · Stimmen | Deutsch")
+Expect("...a voice in the list is not offered again", Add("Deutsch"), false)
+-- A voice kept in the list whose pack is gone keeps its place, greyed.
+_G.Spoken:SetVoiceOrder({ "deDE_gone", "deDE" })
+Expect("a voice whose pack is gone stays, saying so", Lines(), "Deutsch · gone (not installed) | Deutsch")
+Expect("...greyed", voices.layoutLines[1].name.textColor and voices.layoutLines[1].name.textColor[1], 0.5)
+Expect("...a voice that is there is not", voices.layoutLines[2].name.textColor and voices.layoutLines[2].name.textColor[1], 1)
+Expect("there is no Stay Silent: the end of the list is", Dropdown(spoken, "If a Voice Is Missing"), nil)
+_G.SpokenEnv.Addon.db.profile.Language.Voices = nil
+_G.SpokenEnv.Addon.db.profile.Language.Voice, _G.SpokenEnv.Addon.db.profile.Language.Fallback = nil, nil
 
 ---------------------------------------------------------------- packs that register after the page is built
 -- The packs are loaded a second after login, so the page is built while an installed pack is
@@ -303,22 +346,6 @@ do
     Expect("unticking Quest Log turns its buttons off", VO.Addon.db.profile.QuestLogPlayButton, false)
     Expect("...and redraws Spoken's quest log buttons", updated, 1)
     _G.QuestLog_Update, _G.QuestLogFrame = nil, nil
-end
-
--- A voice chosen before its packs went keeps a row to get them back: Italian has official packs,
--- and no Italian pack is installed here to put the language in the list.
-do
-    VO = Boot()
-    _G.SpokenEnv.Addon.db.profile.Language.Voice = "itIT"
-    local panel = stub.LoadQuestsPanel(QUESTS, VO)
-    panel:Setup()
-    local italian = false
-    for _, child in ipairs(panel.panel.content.children) do
-        local text = child.text
-        if type(text) == "string" and string.find(text, "itIT", 1, true) then italian = true end
-    end
-    Expect("a stored Italian voice with no Italian pack still offers the Italian packs", italian, true)
-    _G.SpokenEnv.Addon.db.profile.Language.Voice = nil
 end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

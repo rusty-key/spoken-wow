@@ -58,11 +58,22 @@ function SettingsPanel:Setup()
     local followup = layout:Checkbox(L.OPT_PANEL_FOLLOWUP, nil,
         function() return audio().FollowupLines ~= false end,
         function(value) audio().FollowupLines = value end)
+    local progress = layout:Checkbox(L.OPT_PANEL_PROGRESS, nil,
+        function() return Addon:IsProgressTextOn() end,
+        function(value) Addon:SetProgressText(value) end)
     layout:Outdent()
     layout:Requires(followup, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
+    layout:Requires(progress, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
     local stopOnClose = layout:Checkbox(L.OPT_PANEL_STOP_ON_CLOSE, nil,
         function() return audio().StopAudioOnDisengage end,
-        function(value) audio().StopAudioOnDisengage = value end)
+        function(value) audio().StopAudioOnDisengage = value end,
+        refresh)
+    layout:Indent()
+    local stopOnAccept = layout:Checkbox(L.OPT_PANEL_STOP_ON_ACCEPT, L.OPT_PANEL_STOP_ON_ACCEPT_TIP,
+        function() return audio().StopOnAccept end,
+        function(value) audio().StopOnAccept = value end)
+    layout:Outdent()
+    layout:Requires(stopOnAccept, function() return audio().StopAudioOnDisengage end, L.REASON_STOP_ON_CLOSE)
     -- The NPC's own greeting first, then Spoken's line: for quest windows and gossip windows alike.
     local greetingFirst = layout:Checkbox(L.OPT_PANEL_GAME_GREETING_FIRST, nil,
         function() return audio().GreetingFirst end,
@@ -155,15 +166,13 @@ function SettingsPanel:Setup()
             if module.AddonName ~= ALL and Present(ALL) then return "off", L.OPT_PACK_INCLUDED end
         end, W.MODULE_DOWNLOAD, function() ReportButton:ShowAddress(module.URL) end)
     end
-    -- The built-in languages, then those an installed pack declares, then the voice and fallback
-    -- chosen: a choice outlives its pack, and Italian has official packs to get it back from.
+    -- The built-in languages, then those an installed pack declares. Only a built-in language has
+    -- packs to get, so a voice chosen before its pack went needs no row of its own.
     local codes, seen = {}, {}
     local function Add(code)
         if code and not seen[code] then table.insert(codes, code); seen[code] = true end
     end
     for _, locale in ipairs(Spoken:KnownLanguages()) do Add(locale.code) end
-    Add(Language:GetVoiceLanguage())
-    Add(Language:GetFallbackLanguage())
     for _, code in ipairs(codes) do
         for _, pack in ipairs(Spoken:QuestsVoicePacks(code) or {}) do
             local folder = pack.folder

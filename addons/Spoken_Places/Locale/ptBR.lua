@@ -7,7 +7,7 @@
 
 local _, SpokenPlaces = ...
 
-if GetLocale() ~= "ptBR" then
+if not Spoken:InterfaceIn("ptBR") then
 	return
 end
 
@@ -23,10 +23,11 @@ L.OPT_AUTOPLAY = "Ler automaticamente"
 L.OPT_AUTOPLAY_SUB = "Incluir áreas menores"
 L.OPT_AUTOPLAY_EXPLORED = "Incluir lugares já encontrados"
 L.OPT_AUTOPLAY_COMBAT = "Parar ao entrar em combate"
-L.OPT_LANG_RELOAD = "Digite /reload para trocar para ele."
-L.OPT_LANGUAGE = "Idioma do texto"
-L.OPT_LANG_AUTO_FMT = "Automático (%1$s)"
-L.OPT_LANG_SET_FMT = "As histórias estarão em %1$s depois que a interface recarregar."
+L.OPT_AUTOPLAY_EVERY_VISIT = "Ler a cada visita"
+L.OPT_AUTOPLAY_GAP = "Ler de novo após"
+L.OPT_GAP_1D = "1 dia"
+L.OPT_GAP_1W = "1 semana"
+L.OPT_GAP_1MO = "1 mês"
 L.OPT_LANG_PROFILE_FMT = "Este perfil lê as histórias em %1$s. Digite /reload para trocar."
 L.OPT_REPORT_PROBLEM = "Informar um problema"
 L.MENU_LORE_WINDOW = "Abrir o Compêndio de Azeroth"
@@ -59,13 +60,16 @@ L.CMD_VOICE = "  /spp voice      -- Ler histórias em voz alta, liga ou desliga"
 L.CMD_AUTOPLAY = "  /spp autoplay   -- Ler automaticamente, liga ou desliga"
 L.CMD_AUDIO = "  /spp audio      -- os pacotes de voz instalados"
 L.CMD_LANG = "  /spp lang       -- Idioma do texto: lista, ou troca com /spp lang <code> ou auto"
-L.CMD_FORGET = "  /spp forget     -- Esquecer lugares ouvidos"
+L.CMD_FORGET = "  /spp forget     -- Esquecer lugares visitados"
 
 
 -- Added in this release.
 L.REASON_VOICE = "Marque Ler histórias em voz alta para usar isto."
-L.OPT_FORGET_PLACES = "Esquecer lugares ouvidos"
+L.OPT_FORGET_PLACES = "Esquecer lugares visitados"
 L.OPT_FORGET_PLACES_DONE = "A lista de lugares ouvidos deste personagem foi limpa."
+L.OPT_FORGET_PLACES_CONFIRM = "Você vai esquecer %d lugares."
+L.OPT_FORGET_PLACES_CONFIRM_ONE = "Você vai esquecer 1 lugar."
+L.OPT_FORGET = "Esquecer"
 L.OPT_DOWNLOAD_ADDRESS = "Copie este endereço no seu navegador para baixar o pacote de voz."
 L.OTHER_LANDS = "Outras terras"
 L.BATTLEGROUNDS = "Campos de batalha"
@@ -81,10 +85,9 @@ L.LORE_DISCOVERED_ONLY = "Só descobertas"
 L.LORE_VOICED_ONLY = "Só com voz"
 L.LORE_SEARCH_NONE = "Nada encontrado."
 L.REASON_DISCOVERY = "Marque Ler automaticamente para usar isto."
+L.REASON_EVERY_VISIT = "Desmarque Ler a cada visita para usar isto."
 L.REASON_MAP_PANEL = "Marque História ao lado do mapa para usar isto."
 L.OPT_RESET_PAGE_CONFIRM = "Voltar todas as configurações de Lugares ao padrão?"
-L.OPT_RELOAD_NOW = "Recarregar agora"
-L.OPT_LATER = "Depois"
 L.OPT_PAGE_TITLE = "Lugares"
 L.OPT_DEV_DEBUG = "Depuração de Lugares"
 L.OPT_DEV_PREVIEW = "Oferecer traduções inacabadas"

@@ -1,0 +1,1274 @@
+[
+  {
+    "section": "bosses",
+    "lang": "deDE",
+    "folders": [
+      {
+        "folder": "SpokenBossesAudio_deDE",
+        "section": "bosses",
+        "lang": "deDE"
+      }
+    ],
+    "version": "1.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r German Audio: Bosses\n## Notes: Narrated boss stories for Spoken Bosses.|n|nKeep it enabled: it loads with the game, and Spoken Bosses plays from it.\n## Version: 1.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenBossesAudio_deDE\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Bosses\n## X-License: Audio generated with ElevenLabs from boss lore text.\n## X-Credits: Boss lore sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. Data/Sounds.lua reads these back at load time; the tree in the\n# repository is the 128kbps master, so it describes itself as the high tier.\n## X-SpokenBosses-Quality: high\n## X-SpokenBosses-Bitrate: 128\n\n# The language this pack narrates, read back the same way.\n## X-SpokenBosses-Language: deDE\n\n# Defines the SpokenBossesAudioPacks registry entry that Spoken Bosses reads. No dependency is\n# declared in either direction: Spoken Bosses shows text only when no pack is present.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "bosses",
+    "lang": "esES",
+    "folders": [
+      {
+        "folder": "SpokenBossesAudio_esES",
+        "section": "bosses",
+        "lang": "esES"
+      }
+    ],
+    "version": "1.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Spanish (EU) Audio: Bosses\n## Notes: Narrated boss stories for Spoken Bosses.|n|nKeep it enabled: it loads with the game, and Spoken Bosses plays from it.\n## Version: 1.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenBossesAudio_esES\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Bosses\n## X-License: Audio generated with ElevenLabs from boss lore text.\n## X-Credits: Boss lore sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. Data/Sounds.lua reads these back at load time; the tree in the\n# repository is the 128kbps master, so it describes itself as the high tier.\n## X-SpokenBosses-Quality: high\n## X-SpokenBosses-Bitrate: 128\n\n# The language this pack narrates, read back the same way.\n## X-SpokenBosses-Language: esES\n\n# Defines the SpokenBossesAudioPacks registry entry that Spoken Bosses reads. No dependency is\n# declared in either direction: Spoken Bosses shows text only when no pack is present.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "bosses",
+    "lang": "esMX",
+    "folders": [
+      {
+        "folder": "SpokenBossesAudio_esMX",
+        "section": "bosses",
+        "lang": "esMX"
+      }
+    ],
+    "version": "1.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Spanish (AL) Audio: Bosses\n## Notes: Narrated boss stories for Spoken Bosses.|n|nKeep it enabled: it loads with the game, and Spoken Bosses plays from it.\n## Version: 1.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenBossesAudio_esMX\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Bosses\n## X-License: Audio generated with ElevenLabs from boss lore text.\n## X-Credits: Boss lore sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. Data/Sounds.lua reads these back at load time; the tree in the\n# repository is the 128kbps master, so it describes itself as the high tier.\n## X-SpokenBosses-Quality: high\n## X-SpokenBosses-Bitrate: 128\n\n# The language this pack narrates, read back the same way.\n## X-SpokenBosses-Language: esMX\n\n# Defines the SpokenBossesAudioPacks registry entry that Spoken Bosses reads. No dependency is\n# declared in either direction: Spoken Bosses shows text only when no pack is present.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "bosses",
+    "lang": "frFR",
+    "folders": [
+      {
+        "folder": "SpokenBossesAudio_frFR",
+        "section": "bosses",
+        "lang": "frFR"
+      }
+    ],
+    "version": "1.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r French Audio: Bosses\n## Notes: Narrated boss stories for Spoken Bosses.|n|nKeep it enabled: it loads with the game, and Spoken Bosses plays from it.\n## Version: 1.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenBossesAudio_frFR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Bosses\n## X-License: Audio generated with ElevenLabs from boss lore text.\n## X-Credits: Boss lore sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. Data/Sounds.lua reads these back at load time; the tree in the\n# repository is the 128kbps master, so it describes itself as the high tier.\n## X-SpokenBosses-Quality: high\n## X-SpokenBosses-Bitrate: 128\n\n# The language this pack narrates, read back the same way.\n## X-SpokenBosses-Language: frFR\n\n# Defines the SpokenBossesAudioPacks registry entry that Spoken Bosses reads. No dependency is\n# declared in either direction: Spoken Bosses shows text only when no pack is present.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "bosses",
+    "lang": "koKR",
+    "folders": [
+      {
+        "folder": "SpokenBossesAudio_koKR",
+        "section": "bosses",
+        "lang": "koKR"
+      }
+    ],
+    "version": "1.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Korean Audio: Bosses\n## Notes: Narrated boss stories for Spoken Bosses.|n|nKeep it enabled: it loads with the game, and Spoken Bosses plays from it.\n## Version: 1.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenBossesAudio_koKR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Bosses\n## X-License: Audio generated with ElevenLabs from boss lore text.\n## X-Credits: Boss lore sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. Data/Sounds.lua reads these back at load time; the tree in the\n# repository is the 128kbps master, so it describes itself as the high tier.\n## X-SpokenBosses-Quality: high\n## X-SpokenBosses-Bitrate: 128\n\n# The language this pack narrates, read back the same way.\n## X-SpokenBosses-Language: koKR\n\n# Defines the SpokenBossesAudioPacks registry entry that Spoken Bosses reads. No dependency is\n# declared in either direction: Spoken Bosses shows text only when no pack is present.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "bosses",
+    "lang": "ptBR",
+    "folders": [
+      {
+        "folder": "SpokenBossesAudio_ptBR",
+        "section": "bosses",
+        "lang": "ptBR"
+      }
+    ],
+    "version": "1.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Portuguese Audio: Bosses\n## Notes: Narrated boss stories for Spoken Bosses.|n|nKeep it enabled: it loads with the game, and Spoken Bosses plays from it.\n## Version: 1.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenBossesAudio_ptBR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Bosses\n## X-License: Audio generated with ElevenLabs from boss lore text.\n## X-Credits: Boss lore sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. Data/Sounds.lua reads these back at load time; the tree in the\n# repository is the 128kbps master, so it describes itself as the high tier.\n## X-SpokenBosses-Quality: high\n## X-SpokenBosses-Bitrate: 128\n\n# The language this pack narrates, read back the same way.\n## X-SpokenBosses-Language: ptBR\n\n# Defines the SpokenBossesAudioPacks registry entry that Spoken Bosses reads. No dependency is\n# declared in either direction: Spoken Bosses shows text only when no pack is present.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "bosses",
+    "lang": "ruRU",
+    "folders": [
+      {
+        "folder": "SpokenBossesAudio_ruRU",
+        "section": "bosses",
+        "lang": "ruRU"
+      }
+    ],
+    "version": "1.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Russian Audio: Bosses\n## Notes: Narrated boss stories for Spoken Bosses.|n|nKeep it enabled: it loads with the game, and Spoken Bosses plays from it.\n## Version: 1.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenBossesAudio_ruRU\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Bosses\n## X-License: Audio generated with ElevenLabs from boss lore text.\n## X-Credits: Boss lore sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. Data/Sounds.lua reads these back at load time; the tree in the\n# repository is the 128kbps master, so it describes itself as the high tier.\n## X-SpokenBosses-Quality: high\n## X-SpokenBosses-Bitrate: 128\n\n# The language this pack narrates, read back the same way.\n## X-SpokenBosses-Language: ruRU\n\n# Defines the SpokenBossesAudioPacks registry entry that Spoken Bosses reads. No dependency is\n# declared in either direction: Spoken Bosses shows text only when no pack is present.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "bosses",
+    "lang": "zhCN",
+    "folders": [
+      {
+        "folder": "SpokenBossesAudio_zhCN",
+        "section": "bosses",
+        "lang": "zhCN"
+      }
+    ],
+    "version": "1.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Chinese (Simplified) Audio: Bosses\n## Notes: Narrated boss stories for Spoken Bosses.|n|nKeep it enabled: it loads with the game, and Spoken Bosses plays from it.\n## Version: 1.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenBossesAudio_zhCN\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Bosses\n## X-License: Audio generated with ElevenLabs from boss lore text.\n## X-Credits: Boss lore sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. Data/Sounds.lua reads these back at load time; the tree in the\n# repository is the 128kbps master, so it describes itself as the high tier.\n## X-SpokenBosses-Quality: high\n## X-SpokenBosses-Bitrate: 128\n\n# The language this pack narrates, read back the same way.\n## X-SpokenBosses-Language: zhCN\n\n# Defines the SpokenBossesAudioPacks registry entry that Spoken Bosses reads. No dependency is\n# declared in either direction: Spoken Bosses shows text only when no pack is present.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "bosses",
+    "lang": "zhTW",
+    "folders": [
+      {
+        "folder": "SpokenBossesAudio_zhTW",
+        "section": "bosses",
+        "lang": "zhTW"
+      }
+    ],
+    "version": "1.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Chinese (Traditional) Audio: Bosses\n## Notes: Narrated boss stories for Spoken Bosses.|n|nKeep it enabled: it loads with the game, and Spoken Bosses plays from it.\n## Version: 1.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenBossesAudio_zhTW\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Bosses\n## X-License: Audio generated with ElevenLabs from boss lore text.\n## X-Credits: Boss lore sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. Data/Sounds.lua reads these back at load time; the tree in the\n# repository is the 128kbps master, so it describes itself as the high tier.\n## X-SpokenBosses-Quality: high\n## X-SpokenBosses-Bitrate: 128\n\n# The language this pack narrates, read back the same way.\n## X-SpokenBosses-Language: zhTW\n\n# Defines the SpokenBossesAudioPacks registry entry that Spoken Bosses reads. No dependency is\n# declared in either direction: Spoken Bosses shows text only when no pack is present.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "bosses",
+    "lang": "enUS",
+    "folders": [
+      {
+        "folder": "SpokenBossesAudio",
+        "section": "bosses",
+        "lang": "enUS"
+      }
+    ],
+    "version": "1.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Audio: Bosses\n## Notes: Narrated boss stories for Spoken Bosses.|n|nKeep it enabled: it loads with the game, and Spoken Bosses plays from it.\n## Version: 1.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenBossesAudio\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Bosses\n## X-License: Audio generated with ElevenLabs from boss lore text.\n## X-Credits: Boss lore sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. Data/Sounds.lua reads these back at load time; the tree in the\n# repository is the 128kbps master, so it describes itself as the high tier.\n## X-SpokenBosses-Quality: high\n## X-SpokenBosses-Bitrate: 128\n\n# The language this pack narrates, read back the same way.\n## X-SpokenBosses-Language: enUS\n\n# Defines the SpokenBossesAudioPacks registry entry that Spoken Bosses reads. No dependency is\n# declared in either direction: Spoken Bosses shows text only when no pack is present.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "places",
+    "lang": "deDE",
+    "folders": [
+      {
+        "folder": "SpokenPlacesAudio_deDE",
+        "section": "places",
+        "lang": "deDE"
+      }
+    ],
+    "version": "2.1.1",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r German Audio: Places\n## Notes: Narrated place lore for Spoken Places.|n|nKeep it enabled: it loads with the game, and Spoken Places plays from it.|n|nBeta: a proof-of-concept voice, being redesigned and re-generated.\n## Version: 2.1.1\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenPlacesAudio_deDE\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Places\n## X-License: Audio generated with ElevenLabs from warcraft.wiki.gg lore text (CC BY-SA 4.0).\n## X-Credits: Lore text sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. scripts/package-audio.sh rewrites these two lines, and\n# the Title above, once per tier it builds; the tree in the repository is the\n# 128kbps master every shipped tier is transcoded from, so it describes itself as\n# the high tier. Data/Sounds.lua reads these back at load time and reports them\n# to ZoneLore, which is how two tiers installed side by side can be told apart.\n## X-SpokenPlaces-Quality: high\n## X-SpokenPlaces-Bitrate: 128\n\n# The language this pack narrates, read back the same way. Spoken Zones loads that\n# language's lore for the captions and offers the pack under it; the player picks\n# which installed pack plays, so it can narrate a language the client is not in.\n## X-SpokenPlaces-Language: deDE\n\n# Defines the SpokenPlacesAudioPacks registry entry that Spoken Zones reads. No dependency\n# is declared in either direction: Spoken Zones reads its lore without narrating when\n# no pack is present, and a pack is inert without it.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "places",
+    "lang": "esES",
+    "folders": [
+      {
+        "folder": "SpokenPlacesAudio_esES",
+        "section": "places",
+        "lang": "esES"
+      }
+    ],
+    "version": "2.0.2",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Spanish (EU) Audio: Places\n## Notes: Narrated place lore for Spoken Places.|n|nKeep it enabled: it loads with the game, and Spoken Places plays from it.|n|nBeta: a proof-of-concept voice, being redesigned and re-generated.\n## Version: 2.0.2\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenPlacesAudio_esES\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Places\n## X-License: Audio generated with ElevenLabs from warcraft.wiki.gg lore text (CC BY-SA 4.0).\n## X-Credits: Lore text sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. scripts/package-audio.sh rewrites these two lines, and\n# the Title above, once per tier it builds; the tree in the repository is the\n# 128kbps master every shipped tier is transcoded from, so it describes itself as\n# the high tier. Data/Sounds.lua reads these back at load time and reports them\n# to ZoneLore, which is how two tiers installed side by side can be told apart.\n## X-SpokenPlaces-Quality: high\n## X-SpokenPlaces-Bitrate: 128\n\n# The language this pack narrates, read back the same way. Spoken Zones loads that\n# language's lore for the captions and offers the pack under it; the player picks\n# which installed pack plays, so it can narrate a language the client is not in.\n## X-SpokenPlaces-Language: esES\n\n# Defines the SpokenPlacesAudioPacks registry entry that Spoken Zones reads. No dependency\n# is declared in either direction: Spoken Zones reads its lore without narrating when\n# no pack is present, and a pack is inert without it.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "places",
+    "lang": "esMX",
+    "folders": [
+      {
+        "folder": "SpokenPlacesAudio_esMX",
+        "section": "places",
+        "lang": "esMX"
+      }
+    ],
+    "version": "1.0.2",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Spanish (AL) Audio: Places\n## Notes: Narrated place lore for Spoken Places.|n|nKeep it enabled: it loads with the game, and Spoken Places plays from it.|n|nBeta: a proof-of-concept voice, being redesigned and re-generated.\n## Version: 1.0.2\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenPlacesAudio_esMX\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Places\n## X-License: Audio generated with ElevenLabs from warcraft.wiki.gg lore text (CC BY-SA 4.0).\n## X-Credits: Lore text sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. scripts/package-audio.sh rewrites these two lines, and\n# the Title above, once per tier it builds; the tree in the repository is the\n# 128kbps master every shipped tier is transcoded from, so it describes itself as\n# the high tier. Data/Sounds.lua reads these back at load time and reports them\n# to ZoneLore, which is how two tiers installed side by side can be told apart.\n## X-SpokenPlaces-Quality: high\n## X-SpokenPlaces-Bitrate: 128\n\n# The language this pack narrates, read back the same way. Spoken Zones loads that\n# language's lore for the captions and offers the pack under it; the player picks\n# which installed pack plays, so it can narrate a language the client is not in.\n## X-SpokenPlaces-Language: esMX\n\n# Defines the SpokenPlacesAudioPacks registry entry that Spoken Zones reads. No dependency\n# is declared in either direction: Spoken Zones reads its lore without narrating when\n# no pack is present, and a pack is inert without it.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "places",
+    "lang": "frFR",
+    "folders": [
+      {
+        "folder": "SpokenPlacesAudio_frFR",
+        "section": "places",
+        "lang": "frFR"
+      }
+    ],
+    "version": "2.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r French Audio: Places\n## Notes: Narrated place lore for Spoken Places.|n|nKeep it enabled: it loads with the game, and Spoken Places plays from it.|n|nBeta: a proof-of-concept voice, being redesigned and re-generated.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenPlacesAudio_frFR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Places\n## X-License: Audio generated with ElevenLabs from warcraft.wiki.gg lore text (CC BY-SA 4.0).\n## X-Credits: Lore text sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. scripts/package-audio.sh rewrites these two lines, and\n# the Title above, once per tier it builds; the tree in the repository is the\n# 128kbps master every shipped tier is transcoded from, so it describes itself as\n# the high tier. Data/Sounds.lua reads these back at load time and reports them\n# to ZoneLore, which is how two tiers installed side by side can be told apart.\n## X-SpokenPlaces-Quality: high\n## X-SpokenPlaces-Bitrate: 128\n\n# The language this pack narrates, read back the same way. Spoken Zones loads that\n# language's lore for the captions and offers the pack under it; the player picks\n# which installed pack plays, so it can narrate a language the client is not in.\n## X-SpokenPlaces-Language: frFR\n\n# Defines the SpokenPlacesAudioPacks registry entry that Spoken Zones reads. No dependency\n# is declared in either direction: Spoken Zones reads its lore without narrating when\n# no pack is present, and a pack is inert without it.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "places",
+    "lang": "koKR",
+    "folders": [
+      {
+        "folder": "SpokenPlacesAudio_koKR",
+        "section": "places",
+        "lang": "koKR"
+      }
+    ],
+    "version": "2.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Korean Audio: Places\n## Notes: Narrated place lore for Spoken Places.|n|nKeep it enabled: it loads with the game, and Spoken Places plays from it.|n|nBeta: a proof-of-concept voice, being redesigned and re-generated.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenPlacesAudio_koKR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Places\n## X-License: Audio generated with ElevenLabs from warcraft.wiki.gg lore text (CC BY-SA 4.0).\n## X-Credits: Lore text sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. scripts/package-audio.sh rewrites these two lines, and\n# the Title above, once per tier it builds; the tree in the repository is the\n# 128kbps master every shipped tier is transcoded from, so it describes itself as\n# the high tier. Data/Sounds.lua reads these back at load time and reports them\n# to ZoneLore, which is how two tiers installed side by side can be told apart.\n## X-SpokenPlaces-Quality: high\n## X-SpokenPlaces-Bitrate: 128\n\n# The language this pack narrates, read back the same way. Spoken Zones loads that\n# language's lore for the captions and offers the pack under it; the player picks\n# which installed pack plays, so it can narrate a language the client is not in.\n## X-SpokenPlaces-Language: koKR\n\n# Defines the SpokenPlacesAudioPacks registry entry that Spoken Zones reads. No dependency\n# is declared in either direction: Spoken Zones reads its lore without narrating when\n# no pack is present, and a pack is inert without it.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "places",
+    "lang": "ptBR",
+    "folders": [
+      {
+        "folder": "SpokenPlacesAudio_ptBR",
+        "section": "places",
+        "lang": "ptBR"
+      }
+    ],
+    "version": "2.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Portuguese Audio: Places\n## Notes: Narrated place lore for Spoken Places.|n|nKeep it enabled: it loads with the game, and Spoken Places plays from it.|n|nBeta: a proof-of-concept voice, being redesigned and re-generated.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenPlacesAudio_ptBR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Places\n## X-License: Audio generated with ElevenLabs from warcraft.wiki.gg lore text (CC BY-SA 4.0).\n## X-Credits: Lore text sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. scripts/package-audio.sh rewrites these two lines, and\n# the Title above, once per tier it builds; the tree in the repository is the\n# 128kbps master every shipped tier is transcoded from, so it describes itself as\n# the high tier. Data/Sounds.lua reads these back at load time and reports them\n# to ZoneLore, which is how two tiers installed side by side can be told apart.\n## X-SpokenPlaces-Quality: high\n## X-SpokenPlaces-Bitrate: 128\n\n# The language this pack narrates, read back the same way. Spoken Zones loads that\n# language's lore for the captions and offers the pack under it; the player picks\n# which installed pack plays, so it can narrate a language the client is not in.\n## X-SpokenPlaces-Language: ptBR\n\n# Defines the SpokenPlacesAudioPacks registry entry that Spoken Zones reads. No dependency\n# is declared in either direction: Spoken Zones reads its lore without narrating when\n# no pack is present, and a pack is inert without it.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "places",
+    "lang": "ruRU",
+    "folders": [
+      {
+        "folder": "SpokenPlacesAudio_ruRU",
+        "section": "places",
+        "lang": "ruRU"
+      }
+    ],
+    "version": "2.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Russian Audio: Places\n## Notes: Narrated place lore for Spoken Places.|n|nKeep it enabled: it loads with the game, and Spoken Places plays from it.|n|nBeta: a proof-of-concept voice, being redesigned and re-generated.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenPlacesAudio_ruRU\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Places\n## X-License: Audio generated with ElevenLabs from warcraft.wiki.gg lore text (CC BY-SA 4.0).\n## X-Credits: Lore text sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. scripts/package-audio.sh rewrites these two lines, and\n# the Title above, once per tier it builds; the tree in the repository is the\n# 128kbps master every shipped tier is transcoded from, so it describes itself as\n# the high tier. Data/Sounds.lua reads these back at load time and reports them\n# to ZoneLore, which is how two tiers installed side by side can be told apart.\n## X-SpokenPlaces-Quality: high\n## X-SpokenPlaces-Bitrate: 128\n\n# The language this pack narrates, read back the same way. Spoken Zones loads that\n# language's lore for the captions and offers the pack under it; the player picks\n# which installed pack plays, so it can narrate a language the client is not in.\n## X-SpokenPlaces-Language: ruRU\n\n# Defines the SpokenPlacesAudioPacks registry entry that Spoken Zones reads. No dependency\n# is declared in either direction: Spoken Zones reads its lore without narrating when\n# no pack is present, and a pack is inert without it.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "places",
+    "lang": "zhCN",
+    "folders": [
+      {
+        "folder": "SpokenPlacesAudio_zhCN",
+        "section": "places",
+        "lang": "zhCN"
+      }
+    ],
+    "version": "2.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Chinese (Simplified) Audio: Places\n## Notes: Narrated place lore for Spoken Places.|n|nKeep it enabled: it loads with the game, and Spoken Places plays from it.|n|nBeta: a proof-of-concept voice, being redesigned and re-generated.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenPlacesAudio_zhCN\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Places\n## X-License: Audio generated with ElevenLabs from warcraft.wiki.gg lore text (CC BY-SA 4.0).\n## X-Credits: Lore text sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. scripts/package-audio.sh rewrites these two lines, and\n# the Title above, once per tier it builds; the tree in the repository is the\n# 128kbps master every shipped tier is transcoded from, so it describes itself as\n# the high tier. Data/Sounds.lua reads these back at load time and reports them\n# to ZoneLore, which is how two tiers installed side by side can be told apart.\n## X-SpokenPlaces-Quality: high\n## X-SpokenPlaces-Bitrate: 128\n\n# The language this pack narrates, read back the same way. Spoken Zones loads that\n# language's lore for the captions and offers the pack under it; the player picks\n# which installed pack plays, so it can narrate a language the client is not in.\n## X-SpokenPlaces-Language: zhCN\n\n# Defines the SpokenPlacesAudioPacks registry entry that Spoken Zones reads. No dependency\n# is declared in either direction: Spoken Zones reads its lore without narrating when\n# no pack is present, and a pack is inert without it.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "places",
+    "lang": "zhTW",
+    "folders": [
+      {
+        "folder": "SpokenPlacesAudio_zhTW",
+        "section": "places",
+        "lang": "zhTW"
+      }
+    ],
+    "version": "2.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Chinese (Traditional) Audio: Places\n## Notes: Narrated place lore for Spoken Places.|n|nKeep it enabled: it loads with the game, and Spoken Places plays from it.|n|nBeta: a proof-of-concept voice, being redesigned and re-generated.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenPlacesAudio_zhTW\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Places\n## X-License: Audio generated with ElevenLabs from warcraft.wiki.gg lore text (CC BY-SA 4.0).\n## X-Credits: Lore text sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. scripts/package-audio.sh rewrites these two lines, and\n# the Title above, once per tier it builds; the tree in the repository is the\n# 128kbps master every shipped tier is transcoded from, so it describes itself as\n# the high tier. Data/Sounds.lua reads these back at load time and reports them\n# to ZoneLore, which is how two tiers installed side by side can be told apart.\n## X-SpokenPlaces-Quality: high\n## X-SpokenPlaces-Bitrate: 128\n\n# The language this pack narrates, read back the same way. Spoken Zones loads that\n# language's lore for the captions and offers the pack under it; the player picks\n# which installed pack plays, so it can narrate a language the client is not in.\n## X-SpokenPlaces-Language: zhTW\n\n# Defines the SpokenPlacesAudioPacks registry entry that Spoken Zones reads. No dependency\n# is declared in either direction: Spoken Zones reads its lore without narrating when\n# no pack is present, and a pack is inert without it.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "places",
+    "lang": "enUS",
+    "folders": [
+      {
+        "folder": "SpokenPlacesAudio",
+        "section": "places",
+        "lang": "enUS"
+      }
+    ],
+    "version": "2.1.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Audio: Places\n## Notes: Narrated place lore for Spoken Places.|n|nKeep it enabled: it loads with the game, and Spoken Places plays from it.|n|nBeta: a proof-of-concept voice, being redesigned and re-generated.\n## Version: 2.1.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenPlacesAudio\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Places\n## X-License: Audio generated with ElevenLabs from warcraft.wiki.gg lore text (CC BY-SA 4.0).\n## X-Credits: Lore text sourced from warcraft.wiki.gg contributors (CC BY-SA 4.0).\n\n# The tier this folder is. scripts/package-audio.sh rewrites these two lines, and\n# the Title above, once per tier it builds; the tree in the repository is the\n# 128kbps master every shipped tier is transcoded from, so it describes itself as\n# the high tier. Data/Sounds.lua reads these back at load time and reports them\n# to ZoneLore, which is how two tiers installed side by side can be told apart.\n## X-SpokenPlaces-Quality: high\n## X-SpokenPlaces-Bitrate: 128\n\n# The language this pack narrates, read back the same way. Spoken Zones loads that\n# language's lore for the captions and offers the pack under it; the player picks\n# which installed pack plays, so it can narrate a language the client is not in.\n## X-SpokenPlaces-Language: enUS\n\n# Defines the SpokenPlacesAudioPacks registry entry that Spoken Zones reads. No dependency\n# is declared in either direction: Spoken Zones reads its lore without narrating when\n# no pack is present, and a pack is inert without it.\nData/Sounds.lua\n"
+  },
+  {
+    "section": "quests",
+    "lang": "enUS",
+    "folders": [
+      {
+        "folder": "SpokenQuestsAudioAlliance",
+        "section": "quests",
+        "lang": "enUS"
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde",
+        "section": "quests",
+        "lang": "enUS"
+      },
+      {
+        "folder": "SpokenQuestsAudioShared",
+        "section": "quests",
+        "lang": "enUS"
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip",
+        "section": "quests",
+        "lang": "enUS"
+      }
+    ],
+    "builds": [
+      {
+        "folder": "SpokenQuestsAudioAlliance",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioAlliance",
+          "--pack",
+          "alliance",
+          "--version",
+          "9.9.9"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioHorde",
+          "--pack",
+          "horde",
+          "--version",
+          "9.9.9"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioShared",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioShared",
+          "--pack",
+          "shared",
+          "--version",
+          "9.9.9"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioGossip",
+          "--pack",
+          "gossip",
+          "--version",
+          "9.9.9"
+        ]
+      }
+    ]
+  },
+  {
+    "section": "quests",
+    "lang": "deDE",
+    "folders": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_deDE",
+        "section": "quests",
+        "lang": "deDE"
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_deDE",
+        "section": "quests",
+        "lang": "deDE"
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_deDE",
+        "section": "quests",
+        "lang": "deDE"
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_deDE",
+        "section": "quests",
+        "lang": "deDE"
+      }
+    ],
+    "builds": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_deDE",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioAlliance_deDE",
+          "--pack",
+          "alliance",
+          "--version",
+          "1.0.1",
+          "--module-title",
+          "Spoken German Audio: Quests - Alliance",
+          "--language",
+          "deDE"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_deDE",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioHorde_deDE",
+          "--pack",
+          "horde",
+          "--version",
+          "1.0.1",
+          "--module-title",
+          "Spoken German Audio: Quests - Horde",
+          "--language",
+          "deDE"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_deDE",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioShared_deDE",
+          "--pack",
+          "shared",
+          "--version",
+          "1.0.1",
+          "--module-title",
+          "Spoken German Audio: Quests - Shared",
+          "--language",
+          "deDE"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_deDE",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioGossip_deDE",
+          "--pack",
+          "gossip",
+          "--version",
+          "1.0.1",
+          "--module-title",
+          "Spoken German Audio: Gossip",
+          "--language",
+          "deDE",
+          "--locale-text",
+          "LOCALE_TEXT"
+        ]
+      }
+    ]
+  },
+  {
+    "section": "quests",
+    "lang": "esES",
+    "folders": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_esES",
+        "section": "quests",
+        "lang": "esES"
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_esES",
+        "section": "quests",
+        "lang": "esES"
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_esES",
+        "section": "quests",
+        "lang": "esES"
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_esES",
+        "section": "quests",
+        "lang": "esES"
+      }
+    ],
+    "builds": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_esES",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioAlliance_esES",
+          "--pack",
+          "alliance",
+          "--version",
+          "0.0.6",
+          "--module-title",
+          "Spoken Spanish (EU) Audio: Quests - Alliance",
+          "--language",
+          "esES"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_esES",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioHorde_esES",
+          "--pack",
+          "horde",
+          "--version",
+          "0.0.6",
+          "--module-title",
+          "Spoken Spanish (EU) Audio: Quests - Horde",
+          "--language",
+          "esES"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_esES",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioShared_esES",
+          "--pack",
+          "shared",
+          "--version",
+          "0.0.6",
+          "--module-title",
+          "Spoken Spanish (EU) Audio: Quests - Shared",
+          "--language",
+          "esES"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_esES",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioGossip_esES",
+          "--pack",
+          "gossip",
+          "--version",
+          "0.0.6",
+          "--module-title",
+          "Spoken Spanish (EU) Audio: Gossip",
+          "--language",
+          "esES",
+          "--locale-text",
+          "LOCALE_TEXT"
+        ]
+      }
+    ]
+  },
+  {
+    "section": "quests",
+    "lang": "esMX",
+    "folders": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_esMX",
+        "section": "quests",
+        "lang": "esMX"
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_esMX",
+        "section": "quests",
+        "lang": "esMX"
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_esMX",
+        "section": "quests",
+        "lang": "esMX"
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_esMX",
+        "section": "quests",
+        "lang": "esMX"
+      }
+    ],
+    "builds": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_esMX",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioAlliance_esMX",
+          "--pack",
+          "alliance",
+          "--version",
+          "0.0.6",
+          "--module-title",
+          "Spoken Spanish (AL) Audio: Quests - Alliance",
+          "--language",
+          "esMX"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_esMX",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioHorde_esMX",
+          "--pack",
+          "horde",
+          "--version",
+          "0.0.6",
+          "--module-title",
+          "Spoken Spanish (AL) Audio: Quests - Horde",
+          "--language",
+          "esMX"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_esMX",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioShared_esMX",
+          "--pack",
+          "shared",
+          "--version",
+          "0.0.6",
+          "--module-title",
+          "Spoken Spanish (AL) Audio: Quests - Shared",
+          "--language",
+          "esMX"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_esMX",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioGossip_esMX",
+          "--pack",
+          "gossip",
+          "--version",
+          "0.0.6",
+          "--module-title",
+          "Spoken Spanish (AL) Audio: Gossip",
+          "--language",
+          "esMX",
+          "--locale-text",
+          "LOCALE_TEXT"
+        ]
+      }
+    ]
+  },
+  {
+    "section": "quests",
+    "lang": "frFR",
+    "folders": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_frFR",
+        "section": "quests",
+        "lang": "frFR"
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_frFR",
+        "section": "quests",
+        "lang": "frFR"
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_frFR",
+        "section": "quests",
+        "lang": "frFR"
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_frFR",
+        "section": "quests",
+        "lang": "frFR"
+      }
+    ],
+    "builds": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_frFR",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioAlliance_frFR",
+          "--pack",
+          "alliance",
+          "--version",
+          "0.0.4",
+          "--module-title",
+          "Spoken French Audio: Quests - Alliance",
+          "--language",
+          "frFR"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_frFR",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioHorde_frFR",
+          "--pack",
+          "horde",
+          "--version",
+          "0.0.4",
+          "--module-title",
+          "Spoken French Audio: Quests - Horde",
+          "--language",
+          "frFR"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_frFR",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioShared_frFR",
+          "--pack",
+          "shared",
+          "--version",
+          "0.0.4",
+          "--module-title",
+          "Spoken French Audio: Quests - Shared",
+          "--language",
+          "frFR"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_frFR",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioGossip_frFR",
+          "--pack",
+          "gossip",
+          "--version",
+          "0.0.4",
+          "--module-title",
+          "Spoken French Audio: Gossip",
+          "--language",
+          "frFR",
+          "--locale-text",
+          "LOCALE_TEXT"
+        ]
+      }
+    ]
+  },
+  {
+    "section": "quests",
+    "lang": "koKR",
+    "folders": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_koKR",
+        "section": "quests",
+        "lang": "koKR"
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_koKR",
+        "section": "quests",
+        "lang": "koKR"
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_koKR",
+        "section": "quests",
+        "lang": "koKR"
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_koKR",
+        "section": "quests",
+        "lang": "koKR"
+      }
+    ],
+    "builds": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_koKR",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioAlliance_koKR",
+          "--pack",
+          "alliance",
+          "--version",
+          "0.0.3",
+          "--module-title",
+          "Spoken Korean Audio: Quests - Alliance",
+          "--language",
+          "koKR"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_koKR",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioHorde_koKR",
+          "--pack",
+          "horde",
+          "--version",
+          "0.0.3",
+          "--module-title",
+          "Spoken Korean Audio: Quests - Horde",
+          "--language",
+          "koKR"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_koKR",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioShared_koKR",
+          "--pack",
+          "shared",
+          "--version",
+          "0.0.3",
+          "--module-title",
+          "Spoken Korean Audio: Quests - Shared",
+          "--language",
+          "koKR"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_koKR",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioGossip_koKR",
+          "--pack",
+          "gossip",
+          "--version",
+          "0.0.3",
+          "--module-title",
+          "Spoken Korean Audio: Gossip",
+          "--language",
+          "koKR",
+          "--locale-text",
+          "LOCALE_TEXT"
+        ]
+      }
+    ]
+  },
+  {
+    "section": "quests",
+    "lang": "ptBR",
+    "folders": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_ptBR",
+        "section": "quests",
+        "lang": "ptBR"
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_ptBR",
+        "section": "quests",
+        "lang": "ptBR"
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_ptBR",
+        "section": "quests",
+        "lang": "ptBR"
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_ptBR",
+        "section": "quests",
+        "lang": "ptBR"
+      }
+    ],
+    "builds": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_ptBR",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioAlliance_ptBR",
+          "--pack",
+          "alliance",
+          "--version",
+          "0.0.3",
+          "--module-title",
+          "Spoken Portuguese Audio: Quests - Alliance",
+          "--language",
+          "ptBR"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_ptBR",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioHorde_ptBR",
+          "--pack",
+          "horde",
+          "--version",
+          "0.0.3",
+          "--module-title",
+          "Spoken Portuguese Audio: Quests - Horde",
+          "--language",
+          "ptBR"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_ptBR",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioShared_ptBR",
+          "--pack",
+          "shared",
+          "--version",
+          "0.0.3",
+          "--module-title",
+          "Spoken Portuguese Audio: Quests - Shared",
+          "--language",
+          "ptBR"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_ptBR",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioGossip_ptBR",
+          "--pack",
+          "gossip",
+          "--version",
+          "0.0.3",
+          "--module-title",
+          "Spoken Portuguese Audio: Gossip",
+          "--language",
+          "ptBR",
+          "--locale-text",
+          "LOCALE_TEXT"
+        ]
+      }
+    ]
+  },
+  {
+    "section": "quests",
+    "lang": "ruRU",
+    "folders": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_ruRU",
+        "section": "quests",
+        "lang": "ruRU"
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_ruRU",
+        "section": "quests",
+        "lang": "ruRU"
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_ruRU",
+        "section": "quests",
+        "lang": "ruRU"
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_ruRU",
+        "section": "quests",
+        "lang": "ruRU"
+      }
+    ],
+    "builds": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_ruRU",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioAlliance_ruRU",
+          "--pack",
+          "alliance",
+          "--version",
+          "0.0.4",
+          "--module-title",
+          "Spoken Russian Audio: Quests - Alliance",
+          "--language",
+          "ruRU"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_ruRU",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioHorde_ruRU",
+          "--pack",
+          "horde",
+          "--version",
+          "0.0.4",
+          "--module-title",
+          "Spoken Russian Audio: Quests - Horde",
+          "--language",
+          "ruRU"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_ruRU",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioShared_ruRU",
+          "--pack",
+          "shared",
+          "--version",
+          "0.0.4",
+          "--module-title",
+          "Spoken Russian Audio: Quests - Shared",
+          "--language",
+          "ruRU"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_ruRU",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioGossip_ruRU",
+          "--pack",
+          "gossip",
+          "--version",
+          "0.0.4",
+          "--module-title",
+          "Spoken Russian Audio: Gossip",
+          "--language",
+          "ruRU",
+          "--locale-text",
+          "LOCALE_TEXT"
+        ]
+      }
+    ]
+  },
+  {
+    "section": "quests",
+    "lang": "zhCN",
+    "folders": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_zhCN",
+        "section": "quests",
+        "lang": "zhCN"
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_zhCN",
+        "section": "quests",
+        "lang": "zhCN"
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_zhCN",
+        "section": "quests",
+        "lang": "zhCN"
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_zhCN",
+        "section": "quests",
+        "lang": "zhCN"
+      }
+    ],
+    "builds": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_zhCN",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioAlliance_zhCN",
+          "--pack",
+          "alliance",
+          "--version",
+          "0.0.2",
+          "--module-title",
+          "Spoken Chinese (Simplified) Audio: Quests - Alliance",
+          "--language",
+          "zhCN"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_zhCN",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioHorde_zhCN",
+          "--pack",
+          "horde",
+          "--version",
+          "0.0.2",
+          "--module-title",
+          "Spoken Chinese (Simplified) Audio: Quests - Horde",
+          "--language",
+          "zhCN"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_zhCN",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioShared_zhCN",
+          "--pack",
+          "shared",
+          "--version",
+          "0.0.2",
+          "--module-title",
+          "Spoken Chinese (Simplified) Audio: Quests - Shared",
+          "--language",
+          "zhCN"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_zhCN",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioGossip_zhCN",
+          "--pack",
+          "gossip",
+          "--version",
+          "0.0.2",
+          "--module-title",
+          "Spoken Chinese (Simplified) Audio: Gossip",
+          "--language",
+          "zhCN",
+          "--locale-text",
+          "LOCALE_TEXT"
+        ]
+      }
+    ]
+  },
+  {
+    "section": "quests",
+    "lang": "zhTW",
+    "folders": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_zhTW",
+        "section": "quests",
+        "lang": "zhTW"
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_zhTW",
+        "section": "quests",
+        "lang": "zhTW"
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_zhTW",
+        "section": "quests",
+        "lang": "zhTW"
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_zhTW",
+        "section": "quests",
+        "lang": "zhTW"
+      }
+    ],
+    "builds": [
+      {
+        "folder": "SpokenQuestsAudioAlliance_zhTW",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioAlliance_zhTW",
+          "--pack",
+          "alliance",
+          "--version",
+          "0.0.2",
+          "--module-title",
+          "Spoken Chinese (Traditional) Audio: Quests - Alliance",
+          "--language",
+          "zhTW"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioHorde_zhTW",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioHorde_zhTW",
+          "--pack",
+          "horde",
+          "--version",
+          "0.0.2",
+          "--module-title",
+          "Spoken Chinese (Traditional) Audio: Quests - Horde",
+          "--language",
+          "zhTW"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioShared_zhTW",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioShared_zhTW",
+          "--pack",
+          "shared",
+          "--version",
+          "0.0.2",
+          "--module-title",
+          "Spoken Chinese (Traditional) Audio: Quests - Shared",
+          "--language",
+          "zhTW"
+        ]
+      },
+      {
+        "folder": "SpokenQuestsAudioGossip_zhTW",
+        "args": [
+          "--module",
+          "SpokenQuestsAudioGossip_zhTW",
+          "--pack",
+          "gossip",
+          "--version",
+          "0.0.2",
+          "--module-title",
+          "Spoken Chinese (Traditional) Audio: Gossip",
+          "--language",
+          "zhTW",
+          "--locale-text",
+          "LOCALE_TEXT"
+        ]
+      }
+    ]
+  },
+  {
+    "section": "readables",
+    "lang": "deDE",
+    "folders": [
+      {
+        "folder": "SpokenReadablesAudio_deDE",
+        "section": "readables",
+        "lang": "deDE"
+      }
+    ],
+    "version": "2.1.1",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r German Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.1.1\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_deDE\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: deDE\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+  },
+  {
+    "section": "readables",
+    "lang": "esES",
+    "folders": [
+      {
+        "folder": "SpokenReadablesAudio_esES",
+        "section": "readables",
+        "lang": "esES"
+      }
+    ],
+    "version": "2.0.1",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Spanish (EU) Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.1\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_esES\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: esES\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+  },
+  {
+    "section": "readables",
+    "lang": "esMX",
+    "folders": [
+      {
+        "folder": "SpokenReadablesAudio_esMX",
+        "section": "readables",
+        "lang": "esMX"
+      }
+    ],
+    "version": "2.0.2",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Spanish (AL) Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.2\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_esMX\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: esMX\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+  },
+  {
+    "section": "readables",
+    "lang": "frFR",
+    "folders": [
+      {
+        "folder": "SpokenReadablesAudio_frFR",
+        "section": "readables",
+        "lang": "frFR"
+      }
+    ],
+    "version": "2.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r French Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_frFR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: frFR\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+  },
+  {
+    "section": "readables",
+    "lang": "koKR",
+    "folders": [
+      {
+        "folder": "SpokenReadablesAudio_koKR",
+        "section": "readables",
+        "lang": "koKR"
+      }
+    ],
+    "version": "2.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Korean Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_koKR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: koKR\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+  },
+  {
+    "section": "readables",
+    "lang": "ptBR",
+    "folders": [
+      {
+        "folder": "SpokenReadablesAudio_ptBR",
+        "section": "readables",
+        "lang": "ptBR"
+      }
+    ],
+    "version": "2.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Portuguese Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_ptBR\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: ptBR\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+  },
+  {
+    "section": "readables",
+    "lang": "ruRU",
+    "folders": [
+      {
+        "folder": "SpokenReadablesAudio_ruRU",
+        "section": "readables",
+        "lang": "ruRU"
+      }
+    ],
+    "version": "2.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Russian Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_ruRU\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: ruRU\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+  },
+  {
+    "section": "readables",
+    "lang": "zhCN",
+    "folders": [
+      {
+        "folder": "SpokenReadablesAudio_zhCN",
+        "section": "readables",
+        "lang": "zhCN"
+      }
+    ],
+    "version": "2.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Chinese (Simplified) Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_zhCN\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: zhCN\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+  },
+  {
+    "section": "readables",
+    "lang": "zhTW",
+    "folders": [
+      {
+        "folder": "SpokenReadablesAudio_zhTW",
+        "section": "readables",
+        "lang": "zhTW"
+      }
+    ],
+    "version": "2.0.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Chinese (Traditional) Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.0.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio_zhTW\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: zhTW\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+  },
+  {
+    "section": "readables",
+    "lang": "enUS",
+    "folders": [
+      {
+        "folder": "SpokenReadablesAudio",
+        "section": "readables",
+        "lang": "enUS"
+      }
+    ],
+    "version": "2.3.0",
+    "toc": "## Interface: 11509, 20506, 16001\n## Title: |cffb48cffSpoken|r Audio: Readables\n## Notes: Narrated books, letters, notes and plaques for Spoken Readables.|n|nKeep it enabled: it loads with the game, and Spoken Readables plays from it.\n## Version: 2.3.0\n## Author: rusty\n## IconTexture: Interface\\AddOns\\SpokenReadablesAudio\\Textures\\AddonIcon.tga\n## Group: Spoken\n## X-Part-Of: Spoken\n## X-Child-Of: Spoken_Readables\n## X-SpokenReadables-Language: enUS\n## X-License: Audio generated with ElevenLabs from book text extracted from the game.\n\nData/Sounds.lua\n"
+  }
+]

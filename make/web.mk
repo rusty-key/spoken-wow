@@ -148,8 +148,8 @@ push-seed-clips: require-droplet ## Copy local seed clips to shared/seed-clips o
 # The clips and fish.audio references apps/web/scripts/seed-voice-sources.mts wrote locally,
 # onto the droplet: files, and the fish_reference rows. Replaces only the voices that run
 # listed in pipelines/quests/voice/samples/.seeded; see scripts/voice/push-sources.sh.
-push-voice-sources: require-droplet ## Push seeded voice clips + fish references to the droplet (ADMIN_EMAIL=...)
-	@$(DB_ENV) RSYNC="$(RSYNC)" ADMIN_EMAIL="$(ADMIN_EMAIL)" bash scripts/voice/push-sources.sh
+push-voice-sources: require-droplet ## Push seeded voice clips + fish references to the droplet (ADMIN_EMAIL=..., TEAM=)
+	@$(DB_ENV) RSYNC="$(RSYNC)" ADMIN_EMAIL="$(ADMIN_EMAIL)" TEAM="$(TEAM)" bash scripts/voice/push-sources.sh
 
 migrate-readables: require-droplet ## Copy the local readables corpus onto the droplet (REPLACES book_page and book_line)
 	@echo "local:"

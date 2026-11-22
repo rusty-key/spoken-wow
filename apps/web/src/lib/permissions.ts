@@ -2,7 +2,8 @@
  * The role model, shared by the server and the browser so the list of roles is defined once.
  *
  * Two global roles: a `member` is anyone who registered, and an `admin` may do anything,
- * including manage users and voices. Everything in between -- writing a language, cutting
+ * including manage users and voices and approve community voice packs, which any member may
+ * submit. Everything in between -- writing a language, cutting
  * takes in it, looking after it -- is a grant for that language (see "Per language" below),
  * English included. Registration assigns `member`; the first `admin` is promoted with SQL
  * (see deploy/README.md), and every grant and promotion after that goes through /admin.
@@ -10,7 +11,7 @@
 import { createAccessControl } from "better-auth/plugins/access";
 import { adminAc, defaultStatements } from "better-auth/plugins/admin/access";
 
-import { CODES, type Lang } from "@/lib/lang";
+import { allLangs, type Lang } from "@/lib/lang";
 
 const statement = {
   ...defaultStatements,
@@ -42,8 +43,19 @@ export const ROLES = ["member", "admin"] as const;
 
 export type Role = (typeof ROLES)[number];
 
+export const ROLE_LABELS: Record<Role, string> = {
+  member: "Member",
+  admin: "Admin",
+};
+
 export function isRole(value: unknown): value is Role {
   return typeof value === "string" && (ROLES as readonly string[]).includes(value);
+}
+
+/** What the UI calls a role. A role this build does not know shows as stored, not as nothing. */
+export function roleLabel(role: string | null | undefined): string {
+  const value = role ?? "member";
+  return isRole(value) ? ROLE_LABELS[value] : value;
 }
 
 /** The one definition of who may reach /admin. */
@@ -143,7 +155,7 @@ export function can(viewer: Viewer | null, capability: Capability, lang: Lang): 
  * for somebody signed out.
  */
 export function langsWhere(viewer: Viewer | null, capability: Capability): Lang[] {
-  return CODES.filter((lang) => can(viewer, capability, lang));
+  return allLangs().filter((lang) => can(viewer, capability, lang));
 }
 
 /**
@@ -152,7 +164,7 @@ export function langsWhere(viewer: Viewer | null, capability: Capability): Lang[
  * every such action is paid for with the caller's own.
  */
 export function spendsCredits(viewer: Viewer | null): boolean {
-  return CODES.some((lang) => can(viewer, "regenerate", lang) || can(viewer, "configure", lang));
+  return allLangs().some((lang) => can(viewer, "regenerate", lang) || can(viewer, "configure", lang));
 }
 
 /**
@@ -173,11 +185,15 @@ export function canManageVoices(viewer: Viewer | null, lang: Lang): boolean {
   return can(viewer, "admin", lang);
 }
 
-/** Whether somebody may hand out or take away `capability` in `lang`. */
-export function canGrant(viewer: Viewer | null, capability: Capability, lang: Lang): boolean {
-  if (!viewer) return false;
-  if (viewer.role === "admin") return true;
-  return capability !== "text" && can(viewer, "admin", lang);
+/**
+ * Whether somebody may hand out or take away `capability` in `lang`.
+ *
+ * `textByTeam` is the language's flag that its teams' admins appoint text maintainers, as a site
+ * admin does elsewhere. An admin of any team of the language may: the teams are equal.
+ */
+export function canGrant(viewer: Viewer | null, capability: Capability, lang: Lang, textByTeam: boolean): boolean {
+  if (viewer?.role === "admin") return true;
+  return can(viewer, "admin", lang) && (capability !== "text" || textByTeam);
 }
 
 /**

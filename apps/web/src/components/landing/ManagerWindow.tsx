@@ -34,9 +34,9 @@ const GAMES = [
  * The Spoken Manager's Home page as the app draws it: its tokens, its game cards with the key
  * art and logo, its strip of installed games. Fills and shadows only, no borders.
  */
-export default function ManagerWindow() {
+export default function ManagerWindow({ label }: { label: string }) {
   return (
-    <div className="bn-app" role="img" aria-label="The Spoken Manager window, listing two installed games with their Spoken status">
+    <div className="bn-app" role="img" aria-label={label}>
       <div aria-hidden="true">
         <div className="bn-app-bar">
           {/* eslint-disable-next-line @next/next/no-img-element */}

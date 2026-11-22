@@ -18,7 +18,9 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), "voice-references-"));
 process.env.SPOKEN_QUESTS_VOICE_REFERENCES = path.join(root, "references");
 
 const { closeDb } = await import("@/lib/db");
-const { asSystem } = await import("@/lib/teams/testing");
+const { addMember, asSystem, dropLang, dropTeam, newTeamIn, uniqueLang } = await import("@/lib/teams/testing");
+const { asActor } = await import("@/lib/teams/acting");
+const { forgetTeams } = await import("@/lib/teams/store");
 const { FFMPEG } = await import("./merge");
 const references = await import("./references");
 const { fishSpeaker } = await import("@/lib/generation/speakers/fish");
@@ -282,5 +284,37 @@ describe.skipIf(!hasFfmpeg)("fish.audio as a speaker", () => {
       "reference.edited",
       "reference.deleted",
     ]);
+  });
+});
+
+describe("a second team's delete", () => {
+  it("leaves the privileged team's reference, file and row, when it has none of its own", async () => {
+    const lang = await uniqueLang();
+    const privileged = await newTeamIn(lang, true, "references-a");
+    const second = await newTeamIn(lang, false, "references-b");
+    await addMember(second, USER, lang, "admin");
+    const file = references.referencePath(VOICE, lang);
+    try {
+      await asSystem.query(
+        `insert into "fish_reference" ("teamId", "voice", "lang", "sample", "startSec", "endSec", "transcript", "clipHash")
+         values ($1, $2, $3, 'clip.wav', 0, 12, 'Well met.', 'a-hash')`,
+        [privileged, VOICE, lang],
+      );
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, "ID3a");
+
+      await asActor(USER, () => references.deleteReference(VOICE, lang, USER));
+
+      expect(fs.readFileSync(file, "utf8")).toBe("ID3a");
+      const { rows } = await asSystem.query(`select "teamId" from "fish_reference" where "lang" = $1`, [lang]);
+      expect(rows).toEqual([{ teamId: privileged }]);
+    } finally {
+      await asSystem.query(`delete from "fish_reference" where "lang" = $1`, [lang]);
+      await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
+      await dropTeam(second);
+      await dropTeam(privileged);
+      await dropLang(lang);
+      forgetTeams();
+    }
   });
 });

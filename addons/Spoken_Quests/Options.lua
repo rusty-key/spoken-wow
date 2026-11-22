@@ -54,8 +54,17 @@ local GeneralTab =
                         [Enums.GossipFrequency.Always] = L.OPT_GREETING_LABEL_ALWAYS,
                         [Enums.GossipFrequency.OncePerQuestNPC] = L.OPT_GREETING_LABEL_ONCE_QUEST,
                         [Enums.GossipFrequency.OncePerNPC] = L.OPT_GREETING_LABEL_ONCE_NPC,
+                        [Enums.GossipFrequency.OncePerSession] = L.OPT_GREETING_LABEL_ONCE_SESSION,
                         [Enums.GossipFrequency.Never] = L.OPT_GREETING_LABEL_NEVER,
                     },
+                    -- By value, Never (4) would sort above Once per Session (5).
+                    sorting = function()
+                        local values = {}
+                        for i, name in ipairs(Enums.GossipFrequency:MenuOrder()) do
+                            values[i] = Enums.GossipFrequency[name]
+                        end
+                        return values
+                    end,
                     get = function(info) return Addon.db.profile.Audio.GossipFrequency end,
                     set = function(info, value)
                         Addon.db.profile.Audio.GossipFrequency = value
@@ -73,6 +82,18 @@ local GeneralTab =
                         Addon.db.profile.Audio.StopAudioOnDisengage = value
                     end,
                 },
+                ToggleStopOnAccept = {
+                    type = "toggle",
+                    order = 6.2,
+                    width = 2,
+                    name = L.OPT_PANEL_STOP_ON_ACCEPT,
+                    desc = L.OPT_PANEL_STOP_ON_ACCEPT_TIP,
+                    disabled = function(info) return not Addon.db.profile.Audio.StopAudioOnDisengage end,
+                    get = function(info) return Addon.db.profile.Audio.StopOnAccept end,
+                    set = function(info, value)
+                        Addon.db.profile.Audio.StopOnAccept = value
+                    end,
+                },
                 ToggleFollowupLines = {
                     type = "toggle",
                     order = 6.5,
@@ -85,11 +106,21 @@ local GeneralTab =
                         Addon.db.profile.Audio.FollowupLines = value
                     end,
                 },
+                ToggleProgressText = {
+                    type = "toggle",
+                    order = 6.6,
+                    width = 2,
+                    name = L.OPT_PANEL_PROGRESS,
+                    disabled = function(info) return not Addon:IsAutoplayOn() end,
+                    get = function(info) return Addon:IsProgressTextOn() end,
+                    set = function(info, value) Addon:SetProgressText(value) end,
+                },
                 OGThrall = {
                     type = "toggle",
                     order = 8,
                     width = 2,
                     name = L.OPT_OG_THRALL,
+                    hidden = function() return not EasterEggs:IsAvailable() end,
                     get = function(info) return Addon.db.profile.Audio.OGThrall end,
                     set = function(info, value)
                         Addon.db.profile.Audio.OGThrall = value

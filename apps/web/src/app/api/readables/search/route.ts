@@ -4,11 +4,15 @@
  * The URL carries `page`, not `offset`, so a shared link survives a change to PAGE_SIZE.
  * The arithmetic stays here. Shaped on the places route, including the 503 below.
  */
-import { catalogue, isCorpusEmpty, loadContext } from "@/lib/readables/catalogue";
+import { baseCatalogue, catalogue, isCorpusEmpty, loadContext, publicContext } from "@/lib/readables/catalogue";
+import type { Lang } from "@/lib/lang";
 import { langParam, worksHere } from "@/lib/lang-server";
 import { recordingsFor } from "@/lib/recordings/store";
-import { filtersFromParams, PAGE_SIZE } from "@/lib/readables/filters";
+import { PAGE_SIZE } from "@/lib/page-size";
+import { filtersFromParams, type PageFilters } from "@/lib/readables/filters";
 import { search } from "@/lib/readables/search";
+import type { TeamId } from "@/lib/teams/store";
+import { asHeard, asPublished, teamLiveOverrides, viewedOther, viewOnly } from "@/lib/teams/viewing";
 
 export const dynamic = "force-dynamic";
 
@@ -23,12 +27,8 @@ function corpusEmpty(error: unknown): Response {
   return Response.json({ error: (error as Error).message, code: "corpus_empty" }, { status: 503 });
 }
 
-export async function GET(request: Request) {
-  const params = new URL(request.url).searchParams;
-  const filters = filtersFromParams(params);
-  const { lang, denied } = await langParam(request);
-  if (denied) return denied;
-  const page = Math.max(1, Number(params.get("page")) || 1);
+/** The pages and context as the acting team works on them. */
+async function own(lang: Lang, filters: PageFilters) {
   // Who made each take is for the people working in the language. For anybody else the
   // filters are dropped rather than left to match nothing, so a translator's link still
   // shows a visitor the lines.
@@ -37,19 +37,44 @@ export async function GET(request: Request) {
     filters.model = undefined;
     filters.author = undefined;
   }
+  const [pages, context, recordings] = await Promise.all([
+    catalogue(lang),
+    loadContext(lang, seesMadeBy),
+    recordingsFor("readables", lang),
+  ]);
+  // Dropped for anybody who may not see recordings, as the made-by filters are above.
+  if (!recordings) filters.recorded = undefined;
+  return {
+    entries: seesMadeBy ? pages : await asPublished(pages, () => baseCatalogue(lang), "readables", lang),
+    context: { ...context, recordings },
+    filters,
+  };
+}
 
-  let pages;
-  let context;
+/** The pages as another team is heard: the original text, its live takes and the overrides they speak. */
+async function heard(lang: Lang, team: TeamId, filters: PageFilters) {
+  const [base, context, overrides] = await Promise.all([
+    baseCatalogue(lang),
+    publicContext("readables", lang, team),
+    teamLiveOverrides(team, "readables", lang),
+  ]);
+  return { ...asHeard(base, context, overrides), filters: viewOnly(filters) };
+}
+
+export async function GET(request: Request) {
+  const params = new URL(request.url).searchParams;
+  const { lang, denied } = await langParam(request);
+  if (denied) return denied;
+  const page = Math.max(1, Number(params.get("page")) || 1);
+  // Whose takes play: the acting team's unless `team` names another of the language.
+  const other = await viewedOther(params, lang);
+  if (other instanceof Response) return other;
+
+  let pages, context, filters;
   try {
-    let recordings;
-    [pages, context, recordings] = await Promise.all([
-      catalogue(lang),
-      loadContext(lang, seesMadeBy),
-      recordingsFor("readables", lang),
-    ]);
-    // Dropped for anybody who may not see recordings, as the made-by filters are above.
-    if (!recordings) filters.recorded = undefined;
-    context = { ...context, recordings };
+    ({ entries: pages, context, filters } = await (other
+      ? heard(lang, other, filtersFromParams(params))
+      : own(lang, filtersFromParams(params))));
   } catch (error) {
     if (isCorpusEmpty(error)) return corpusEmpty(error);
     throw error;

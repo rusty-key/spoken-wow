@@ -7,7 +7,7 @@
 
 local _, SpokenPlaces = ...
 
-if GetLocale() ~= "zhTW" then
+if not Spoken:InterfaceIn("zhTW") then
 	return
 end
 
@@ -23,10 +23,11 @@ L.OPT_AUTOPLAY = "自動朗讀"
 L.OPT_AUTOPLAY_SUB = "包含較小區域"
 L.OPT_AUTOPLAY_EXPLORED = "包含先前找到的地方"
 L.OPT_AUTOPLAY_COMBAT = "進入戰鬥時停止"
-L.OPT_LANG_RELOAD = "輸入 /reload 即可切換。"
-L.OPT_LANGUAGE = "文字語言"
-L.OPT_LANG_AUTO_FMT = "自動（%1$s）"
-L.OPT_LANG_SET_FMT = "介面重新載入後，故事將以%1$s顯示。"
+L.OPT_AUTOPLAY_EVERY_VISIT = "每次造訪都朗讀"
+L.OPT_AUTOPLAY_GAP = "再次朗讀間隔"
+L.OPT_GAP_1D = "1 天"
+L.OPT_GAP_1W = "1 週"
+L.OPT_GAP_1MO = "1 個月"
 L.OPT_LANG_PROFILE_FMT = "此設定檔將以%1$s朗讀故事。輸入 /reload 即可切換。"
 L.OPT_REPORT_PROBLEM = "回報問題"
 L.MENU_LORE_WINDOW = "開啟艾澤拉斯百科"
@@ -59,13 +60,16 @@ L.CMD_VOICE = "  /spp voice      -- 「朗讀故事」開/關"
 L.CMD_AUTOPLAY = "  /spp autoplay   -- 「自動朗讀」開/關"
 L.CMD_AUDIO = "  /spp audio      -- 已安裝的語音包"
 L.CMD_LANG = "  /spp lang       -- 文字語言：列出，或用 /spp lang <代碼> 或 auto 切換"
-L.CMD_FORGET = "  /spp forget     -- 忘記已聽過的地方"
+L.CMD_FORGET = "  /spp forget     -- 忘記去過的地方"
 
 
 -- Added in this release: subtitles, profiles, module pages and windows.
 L.REASON_VOICE = "開啟「朗讀故事」才能使用。"
-L.OPT_FORGET_PLACES = "忘記已聽過的地方"
+L.OPT_FORGET_PLACES = "忘記去過的地方"
 L.OPT_FORGET_PLACES_DONE = "已清除此角色已聽過的地方清單。"
+L.OPT_FORGET_PLACES_CONFIRM = "你將忘記 %d 個地方。"
+L.OPT_FORGET_PLACES_CONFIRM_ONE = "你將忘記 1 個地方。"
+L.OPT_FORGET = "忘記"
 L.OPT_DOWNLOAD_ADDRESS = "將此位址複製到網頁瀏覽器以下載語音包。"
 L.OTHER_LANDS = "其他地區"
 L.BATTLEGROUNDS = "戰場"
@@ -81,10 +85,9 @@ L.LORE_DISCOVERED_ONLY = "僅顯示已發現的"
 L.LORE_VOICED_ONLY = "僅顯示有語音的"
 L.LORE_SEARCH_NONE = "沒有符合的結果。"
 L.REASON_DISCOVERY = "開啟「自動朗讀」才能使用。"
+L.REASON_EVERY_VISIT = "關閉「每次造訪都朗讀」才能使用。"
 L.REASON_MAP_PANEL = "開啟「在地圖旁顯示故事」才能使用。"
 L.OPT_RESET_PAGE_CONFIRM = "要將所有地點設定恢復為預設值嗎？"
-L.OPT_RELOAD_NOW = "立即重新載入"
-L.OPT_LATER = "稍後"
 L.OPT_PAGE_TITLE = "地點"
 L.OPT_DEV_DEBUG = "地點除錯訊息"
 L.OPT_DEV_PREVIEW = "提供未完成的翻譯"

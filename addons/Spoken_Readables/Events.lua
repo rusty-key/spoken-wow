@@ -27,9 +27,24 @@ SpokenReadables.eventFrame = frame
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PLAYER_LOGIN")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+frame:RegisterEvent("BAG_UPDATE_DELAYED")
 frame:RegisterEvent("ITEM_TEXT_BEGIN")
 frame:RegisterEvent("ITEM_TEXT_READY")
 frame:RegisterEvent("ITEM_TEXT_CLOSED")
+
+--- Carrying a readable finds it: a quest note handed in unopened would otherwise stay locked in
+--- the Compendium for good.
+function SpokenReadables:FindCarriedReadables()
+	local data = self:Data()
+	local owners = data and data.owners and data.owners.item
+	if not owners or not C_Container then return end
+	for bag = 0, NUM_BAG_SLOTS or 4 do
+		for slot = 1, C_Container.GetContainerNumSlots(bag) do
+			local book = owners[C_Container.GetContainerItemID(bag, slot)]
+			if book then self:MarkBookFound(book) end
+		end
+	end
+end
 
 --- A page became available. The addon's whole in-game entry point.
 function SpokenReadables:OnTextReady()
@@ -159,6 +174,9 @@ frame:SetScript("OnEvent", function(_, name, payload, second)
 		-- and community packs load after it and have declared nothing yet. Every addon has loaded
 		-- by now, and no menu has been built.
 		SpokenReadables:GetAudioPacks()
+	elseif name == "BAG_UPDATE_DELAYED" then
+		-- Not BAG_UPDATE, which fires once for every bag a change touches and rescans each time.
+		SpokenReadables:FindCarriedReadables()
 	elseif name == "PLAYER_ENTERING_WORLD" then
 		SpokenReadables:SetupSource()
 		if SpokenReadables.SetupOpeners then

@@ -76,6 +76,10 @@ test("a page holding a substitution token is not generatable", () => {
   assert.deepEqual(isGeneratable("Greetings, $N."), { generatable: false, skipReason: "substitution" });
 });
 
+test("a page holding a declension escape is not generatable", () => {
+  assert.deepEqual(isGeneratable("Приветствую, |3-6(Друид)."), { generatable: false, skipReason: "substitution" });
+});
+
 test("ordinary prose is generatable", () => {
   assert.deepEqual(isGeneratable("The rains have come."), { generatable: true, skipReason: null });
 });
