@@ -6,6 +6,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 - **Notes and books you carry now count as found in Azeroth's Compendium,** even unopened, and show
   their item's icon. *([anon1231823](https://github.com/anon1231823))*
+- **Azeroth's Compendium works with a controller.** LB and RB switch tabs, View searches and Menu
+  opens the filter. *([nobbs](https://github.com/nobbs))*
 - **`/sp mute [on | off]` and a Mute Spoken Audio key silence Spoken without disabling its
   features.** Lines still queue and show their subtitles and narrator text, one after another, while
   muted. The key has no default; set it in Spoken's settings or the game's key bindings. *([Trusty565](https://github.com/Trusty565))*

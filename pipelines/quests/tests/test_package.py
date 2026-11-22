@@ -102,14 +102,16 @@ def test_spoken_ships_with_its_modules_for_blizzard_clients(player_built):
     names, files = player_built[f"{PLAYER}-{version}.zip"]
     tocs = tocs_in(files, PLAYER)
     assert sorted(tocs) == sorted(f"{PLAYER}/{PLAYER}{suffix}.toc" for suffix in FLAVORS)
-    # Spoken, the folder whose only job is to name the gathered-lines file
-    # (addons/SpokenContributions/SpokenContributions.toc): one .toc and its icon, no Lua, and the three
-    # modules and Spoken Bosses: one download with everything in it.
+    # Spoken, the folder that names the gathered-lines file
+    # (addons/SpokenContributions/SpokenContributions.toc): its .toc, its icon and Sent.lua, the list
+    # the Spoken Manager writes of what the site took. Then the three modules and Spoken Bosses: one
+    # download with everything in it.
     assert {entry.split("/", 1)[0] for entry in names} == {PLAYER, "SpokenContributions",
                                                           "Spoken_Quests", "Spoken_Readables", "Spoken_Places",
                                                           "Spoken_Bosses"}
     assert sorted(name for name in names if name.startswith("SpokenContributions/") and not name.endswith("/")) \
-        == ["SpokenContributions/SpokenContributions.toc", "SpokenContributions/icon.tga"]
+        == ["SpokenContributions/Sent.lua", "SpokenContributions/SpokenContributions.toc",
+            "SpokenContributions/icon.tga"]
 
 
 def test_the_compendium_files_are_spoken_s_alone():
