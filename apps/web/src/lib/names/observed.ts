@@ -1,6 +1,6 @@
 /**
- * A name is offered where it differs from the language's current name, which is what the
- * giver-name export ships to the addon.
+ * A name is offered where it differs from the one the client shows today: the language's current
+ * name, which its packs and the addon's Locale/Names ship.
  */
 import "server-only";
 
@@ -11,6 +11,8 @@ import type { ContributionStatus } from "@/lib/contributions/contributions";
 import { BASE_LANG, clientLang, isClientLang, type Lang } from "@/lib/lang";
 import { withTextTeam } from "@/lib/teams/store";
 
+import { writeName } from "./store";
+
 export type ObservedKind = Sighting["npcType"];
 
 /** English has no names to review: its names are the corpus's. Nor does a language no client runs in. */
@@ -18,20 +20,19 @@ export function hasObservedNames(lang: Lang): boolean {
   return lang !== BASE_LANG && isClientLang(lang);
 }
 
-/** `lang` is an SQL expression, so the English and the row's own language share one lookup. */
-function currentNameSql(alias: string, lang = `${alias}."lang"`): string {
-  return `(select e."name" from "entity_name" e
-            where e."kind" = ${alias}."kind" and e."entityId" = ${alias}."entityId"
-              and e."lang" = ${lang} and e."isCurrent")`;
+/**
+ * `alias`'s current English name as `en`, and its current name in its own language as `cur`.
+ * A client shows SHOWN: an import stores nothing where the dump leaves a name untranslated, and
+ * there the client shows the English.
+ */
+function namesJoinSql(alias: string, english: "join" | "left join" = "left join"): string {
+  return `${english} "entity_name" en on en."kind" = ${alias}."kind" and en."entityId" = ${alias}."entityId"
+            and en."lang" = '${BASE_LANG}' and en."isCurrent"
+          left join "entity_name" cur on cur."kind" = ${alias}."kind" and cur."entityId" = ${alias}."entityId"
+            and cur."lang" = ${alias}."lang" and cur."isCurrent"`;
 }
 
-/**
- * The name a client in `alias`'s language shows today. An import stores nothing where the dump
- * leaves the name untranslated, and there the client shows the English.
- */
-function shownNameSql(alias: string): string {
-  return `coalesce(${currentNameSql(alias)}, ${currentNameSql(alias, `'${BASE_LANG}'`)})`;
-}
+const SHOWN = `coalesce(cur."name", en."name")`;
 
 /**
  * Offers every name a sighting carries that differs from the current one, under `uploader`.
@@ -53,8 +54,8 @@ export async function recordObservedNames(sightings: readonly Sighting[], upload
        select * from unnest($1::text[], $2::text[], $3::text[], $4::text[]) as s ("kind", "entityId", "lang", "name")
      ), offered as (
        select s.* from sent s
-        where ${currentNameSql("s", `'${BASE_LANG}'`)} is not null
-          and ${shownNameSql("s")} is distinct from s."name"
+         ${namesJoinSql("s", "join")}
+        where ${SHOWN} is distinct from s."name"
      ), saved as (
        insert into "name_contribution" ("kind", "entityId", "lang", "name")
        select "kind", "entityId", "lang", "name" from offered
@@ -94,11 +95,11 @@ export async function listObservedNames(lang: Lang, status: ContributionStatus):
   const rows = await query<Row>(
     `select c."id", c."kind", c."entityId", c."name", c."status", c."updatedAt",
             (select count(*) from "name_contribution_uploader" u where u."contributionId" = c."id")::int as "uploaders",
-            ${currentNameSql("c", `'${BASE_LANG}'`)} as "english",
-            ${currentNameSql("c")} as "currentName"
+            en."name" as "english", cur."name" as "currentName"
        from "name_contribution" c
+       ${namesJoinSql("c")}
       where c."lang" = $1 and c."status" = $2
-        and (c."status" <> 'new' or ${shownNameSql("c")} is distinct from c."name")
+        and (c."status" <> 'new' or ${SHOWN} is distinct from c."name")
       order by "uploaders" desc, c."updatedAt" desc`,
     [lang, status],
   );
@@ -108,7 +109,8 @@ export async function listObservedNames(lang: Lang, status: ContributionStatus):
 export async function countObservedNames(lang: Lang): Promise<number> {
   const rows = await query<{ count: number }>(
     `select count(*)::int as "count" from "name_contribution" c
-      where c."lang" = $1 and c."status" = 'new' and ${shownNameSql("c")} is distinct from c."name"`,
+       ${namesJoinSql("c")}
+      where c."lang" = $1 and c."status" = 'new' and ${SHOWN} is distinct from c."name"`,
     [lang],
   );
   return rows[0]?.count ?? 0;
@@ -132,39 +134,32 @@ export async function acceptObservedName(id: number, lang: Lang, userId: string)
     );
     const found = rows[0];
     if (!found) return { ok: false, reason: "not-found" };
-    // An NPC with no name in the language yet has no row to lock, and two names kept at once
-    // would both take the next version.
-    await client.query(`select pg_advisory_xact_lock(hashtext($1))`, [
-      `entity_name:${found.kind}:${found.entityId}:${lang}`,
-    ]);
-    await client.query(
-      `update "entity_name" set "isCurrent" = false
-        where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "isCurrent"`,
-      [found.kind, found.entityId, lang],
-    );
-    const { rows: written } = await client.query<{ version: number }>(
-      `insert into "entity_name"
-         ("kind", "entityId", "lang", "version", "isCurrent", "origin", "name", "editedBy", "note")
-       select $1, $2, $3, coalesce(max("version"), 0) + 1, true, 'observed', $4, $5, $6
-         from "entity_name" where "kind" = $1 and "entityId" = $2 and "lang" = $3
-       returning "version"`,
-      [found.kind, found.entityId, lang, found.name, userId, `name contribution #${id}`],
-    );
+    const { version, wrote } = await writeName(client, {
+      kind: found.kind,
+      entityId: found.entityId,
+      lang,
+      name: found.name,
+      origin: "observed",
+      editedBy: userId,
+      note: `name contribution #${id}`,
+    });
     await client.query(
       `update "name_contribution" set "status" = 'accepted', "resolvedBy" = $2, "updatedAt" = now() where "id" = $1`,
       [id, userId],
     );
-    await recordActivity(
-      {
-        team,
-        kind: "name.observed",
-        lang,
-        actorId: userId,
-        subject: `${found.kind}:${found.entityId}`,
-        detail: { version: written[0].version, name: found.name, contribution: id },
-      },
-      client,
-    );
+    if (wrote) {
+      await recordActivity(
+        {
+          team,
+          kind: "name.observed",
+          lang,
+          actorId: userId,
+          subject: `${found.kind}:${found.entityId}`,
+          detail: { version: version.version, name: found.name, contribution: id },
+        },
+        client,
+      );
+    }
     return { ok: true };
   });
 }

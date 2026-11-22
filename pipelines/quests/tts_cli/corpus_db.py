@@ -1064,15 +1064,8 @@ def export_locale_text(lang, path, verbose=True):
             )
             lines = [{"lineId": line_id, "originalText": original, "localeText": text}
                      for line_id, original, text in cur.fetchall()]
-            cur.execute(
-                """select "kind", "entityId", "name" from "entity_name"
-                    where "lang" = %s and "isCurrent" and "name" <> ''
-                      and "kind" in ('creature', 'gameobject', 'item')
-                    order by "kind", "entityId" """,
-                (lang,),
-            )
             names = [{"kind": kind, "entityId": entity_id, "name": name}
-                     for kind, entity_id, name in cur.fetchall()]
+                     for _, kind, entity_id, name in _current_names(cur, lang)]
     finally:
         conn.close()
 
@@ -1083,13 +1076,28 @@ def export_locale_text(lang, path, verbose=True):
     return lines
 
 
+def _current_names(cur, lang=None):
+    """(lang, kind, entityId, name) of every current NPC, object and item name in `lang`, or in
+    every language but English. What the addon shows for them, whoever wrote it: names are only
+    displayed, and respellings for the voice live in the lexicon, never here."""
+    from tts_cli.giver_names import KINDS
+
+    cur.execute(
+        """select "lang", "kind", "entityId", "name" from "entity_name"
+            where "isCurrent" and "name" <> '' and "kind" = any(%s)
+              and (("lang" = %s) or (%s is null and "lang" <> %s))
+            order by "lang", "kind", "entityId" """,
+        (list(KINDS), lang, lang, LANG),
+    )
+    return cur.fetchall()
+
+
 def export_giver_names(corpus_path, out_dir, verbose=True):
     """Every other language's quest-giver names -> one addon Lua file per language.
 
-    See tts_cli/giver_names.py. The name is each language's current one, whoever wrote it: names
-    are only displayed, and respellings for the voice live in the lexicon, never here.
+    See tts_cli/giver_names.py, and _current_names for which name.
     """
-    from tts_cli.giver_names import KINDS, givers, write_every_language
+    from tts_cli.giver_names import givers, write_every_language
     from tts_cli.ignores import load_pack_ignored
 
     corpus = load_corpus(corpus_path)
@@ -1097,14 +1105,8 @@ def export_giver_names(corpus_path, out_dir, verbose=True):
     conn = connect()
     try:
         with conn, conn.cursor() as cur:
-            cur.execute(
-                """select "lang", "kind", "entityId", "name"
-                     from "entity_name"
-                    where "lang" <> %s and "isCurrent" and "kind" = any(%s)""",
-                (LANG, list(KINDS)),
-            )
             by_lang = {}
-            for lang, kind, entity_id, name in cur.fetchall():
+            for lang, kind, entity_id, name in _current_names(cur):
                 by_lang.setdefault(lang, {})[(kind, entity_id)] = name
     finally:
         conn.close()

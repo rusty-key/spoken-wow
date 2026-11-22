@@ -33,11 +33,7 @@ def write_locale_text(path: str, lang: str, lines: list, names=()) -> str:
 
 
 def load_locale_text(path: str):
-    """(lang, rows) from a file write_locale_text wrote."""
+    """(lang, rows, names) from a file write_locale_text wrote; no names in one written before
+    it carried them."""
     document = load_corpus(path)
-    return document["lang"], document["lines"]
-
-
-def load_locale_names(path: str) -> list:
-    """The names a file write_locale_text wrote carries; none in a file written before them."""
-    return load_corpus(path).get("names", [])
+    return document["lang"], document["lines"], document.get("names", [])
