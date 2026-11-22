@@ -49,9 +49,9 @@ local function Asked(frame)
 end
 
 Expect("Spoken registers its page and the modules' pages", #stub.settingsCategories > 1, true)
--- Only a mouse can click the game's +, so Spoken opens with its pages listed.
-Expect("Spoken's entry in the settings list starts unfolded", stub.settingsCategories[1].name .. " "
-    .. tostring(stub.settingsCategories[1]:IsExpanded()), "Spoken true")
+local spoken = stub.settingsCategories[1]
+Expect("the first entry is Spoken's own", spoken.name, "Spoken")
+Expect("...which starts unfolded", spoken:IsExpanded(), true)
 for _, category in ipairs(stub.settingsCategories) do
     -- Shown already, the page would get no OnShow when the window first takes it.
     Expect(category.name .. " waits hidden until the settings window shows it", category.frame.shown, false)

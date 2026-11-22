@@ -688,14 +688,14 @@ _G.UIDropDownMenu_Initialize = nil
 -- The Settings API as 11509 exposes it.
 M.settingsCategories = {}
 -- A category folds its subcategories until something expands it (Blizzard_Category.lua).
-function M.SettingsCategory(c)
+local function SettingsCategory(c)
     function c:SetExpanded(expanded) self.expanded = expanded end
     function c:IsExpanded() return self.expanded end
     return c
 end
 M.modernSettings = {
-    RegisterCanvasLayoutCategory = function(frame, name) local c = M.SettingsCategory({ frame = frame, name = name, GetID = function() return name end }); table.insert(M.settingsCategories, c); return c end,
-    RegisterCanvasLayoutSubcategory = function(parent, frame, name) local c = M.SettingsCategory({ frame = frame, name = name, parent = parent }); table.insert(M.settingsCategories, c); return c end,
+    RegisterCanvasLayoutCategory = function(frame, name) local c = SettingsCategory({ frame = frame, name = name, GetID = function() return name end }); table.insert(M.settingsCategories, c); return c end,
+    RegisterCanvasLayoutSubcategory = function(parent, frame, name) local c = SettingsCategory({ frame = frame, name = name, parent = parent }); table.insert(M.settingsCategories, c); return c end,
     RegisterAddOnCategory = function() end,
     OpenToCategory = function() return true end,
 }
