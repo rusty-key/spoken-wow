@@ -37,7 +37,7 @@ frame:RegisterEvent("ITEM_TEXT_CLOSED")
 function SpokenReadables:FindCarriedReadables()
 	local data = self:Data()
 	local owners = data and data.owners and data.owners.item
-	if not owners then return end
+	if not owners or not C_Container then return end
 	for bag = 0, NUM_BAG_SLOTS or 4 do
 		for slot = 1, C_Container.GetContainerNumSlots(bag) do
 			local book = owners[C_Container.GetContainerItemID(bag, slot)]
