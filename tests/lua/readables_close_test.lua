@@ -126,6 +126,12 @@ _G.C_Container = {
 }
 local snapshot = B:ReadableItemSnapshot()
 Expect("a readable stack counts every item received", snapshot[745], 3)
+local originalOwners = SpokenReadablesData.owners.item
+SpokenReadablesData.owners.item = { [8191] = "multiple-owners", [8192] = "multiple-owners" }
+B.itemForBookData = nil
+Expect("multiple item owners choose the lowest ID consistently", B:ItemForBook("multiple-owners"), 8191)
+SpokenReadablesData.owners.item = originalOwners
+B.itemForBookData = nil
 _G.C_Container = nil
 -- A login with a populated bag must establish a baseline before BAG_UPDATE fires.
 do

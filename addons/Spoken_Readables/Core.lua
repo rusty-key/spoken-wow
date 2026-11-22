@@ -327,7 +327,7 @@ function SpokenReadables:ItemForBook(bookID)
 		self.itemForBook = {}
 		local owners = data and data.owners and data.owners.item or {}
 		for itemID, owner in pairs(owners) do
-			if self.itemForBook[owner] == nil then self.itemForBook[owner] = itemID end
+			if self.itemForBook[owner] == nil or itemID < self.itemForBook[owner] then self.itemForBook[owner] = itemID end
 		end
 	end
 	return self.itemForBook and self.itemForBook[bookID]
