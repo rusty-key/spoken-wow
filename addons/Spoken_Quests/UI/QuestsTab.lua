@@ -150,14 +150,14 @@ end
 local titles, asked = {}, {}
 local function Title(id, ask)
     if titles[id] then return titles[id] end
-    -- A text pack's, in the Text Language the player chose.
+    -- Packs before the client: a client knows only the quests it has shown, in its own language,
+    -- and Classic's cannot be asked for the rest.
     local language, chosen = VO.Language:GetTextLanguage()
-    if chosen and Spoken and Spoken.TextIn then
-        local packed = Spoken:TextIn(language, "quests", "titles", id)
-        if packed then
-            titles[id] = packed
-            return packed
-        end
+    local packed = (chosen and Spoken and Spoken.TextIn and Spoken:TextIn(language, "quests", "titles", id))
+        or (language ~= VO.Language.BASE and VO.DataModules:PackTitle(id, language))
+    if packed then
+        titles[id] = packed
+        return packed
     end
     local kept = Kept()
     local title = kept and kept[id] and kept[id].title
@@ -1017,7 +1017,8 @@ function QuestsTab:Keep(moment, text, title)
     kept[id] = kept[id] or {}
     if type(title) == "string" and title ~= "" then
         kept[id].title = title
-        titles[id] = title
+        -- Asked again, not set: a pack's title comes before the client's.
+        titles[id] = nil
     end
     if type(text) == "string" and text ~= "" then
         kept[id][moment] = { text = Generalise(text, English(id)[moment]), sex = Sex() }

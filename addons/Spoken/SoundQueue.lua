@@ -43,15 +43,19 @@ setfenv(1, SpokenEnv)
 ---@field handle number|nil
 ---@field source table
 ---@field nextSoundTimer any  Set ONLY while actually speaking. The liveness test.
+---@field rewound? boolean   Queued again by Previous, so outside its source's queueLimit.
 ---@field silent? true|"cut"  No voice: true from the start (words alone, or muted); "cut" when mute stopped it. Unmute replays only a cut line.
 
 SoundQueue = {
     soundIdCounter = 0,
     ---@type SpokenClip[]
     sounds = {},
+    ---@type SpokenClip[]
+    history = {},
 }
 
 local RETRY_INTERVAL = 1
+local HISTORY_LIMIT = 10
 local gates = {}
 local retryTicker = nil
 
@@ -70,6 +74,29 @@ end
 --- The head: speaking, paused, or held. Queue rows read this.
 function SoundQueue:GetCurrentSound()
     return self.sounds[1]
+end
+
+--- The most recent line that left the queue by finishing or being skipped.
+function SoundQueue:GetPrevious()
+    return self.history[#self.history]
+end
+
+function SoundQueue:CanPrevious()
+    local current = self:GetCurrentSound()
+    return self:GetPrevious() ~= nil and (not current or self:CanBePaused())
+end
+
+-- A line heard again moves to the top rather than appearing twice.
+local function Remember(clip)
+    for index = #SoundQueue.history, 1, -1 do
+        if SoundQueue.history[index] == clip then
+            table.remove(SoundQueue.history, index)
+        end
+    end
+    table.insert(SoundQueue.history, clip)
+    while #SoundQueue.history > HISTORY_LIMIT do
+        table.remove(SoundQueue.history, 1)
+    end
 end
 
 --- The head only if it is actually speaking or paused mid-clip. Controls read this: a
@@ -190,10 +217,12 @@ end
 -- Silence the head but keep its place: it replays from the start when Advance next
 -- reaches it, since the client has no seek. Shared by the two things allowed to cut a
 -- clip off without ending it -- a human pressing Play, and a gate closing on it.
-local function StopKeeping(head)
+-- With `quiet`, its stopCallback does not run: the line stays queued, and a source reads that
+-- callback as the line being dropped (a book drops the pages after it).
+local function StopKeeping(head, quiet)
     SoundUtils:StopSound(head)
     CancelSpeakTimer(head)
-    if head.stopCallback then
+    if head.stopCallback and not quiet then
         head.stopCallback(head, false)
     end
     Callbacks:Fire("CLIP_STOPPED", head, false)
@@ -241,6 +270,7 @@ local function Discard(clip, reason)
             break
         end
     end
+    clip.rewound = nil
     if clip.stopCallback then
         clip.stopCallback(clip, false)
     end
@@ -275,6 +305,11 @@ function SoundQueue:RemoveSoundFromQueue(clip, finishedPlaying)
     end
     if not removedIndex then
         return false
+    end
+
+    clip.rewound = nil
+    if finishedPlaying then
+        Remember(clip)
     end
 
     local wasSpeaking = clip.nextSoundTimer ~= nil
@@ -335,6 +370,7 @@ function SoundQueue:Skip()
     local head = self:GetCurrentSound()
     if not head or not self:CanBePaused() then return false end
     self:SetPaused(false)
+    Remember(head)
     return self:RemoveSoundFromQueue(head)
 end
 
@@ -620,7 +656,9 @@ local function TrimBacklog(source, admitted)
         local waiting, oldest = 0, nil
         for index, clip in ipairs(SoundQueue.sounds) do
             local isHead = index == 1 and SoundQueue:IsPlaying()
-            if clip.source == source and not isHead then
+            -- The limit is for lines still arriving: ones Previous took the player back over
+            -- are already heard, and trimming them would drop the newest line.
+            if clip.source == source and not isHead and not clip.rewound then
                 waiting = waiting + 1
                 if clip ~= admitted and (not oldest or clip.id < oldest.id) then
                     oldest = clip
@@ -682,7 +720,7 @@ end
 --- Admit a clip. Returns the clip, or nil and why not.
 ---@param clip SpokenClip
 ---@param source table
----@param front boolean
+---@param front boolean|number  At the head, or at this index.
 function SoundQueue:Add(clip, source, front)
     if not clip then
         return nil, "no clip"
@@ -724,7 +762,7 @@ function SoundQueue:Add(clip, source, front)
     -- A source of words alone makes every line of it one.
     clip.textOnly = clip.textOnly or source.textOnly
     if front then
-        table.insert(self.sounds, 1, clip)
+        table.insert(self.sounds, front == true and 1 or math.min(front, #self.sounds + 1), clip)
     else
         table.insert(self.sounds, clip)
     end
@@ -813,6 +851,41 @@ function SoundQueue:PlayNow(clip, source)
         return false, reason
     end
     return self:IsPlaying()
+end
+
+--- Play the line heard last ahead of the current one, which then speaks again from its start.
+--- Pressed during a replay, it reaches one line further back. A line the queue refuses is dropped
+--- from the history, so the next press reaches an older one.
+function SoundQueue:Previous()
+    if not self:CanPrevious() then return false end
+    local previous = table.remove(self.history)
+    local head = self:GetCurrentSound()
+    local headRewound = head and head.rewound
+    if head then head.rewound = true end
+    previous.rewound = true
+    -- Admitted behind the head, so a refusal leaves the head speaking; only then moved in front.
+    local added, reason = self:Add(previous, previous.source, 2)
+    if not added then
+        previous.rewound = nil
+        if head then head.rewound = headRewound end
+        Callbacks:Fire("AUDIO_CHANGED")
+        return false, reason
+    end
+    if self.sounds[1] ~= previous then
+        if head.nextSoundTimer then
+            StopKeeping(head, true)
+        end
+        for index, queued in ipairs(self.sounds) do
+            if queued == previous then
+                MoveToFront(index)
+                break
+            end
+        end
+    end
+    self:SetPaused(false)
+    self:Advance()
+    Callbacks:Fire("AUDIO_CHANGED")
+    return true
 end
 
 --------------------------------------------------------------------------------

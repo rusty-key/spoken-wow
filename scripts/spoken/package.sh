@@ -22,9 +22,9 @@ NAME="Spoken"
 SRC="$REPO/addons/$NAME"
 TOC="$SRC/$NAME.toc"
 DIST="${DIST:-$REPO/dist}"
-# Shipped beside the player in the same zip: a folder with one .toc, its icon and no Lua, which exists so
-# the gathered lines a player uploads are in a file named SpokenContributions.lua rather than
-# inside the player's own settings file. See its .toc.
+# Shipped beside the player in the same zip: a folder with one .toc, its icon and an empty Sent.lua,
+# which exists so the gathered lines a player uploads are in a file named SpokenContributions.lua
+# rather than inside the player's own settings file. See its .toc.
 STORE="SpokenContributions"
 STORE_SRC="$REPO/addons/$STORE"
 
@@ -65,7 +65,7 @@ trap 'rm -rf "$staging"' EXIT
 mkdir -p "$staging/$NAME"
 (cd "$SRC" && tar -cf - --exclude '.DS_Store' --exclude '*.bak' --exclude '*.orig' .) | (cd "$staging/$NAME" && tar -xf -)
 mkdir -p "$staging/$STORE"
-cp "$STORE_SRC/$STORE.toc" "$STORE_SRC/icon.tga" "$staging/$STORE/"
+cp "$STORE_SRC/$STORE.toc" "$STORE_SRC/icon.tga" "$STORE_SRC/Sent.lua" "$staging/$STORE/"
 store_version="$(sed -n 's/^## Version:[[:space:]]*//p' "$STORE_SRC/$STORE.toc" | head -1 | tr -d '\r')"
 [ "$store_version" = "$version" ] || { echo "error: $STORE.toc says $store_version, $NAME.toc says $version" >&2; exit 1; }
 

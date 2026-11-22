@@ -24,6 +24,7 @@ WORD_TIMES_FILE = "word-times.json"
 #: are in no corpus.
 TAKE_TEXT_FILE = "take-text.json"
 LINE_TEXT_FILE = "line-text.json"
+QUEST_TITLES_FILE = "quest-titles.json"
 #: Each clip's length by stem, written by sounds.mjs when the store holds pointers, not audio.
 DURATIONS_FILE = "durations.json"
 
@@ -80,6 +81,11 @@ def take_text(store_dir: str) -> dict:
 def line_text(store_dir: str) -> dict:
     """{line stem: words} for every current line of the store's language, recorded or not."""
     return _stem_table(store_dir, LINE_TEXT_FILE)
+
+
+def quest_titles(store_dir: str) -> dict:
+    """{quest id: title} in the store's language, empty for English or a store without the file."""
+    return {int(quest_id): title for quest_id, title in _stem_table(store_dir, QUEST_TITLES_FILE).items()}
 
 
 def durations(store_dir: str) -> dict:

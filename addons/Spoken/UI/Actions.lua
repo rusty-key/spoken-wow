@@ -172,6 +172,8 @@ end
 local GLYPHS = { stop = ART .. "GlyphStop", replay = ART .. "GlyphReplay", queue = ART .. "GlyphQueue",
     queued = ART .. "GlyphQueue" }
 local CELL = 93 / 128
+local PLAY_LEFT, PLAY_RIGHT = 0, 93 / PORTRAIT_ATLAS_SIZE
+local PLAY_TOP, PLAY_BOTTOM = 419 / PORTRAIT_ATLAS_SIZE, 1
 
 function Actions.Glyph(texture, state)
     if GLYPHS[state] then
@@ -180,7 +182,7 @@ function Actions.Glyph(texture, state)
         return
     end
     texture:SetTexture(PORTRAIT_ATLAS)
-    texture:SetTexCoord(0, 93 / PORTRAIT_ATLAS_SIZE, 419 / PORTRAIT_ATLAS_SIZE, 512 / PORTRAIT_ATLAS_SIZE)
+    texture:SetTexCoord(PLAY_LEFT, PLAY_RIGHT, PLAY_TOP, PLAY_BOTTOM)
 end
 
 --- Stop while the head plays, Replay once it is stopped.
@@ -194,12 +196,15 @@ function Actions.SetPlayGlyph(button, state)
     button.state, button.playing = state, state == "stop"
 end
 
---- Dims and disables `buttons` while the line at the head cannot be stopped. Returns whether it can.
+--- Dims and disables `buttons` while the line at the head cannot be stopped, or for one with
+--- its own `canAct()`, while that says no. Returns whether the head can be stopped.
 function Actions.SetPausable(buttons)
     local pausable = SoundQueue:CanBePaused()
     for _, button in ipairs(buttons) do
-        button:SetAlpha(pausable and 1 or .4)
-        if pausable then button:Enable() else button:Disable() end
+        local on = pausable
+        if button.canAct then on = button.canAct() end
+        button:SetAlpha(on and 1 or .4)
+        if on then button:Enable() else button:Disable() end
     end
     return pausable
 end
@@ -211,27 +216,58 @@ function Actions.Skip()
     return skipped
 end
 
---- Skip: the round button with the play glyph against a bar, the usual "next" mark.
-function Actions.SkipButton(parent, name)
-    local skip = Actions.RoundButton(parent, 10, name, true)
-    Actions.Glyph(skip.glyph, "play")
-    skip.glyph:ClearAllPoints()
-    skip.glyph:SetPoint("CENTER", -2, 0)
-    skip.bar = skip:CreateTexture(nil, "ARTWORK")
+function Actions.Previous()
+    local previous = SoundQueue:Previous()
+    if previous then SpokenLayout.Sound("U_CHAT_SCROLL_BUTTON") end
+    return previous
+end
+
+-- Skip, or with `back` Previous: the play glyph against a bar, mirrored to point back.
+local function StepButton(parent, name, back)
+    local step = Actions.RoundButton(parent, 10, name, true)
+    Actions.Glyph(step.glyph, "play")
+    if back then step.glyph:SetTexCoord(PLAY_RIGHT, PLAY_LEFT, PLAY_TOP, PLAY_BOTTOM) end
+    step.glyph:ClearAllPoints()
+    step.glyph:SetPoint("CENTER", back and 2 or -2, 0)
+    step.bar = step:CreateTexture(nil, "ARTWORK")
     local P = SpokenLayout and SpokenLayout.Pixels
-    skip.bar:SetSize(P and P(skip, 2) or 2, P and P(skip, 9) or 9)
-    skip.bar:SetPoint("LEFT", skip.glyph, "RIGHT", 0, 0)
-    if skip.bar.SetColorTexture then skip.bar:SetColorTexture(1, 0.82, 0, 0.85) end
+    step.bar:SetSize(P and P(step, 2) or 2, P and P(step, 9) or 9)
+    if back then
+        step.bar:SetPoint("RIGHT", step.glyph, "LEFT", 0, 0)
+    else
+        step.bar:SetPoint("LEFT", step.glyph, "RIGHT", 0, 0)
+    end
+    if step.bar.SetColorTexture then step.bar:SetColorTexture(1, 0.82, 0, 0.85) end
     -- Squared once the bar exists, so EllesmereUI keeps it with the glyph.
-    if Ellesmere then Ellesmere:When(function(skin) Actions.Square(skin, skip) end) end
-    skip:SetScript("OnClick", Actions.Skip)
-    skip:SetScript("OnEnter", function()
-        skip.glyph:SetAlpha(1)
-        GameTooltip:SetOwner(skip, "ANCHOR_TOP")
-        GameTooltip:SetText(L.BIND_SKIP)
+    if Ellesmere then Ellesmere:When(function(skin) Actions.Square(skin, step) end) end
+    local tip = back and L.BIND_PREVIOUS or L.BIND_SKIP
+    step:SetScript("OnEnter", function()
+        step.glyph:SetAlpha(1)
+        GameTooltip:SetOwner(step, "ANCHOR_TOP")
+        GameTooltip:SetText(tip)
         GameTooltip:Show()
     end)
+    return step
+end
+
+--- Skip: the round button with the play glyph against a bar, the usual "next" mark.
+function Actions.SkipButton(parent, name)
+    local skip = StepButton(parent, name)
+    skip:SetScript("OnClick", Actions.Skip)
     return skip
+end
+
+function Actions.PreviousButton(parent, name)
+    local previous = StepButton(parent, name, true)
+    previous.canAct = function() return SoundQueue:CanPrevious() end
+    previous:SetScript("OnClick", function()
+        local replayed = Actions.Previous()
+        -- Greyed at once: the windows redraw on the queue's callback, a frame later, and the
+        -- last line of the history must not be clickable twice meanwhile.
+        Actions.SetPausable({ previous })
+        return replayed
+    end)
+    return previous
 end
 
 --- Stop or Replay for the line at the head. `allowed()`, optional, says whether the window has
@@ -852,6 +888,11 @@ function Actions.NewRound(parent, kind, name, icon)
         Greys(button)
         return button
     end
+    if kind == "previous" then
+        local button = Actions.PreviousButton(parent, name)
+        Greys(button)
+        return button
+    end
     local button = Actions.RoundButton(parent, nil, name)
     if kind == "icon" and icon then
         Actions.RoundPicture(button, icon)
@@ -893,6 +934,8 @@ function Actions.DialogRow(dialog, tooltip, report)
     end
     row.play = Round("play")
     row.play:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    row.previous = Round("previous")
+    row.tips[row.previous] = function(tip) tip:SetText(L.BIND_PREVIOUS) end
     row.skip = Round("skip")
     row.tips[row.skip] = function(tip) tip:SetText(L.BIND_SKIP) end
     if report then row.report = Round("report") end
@@ -921,7 +964,7 @@ function DialogRow:RefreshTip(button)
 end
 
 function DialogRow:HideTips()
-    for _, button in ipairs({ self.play, self.skip, self.report }) do
+    for _, button in ipairs({ self.play, self.previous, self.skip, self.report }) do
         if button.tooltip then button.tooltip:Hide() end
     end
 end

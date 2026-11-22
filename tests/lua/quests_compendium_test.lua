@@ -1027,6 +1027,23 @@ do
     Click("Kobold Candles")
     Expect("...and the English where that pack has none", PartOf(L.QUEST_PART_ACCEPT).text ~= nil
         and PartOf(L.QUEST_PART_ACCEPT).text:find("Hola", 1, true) == nil, true)
+    -- Classic Era's client, as here, has no C_QuestLog.GetTitleForQuestID to ask for a quest it
+    -- has not shown: the Spanish pack's title, not the English.
+    local UNSEEN = 424242
+    testPack.TitleByQuestID = { [UNSEEN] = "Un almuerzo gratis" }
+    Expect("a quest this client never showed is titled by its pack in the client's language",
+        Tab:Title(UNSEEN), "Un almuerzo gratis")
+    -- The client's title, kept from its window, does not replace the pack's in the list.
+    local shownQuest = stub.world.questID
+    stub.world.questID = CANDLES
+    testPack.TitleByQuestID = { [CANDLES] = "Velas kóbold" }
+    Tab:Title(CANDLES)
+    Tab:Keep("accept", nil, "Velas del cliente")
+    Expect("...still the pack's once the quest's window has shown the client's", Tab:Title(CANDLES), "Velas kóbold")
+    testPack.TitleByQuestID = nil
+    Tab:Keep("accept", nil, "Velas del cliente")
+    VO.Addon.db.global.CompendiumText.esMX[CANDLES] = nil
+    stub.world.questID = shownQuest
     testPack.METADATA.Language = packLanguage
     stub.SetLocale("enUS")
     -- Polish chosen as the Text Language: a text pack's words (Spoken's Texts.lua), where no pack in
