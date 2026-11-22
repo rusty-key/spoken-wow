@@ -4,7 +4,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **Readables played from the Compendium show their item's icon in the player.**
+- **Readables played from the Compendium show matching item or type icons in the player.**
   *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.12.0 — 2026-11-22

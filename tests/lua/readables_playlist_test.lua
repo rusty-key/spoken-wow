@@ -101,8 +101,8 @@ do
     local _, crop = B:ItemIcon(38)
     Expect("...with the same crop as the Compendium's item icon",
         B:ClipFor(38).present.portrait.texCoord, crop)
-    Expect("a world book without an item keeps its book portrait", B:ClipFor(261).present.portrait.texture,
-        [[Interface\AddOns\Spoken\Textures\Book]])
+    Expect("a world book without an item uses the Compendium's book icon", B:ClipFor(261).present.portrait.texture,
+        [[Interface\Icons\INV_Misc_Book_09]])
     _G.GetItemInfoInstant = getItemInfoInstant
 end
 -- A first page that does not open with its title is read after it: the narration reads the title

@@ -23,9 +23,25 @@ local PACK_FORMAT = 1
 -- alongside this addon by definition -- it is what the clips are queued through -- and a
 -- second copy of the same texture is a second thing to keep in step.
 local BOOK_TEXTURE = [[Interface\AddOns\Spoken\Textures\Book]]
-
--- A page's picture: a bag item's own icon, else the material it is on, else the book.
 local ICON_CROP = { 0.08, 0.92, 0.08, 0.92 }
+
+local TYPE_ICONS = {
+	book = "INV_Misc_Book_09", journal = "INV_Misc_Book_11", letter = "INV_Letter_15", note = "INV_Misc_Note_01",
+	scroll = "INV_Scroll_03", tablet = "INV_Misc_StoneTablet_11", plaque = "INV_Misc_Note_06",
+	grave = "INV_Misc_Bone_HumanSkull_01", exhibit = "INV_Misc_Statue_01", picture = "INV_Misc_Map_01",
+	other = "INV_Misc_QuestionMark",
+}
+
+-- Item metadata can be absent while browsing, so the page and queued clip share the type fallback.
+function SpokenReadables:ReadableIcon(kind, bookID)
+	local icon, crop
+	if bookID and self:ItemForBook(bookID) then icon, crop = self:ItemIcon(bookID) end
+	if not icon then
+		icon = kind and ([[Interface\Icons\]] .. (TYPE_ICONS[kind] or TYPE_ICONS.other)) or BOOK_TEXTURE
+	end
+	return icon, crop or (kind and ICON_CROP or nil)
+end
+
 local MATERIALS = {
 	Stone = [[Interface\Icons\INV_Misc_StoneTablet_01]],
 	Marble = [[Interface\Icons\INV_Misc_StoneTablet_07]],
@@ -68,13 +84,10 @@ function SpokenReadables:PagePicture(pageId)
 		end
 	end
 	local bookID = pageId and self:PlaceOf(pageId)
-	if bookID and self:ItemForBook(bookID) then
-		local icon, crop = self:ItemIcon(bookID)
-		if icon then return { kind = "texture", texture = icon, texCoord = crop } end
-	end
-	local material = not IsOpen(self, pageId) and self:KindMaterial(pageId)
-	if material then return { kind = "texture", texture = MATERIALS[material], texCoord = ICON_CROP } end
-	return { kind = "texture", texture = BOOK_TEXTURE }
+	local places = _G.SpokenReadablesPlaces and SpokenReadablesPlaces.books
+	local entry = bookID and places and places[bookID]
+	local icon, crop = self:ReadableIcon(entry and entry.type, bookID)
+	return { kind = "texture", texture = icon, texCoord = crop }
 end
 
 --- What `pageId` is written on (ItemTextGetMaterial: Parchment, Stone, Marble...): the game's

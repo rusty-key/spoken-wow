@@ -383,6 +383,7 @@ here. Without it a readable not found yet is greyed with a padlock, and its page
 the world. Carrying a readable's item in the bags finds it too, unopened, so a quest note handed
 in unread is not locked for good; it is not marked heard. A readable that is an item shows that item's icon,
 both on its Compendium page and during playback from it, even when the item is no longer in the bags.
+If no item icon is available, Compendium playback uses the same readable-type icon as the page header.
 A filter that hides the chosen row moves the page to the nearest row above it that is
 still listed, or to where the player stands; a row chosen only because the player stood there is
 chosen again. The window opens on where the player stands: the dungeon's line, else the zone's,
