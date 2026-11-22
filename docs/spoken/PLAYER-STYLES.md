@@ -28,18 +28,20 @@ All of it is in `addons/Spoken/UI/`, one copy for every module.
 | `DialogueUIPlayer.lua`, `DialogueUITheme.lua`, `DialogueUITransitions.lua`, `DialogueUIOptions.lua` | The DialogueUI window, what it reads of DialogueUI, how it moves to and from DialogueUI's dialogs, and its settings rows. |
 | `Transcript.lua` | The words of the line: cleaning, word timing, paging, gliding, highlight and typing. The windows draw them through it, and Subtitles Only takes its text, timing and position from it. |
 | `WordMarks.lua` | Marks the line being read in another window's own text, for DialogueUI. |
-| `Actions.lua` | The round buttons, Stop or Replay, Skip, the line's own actions, the "after the title" row, the Ctrl wheel, the progress line and the bronze tint. |
+| `Actions.lua` | The round buttons, Stop or Replay, Previous, Skip, the line's own actions, the "after the title" row, the Ctrl wheel, the progress line and the bronze tint. |
 | `Face.lua`, `Portrait.lua`, `StaticPortrait.lua` | The speaker's face and 3D model. |
 | `Compendium.lua`, `TextView.lua` | Azeroth's Compendium and its text view, which belong to no style. |
 | `MinimapButton.lua`, `ContributeBox.lua` | The minimap button and menu, and the box Contribute copies from. |
 
 ## What every style shares
 
-- **Controls.** Stop, which turns to Replay once the line is stopped, Skip, and the line's own
-  actions (Report, where its module offers it, unless Hide Report Buttons is on), as the round
-  buttons of `Actions.lua`. The game cannot start a sound part-way through, so there is Stop and
-  Replay, never Pause and Resume. The keys Stop or Replay, Skip Line and Stop All work under every
-  style, Voice Only included.
+- **Controls.** Stop, which turns to Replay once the line is stopped, Previous, Skip, and the
+  line's own actions (Report, where its module offers it, unless Hide Report Buttons is on), as the
+  round buttons of `Actions.lua`. The game cannot start a sound part-way through, so there is Stop
+  and Replay, never Pause and Resume. Previous plays the last line heard ahead of the current one,
+  which then speaks again from its start; it reaches back through the last ten lines finished or
+  skipped this session, and greys out when there are none. The keys Stop or Replay, Previous Line,
+  Skip Line and Stop All work under every style, Voice Only included.
 - **After the line's title**, in this order: why the line waits, "(Stopped)" while it is stopped,
   and "+N", the lines waiting behind it. The reason is what `SoundQueue:GetHeldReason` answers:
   "(Waiting for the NPC to finish speaking.)" under NPC Voice Before Reading, and for a place story
@@ -47,7 +49,10 @@ All of it is in `addons/Spoken/UI/`, one copy for every module.
   A story you ask for with Play does not wait. Pointing at "+N" opens a tooltip, Up Next, with
   the waiting lines in the order they will play, each with its title and who says it, at most
   twelve (`Actions.WaitingTip`). Clicking "+N" does nothing, and a click on it reaches the window
-  under it.
+  under it. A line queued while Spoken is stopped waits, as every line does, and the count says
+  so: it swells, lit gold with a glow behind it, and settles back (`Actions.Pulse`). Skip plays the
+  waiting line; Replay plays the stopped one first. A count that grows while lines play only fades
+  in.
 - **The face** (`Face.lua`): the speaker's still portrait, captured from their unit or drawn from
   their creature (`StaticPortrait.lua`), else the line's own picture, cut round, with the line's
   badge on a dark disc at its lower right, and the disc only under a badge. A creature the client
@@ -112,7 +117,7 @@ The page builds only the rows a style reads, and greys a row whose switch is off
 
 `Subtitle.lua`. No window: the speaker's face, name and the line's title in a row, the words
 under it, low in the middle of the screen over a soft shadow (Shadow Behind Words), and a progress
-line. The words come from the captions (`Transcript.lua`), so Stop, Replay and Skip behave as
+line. The words come from the captions (`Transcript.lua`), so Stop, Replay, Previous and Skip behave as
 they do in the windows.
 
 - **Auto-Scroll** is Page by Page (the default) or Row by Row. Page by page, a page holds
@@ -123,11 +128,11 @@ they do in the windows.
   Out By). **Highlight Words** lights the word being read only while the words show whole, with
   Type Words Out off: an estimated timing lit as it is typed in front of the reader shows every
   miss.
-- **Show Name and Title** off leaves the row out; it still says "(Stopped)" or why a line waits,
-  and Hide Portrait waits on it.
+- **Show Name and Title** off leaves the row out; it still says "(Stopped)", with "+N" after it
+  when lines wait behind the stop, or why a line waits, and Hide Portrait waits on it.
 - The words do nothing when clicked, and there is no right-click menu: a subtitle in the middle
   of the screen is clicked by accident, and a right-drag there is the camera turning. Stop or
-  Replay, Skip and Report fade in under it while the pointer is over it.
+  Replay, Previous, Skip and Report fade in under it while the pointer is over it.
 - Dragged by its words, it moves anywhere on the screen and keeps its place. It is drawn to the
   screen's edges and middle, with a gold guide line where it holds; Shift drags it free.
 - It shows once the voice has begun, or while the line is stopped or held back, so that it can
@@ -143,8 +148,8 @@ name over the line's title, the controls at the header's right, then Rows at Onc
 - **Theme**: Parchment, with dark words (the default), or Dark, with light words. In EllesmereUI's
   look the row is hidden: its window is dark whichever is chosen.
 - **Hide Portrait** leaves the face out.
-- Right-click on the face, the name, the title or the panel opens a menu: Stop or Replay, Skip
-  Line, Stop All, Open Azeroth's Compendium, Settings, and the line's actions that name themselves.
+- Right-click on the face, the name, the title or the panel opens a menu: Stop or Replay, Previous
+  Line, Skip Line, Stop All, Open Azeroth's Compendium, Settings, and the line's actions that name themselves.
   On the words, right-click skips the line and Shift-right-click opens the menu.
 - Dragged by the panel or the name; the game's own size grabber at the lower right, shown under
   the pointer while unlocked, sets its width. It fades in and out, and out and in again from one
@@ -175,7 +180,7 @@ A parchment, or dark, panel in DialogueUI's proportions, showing only the line p
 - DialogueUI's own header strip, with the speaker's face in its socket, the line's title beside it
   in DialogueUI's title type and the speaker's name small above, then why the line waits,
   "(Stopped)" and "+N";
-- Stop (Replay once stopped), Skip and the line's own actions, Report among them, at the header's
+- Stop (Replay once stopped), Previous, Skip and the line's own actions, Report among them, at the header's
   right end;
 - a place's picture over the words;
 - Rows at Once of the words, in DialogueUI's paragraph font, with an empty row between
@@ -255,7 +260,7 @@ Nothing it reads is a public API, and each is checked before use:
   dialog's words fade before it closes; `DUIQuestFrame:GetQuestFinishedDelay()`; the dialogs'
   `BackgroundFrame`, `Footer` and place on screen; DialogueUI's art files.
 - `Actions.lua`: whether either dialog is shown (`Actions.DialogCovers`, `Actions.WatchDialogs`),
-  and the Play, Skip and Report row Spoken Quests and Spoken Readables put on the dialogs
+  and the Play, Previous, Skip and Report row Spoken Quests and Spoken Readables put on the dialogs
   (`Spoken:CreateDialogueUIRow`).
 
 If a DialogueUI release renames them, the tile is not offered, `/sp style dialogueui` says the

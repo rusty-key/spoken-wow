@@ -1,16 +1,19 @@
+import { bad, bodyOf as jsonOf, objectOf } from "@/lib/api-body";
 import { requireAdminSession } from "@/lib/generation/authz";
 import { TeamError } from "@/lib/teams/admin";
 import type { TeamId } from "@/lib/teams/store";
 import { isUuid } from "@/lib/uuid";
 
-export const bad = (error: string) => Response.json({ error }, { status: 400 });
+export { bad };
 
 type Handler = (request: Request, actorId: string) => Promise<Response>;
 type TeamHandler = (request: Request, actorId: string, team: TeamId) => Promise<Response>;
 type TeamContext = { params: Promise<{ id: string }> };
 
+export const signedOut = () => Response.json({ error: "Sign in first." }, { status: 401 });
+
 /** Anything but a TeamError rethrows, so a real failure is not hidden as a refusal. */
-function refusal(error: unknown): Response {
+export function refusal(error: unknown): Response {
   if (error instanceof TeamError) return Response.json({ error: error.message }, { status: error.status });
   throw error;
 }
@@ -39,6 +42,5 @@ export function withAdmin(handle: TeamHandler, by?: "id") {
 }
 
 export async function bodyOf(request: Request): Promise<Record<string, unknown>> {
-  const body: unknown = await request.json().catch(() => null);
-  return body && typeof body === "object" && !Array.isArray(body) ? (body as Record<string, unknown>) : {};
+  return objectOf(await jsonOf(request)) ?? {};
 }

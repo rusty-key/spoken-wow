@@ -8,9 +8,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { closeDb } from "@/lib/db";
 import type { Grant } from "@/lib/permissions";
+import { actingTeams } from "@/lib/teams/acting";
 import { asSystem } from "@/lib/teams/testing";
 
-const viewer = vi.hoisted(() => ({ grants: [] as Grant[] }));
+const viewer = vi.hoisted(() => ({ grants: [] as Grant[], teamGrants: {} as Record<string, Grant[]> }));
 
 vi.mock("@/lib/grants/store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/grants/store")>()),
@@ -18,20 +19,41 @@ vi.mock("@/lib/grants/store", async (importOriginal) => ({
     role: session.user.role,
     grants: viewer.grants,
   }),
+  grantsInTeam: async (_userId: string, _lang: string, team: string | null) =>
+    team === null ? viewer.grants.filter((grant) => grant.capability === "text") : (viewer.teamGrants[team] ?? viewer.grants),
+}));
+
+const acting = vi.hoisted(() => ({
+  team: null as string | null,
+  second: new Set<string>(),
+  reads: 0,
+}));
+
+vi.mock("@/lib/teams/acting", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/teams/acting")>()),
+  memberTeams: async () => {
+    acting.reads += 1;
+    return new Map(acting.team ? [["deDE", acting.team]] : []);
+  },
+}));
+vi.mock("@/lib/teams/store", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/teams/store")>()),
+  sharedLangs: async () => acting.second,
 }));
 
 import { createToken, revokeToken } from "@/lib/tokens/store";
 import type { TokenAccess } from "@/lib/tokens/types";
 
-import { requireToken } from "./guard";
+import { requireToken, withToken, writeLayer, type Layer, type TokenContext } from "./guard";
 
 const USER = `test-guard-${Math.random().toString(36).slice(2, 10)}`;
 
-function make(access: TokenAccess = "write", userId = USER) {
+function make(access: TokenAccess = "write", userId = USER, generate = false) {
   return createToken({
     userId,
     lang: "deDE",
     access,
+    generate,
     label: "agent",
     expiresAt: new Date(Date.now() + 86_400_000),
   });
@@ -52,7 +74,11 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
+  acting.team = null;
+  acting.second = new Set();
+  acting.reads = 0;
   viewer.grants = [{ lang: "deDE", capability: "text" }];
+  viewer.teamGrants = {};
 });
 
 afterAll(async () => {
@@ -92,15 +118,27 @@ describe("requireToken", () => {
     expect((await requireToken(request(`Bearer ${token}`))).denied?.status).toBe(403);
   });
 
-  it("403 when the owner's capability there is only regenerate", async () => {
+  it("lets a read token read when its owner holds only regenerate, as an override writer, and write no layer", async () => {
     const { token } = await make("read");
     viewer.grants = [{ lang: "deDE", capability: "regenerate" }];
-    expect((await requireToken(request(`Bearer ${token}`))).denied?.status).toBe(403);
+    const { context, denied } = await requireToken(request(`Bearer ${token}`), { need: "read" });
+    expect(denied).toBeNull();
+    expect(context?.layers).toEqual({ original: false, override: false });
+  });
+
+  it("403 when the owner holds neither text nor regenerate", async () => {
+    const { token } = await make("read");
+    viewer.grants = [{ lang: "deDE", capability: "configure" }];
+    const result = await requireToken(request(`Bearer ${token}`));
+    expect(result.denied?.status).toBe(403);
+    expect(await result.denied?.json()).toEqual({
+      error: "this token's owner holds neither text nor regenerate in deDE",
+    });
   });
 
   it("403 for a read token asking to write", async () => {
     const { token } = await make("read");
-    expect((await requireToken(request(`Bearer ${token}`), { write: true })).denied?.status).toBe(403);
+    expect((await requireToken(request(`Bearer ${token}`), { need: "write" })).denied?.status).toBe(403);
   });
 
   it("lets a read token read", async () => {
@@ -110,7 +148,7 @@ describe("requireToken", () => {
 
   it("lets a write token write", async () => {
     const { token } = await make("write");
-    expect((await requireToken(request(`Bearer ${token}`), { write: true })).denied).toBeNull();
+    expect((await requireToken(request(`Bearer ${token}`), { need: "write" })).denied).toBeNull();
   });
 
   it("passes a global admin's token with no language grant", async () => {
@@ -125,5 +163,161 @@ describe("requireToken", () => {
     const { token, row } = await make();
     const { context } = await requireToken(request(`Bearer ${token}`, "GET", "?lang=frFR"));
     expect(context).toMatchObject({ lang: "deDE", tokenId: row.id, userId: USER, access: "write" });
+  });
+
+  it("lets a generate-only token generate and pass any, but not read", async () => {
+    const { token } = await make("none", USER, true);
+    viewer.grants = [{ lang: "deDE", capability: "regenerate" }];
+    expect((await requireToken(request(`Bearer ${token}`), { need: "generate" })).denied).toBeNull();
+    expect((await requireToken(request(`Bearer ${token}`), { need: "any" })).denied).toBeNull();
+    const read = await requireToken(request(`Bearer ${token}`));
+    expect(read.denied?.status).toBe(403);
+    expect(await read.denied?.json()).toEqual({ error: "this token has no text access" });
+  });
+
+  it("403 for any when a generate-only token's owner has no grants", async () => {
+    const { token } = await make("none", USER, true);
+    viewer.grants = [];
+    const result = await requireToken(request(`Bearer ${token}`), { need: "any" });
+    expect(result.denied?.status).toBe(403);
+    expect(await result.denied?.json()).toEqual({ error: "this token's owner does not hold regenerate in deDE" });
+  });
+
+  it("403 for any when a read token's owner has no text", async () => {
+    const { token } = await make("read");
+    viewer.grants = [];
+    const result = await requireToken(request(`Bearer ${token}`), { need: "any" });
+    expect(result.denied?.status).toBe(403);
+    expect(await result.denied?.json()).toEqual({
+      error: "this token's owner holds neither text nor regenerate in deDE",
+    });
+  });
+
+  it("403 for a read token asking to generate", async () => {
+    const { token } = await make("read");
+    const result = await requireToken(request(`Bearer ${token}`), { need: "generate" });
+    expect(result.denied?.status).toBe(403);
+    expect(await result.denied?.json()).toEqual({ error: "this token cannot generate" });
+  });
+
+  it("asks for regenerate on every generate, so losing it kills the scope", async () => {
+    const { token } = await make("write", USER, true);
+    viewer.grants = [
+      { lang: "deDE", capability: "text" },
+      { lang: "deDE", capability: "regenerate" },
+    ];
+    expect((await requireToken(request(`Bearer ${token}`), { need: "generate" })).denied).toBeNull();
+    viewer.grants = [{ lang: "deDE", capability: "text" }];
+    const result = await requireToken(request(`Bearer ${token}`), { need: "generate" });
+    expect(result.denied?.status).toBe(403);
+    expect(await result.denied?.json()).toEqual({ error: "this token's owner does not hold regenerate in deDE" });
+    expect((await requireToken(request(`Bearer ${token}`))).denied).toBeNull();
+  });
+
+  it("reports generate in the context, and no layer for a token without text access", async () => {
+    const { token } = await make("none", USER, true);
+    viewer.grants = [{ lang: "deDE", capability: "regenerate" }];
+    const { context } = await requireToken(request(`Bearer ${token}`), { need: "generate" });
+    expect(context).toMatchObject({ access: "none", generate: true, layers: { original: false, override: false } });
+  });
+});
+
+describe("writeLayer", () => {
+  async function contextWith(grants: Grant[]): Promise<TokenContext> {
+    const { token } = await make("write");
+    viewer.grants = grants;
+    const { context } = await requireToken(request(`Bearer ${token}`), { need: "write" });
+    if (!context) throw new Error("the token was refused");
+    return context;
+  }
+
+  async function refusal(result: Layer | Response): Promise<[number, unknown]> {
+    if (!(result instanceof Response)) throw new Error(`expected a refusal, got ${result}`);
+    return [result.status, await result.json()];
+  }
+
+  it("writes a regenerate-only owner's override, and refuses the original or an unknown layer", async () => {
+    const context = await contextWith([{ lang: "deDE", capability: "regenerate" }]);
+    expect(context.layers).toEqual({ original: false, override: true });
+    expect(writeLayer(context, undefined)).toBe("override");
+    expect(writeLayer(context, "override")).toBe("override");
+    expect(await refusal(writeLayer(context, "original"))).toEqual([
+      403,
+      { error: "this token's owner is not a text maintainer in deDE, so it writes only its team's overrides" },
+    ]);
+    expect(await refusal(writeLayer(context, "both"))).toEqual([
+      400,
+      { error: 'layer must be "original" or "override"' },
+    ]);
+  });
+
+  it("writes the original by default for an owner with both grants, and the override on request", async () => {
+    const context = await contextWith([
+      { lang: "deDE", capability: "text" },
+      { lang: "deDE", capability: "regenerate" },
+    ]);
+    expect(writeLayer(context, undefined)).toBe("original");
+    expect(writeLayer(context, "original")).toBe("original");
+    expect(writeLayer(context, "override")).toBe("override");
+  });
+
+  it("refuses a write with no layer from a context that backs neither", async () => {
+    const context = await contextWith([{ lang: "deDE", capability: "text" }]);
+    const bare = { ...context, layers: { original: false, override: false } };
+    expect(await refusal(writeLayer(bare, undefined))).toEqual([
+      403,
+      { error: "this token's owner holds neither text nor regenerate in deDE" },
+    ]);
+  });
+
+  it("keeps a text-only owner on the original", async () => {
+    const context = await contextWith([{ lang: "deDE", capability: "text" }]);
+    expect(context.layers).toEqual({ original: true, override: false });
+    expect(writeLayer(context, undefined)).toBe("original");
+    expect(await refusal(writeLayer(context, "override"))).toEqual([
+      403,
+      { error: "this token's owner does not hold regenerate in deDE, so it cannot write overrides" },
+    ]);
+  });
+});
+
+describe("an owner in a language with two teams", () => {
+  beforeEach(() => {
+    acting.second = new Set(["deDE"]);
+  });
+
+  it("passes requireToken and withToken in either team", async () => {
+    acting.team = "team-b";
+    const { token } = await make("read");
+    expect((await requireToken(request(`Bearer ${token}`), { need: "read" })).denied).toBeNull();
+
+    const passed = await withToken(request(`Bearer ${token}`), { need: "read" }, async () => new Response("ran"));
+    expect(await passed.text()).toBe("ran");
+  });
+
+  it("counts only the grants of the team it acts as, and works in the team it read once", async () => {
+    acting.team = "team-a";
+    viewer.grants = [
+      { lang: "deDE", capability: "text" },
+      { lang: "deDE", capability: "regenerate" },
+    ];
+    viewer.teamGrants = { "team-a": [{ lang: "deDE", capability: "text" }] };
+    const { token } = await make("write");
+    let seen: { layers: Record<Layer, boolean>; team: string | undefined } | null = null;
+    await withToken(request(`Bearer ${token}`, "PATCH"), { need: "write" }, async (context) => {
+      seen = { layers: context.layers, team: (await actingTeams()).get("deDE") };
+      return new Response("ran");
+    });
+    expect(seen).toEqual({ layers: { original: true, override: false }, team: "team-a" });
+    expect(acting.reads).toBe(1);
+  });
+});
+
+describe("a language with one team", () => {
+  it("reads nobody's team", async () => {
+    acting.team = "team-b";
+    const { token } = await make("read");
+    expect((await requireToken(request(`Bearer ${token}`), { need: "read" })).denied).toBeNull();
+    expect(acting.reads).toBe(0);
   });
 });

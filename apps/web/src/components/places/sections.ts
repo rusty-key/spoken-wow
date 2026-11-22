@@ -1,7 +1,6 @@
 import type { ExplorerSection } from "@/components/explorer/section";
 import type { ZoneFacet } from "@/lib/places/catalogue";
 import {
-  activeFilterCount,
   FIELDS,
   filterParams,
   filtersFromParams,
@@ -32,7 +31,6 @@ export function placesSection(zones: ZoneFacet[] = []): PlacesSection {
       kinds: KINDS,
       fromParams: filtersFromParams,
       toParams: filterParams,
-      activeCount: activeFilterCount,
     },
   };
 }

@@ -3,9 +3,11 @@
 // Spoken keeps every line it had no voice for in WTF/Account/<account>/SavedVariables/
 // SpokenContributions.lua (addons/Spoken/Gather.lua). The site's /contribute page takes that file
 // by hand; this reads it in the player's place and sends the envelopes in it to the same route.
-// It only reads: WTF is the game's, and the game writes the file from memory at every logout, so
-// anything changed in it would come back anyway. What was sent is remembered here instead, as
-// hashes in share.json, with the random install id the site counts players by.
+// It never writes there: WTF is the game's, and the game writes the file from memory at every
+// logout, so anything changed in it would come back anyway. What was sent is remembered here
+// instead, as hashes in share.json, with the random install id the site counts players by. To
+// empty the file, the lines sent are listed in Interface/AddOns/SpokenContributions/Sent.lua, which
+// the game only reads, and Spoken drops them at the next login (Gather:DropSent).
 //
 // No electron imports, so it can be tested the way state.ts is.
 import crypto from 'node:crypto'
@@ -13,11 +15,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { envelopesFromSavedVariables } from '@site-contributions/saved-variables'
 import { chunksOf } from '@site-contributions/upload'
-import type { GameInstall } from '../shared/types'
+import type { GameInstall, SendResult } from '../shared/types'
 import { findEntrySync, isLinked } from './guard'
 import type { LocalFile } from './packs-plan'
+import { t } from './i18n'
 import { sha256Text } from './packs-remote'
-import { log, readJsonFile, writeJsonAtomic } from './state'
+import { log, readJsonFile, writeJsonAtomic, writeTextAtomic } from './state'
 
 export const SHARE_URL = 'https://spoken.quest/api/contributions/batch'
 
@@ -34,7 +37,14 @@ export interface ShareLedger {
   sent: Record<string, string>
   lastSent?: { at: string; count: number }
   /** Each file's size and time as last read, so a poll reads only what the game has rewritten. */
-  seen: Record<string, LocalFile>
+  seen: Record<string, SeenFile>
+  /** Each Sent.lua's size and time as last written, so a poll notices an update putting back the empty one. */
+  lists: Record<string, LocalFile>
+}
+
+export interface SeenFile extends LocalFile {
+  /** The sentMark of each envelope in the file that was sent, so Sent.lua is built without reading it again. */
+  marks?: string[]
 }
 
 function ledgerFile(dataPath: string): string {
@@ -48,6 +58,11 @@ function records<T>(v: unknown, ok: (x: unknown) => x is T): Record<string, T> {
   return Object.fromEntries(Object.entries(v).filter(([, x]) => ok(x))) as Record<string, T>
 }
 
+function isLocalFile(x: unknown): x is LocalFile {
+  const s = x as { size?: unknown; mtimeMs?: unknown }
+  return typeof x === 'object' && x !== null && typeof s.size === 'number' && typeof s.mtimeMs === 'number'
+}
+
 export function loadLedger(dataPath: string): ShareLedger {
   const raw = readJsonFile<Record<string, unknown>>(ledgerFile(dataPath), {})
   const id = typeof raw.installId === 'string' && UUID_V4.test(raw.installId) ? raw.installId : ''
@@ -56,9 +71,10 @@ export function loadLedger(dataPath: string): ShareLedger {
     installId: id,
     sent: records(raw.sent, (x): x is string => typeof x === 'string'),
     ...(last && typeof last.at === 'string' && typeof last.count === 'number' ? { lastSent: { at: last.at, count: last.count } } : {}),
-    seen: records(raw.seen, (x): x is LocalFile => {
-      const s = x as { size?: unknown; mtimeMs?: unknown }
-      return typeof x === 'object' && x !== null && typeof s.size === 'number' && typeof s.mtimeMs === 'number'
+    lists: records(raw.lists, isLocalFile),
+    seen: records(raw.seen, (x): x is SeenFile => {
+      const marks = (x as { marks?: unknown }).marks
+      return isLocalFile(x) && (marks === undefined || (Array.isArray(marks) && marks.every((m) => typeof m === 'string')))
     })
   }
 }
@@ -69,6 +85,54 @@ export function saveLedger(dataPath: string, ledger: ShareLedger): void {
 
 export function hashEnvelope(envelope: string): string {
   return sha256Text(envelope).slice(0, 32)
+}
+
+/**
+ * Must equal Gather:SentMark: the envelope's `sum=` and its length in bytes. Not the sha256, which
+ * the addon would have to compute for every line at login. Null for a sighting, which the addon
+ * keeps, and for anything without a sum.
+ */
+export function sentMark(envelope: string): string | null {
+  const sum = /\nsum=(\d+)\n$/.exec(envelope)
+  return sum && !/^!SPOKEN\d+ seen\n/.test(envelope) ? `${sum[1]}:${Buffer.byteLength(envelope, 'utf8')}` : null
+}
+
+/** Sorted, so an unchanged list writes the same bytes and Sent.lua is left alone. */
+export function sentLua(marks: Iterable<string>): string {
+  const keys = [...new Set(marks)].sort().map((m) => `["${m}"]=true,`)
+  return `-- Written by the Spoken Manager: the lines it sent, which Spoken drops at login.\nSpokenContributionsSent = {\n${keys.join('\n')}${keys.length ? '\n' : ''}}\n`
+}
+
+/** The game's Sent.lua; null without a SpokenContributions folder, or with a linked one, which is a developer's checkout. */
+async function sentFileOf(game: GameInstall): Promise<string | null> {
+  const folder = findEntrySync(game.addOnsPath, 'SpokenContributions')
+  if (!folder) return null
+  const dir = path.join(game.addOnsPath, folder)
+  const file = path.join(dir, findEntrySync(dir, 'Sent.lua') ?? 'Sent.lua')
+  return (await isLinked(dir)) || (await isLinked(file)) ? null : file
+}
+
+async function stamp(file: string): Promise<LocalFile | null> {
+  const st = await fs.promises.stat(file).catch(() => null)
+  return st && { size: st.size, mtimeMs: st.mtimeMs }
+}
+
+/**
+ * Without `changed`, a file still as last written is not read at all. A failure is only logged: the
+ * lines then stay in the game's file until a later poll writes the list.
+ */
+async function writeSentFile(ledger: ShareLedger, file: string, marks: Iterable<string>, changed: boolean): Promise<void> {
+  const before = ledger.lists[file]
+  const now = await stamp(file)
+  if (!changed && before && now && before.size === now.size && before.mtimeMs === now.mtimeMs) return
+  const text = sentLua(marks)
+  try {
+    if ((await fs.promises.readFile(file, 'utf8').catch(() => null)) !== text) writeTextAtomic(file, text)
+    const written = await stamp(file)
+    if (written) ledger.lists[file] = written
+  } catch (err) {
+    log('Sharing: could not write', file, err)
+  }
 }
 
 /** Every SpokenContributions.lua of a game, one per account, matched ignoring case. Linked folders and files are skipped. */
@@ -111,13 +175,6 @@ export interface SendOptions {
   all?: boolean
 }
 
-export type SendResult =
-  | { outcome: 'sent'; count: number }
-  /** Nothing new: no file changed, or every envelope in them was sent before. */
-  | { outcome: 'nothing' }
-  | { outcome: 'rate-limited'; count: number }
-  | { outcome: 'failed'; count: number; error: string }
-
 function remember(ledger: ShareLedger, hashes: Iterable<string>, at: string): void {
   for (const h of hashes) {
     // Deleted first so a hash sent again moves to the newest end.
@@ -144,41 +201,68 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
   /** The envelopes not sent yet, by hash. */
   const fresh = new Map<string, string>()
   const seen: ShareLedger['seen'] = {}
+  const unread: string[] = []
+  /** Each file read this time: the sentMark of every envelope in it that has one, by hash. */
+  const read = new Map<string, Map<string, string>>()
+  const filesOf = new Map<GameInstall, string[]>()
   for (const game of opts.games) {
-    for (const file of await findContributionFiles(game)) {
+    const files = await findContributionFiles(game)
+    filesOf.set(game, files)
+    for (const file of files) {
       let st: fs.Stats
       try {
         st = await fs.promises.stat(file)
       } catch {
         continue
       }
-      seen[file] = { size: st.size, mtimeMs: st.mtimeMs }
       const before = ledger.seen[file]
-      if (!opts.all && before && before.size === st.size && before.mtimeMs === st.mtimeMs) continue
+      if (!opts.all && before && before.size === st.size && before.mtimeMs === st.mtimeMs) {
+        seen[file] = before
+        continue
+      }
+      seen[file] = { size: st.size, mtimeMs: st.mtimeMs }
       let text: string
       try {
         text = await fs.promises.readFile(file, 'utf8')
       } catch (err) {
         log('Sharing: could not read', file, err)
-        delete seen[file]
+        unread.push(file)
+        // A size no file has, so it is read again next time; its marks stay, as its lines were sent all the same.
+        seen[file] = { size: -1, mtimeMs: -1, ...(before?.marks ? { marks: before.marks } : {}) }
         continue
       }
+      const inFile = new Map<string, string>()
       for (const e of envelopesFromSavedVariables(text)) {
         const h = hashEnvelope(e)
+        const mark = sentMark(e)
+        if (mark) inFile.set(h, mark)
         if (!ledger.sent[h]) fresh.set(h, e)
       }
+      read.set(file, inFile)
     }
   }
   // Replaced whole: a file that went away is forgotten, so it is read again if it comes back.
-  // Written only when it changed: a poll that found nothing new leaves share.json alone.
-  const done = (result: SendResult): SendResult => {
-    if (JSON.stringify(seen) !== JSON.stringify(ledger.seen)) {
-      ledger.seen = seen
-      saveLedger(opts.dataPath, ledger)
+  // Written only when it changed: a poll that found nothing new leaves share.json alone. An
+  // unchanged file's entry is the ledger's own object, so comparing them is enough.
+  const done = async (result: SendResult): Promise<SendResult> => {
+    for (const [file, inFile] of read) {
+      const marks = [...inFile].flatMap(([h, mark]) => (ledger.sent[h] ? [mark] : []))
+      if (marks.length) seen[file]!.marks = marks
     }
+    const files = Object.keys(seen)
+    let dirty = files.length !== Object.keys(ledger.seen).length || files.some((f) => seen[f] !== ledger.seen[f])
+    ledger.seen = seen
+    const lists = JSON.stringify(ledger.lists)
+    for (const [game, paths] of filesOf) {
+      const file = await sentFileOf(game)
+      if (file) await writeSentFile(ledger, file, paths.flatMap((f) => seen[f]?.marks ?? []), read.size > 0)
+    }
+    dirty ||= JSON.stringify(ledger.lists) !== lists
+    if (dirty) saveLedger(opts.dataPath, ledger)
     return result
   }
-  if (fresh.size === 0) return done({ outcome: 'nothing' })
+  const unreadPart = unread.length ? { unread } : {}
+  if (fresh.size === 0) return done({ outcome: 'nothing', ...unreadPart })
 
   const doFetch = opts.fetchImpl ?? fetch
   const hashes = [...fresh.keys()]
@@ -196,10 +280,10 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
       })
     } catch (err) {
       opts.signal?.throwIfAborted()
-      return { outcome: 'failed', count, error: `The site could not be reached (${err instanceof Error ? err.message : String(err)}).` }
+      return { outcome: 'failed', count, error: t('share.reachSite', { why: err instanceof Error ? err.message : String(err) }) }
     }
     if (res.status === 429) return { outcome: 'rate-limited', count }
-    if (!res.ok) return { outcome: 'failed', count, error: `The site answered ${res.status}.` }
+    if (!res.ok) return { outcome: 'failed', count, error: t('share.siteStatus', { status: res.status }) }
     const at = new Date().toISOString()
     // Chunks keep the envelopes' order, so the chunk's hashes are the next ones in line.
     remember(ledger, hashes.slice(count, count + chunk.length), at)
@@ -207,7 +291,7 @@ export async function sendPending(opts: SendOptions): Promise<SendResult> {
     ledger.lastSent = { at, count }
     saveLedger(opts.dataPath, ledger)
   }
-  return done({ outcome: 'sent', count })
+  return done({ outcome: 'sent', count, ...unreadPart })
 }
 
 /** A new install id; what was sent stays sent. */

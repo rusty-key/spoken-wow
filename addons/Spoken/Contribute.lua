@@ -13,7 +13,8 @@ setfenv(1, SpokenEnv)
 -- corpus that simply has nothing.
 
 local VERSION = 1
-local SOURCES = { quests = true, places = true, readables = true }
+-- Bosses send a report's context only: the site takes no bosses contributions.
+local SOURCES = { quests = true, places = true, readables = true, bosses = true, seen = true }
 
 local MODULUS = 2147483647
 local FACTOR = 31
@@ -166,7 +167,17 @@ local function Fence(text)
     return table.concat(lines, "\n")
 end
 
----@param source string  "quests" | "places" | "readables"
+--- Add to a report's `fields` the pack `clip` plays from, its `packFolder`, and the team whose pack
+--- it is, which its `voice` names ("deDE_stimmen"): the site files the report with that team.
+--- Nothing for no clip, or a clip with no pack.
+function Contribute:PackFields(fields, clip)
+    if not (clip and clip.packFolder) then return end
+    fields[#fields + 1] = { "packFolder", clip.packFolder }
+    local _, team = Languages:SplitVoice(clip.voice)
+    if team then fields[#fields + 1] = { "packTeam", team } end
+end
+
+---@param source string  "quests" | "places" | "readables" | "seen"
 ---@param fields table   array of { key, value }, in the order they are written
 ---@param text string|nil the one multi-line field, or nil where the source has none
 ---@return string|nil     the envelope, or nil for a source this format does not carry
@@ -314,6 +325,89 @@ function Contribute:NameWords(name)
         end
     end
     return words
+end
+
+--- What the client says of who is reading: name, class with the forms a gendered locale writes
+--- it in, class id, race and sex. Nil where the client does not answer.
+local function Reader()
+    local reader = {
+        name = UnitName and NotSecret(UnitName("player")),
+        race = UnitRace and (UnitRace("player")),
+        sex = UnitSex and NotSecret(UnitSex("player")),
+    }
+    if UnitClass then
+        local classFile
+        reader.class, classFile, reader.classID = UnitClass("player")
+        -- A locale that names a class by gender ("Kriegerin") may write either form.
+        local male, female = _G.LOCALIZED_CLASS_NAMES_MALE, _G.LOCALIZED_CLASS_NAMES_FEMALE
+        reader.classMale = classFile and male and male[classFile]
+        reader.classFemale = classFile and female and female[classFile]
+    end
+    return reader
+end
+
+--- Who is reading, onto `fields`, beside a text sent as the client showed it (`shown=1`).
+---
+--- The client writes the reader's name, class and race into a line where the template has $N, $C
+--- and $R. The site puts the tokens back (apps/web/src/lib/contributions/reader.ts) and keeps no
+--- name, so its rule can improve without a release. The sex is for a line whose template branches
+--- on it: the client picked one side of a $G, and only the reader's sex says which.
+---@param fields table array of { key, value }, appended to
+function Contribute:ReaderFields(fields)
+    local function add(key, value)
+        if value ~= nil and value ~= "" then
+            fields[#fields + 1] = { key, value }
+        end
+    end
+    local reader = Reader()
+    add("shown", 1)
+    add("reader", reader.name)
+    add("readerClass", reader.class)
+    if reader.classMale ~= reader.class then
+        add("readerClassMale", reader.classMale)
+    end
+    if reader.classFemale ~= reader.class then
+        add("readerClassFemale", reader.classFemale)
+    end
+    add("readerClassID", reader.classID)
+    add("readerRace", reader.race)
+    add("readerSex", reader.sex)
+end
+
+--- The text with this character's name, class and race put back as the game's own tokens, for
+--- the keys a line is kept and named under: the same gossip line or page read on two characters is
+--- one. Not what is sent: the site puts the tokens back in the text (ReaderFields).
+function Contribute:Detemplate(text)
+    local swaps = {}
+    local function add(word, token)
+        if type(word) == "string" and word ~= "" then
+            swaps[#swaps + 1] = { word, token }
+        end
+    end
+    local function addCased(word, upper, lower)
+        add(word, upper)
+        if type(word) == "string" and string.lower(word) ~= word then
+            add(string.lower(word), lower)
+        end
+    end
+
+    local reader = Reader()
+    -- Whole or by one part of it, as written or in capitals: a page greets its reader "GRIMBALOR,".
+    for _, word in ipairs(self:NameWords(reader.name)) do
+        add(word, "$N")
+    end
+    addCased(reader.class, "$C", "$c")
+    addCased(reader.classMale, "$C", "$c")
+    addCased(reader.classFemale, "$C", "$c")
+    addCased(reader.race, "$R", "$r")
+
+    -- Longest first, so "Night Elf" goes as one race, and a part of the name inside a longer class
+    -- ("Hunter" in "Demon Hunter") does not take it first.
+    table.sort(swaps, function(a, b) return len(a[1]) > len(b[1]) end)
+    for _, pair in ipairs(swaps) do
+        text = self:ReplaceWord(text, pair[1], pair[2])
+    end
+    return text
 end
 
 --- An envelope read back: its source, its fields in order and its text, so a feature addon can

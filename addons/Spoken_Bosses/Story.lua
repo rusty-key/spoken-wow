@@ -26,6 +26,29 @@ local function WorldBosses()
 	return byCreature
 end
 
+-- A boss's story for another addon (Spoken:PlayStory("boss", encounterID)): a clip key per boss of
+-- the encounter.
+local function EncounterKeys(encounterID)
+	local keys = {}
+	for _, boss in ipairs(Bosses:BossesOfEncounter(encounterID)) do
+		table.insert(keys, "boss:" .. boss.map .. ":" .. boss.key)
+	end
+	return keys
+end
+
+-- The voiced story of the boss whose clip key is `clipKey`, where Bosses is on and the boss is met
+-- or Unlock Unfound Bosses is on.
+local function EncounterClip(encounterID, clipKey)
+	if Spoken.IsPartOn and not Spoken:IsPartOn("bosses") then return nil end
+	for _, boss in ipairs(Bosses:BossesOfEncounter(encounterID)) do
+		if "boss:" .. boss.map .. ":" .. boss.key == clipKey then
+			if not (Bosses:IsUnlocked() or Bosses:IsBossFound(boss.map, boss.key)) then return nil end
+			local clip = Bosses:StoryClip(boss.map, boss.key)
+			return clip and not clip.textOnly and clip or nil
+		end
+	end
+end
+
 --- Registers the bosses' stories with Spoken as a part of its own, after the settings are read.
 function Bosses:SetupStories()
 	if source or not (Spoken and Spoken.RegisterSource and Spoken.ShowsNarratorFor) then return end
@@ -37,6 +60,9 @@ function Bosses:SetupStories()
 		order = 5,
 		packs = function() return Bosses:PackNames() end,
 	})
+	if Spoken.RegisterStoryTeller then
+		Spoken:RegisterStoryTeller("boss", { source = source, Keys = EncounterKeys, Clip = EncounterClip })
+	end
 end
 
 --- Whether this character has been shown the story of the boss `key` of `map`.

@@ -1,6 +1,7 @@
 -- The highlight on a zone map: the area under the cursor lights up in its exploration overlay's
 -- shape when a click there would open its story, and nowhere else. On OpenMap's stitched map it
--- lights in whatever zone is under the cursor, over OpenMap's art. Run with `make test-player`.
+-- lights in whatever zone is under the cursor, over OpenMap's art, as a colour in the overlay's
+-- shape rather than the overlay's own art. Run with `make test-player`.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")
@@ -52,12 +53,36 @@ assert(loadfile(PLACES .. "UI/OpenMap.lua"))("Spoken_Places", Z)
 assert(loadfile(PLACES .. "UI/MapHighlight.lua"))("Spoken_Places", Z)
 Z:SetupMapHighlight()
 local state = Z.mapHighlight
+-- A tile shows a file or a colour, whichever was set last, through the masks added to it; a mask
+-- keeps how its file wraps at the edges.
+local CreateTexture, CreateMaskTexture = state.frame.CreateTexture, state.frame.CreateMaskTexture
+function state.frame:CreateTexture(...)
+    local tile = CreateTexture(self, ...)
+    tile.masks = {}
+    function tile:SetColorTexture(r, g, b, a) self.color, self.texture = { r, g, b, a }, nil end
+    function tile:SetTexture(file) self.texture, self.color = file, nil end
+    function tile:AddMaskTexture(mask) self.masks[mask] = true end
+    function tile:RemoveMaskTexture(mask) self.masks[mask] = nil end
+    return tile
+end
+function state.frame:CreateMaskTexture(...)
+    local mask = CreateMaskTexture(self, ...)
+    function mask:SetTexture(file, wrapX, wrapY) self.texture, self.wrap = file, { wrapX, wrapY } end
+    return mask
+end
 local tick = state.driver:GetScript("OnUpdate")
 local function Run() tick(state.driver, 0.016) end
 local function Shown()
     local list = {}
     for _, tile in ipairs(state.tiles) do if tile:IsShown() then list[#list + 1] = tile end end
     return list
+end
+-- The file a tile is cut to the shape of, on OpenMap's map.
+local function Shape(tile) return tile.masks[tile.mask] and tile.mask:GetTexture() or nil end
+-- Whether the glow fades out at the overlay's rectangle, which the overlay's own shape does not.
+local function Feathered(tile)
+    local edge = state.edge
+    return edge ~= nil and tile.masks[edge] == true and edge:GetTexture():match("HighlightEdge$") ~= nil
 end
 
 Expect("built over the map's canvas", state.frame:GetParent(), canvas)
@@ -68,6 +93,7 @@ Run()
 local lit = Shown()
 Expect("over an area with a story it lights up at once", state.frame:IsShown() and state.frame:GetAlpha(), 0.35)
 Expect("...in the overlay of the area a click there opens", #lit == 1 and lit[1]:GetTexture(), 21)
+Expect("...the overlay's own art, unmasked", Shape(lit[1]), nil)
 Expect("...at the overlay's place on the map", select(4, lit[1]:GetPoint(1)) == 200 and select(5, lit[1]:GetPoint(1)) == -100, true)
 Expect("...its size the overlay's", lit[1]:GetWidth() == 100 and lit[1]:GetHeight() == 80, true)
 local u = lit[1].texCoord
@@ -155,7 +181,17 @@ WorldMapFrame.mapID = 1414
 Run()
 lit = Shown()
 Expect("stitched, the area of the zone under the cursor lights on the continent's map",
-    state.frame:IsShown() and #lit == 1 and lit[1]:GetTexture(), 21)
+    state.frame:IsShown() and #lit == 1 and Shape(lit[1]), 21)
+Expect("...in a colour cut to the overlay's shape, not Blizzard's art over OpenMap's",
+    lit[1]:GetTexture() == nil and lit[1].color ~= nil, true)
+Expect("...its mask not faded to black at the edges, which drew a line along each seam",
+    lit[1].mask.wrap[1] == "CLAMP" and lit[1].mask.wrap[2] == "CLAMP", true)
+Expect("...faded out at the overlay's rectangle, whose art does not fade there on Forever", Feathered(lit[1]), true)
+Expect("...the fade laid over the overlay's whole rectangle",
+    select(4, state.edge:GetPoint(1)) == 200 and select(5, state.edge:GetPoint(1)) == -100
+    and state.edge:GetWidth() == 100 and state.edge:GetHeight() == 80, true)
+u = lit[1].mask.texCoord
+Expect("...cut from the part of its tile the overlay uses", u[2] == 100 / 128 and u[4] == 80 / 128, true)
 Expect("...over OpenMap's art, which covers the explored areas", state.frame.level, 2084)
 Expect("...drawn at the zone's scale on the continent's canvas", math.abs(state.frame:GetScale() - 0.2) < 1e-9, true)
 local _, _, _, ax, ay = state.frame:GetPoint(1)
@@ -181,6 +217,14 @@ zoom = 6
 WorldMapFrame.mapID = 1411
 Run()
 Expect("on the zone's own map, laid over the whole canvas again", state.frame:GetScale(), 1)
+
+-- OpenMap turned off with the same area under the cursor: the tiles go back to the overlay's art.
+OpenMapAPI.IsStitched = function() return false end
+Point(120, 60)
+Run()
+lit = Shown()
+Expect("off OpenMap's map, the same tiles show the overlay's art again, unmasked",
+    #lit == 2 and lit[1]:GetTexture() == 11 and Shape(lit[1]) == nil and not Feathered(lit[1]), true)
 OpenMapAPI = nil
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

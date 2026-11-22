@@ -38,6 +38,17 @@ Expect("...holding the newer capture", _G.SpokenContributionsDB.Lines[1].envelop
 Expect("an empty key is refused", Gather:Add("", "x"), false)
 Expect("an empty envelope is refused", Gather:Add("k", ""), false)
 
+Expect("a sighting is kept beside the lines", Gather:See("creature:1", { 1 }, "!SPOKEN1 seen\n"), true)
+Expect("...not among them", Gather:Count(), 1)
+Gather:See("creature:1", { 1, 2 }, "!SPOKEN1 seen\nzones=1,2\n")
+Expect("...once per NPC, holding the newer one", Gather:SeenCount(), 1)
+local kept, zones = Gather:GetSeen("creature:1")
+Expect("...read back by its NPC", kept, "!SPOKEN1 seen\nzones=1,2\n")
+Expect("...with the zones it names", table.concat(zones, ","), "1,2")
+Gather:SetEnabled(false)
+Expect("...and opting out keeps none", Gather:See("creature:2", { 1 }, "!SPOKEN1 seen\n"), false)
+Gather:SetEnabled(true)
+
 for i = 1, Gather.CAP + 5 do
     Gather:Add("cap:" .. i, "e" .. i)
 end
@@ -47,6 +58,23 @@ Expect("...dropping the oldest first", lines[1].key, "cap:6")
 Expect("...and keeping the newest", lines[#lines].key, "cap:" .. (Gather.CAP + 5))
 Gather:Clear()
 Expect("Clear forgets everything", Gather:Count(), 0)
+Expect("...the sightings too", Gather:SeenCount(), 0)
+
+-- The same envelope and mark as manager/tests/share.test.ts's, so the two sides cannot drift apart.
+local cafe = "!SPOKEN1 quests\ntext<<\nCafé.\n>>\nsum=42\n"
+Expect("a sent line is marked by its sum and its length in bytes", Gather:SentMark(cafe), "42:40")
+Expect("...and a string with no sum is not marked", Gather:SentMark("!SPOKEN1 quests\n"), nil)
+Gather:Add("sent", cafe)
+Gather:Add("kept", "!SPOKEN1 quests\nsum=7\n")
+Gather:Add("bare", "no sum")
+Gather:See("creature:9", { 1 }, "!SPOKEN1 seen\nsum=42\n")
+Expect("DropSent does nothing without Sent.lua", Gather:DropSent(), 0)
+_G.SpokenContributionsSent = { ["42:40"] = true, ["7:99"] = true }
+Expect("...and drops the lines the Manager sent", Gather:DropSent(), 1)
+Expect("...and keeps the rest, in order", _G.SpokenContributionsDB.Lines[1].key .. "," .. _G.SpokenContributionsDB.Lines[2].key, "kept,bare")
+Expect("...and the sightings", Gather:SeenCount(), 1)
+_G.SpokenContributionsSent = nil
+Gather:Clear()
 Gather:SetEnabled(false)
 
 ------------------------------------------------------------------------------- quests
@@ -120,8 +148,8 @@ do
 end
 stub.FireEvent("QUEST_DETAIL")
 Expect("a voiced line in other words is gathered", Gather:Count(), 4)
-Expect("...with the reader's name as its token",
-    ((_G.SpokenContributionsDB.Lines[4] or {}).envelope or ""):find("Kill seven of them, $N.", 1, true) ~= nil, true)
+Expect("...as shown, with who read it beside it, for the site to put the token back",
+    ((_G.SpokenContributionsDB.Lines[4] or {}).envelope or ""):find("\nreader=Tester\n.*Kill seven of them, Tester%.") ~= nil, true)
 Expect("...and offers no Contribute button, since it plays", VoiceOver.ContributeButton.button:IsShown(), false)
 world.questText = "Kill six of them.\nThen come back."
 world.questID = 9123

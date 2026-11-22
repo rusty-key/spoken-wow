@@ -61,3 +61,15 @@ test("a dry run deletes nothing", async () => {
   assert.equal(deleted.length, 4);
   assert.equal(store.objects.size, before);
 });
+
+test("keeps a live rev that only index-v2.json lists, as a team's pack is", async () => {
+  const { store, revs } = await history();
+  const pin = (packs) => sealJson({ generatedAt: "", packs }, keys.privateKey).text;
+  // index.json lists no team pack; index-v2.json lists P at its oldest rev.
+  await store.put("index.json", pin({}));
+  await store.put("index-v2.json", pin({ P: { rev: revs[0] } }));
+  for (const o of store.objects.values()) o.lastModified = new Date(0);
+  const { deleted } = await gc({ store, signingKey: keys.privateKey, now: new Date("2027-01-01T00:00:00Z"), log: quiet });
+  assert.ok(!deleted.includes(`packs/P/${revs[0]}.json`));
+  assert.ok(!deleted.includes(`blobs/${sha256Text("blob-0")}`));
+});

@@ -2,7 +2,7 @@
 --
 -- Area names as a ruRU client reports them, mapped to the English keys the
 -- corpus is stored under. Built by joining AreaTable's localized and English
--- strings on their shared ID, from client builds 1.60.1.70338 (Forever), then 1.15.9.69109 (Era).
+-- strings on their shared ID, from client builds 1.60.1.70959 (Forever), then 1.15.9.69109 (Era).
 --
 -- Keyed by the raw client name: SpokenPlaces:NormaliseAreaKey reduces a name to
 -- [a-z0-9 ], which erases a Cyrillic or Chinese name entirely.
@@ -20,6 +20,7 @@ local aliases = {
 	["Агол'вата"] = "agolwatha",
 	["Алая Базилика"] = "scarlet basilica",
 	["Аллея Героев"] = "valley of heroes",
+	["Алтарь Бурь"] = "altar of storms",
 	["Алтарь Зула"] = "altar of zul",
 	["Альдрассил"] = "aldrassil",
 	["Амет'Аран"] = "ametharan",
@@ -97,6 +98,7 @@ local aliases = {
 	["Восточные ворота"] = "eastwall gate",
 	["Восточный круг Обуздания"] = "circle of east binding",
 	["Воющая долина"] = "howling vale",
+	["Врата Ан'Киража"] = "gates of ahnqiraj",
 	["Врата Драконьей Пасти"] = "dragonmaw gates",
 	["Врата Стальгорна"] = "gates of ironforge",
 	["Вулкан Огненного Венца"] = "fire plume ridge",
@@ -134,7 +136,6 @@ local aliases = {
 	["Гряда Ярости Ветра"] = "windfury ridge",
 	["Гряда Ящеров"] = "raptor ridge",
 	["Гудящая Бездна"] = "writhing deep",
-	["Даларан"] = "dalaran",
 	["Дальняя застава"] = "far watch post",
 	["Дарроушир"] = "darrowshire",
 	["Даэ'ган"] = "daegun",
@@ -208,6 +209,7 @@ local aliases = {
 	["Ежевичный овраг"] = "bramblescar",
 	["Железнолесье"] = "irontree woods",
 	["Заброшенная башня"] = "abandoned tower",
+	["Забытая топь"] = "lost marsh",
 	["Забытые пруды"] = "forgotten pools",
 	["Забытый Город"] = "dire maul",
 	["Забытый берег"] = "forgotten coast",
@@ -232,8 +234,10 @@ local aliases = {
 	["Застава Скитающихся Духов"] = "ghost walker post",
 	["Застава Скорбных Песков"] = "sandsorrow watch",
 	["Застава Талрендис"] = "talrendis point",
+	["Застава Чести"] = "honors stand",
 	["Застывший оазис"] = "stagnant oasis",
 	["Затихший берег"] = "hushed bank",
+	["Затонувшая лощина"] = "sunken hollow",
 	["Зеленый Пояс"] = "green belt",
 	["Земли Иглогривых"] = "razormane grounds",
 	["Земли Ящеров"] = "raptor grounds",
@@ -283,6 +287,7 @@ local aliases = {
 	["Колодец Заиндевевшего Копыта"] = "winterhoof water well",
 	["Колыбель Спокойствия"] = "cradle of tranquility",
 	["Колючий Холм"] = "razor hill",
+	["Королевский переулок"] = "kings alley",
 	["Кости Граккаронда"] = "bones of grakkarond",
 	["Котлован"] = "cauldron",
 	["Красные скалы"] = "red rocks",
@@ -301,6 +306,7 @@ local aliases = {
 	["Крепость Марденхольд"] = "mardenholde keep",
 	["Крепость Менетил"] = "menethil keep",
 	["Крепость Оперенной Луны"] = "feathermoon stronghold",
+	["Крепость Северной Стражи"] = "northwatch hold",
 	["Крепость Стражей Пустоты"] = "nethergarde keep",
 	["Крепость Стромгард"] = "stromgarde keep",
 	["Крепость Темного Клыка"] = "shadowfang keep",
@@ -315,6 +321,7 @@ local aliases = {
 	["Круговзор"] = "everlook",
 	["Ксавиан"] = "xavian",
 	["Курганы Иглошкурых"] = "razorfen downs",
+	["Лабиринты Иглошкурых"] = "razorfen kraul",
 	["Лагерь Алого ордена"] = "scarlet base camp",
 	["Лагерь Апарахе"] = "camp aparaje",
 	["Лагерь Аридена"] = "aridens camp",
@@ -370,10 +377,12 @@ local aliases = {
 	["Логово Раздробленного Хребта"] = "crushridge hold",
 	["Логово браконьеров"] = "poachers den",
 	["Лордамерские выселки"] = "lordamere internment camp",
+	["Лордеронское кладбище"] = "lordaeron graveyard",
 	["Лощина Бен'этиль"] = "banethil hollow",
 	["Лощина Вул'Гол"] = "vulgol ogre mound",
 	["Лощина Суховея"] = "dustwind gulch",
 	["Лощина Тьмы"] = "shadowbreak ravine",
+	["Лунный колодец"] = "moonwell",
 	["Луноречье"] = "moonbrook",
 	["Маззорил"] = "mazthoril",
 	["Мазра'Алор"] = "mazraalor",
@@ -396,6 +405,7 @@ local aliases = {
 	["Мертвые копи"] = "deadmines",
 	["Мерцающая равнина"] = "shimmering flats",
 	["Мерцающий хребет"] = "shimmer ridge",
+	["Место Хранителя"] = "site of the guardian",
 	["Место крушения Бизиля"] = "beezils wreck",
 	["Меч Властителя"] = "masters glaive",
 	["Могила Фаола"] = "faols rest",
@@ -597,6 +607,8 @@ local aliases = {
 	["Река Строптивая"] = "southfury river",
 	["Река Тондрорил"] = "thondroril river",
 	["Река Фалфаррен"] = "falfarren river",
+	["Ринг"] = "battle ring",
+	["Ристалище"] = "maul",
 	["Рог'мар"] = "rogmar",
 	["Родник Нек'Мани"] = "nekmani wellspring",
 	["Родниковая река"] = "wellspring river",
@@ -710,8 +722,10 @@ local aliases = {
 	["Странбрад"] = "strahnbrad",
 	["Стратхольм"] = "stratholme",
 	["Струящаяся Тьма"] = "skittering dark",
+	["Сумеречная Излучина"] = "twilight shore",
 	["Сумеречная долина"] = "twilight vale",
 	["Сумеречная застава"] = "twilight post",
+	["Сумеречная излучина"] = "twilight shore",
 	["Сумеречная пещера"] = "twilights run",
 	["Сумеречный лагерь"] = "twilight base camp",
 	["Сумеречный покров"] = "twilights shroud",
@@ -811,7 +825,6 @@ local aliases = {
 	["Ферма Янтарленов"] = "amberstill ranch",
 	["Форт Зорам'гар"] = "zoramgar outpost",
 	["Форт Мерзлогривов"] = "frostmane hold",
-	["Форт Молота Ужаса"] = "dreadmaul post",
 	["Форт у Южных врат"] = "south gate outpost",
 	["Форт у северных врат"] = "north gate outpost",
 	["Хижина Кормека"] = "kormeks hut",
@@ -842,8 +855,10 @@ local aliases = {
 	["Цитадель"] = "foothold citadel",
 	["Часовня Последней Надежды"] = "lights hope chapel",
 	["Часовые Вечности"] = "heroes vigil",
+	["Чаща ловчего"] = "stalkers thicket",
 	["Черная гора"] = "blackrock mountain",
 	["Черная трясина"] = "black channel marsh",
+	["Чертоги танов"] = "hall of thanes",
 	["Чумная лощина"] = "plaguemist ravine",
 	["Чумной овраг"] = "infectis scar",
 	["Шадра'Алор"] = "shadraalor",
@@ -861,8 +876,10 @@ local aliases = {
 	["Этель-Ретор"] = "ethel rethor",
 	["Эхо Эшвуд"] = "ashwoods fall",
 	["Южная башня"] = "southpoint tower",
+	["Южнобережье"] = "southshore",
 	["Южные врата"] = "south gate pass",
 	["Южные моря"] = "south seas",
+	["Южные степи"] = "southern barrens",
 	["Южный Гибельный берег"] = "southern savage coast",
 	["Южный Золотой Путь"] = "southern gold road",
 	["Южный дозор"] = "southern watch",
@@ -873,4 +890,10 @@ local aliases = {
 	["Яшмовая шахта"] = "jasperlode mine",
 }
 
-SpokenPlaces:RegisterAliases("ruRU", aliases)
+-- Names the client gives more than one place, by the uiMapID each place's story is kept
+-- under. Read before the table above (SpokenPlaces:ResolveAreaKey).
+local byZone = {
+	["Вершина Духов"] = { [1456] = "spirit rise", [2521] = "rise of spirits" },
+}
+
+SpokenPlaces:RegisterAliases("ruRU", aliases, byZone)

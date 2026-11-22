@@ -46,6 +46,9 @@ Defaults = {
         },
         -- The voice language and its fallback, for every module at once (Spoken:GetLanguageChoice).
         -- Unset, each module keeps the choice it had before there was one setting for all.
+        -- `Voices`, the voices every module plays in, in order (Spoken:GetVoiceOrder), has no default
+        -- either: unset, the pair above decides. `Text`, the language the words are read in
+        -- (Texts.lua), is unset for Auto.
         Language = {},
         Audio = {
             -- A string, because that is what PlaySoundFile takes.
@@ -123,6 +126,7 @@ Defaults = {
     },
     char = {
         IsPaused = false,
+        IsMuted = false,
     },
 }
 
@@ -222,9 +226,12 @@ function Addon:InitDB()
     end
     MoveKeys(self.db.global.ModulesLegacy, RENAMED_MODULES)
     -- Another profile chosen, copied over this one or reset, from Spoken's page or anywhere
-    -- else: its settings apply now rather than at the next reload.
+    -- else: its settings apply now rather than at the next reload. A profile last played before
+    -- the list of voices gets one now, as at login, so it plays in the order its page shows.
     if self.db.RegisterCallback then
         local function Apply()
+            Addon:BuildVoiceList()
+            Addon:ForgetVoiceOrder()
             Addon:RebindModules()
             Addon:ApplyProfile()
         end
@@ -314,8 +321,9 @@ function Addon:Profile(section)
 end
 
 --- Draws a clip's text in its `present.font`, for a script the game's font has no glyphs for
---- (Czech on a Western client), and any other clip's in the font string's own face. The size
---- and flags stay the player's.
+--- (Czech on a Western client), and any other clip's in the font string's own face. The size and
+--- flags stay the player's. Not the font a pack declares for its language: the name and title
+--- this styles are the client's own text, which that font may not draw (Russian in a Hebrew face).
 function Addon:ClipFont(fontString, clip)
     local face, size, flags = fontString:GetFont()
     if not face then return end
@@ -472,8 +480,9 @@ end
 --- What Spoken itself says for a report: its version, the queue, the window and the modules
 --- registered. Each module's own follows it in Options:ShowDiagnostics.
 function Addon:PrintDiagnostics()
-    print(format("Spoken %s, API %d, %d queued, %s", AddonVersion, Spoken.API_VERSION,
-        SoundQueue:GetQueueSize(), SoundQueue:IsPaused() and "paused" or "playing"))
+    print(format("Spoken %s, API %d, %d queued, %s%s", AddonVersion, Spoken.API_VERSION,
+        SoundQueue:GetQueueSize(), SoundQueue:IsPaused() and "paused" or "playing",
+        SoundQueue:IsMuted() and ", muted" or ""))
     print("  " .. (Developer:Call("Describe") or "debug log: no Spoken Developer module"))
     for key, source in Sources:Iterate() do
         print(format("  source %s (%s)", key, source.addon or "?"))
@@ -518,7 +527,9 @@ local function RegisterSlashCommand()
         local lines = {
             { "/sp replay", L.BIND_PLAYPAUSE },
             { "/sp skip", L.BIND_SKIP },
+            { "/sp previous", L.BIND_PREVIOUS },
             { "/sp stopall", L.BIND_STOP },
+            { "/sp mute on | off", L.BIND_MUTE },
             { "/sp style subtitles | small | large | dialogueui | voice", L.OPT_PLAYER_STYLE },
             { "/sp narrator on | off", L.OPT_SHOW_NARRATOR },
             { "/sp rows 1 | 2", L.TRANSCRIPT_LINES },
@@ -543,6 +554,11 @@ local function RegisterSlashCommand()
             SoundQueue:RemoveAllSoundsFromQueue()
         elseif command == "skip" then
             SoundQueue:Skip()
+        elseif command == "previous" or command == "prev" then
+            SoundQueue:Previous()
+        elseif verb == "mute" and (rest == "" or rest == "on" or rest == "off") then
+            if rest == "" then SoundQueue:ToggleMuted() else SoundQueue:SetMuted(rest == "on") end
+            print("Spoken: " .. L.BIND_MUTE .. " " .. (SoundQueue:IsMuted() and L.ON or L.OFF))
         elseif command == "compendium" then
             Options:ToggleCompendium()
         elseif (verb == "narrator" or verb == "words" or verb == "transcript") and (rest == "" or rest == "on" or rest == "off") then
@@ -622,7 +638,7 @@ end
 -- and the "blocked from an action" dialog it raises hangs the client (#165). There the chat line
 -- says it alone.
 function Addon:IsGamepadUI()
-    return GetCVar("InputDeviceInterfaceStyle") == "1"
+    return SpokenLayout.IsGamepadUI()
 end
 
 -- Folders an older release installed, which nothing ships any more: Spoken's own before it was
@@ -767,6 +783,27 @@ function Addon:TakeVoiceLanguageFromQuests()
     end
 end
 
+--- The voice language and the fallback became one list of voices (Spoken:GetVoiceOrder). Once, on a
+--- profile with either set and no list yet, the list is built from them: the voice, then the
+--- fallback, English where none was chosen, as every module read it, and nothing for Stay Silent. A
+--- profile with neither keeps no list, so each module keeps its own choice.
+function Addon:BuildVoiceList()
+    local language = self.db and self.db.profile.Language
+    if not language or language.Voices ~= nil then return end
+    if language.Voice == nil and language.Fallback == nil then return end
+    language.Voices = self:VoiceListFrom(language.Voice, language.Fallback)
+    self:ForgetVoiceOrder()
+end
+
+--- The list of voices the old voice language and fallback make, as BuildVoiceList stores it.
+function Addon:VoiceListFrom(voice, fallback)
+    if voice ~= "auto" and not Languages:IsCode(voice) then voice = "auto" end
+    if fallback == nil then fallback = "enUS" end
+    local list = { voice }
+    if Languages:IsCode(fallback) and fallback ~= voice then table.insert(list, fallback) end
+    return list
+end
+
 -- AceDB needs the saved variable to exist, which is only true once the client has loaded
 -- this addon's file.
 local loader = CreateFrame("Frame")
@@ -776,12 +813,17 @@ loader:RegisterEvent("PLAYER_ENTERING_WORLD")
 loader:SetScript("OnEvent", function(_, ev, name)
     if ev == "ADDON_LOADED" and name == AddonFolder then
         Addon:InitDB()
+        -- Before the modules load, which read the words and strings as their own files run.
+        Texts:Load()
+        Interface:Load()
     elseif ev == "PLAYER_ENTERING_WORLD" then
         Addon:StopWhereNotRead()
     elseif ev == "PLAYER_LOGIN" then
         Addon:TakeVoiceLanguageFromQuests()
+        Addon:BuildVoiceList()
         Addon:Enable()
         Addon:RetireOldFolders()
+        Gather:DropSent()
         WatchPausedQueue()
         -- A stop belongs to the line it stopped, which a reload drops, so a session never starts stopped.
         SoundQueue:SetPaused(false)

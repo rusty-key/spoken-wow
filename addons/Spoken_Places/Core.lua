@@ -53,12 +53,16 @@ local defaults = {
 	autoplay = true,
 	autoplaySubzones = true,
 	-- On, because the game announces a discovery once per character: off, a character who
-	-- explored before installing hears nothing there, and Forget Places Heard reads nothing again.
+	-- explored before installing hears nothing there, and Forget Visited Places reads nothing again.
 	-- A new character hears its zone right after its valley at login, and a place it has heard,
 	-- from the Play button too, is not read again when the game announces its discovery.
 	autoplayExplored = true,
 	-- Off, so a story that started on its own plays through a fight. On, it stops and replays after.
 	autoplayStopInCombat = false,
+	-- Off, so players used to hearing a place once are not read it again unasked.
+	autoplayEveryVisit = false,
+	-- Seconds, one of EVERY_VISIT_GAPS.
+	autoplayEveryVisitGap = 24 * 3600,
 	-- Off, so a player cannot end up reading an unfinished translation without
 	-- having asked for one (Spoken > Developer). See Language.lua.
 	languagePreview = false,
@@ -861,7 +865,7 @@ local function CmdStatus()
 	if pack then
 		SpokenPlaces:Print("voice pack: %s -- %s", pack.addon, SpokenPlaces:GetAudioPackLabel(pack))
 	else
-		SpokenPlaces:Print("|cffffcc00no voice pack installed|r -- install Spoken Audio: Places and Bosses to hear the lore")
+		SpokenPlaces:Print("|cffffcc00no voice pack installed|r -- install Spoken Audio: Places to hear the lore")
 	end
 
 	if SpokenPlaces:Get("debug") then
@@ -923,7 +927,7 @@ local function CmdAudioPack(arg)
 		-- Named by CurseForge project, not by folder: a player with the pre-rename pack has a
 		-- ZoneLoreAudio folder, and saying that name sends them looking for a project that no
 		-- longer exists.
-		SpokenPlaces:Print("  install Spoken Audio: Places and Bosses alongside Spoken Places")
+		SpokenPlaces:Print("  install Spoken Audio: Places alongside Spoken Places")
 		return
 	end
 
@@ -1020,17 +1024,26 @@ local function CmdLanguage(arg)
 	if code and code ~= "" then
 		local locale = SpokenPlaces:GetLocaleInfo(code)
 		-- Matched case-insensitively against the codes, since "dede" is the same
-		-- request as "deDE" and nobody remembers Blizzard's capitalisation.
+		-- request as "deDE" and nobody remembers Blizzard's capitalisation. The built-in
+		-- languages, then those of the installed packs.
 		if not locale then
-			for i = 1, #SpokenPlaces.LOCALES do
-				if SpokenPlaces.LOCALES[i].code:lower() == code:lower() then
-					locale = SpokenPlaces.LOCALES[i]
+			for _, candidate in ipairs(Spoken:KnownLanguages()) do
+				if candidate.code:lower() == code:lower() then
+					locale = candidate
+					break
 				end
 			end
 		end
 
 		if not locale then
 			SpokenPlaces:Print('|cffffcc00"%s" is not a WoW language code|r -- /spp lang to list', code)
+			return
+		end
+		-- An installed pack's language whose packs carry only voices: no preview can show lore
+		-- that does not exist, so say so rather than suggest one.
+		if not SpokenPlaces:HasLore(locale.code) then
+			SpokenPlaces:Print("|cffffcc00no lore in %s|r -- its installed packs carry only voices",
+				SpokenPlaces:GetLanguageName(locale.code))
 			return
 		end
 

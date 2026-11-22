@@ -145,16 +145,33 @@ local function Widget(kind, name)
     function w:UnregisterAllEvents() self.events = {} end
     function w:SetScript(script, fn) self.scripts[script] = fn end
     function w:GetScript(script) return self.scripts[script] end
+    -- Only OnClick is modelled per type; every other script reads as supported.
+    function w:HasScript(script)
+        if script == "OnClick" then
+            local frameType = self.frameType or self.kind
+            return frameType == "Button" or frameType == "CheckButton"
+        end
+        return true
+    end
     function w:LockHighlight() self.highlightLocked = true end
     function w:UnlockHighlight() self.highlightLocked = false end
     -- A secure button's attributes (Spoken Developer's /reload macro), kept to be read back.
     function w:SetAttribute(key, value) self.attributes = self.attributes or {}; self.attributes[key] = value end
     function w:GetAttribute(key) return self.attributes and self.attributes[key] end
     function w:HookScript(script, fn)
+        -- The client raises here too: "script type not supported by this object".
+        if not self:HasScript(script) then
+            error(("%s:HookScript(): Cannot assign script handler for '%s'"):format(self:GetObjectType(), script), 2)
+        end
         self.hooks[script] = self.hooks[script] or {}
         table.insert(self.hooks[script], fn)
     end
-    function w:IsVisible() if self.name then return world.panels[self.name] and true or false end return self.shown end
+    function w:IsVisible()
+        if self.name == "UIParent" then return true end
+        -- Only a frame's global name counts: an addon may keep its own `name` field on a frame.
+        if type(self.name) == "string" then return world.panels[self.name] and true or false end
+        return self.shown
+    end
     function w:IsShown() return self:IsVisible() end
     function w:Show()
         self.shown = true
@@ -225,7 +242,23 @@ local function Widget(kind, name)
         return (#text + boxes) * 7
     end
     function w:SetWordWrap(on) self.wordWrap = on and true or false end
-    function w:SetFontObject(font) self.font = type(font) == "table" and (font.name or font) or font end
+    -- A font file the client cannot load is refused, as the real one does by returning false; a
+    -- suite lists such paths in M.refusedFonts. Every other file loads.
+    function w:SetFont(path, size, flags)
+        if M.refusedFonts and M.refusedFonts[path] then return false end
+        self.fontFile, self.fontSize, self.fontFlags = path, size, flags
+        return true
+    end
+    function w:GetFont() return self.fontFile, self.fontSize, self.fontFlags end
+    -- As on a client, a font object hands its face to the text, which GetFont then reports.
+    function w:SetFontObject(font)
+        self.font = type(font) == "table" and (font.name or font) or font
+        self.fontObject = font
+        if type(font) == "table" and font.fontFile then
+            self.fontFile, self.fontSize, self.fontFlags = font.fontFile, font.fontSize, font.fontFlags
+        end
+    end
+    function w:GetFontObject() return self.fontObject end
     function w:GetTop() return 100 end
     function w:GetBottom() return 0 end
     function w:GetLeft() return 0 end
@@ -286,6 +319,11 @@ local function Widget(kind, name)
     function w:Enable() self.enabled = true end
     function w:Disable() self.enabled = false end
     function w:IsEnabled() return self.enabled ~= false end
+    function w:SetTextColor(r, g, b, a) self.textColor = { r, g, b, a } end
+    function w:GetTextColor()
+        local color = self.textColor or { 1, 1, 1, 1 }
+        return color[1], color[2], color[3], color[4] or 1
+    end
     function w:SetChecked(v) self.checked = v end
     function w:GetChecked() return self.checked end
     function w:GetFont() return "Fonts\\FRIZQT__.TTF", 12 end
@@ -337,7 +375,7 @@ M.Widget = Widget
 -- them: each the whole of a file named after it, so a test reads which piece of which was drawn
 -- from a texture's file and tex coords.
 local LIST_ATLASES = {
-    ["Objective-Header-CampaignHorde"] = { 274, 42 }, ["Objective-Header-CampaignAlliance"] = { 274, 42 },
+    ["Professions-background-summarylist"] = { 512, 512 },
     ["glues-characterselect-card-singles-c60"] = { 321, 100 },
     ["glues-characterselect-card-singles-hover-c60"] = { 321, 100 },
     ["glues-characterselect-card-selected-c60"] = { 342, 122 },
@@ -431,7 +469,7 @@ function _G.UnitGUID() return world.npcGUID end
 function _G.UnitExists() return true end
 function _G.UnitIsPlayer() return false end
 function _G.UnitCanAttack() return not world.npcFriendly end
-function _G.UnitSex() return world.unitSex end
+function _G.UnitSex(unit) return unit == "player" and world.playerSex or world.unitSex end
 function _G.UnitIsDead() return false end
 function _G.UnitIsDeadOrGhost() return world.playerDead end
 function _G.UnitIsUnit(a, b) return a == b end
@@ -463,11 +501,13 @@ local setUnitCount = 0
 local setCreatureCount = 0
 function M.SetUnitCount() return setUnitCount end
 function M.SetCreatureCount() return setCreatureCount end
-function _G.CreateFrame(kind, name, parent)
+function _G.CreateFrame(kind, name, parent, template)
     frameCount = frameCount + 1
     local f = name and Frame(name) or MakeFrame(nil)
     f.frameType = kind
     f.parent = parent
+    -- The game's inset has its background as a texture of its own.
+    if template == "InsetFrameTemplate" then f.Bg = f:CreateTexture(nil, "BACKGROUND") end
     if name then _G[name] = f end
     -- Recorded so a test can ask what a panel built, the way a player reads it: a row is
     -- a control with a label, and a panel that lost one is a setting nobody can reach.
@@ -521,6 +561,51 @@ function _G.CreateFrame(kind, name, parent)
             self.scripts[script] = fn
         end
     end
+    -- A ModelScene keeps what its camera and light were last told, and CreateActor gives an actor that
+    -- keeps what it was told, so a test reads them back the way the client would draw them. `nearCalls`
+    -- counts SetCameraNearClip: a view that is not re-ranked must not touch it. An actor with a model set
+    -- answers IsLoaded with M.actorLoaded (a boolean, or a function of the actor), and once loaded gives
+    -- GetActiveBoundingBox as M.actorBox (six numbers in a table, or a function of the actor returning one;
+    -- nil for a model with no box); before that it gives nothing, as the client does.
+    if kind == "ModelScene" then
+        f.camera = { nearCalls = 0 }
+        f.light = {}
+        f.actors = {}
+        function f:SetCameraPosition(x, y, z) self.camera.position = { x, y, z } end
+        function f:SetCameraOrientationByYawPitchRoll(yaw, pitch, roll) self.camera.yaw, self.camera.pitch, self.camera.roll = yaw, pitch, roll end
+        function f:SetCameraFieldOfView(v) self.camera.fov = v end
+        function f:SetCameraNearClip(v) self.camera.near = v; self.camera.nearCalls = self.camera.nearCalls + 1 end
+        function f:SetCameraFarClip(v) self.camera.far = v end
+        function f:SetLightVisible(v) self.light.visible = v end
+        function f:SetLightType(v) self.light.type = v end
+        function f:SetLightDirection(x, y, z) self.light.direction = { x, y, z } end
+        function f:SetLightDiffuseColor(r, g, b) self.light.diffuse = { r, g, b } end
+        function f:SetLightAmbientColor(r, g, b) self.light.ambient = { r, g, b } end
+        function f:CreateActor()
+            local actor = Widget("Actor")
+            actor.shown = false
+            function actor:SetUseCenterForOrigin(x, y, z) self.useCenter = { x, y, z } end
+            function actor:SetPosition(x, y, z) self.position = { x, y, z } end
+            function actor:SetYaw(v) self.yaw = v end
+            function actor:SetScale(v) self.scale = v end
+            function actor:SetModelByCreatureDisplayID(id) self.displayID = id; self.modelSets = (self.modelSets or 0) + 1 end
+            function actor:SetAnimation(id) self.animation = id end
+            function actor:ClearModel() self.displayID = nil end
+            function actor:IsLoaded()
+                local loaded = M.actorLoaded
+                if type(loaded) == "function" then loaded = loaded(self) end
+                return self.displayID ~= nil and loaded and true or false
+            end
+            function actor:GetActiveBoundingBox()
+                if not self:IsLoaded() then return nil end
+                local box = M.actorBox
+                if type(box) == "function" then box = box(self) end
+                if box then return unpack(box, 1, 6) end
+            end
+            table.insert(self.actors, actor)
+            return actor
+        end
+    end
     -- Kept apart from the PlayerModel above on purpose: that one is the addon's model probe,
     -- tracked as M.playerModel, and the appearance roller must never replace it.
     if kind == "DressUpModel" then
@@ -560,6 +645,8 @@ function _G.SetPortraitTextureFromCreatureDisplayID(texture, display) texture.di
 -- real, since it has not been confirmed against a live client; a test sets this true to
 -- exercise the addon's fallback for that possibility instead of the fast path.
 M.modelCallbackDisabled = false
+M.actorLoaded = true
+M.actorBox = { -0.5, -0.5, 0, 0.5, 0.5, 2 }
 
 --- Fire the model probe's OnModelLoaded script, the way a live client would once the file has
 --- actually finished loading. Probed against a live client: SetUnit followed immediately by
@@ -600,9 +687,15 @@ _G.GRAY_FONT_COLOR = { r = 0.5, g = 0.5, b = 0.5 }
 _G.UIDropDownMenu_Initialize = nil
 -- The Settings API as 11509 exposes it.
 M.settingsCategories = {}
+-- A category folds its subcategories until something expands it (Blizzard_Category.lua).
+local function SettingsCategory(c)
+    function c:SetExpanded(expanded) self.expanded = expanded end
+    function c:IsExpanded() return self.expanded end
+    return c
+end
 M.modernSettings = {
-    RegisterCanvasLayoutCategory = function(frame, name) local c = { frame = frame, name = name, GetID = function() return name end }; table.insert(M.settingsCategories, c); return c end,
-    RegisterCanvasLayoutSubcategory = function(parent, frame, name) local c = { frame = frame, name = name, parent = parent }; table.insert(M.settingsCategories, c); return c end,
+    RegisterCanvasLayoutCategory = function(frame, name) local c = SettingsCategory({ frame = frame, name = name, GetID = function() return name end }); table.insert(M.settingsCategories, c); return c end,
+    RegisterCanvasLayoutSubcategory = function(parent, frame, name) local c = SettingsCategory({ frame = frame, name = name, parent = parent }); table.insert(M.settingsCategories, c); return c end,
     RegisterAddOnCategory = function() end,
     OpenToCategory = function() return true end,
 }
@@ -872,6 +965,94 @@ _G.DropDownList1 = Frame("DropDownList1")
 _G.DropDownList1:Hide()
 local menuAPI = {}
 
+M.openNativeMenu = nil
+M.nativeMenuEntries = {}
+M.nativeMenuAnchor = nil
+local nativeMenuManager = { open = false }
+local nativeMenuAPI = {}
+
+local function NativeDescription(kind, text, callback)
+    local description = {kind = kind, text = text, callback = callback, children = {}, releaseCallbacks = {}}
+    function description:CreateButton(childText, childCallback)
+        local child = NativeDescription("button", childText, childCallback)
+        table.insert(self.children, child)
+        return child
+    end
+    function description:CreateTitle(childText)
+        table.insert(self.children, NativeDescription("title", childText))
+    end
+    function description:CreateDivider()
+        table.insert(self.children, NativeDescription("divider"))
+    end
+    function description:AddMenuReleasedCallback(released)
+        table.insert(self.releaseCallbacks, released)
+    end
+    return description
+end
+
+function nativeMenuManager:CloseMenus()
+    self.open = false
+    if M.openNativeMenu then
+        for _, released in ipairs(M.openNativeMenu.releaseCallbacks or {}) do released() end
+    end
+    M.openNativeMenu = nil
+    M.nativeMenuEntries = {}
+    M.nativeMenuAnchor = nil
+    M.nativeMenuOwner = nil
+end
+function nativeMenuManager:IsAnyMenuOpen()
+    return self.open
+end
+function nativeMenuManager:OpenMenu(owner, root, anchor)
+    self.open = true
+    M.openNativeMenu = root
+    M.nativeMenuEntries = root.children
+    M.nativeMenuAnchor = anchor
+    M.nativeMenuOwner = owner
+end
+
+function M.OpenOtherNativeMenu()
+    nativeMenuManager:CloseMenus()
+    nativeMenuManager:OpenMenu(nil, nativeMenuAPI.CreateRootMenuDescription())
+end
+
+function nativeMenuAPI.CreateRootMenuDescription()
+    return NativeDescription("root")
+end
+function nativeMenuAPI.CreateContextMenu(owner, generator)
+    local root = nativeMenuAPI.CreateRootMenuDescription()
+    generator(owner, root)
+    nativeMenuManager:OpenMenu(owner, root)
+end
+function nativeMenuAPI.PopulateDescription(generator, owner, root)
+    generator(owner, root)
+end
+function nativeMenuAPI.GetManager()
+    return nativeMenuManager
+end
+function nativeMenuAPI.CreateAnchor(...)
+    return {...}
+end
+function nativeMenuAPI.GetDefaultContextMenuMixin()
+    return "default"
+end
+function M.SetNativeMenuAPI(present)
+    if present then
+        _G.MenuUtil = nativeMenuAPI
+        _G.Menu = nativeMenuAPI
+        _G.MenuVariants = nativeMenuAPI
+        _G.MenuResponse = {CloseAll = 4}
+        _G.CreateAnchor = nativeMenuAPI.CreateAnchor
+    else
+        _G.MenuUtil = nil
+        _G.Menu = nil
+        _G.MenuVariants = nil
+        _G.MenuResponse = nil
+        _G.CreateAnchor = nil
+        nativeMenuManager:CloseMenus()
+    end
+end
+
 --- Present the context-menu API, or take it away as a client without it does.
 function M.SetMenuAPI(present)
     for name, fn in pairs(menuAPI) do
@@ -963,6 +1144,7 @@ end
 --- Forget any open context menu.
 function M.ResetDropDowns()
     M.openDropDown, M.dropDownEntries = nil, {}
+    nativeMenuManager:CloseMenus()
 end
 
 function M.ResetUIActions()
@@ -1215,7 +1397,7 @@ end
 --- Loads exactly what its addon.xml and then Contribute.xml list, in order (a Blizzard-client
 --- .toc's order), then initialises the saved variables the way ADDON_LOADED would.
 function M.LoadSpoken(addonDirectory)
-    for _, file in ipairs({ "Environment", "Version", "Core", "SoundUtils", "Callbacks", "SoundQueue", "Sources", "Developer", "OtherSounds",
+    for _, file in ipairs({ "Environment", "Version", "Core", "Languages", "Texts", "Interface", "SoundUtils", "Callbacks", "SoundQueue", "Sources", "Developer", "OtherSounds",
         "BackgroundSound", "Strings", "Locale/deDE", "Locale/esES", "Locale/frFR", "Locale/ptBR", "Locale/ruRU", "Locale/koKR", "Locale/zhCN",
         "Locale/zhTW", "UI/Layout", "UI/DialogueUITheme", "UI/Transcript", "UI/Subtitle", "UI/WordMarks", "UI/Search", "UI/Portrait", "UI/StaticPortrait", "UI/Actions", "UI/Snap", "UI/Face", "UI/PlayerFrame",
         "UI/MinimalPlayer", "UI/Ellesmere", "UI/DialogueUIPlayer", "UI/DialogueUITransitions", "UI/MinimapButton",
@@ -1230,6 +1412,8 @@ function M.LoadSpoken(addonDirectory)
     dofile(addonDirectory .. "UI/Compendium.lua")
     local env = _G.SpokenEnv
     env.Addon:InitDB()
+    env.Texts:Load()
+    env.Interface:Load()
     -- The suites time the queue by each module's own gap; the player's pause between lines has
     -- a test of its own (queue_test).
     env.Addon.db.profile.Audio.LineGap = 0

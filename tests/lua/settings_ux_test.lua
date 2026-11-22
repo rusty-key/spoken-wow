@@ -293,7 +293,7 @@ local function CategoryTitle(cat)
     if type(loc) == "string" then return loc end
     return cat
 end
-for _, name in ipairs({ "SPOKEN_PLAYPAUSE", "SPOKEN_SKIP", "SPOKEN_STOP", "SPOKEN_COMPENDIUM" }) do
+for _, name in ipairs({ "SPOKEN_PLAYPAUSE", "SPOKEN_SKIP", "SPOKEN_PREVIOUS", "SPOKEN_STOP", "SPOKEN_COMPENDIUM", "SPOKEN_MUTE" }) do
     local element
     for tag in bindings:gmatch("<Binding%s[^>]*>") do
         if tag:find('name="' .. name .. '"', 1, true) then element = tag end
@@ -305,6 +305,7 @@ for _, name in ipairs({ "SPOKEN_PLAYPAUSE", "SPOKEN_SKIP", "SPOKEN_STOP", "SPOKE
     Expect("...named in the game's key bindings list", type(_G["BINDING_NAME_" .. name]), "string")
 end
 Expect("the keys section sets the Compendium's key too", Row(home, L.BIND_COMPENDIUM) ~= nil, true)
+Expect("the keys section sets the mute key too", Row(home, L.BIND_MUTE) ~= nil, true)
 
 ---------------------------------------------------------------- /sp in the settings' words
 do
@@ -315,7 +316,8 @@ do
     env.print = print_
     local help = table.concat(said, "\n")
     Expect("/sp help names each command by its setting", help:find("/sp style subtitles | small | large | dialogueui | voice: "
-        .. L.OPT_PLAYER_STYLE, 1, true) ~= nil and help:find("/sp stopall: " .. L.BIND_STOP, 1, true) ~= nil, true)
+        .. L.OPT_PLAYER_STYLE, 1, true) ~= nil and help:find("/sp previous: " .. L.BIND_PREVIOUS, 1, true) ~= nil
+        and help:find("/sp stopall: " .. L.BIND_STOP, 1, true) ~= nil, true)
     SlashCmdList.SPOKEN("style small")
     Expect("/sp style takes the styles' names", env.Addon:PlayerStyle(), "minimal")
     SlashCmdList.SPOKEN("player subtitle")
@@ -328,6 +330,21 @@ do
     Expect("/sp narrator is its name now", env.Addon.db.profile.Transcript.Enabled, false)
     SlashCmdList.SPOKEN("narrator on")
     env.Addon:SetPlayerStyle("minimal"); Options:UpdateRows()
+    Expect("/sp help lists mute by its key's name", help:find("/sp mute on | off: " .. L.BIND_MUTE, 1, true) ~= nil, true)
+    local Q = env.SoundQueue
+    said = {}
+    env.print = function(text) table.insert(said, text) end
+    SlashCmdList.SPOKEN("mute")
+    Expect("/sp mute toggles mute on", Q:IsMuted(), true)
+    Expect("...and says so", said[1], "Spoken: " .. L.BIND_MUTE .. " " .. L.ON)
+    SlashCmdList.SPOKEN("mute on")
+    Expect("/sp mute on keeps it on", Q:IsMuted(), true)
+    SlashCmdList.SPOKEN("mute off")
+    Expect("/sp mute off turns it off", Q:IsMuted(), false)
+    Expect("...and says so", said[3], "Spoken: " .. L.BIND_MUTE .. " " .. L.OFF)
+    SlashCmdList.SPOKEN("mute of")
+    Expect("a word mute does not know changes nothing", Q:IsMuted(), false)
+    env.print = print_
 end
 
 ---------------------------------------------------------------- collected lines
@@ -389,7 +406,7 @@ do
     local function Silent()
         for _, row in ipairs(Group(quests, L.PART_VOICE).rows) do
             local text = row.control.GetText and row.control:GetText()
-            if row.shown and type(text) == "string" and text:find("Stay Silent", 1, true) then return text end
+            if row.shown and type(text) == "string" and text:find("No voice pack speaks", 1, true) then return text end
         end
     end
     local language = env.Addon.db.profile.Language
@@ -403,7 +420,7 @@ do
     quests:Refresh()
     -- The stub draws a Han character as wide as the box a missing glyph draws, so no font of its own
     -- draws Chinese: it is named in English, as on a client whose font lacks it.
-    Expect("a voice language with no Quests pack and Stay Silent is said under the voice packs", Silent(),
+    Expect("a voice language with no Quests pack and nothing after it is said under the voice packs", Silent(),
         format(L.MODULE_NO_VOICE_FMT, "Chinese (Simplified)"))
     -- A font with the glyphs measures the text apart from the box a missing one draws.
     stub.TextWidth = function(fs)
@@ -418,8 +435,18 @@ do
     language.Fallback = "enUS"
     quests:Refresh()
     Expect("...and not while English fills in", Silent(), nil)
+    -- With a list of voices, the note stands while no voice in it has a pack for the module.
+    language.Voices = { "zhCN" }
+    quests:Refresh()
+    Expect("a list whose only voice has no Quests pack is said too", Silent() ~= nil, true)
+    language.Voices = { "zhCN", "deDE" }
+    quests:Refresh()
+    Expect("...and not while a later voice has one", Silent(), nil)
+    language.Voices = { "zhCN", "enUS" }
+    quests:Refresh()
+    Expect("...nor while English is in the list", Silent(), nil)
     _G.Spoken.VoicePack = voicePack
-    language.Voice, language.Fallback = nil, nil
+    language.Voice, language.Fallback, language.Voices = nil, nil, nil
     quests:Refresh()
 end
 
@@ -557,6 +584,88 @@ Expect("accepting resets", env.Addon.db.profile.Frame.FrameScale, 0.7)
 Expect("...but not the profile for new characters, which is every character's", env.Addon.db.global.NewCharacterProfile,
     env.Addon.db:GetCurrentProfile())
 Expect("...and reloads to finish", stub.reloads, reloads + 1)
+
+---------------------------------------------------------------- new profile under the controller UI
+-- The name is asked for in Spoken's own dialog there: a StaticPopup taints the game's gamepad
+-- popup handling, and the d-pad stopped moving on the page once it closed.
+do
+    local function Find(frame, text)
+        for _, child in ipairs(frame.children or {}) do
+            if child.text == text and child.scripts and child.scripts.OnClick then return child end
+            local found = Find(child, text)
+            if found then return found end
+        end
+    end
+    local newProfile = Options.profileLayout and Find(Options.profileLayout.parent, L.OPT_PROFILE_NEW)
+    Expect("the profiles have a New Profile button", newProfile ~= nil, true)
+    local popups = #stub.popups
+    _G.InputUtil = { IsGamepadUIEnabled = function() return true end }
+    newProfile.scripts.OnClick(newProfile)
+    Expect("under the controller UI it raises no StaticPopup", #stub.popups, popups)
+    local prompt = _G.SpokenLayoutPrompt
+    Expect("...but Spoken's own dialog", prompt and prompt:IsShown(), true)
+    local input, accept
+    for _, child in ipairs(prompt.children) do
+        if child.frameType == "EditBox" then input = child end
+        if child.text == (_G.ACCEPT or "Accept") then accept = child end
+    end
+    input:SetText("Pad")
+    accept.scripts.OnClick(accept)
+    Expect("accepting a name switches to that profile", Options:CurrentProfile(), "Pad")
+    _G.InputUtil = nil
+    newProfile.scripts.OnClick(newProfile)
+    Expect("without the controller UI it is the StaticPopup as before", stub.popups[#stub.popups].key,
+        "SPOKEN_NEW_PROFILE")
+end
+
+---------------------------------------------------------------- delete and copy ask first
+-- Each acts on picking a name, and a dropdown's arrows (or the d-pad's left and right on its
+-- row) pick one: a stray press deleted a player's profile.
+do
+    local profiles = Options.profileLayout
+    local other
+    for _, name in ipairs(Options:ProfileNames()) do
+        if name ~= Options:CurrentProfile() then other = name end
+    end
+    local function Has(name)
+        for _, each in ipairs(Options:ProfileNames()) do if each == name then return true end end
+        return false
+    end
+    local copied = 0
+    local copy = Options.CopyProfile
+    Options.CopyProfile = function(self, name) copied = copied + 1; return copy(self, name) end
+
+    local popups = #stub.popups
+    stub.PickDropdown(Row(profiles, L.OPT_COPY_PROFILE), other)
+    Expect("copying a profile asks first", #stub.popups, popups + 1)
+    Expect("...naming the profile", tostring(stub.popups[#stub.popups].args[1]):find(other, 1, true) ~= nil, true)
+    Expect("...and copies nothing until answered", copied, 0)
+    stub.popups[#stub.popups].dialog.OnCancel()
+    Expect("cancelling copies nothing", copied, 0)
+    stub.PickDropdown(Row(profiles, L.OPT_COPY_PROFILE), other)
+    stub.popups[#stub.popups].dialog.OnAccept()
+    Expect("accepting copies", copied, 1)
+    -- The settings stay usable while it asks: a copy accepted after a switch would overwrite
+    -- the profile switched to, not the one the question was asked in.
+    local asked = Options:CurrentProfile()
+    stub.PickDropdown(Row(profiles, L.OPT_COPY_PROFILE), other)
+    Options:SetProfile("Elsewhere")
+    stub.popups[#stub.popups].dialog.OnAccept()
+    Expect("accepting after a switch to another profile copies nothing", copied, 1)
+    Options:SetProfile(asked)
+    Options.CopyProfile = copy
+
+    popups = #stub.popups
+    stub.PickDropdown(Row(profiles, L.OPT_DELETE_PROFILE), other)
+    Expect("deleting a profile asks first", #stub.popups, popups + 1)
+    Expect("...naming the profile", tostring(stub.popups[#stub.popups].args[1]):find(other, 1, true) ~= nil, true)
+    Expect("...and keeps it until answered", Has(other), true)
+    stub.popups[#stub.popups].dialog.OnCancel()
+    Expect("cancelling keeps it", Has(other), true)
+    stub.PickDropdown(Row(profiles, L.OPT_DELETE_PROFILE), other)
+    stub.popups[#stub.popups].dialog.OnAccept()
+    Expect("accepting deletes it", Has(other), false)
+end
 
 ---------------------------------------------------------------- welcome
 -- Show Narrator, and each module's own row under it: every module's lines show unless turned off.
@@ -755,6 +864,17 @@ do
     Expect("...and the addons' Report and Contribute buttons, told to ask again",
         heard.REPORT_SETTINGS_CHANGED .. "," .. heard.CONTRIBUTE_SETTINGS_CHANGED, "1,1")
     for _, handle in pairs(handles) do _G.Spoken:UnregisterCallback(handle) end
+    -- A profile last played before the list of voices gets one when switched to, not at the next
+    -- login: what plays is the order the page shows.
+    local language = env.Addon.db.profile.Language
+    language.Voice, language.Fallback, language.Voices = "deDE", nil, nil
+    _G.Spoken:GetVoiceOrder()
+    registered.OnProfileChanged("OnProfileChanged", env.Addon.db, "Other")
+    Expect("...and a profile with no list of voices gets one from its voice language",
+        language.Voices and table.concat(language.Voices, ","), "deDE,enUS")
+    Expect("...which plays in the order the page shows", table.concat(_G.Spoken:GetVoiceOrder() or {}, ","),
+        table.concat(Options:VoiceList(), ","))
+    language.Voice, language.Fallback, language.Voices = nil, nil, nil
     for _, restore in ipairs(undo) do restore() end
     env.Addon.db = keep
     Options:UpdateRows()
@@ -811,7 +931,7 @@ do
         Expect("...each on a row of its own", links[1].anchor.x == links[2].anchor.x
             and links[2].anchor.y < links[1].anchor.y and links[3].anchor.y < links[2].anchor.y, true)
         local box = links[3].box
-        Expect("...with its address in a box after the icon", box and box:GetText(), "https://discord.gg/KgeQhjv9Rd")
+        Expect("...with its address in a box after the icon", box and box:GetText(), "https://spoken.quest/discord")
         Expect("...on the icon's row", box and box.anchor.x > links[3].anchor.x
             and box.anchor.y < links[3].anchor.y and box.anchor.y > links[3].anchor.y - 32, true)
         local ends = {}
@@ -820,13 +940,15 @@ do
         box.text = ""
         box.handlers.OnShow(box)
         Expect("...given again when it shows, as the game drops text set before then", box:GetText(),
-            "https://discord.gg/KgeQhjv9Rd")
+            "https://spoken.quest/discord")
         box.focused, box.highlighted = false, false
+        -- A page waits hidden until the settings window shows it, and a click needs it on screen.
+        _G.SpokenOptionsPanel:Show()
         links[3].scripts.OnMouseUp(links[3])
         Expect("a click on the icon selects the address", box.focused and box.highlighted, true)
         box:SetText("typed over")
         box.handlers.OnTextChanged(box)
-        Expect("...which cannot be typed over", box:GetText(), "https://discord.gg/KgeQhjv9Rd")
+        Expect("...which cannot be typed over", box:GetText(), "https://spoken.quest/discord")
     end
 end
 

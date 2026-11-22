@@ -116,6 +116,17 @@ plays (`pipelines/readables/tools/lib/absorb.mjs`).
 | generate | `book_line` | mp3s and `take` rows | anyone with an ElevenLabs key |
 | export | `book_line` | `addons/Spoken_Readables/Data/Books.lua` | a maintainer, before a release |
 
+### A team's own wording
+
+On `/readables`, the override control beside a page's edit control changes what the viewer's team
+says for that page, and leaves `book_line` alone. It needs `regenerate` in the language, works in
+every language, English included, and is offered only on a page with its own text in the language.
+The override belongs to that team (`text_override`, see `docs/platform/TEAMS.md`): its takes speak
+it and are judged stale against it, while the page shown on the site and in game, and every other
+team, keep the original. A page's spoken title keeps the book's original name. The row shows the
+override under the page, and says when the original has changed since, with Keep and Drop. A minted
+page's override moves with it when the page is absorbed.
+
 ## Running it locally
 
 The databases are OrbStack containers and a native Postgres. Nothing here touches the
@@ -311,12 +322,15 @@ envelope and the address to paste. The player copies it, opens it, and sees exac
 about to be sent before it goes — the same page, submitted again by the same or another
 reader, bumps a count on one row at `/contributions` rather than filing a second. The first
 click ever also offers Spoken's **Collect Missing Lines**, which keeps such pages in
-`SpokenContributions.lua` for the player to upload at `/contribute`. The page goes with the
-reader's name, class and race as `$N`, `$C` and `$R` (`Detemplate`); the name is matched as
-written and in capitals, as the client writes it into some pages ("GRIMBALOR,"). Pages kept
-before that are not rewritten at login: the file is the account's and holds no record of which
-character kept a page, so a character's name cannot be taken out of one without risking another's
-words ("The Light keeps you.").
+`SpokenContributions.lua` for the player to upload at `/contribute`. The page goes as the client
+showed it, with the reader's name, class, race and sex beside it, and the site puts the name,
+class and race back as `$N`, `$C` and `$R` and keeps no name (`apps/web/src/lib/contributions/reader.ts`,
+as for quests). The `page` checksum is taken with the tokens back (`Detemplate`), so every
+character's copy is one page; the name is matched as written and in capitals, as the client
+writes it into some pages ("GRIMBALOR,"). A kept page holds the page as shown, the reader's name
+included, in the player's own file; the name is taken out when the file is uploaded. Pages a
+version older than 3.6.0 kept carry the name in their text with no `reader` beside it, and the
+site cannot tell it from the page's own words ("The Light keeps you."), so those go as they are.
 
 ### The Readables tab
 
@@ -327,13 +341,14 @@ every book, letter, note, scroll, tablet, plaque, gravestone, exhibit and pictur
 reads, found or not, with the words of each on the right, on the spellbook's parchment, to read
 and to listen to wherever you are. Which readables exist and where they are comes from
 `Data/Places.lua` (`pipelines/readables/tools/places.mjs`); what this character has found, from
-`SpokenReadablesCharacter` (`Core.lua`); the words, from `Data/Books.lua`. On a client in another
-language, a page is in that language where a pack in it has the page's words, or where the client
-showed the page this session (`SpokenReadables:ClientPageText`), and in English otherwise. That is
+`SpokenReadablesCharacter` (`Core.lua`); the words, from `Data/Books.lua`. In a Text Language other
+than English (Spoken's setting; the client's on Auto), a page is in that language where a voice pack
+in it has the page's words, else a text pack (`docs/contributors/TEXT-PACKS.md`), or where the client
+showed the page this session (`SpokenReadables:TextLanguagePageText`), and in English otherwise. That is
 decided page by page, so one readable can be in two languages. Its title follows the same way
 (`SpokenReadables:TitleIn`). A caption is in the same words whatever the voice, English on an
 English client, and in the recording's language only where the client's has none
-(`SpokenReadables:CaptionText`). An Italian or Vietnamese voice, which no client runs in, is
+(`SpokenReadables:CaptionText`). A voice no client runs in is
 captioned in its own words first. `make readables-places` reads
 the repack's world DB (`PLACES_MYSQL_*`) and its map files (`PLACES_MAPS`, the repack's `data/maps`
 folder; it stops without them). A quest places a readable only when the quests corpus or the
@@ -430,7 +445,7 @@ fails before anything is sent. `make readables-package` builds `Spoken_Readables
 `readables/v<version>` tag, which `.github/workflows/release-addons.yaml` still builds.
 `scripts/readables/release.sh` carries the two ids in
 `target_curseforge()`, and an unknown target fails on the empty id rather than defaulting, for
-the reason `docs/quests/CLAUDE.md` gives: an id left in that function is an id something
+the reason `docs/quests/AGENTS.md` gives: an id left in that function is an id something
 eventually uploads to, and uploading a readables pack over another project is not recoverable
 from this side.
 
@@ -445,6 +460,13 @@ in as many words. `make audio-release` then publishes it as a GitHub release und
 the narration.
 
 ### A language's pack
+
+A pack names its language with `X-SpokenReadables-Language` in its `.toc` or `language` in its Lua
+pack table, any code of the form `xxYY`; with neither it is English. Spoken's registry learns it
+from the `.toc` at login and from the pack's table when the reader lists its packs.
+`X-Spoken-LanguageName`, `X-Spoken-LanguageNative` and `X-Spoken-LanguageFont` are optional and
+give Spoken's menus the language's names and a font to draw them in. A page's text is drawn in the font
+its clip sets in `present.font`.
 
 A page under `publishers/readables/`, `spoken-readables-audio-<lang>.md`, is what makes a language's
 pack exist — its `curseforge:`, `version:` and `slug:` are what `scripts/lib/packs.mjs` reads,
@@ -463,6 +485,10 @@ A page whose take kept its word times carries them as `times` in its `Data/Sound
 counted against the page's words as the captions show them: a first page's title, read ahead of
 its words, is left out. The captions follow them only where they show the recording's own
 words. A page without them is estimated, a first page starting its words after the title's share.
+
+Every language's entry, English's included, carries `text`: the take's `shownText`, else the page's
+current words, with paragraphs and tokens as the voice says them (`docs/spoken/CAPTIONS.md`). The
+index and checksums are built from the extracted words and never from it.
 
 The addon finds a page by its title and a checksum of its words, and a client in another
 locale shows neither in English. So a language's `Data/Sounds.lua` also carries that

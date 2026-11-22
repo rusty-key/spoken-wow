@@ -177,8 +177,10 @@ count="$(wc -l <"$plan" | tr -d ' ')"
 # Directories first in one pass, so placing the clips below is a flat run of cp rather
 # than thousands of mkdir processes.
 rsync -a -f'+ */' -f'- *' "$STORE/" "$staging/"
-# The takes' word times, written beside the clips by scripts/audio/sounds.mjs.
-[ ! -f "$STORE/word-times.json" ] || cp "$STORE/word-times.json" "$staging/"
+# The tables written beside the clips by scripts/audio/sounds.mjs.
+for table in word-times take-text line-text quest-titles; do
+  [ ! -f "$STORE/$table.json" ] || cp "$STORE/$table.json" "$staging/"
+done
 
 if [ "$ENCODE" = copy ]; then
   echo "copying $count masters (ENCODE=copy)..."

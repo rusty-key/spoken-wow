@@ -3,7 +3,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { recordActivity } from "@/lib/activity/store";
 import { closeDb } from "@/lib/db";
-import { asSystem, ownTeam } from "@/lib/teams/testing";
+import { asTeam } from "@/lib/teams/acting";
+import { asSystem, dropTeam, newTeamIn, ownTeam } from "@/lib/teams/testing";
 
 import { pendingChanges } from "./pending";
 import { RELEASE_SECTIONS } from "./sections";
@@ -51,6 +52,22 @@ describe("pendingChanges", () => {
       ["pending-test-replaced", 2, "new"],
     ]);
     expect(pending.since).toBe(CUTOFF.toISOString());
+  });
+
+  it("counts each team's own takes for it, and none for somebody in neither team", async () => {
+    const second = await newTeamIn("deDE", false, "pending-second");
+    try {
+      await take("pending-test-ours", 1, after, { team: second });
+      await take("pending-test-theirs", 1, after, { team: de.team });
+      const asSecond = await asTeam("deDE", second, () => pendingChanges("places", "deDE", CUTOFF));
+      expect(asSecond.changes.map((c) => c.file)).toEqual(["pending-test-ours"]);
+      const asPlain = await asTeam("deDE", de.team, () => pendingChanges("places", "deDE", CUTOFF));
+      expect(asPlain.changes.map((c) => c.file)).toEqual(["pending-test-theirs"]);
+      expect((await pendingChanges("places", "deDE", CUTOFF)).changes).toEqual([]);
+    } finally {
+      await asSystem.query(`delete from "take" where "teamId" = $1`, [second]);
+      await dropTeam(second);
+    }
   });
 
   async function restored(file: string, at: string) {
@@ -145,6 +162,21 @@ describe("pendingChanges", () => {
       ["2026-11-02T08:00:00Z", de.team],
     );
     const pending = await pendingChanges("places", "deDE", CUTOFF, { list: false });
+    expect([pending.count, pending.textChanges]).toEqual([1, 0]);
+  });
+
+  it("up to a moment, leaves out the text of a line whose audio then counts, though it was recut after", async () => {
+    // Edited and recut inside the window; v3 came after it, so the window's audio is v2.
+    const until = new Date("2026-11-03T00:00:00Z");
+    await take("pending-test-late", 1, before, { team: de.team, current: false });
+    await take("pending-test-late", 2, after, { team: de.team, current: false });
+    await take("pending-test-late", 3, "2026-11-04T00:00:00Z", { team: de.team });
+    await asSystem.query(
+      `insert into "activity" ("at", "lang", "kind", "source", "subject", "lineId", "detail", "teamId")
+       values ($1, 'deDE', 'text.edited', 'places', 'z:pending-test-late', 'z:pending-test-late', '{}', $2)`,
+      ["2026-11-02T08:00:00Z", de.team],
+    );
+    const pending = await pendingChanges("places", "deDE", CUTOFF, { list: false, until });
     expect([pending.count, pending.textChanges]).toEqual([1, 0]);
   });
 

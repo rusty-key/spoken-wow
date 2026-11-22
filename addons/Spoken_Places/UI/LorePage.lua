@@ -143,8 +143,9 @@ local LOG_PAGE = "QuestDetailsBackgrounds"
 -- top bar: this much of its height, cut off so the parchment starts at the page's top.
 local BOOK_TOP_BAND = 0.07
 -- Beside the map: the quest log's page, its heading nearer the narrower page's top and right edge,
--- smaller and on one line, under a shorter backplate, and no round picture by the title: its Open in
--- Compendium button shows the same tome, which would stand twice on the heading's line.
+-- smaller and on one line, under a shorter backplate, and no round picture by the title unless an
+-- entry asks for one (a boss's): on a place's page its Open in Compendium button shows the same tome,
+-- which would stand twice on the heading's line.
 local LOG_LOOK = { top = 28, right = 28, titleSize = 20, oneLine = true, backplate = { full = 300, height = 80 },
 	noFace = true }
 
@@ -190,6 +191,7 @@ function SpokenPlaces:CreateLorePage(parent, style)
 		for key, value in pairs(LOG_LOOK) do look[key] = value end
 	end
 	look.art = { file = info.file, coords = { info.leftTexCoord, info.rightTexCoord, top, info.bottomTexCoord } }
+	look.place = "story"
 	local inner = SpokenCompendium.NewPage(parent, SpokenPlaces, PLAY, REPORT, look)
 	local page = setmetatable({ page = inner, style = style, parchment = parchment }, Page)
 	SpokenPlaces:OnAudioChanged(function() inner:RefreshPlay() end)
@@ -199,7 +201,7 @@ function SpokenPlaces:CreateLorePage(parent, style)
 	if style ~= "book" and _G.Spoken and Spoken.CreateRoundButton then
 		local open = Spoken:CreateRoundButton(inner.frame, "icon", nil, SpokenCompendium.ICON)
 		open:SetScript("OnClick", function(self)
-			if self.mapID then SpokenPlaces:ShowLoreFor(self.mapID, self.areaKey) end
+			if self.action then self.action() end
 		end)
 		open:HookScript("OnEnter", function(self)
 			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
@@ -217,8 +219,8 @@ end
 
 --- What the page shows: entry = { title, subtitle, onSubtitle = fn?, text,
 --- audio = { mapID, key }?, report = { mapID, key }?, contribute = { mapID, subzone }?,
---- lore = { mapID, key }?, model = { displayID, creatureID, scale, zoom, rotation, facing, sequence,
---- x, y, z }? }: Play for `audio`, Report for `report`, its model or picture above the words, a
+--- lore = { mapID, key }?, open = fn? (Open in Compendium for something that is not a place), face = true?
+--- (the round portrait `icon` by the title), model = { displayID }? }: Play for `audio`, Report for `report`, its model or picture above the words, a
 --- missing story's Contribute, and beside the map Open for `lore`.
 function Page:Show(entry)
 	local story = entry.audio or entry.report
@@ -227,13 +229,18 @@ function Page:Show(entry)
 	local contribute = entry.contribute
 	self.page:SetActions(entry.play, entry.reportAction)
 	self.page:Show({ title = entry.title, subtitle = entry.subtitle, onSubtitle = entry.onSubtitle, text = entry.text,
-		target = entry.target or story, model = entry.model, picture = picture and { file = picture, mask = mask } or nil, icon = entry.icon,
+		target = entry.target or story, model = entry.model, picture = picture and { file = picture, mask = mask } or nil, icon = entry.icon, face = entry.face,
 		unwritten = contribute and function()
 			if SpokenPlaces:CanContribute() then SpokenPlaces:ShowContribution(contribute[1], contribute[2]) end
 		end or nil })
 	if self.open then
 		local lore = entry.lore
-		self.open.mapID, self.open.areaKey = lore and lore[1], lore and lore[2]
-		self.open:SetShown(lore ~= nil and lore[1] ~= nil)
+		self.open.action = entry.open
+			or (lore and lore[1] and function() SpokenPlaces:ShowLoreFor(lore[1], lore[2]) end) or nil
+		self.open:SetShown(self.open.action ~= nil)
 	end
+end
+
+function SpokenPlaces:LoreText(mapID, areaKey, entry)
+	return self:PackLoreText(mapID, areaKey, self:GetLanguage()) or entry.full or entry.short or ""
 end

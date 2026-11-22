@@ -8,13 +8,14 @@ import { channelTag } from '../shared/channel'
 import type { GameInstall, JobPhase, Product } from '../shared/types'
 import { downloadAsset, sha256OfFile } from './download'
 import { PlainError, formatBytes, isAbortError, throwIfAborted } from './errors'
-import { LINKED_MESSAGE, ensureFreeSpace, isGameRunning, isLinked } from './guard'
+import { ensureFreeSpace, isGameRunning, isLinked, linkedMessage } from './guard'
 import { applyChanges, backupDirFor, checkWritable, defaultOps, doneMessage, pruneBackups, refuseUnresolved, staleFolders, staleNote, workDir, type FsOps, type JobContext, type JobResult } from './install'
 import { newestRev } from './packs-catalog'
 import { listLocal, planPack } from './packs-plan'
 import type { ChannelFile, ChannelManifest } from './packs-remote'
 import { savePackState, loadPackState, type PackFileState } from './packs-state'
 import { log, setRecord, updateState } from './state'
+import { t } from './i18n'
 
 export interface SyncInput {
   product: Product
@@ -81,7 +82,7 @@ export async function syncPacks(game: GameInstall, input: SyncInput, ctx: JobCon
   const plans: { manifest: ChannelManifest; plan: ChannelFile[]; target: string }[] = []
   for (const manifest of manifests) {
     const target = path.join(game.addOnsPath, manifest.packId)
-    if (await isLinked(target)) throw new PlainError(`${manifest.packId}: ${LINKED_MESSAGE}`)
+    if (await isLinked(target)) throw new PlainError(`${manifest.packId}: ${linkedMessage()}`)
     const plan = await planPack(manifest, loadPackState(game, manifest.packId), await listLocal(target), (p) => sha256OfFile(path.join(target, ...segments(p)), ctx.signal), !input.repair)
     plans.push({ manifest, plan, target })
   }

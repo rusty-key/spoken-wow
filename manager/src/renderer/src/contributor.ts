@@ -1,5 +1,5 @@
 import type { StoreInput } from '@shared/api'
-import type { ContributorView, JobProgress, PublishResult, ReleaseRow, SkipReason, StoreId } from '@shared/types'
+import type { ContributorView, JobProgress, PublishResult, ReleaseRow, RowState, SkipReason, StoreId } from '@shared/types'
 import { storeConfigured } from '@shared/types'
 import { jobBusy } from './catalog'
 import { S } from './strings'
@@ -20,6 +20,13 @@ export function rowUploadLabel(row: ReleaseRow): string | null {
   if (row.state === 'unreleased') return S.contributor.upload
   return row.state === 'awaiting' || row.state === 'unchecked' ? S.contributor.uploadAgain : null
 }
+
+/** A pack a release could send, so it can be zipped for an upload by hand too. */
+export function canZip(row: ReleaseRow): boolean {
+  return !REFUSED.includes(row.state)
+}
+
+const REFUSED: RowState[] = ['not-installed', 'update-first', 'linked', 'no-project']
 
 /** A cleared project id goes as `''`: the saved ids are merged with these, and only that removes one. */
 export function storeFormInput(store: StoreId, form: { token: string; removeToken: boolean; projects: Record<string, string>; repo: string; versions: string }): StoreInput {
@@ -64,4 +71,5 @@ export function resultLines(r: PublishResult): ResultLine[] {
   ]
 }
 
+/** CurseForge and GitHub are brand names, the same in every language. */
 export const storeName = (store: StoreId): string => (store === 'curseforge' ? S.contributor.curseforge : S.contributor.github)

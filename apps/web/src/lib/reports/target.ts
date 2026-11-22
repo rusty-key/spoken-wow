@@ -88,3 +88,26 @@ export async function resolveTarget(target: Target, corpus?: Corpus): Promise<Co
     ? speakers
     : lines.lines.filter((line) => line.npcType === "gameobject" && line.npcId === target.npcId);
 }
+
+/** Every line an address can mean, once: the report alone cannot say which one was heard. */
+export async function lineIdsOfAddress(raw: string, corpus?: Corpus): Promise<string[]> {
+  const target = parseTarget(raw.split("/"));
+  if (!target) return [];
+  return [...new Set((await resolveTarget(target, corpus)).map((line) => line.lineId))];
+}
+
+/**
+ * Which of an address's lines a report is about: the one the reporter picked, else the one whose
+ * file the addon played, else the only one. Null when several remain and nothing says which.
+ */
+export function pickLine<T extends Pick<CorpusLine, "lineId" | "fileName">>(
+  choices: T[],
+  chosen: string | null,
+  played: string | null,
+): T | null {
+  return (
+    choices.find((candidate) => candidate.lineId === chosen) ??
+    choices.find((candidate) => candidate.fileName === played) ??
+    (choices.length === 1 ? choices[0] : null)
+  );
+}

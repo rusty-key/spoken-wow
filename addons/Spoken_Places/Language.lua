@@ -5,16 +5,13 @@
 --   client locale   GetLocale(). Decides what GetSubZoneText and
 --                   MapUtil.FindBestAreaNameAtMouse hand back, and therefore
 --                   which alias table turns those names into corpus keys. Also
---                   decides which glyphs the client's fonts can draw -- and,
---                   for that same reason, which interface strings load: a client
---                   only ever loads its own locale's file, so its UI is always
---                   renderable.
+--                   decides which glyphs the client's fonts can draw.
 --
 --   content language  What the player chose to read and hear. Decides which
 --                   lore table is primary and which sound pack plays. Deliberately
---                   NOT which UI strings are used: those follow the client, so a
---                   translation shows the moment it exists instead of waiting for
---                   the whole lore corpus to be finished.
+--                   NOT which UI strings are used: those follow Spoken's Interface
+--                   Language, the client's on Auto, so a translation shows the moment
+--                   it exists instead of waiting for the whole lore corpus to be finished.
 --
 -- A German client reading English lore still needs German aliases. Getting that
 -- backwards is the failure that presents as "the addon just does not work in
@@ -43,56 +40,80 @@ function SpokenPlaces:BindSettings()
 	if not (Spoken and Spoken.BindModuleSettings) then return end
 	Spoken:BindModuleSettings("Places", SpokenPlacesSettings, function(settings)
 		SpokenPlacesSettings = settings
+		SpokenPlaces:MoveLanguageToSpoken()
 		if SpokenPlaces.OnSettingsBound then SpokenPlaces:OnSettingsBound() end
 	end, { dump = true })
 end
+
+-- The stories' language was this page's Text Language; it is Spoken's now, for every module. A
+-- profile's choice here moves there the first time the profile is bound, unless Spoken's already
+-- has one, and is dropped here so it never moves twice. Nil here was Auto, as it is there.
+function SpokenPlaces:MoveLanguageToSpoken()
+	local pref = SpokenPlacesSettings and SpokenPlacesSettings.language
+	if pref == nil or not (Spoken and Spoken.SetTextLanguage) then return end
+	if type(pref) == "string" and Spoken:TextLanguageChoice() == nil then Spoken:SetTextLanguage(pref) end
+	SpokenPlacesSettings.language = nil
+end
 SpokenPlaces:BindSettings()
 
--- Every locale a Classic Era or Anniversary client can run in, plus the
--- languages a community translates into that no client ships (`client = false`:
--- Italian, Vietnamese). GetLocale() never returns one of those, so it has no aliases and no
--- interface strings, and Auto never lands on it; a player reads it by choosing
--- it. A code absent here can never be selected, so the list is the addon's definition of "a
--- language", not a list of languages that have content -- readiness is a
--- separate question, answered by Data/Languages.lua.
+-- The languages a game client runs in, which Spoken's registry keeps for every module, in the
+-- order the lists show them. They are the only ones this addon lists by itself: any other is one
+-- an installed pack declares, and it is offered for reading only where that pack's .toc says it
+-- carries lore (X-SpokenPlaces-Lore). Without Spoken (a hand install) the list is just English.
+-- A language here is not a language with content: readiness is a separate question, answered by
+-- Data/Languages.lua.
 --
--- `script` is what the client's fonts must be able to draw. `name` is ASCII so
--- it survives being printed on a client whose fonts cannot draw `native`.
--- `native` is the endonym shown wherever a language is listed -- Latin-script
--- endonyms draw on every client, and anything else is only ever listed where
--- CanRenderLanguage already passed, so no list can show boxes.
+-- `script` is what the client's fonts must be able to draw; a pack's language has none, and is
+-- tested by drawing its name. `name` is ASCII so it survives being printed on a client whose fonts
+-- cannot draw `native`. `native` is the endonym shown wherever a language is listed -- Latin-script
+-- endonyms draw on every client, and anything else is only ever listed where CanRenderLanguage
+-- already passed, so no list can show boxes.
 --
--- Must stay in step with LOCALES in tools/lib/locales.mjs; tools/validate.mjs
--- fails the build if the two lists drift.
-SpokenPlaces.LOCALES = {
-	{ code = "enUS", name = "English", native = "English", script = "latin" },
-	{ code = "deDE", name = "German", native = "Deutsch", script = "latin" },
-	{ code = "esES", name = "Spanish (EU)", native = "Español (España)", script = "latin" },
-	{ code = "esMX", name = "Spanish (AL)", native = "Español (América Latina)", script = "latin" },
-	{ code = "frFR", name = "French", native = "Français", script = "latin" },
-	{ code = "itIT", name = "Italian", native = "Italiano", script = "latin", client = false },
-	{ code = "plPL", name = "Polish", native = "Polski", script = "latin", client = false },
-	{ code = "ptBR", name = "Portuguese", native = "Português", script = "latin" },
-	{ code = "ruRU", name = "Russian", native = "Русский", script = "cyrillic" },
-	{ code = "koKR", name = "Korean", native = "한국어", script = "korean" },
-	{ code = "zhCN", name = "Chinese (S)", native = "简体中文", script = "simplifiedchinese" },
-	{ code = "zhTW", name = "Chinese (T)", native = "繁體中文", script = "traditionalchinese" },
-	{ code = "viVN", name = "Vietnamese", native = "Tiếng Việt", script = "vietnamese", client = false },
-}
+-- tools/validate.mjs holds Spoken's built-in list to the languages in tools/lib/locales.mjs that a
+-- client runs in, which are the ones the pipelines build aliases and data folders for.
+SpokenPlaces.LOCALES = Spoken and Spoken.BuiltinLanguages and Spoken:BuiltinLanguages()
+	or { { code = "enUS", name = "English", native = "English", script = "latin" } }
 
 local BASE = "enUS"
 
-local byCode = {}
-for i = 1, #SpokenPlaces.LOCALES do
-	byCode[SpokenPlaces.LOCALES[i].code] = SpokenPlaces.LOCALES[i]
+local builtin = {}
+for _, locale in ipairs(SpokenPlaces.LOCALES) do
+	builtin[locale.code] = locale
+end
+
+--- The registry's entry for a language, or nil where it is neither built in nor declared by an
+--- installed pack. Without Spoken only the list above is known.
+local function Entry(code)
+	if not code then return nil end
+	if Spoken and Spoken.Language then return Spoken:Language(code) end
+	return builtin[code]
+end
+
+-- The places a text pack (Spoken's Texts.lua) brings in this language, or nil. Only the Text
+-- Language's packs are loaded, so another language has none.
+local function TextPackLore(code)
+	return Spoken and Spoken.TextSection and Spoken:TextSection(code, "places") or nil
+end
+
+-- Whether lore can exist in this language at all: built in, or brought by a pack that says it
+-- carries some, or by a text pack. Lore is offered whole, with no line falling back to another
+-- language, so a language whose packs carry only voices would be a menu entry that opens on empty
+-- pages.
+local function HasLore(code)
+	if builtin[code] then return true end
+	local entry = Entry(code)
+	return (entry ~= nil and entry.lore == true) or TextPackLore(code) ~= nil
+end
+
+function SpokenPlaces:HasLore(code)
+	return HasLore(code)
 end
 
 SpokenPlaces.clientLocale = GetLocale()
 
--- Whether a game client runs in this language. See `client` on LOCALES.
+-- Whether a game client runs in this language: a built-in one.
 function SpokenPlaces:IsClientLanguage(code)
-	local locale = code and byCode[code]
-	return locale ~= nil and locale.client ~= false
+	return code ~= nil and builtin[code] ~= nil
 end
 
 -- Localized area name -> English corpus key, keyed by *client* locale.
@@ -122,107 +143,60 @@ local function coverage(code)
 	return nil
 end
 
--- A language is ready when every lore line has a translation (and, for a
--- non-English language a client runs in, an alias table). Interface strings are not required -- they
+-- A built-in language is ready when every lore line has a translation (and, for a
+-- non-English one, an alias table). Interface strings are not required -- they
 -- fall back to English per key. Computed at build time rather than counted
 -- here, because the addon cannot know how many lines there are supposed to be.
+-- A pack that carries lore is taken at its word: the addon cannot count its lines either.
 function SpokenPlaces:IsLanguageReady(code)
 	if code == BASE then
 		return true
 	end
-	local entry = coverage(code)
-	return (entry and entry.ready) and true or false
+	local covered = coverage(code)
+	if covered and covered.ready then
+		return true
+	end
+	local entry = Entry(code)
+	return ((entry and entry.lore) or TextPackLore(code)) and true or false
 end
 
 -- The pages set font files, which lack the font object's fallbacks, so the language must draw in
 -- the file itself.
-function SpokenPlaces:LanguageDraws(code, path)
-	return Spoken:LanguageDraws(code, path)
-end
 
--- The fonts clients ship for the other scripts, which the game's font objects fall back to and a
--- page that sets a file has to name itself, the first that draws the language taken.
-local SCRIPT_FONTS = {
-	cyrillic = { "Fonts\\FRIZQT___CYR.TTF" },
-	korean = { "Fonts\\2002.TTF" },
-	simplifiedchinese = { "Fonts\\ARKai_T.ttf" },
-	-- An English Forever client has no blei00d.TTF, which its font objects still name.
-	traditionalchinese = { "Fonts\\blei00d.TTF", "Fonts\\bKAI00M.TTF" },
-	-- Not a font for the script, only the stock one most likely to draw ệ and ữ.
-	vietnamese = { "Fonts\\ARIALN.TTF" },
-}
 
 --- The font file to write `code` (the lore's language by default) in where a page uses
---- `fontObject`: the object's own file where it draws that script, else the client's font for the
---- script. Nil where neither draws it.
+--- `fontObject`, or nil where none draws it: Spoken's answer, kept in this addon's own cache.
+--- Without Spoken only the built-in Latin languages draw, in the object's own font.
 function SpokenPlaces:FontFor(fontObject, code)
-	local path = fontObject and fontObject.GetFont and fontObject:GetFont()
-	local locale = byCode[code or self:GetLanguage()]
-	if not path or not locale or locale.script == "latin" then
-		return path
-	end
-	local client = byCode[self.clientLocale]
-	if client ~= nil and client.script == locale.script then
-		return path
-	end
-	self.fonts = self.fonts or {}
-	local key = path .. "|" .. locale.code
-	if self.fonts[key] == nil then
-		self.fonts[key] = false
-		for _, font in ipairs({ path, unpack(SCRIPT_FONTS[locale.script] or {}) }) do
-			if self:LanguageDraws(locale.code, font) then
-				self.fonts[key] = font
-				break
-			end
-		end
-	end
-	return self.fonts[key] or nil
+	code = code or self:GetLanguage()
+	if Spoken and Spoken.FontForLanguage then return Spoken:FontForLanguage(fontObject, code, self) end
+	local locale = builtin[code]
+	return locale and locale.script == "latin" and fontObject and fontObject.GetFont and fontObject:GetFont() or nil
 end
 
--- Whether this client's fonts can draw this language: in the pages' own font files where they
--- have its script, else in the client's font for it (FontFor). Without either, Chinese lore on a
--- German client is a screen of boxes, a bug report that looks like corrupted data. English is
--- always allowed: it is what the addon falls back to, and every client can draw it. Another
--- script is tested once a session by drawing the language's own name.
+-- Whether this client's fonts can draw this language. Without any, Chinese lore on a German
+-- client is a screen of boxes, a bug report that looks like corrupted data.
 function SpokenPlaces:CanRenderLanguage(code)
-	if code == BASE then
-		return true
-	end
-	local locale = byCode[code]
-	if not locale then
-		return false
-	end
-	if locale.script == "latin" then
-		return true
-	end
-	local client = byCode[self.clientLocale]
-	if client ~= nil and client.script == locale.script then
-		return true
-	end
-	self.drawable = self.drawable or {}
-	if self.drawable[code] == nil then
-		local tried, drawn = false, true
-		for _, fontObject in ipairs({ _G.GameFontHighlight, _G.QuestFont }) do
-			if fontObject and fontObject.GetFont and fontObject:GetFont() then
-				tried = true
-				drawn = drawn and self:FontFor(fontObject, code) ~= nil
-			end
-		end
-		self.drawable[code] = tried and drawn
-	end
-	return self.drawable[code]
+	if Spoken and Spoken.CanRenderLanguage then return Spoken:CanRenderLanguage(code, self) end
+	return code == BASE or (builtin[code] ~= nil and builtin[code].script == "latin")
 end
 
 --------------------------------------------------------------------------------
 -- Selection
 --------------------------------------------------------------------------------
 
--- The stored preference, or nil for "follow the client". The two are not the
--- same: a player who never chose should start reading German the day German
--- ships, while one who explicitly picked English must keep English.
+-- The stored preference, or nil for "follow the client": Spoken's Text Language, which every
+-- module reads, and this addon's own without Spoken. The two are not the same: a player who never
+-- chose should start reading German the day German ships, while one who explicitly picked English
+-- must keep English.
 function SpokenPlaces:GetLanguagePreference()
-	local pref = SpokenPlacesSettings and SpokenPlacesSettings.language
-	return type(pref) == "string" and byCode[pref] and pref or nil
+	local pref
+	if Spoken and Spoken.TextLanguageChoice then
+		pref = Spoken:TextLanguageChoice()
+	else
+		pref = SpokenPlacesSettings and SpokenPlacesSettings.language
+	end
+	return type(pref) == "string" and HasLore(pref) and pref or nil
 end
 
 function SpokenPlaces:IsPreviewingLanguage()
@@ -233,7 +207,7 @@ end
 -- an unfinished translation can be looked at, but never relaxes the font check:
 -- previewing boxes tells you nothing.
 function SpokenPlaces:IsLanguageSelectable(code)
-	if not byCode[code] then
+	if not HasLore(code) then
 		return false
 	end
 	if not self:CanRenderLanguage(code) then
@@ -276,32 +250,41 @@ function SpokenPlaces:GetLanguage()
 	return self.language
 end
 
--- Every language the player could pick right now, in LOCALES order.
+-- Every language the player could pick right now: the built-in ones in LOCALES order, then those
+-- whose installed packs carry lore, by code.
 function SpokenPlaces:GetSelectableLanguages()
 	local out = {}
 	for i = 1, #self.LOCALES do
 		local locale = self.LOCALES[i]
 		if self:IsLanguageSelectable(locale.code) then
-			table.insert(out, locale)
+			table.insert(out, Entry(locale.code) or locale)
+		end
+	end
+	for _, entry in ipairs(Spoken and Spoken.InstalledLanguages and Spoken:InstalledLanguages() or {}) do
+		if not builtin[entry.code] and self:IsLanguageSelectable(entry.code) then
+			table.insert(out, entry)
 		end
 	end
 	return out
 end
 
+-- The registry's entry for a language: `code`, `name`, `native`, and for a pack's `font`.
 function SpokenPlaces:GetLocaleInfo(code)
-	return byCode[code]
+	return Entry(code)
 end
 
--- Display name of a language: its own endonym. Only call it where the name is
--- drawable -- the dropdown, the language list and the pack label all list
--- renderable languages only. Anywhere else (the no-fonts warning) uses the code,
--- which is ASCII on every client.
+-- Display name of a language: its own endonym where the game's font draws it, else its English
+-- name or its code: text in the game's font, such as a label or a line of chat, must not get a
+-- name that font cannot draw. The no-fonts warning uses the code, which is ASCII on every client.
 function SpokenPlaces:GetLanguageName(code)
-	local locale = byCode[code or BASE]
+	local locale = Entry(code or BASE)
 	if not locale then
 		return tostring(code)
 	end
-	return locale.native or locale.name
+	if builtin[locale.code] or (locale.native and Spoken:LanguageDraws(locale.code)) then
+		return locale.native or locale.name or locale.code
+	end
+	return locale.name or locale.code
 end
 
 -- Stores the preference, or nil for Auto. Returns false when the language is not
@@ -316,6 +299,7 @@ function SpokenPlaces:SetLanguage(code)
 	if code ~= nil and not self:IsLanguageSelectable(code) then
 		return false
 	end
+	if Spoken and Spoken.SetTextLanguage then return Spoken:SetTextLanguage(code) end
 	SpokenPlacesSettings.language = code
 	return true
 end
@@ -340,14 +324,17 @@ end
 
 SpokenPlaces.Strings = { enUS = {} }
 
+-- Interface strings follow Spoken's Interface Language, never the content language: the built-in
+-- language's whose locale file loaded, the client's on Auto, with an interface pack's laid over
+-- them (Locale/Interface.lua). Without Spoken, the client's.
+SpokenPlaces.interfaceBase = Spoken and Spoken.InterfaceBase and Spoken:InterfaceBase()
+	or SpokenPlaces.clientLocale
+
 local warnedMissing = {}
 
 SpokenPlaces.L = setmetatable({}, {
 	__index = function(_, key)
-		-- Interface strings follow the client, not the content language: the
-		-- locale file for any other code never loads on this client, so there
-		-- is nothing else it could fall back to before English.
-		local active = SpokenPlaces.Strings[SpokenPlaces.clientLocale]
+		local active = SpokenPlaces.Strings[SpokenPlaces.interfaceBase]
 		local value = active and active[key]
 		if value ~= nil then
 			return value
@@ -369,9 +356,9 @@ SpokenPlaces.L = setmetatable({}, {
 	end,
 })
 
--- Called by Locale/<code>.lua, which guards itself on the client locale in
--- the same way every WoW addon does: interface strings are useful the moment
--- one of them exists, unlike lore, which is only offered whole.
+-- Called by Locale/<code>.lua, which guards itself on the Interface Language
+-- (Spoken:InterfaceIn), with a pack's laid over by Locale/Interface.lua: interface
+-- strings are useful the moment one of them exists, unlike lore, which is only offered whole.
 --
 -- STRINGS DO FALL BACK TO ENGLISH, unlike the lore. A missing string is an unlabelled
 -- button, and an English label is a strictly better answer than an empty one; a
@@ -394,19 +381,23 @@ end
 -- Whether a generated data file for `code` should build its table.
 --
 -- Keep English available for captions when a translated sound pack lacks a clip.
--- The lore browser still uses only the selected language.
+-- The lore browser still uses only the selected language. A language Spoken does not
+-- build in is accepted like any other, since its tables come from its own pack.
 function SpokenPlaces:ShouldLoadLanguage(code)
 	if code == self.language or code == BASE then return true end
 	if not self:CanRenderLanguage(code) then return false end
-	-- Packs can load after the lore tables. Their metadata is available before
-	-- their Lua, and keeps switching voices possible without retaining every language.
-	local count = (C_AddOns and C_AddOns.GetNumAddOns) or GetNumAddOns
+	-- Packs can load after the lore tables. Spoken's registry read their metadata, which is
+	-- there before their Lua, and keeps switching voices possible without retaining every
+	-- language. Only a Places voice pack in the language plays captions in it: a quests pack
+	-- does not, nor a pack whose places half is in another language.
+	local entry = Entry(code)
 	local metadata = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
-	if count and metadata then
-		for index = 1, count() do
+	if entry and entry.folders and metadata then
+		for _, folder in ipairs(entry.folders) do
 			-- X-SpokenZones-Language: a pack released under the old name.
-			local language = metadata(index, "X-SpokenPlaces-Language") or metadata(index, "X-SpokenZones-Language")
-			if language == code then return true end
+			local declared = metadata(folder, "X-SpokenPlaces-Language") or ""
+			if declared == "" then declared = metadata(folder, "X-SpokenZones-Language") or "" end
+			if declared == code then return true end
 		end
 	end
 	return false
@@ -415,6 +406,19 @@ end
 function SpokenPlaces:RegisterLoreData(code, kind, data)
 	if not self:ShouldLoadLanguage(code) then
 		return
+	end
+	-- A text pack's places are registered before the data files run, so the language's own file
+	-- comes after them: their entries are laid over its, place by place, and win.
+	local packed = TextPackLore(code)
+	packed = packed and packed[kind]
+	if packed and packed ~= data then
+		for mapID, entry in pairs(packed) do
+			if kind == "subzones" and type(data[mapID]) == "table" then
+				for key, area in pairs(entry) do data[mapID][key] = area end
+			else
+				data[mapID] = entry
+			end
+		end
 	end
 	self.CaptionLore = self.CaptionLore or {}
 	self.CaptionLore[code] = self.CaptionLore[code] or {}
@@ -433,4 +437,10 @@ end
 function SpokenPlaces:RegisterAliases(locale, data, byZone)
 	self.Aliases[locale] = data
 	self.ZoneAliases[locale] = byZone
+end
+
+-- A text pack's places, taken as a lore pack's are. Its pack was loaded with Spoken, before this
+-- addon, so they are here before the data files run.
+for kind, data in pairs(TextPackLore(SpokenPlaces.language) or {}) do
+	SpokenPlaces:RegisterLoreData(SpokenPlaces.language, kind, data)
 end

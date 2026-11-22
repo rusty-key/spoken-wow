@@ -64,6 +64,12 @@ function SpokenPlaces:ShowCopyLink(url, caption)
 	if not url then
 		return
 	end
+	-- Under the controller UI a game popup an addon opens leaves the d-pad dead once it closes
+	-- (#165): Spoken's copy box takes the controller instead.
+	if Spoken and Spoken.IsGamepadUI and Spoken.ShowContribution and Spoken:IsGamepadUI() then
+		Spoken:ShowContribution(url, nil, true)
+		return
+	end
 	pendingURL = url
 	StaticPopup_Show(POPUP, caption or "Copy this address and open it in your browser.")
 end

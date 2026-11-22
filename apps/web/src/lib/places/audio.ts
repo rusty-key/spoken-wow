@@ -2,7 +2,9 @@
 
 import "server-only";
 
-import { catalogue } from "./catalogue";
+import { BASE_LANG } from "@/lib/lang";
+
+import { baseCatalogue } from "./catalogue";
 
 /** Store-relative, e.g. '1411/razor-hill.mp3'. Also the /api/places/audio/ route path. */
 export function audioRelPath(file: string): string {
@@ -22,7 +24,7 @@ export function audioRelPath(file: string): string {
 // memory. The zones site kept one, and it was one more cache its by-hand invalidation had
 // to remember.
 export async function addressableFiles(): Promise<Set<string>> {
-  return new Set((await catalogue()).map((entry) => audioRelPath(entry.file)));
+  return new Set((await baseCatalogue(BASE_LANG)).map((entry) => audioRelPath(entry.file)));
 }
 
 export async function isAddressable(relPath: string, ): Promise<boolean> {
