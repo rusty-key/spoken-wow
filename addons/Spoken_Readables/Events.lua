@@ -57,6 +57,18 @@ local function ItemID(bag, slot)
 	end
 end
 
+local function ItemCount(bag, slot)
+	if C_Container and C_Container.GetContainerItemInfo then
+		local info = C_Container.GetContainerItemInfo(bag, slot)
+		return info and info.stackCount or 1
+	end
+	if GetContainerItemInfo then
+		local _, count = GetContainerItemInfo(bag, slot)
+		return count or 1
+	end
+	return 1
+end
+
 --- The readable items currently in the player's bags, counted by item ID.
 function SpokenReadables:ReadableItemSnapshot()
 	local current = {}
@@ -64,7 +76,7 @@ function SpokenReadables:ReadableItemSnapshot()
 		for slot = 1, BagSlots(bag) do
 			local itemID = ItemID(bag, slot)
 			if self:BookForItem(itemID) then
-				current[itemID] = (current[itemID] or 0) + 1
+				current[itemID] = (current[itemID] or 0) + ItemCount(bag, slot)
 			end
 		end
 	end
