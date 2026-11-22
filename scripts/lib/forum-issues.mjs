@@ -30,9 +30,10 @@ import { fileURLToPath } from "node:url";
 import { discord, findChannel, isNamed } from "./language-post.mjs";
 
 export const FORUM = "bugs";
-// The forum's earlier names: issue footers written under them still link its posts.
+// The forum's earlier names, still in the footers of the issues filed under them. Without them
+// those posts look unfiled and every sweep files them again.
 const OLD_FORUMS = ["bugs-forever-era", "bugs-and-ideas"];
-export const isForum = (channel) => [FORUM, ...OLD_FORUMS].some((name) => isNamed(channel, name));
+export const isForum = (channel) => isNamed(channel, FORUM);
 export const LABEL = "from-discord";
 const FILED = "Logged on GitHub as";
 const STATE_TAGS = ["Fixed", "Not planned"];

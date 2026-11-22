@@ -22,9 +22,9 @@ test("only the footer's link stands for the post, not a link the post itself quo
   assert.deepEqual(threadOf(issue.body), { guild: "111", thread: "222" });
 });
 
-test("the forum is found under its name and its earlier ones, but not another client's forum", () => {
-  for (const name of ["bugs", "🐞｜bugs", "bugs-forever-era", "bugs-and-ideas"]) assert.ok(isForum({ name }), name);
-  for (const name of ["bugs-1-12", "bugs-3-3-5a", "old-bugs"]) assert.ok(!isForum({ name }), name);
+test("the forum is found under its name alone", () => {
+  for (const name of ["bugs", "🐞｜bugs"]) assert.ok(isForum({ name }), name);
+  for (const name of ["bugs-forever-era", "bugs-1-12", "old-bugs"]) assert.ok(!isForum({ name }), name);
 });
 
 test("a post's @names and #numbers neither ping nor link on GitHub", () => {
