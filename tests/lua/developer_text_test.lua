@@ -65,6 +65,26 @@ Expect("the NPC comes from the contribution capture", Has(payload, "[npc: 12345 
 Expect("the event is accept", Has(payload, "[event: accept]"), true)
 Expect("copying uses the shared selectable box", Dev.Box:Frame().edit:GetText(), payload)
 
+-- An item's GUID names a spawn, not the item, so the bags say which item starts the quest.
+_G.C_Container = {
+    GetContainerNumSlots = function(bag) return bag == 0 and 16 or 0 end,
+    GetContainerItemInfo = function(bag, slot)
+        if bag == 0 and slot == 5 then
+            return { iconFileID = 1, hyperlink = "|cffffffff|Hitem:211315::::::::|h[Underground Map]|h|r" }
+        end
+    end,
+    GetContainerItemQuestInfo = function(bag, slot)
+        return { questID = bag == 0 and slot == 5 and 9123 or nil }
+    end,
+}
+Expect("a creature offering a quest a carried item also starts names no item",
+    Has(Payload(), "[ItemID: 211315"), false)
+world.npcGUID = "Item-4372-0-400000033D4D1C15"
+Expect("an item that starts the quest is named by its bag item",
+    Has(Payload(), "[ItemID: 211315 Underground Map]"), true)
+world.npcGUID = "Creature-0-0-0-0-12345-0"
+_G.C_Container = nil
+
 world.progressText = "Have you finished?"
 Panel("QuestFrameProgressPanel", "QUEST_PROGRESS")
 payload = Payload()
@@ -80,6 +100,10 @@ payload = Payload()
 Expect("greetings copy the greeting API's text", Has(payload, world.greetingText), true)
 Expect("old gossip is not copied over the greeting", Has(payload, "Old gossip text."), false)
 Expect("a greeting never carries the old gossip's key", Has(payload, "[Spoken key:"), false)
+world.npcGUID = "Player-0-0000ABCD"
+local read, greeting = pcall(Payload)
+Expect("a greeting from a GUID with no id still copies", read and Has(greeting, world.greetingText), true)
+world.npcGUID = "Creature-0-0-0-0-12345-0"
 
 stub.HidePanels()
 stub.ShowGossip("We stand ready.", { "Tell me more." })
@@ -89,6 +113,16 @@ Expect("gossip copies the live words", Has(payload, "We stand ready."), true)
 Expect("gossip includes its actual capture key", Has(payload, "[Spoken key: g:12345:"), true)
 Expect("gossip choices carry their IDs", Has(payload, "[OptionID: 1001 Tell me more.]"), true)
 Expect("the control moves to the gossip window", Dev.Text.button:GetParent(), GossipFrame)
+
+local dialog = VO.DialogPlayButton
+VO.DialogPlayButton = { button = CreateFrame("Button"), muteButton = CreateFrame("Button") }
+VO.DialogPlayButton.button:Show()
+VO.DialogPlayButton.muteButton:Show()
+stub.FireEvent("GOSSIP_SHOW")
+Expect("the control sits beside the gossip mute button, not under it",
+    select(2, Dev.Text.button:GetPoint()), VO.DialogPlayButton.muteButton)
+VO.DialogPlayButton = dialog
+stub.FireEvent("GOSSIP_SHOW")
 
 Enable(false)
 Expect("turning off hides the existing control", Dev.Text.button:IsShown(), false)

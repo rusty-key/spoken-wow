@@ -72,9 +72,8 @@ local function NPCDetails(lines, quests)
 			for index = 1, GetNumActiveQuests() or 0 do Add(lines, "Active Quest", GetActiveQuestID(index)) end
 		end
 	end
-	local questID = GetQuestID and NotSecret(GetQuestID())
-	if questID and questID > 0 and not Visible(_G.QuestFrameGreetingPanel) and Visible(_G.QuestFrame) then
-		local item, name = Spoken:QuestItem(questID)
+	if not Visible(_G.QuestFrameGreetingPanel) and Visible(_G.QuestFrame) then
+		local item, name = quests.Contribute:QuestItem()
 		if item then Add(lines, "ItemID", tostring(item) .. (name and " " .. name or "")) end
 	end
 	if Visible(_G.QuestFrameProgressPanel) and GetQuestItemInfo and GetNumQuestItems then
@@ -91,7 +90,7 @@ local function NPCDetails(lines, quests)
 	end
 	if Visible(_G.QuestFrameGreetingPanel) then
 		local guid = quests.Utils:GetNPCGUID()
-		Add(lines, "NPC", guid and quests.Utils:GetIDFromGUID(guid))
+		Add(lines, "NPC", quests.Utils:ReadIDFromGUID(guid))
 		Add(lines, "Name", quests.Utils:GetNPCName())
 	end
 end
@@ -155,6 +154,7 @@ function Text:Position(frame, kind)
 	else
 		local quests = VoiceOver
 		Beside(quests.QuestsTab and quests.QuestsTab.giverButton)
+		Beside(quests.DialogPlayButton and quests.DialogPlayButton.muteButton)
 		Beside(quests.ContributeButton and quests.ContributeButton.button)
 		Beside(quests.DialogPlayButton and quests.DialogPlayButton.button)
 	end

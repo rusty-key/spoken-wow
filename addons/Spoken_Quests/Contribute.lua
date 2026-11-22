@@ -59,6 +59,11 @@ local function QuestItem()
     return Spoken:QuestItem(questID)
 end
 
+--- The bag item that starts the quest on screen, when an item offers it: its id and name.
+function Contribute:QuestItem()
+    return QuestItem()
+end
+
 local function IDFromGUID(guid)
     if guid and Utils.GetIDFromGUID then
         local ok, read = pcall(Utils.GetIDFromGUID, Utils, guid)
