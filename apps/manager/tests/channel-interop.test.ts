@@ -4,11 +4,11 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { openEnvelope, parseIndex, parseIndexV2, parseManifest } from '../src/main/packs-remote'
 // @ts-expect-error plain JS without declarations
-import { publish } from '../../scripts/manager/publish.mjs'
+import { publish } from '../../../scripts/manager/publish.mjs'
 // @ts-expect-error plain JS without declarations
-import { generateKeys } from '../../scripts/manager/sign.mjs'
+import { generateKeys } from '../../../scripts/manager/sign.mjs'
 // @ts-expect-error plain JS without declarations
-import { memoryStore } from '../../scripts/manager/store.mjs'
+import { memoryStore } from '../../../scripts/manager/store.mjs'
 import { tmpDir, write } from './helpers'
 
 const PACK = 'SpokenPlacesAudio_deDE'

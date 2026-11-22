@@ -61,7 +61,7 @@ Gather:Clear()
 Expect("Clear forgets everything", Gather:Count(), 0)
 Expect("...the sightings too", Gather:SeenCount(), 0)
 
--- The same envelope and mark as manager/tests/share.test.ts's, so the two sides cannot drift apart.
+-- The same envelope and mark as apps/manager/tests/share.test.ts's, so the two sides cannot drift apart.
 local cafe = "!SPOKEN1 quests\ntext<<\nCafé.\n>>\nsum=42\n"
 Expect("a sent line is marked by its sum and its length in bytes", Gather:SentMark(cafe), "42:40")
 Expect("...and a string with no sum is not marked", Gather:SentMark("!SPOKEN1 quests\n"), nil)
