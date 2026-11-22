@@ -219,6 +219,12 @@ end
 -- The same goes for the setting that hides those buttons: guard on the method, and an older
 -- player without it simply means the buttons are shown.
 
+--- Whether Forever's controller UI is on. Under it a game popup an addon opens breaks the d-pad
+--- (#165), so a feature addon shows its links in Spoken:ShowContribution instead.
+function Spoken:IsGamepadUI()
+    return Addon:IsGamepadUI()
+end
+
 --- Whether the player turned every Contribute button off in the Spoken settings.
 --- A feature addon asks this in its gap check, and re-asks on CONTRIBUTE_SETTINGS_CHANGED.
 function Spoken:AreContributeButtonsHidden()
@@ -880,6 +886,10 @@ function Spoken:IsPaused()
     return SoundQueue:IsPaused()
 end
 
+function Spoken:IsMuted()
+    return SoundQueue:IsMuted()
+end
+
 --- A Play button's state for `clip` (nil when not queued): "play", "stop", "replay", "queue" or
 --- "queued".
 function Spoken:PlayState(clip)
@@ -901,6 +911,18 @@ end
 
 function Spoken:TogglePause()
     return SoundQueue:TogglePauseQueue()
+end
+
+function Spoken:Mute()
+    return SoundQueue:SetMuted(true)
+end
+
+function Spoken:Unmute()
+    return SoundQueue:SetMuted(false)
+end
+
+function Spoken:ToggleMute()
+    return SoundQueue:ToggleMuted()
 end
 
 --- The player's round button, the same one its subtitle shows, for a feature addon's own

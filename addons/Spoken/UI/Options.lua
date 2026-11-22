@@ -52,6 +52,7 @@ local BINDINGS = {
     { "SPOKEN_PREVIOUS", "BIND_PREVIOUS" },
     { "SPOKEN_STOP", "BIND_STOP" },
     { "SPOKEN_COMPENDIUM", "BIND_COMPENDIUM" },
+    { "SPOKEN_MUTE", "BIND_MUTE" },
 }
 
 --- Name the bindings in the player's language. The category is the name of a string global the
@@ -1156,10 +1157,31 @@ function Options:AddProfiles(layout)
     layout:Dropdown(L.OPT_PROFILE, nil, function() return self:ProfileNames() end,
         function() return self:CurrentProfile() end,
         function(name) self:SetProfile(name); layout:Refresh() end)
+    -- Both act on picking a name, and a dropdown's arrows, or the d-pad's left and right on its
+    -- row, pick one: ask first, or a stray press replaces or deletes a profile.
     layout:Dropdown(L.OPT_COPY_PROFILE, nil, Others, function() return nil end,
-        function(name) self:CopyProfile(name); layout:Refresh() end, nil, Pick)
+        function(name)
+            -- The page stays usable while it asks, so a switch in between must not receive the copy.
+            local into = self:CurrentProfile()
+            Layout.Confirm(format(L.OPT_COPY_PROFILE_CONFIRM, name), _G.ACCEPT or "Accept", L.CANCEL, function()
+                if self:CurrentProfile() ~= into then return end
+                self:CopyProfile(name); layout:Refresh()
+            end)
+            layout:Refresh()
+        end, nil, Pick)
     layout:Dropdown(L.OPT_DELETE_PROFILE, nil, Others, function() return nil end,
-        function(name) self:DeleteProfile(name); layout:Refresh() end, nil, Pick)
+        function(name)
+            Layout.Confirm(format(L.OPT_DELETE_PROFILE_CONFIRM, name), _G.DELETE or "Delete", L.CANCEL, function()
+                self:DeleteProfile(name); layout:Refresh()
+            end)
+            layout:Refresh()
+        end, nil, Pick)
+    local function NewProfile(name)
+        if name and name ~= "" then
+            Options:SetProfile(name)
+            if Options.profileLayout then Options.profileLayout:Refresh() end
+        end
+    end
     if StaticPopupDialogs and StaticPopup_Show then
         StaticPopupDialogs.SPOKEN_NEW_PROFILE = StaticPopupDialogs.SPOKEN_NEW_PROFILE or {
             text = L.OPT_PROFILE_NEW_PROMPT, button1 = _G.ACCEPT or "Accept", button2 = L.CANCEL,
@@ -1170,18 +1192,17 @@ function Options:AddProfiles(layout)
                     local which = StaticPopup_Visible("SPOKEN_NEW_PROFILE")
                     box = which and _G[which .. "EditBox"]
                 end
-                local name = box and box:GetText()
-                if name and name ~= "" then
-                    Options:SetProfile(name)
-                    if Options.profileLayout then Options.profileLayout:Refresh() end
-                end
+                NewProfile(box and box:GetText())
             end,
             EditBoxOnEnterPressed = function(box)
                 local popup = box and box:GetParent()
                 if popup and popup.button1 then popup.button1:Click() end
             end,
         }
-        layout:Button(L.OPT_PROFILE_NEW, 200, function() StaticPopup_Show("SPOKEN_NEW_PROFILE") end)
+        layout:Button(L.OPT_PROFILE_NEW, 200, function()
+            local asked = Layout.Ask(L.OPT_PROFILE_NEW_PROMPT, _G.ACCEPT or "Accept", L.CANCEL, NewProfile)
+            if not asked then StaticPopup_Show("SPOKEN_NEW_PROFILE") end
+        end)
     end
     if Addon.db then
         layout:Dropdown(L.OPT_NEW_CHARACTER_PROFILE, nil,
@@ -1261,14 +1282,12 @@ local canvases = {}
 -- The page that set the window's target.
 local aimed
 
-local function InCombat() return InCombatLockdown and InCombatLockdown() end
-
 -- The game's FocusContainer ends on a row of its own settings list or the button the cursor last
 -- left, both off screen on a canvas page. SetTargetButtonForFrame is the only call that selects a
 -- given button for an addon; it also makes that row the window's fallback target.
 local function SelectFirstRow()
     local cursor = SmartNavigation
-    if not cursor or InCombat() or not cursor:IsInFocusGroup() then return end
+    if not cursor or Layout.CombatRestricted() or not cursor:IsInFocusGroup() then return end
     local current = cursor:GetCurrentButton()
     if current and current:IsVisible() then return end
     for frame, layout in pairs(canvases) do
@@ -1291,14 +1310,14 @@ local function GiveTargetBack(frame)
     if aimed ~= frame then return end
     aimed = nil
     local settings = _G.SettingsPanel
-    if SmartNavigation and not InCombat() and settings:IsShown() then
+    if SmartNavigation and not Layout.CombatRestricted() and settings:IsShown() then
         local button = settings:GetCategoryList():GetSelectedCategoryButton()
         SmartNavigation:SetTargetButtonForFrame(settings, button)
     end
 end
 
 local function AskCursor(frame)
-    if SmartNavigation and SmartNavigation.UpdateParent and not InCombat() then
+    if SmartNavigation and SmartNavigation.UpdateParent and not Layout.CombatRestricted() then
         SmartNavigation:UpdateParent(frame)
     end
 end

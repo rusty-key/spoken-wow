@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **`/sp mute [on | off]` and a Mute Spoken Audio key silence Spoken without disabling its
+  features.** Lines still queue and show their subtitles and narrator text, one after another, while
+  muted. The key has no default; set it in Spoken's settings or the game's key bindings. *([Trusty565](https://github.com/Trusty565))*
 - **Spoken's pages are listed under it in Settings, AddOns, from the start.** A controller can now
   reach every page; a mouse click on the minus still folds them away.
   *([rusty-key](https://github.com/rusty-key))*
@@ -38,6 +41,11 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **Read Greetings has a Once per Session choice.** An NPC greets you once each session: after a
   reload or relog it greets again. Greetings are kept per NPC, so guards that share an NPC ID share
   one greeting. *([anon1231823](https://github.com/anon1231823))*
+- **The settings pages work with the controller UI.** Each row is one stop: left and right step a
+  slider or dropdown, and A ticks or opens it. *([nobbs](https://github.com/nobbs))*
+- **Download, Report and the settings questions keep the controller working.** They open in
+  Spoken's own window, which B closes. *([nobbs](https://github.com/nobbs))*
+- **Copy Settings From and Delete Profile ask first.** *([nobbs](https://github.com/nobbs))*
 - **Previous Line replays recent playback.** The narrator keeps a short history after lines finish or
   are skipped, adds Previous controls to the player styles and DialogueUI rows, and exposes the
   action through `/sp previous` and a bindable key.
