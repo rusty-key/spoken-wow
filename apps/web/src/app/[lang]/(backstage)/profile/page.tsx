@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import ApiKeySection from "@/components/ApiKeySection";
 import ApiTokenSection, { type TokenLang } from "@/components/ApiTokenSection";
+import UiLanguageSetting from "@/components/UiLanguageSetting";
 import Link from "@/components/LocaleLink";
 import { apiKeyStatus } from "@/lib/api-key";
 import { viewerOf } from "@/lib/grants/store";
@@ -11,6 +12,7 @@ import { pageLang } from "@/lib/lang-server";
 import { langsWhere, roleLabel, spendsCredits } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { listTokens } from "@/lib/tokens/store";
+import { uiLangOf } from "@/lib/users/ui-language";
 import { Contained } from "@/components/Width";
 
 export const metadata: Metadata = { title: "Profile · Spoken" };
@@ -42,10 +44,11 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   }));
   // The status, never the key. Sent to a client component as props, so this is the shape
   // that decides what the browser can possibly learn.
-  const [tokens, status, fishStatus] = await Promise.all([
+  const [tokens, status, fishStatus, uiLang] = await Promise.all([
     tokenLangs.length ? listTokens(session.user.id) : [],
     spends ? apiKeyStatus(session.user.id) : null,
     spends ? apiKeyStatus(session.user.id, "fish") : null,
+    uiLangOf(session.user.id),
   ]);
 
   return (
@@ -61,6 +64,10 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
             <span className="rounded border px-1.5 text-xs uppercase">{roleLabel(role)}</span>
           </dd>
         </dl>
+
+        <div className="mb-8">
+          <UiLanguageSetting initial={uiLang} />
+        </div>
 
         <p className="mb-8 text-sm">
           <Link href="/request-team" className="text-foreground underline underline-offset-2">

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import TeamPicker from "@/components/TeamPicker";
 import { Contained } from "@/components/Width";
 import type { Lang } from "@/lib/lang";
@@ -17,7 +19,7 @@ export type Acting = { teams: TeamChoice[]; team: TeamChoice };
  * everyone who is not a site owner, nothing else is read, and an English page still renders
  * with the database down.
  */
-export async function actingIn(lang: Lang): Promise<Acting | null> {
+export const actingIn = cache(async (lang: Lang): Promise<Acting | null> => {
   const slug = (await currentChoice())[lang];
   if (!slug) return null;
   // Without the banner rather than without the page: a kept entry must not make an English page
@@ -31,7 +33,7 @@ export async function actingIn(lang: Lang): Promise<Acting | null> {
   } catch {
     return null;
   }
-}
+});
 
 /** On every page of the language, which team the site owner works as, with the picker to change it. */
 export default function ActingBanner({ teams, team }: Acting) {

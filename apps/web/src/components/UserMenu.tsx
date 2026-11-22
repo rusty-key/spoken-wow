@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 
 import LanguageSwitcher, { useOfferedLanguages } from "@/components/LanguageSwitcher";
 import PendingCount, { packsWaiting } from "@/components/PendingCount";
+import { useUiText } from "@/components/UiTextProvider";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { signOut, useSession } from "@/lib/auth-client";
@@ -25,12 +26,12 @@ import { cn } from "@/lib/utils";
  * had no way in from the site itself.
  */
 const SECTIONS = [
-  { href: "/quests", label: "Quests" },
-  { href: "/places", label: "Places" },
-  { href: "/bosses", label: "Bosses" },
-  { href: "/readables", label: "Readables" },
-  { href: "/contribute", label: "Contribute" },
-];
+  { href: "/quests", key: "quests" },
+  { href: "/places", key: "places" },
+  { href: "/bosses", key: "bosses" },
+  { href: "/readables", key: "readables" },
+  { href: "/contribute", key: "contribute" },
+] as const;
 
 type MenuLink = {
   href: string;
@@ -108,6 +109,8 @@ export default function UserMenu() {
   const grants = useGrants();
   const [pendingPacks] = usePendingPacks();
   const lang = useLang();
+  const t = useUiText().menu;
+  const sections = SECTIONS.map((each) => ({ href: each.href, label: t.sectionsNav[each.key] }));
   const { offered, retry: retryLanguages } = useOfferedLanguages(
     !isPending,
     `${session?.user.id ?? ""}:${session?.user.role ?? ""}`,
@@ -154,25 +157,25 @@ export default function UserMenu() {
         // canViewVoices, in the page's language like the rest.
         (may("regenerate") || may("configure")) && {
           href: "/voices",
-          label: "Voices",
+          label: t.voices,
         },
         // Each of these is the page's language's own, and gated on the same capability there as
         // the page it opens -- so a link is never offered to a page that would answer 404.
-        may("configure") && { href: "/lexicon", label: "Pronunciation" },
-        triages(may) && { href: "/reports", label: "Reports" },
-        may("text") && { href: "/contributions", label: "Contributions" },
+        may("configure") && { href: "/lexicon", label: t.pronunciation },
+        triages(may) && { href: "/reports", label: t.reports },
+        may("text") && { href: "/contributions", label: t.contributions },
         // A team's language keeps its own; a built-in's are Spoken's code.
-        may("text") && !hasBuiltinPlayerWords(lang) && { href: "/player-words", label: "Player words" },
-        may("edit") && { href: "/missing-audio", label: "Missing audio" },
+        may("text") && !hasBuiltinPlayerWords(lang) && { href: "/player-words", label: t.playerWords },
+        may("edit") && { href: "/missing-audio", label: t.missingAudio },
         // Who every NPC is holds in every language, so it is the global admin's alone.
-        isAdmin(role) && { href: "/npcs", label: "NPCs" },
+        isAdmin(role) && { href: "/npcs", label: t.npcs },
         // Who did what in this language: for whoever answers for the grants in it.
-        may("admin") && { href: "/activity", label: "Activity" },
+        may("admin") && { href: "/activity", label: t.activity },
         // Not per language: a pack names its own.
-        { href: "/packs", label: "My packs" },
+        { href: "/packs", label: t.myPacks },
         // Everyone signed in has one, and for somebody who may regenerate it is where their key
         // lives - which is the thing standing between them and the Regenerate button.
-        { href: "/profile", label: "Profile" },
+        { href: "/profile", label: t.profile },
       ].filter((link): link is MenuLink => Boolean(link));
 
   // In the header row rather than the menu: it is where an admin works, not a setting. Any
@@ -190,7 +193,7 @@ export default function UserMenu() {
               : administered.includes(lang)
                 ? `/admin/dashboard?lang=${lang}`
                 : "/admin/dashboard",
-            label: "Admin",
+            label: t.admin,
             admin: true,
             // A team's admin lands on the dashboard, but every admin page is this link's section.
             section: "/admin",
@@ -214,14 +217,14 @@ export default function UserMenu() {
   ) : null;
 
   const signIn: MenuLink[] = [
-    { href: "/login", label: "Sign in" },
-    { href: "/register", label: "Register" },
+    { href: "/login", label: t.signIn },
+    { href: "/register", label: t.register },
   ];
 
   return (
     <>
-      <nav className="bn-links" aria-label="Sections">
-        <Links links={SECTIONS} path={path} />
+      <nav className="bn-links" aria-label={t.sections}>
+        <Links links={sections} path={path} />
         <Links links={admin} path={path} />
       </nav>
       <div className="bn-nav-end">
@@ -232,13 +235,13 @@ export default function UserMenu() {
         {isPending ? null : !session ? (
           // One gold "Sign in", as on the front page; the login page links to Register.
           <Link className="bn-btn bn-btn-primary bn-btn-sm sn-wide" href="/login">
-            Sign in
+            {t.signIn}
           </Link>
         ) : (
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <button type="button" className="bn-btn bn-btn-sm sn-wide">
-                Profile
+                {t.profile}
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="bn-theme sn-pop" onCloseAutoFocus={keepFocus}>
@@ -246,7 +249,7 @@ export default function UserMenu() {
               <Links links={links} column path={path} onPick={() => setOpen(false)} />
               <div className="sn-rule" />
               <button type="button" className="sn-item" onClick={signOutAndRefresh}>
-                Sign out
+                {t.signOut}
               </button>
             </PopoverContent>
           </Popover>
@@ -260,7 +263,7 @@ export default function UserMenu() {
           }}
         >
           <PopoverTrigger asChild>
-            <button type="button" className="sn-burger" aria-label="Menu">
+            <button type="button" className="sn-burger" aria-label={t.menu}>
               <Menu size={20} aria-hidden />
             </button>
           </PopoverTrigger>
@@ -268,7 +271,12 @@ export default function UserMenu() {
             <div className="sn-pop-lang">
               <LanguageSwitcher offered={offered} />
             </div>
-            <Links links={SECTIONS} column path={path} onPick={() => setBurger(false)} />
+            <Links
+              links={sections}
+              column
+              path={path}
+              onPick={() => setBurger(false)}
+            />
             <div className="sn-rule" />
             {isPending ? null : session ? (
               <>
@@ -276,7 +284,7 @@ export default function UserMenu() {
                 <Links links={[...admin, ...links]} column path={path} onPick={() => setBurger(false)} />
                 <div className="sn-rule" />
                 <button type="button" className="sn-item" onClick={signOutAndRefresh}>
-                  Sign out
+                  {t.signOut}
                 </button>
               </>
             ) : (

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { Suspense } from "react";
 
+import ActingBanner, { actingIn } from "@/components/ActingBanner";
 import Link from "@/components/LocaleLink";
 import { BACKSTAGE_HREF } from "@/components/landing/backstage";
 import { body, display } from "@/components/landing/fonts";
@@ -79,7 +81,7 @@ function installRows(lang: Lang, t: SiteText["install"]): InstallRow[] {
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);
-  const t = await siteText(lang);
+  const [t, acting] = await Promise.all([siteText(lang), actingIn(lang)]);
   const newTab = <span className="sr-only">{t.newTab}</span>;
   const languages: InstallLanguage[] = BUILTIN.map(({ code, native }) => ({
     code,
@@ -90,6 +92,12 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
 
   return (
     <SiteTextProvider text={t}>
+      {/* Suspense because the banner's picker reads the search params. */}
+      {acting && (
+        <Suspense>
+          <ActingBanner {...acting} />
+        </Suspense>
+      )}
       <div className={`bn ${display.variable} ${body.variable}`}>
         <a className="bn-skip" href="#main">
           {t.skip}

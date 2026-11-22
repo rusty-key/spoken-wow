@@ -31,7 +31,7 @@ describe("previewOf", () => {
     const preview = previewOf(envelope);
     expect(preview.ok).toBe(true);
     if (!preview.ok) return;
-    expect(preview.rows).toContainEqual({ label: "Quest", value: "9123" });
+    expect(preview.rows).toContainEqual({ key: "quest", label: "Quest", value: "9123" });
     expect(preview.text).toContain("Убей шестерых.");
   });
 

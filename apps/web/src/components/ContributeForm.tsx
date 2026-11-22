@@ -19,63 +19,25 @@ import {
 } from "@/lib/contributions/contributions";
 import {
   decodeFragment,
-  type DecodeError,
   parseEnvelope,
-  type ParseError,
   takeFragment,
 } from "@/lib/contributions/envelope";
 import { browserInstallId } from "@/lib/contributions/browser-install";
+import { fill } from "@/lib/site-text/format";
+import { useUiText } from "@/components/UiTextProvider";
+import { EN, type UiText } from "@/lib/ui-text/en";
 import { sendFailureMessage } from "@/lib/contributions/send-failure";
 
-const FIELD_LABELS: Record<string, string> = {
-  quest: "Quest",
-  event: "Moment",
-  npc: "Character",
-  title: "Title",
-  book: "Book",
-  number: "Page",
-  page: "Page id",
-  map: "Map",
-  zone: "Zone",
-  subzone: "Place",
-  locale: "Language",
-  build: "Client",
-  addon: "Addon",
-  x: "x",
-  y: "y",
-  // The site takes the name back out of the text and does not keep it (lib/contributions/reader.ts).
-  reader: "Your character (not kept)",
-  readerClass: "Your class",
-  readerRace: "Your race",
-};
-
-const MESSAGES: Record<ParseError, string> = {
-  truncated: "That link was cut short. Copy the whole link from the game again.",
-  checksum: "That link was changed after it was copied. Copy it again without editing it.",
-  version: "That came from a newer addon than this page knows. Update the site's addons, or tell me.",
-  source: "That is not something this page can take.",
-  oversize: "That is far larger than anything the addon produces.",
-  malformed: "That link does not carry an addon's contribution. Copy it from the game again.",
-};
-
-const LINK_MESSAGES: Record<DecodeError, string> = {
-  malformed: "That link is missing its payload. Copy the whole link from the game again.",
-  corrupt: "That link looks broken -- copy it from the game again.",
-  // DecompressionStream is missing on pre-16.4 Safari: said plainly, rather than leaving the
-  // player looking at a form that silently never fills in.
-  unsupported: "This browser can't open this kind of link. Try it in a current browser.",
-};
-
 export type Preview =
-  | { ok: true; source: string; rows: { label: string; value: string }[]; text: string | null }
+  | { ok: true; source: string; rows: { key: string; label: string; value: string }[]; text: string | null }
   | { ok: false; message: string };
 
 /** Exported for its test: what the page will show for a given paste. */
-export function previewOf(raw: string): Preview {
+export function previewOf(raw: string, text: UiText["contribute"] = EN.contribute): Preview {
   if (!raw.trim()) return { ok: false, message: "" };
 
   const parsed = parseEnvelope(raw);
-  if (!parsed.ok) return { ok: false, message: MESSAGES[parsed.error] };
+  if (!parsed.ok) return { ok: false, message: text.linkProblems[parsed.error] };
 
   // A clean parse is not a sendable envelope: submissionFrom (via checkEnvelope) still applies
   // the key/text rules, and previously nothing here did -- a parse-only preview approved
@@ -83,14 +45,17 @@ export function previewOf(raw: string): Preview {
   const check = checkEnvelope(parsed.value);
   if (!check.ok) return { ok: false, message: check.message };
 
+  // `key` beside the label, so no caller matches on translated words.
   const rows = Object.entries(parsed.value.fields).map(([key, value]) => ({
-    label: FIELD_LABELS[key] ?? key,
+    key,
+    label: text.fieldLabels[key] ?? key,
     value,
   }));
   return { ok: true, source: parsed.value.source, rows, text: parsed.value.text };
 }
 
 export default function ContributeForm({ signedInAs }: { signedInAs: string | null }) {
+  const t = useUiText().contribute;
   const [raw, setRaw] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +84,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
       if (result.ok) {
         setRaw(result.text);
       } else {
-        setLinkError(LINK_MESSAGES[result.error]);
+        setLinkError(t.decodeProblems[result.error]);
       }
       setRead(true);
     });
@@ -128,7 +93,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
     };
   }, []);
 
-  const preview = previewOf(raw);
+  const preview = previewOf(raw, t);
   // A place with no lore: the addon can only name it, so what is sent is the player's own
   // description of it -- required, and in place of the optional note every other source gets.
   const isPlace = preview.ok && preview.source === "places";
@@ -162,7 +127,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
     const failure = (await response?.json().catch(() => null)) as { error?: string } | null;
     setError(
       failure?.error === "describe"
-        ? `Describe the place in a sentence or two -- at least ${DESCRIPTION_MIN} characters.`
+        ? fill(t.describeTooShort, { n: DESCRIPTION_MIN })
         : sendFailureMessage(response?.status ?? null, failure?.error),
     );
   }
@@ -181,10 +146,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
 
   if (read && !raw) {
     return (
-      <p className="text-muted-foreground text-sm">
-        For a single line: in the game, press <strong>Contribute</strong> where Spoken has no voice
-        or no lore, copy the link it shows you, and open it in your browser.
-      </p>
+      <p className="text-muted-foreground text-sm">{t.singleLine}</p>
     );
   }
 
@@ -193,7 +155,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
     // submission back, so a form that merely cleared itself would leave them with no evidence.
     return (
       <p role="status" className="rounded border p-4 text-sm">
-        Got it — thank you. It is in the queue with everything else players have sent.
+        {t.sent}
       </p>
     );
   }
@@ -207,10 +169,10 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
       ) : null}
 
       {preview.ok ? (
-        <section aria-label="What will be sent" className="bg-muted rounded border p-3 text-sm">
+        <section aria-label={t.previewLabel} className="bg-muted rounded border p-3 text-sm">
           <ul className="flex flex-col gap-0.5">
             {preview.rows.map((row) => (
-              <li key={row.label}>
+              <li key={row.key}>
                 <strong>{row.label}:</strong> {row.value}
               </li>
             ))}
@@ -221,11 +183,8 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
 
       {isPlace ? (
         <label className="flex flex-col gap-1 text-sm">
-          Describe this place
-          <span className="text-muted-foreground text-xs">
-            Nobody has written its lore yet. What is it, who lives there, what happened there?
-            A few sentences in your own words is plenty.
-          </span>
+          {t.describePlace}
+          <span className="text-muted-foreground text-xs">{t.describePlaceHint}</span>
           <textarea
             name="description"
             value={description}
@@ -239,7 +198,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
         </label>
       ) : (
         <label className="flex flex-col gap-1 text-sm">
-          Anything to add? (optional)
+          {t.anythingToAdd}
           <textarea
             name="body"
             maxLength={COMPLAINT_MAX}
@@ -258,17 +217,17 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
       */}
       {signedInAs ? (
         <p className="text-muted-foreground text-sm">
-          Filed as <span className="text-foreground">{signedInAs}</span>.
+          {fill(t.filedAs, { name: signedInAs })}
         </p>
       ) : (
         <>
           <label className="flex flex-col gap-1 text-sm">
-            Your name (optional)
+            {t.yourName}
             <input name="name" className="bg-background rounded border px-2 py-1.5" />
           </label>
 
           <label className="flex flex-col gap-1 text-sm">
-            Your email (optional)
+            {t.yourEmail}
             <input name="email" type="email" className="bg-background rounded border px-2 py-1.5" />
           </label>
         </>
@@ -288,7 +247,7 @@ export default function ContributeForm({ signedInAs }: { signedInAs: string | nu
 
       <div>
         <Button type="submit" disabled={busy || !preview.ok || (isPlace && !described)}>
-          {busy ? "Sending…" : "Send it"}
+          {busy ? t.sending : t.send}
         </Button>
       </div>
     </form>

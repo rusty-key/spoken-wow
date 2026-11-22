@@ -56,5 +56,7 @@ describe("the language in the URL", () => {
   it("knows the real pages", () => {
     expect(pageSections()).toEqual(expect.arrayContaining(["quests", "npcs", "places", "admin"]));
     expect(pageSections()).not.toContain("[lang]");
+    // A route group is not part of the address, so its pages are listed and it is not.
+    expect(pageSections().some((name) => name.startsWith("("))).toBe(false);
   });
 });
