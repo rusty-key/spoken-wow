@@ -16,7 +16,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { signOut, useSession } from "@/lib/auth-client";
 import { stripLang } from "@/lib/lang";
 import { isAdmin, langsWhere, roleLabel } from "@/lib/permissions";
-import { hasBuiltinPlayerWords } from "@/lib/player-words";
 import { triages } from "@/lib/reports/reports";
 import { cn } from "@/lib/utils";
 
@@ -164,8 +163,7 @@ export default function UserMenu() {
         may("configure") && { href: "/lexicon", label: t.pronunciation },
         triages(may) && { href: "/reports", label: t.reports },
         may("text") && { href: "/contributions", label: t.contributions },
-        // A team's language keeps its own; a built-in's are Spoken's code.
-        may("text") && !hasBuiltinPlayerWords(lang) && { href: "/player-words", label: t.playerWords },
+        may("text") && { href: "/player-words", label: t.playerWords },
         may("edit") && { href: "/missing-audio", label: t.missingAudio },
         // Who every NPC is holds in every language, so it is the global admin's alone.
         isAdmin(role) && { href: "/npcs", label: t.npcs },

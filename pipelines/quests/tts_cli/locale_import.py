@@ -123,14 +123,15 @@ def decide(current, value) -> str:
     `current` is (origin, value) for the live row, or None; `value` is what the dump says.
     'promote' writes a new live version, 'record' writes one that is not live (the line was
     edited here, and an import that could overwrite a correction is one nobody dares run),
-    'skip' writes nothing.
+    'skip' writes nothing. A name a translator kept from a player's client ('observed') is
+    newer than any dump, so it is recorded beside too.
     """
     if current is None:
         return "promote"
     origin, live = current
     if live == value:
         return "skip"
-    return "record" if origin == "edited" else "promote"
+    return "record" if origin in ("edited", "observed") else "promote"
 
 
 # Rows per statement. Written a row at a time, an import through the ssh tunnel production is

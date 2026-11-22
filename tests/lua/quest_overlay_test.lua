@@ -272,6 +272,15 @@ buttons[748]:Click()
 Expect("a Russian client names the quest-log giver in Russian", buttons[748].soundData.name, "Мулл Громовой Рог")
 stub.Advance(3)
 Expect("...and the other languages' files built nothing there", VO.GiverNames.creature[2948], "Мулл Громовой Рог")
+local pack
+for _, module in VO.DataModules:GetModules() do
+    pack = module
+    break
+end
+pack.ClientLocaleLookups = { NPCNameLookupByNPCID = { [2948] = "Мулл Громовой Рог из пакета" } }
+Expect("a language's pack names the giver before the addon's own files",
+    VO.DataModules:GetObjectName(VO.Enums.GUID.Creature, 2948), "Мулл Громовой Рог из пакета")
+pack.ClientLocaleLookups = nil
 stub.SetLocale("enUS")
 
 -- A quest a poster gives has no face to draw: its Play in the log shows the notice, as the dialog's

@@ -884,10 +884,18 @@ function DataModules:GetObjectName(type, id)
         return
     end
 
-    -- The packs' names are the English corpus's. Locale/Names holds the client's own, so a
-    -- quest-log line names its giver as the dialog did. It holds quest givers only - the ids
-    -- the packs' questlog tables can return - and a giver missing there is one whose name the
-    -- language does not translate.
+    -- The packs' plain names are the English corpus's. A language's pack carries that
+    -- language's own (ClientLocaleLookups, loaded only on a client in it), so a speaker who is
+    -- not on screen is named as the client would; it is asked first, from whichever pack holds it.
+    for _, module in self:GetModules() do
+        local data = module.ClientLocaleLookups and module.ClientLocaleLookups[table]
+        local name = data and data[id]
+        if name then
+            return name
+        end
+    end
+
+    -- Locale/Names, for a pack built before it carried names.
     local localized = GiverNames and GiverNames[kind] and GiverNames[kind][id]
     if localized then
         return localized

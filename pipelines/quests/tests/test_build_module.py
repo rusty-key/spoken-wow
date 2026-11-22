@@ -520,6 +520,25 @@ def test_only_a_pack_with_gossip_audio_carries_the_gossip_text_tables(tmp_path, 
     assert "generated\\npc_body_gossip_file_lookups.lua" in toc
 
 
+def test_a_language_s_pack_names_its_speakers_in_its_own_language(tmp_path):
+    store = _store(tmp_path, "gossip/abc123.ogg")
+    names = [{"kind": "creature", "entityId": "68", "name": "Guardia de Ventormenta"},
+             {"kind": "creature", "entityId": "999", "name": "Nadie"}]
+
+    build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="esMX",
+                 locale_text=MX_TEXT, locale_names=names)
+
+    table = _generated(tmp_path, "esMX", "npc_name_lookups.lua")
+    assert ('if not VoiceOver.Language or VoiceOver.Language:GetClientLanguage() ~= "esMX" '
+            'then return end') in table
+    assert "ClientLocaleLookups.NPCNameLookupByNPCID" in table
+    assert '"Guardia de Ventormenta"' in table
+    # An NPC the corpus never names is nothing the addon asks for.
+    assert "Nadie" not in table
+    assert "generated\\esMX\\npc_name_lookups.lua" in _toc(tmp_path)
+    assert '"Stormwind City Guard"' in _generated(tmp_path, "npc_name_lookups.lua")
+
+
 def test_a_language_pack_without_locale_text_has_no_locale_tables(tmp_path):
     # The faction packs of a language, and every English pack.
     store = _store(tmp_path, "gossip/abc123.ogg")

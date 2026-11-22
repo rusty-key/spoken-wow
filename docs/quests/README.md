@@ -576,7 +576,12 @@ English, "algumas unidades de" in ptBR, and "несколько" plus the second
 forms (`порции:порций`). A team's language says what its text maintainers set beside its player
 words on `/<lang>/player-words`. A language without words for it keeps the token and stays
 unvoiceable.
-Contributions triage shows any token still left after this, a bare `<` or `>`, and a gap
+ruRU wraps a token in the client's declension escape, `|3-6($c)`, which the game prints in
+grammatical case 6 (`|3-1` genitive, `|3-3` accusative, `|3-6` in address). Each reader's declined
+forms on `/<lang>/player-words` give the word per case number. An escape whose case has no word,
+or one around a word rather than a token (`|3-6(Друид)`, a contributor's own class), stays
+unvoiceable.
+Contributions triage shows any token or declension escape still left after this, a bare `<` or `>`, and a gap
 before `.` or `,` or a mid-sentence double space where a gender branch came through empty,
 above the row's text, so a line that would never be voiced is seen before it is accepted.
 Doing this at send time rather than in the rows covers every way a
@@ -1120,6 +1125,15 @@ It goes up with the lines and is stored in `npc_sighting` under who sent it (an 
 Manager's install id, or that one anonymous upload; no address is kept), never as a contribution.
 A zone counts for the zone filter once two uploaders send it, so the Manager sending one player's
 file after every logout is one voice.
+
+The envelope also carries the client's locale and the name it shows for the NPC, and is kept
+again when that name changes, so a giver a patch renames reaches the site too. In a language
+other than English, a name that differs from the language's current one is offered on
+`/contributions/names` (`name_contribution`, `lib/names/observed.ts`), one row per name with a
+count of its uploaders. A translator keeps it or drops it; a dropped name stays dropped when it
+is sent again. A kept name becomes the current one in `entity_name`, as `observed`. An
+`import-locale` records the dump's name beside an `observed` one rather than over it, because
+the dump is older than the client that showed it.
 
 The same text pasted again — by the same player or a different one — bumps a count on the
 existing row rather than filing a second one; different text under the same key stays its own
@@ -2035,13 +2049,21 @@ client measured it. An error in the hook is logged and never reaches the client'
 A quest-log play button has no NPC to ask who is speaking. The dialog names its speaker with
 `UnitName("questnpc")` in the client's own language; the log looks the giver up in the pack
 (`NPCIDLookupByQuestID` and its object and item twins) and names them from
-`NPCNameLookupByNPCID`, which is built from the English corpus. So the addon itself ships every
-other language's giver names, `Locale/Names/<lang>.lua`, each returning before it builds
-anything on a client in another locale, and `DataModules:GetObjectName` asks them first. They
-live in the addon rather than in the packs because the name follows the client, not the voice:
-a German client with English packs still shows German names. `make quests-export-giver-names`
-writes them from `entity_name` (`tts_cli/giver_names.py`), after an `import-locale`, along with
-a `Names.xml` that lists them all. Forever's `.toc` lists each file with
+`NPCNameLookupByNPCID`, which is built from the English corpus. A language's pack carries that
+language's own names beside its gossip text: `export-locale-text` writes the language's current
+NPC, object and item names into `locale-text.json.gz`, and the Gossip (or All) pack builds them
+into `ClientLocaleLookups`, loaded only on a client in that locale, for the entities the corpus
+names. `DataModules:GetObjectName` asks those first, so a translator's edit or a name kept on
+`/contributions/names` reaches players with the language's next pack release.
+
+The addon also ships every other language's giver names, `Locale/Names/<lang>.lua`, each returning before it builds
+anything on a client in another locale, and `DataModules:GetObjectName` asks them after the
+packs. They cover a pack built before packs carried names, and a client whose language's pack is
+not installed. `make quests-export-giver-names`
+writes them from `entity_name` (`tts_cli/giver_names.py`), after an `import-locale` or after
+translators keep names on `/contributions/names`, along with a `Names.xml` that lists them all.
+Each name is the language's current one, whoever wrote it: names are only displayed, and
+respellings for the voice live in the lexicon. Forever's `.toc` lists each file with
 `[AllowLoadTextLocale <lang>]`, as it does the gossip text, so the client loads only its own; the
 classic `.toc` files load `Names.xml`. The export stops with the lines to add or remove when
 Forever's `.toc` does not list exactly the files it wrote. Only
