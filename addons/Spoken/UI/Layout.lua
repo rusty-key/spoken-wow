@@ -250,11 +250,14 @@ function Layout:Index(frame, label, tooltip)
 end
 
 --- The page's first row on screen that the controller's cursor can stop on: a row in the page's
---- column, not a button beside a section's title.
+--- column, not a button beside a section's title, and not one scrolled above the view.
 function Layout:FirstRow()
+    local view = self.parent.layoutScroller
+    local scrolled = view and view.frame:GetVerticalScroll() or 0
     for _, entry in ipairs(self.entries) do
         local frame = entry.frame
-        if frame.layoutY and frame:IsVisible() and SmartNavigation_CanFocusFrame(frame)
+        if frame.layoutY and -frame.layoutY >= scrolled and frame:IsVisible()
+            and SmartNavigation_CanFocusFrame(frame)
             and not SmartNavigation_IsFrameIgnored(frame) then
             return frame
         end
