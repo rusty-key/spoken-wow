@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **The controller can enter Spoken's settings pages.** In Settings, AddOns, confirming or
+  pressing right on Spoken or one of its pages goes to the page's first row.
+  *([rusty-key](https://github.com/rusty-key))*
 - **Forget Places Heard is now Forget Visited Places, and asks before it clears.** The button
   shows how many places the character has heard, and the question says how many it will forget.
   *([Ozzadar](https://github.com/Ozzadar))*

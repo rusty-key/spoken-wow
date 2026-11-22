@@ -1255,6 +1255,63 @@ local function FitScroller()
     scroller:SetContentHeight(TOP + panel.layout:Height() + BOTTOM)
 end
 
+-- Page frame to its layout. The cursor refuses addons in combat, so nothing below runs then.
+local canvases = {}
+-- The page that set the window's target.
+local aimed
+
+local function InCombat() return InCombatLockdown and InCombatLockdown() end
+
+-- The game's FocusContainer ends on a row of its own settings list or the button the cursor last
+-- left, both off screen on a canvas page. SetTargetButtonForFrame is the only call that selects a
+-- given button for an addon; it also makes that row the window's fallback target.
+local function SelectFirstRow()
+    local cursor = SmartNavigation
+    if not cursor or InCombat() or not cursor:IsInFocusGroup() then return end
+    local current = cursor:GetCurrentButton()
+    if current and current:IsVisible() then return end
+    for frame, layout in pairs(canvases) do
+        if frame:IsVisible() then
+            local row = layout and layout:FirstRow()
+            if row then
+                aimed = frame
+                cursor:SetTargetButtonForFrame(_G.SettingsPanel, row)
+            else
+                cursor:SelectTopLeftButton()
+            end
+            return
+        end
+    end
+end
+
+-- The window's own target is the selected category's button. Left on a hidden row, a page the
+-- cursor cannot enter would hide the cursor instead of sending it back to the list.
+local function GiveTargetBack(frame)
+    if aimed ~= frame then return end
+    aimed = nil
+    local settings = _G.SettingsPanel
+    if SmartNavigation and not InCombat() and settings:IsShown() then
+        local button = settings:GetCategoryList():GetSelectedCategoryButton()
+        SmartNavigation:SetTargetButtonForFrame(settings, button)
+    end
+end
+
+local function AskCursor(frame)
+    if SmartNavigation and SmartNavigation.UpdateParent and not InCombat() then
+        SmartNavigation:UpdateParent(frame)
+    end
+end
+
+-- The settings window takes a page in with SetParent, which the cursor does not notice, so it
+-- keeps the buttons it found when the window opened. A page asks it to look again as it shows,
+-- and waits hidden: one already shown gets no OnShow when the window first takes it.
+local function ForController(frame, layout)
+    canvases[frame] = layout or false
+    frame:Hide()
+    frame:HookScript("OnShow", AskCursor)
+    frame:HookScript("OnHide", GiveTargetBack)
+end
+
 function Options:Setup()
     if panel then return end
     Build()
@@ -1265,6 +1322,10 @@ function Options:Setup()
     -- under it (Options:RegisterPage).
     FitScroller()
     self.category = Settings.RegisterCanvasLayoutCategory(panel, "Spoken")
+    ForController(panel, panel.layout)
+    if _G.SettingsPanel and _G.SettingsPanel.FocusContainer then
+        hooksecurefunc(_G.SettingsPanel, "FocusContainer", SelectFirstRow)
+    end
     Settings.RegisterAddOnCategory(self.category)
     if not pagesHeld then self:ReleasePages() end
 end
@@ -1309,6 +1370,7 @@ end)
 
 function Options:RegisterPage(page)
     page.category = Settings.RegisterCanvasLayoutSubcategory(self.category, page.frame, page.name)
+    ForController(page.frame, page.layout)
 end
 
 function Options:Open()
