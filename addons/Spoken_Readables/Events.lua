@@ -32,37 +32,15 @@ frame:RegisterEvent("ITEM_TEXT_BEGIN")
 frame:RegisterEvent("ITEM_TEXT_READY")
 frame:RegisterEvent("ITEM_TEXT_CLOSED")
 
-local function BagSlots(bag)
-	if C_Container and C_Container.GetContainerNumSlots then
-		return C_Container.GetContainerNumSlots(bag) or 0
-	end
-	return GetContainerNumSlots and GetContainerNumSlots(bag) or 0
-end
-
-local function ItemID(bag, slot)
-	if C_Container and C_Container.GetContainerItemID then
-		return C_Container.GetContainerItemID(bag, slot)
-	end
-	if GetContainerItemID then
-		return GetContainerItemID(bag, slot)
-	end
-	if C_Container and C_Container.GetContainerItemInfo then
-		local info = C_Container.GetContainerItemInfo(bag, slot)
-		local link = info and info.hyperlink
-		return link and tonumber(string.match(link, "item:(%d+)"))
-	end
-	if GetContainerItemInfo then
-		local _, _, _, _, _, _, link = GetContainerItemInfo(bag, slot)
-		return link and tonumber(string.match(link, "item:(%d+)"))
-	end
-end
-
---- Mark found every text-bearing readable in the bags. Carrying one is enough: a quest note
---- handed in unopened would otherwise stay locked in the Compendium for good.
+--- Carrying a readable finds it: a quest note handed in unopened would otherwise stay locked in
+--- the Compendium for good.
 function SpokenReadables:FindCarriedReadables()
+	local data = self:Data()
+	local owners = data and data.owners and data.owners.item
+	if not owners then return end
 	for bag = 0, NUM_BAG_SLOTS or 4 do
-		for slot = 1, BagSlots(bag) do
-			local book = self:BookForItem(ItemID(bag, slot))
+		for slot = 1, C_Container.GetContainerNumSlots(bag) do
+			local book = owners[C_Container.GetContainerItemID(bag, slot)]
 			if book then self:MarkBookFound(book) end
 		end
 	end

@@ -291,47 +291,23 @@ function SpokenReadables:Data()
 	return _G.SpokenReadablesData
 end
 
---- The readable owned by an item, if the item is a text-bearing note or book.
----
---- The item table is generated with the corpus. Checking the page text here keeps an item
---- with no readable text from appearing in the Compendium merely because it has an owner entry.
-function SpokenReadables:BookForItem(itemID)
-	if not itemID then return nil end
-	local data = self:Data()
-	local owners = data and data.owners and data.owners.item
-	local bookID = owners and owners[itemID]
-	local book = bookID and data.books and data.books[bookID]
-	if not book then return nil end
-	for _, pageID in ipairs(book.pages or {}) do
-		local page = data.pages and data.pages[pageID]
-		if page and type(page.text) == "string" and page.text ~= "" then
-			return bookID
-		end
-	end
-	return nil
-end
-
---- The item that owns a readable, if it is a carried book, letter or note. Where two items own
---- one book the lowest id wins, so its icon does not change with `pairs` order between reloads.
+--- Where two items own one book the lowest id wins, so its icon does not change with `pairs`
+--- order between reloads.
 function SpokenReadables:ItemForBook(bookID)
-	local data = self:Data()
-	if self.itemForBookData ~= data then
-		self.itemForBookData = data
+	if not self.itemForBook then
 		self.itemForBook = {}
-		local owners = data and data.owners and data.owners.item or {}
-		for itemID, owner in pairs(owners) do
+		local data = self:Data()
+		for itemID, owner in pairs(data and data.owners and data.owners.item or {}) do
 			local held = self.itemForBook[owner]
 			if held == nil or itemID < held then self.itemForBook[owner] = itemID end
 		end
 	end
-	return self.itemForBook and self.itemForBook[bookID]
+	return self.itemForBook[bookID]
 end
 
---- The icon of a carried readable's item and its crop, or nil for a world object.
+--- Nil for a world object.
 function SpokenReadables:ItemIcon(bookID)
-	local itemID = self:ItemForBook(bookID)
-	if not itemID or not (Spoken and Spoken.ItemIcon) then return nil end
-	return Spoken:ItemIcon(itemID)
+	return Spoken:ItemIcon(self:ItemForBook(bookID))
 end
 
 --- Spoken's site, or nil when Spoken is not loaded: no page is read aloud without it, so there

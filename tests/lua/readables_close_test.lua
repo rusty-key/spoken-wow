@@ -46,45 +46,30 @@ SpokenReadablesData.index["William's Shipment"][1][B:ChecksumOf(LETTER)] = 15
 
 ---------------------------------------------------------------- readable items in the bags
 local bagItems = {}
-_G.NUM_BAG_SLOTS = 4
-_G.GetContainerNumSlots = function(bag) return bag == 0 and 4 or 0 end
-_G.GetContainerItemID = function(bag, slot) return bag == 0 and bagItems[slot] or nil end
+_G.C_Container = {
+    GetContainerNumSlots = function(bag) return bag == 1 and 4 or 0 end,
+    GetContainerItemID = function(bag, slot) return bag == 1 and bagItems[slot] or nil end,
+}
 SpokenReadablesCharacter.found = {}
-bagItems[1] = 745 -- Report: Kobolds, a text-bearing quest item in the corpus.
+bagItems[2] = 745 -- Report: Kobolds, a quest item in the corpus.
 stub.FireEvent("BAG_UPDATE_DELAYED")
-Expect("a carried text-bearing note is found", B:IsBookFound(209), true)
+Expect("a carried note is found", B:IsBookFound(209), true)
 Expect("carrying a note does not start narration", #Spoken:GetQueue(), 0)
 Expect("carrying a note does not mark it heard", B:HasReadBook(209), false)
-
-local emptyBook = 990001
-SpokenReadablesData.owners.item[emptyBook] = emptyBook
-SpokenReadablesData.books[emptyBook] = { title = "Empty Note", pages = { emptyBook } }
-SpokenReadablesData.pages[emptyBook] = { book = emptyBook, number = 1, text = "" }
-bagItems[2] = emptyBook
-stub.FireEvent("BAG_UPDATE_DELAYED")
-Expect("an item without note text is not found", B:IsBookFound(emptyBook), false)
-
-SpokenReadablesCharacter.found = {}
-_G.C_Container = {
-    GetContainerNumSlots = function(bag) return bag == 1 and 2 or 0 end,
-    GetContainerItemID = function(bag, slot) return bag == 1 and slot == 2 and 745 or nil end,
-}
-stub.FireEvent("BAG_UPDATE_DELAYED")
-Expect("a note in another bag is found through C_Container", B:IsBookFound(209), true)
 _G.C_Container = nil
-bagItems = {}
 
 SpokenReadablesData.owners.item[990003] = 209
 SpokenReadablesData.owners.item[700] = 209
-B.itemForBookData = nil
+B.itemForBook = nil
 Expect("a book with two items takes the lowest id", B:ItemForBook(209), 700)
 SpokenReadablesData.owners.item[990003], SpokenReadablesData.owners.item[700] = nil, nil
-B.itemForBookData = nil
+B.itemForBook = nil
 
 _G.GetItemInfoInstant = function(itemID) return itemID, "Quest", "Note", "", 123456 end
 local icon, crop = B:ItemIcon(209)
 Expect("a carried readable takes its item's icon", icon, 123456)
 Expect("the item icon comes with Spoken's crop", crop ~= nil, true)
+Expect("a world object has no item icon", B:ItemIcon(2104), nil)
 
 -- The client's CloseItemText: the window goes and ITEM_TEXT_CLOSED follows.
 local closed = 0
