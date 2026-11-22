@@ -1964,10 +1964,13 @@ function Pad.Refind()
 	SmartNavigation:RefreshButtonGroups(window)
 end
 
--- The page in sight: the shown tab's, unless the window is folded down to its list.
+-- The page in sight: the shown tab's, unless the window is folded down to its list. The map's story
+-- panel builds its page the same way and can be in sight beside the window.
 local function ShownPage()
 	for _, page in ipairs(Pad.pages) do
-		if page.frame:IsVisible() then return page end
+		local frame = page.frame:IsVisible() and page.frame
+		while frame and frame ~= window do frame = frame:GetParent() end
+		if frame then return page end
 	end
 end
 
@@ -2026,6 +2029,8 @@ function Pad.Settle()
 	end
 	if Pad.focused then Pad.Bind() else Pad.Unbind() end
 	if Pad.refindLater then Pad.Refind() end
+	-- A tab changed or the window folded in combat left the right stick where it was.
+	Pad.Retarget()
 	if Pad.SettleFilter then Pad.SettleFilter() end
 end
 

@@ -65,6 +65,12 @@ C:Register("places", { label = "Places", order = 2, build = function(panel)
     function panel:Refresh() placesList:Render() end
 end })
 
+-- The map's story panel builds its page with the same call, before the window's tabs, and can be
+-- in sight beside the window.
+local mapPanel = CreateFrame("Frame", nil, UIParent)
+mapPanel:Show()
+C.NewPage(mapPanel, "Spoken_Places")
+
 -- Show and hide run the window's scripts as the client does.
 local function Run(frame, script)
     local fn = frame:GetScript(script)
@@ -426,6 +432,26 @@ Expect("the filter is open", pad:IsShown(), true)
 Close()
 Expect("closing the window closes its filter too", pad:IsShown(), false)
 Run(pad, "OnHide")
+
+---------------------------------------------------------------- the right stick
+Open()
+calls = {}
+C.window:FocusGamepad()
+Expect("with the map's story page in sight, the right stick still scrolls the window's page",
+    Called("stick window page"), true)
+-- A tab changed in combat: the stick's setter is refused then.
+restricted = true
+calls = {}
+Press("PADRSHOULDER")
+Expect("a tab changed in combat moves no stick then", Called("stick window nil"), false)
+restricted = false
+-- The stub's IsVisible ignores parents; the client's hides the page with its tab.
+page.frame:Hide()
+stub.FireEvent("PLAYER_REGEN_ENABLED")
+Expect("...but once combat ends, off the page of the tab just hidden", Called("stick window nil"), true)
+page.frame:Show()
+Press("PADLSHOULDER")
+Close()
 
 ---------------------------------------------------------------- tabs not yet opened
 -- A tab's frames built in sight of the cursor make the game look for stops from inside Spoken's
