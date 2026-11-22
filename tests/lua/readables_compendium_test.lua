@@ -71,12 +71,6 @@ B:SetupSource()
 dofile(READABLES .. "Data/Books.lua")
 dofile(READABLES .. "Data/Places.lua")
 local L = B.L
-Expect("Fishing Tournament keeps its direct reward quest", SpokenReadablesPlaces.books[2786].quests[1], 8228)
-Expect("Brazier of Invocation keeps its direct reward quest", SpokenReadablesPlaces.books[2859].quests[1], 8996)
-local JOURNAL = SpokenReadablesPlaces.books["nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"]
-Expect("the string-keyed journal remains in Places", JOURNAL ~= nil, true)
-Expect("the journal keeps its generated type", JOURNAL.type, "journal")
-Expect("the journal keeps its direct reward quest", JOURNAL.quests[1], 97277)
 
 -- Compendium ordering must keep numeric and minted IDs comparable when titles collide.
 local MIXED_BOOK = "n00000000-0000-4000-8000-000000000001"

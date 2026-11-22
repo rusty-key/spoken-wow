@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { booksLua, indexLua, pageIndex, quote } from "./lua.mjs";
+import { booksLua, indexLua, luaTableId, pageIndex, quote } from "./lua.mjs";
 import { pageChecksum } from "./naming.mjs";
 
 const entries = [
@@ -115,6 +115,11 @@ test("a minted book and its pages are fully written by the export", () => {
   assert.match(lua, new RegExp(`\\["${pageId}"\\] = \\{ book = "${bookId}"`));
   assert.match(lua, new RegExp(`\\["Mechanic's Log"\\]`));
   assert.match(lua, new RegExp(`\\["${bookId}"\\] = \\{ title = "Gozwin's Mechanic's Log", pages = \\{ "${pageId}" \\} \\}`));
+});
+
+test("database ids keep numeric keys numeric and minted keys quoted", () => {
+  assert.equal(luaTableId("2859"), 2859);
+  assert.equal(luaTableId("nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"), "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8");
 });
 
 test("an item or object names the book it opens", () => {
