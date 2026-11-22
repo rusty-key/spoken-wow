@@ -72,8 +72,8 @@ function Box:Show(text, title, anchor)
 	frame.edit:HighlightText()
 end
 
-function Box:Hide()
-	if frame then frame:Hide() end
+function Box:Hide(title)
+	if frame and (not title or frame.title:GetText() == title) then frame:Hide() end
 end
 
 function Box:Frame()

@@ -245,6 +245,16 @@ local function GossipOnScreen()
     return GetGossipText and NotSecret(GetGossipText())
 end
 
+function Contribute:CurrentText()
+    local _, text = EventOnScreen()
+    if text then return text end
+    if Utils:DialogueUIPage() == "QUEST_GREETING"
+        or (QuestFrameGreetingPanel and QuestFrameGreetingPanel:IsVisible()) then
+        return GetGreetingText and NotSecret(GetGreetingText())
+    end
+    return GossipOnScreen()
+end
+
 --- Who is reading, onto `fields`, beside a text sent as shown, and the classes `questID` is for
 --- where the Compendium says: on a quest only the reader's class can take, the class is the
 --- quest's own word and the site leaves it as written.

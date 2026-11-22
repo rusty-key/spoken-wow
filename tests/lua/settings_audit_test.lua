@@ -238,7 +238,7 @@ do
     Expect("...Chat Messages holding each module's debug switch, in the modules' order",
         rows[Dev.L.OPT_CHAT_SECTION], VO.L.OPT_DEBUG .. ", " .. Z.L.OPT_DEV_DEBUG .. ", " .. B.L.OPT_DEV_DEBUG)
     Expect("...Testing each module's tools", rows[Dev.L.OPT_TESTING_SECTION],
-        VO.L.OPT_DEV_MOCK_MISSING .. ", " .. Z.L.OPT_DEV_PREVIEW)
+        Dev.L.OPT_COPY_TEXT .. ", " .. VO.L.OPT_DEV_MOCK_MISSING .. ", " .. Z.L.OPT_DEV_PREVIEW)
 end
 
 ---------------------------------------------------------------- Reset All and the Unlock switches

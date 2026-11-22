@@ -91,6 +91,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/secret_values_test.lua
 	@$(LUA) tests/lua/developer_hooks_test.lua
 	@$(LUA) tests/lua/developer_log_test.lua
+	@$(LUA) tests/lua/developer_text_test.lua
 	@$(LUA) tests/lua/developer_camera_test.lua
 	@$(LUA) tests/lua/quests_log_test.lua
 	@$(LUA) tests/lua/sources_test.lua
