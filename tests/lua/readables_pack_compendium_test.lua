@@ -67,4 +67,4 @@ Expect("the locale-pack readable is placed in Dun Morogh",
     B.readables.page.sub.text.text:find("Dun Morogh", 1, true) ~= nil, true)
 Expect("the locale-pack readable resolves back to its item", B:ItemForBook(BOOK), 280430)
 
-return Failures()
+assert(Failures() == 0, "readables pack checks failed")
