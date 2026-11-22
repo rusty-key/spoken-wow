@@ -110,8 +110,9 @@ export function sentText(
 
 /**
  * A quest line speaking `text` as `provider` is sent it: sentText, then the provider's shaping
- * with the line's voice's direction. Regenerating hashes this into the take, and the staleness
- * check and an override's spoken hashes must arrive at the identical string.
+ * with the line's voice's direction and its file's NPC direction. Regenerating hashes this into
+ * the take, and the staleness check and an override's spoken hashes must arrive at the
+ * identical string.
  */
 export function shapedText(
   text: string,
@@ -119,6 +120,10 @@ export function shapedText(
   line: { voice: string; playerGender: "m" | "f" | null },
   provider: Provider,
   raceTags: Record<string, string>,
+  npc: string | undefined,
 ): string {
-  return SHAPE[provider](sentText(text, lang, line.playerGender), directionFor(line.voice, raceTags), raceTags);
+  return SHAPE[provider](sentText(text, lang, line.playerGender), directionFor(line.voice, raceTags), {
+    raceTags,
+    npc,
+  });
 }

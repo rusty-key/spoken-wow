@@ -63,7 +63,7 @@ L.CMD_VOICE = "  /spp voice      -- «Leer historias en voz alta», activar o de
 L.CMD_AUTOPLAY = "  /spp autoplay   -- «Leer automáticamente», activar o desactivar"
 L.CMD_AUDIO = "  /spp audio      -- los paquetes de voces instalados"
 L.CMD_LANG = "  /spp lang       -- Idioma del texto: lista, o cambia con /spp lang <code> o auto"
-L.CMD_FORGET = "  /spp forget     -- Olvidar lugares oídos"
+L.CMD_FORGET = "  /spp forget     -- Olvidar lugares visitados"
 
 
 -- Added in the settings, subtitles and Zone Lore release.
@@ -81,8 +81,11 @@ L.REASON_MAP_PANEL = "Activa «Historia junto al mapa» para usar esto."
 L.OPT_DOWNLOAD_ADDRESS = "Copia esta dirección en tu navegador para descargar el paquete de voces."
 
 -- Reading history
-L.OPT_FORGET_PLACES = "Olvidar lugares oídos"
+L.OPT_FORGET_PLACES = "Olvidar lugares visitados"
 L.OPT_FORGET_PLACES_DONE = "Se ha borrado la lista de lugares oídos de este personaje."
+L.OPT_FORGET_PLACES_CONFIRM = "Olvidarás %d lugares."
+L.OPT_FORGET_PLACES_CONFIRM_ONE = "Olvidarás 1 lugar."
+L.OPT_FORGET = "Olvidar"
 
 -- Fixing a problem
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { bossesOf, keyOf, renameAsCreatures, retailRows } from "./bosses.mjs";
+import { bossesOf, keyOf, renameAsCreatures } from "./bosses.mjs";
 
 const row = (ID, Name_lang, DifficultyID, OrderIndex) => ({ ID, Name_lang, DifficultyID, OrderIndex });
 
@@ -38,15 +38,6 @@ test("bosses stand in Forever's order (difficulties 0 and 1), a boss only other 
   const bosses = bossesOf(rows);
   assert.deepEqual(bosses.map((boss) => boss.name), ["Ghamoo-ra", "Gelihast", "Old Serra'kis", "Baron Aquanis"]);
   assert.deepEqual(bosses.map((boss) => boss.id), [2, 3, 4, 1]);
-});
-
-test("retail names Forever's encounters by id, else one only Forever has by its English name", () => {
-  const english = [{ ID: "422", Name_lang: "Lord Cobrahn" }, { ID: "3588", Name_lang: "Dreamscythe" },
-    { ID: "3062", Name_lang: "Pyroguard Emberseer" }];
-  const retailEnglish = [{ ID: "422", Name_lang: "Lord Cobrahn" }, { ID: "487", Name_lang: "Dreamscythe" }];
-  const retailItalian = [{ ID: "422", Name_lang: "Ser Cobrahn" }, { ID: "487", Name_lang: "Falciasogni" }];
-  assert.deepEqual(retailRows(english, retailEnglish, retailItalian),
-    [{ ID: "422", Name_lang: "Ser Cobrahn" }, { ID: "3588", Name_lang: "Falciasogni" }]);
 });
 
 test("a combined row is left out where one of its bosses is listed on its own", () => {

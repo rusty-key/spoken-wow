@@ -26,7 +26,7 @@ test("quests: All clears the audio state and the reports filter in one write", a
     <QuestsSearchBar
       query=""
       filters={{ ...both }}
-      facets={{ races: [], genders: [], flavors: [], voices: [], flavorScopes: [] }}
+      facets={{ races: [], genders: [], flavors: [], voices: [], flavorScopes: [], zones: [] }}
       onQuery={() => {}}
       onFilters={onFilters}
       onClearAll={() => {}}
@@ -144,7 +144,7 @@ test("Done closes the filter panel and puts focus back on Filters", async () => 
     <QuestsSearchBar
       query=""
       filters={{}}
-      facets={{ races: [], genders: [], flavors: [], voices: [], flavorScopes: [] }}
+      facets={{ races: [], genders: [], flavors: [], voices: [], flavorScopes: [], zones: [] }}
       onQuery={() => {}}
       onFilters={() => {}}
       onClearAll={() => {}}

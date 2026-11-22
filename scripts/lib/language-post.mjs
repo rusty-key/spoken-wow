@@ -42,7 +42,6 @@ export const CHANNEL_NAMES = {
   esES: "español",
   esMX: "español-latam",
   frFR: "français",
-  itIT: "italiano",
   ptBR: "português",
   ruRU: "русский",
   koKR: "한국어",

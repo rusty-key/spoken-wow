@@ -46,6 +46,7 @@ local function Install(packs, locale)
             ClientLocaleLookups = pack.clientGossip and { GossipLookupByNPCID = pack.clientGossip },
             GetSoundPath = function(_, fileName) return fileName end,
             TextByFileName = pack.texts,
+            LineTextByFileName = pack.lineTexts,
         })
     end
     return VO
@@ -293,25 +294,25 @@ do
 end
 
 ---------------------------------------------------------------- K. a language no client runs in
--- Italian is no built-in language: a pack declares it, and then a player may choose it, but
+-- Japanese is no built-in language: a pack declares it, and then a player may choose it, but
 -- GetLocale() never says it, so Auto never lands on it -- even on a (hypothetical) client that
 -- claimed it.
-local IT_PACKS = {
+local JA_PACKS = {
     { folder = "EnglishPack", lines = EN_LINES },
-    { folder = "ItalianPack", language = "itIT", lines = { ["1-accept"] = 5.5 } },
+    { folder = "JapanesePack", language = "jaJP", lines = { ["1-accept"] = 5.5 } },
 }
-VO = Install(IT_PACKS, "enUS")
-Expect("K. an Italian pack declares Italian", VO.DataModules:GetPresentModule("ItalianPack").Language, "itIT")
+VO = Install(JA_PACKS, "enUS")
+Expect("K. a Japanese pack declares Japanese", VO.DataModules:GetPresentModule("JapanesePack").Language, "jaJP")
 Expect("K. on Auto an English client hears English", Resolve(VO, 1), "EnglishPack")
-VO.Addon.db.profile.Audio.VoiceLanguage = "itIT"
-Expect("K. chosen, Italian answers", Resolve(VO, 1), "ItalianPack")
+VO.Addon.db.profile.Audio.VoiceLanguage = "jaJP"
+Expect("K. chosen, Japanese answers", Resolve(VO, 1), "JapanesePack")
 Expect("K. ...and falls back to English where it has no clip", Resolve(VO, 2), "EnglishPack")
-VO = Install(IT_PACKS, "itIT")
-Expect("K. a client claiming Italian is not taken at its word", VO.Language:GetClientLanguage(), "enUS")
+VO = Install(JA_PACKS, "jaJP")
+Expect("K. a client claiming Japanese is not taken at its word", VO.Language:GetClientLanguage(), "enUS")
 Expect("K. ...so Auto stays English", Resolve(VO, 1), "EnglishPack")
-Expect("K. Italian is not a client language", VO.Language:IsClientLanguage("itIT"), false)
+Expect("K. Japanese is not a client language", VO.Language:IsClientLanguage("jaJP"), false)
 Expect("K. Portuguese is", VO.Language:IsClientLanguage("ptBR"), true)
-Expect("K. nor is Vietnamese, though a pack declares it", VO.Language:IsClientLanguage("viVN"), false)
+Expect("K. nor is Thai, though a pack declares it", VO.Language:IsClientLanguage("thTH"), false)
 
 ---------------------------------------------------------------- M. a language only a pack declares
 -- Hebrew is in no list of this addon: its pack names it in the .toc and Spoken's scan registers it.
@@ -477,6 +478,22 @@ do
     Expect("Text Language Polish, voice English: the English recording plays", folder, "SpokenQuestsAudio")
     Expect("...captioned in the Polish voice pack's words for the line, before a text pack's",
         VO.DataModules:TextPackText(soundData), "Słowa polskiego głosu.")
+    H.ReadText(nil)
+    _G.SpokenEnv.Addon.db.profile.Language.Voice = nil
+end
+
+-- A voice pack's words of a line it has no take of are no voice's: a text pack's win over them.
+do
+    local VO = Install({ { folder = "SpokenQuestsAudio", lines = { ["101-accept"] = 2 } },
+        { folder = "SpokenQuestsAudio_plPL", language = "plPL", lines = {},
+            lineTexts = { ["101-accept"] = "Słowa bez nagrania." } } })
+    _G.SpokenEnv.Addon.db.profile.Language.Voice = "enUS"
+    H.ReadText("plPL")
+    local _, soundData = Resolve(VO, 101)
+    Expect("a voice pack's words of a line with no take caption it where nothing else has it",
+        VO.DataModules:TextPackText(soundData), "Słowa bez nagrania.")
+    _G.Spoken:RegisterText("plPL", "quests", { lines = { ["q:101:accept"] = "Słowa pakietu tekstu." } })
+    Expect("...and yield to a text pack's", VO.DataModules:TextPackText(soundData), "Słowa pakietu tekstu.")
     H.ReadText(nil)
     _G.SpokenEnv.Addon.db.profile.Language.Voice = nil
 end

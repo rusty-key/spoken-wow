@@ -22,7 +22,8 @@ from tts_cli.naming import (BROADCAST_SOURCES, followup_stem_from_line_id, gossi
                             several_wordings, split_voice, subfolder_from_line_id,
                             variant_file_name)
 from tts_cli.npc_bodies import GENDER_SEX, body_name
-from tts_cli.store import SUBFOLDERS, audio_extension, durations, stored_files, take_text, word_times
+from tts_cli.store import (SUBFOLDERS, audio_extension, durations, line_text, stored_files, take_text,
+                           word_times)
 from tts_cli.utils import (get_first_n_words, get_last_n_words,
                            replace_dollar_bs_with_space)
 
@@ -529,9 +530,10 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     silent = set(wordless(corpus)) | set(ignored)
     skip = {os.path.splitext(rel)[0] for rel in ignored_files(corpus, silent)} \
         if silent else set()
-    audio = [rel for rel in stored_files(store_dir)
-             if os.path.splitext(rel)[0] not in skip
-             and (include is None or os.path.splitext(rel)[0] in include)]
+    def carried(stem):
+        return stem not in skip and (include is None or stem in include)
+
+    audio = [rel for rel in stored_files(store_dir) if carried(os.path.splitext(rel)[0])]
     iterator = tqdm(audio, unit="file", desc="Copying audio") if progress else audio
     for rel in iterator:
         shutil.copy2(os.path.join(store_dir, rel), os.path.join(sounds_dir, rel))
@@ -578,6 +580,14 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     write_lua_table(os.path.join(generated_dir, "text_table.lua"),
                     module_name, "TextByFileName", texts, only_on=language or "enUS")
     written.append("text_table.lua")
+
+    # The words of the pack's lines with no take yet, so a quest page reads them in the pack's
+    # language, not English. Apart from the take text: they are no voice's, so a text pack's win.
+    lines = {os.path.basename(stem): text for stem, text in line_text(store_dir).items()
+             if carried(stem) and os.path.basename(stem) not in texts}
+    write_lua_table(os.path.join(generated_dir, "line_text_table.lua"),
+                    module_name, "LineTextByFileName", lines, only_on=language or "enUS")
+    written.append("line_text_table.lua")
 
     shutil.copy2(icon_source(icon_language or language), os.path.join(module_dir, ICON_NAME))
 

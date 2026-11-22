@@ -9,11 +9,14 @@
  * translation, and a book page in any language -- keeps its tokens as stored, and this puts
  * the language's word in at the point the text is judged and sent: the gate, the request and
  * the staleness hash all see the same string. Kept out of the rows on purpose: a translation
- * reaches the tables from the dump, from another source for Portuguese, from the QuestIT
- * community for Italian, from Forever's translators for Vietnamese, from a player and from a
+ * reaches the tables from the dump, from another source for Portuguese, from a player and from a
  * translator, and one place to substitute covers all of them without rewriting any of them;
- * the words themselves are a native speaker's call, and changing one here reaches
- * every line at once (and marks its takes stale, which is what they then are).
+ * the words themselves are a native speaker's call, and changing one reaches every line at once
+ * (and marks its takes stale, which is what they then are).
+ *
+ * The languages a game client runs in keep their words here and win over any row's. A team's
+ * language keeps its own in `language."playerWords"`, which its text maintainers edit on the site
+ * and which must be registered before its text is spoken.
  *
  * About nine tokens in ten are the reader being addressed ("Gut gemacht, $C."), where any
  * "adventurer" reads naturally. The rest read as awkwardly as the English does and are fixed
@@ -41,7 +44,11 @@
  * ("vous êtes venu").
  */
 const WORDS = {
-  enUS: { m: { name: "adventurer", race: "traveler" }, f: { name: "adventurer", race: "traveler" } },
+  enUS: {
+    m: { name: "adventurer", race: "traveler" },
+    f: { name: "adventurer", race: "traveler" },
+    quantity: "an order of",
+  },
   deDE: {
     m: { name: "Abenteurer", race: "Reisender", nameGenitive: "Abenteurers" },
     f: { name: "Abenteurerin", race: "Reisende", nameGenitive: "Abenteurerin" },
@@ -52,15 +59,95 @@ const WORDS = {
     m: { name: "aventurier", race: "voyageur", classPlural: "aventuriers" },
     f: { name: "aventurière", race: "voyageuse", classPlural: "aventurières" },
   },
-  itIT: { m: { name: "avventuriero", race: "viaggiatore" }, f: { name: "avventuriera", race: "viaggiatrice" } },
-  plPL: { m: { name: "wędrowcze", race: "wędrowiec" }, f: { name: "wędrowczyni", race: "wędrowczyni" } },
-  ptBR: { m: { name: "aventureiro", race: "viajante" }, f: { name: "aventureira", race: "viajante" } },
+  ptBR: {
+    m: { name: "aventureiro", race: "viajante" },
+    f: { name: "aventureira", race: "viajante" },
+    quantity: "algumas unidades de",
+  },
   ruRU: { m: { name: "путник", race: "странник" }, f: { name: "путница", race: "странница" } },
   koKR: { m: { name: "모험가", race: "여행자" }, f: { name: "모험가", race: "여행자" } },
   zhCN: { m: { name: "冒险者", race: "旅行者" }, f: { name: "冒险者", race: "旅行者" } },
   zhTW: { m: { name: "冒險者", race: "旅行者" }, f: { name: "冒險者", race: "旅行者" } },
-  viVN: { m: { name: "nhà thám hiểm", race: "lữ khách" }, f: { name: "nhà thám hiểm", race: "lữ khách" } },
 };
+
+// The database's words for languages beyond WORDS, by code. On globalThis because the site loads
+// this module once per bundle layer.
+const registeredKey = Symbol.for("spoken.playerWords");
+const registered = (globalThis[registeredKey] ??= { byLang: new Map() });
+
+/** Whether `lang`'s words are kept here, so a row's are never read. */
+export function hasBuiltinPlayerWords(lang) {
+  return Object.hasOwn(WORDS, lang);
+}
+
+export function playerWordsOf(lang) {
+  return (hasBuiltinPlayerWords(lang) ? WORDS[lang] : registered.byLang.get(lang)) ?? null;
+}
+
+/** Replaces every registered language's words: `entries` is [code, words] pairs, words as stored. */
+export function registerPlayerWords(entries) {
+  const byLang = new Map();
+  for (const [lang, words] of entries) {
+    const valid = validPlayerWords(words);
+    if (valid && !hasBuiltinPlayerWords(lang)) byLang.set(lang, valid);
+  }
+  registered.byLang = byLang;
+}
+
+/** The database's words as `code, JSON text` rows, for a build outside the site to register. */
+export const PLAYER_WORDS_SQL = `select "code", "playerWords"::text from "language" where "playerWords" is not null`;
+
+/** Registers PLAYER_WORDS_SQL's rows, as [code, JSON text] pairs. */
+export function registerPlayerWordRows(rows) {
+  registerPlayerWords(rows.map(([code, json]) => [code, JSON.parse(json)]));
+}
+
+export const WORD_LIMIT = 40;
+const REQUIRED = ["name", "race"];
+const OPTIONAL = ["nameGenitive", "classPlural"];
+
+function validWord(value) {
+  if (typeof value !== "string") return null;
+  const word = value.trim().normalize("NFC");
+  // A `$` would be read as a token again; a word ending a branch would break one.
+  if (!word || word.length > WORD_LIMIT || /[$:;\n]/.test(word)) return null;
+  return word;
+}
+
+function validForms(value) {
+  if (!value || typeof value !== "object") return null;
+  const forms = {};
+  for (const key of REQUIRED) {
+    const word = validWord(value[key]);
+    if (!word) return null;
+    forms[key] = word;
+  }
+  for (const key of OPTIONAL) {
+    const word = optionalWord(value[key]);
+    if (word === null) return null;
+    if (word) forms[key] = word;
+  }
+  return forms;
+}
+
+/** An optional word: undefined when absent or empty, null when unspeakable. */
+function optionalWord(value) {
+  return value == null || value === "" ? undefined : validWord(value);
+}
+
+/**
+ * Words as `{ m: { name, race, nameGenitive?, classPlural? }, f: {...}, quantity? }`, trimmed, or
+ * null when any is missing, empty, longer than WORD_LIMIT, or holds a `$`, `:`, `;` or line break.
+ * `quantity` is what a Craftsman's Writ's `$2oa` says.
+ */
+export function validPlayerWords(value) {
+  if (!value || typeof value !== "object") return null;
+  const m = validForms(value.m);
+  const f = validForms(value.f);
+  const quantity = optionalWord(value.quantity);
+  if (!m || !f || quantity === null) return null;
+  return quantity ? { m, f, quantity } : { m, f };
+}
 
 /** German capitalises every noun; the rest only at the start of a sentence. */
 const ALWAYS_CAPITAL = new Set(["deDE"]);
@@ -103,16 +190,12 @@ const SENTENCE_START = new RegExp(String.raw`(?:^|[${ENDS}]|\n)[\s"'«„“¡¿
 // objective, which no recording can know. Each language says "some" in words that keep the
 // sentence's grammar. ruRU writes the noun phrase twice, "мундира:мундиров", as the count's
 // two plural forms, the second having as many words as the first; its "несколько" takes the
-// second. ptBR writes a glued "x" ("5x Tisana"). A language with no entry keeps the token,
-// so the gate still refuses the line.
+// second. ptBR writes a glued "x" ("5x Tisana"). Every other language says its words'
+// `quantity`; one with none keeps the token, so the gate still refuses the line.
 const QUANTITY = /\$\d+oax?\s+/g;
-const QUANTITY_WORDS = {
-  enUS: "an order of ",
-  ptBR: "algumas unidades de ",
-};
 const RU_FORMS = /\$\d+oa\s+([^\s:]+(?:\s+[^\s:]+)*):((?:\s*[^\s,.;:!?]+)+)/g;
 
-function speakQuantities(text, lang) {
+function speakQuantities(text, lang, forms) {
   if (lang === "ruRU") {
     return text.replace(RU_FORMS, (whole, few, rest) => {
       const count = few.split(/\s+/).length;
@@ -123,8 +206,7 @@ function speakQuantities(text, lang) {
       return `несколько ${many}${after ? ` ${after}` : ""}`;
     });
   }
-  const words = QUANTITY_WORDS[lang];
-  return words ? text.replace(QUANTITY, words) : text;
+  return forms.quantity ? text.replace(QUANTITY, `${forms.quantity} `) : text;
 }
 
 /** Whether a text branches on the player's gender, and so is two lines rather than one. */
@@ -162,11 +244,19 @@ export function playerGenderSides(text) {
   return [text.replace(GENDER, "$1").replace(SWAPPED, "$1"), text.replace(GENDER, "$2").replace(SWAPPED, "$2")];
 }
 
+/**
+ * The text with its player tokens in the two forms the addon fills (Utils:FillPlayerTokens): `$N`
+ * and `$gmale:female;`. A doubled `$$`, `$u`, its swapped separators and ruRU's third field are not.
+ */
+export function writtenPlayerTokens(text) {
+  return text.replace(DOUBLED, "$").replace(GENDER, "$$g$1:$2;").replace(SWAPPED, "$$g$1:$2;");
+}
+
 /** The text as it is spoken in `lang`, by a reader of `playerGender` where the line has one. */
 export function speakPlayerTokens(text, lang, playerGender = null) {
-  const forms = WORDS[lang];
+  const forms = playerWordsOf(lang);
   if (!forms) return text;
-  text = speakQuantities(text, lang);
+  text = speakQuantities(text, lang, forms);
   const words = playerGender === "f" ? forms.f : forms.m;
   const cased = (word, at, whole) =>
     ALWAYS_CAPITAL.has(lang) || SENTENCE_START.test(whole.slice(0, at))

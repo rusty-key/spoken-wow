@@ -2,7 +2,7 @@
 // nothing here guesses the result of an install before the job says so.
 import { createContext, createElement, useContext, useEffect, useMemo, useReducer, useRef, type Dispatch, type ReactNode } from 'react'
 import type { AddGameResult, ManagerApi, UpdaterState } from '@shared/api'
-import type { Catalog, CatalogUpdate, CommunityCatalog, ContributorView, GameInstall, JobProgress, Product, ProductStatus, Settings, SharingStatus, Snapshot, VoiceLanguage } from '@shared/types'
+import type { Catalog, CatalogUpdate, CommunityCatalog, ContributorView, GameInstall, JobProgress, Product, ProductStatus, SendResult, Settings, SharingStatus, Snapshot, VoiceLanguage } from '@shared/types'
 import { DEFAULT_SETTINGS, isSupportedFlavor } from '@shared/types'
 import { api, errorText } from './api'
 import type { Platform } from './strings'
@@ -189,9 +189,10 @@ export interface Actions {
   addGame(path: string): Promise<AddGameResult>
   removeGame(gameId: string): Promise<void>
   scan(): Promise<void>
-  setSettings(patch: Partial<Settings>): Promise<void>
-  /** Sends the collected lines now; the result comes through `state.sharing`. */
-  shareNow(): Promise<void>
+  /** The saved settings, which the main process may have normalized: a field shows what came back. */
+  setSettings(patch: Partial<Settings>): Promise<Settings>
+  /** Sends the collected lines now; null when refused (the reason is in `state.sharing.error`) or when Sharing went off meanwhile. */
+  shareNow(): Promise<SendResult | null>
   applyContributor(view: ContributorView): void
   refreshContributor(): Promise<void>
 }
@@ -304,12 +305,14 @@ function makeActions(dispatch: Dispatch<Action>, get: () => State): Actions {
       const settings = await api().setSettings(patch)
       dispatch({ type: 'settings', settings })
       if ('includePrereleases' in patch) refetchAll(get().games)
+      return settings
     },
     async shareNow() {
       try {
-        await api().shareNow()
+        return await api().shareNow()
       } catch (e) {
         dispatch({ type: 'sharing', status: { ...get().sharing, sending: false, error: errorText(e) } })
+        return null
       }
     },
     applyContributor: (view) => dispatch({ type: 'contributor', view }),

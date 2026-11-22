@@ -155,15 +155,13 @@ function SettingsPanel:Setup()
             if module.AddonName ~= ALL and Present(ALL) then return "off", L.OPT_PACK_INCLUDED end
         end, W.MODULE_DOWNLOAD, function() ReportButton:ShowAddress(module.URL) end)
     end
-    -- The built-in languages, then those an installed pack declares, then the voice and fallback
-    -- chosen: a choice outlives its pack, and Italian has official packs to get it back from.
+    -- The built-in languages, then those an installed pack declares. Only a built-in language has
+    -- packs to get, so a voice chosen before its pack went needs no row of its own.
     local codes, seen = {}, {}
     local function Add(code)
         if code and not seen[code] then table.insert(codes, code); seen[code] = true end
     end
     for _, locale in ipairs(Spoken:KnownLanguages()) do Add(locale.code) end
-    Add(Language:GetVoiceLanguage())
-    Add(Language:GetFallbackLanguage())
     for _, code in ipairs(codes) do
         for _, pack in ipairs(Spoken:QuestsVoicePacks(code) or {}) do
             local folder = pack.folder

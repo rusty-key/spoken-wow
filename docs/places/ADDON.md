@@ -46,7 +46,7 @@ One page, Game Menu, Options, AddOns, Spoken, Places:
 | | Show Pictures | `showPictures` | on |
 | | Read Stories Aloud | `voiceEnabled` | on |
 | Voice Packs | one row per language, Play a Test Line | | |
-| Reading History | Forget Places Heard | | |
+| Reading History | Forget Visited Places | | |
 
 Defaults resets the settings in the table, the tab's two filters, the folded panel and the two
 Developer settings. It leaves the chosen voice pack, Unlock Undiscovered Places and
@@ -126,7 +126,7 @@ a language pins it on every client.
   pack's `.toc` must also say `X-SpokenPlaces-Language: <code>`, even with no `Sounds.lua`, because
   `ShouldLoadLanguage` reads that key before it accepts the text. A
   pack's `X-Spoken-LanguageFont` draws its name and lore pages; without one, Places tries the
-  stock `ARIALN.TTF`, which draws Vietnamese on most clients but no script the game lacks. Right-to-left text is the pack's job: ship it in visual order.
+  stock `ARIALN.TTF`, which draws most accented Latin on most clients but no script the game lacks. Right-to-left text is the pack's job: ship it in visual order.
   The built-in list must equal the client languages in `pipelines/lib/locales.mjs`; `validate.mjs`
   checks it.
 
@@ -224,7 +224,7 @@ The game announces a discovery once per character, and Places reads that message
   started reading, from any route, by the wall clock (`time()`): `GetTime()` starts from zero at
   every restart, and a month outlasts one. A time ahead of the clock counts as long ago. With it on,
   a discovery of a place read within the wait reads nothing, and Include Places Found Before makes
-  no difference, so the panel greys it out. Forget Places Heard clears `readAt` too.
+  no difference, so the panel greys it out. Forget Visited Places clears `readAt` too.
 - Include Places Found Before also reads on zone change, once per place, for a character that
   explored before installing. `heard` records places when a clip starts, not when it is queued.
   It was off by default, and every profile stored that off; loading a profile turns it on once
@@ -233,8 +233,9 @@ The game announces a discovery once per character, and Places reads that message
   its valley and then its zone, which the game announces only later. Nothing reads the zone or a
   subzone, on a zone change or at login, until the greeting is settled (it queued, or there is
   nothing it will queue, or its eight tries are spent), so the zone never plays ahead of the
-  valley; a valley already waiting in the queue counts as the greeting. Forget Places Heard (and
-  `/spp forget`) clears `heard` and `greeted`, never `visited`. The button is greyed while Read
+  valley; a valley already waiting in the queue counts as the greeting. Forget Visited Places
+  shows how many places are in `heard` and asks first, then (as `/spp forget` does) clears `heard`
+  and `greeted`. Despite its name it never clears `visited`. The button is greyed while Read
   Automatically or Read Stories Aloud is off, as nothing reads the list then.
 - Entering a dungeon or raid reads its story, once per character (`heard`), with Read
   Automatically and Include Smaller Areas on. Inside an instance the client gives no map for the

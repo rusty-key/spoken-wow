@@ -175,7 +175,9 @@ function stampSql(lang: Lang): { sql: string; params: unknown[] } {
     sql: `(${versionStamp("book_line", `"lang" = $1`)} || '|' ||
            ${versionStamp("book_line", `"lang" = '${BASE_LANG}'`)} || '|' ||
            ${bookPageStamp()} || '|' ||
-           ${nameStamp(["item", "gameobject"])})`,
+           ${nameStamp(["item", "gameobject"])} || '|' ||
+           -- voiced() speaks a team's tokens in its row's words, so they are part of a page.
+           coalesce((select "playerWords"::text from "language" where "code" = $1), ''))`,
     params: [lang],
   };
 }

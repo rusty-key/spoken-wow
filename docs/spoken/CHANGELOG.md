@@ -7,35 +7,54 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **`/sp mute [on | off]` and a Mute Spoken Audio key silence Spoken without disabling its
   features.** Lines still queue and show their subtitles and narrator text, one after another, while
   muted. The key has no default; set it in Spoken's settings or the game's key bindings. *([Trusty565](https://github.com/Trusty565))*
-- **The minimap right-click menu now uses the client's native menu where available.** Older
-  clients keep the legacy dropdown or Spoken's custom fallback, and the menu also opens from
-  the addon compartment. *([anon1231823](https://github.com/anon1231823))*
-- **Quest pages in Azeroth's Compendium show the progress text**, what the NPC says while a quest
-  is under way, between the description and the completion, with its own Play and Report. A quest
-  a voice pack voices only in its progress now counts for Voiced Only, and shift-click on its row
-  plays it. *([anon1231823](https://github.com/anon1231823))*
-- **A non-English client finds Forever's newer places.** The area names now come from client
-  1.60.1.70959, so the new dungeons' areas and the places Forever renamed match their stories.
-  Dalaran in Korean and Russian, Dire Maul in Spanish and Dreadmaul Post in Russian have no
-  story: the client gives each the name of another place in the same zone. *([svengabr](https://github.com/svengabr))*
-- **Text Language offers the language of every voice pack you have installed**, including one no
-  game client runs in, such as Italian. The captions then show what that pack's voice says. Before,
-  such a language appeared only with a text pack, so an Italian voice came with English words.
+- **Forget Places Heard is now Forget Visited Places, and asks before it clears.** The button
+  shows how many places the character has heard, and the question says how many it will forget.
+  *([Ozzadar](https://github.com/Ozzadar))*
+- **Area Highlight no longer shows Blizzard's zone art through OpenMap's map.** On OpenMap's map
+  the area under the cursor now lights in a gold glow in the area's shape, over OpenMap's own art.
+  Blizzard's map lights as before. *([Loukky](https://github.com/Loukky))*
+- **A line that arrives while Spoken is stopped shows that it waits.** The "+N" after the line's
+  title swells and glows when a line joins a stopped queue; Skip plays it. With Show Name and Title
+  off, the subtitles count it after "(Stopped)". Play buttons in the quest log and the Compendium
+  show a plus while Spoken reads another line: a click queues the line after it, and the plus
+  stays while the line waits. *([rusty-key](https://github.com/rusty-key))*
+- **Collecting lines also notes which zone you met each quest giver and speaker in**, so the
+  site can sort lines by zone. It goes up with your collected lines, and nothing else about
+  where you were. *([rusty-key](https://github.com/rusty-key))*
+- **Quest pages in the Compendium read in your language before a line is voiced.** A quest you have
+  not opened, whose line has no recording in your language yet, showed its English. It now shows
+  the words your language's quest packs carry, once those packs are rebuilt.
   *([rusty-key](https://github.com/rusty-key))*
-- **When Stop When Window Closes is enabled, unaccepted quest offers and unturned-in quest pages stop
-  when their dialog closes.** Accepted offers and turned-in quest pages continue playing. Gossip
-  audio is unaffected and continues after its window closes; with the option off, quest behavior
-  remains as before. *([anon1231823](https://github.com/anon1231823))*
-  New profiles have the option enabled by default; existing saved choices are kept.
-- **No more Lua error on the world map with Leatrix Maps.** Spoken Bosses no longer tries to
-  make other addons' map frames clickable while it looks for Leatrix's dungeon pins and menu.
+- **The Compendium's lists take the professions window's look,** with gold header bars and a yellow light on
+  the chosen row. *([Nucabe](https://github.com/Nucabe))*
+- **A boss's model sits on a frayed paper edge**, on the map panel and in the Compendium. On the map,
+  a boss also has its portrait and Open in Compendium. *([Nucabe](https://github.com/Nucabe))*
+- **A boss's model fits its frame whole, standing idle**, and two bosses in overlapping windows no longer
+  cut into each other. *([Nucabe](https://github.com/Nucabe))*
+- **A boss you have not met shows its own portrait**, not the question mark. *([Nucabe](https://github.com/Nucabe))*
+- **Read Greetings has a Once per Session choice.** An NPC greets you once each session: after a
+  reload or relog it greets again. Greetings are kept per NPC, so guards that share an NPC ID share
+  one greeting. *([anon1231823](https://github.com/anon1231823))*
+
+## 3.11.0 — 2026-11-21
+
+- **Original Thrall Speech plays only for players who listen in English**, as the recording is
+  English. *([rusty-key](https://github.com/rusty-key))*
+- **The minimap button's right-click menu uses the game's own menu** where the client has one, and
+  also opens from the addon compartment. *([anon1231823](https://github.com/anon1231823))*
+- **Quest pages in Azeroth's Compendium show the progress text**, with its own Play and Report.
   *([anon1231823](https://github.com/anon1231823))*
-- **Forever's five new dungeons are in the Compendium.** The Bosses tab lists the bosses of the
-  Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and the Shaper's Terrace. The
-  Places tab lists Krol'dok Stronghold, Blackmaw Hold and the Shaper's Terrace under the zone of
-  their entrance, and entering one counts it as found. Its story is read where your voice pack has
-  it.
+- **Forever's five new dungeons are in the Compendium**, in the Bosses and Places tabs.
   *([svengabr](https://github.com/svengabr))*
+- **A non-English client finds Forever's newer places**, the new dungeons and renamed places
+  included. *([svengabr](https://github.com/svengabr))*
+- **Text Language offers the language of every voice pack you have installed**, such as Italian,
+  so the captions match the voice. *([rusty-key](https://github.com/rusty-key))*
+- **Italian and Vietnamese voices are now made by their own teams.** Installed packs keep working.
+  *([rusty-key](https://github.com/rusty-key))*
+- **With Stop When Window Closes on, a quest you don't accept or turn in stops when its window
+  closes.** New profiles have the option on. *([anon1231823](https://github.com/anon1231823))*
+- **No more Lua error on the world map with Leatrix Maps.** *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.10.1 — 2026-11-19
 

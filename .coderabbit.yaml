@@ -234,7 +234,7 @@ knowledge_base:
     # Guides apply by default only to files under their own folder; these sit in docs/, so map
     # each to the code it governs. The root AGENTS.md already covers the whole repo.
     filePatterns:
-      - files: "docs/quests/CLAUDE.md"
+      - files: "docs/quests/AGENTS.md"
         applyTo: "pipelines/quests/**,addons/Spoken_Quests/**,apps/web/**"
       - files: "docs/gossip/AGENTS.md"
         applyTo: "addons/Spoken_Quests/**"

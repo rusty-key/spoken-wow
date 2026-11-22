@@ -84,6 +84,8 @@ export type ActivityDetail = {
   "text.restored": { version: number; from?: number | null };
   /** An undone first translation: the line has no current version in the language any more. */
   "text.retired": { version: number };
+  /** A team's language's player words, each reader's as "name / race"; null where it has none. */
+  "text.player_words": { before: string | null; after: string | null };
   "name.edited": { version: number; name?: string; note?: string | null } & ApiAuditDetail;
   "name.restored": { version: number; from?: number | null };
   "name.retired": { version: number };
@@ -130,6 +132,7 @@ export type ActivityDetail = {
     npcId: number;
     from: { npcName?: string | null; npcType: string; npcId: number };
   };
+  "npc.direction": { npcName?: string | null; direction?: string | null };
   "type.changed": {
     action: string;
     gender?: string | null;

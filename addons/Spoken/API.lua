@@ -313,7 +313,7 @@ local PACK_FOLDERS = { quests = "SpokenQuestsAudio", places = "SpokenPlacesAudio
     bosses = "SpokenBossesAudio" }
 -- The start of each language's quests slugs, which the four packs' pages finish.
 local QUESTS_SLUGS = { deDE = "spoken-german", esES = "spoken-spanish-eu", esMX = "spoken-spanish-al", frFR = "spoken-french",
-    itIT = "spoken-italian", koKR = "spoken-korean", ptBR = "spoken-portuguese", ruRU = "spoken-russian",
+    koKR = "spoken-korean", ptBR = "spoken-portuguese", ruRU = "spoken-russian",
     zhCN = "spoken-chinese-simplified", zhTW = "spoken-chinese-traditional" }
 local QUESTS_SIDES = { { "alliance", "Alliance", "-audio-quests-alliance" }, { "horde", "Horde", "-audio-quests-horde" },
     { "shared", "Shared", "-audio-quests-shared" }, { "gossip", "Gossip", "-audio-gossip" } }
@@ -328,13 +328,6 @@ local PACK_PAGES = {
         frFR = "spoken-french-audio-bosses", koKR = "spoken-korean-audio-bosses", ptBR = "spoken-portuguese-audio-bosses",
         ruRU = "spoken-russian-audio-bosses", zhCN = "spoken-chinese-simplified-audio-bosses", zhTW = "spoken-chinese-traditional-audio-bosses" },
 }
--- The packs with no CurseForge project yet, by their release tag: got from the repository's releases.
-local RELEASES = "https://github.com/rusty-key/spoken-wow/releases?q="
-local PACK_RELEASES = {
-    places = { itIT = "places-audio-itIT" },
-    readables = { itIT = "readables-audio-itIT" },
-    bosses = { itIT = "bosses-audio-itIT" },
-}
 
 --- The voice pack `module` ("quests", "places", "readables" or "bosses") has in `lang`, English's aside: the folder
 --- it installs as and the address to get it, or nil where that language has none.
@@ -346,8 +339,6 @@ function Spoken:VoicePack(module, lang)
     end
     local page = PACK_PAGES[module] and PACK_PAGES[module][lang]
     if page then return PACK_FOLDERS[module] .. "_" .. lang, CURSEFORGE .. page end
-    local release = PACK_RELEASES[module] and PACK_RELEASES[module][lang]
-    if release then return PACK_FOLDERS[module] .. "_" .. lang, RELEASES .. release end
     return nil
 end
 
@@ -889,6 +880,12 @@ function Spoken:IsMuted()
     return SoundQueue:IsMuted()
 end
 
+--- A Play button's state for `clip` (nil when not queued): "play", "stop", "replay", "queue" or
+--- "queued".
+function Spoken:PlayState(clip)
+    return SoundQueue:PlayState(clip)
+end
+
 function Spoken:GetHeldReason(clip)
     return SoundQueue:GetHeldReason(clip)
 end
@@ -928,7 +925,7 @@ function Spoken:CreateRoundButton(parent, kind, name, icon)
 end
 
 --- `button`, a Button the caller made, dressed as a square Play button with the game's checkbox for
---- its border (`button:SetState("play" | "stop")`, `button:MatchBox(checkbox)`): the quest log's rows.
+--- its border (`button:SetState(state)`, a state of `Spoken:PlayState`, `button:MatchBox(checkbox)`): the quest log's rows.
 function Spoken:DressBoxButton(button)
     return Actions.BoxPlay(button)
 end

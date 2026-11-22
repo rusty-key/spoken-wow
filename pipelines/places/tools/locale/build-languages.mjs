@@ -23,7 +23,7 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { BASE_LOCALE, isClientLocale, LOCALES } from "../lib/locales.mjs";
+import { BASE_LOCALE, LOCALES } from "../lib/locales.mjs";
 import { luaString, ROOT } from "../lib/wiki.mjs";
 import { stringCoverage } from "./check-strings.mjs";
 import { loadPacks } from "../../../../scripts/lib/packs.mjs";
@@ -86,9 +86,8 @@ export async function buildLanguages() {
     const aliases = await countAliases(locale.code);
     const strung = strings.get(locale.code) || { done: 0, total: 0 };
 
-    // Aliases turn what a client shows into English keys, so only a language a client runs in
-    // needs them; one no client ships (Italian) is ready once its lore is.
-    const needsAliases = locale.code !== BASE_LOCALE && isClientLocale(locale.code);
+    // Aliases turn what a client shows into English keys, which English needs none of.
+    const needsAliases = locale.code !== BASE_LOCALE;
     const ready = loreDone === baseTotal && (!needsAliases || aliases > 0);
 
     rows.push({ locale, loreDone, strung, aliases, ready });

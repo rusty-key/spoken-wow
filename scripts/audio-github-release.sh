@@ -109,7 +109,7 @@ changelog_for() {
       if (lines[i].startsWith("## ")) { end = i; break; }
     }
     process.stdout.write(lines.slice(start, end).join("\n").trim());
-  ' "$1" "$2" "$3"
+  ' "$1" "$2" "$3" | node "$REPO/scripts/lib/changelog.mjs" unwrap
 }
 
 # A PACK WHOSE ZIP IS NOT IN dist/ FAILS BEFORE ANY UPLOAD. Without this, a run of several

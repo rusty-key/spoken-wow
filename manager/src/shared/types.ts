@@ -253,11 +253,27 @@ export interface Settings {
   lastGameId: string
   /** Sending what Spoken collects to the site: 'unset' until the player answers the first-start question. */
   sharing: SharingChoice
+  /**
+   * `scheme://host:port`, or '' for the system proxy. Empty leaves publishing and the site going direct: Node
+   * cannot read the system setting.
+   */
+  proxy: string
 }
 
 export const SHARING_CHOICES = ['unset', 'on', 'off'] as const
 
 export type SharingChoice = (typeof SHARING_CHOICES)[number]
+
+/**
+ * How one send ended. Failures also land in `SharingStatus.error`. `unread` lists files that
+ * could not be read; they are tried again next time and do not make the send a failure.
+ */
+export type SendResult =
+  | { outcome: 'sent'; count: number; unread?: string[] }
+  /** Nothing new: no file changed, or every envelope in them was sent before. */
+  | { outcome: 'nothing'; unread?: string[] }
+  | { outcome: 'rate-limited'; count: number }
+  | { outcome: 'failed'; count: number; error: string }
 
 /** What the window shows of sharing. The install id stays in the main process. */
 export interface SharingStatus {
@@ -282,7 +298,8 @@ export const DEFAULT_SETTINGS: Settings = {
   voiceLanguage: 'enUS',
   voiceAuthors: {},
   lastGameId: '',
-  sharing: 'unset'
+  sharing: 'unset',
+  proxy: ''
 }
 
 /** The Author filter's choice that shows every author. Not a slug, so no team can take it. */

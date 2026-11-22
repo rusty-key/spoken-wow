@@ -969,18 +969,20 @@ local function Generalise(text, english)
     return text
 end
 
--- Each moment's words as stored: those kept in this client's language, else the English, or nil.
--- Kept words filled for the other sex are not used where the English has a word for each.
+-- Each moment's words as stored: those kept in this client's language, else the English, or nil,
+-- and whether they were kept. Kept words filled for the other sex are not used where the English
+-- has a word for each.
 local function Stored(id, moment)
     local english = English(id)
     local kept = Kept()
     kept = kept and kept[id]
     local own = kept and kept[moment]
     local text = english[moment]
+    local seen = false
     if type(own) == "table" and own.text and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
-        text = own.text
+        text, seen = own.text, true
     end
-    if text and text ~= "" then return text end
+    if text and text ~= "" then return text, seen end
 end
 
 local EVENTS = { accept = VO.Enums.SoundEvent.QuestAccept, progress = VO.Enums.SoundEvent.QuestProgress,
@@ -990,16 +992,21 @@ local EVENTS = { accept = VO.Enums.SoundEvent.QuestAccept, progress = VO.Enums.S
 -- first, so the page reads what Play says.
 -- The words matching reads: a moment with several wordings resolves by them, never by a pack's.
 local function SeenText(id, moment)
-    local stored = Stored(id, moment)
-    return stored and QuestsTab:Fill(stored)
+    local stored, seen = Stored(id, moment)
+    return stored and QuestsTab:Fill(stored), seen
 end
 
 -- A text pack's words in the Text Language come after a pack's own, as on the captions.
 local function PartText(id, moment)
-    local soundData = { event = EVENTS[moment], questID = id, text = SeenText(id, moment) }
+    local text, seen = SeenText(id, moment)
+    local soundData = { event = EVENTS[moment], questID = id, text = text }
     VO.DataModules:PrepareSound(soundData)
     if soundData.packText then return QuestsTab:Fill(soundData.packText) end
-    return VO.DataModules:TextPackText(soundData) or soundData.text
+    -- On Auto too, a window this client never showed leaves only the English, and the packs in its
+    -- language carry the words of lines they have no recording of.
+    local language, chosen = VO.Language:GetTextLanguage()
+    local unseen = text and not seen and not chosen and language ~= VO.Language.BASE
+    return VO.DataModules:TextPackText(soundData, unseen and language or nil) or soundData.text
 end
 
 --- Keep what the open quest window shows, in this client's language.

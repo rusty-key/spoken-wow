@@ -44,7 +44,6 @@ const TAGS: Record<string, string> = {
   esES: 'ES',
   esMX: 'MX',
   frFR: 'FR',
-  itIT: 'IT',
   ptBR: 'PT',
   ruRU: 'RU',
   koKR: 'KO',

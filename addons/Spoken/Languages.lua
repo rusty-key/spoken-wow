@@ -24,7 +24,7 @@ Languages.BUILTIN = {
 }
 
 -- Names for languages that shipped packs existed for before packs named their own language, so that
--- an Italian or Polish pack without the name keys is not listed by its code. These are not built
+-- a pack from before then, without the name keys, is not listed by its code. These are not built
 -- in: nothing lists one until a pack declares it, it is no client's language, and a pack's own
 -- names win. Kept apart from BUILTIN, whose literals pipelines/places/tools/validate.mjs reads.
 local COURTESY = {

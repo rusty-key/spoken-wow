@@ -1,0 +1,6 @@
+!SPOKEN1 seen
+addon=SpokenQuests/9.9.9
+build=1.60.1/70338
+npc=creature:12345
+zones=1411
+sum=804756397

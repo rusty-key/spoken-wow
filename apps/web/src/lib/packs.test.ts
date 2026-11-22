@@ -78,7 +78,7 @@ describe("packDownloads", () => {
   });
 
   it("finds a part by its folder, whatever the part is labelled", () => {
-    expect(partOf(packFor("quests", "itIT"), "SpokenQuestsAudioShared_itIT")?.label).toBe("Quests");
-    expect(partOf(packFor("quests", "itIT"), "SpokenQuestsAudio_itIT")).toBeUndefined();
+    expect(partOf(packFor("quests", "frFR"), "SpokenQuestsAudioGossip_frFR")?.label).toBe("Gossip");
+    expect(partOf(packFor("quests", "frFR"), "SpokenQuestsAudio_frFR")).toBeUndefined();
   });
 });

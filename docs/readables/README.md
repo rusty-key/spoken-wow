@@ -348,7 +348,7 @@ showed the page this session (`SpokenReadables:TextLanguagePageText`), and in En
 decided page by page, so one readable can be in two languages. Its title follows the same way
 (`SpokenReadables:TitleIn`). A caption is in the same words whatever the voice, English on an
 English client, and in the recording's language only where the client's has none
-(`SpokenReadables:CaptionText`). An Italian or Vietnamese voice, which no client runs in, is
+(`SpokenReadables:CaptionText`). A voice no client runs in is
 captioned in its own words first. `make readables-places` reads
 the repack's world DB (`PLACES_MYSQL_*`) and its map files (`PLACES_MAPS`, the repack's `data/maps`
 folder; it stops without them). A quest places a readable only when the quests corpus or the
@@ -445,7 +445,7 @@ fails before anything is sent. `make readables-package` builds `Spoken_Readables
 `readables/v<version>` tag, which `.github/workflows/release-addons.yaml` still builds.
 `scripts/readables/release.sh` carries the two ids in
 `target_curseforge()`, and an unknown target fails on the empty id rather than defaulting, for
-the reason `docs/quests/CLAUDE.md` gives: an id left in that function is an id something
+the reason `docs/quests/AGENTS.md` gives: an id left in that function is an id something
 eventually uploads to, and uploading a readables pack over another project is not recoverable
 from this side.
 

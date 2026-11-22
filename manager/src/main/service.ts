@@ -2,7 +2,7 @@
 // the settings and the catalog, and runs jobs.
 import path from 'node:path'
 import { CHANNELS, type AddGameResult, type ClearDownloadsResult, type InstallOptions } from '../shared/api'
-import { isSupportedFlavor, type Catalog, type CatalogUpdate, type CommunityCatalog, type GameInstall, type JobProgress, type Product, type ProductStatus, type ReleaseInfo, type Settings, type SharingChoice, type SharingStatus, type Snapshot } from '../shared/types'
+import { isSupportedFlavor, type Catalog, type CatalogUpdate, type CommunityCatalog, type GameInstall, type JobProgress, type Product, type ProductStatus, type ReleaseInfo, type SendResult, type Settings, type SharingChoice, type SharingStatus, type Snapshot } from '../shared/types'
 import { installedVoiceProduct, languagesFor, productById, productsFor } from '../shared/products'
 import { compareVersions } from '../shared/version'
 import { buildCatalog, latestFor, loadCatalog, saveCatalog } from './catalog'
@@ -23,8 +23,9 @@ import { PACKS_BASE_URL } from './packs-key'
 import { estimatePack } from './packs-plan'
 import { fetchIndex, fetchManifest, loadCachedIndex, loadCachedManifest, type ChannelIndexV2, type ChannelOptions, type ChannelPack } from './packs-remote'
 import { dropPackState, loadPackState } from './packs-state'
+import { normalizeProxy } from './proxy'
 import { syncPacks } from './packs-sync'
-import { loadLedger, resetInstallId, sendPending, type SendResult, type ShareLedger } from './share'
+import { loadLedger, resetInstallId, sendPending, type ShareLedger } from './share'
 import { getRecord, loadSettings, loadState, log, sanitizeSettings, saveSettings, type StateFile } from './state'
 import { computeStatuses } from './status'
 
@@ -56,6 +57,8 @@ export interface ServiceOptions {
   secretBox?: SecretBox
   /** The fetch for the site and the stores, when it must differ from `fetchImpl`. */
   contributorFetch?: typeof fetch
+  /** Network work outside `jobs` that a proxy change would cut off: the manager's own update. */
+  busyElsewhere?: () => boolean
   settingsChanged?: (settings: Settings, previous: Settings) => void
 }
 
@@ -643,11 +646,14 @@ export class ManagerService {
     void this.ready.then(() => this.shareTick(false))
   }
 
-  /** "Send now": reads every file, whatever the backoff says. The status arrives on sharingChanged. */
-  async sendNow(): Promise<void> {
+  /**
+   * "Send now": reads every file, whatever the backoff says, after any send already running.
+   * Null when Sharing went off meanwhile.
+   */
+  async sendNow(): Promise<SendResult | null> {
     if (this.settings.sharing !== 'on') throw new PlainError(t('service.turnOnSharing'))
-    await this.sharing?.done
-    await this.shareTick(true)
+    while (this.sharing) await this.sharing.done
+    return this.shareTick(true)
   }
 
   /** A new random id for this manager; the lines already sent are not sent again. */
@@ -728,6 +734,15 @@ export class ManagerService {
     if (typeof clean.downloadsPath === 'string') {
       const problem = checkDownloadsPath(clean.downloadsPath, this.games)
       if (problem) throw new PlainError(problem)
+    }
+    if (typeof clean.proxy === 'string') {
+      // Saved in the form both stacks read, so the window shows what is actually in use.
+      clean.proxy = normalizeProxy(clean.proxy)
+      // Changing it drops the connections in flight, so a download, a publish or the manager's own update
+      // must finish first.
+      if (clean.proxy !== this.settings.proxy && (this.jobs.active().length > 0 || this.opts.busyElsewhere?.())) {
+        throw new PlainError(t('service.waitForJobs'))
+      }
     }
     const previous = this.settings
     this.settings = { ...this.settings, ...clean }

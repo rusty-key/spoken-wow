@@ -73,7 +73,6 @@ const TABLE: Record<string, Row[]> = {
   'places-audio-frFR': [['1.0.2', '2026-10-04', 398]],
   'quests-audio-esES': [['1.2.0', '2026-09-27', 702]],
   'places-audio-esES': [['1.0.0', '2026-09-27', 301]],
-  'quests-audio-itIT': [['0.9.0', '2026-10-10', 384]],
   'quests-audio-ruRU': [['1.1.0', '2026-10-02', 640]],
   'quests-audio-koKR': [['0.8.0-beta.1', '2026-10-13', 410, 'First beta of the Korean quest voices.']]
 }
@@ -577,8 +576,17 @@ export function createMockApi(): ManagerApi {
       }
       emit({ ...sharingStatus, sending: true })
       await sleep(900)
-      if (offline) emit({ ...sharingStatus, sending: false, error: 'The site could not be reached (fetch failed).' })
-      else emit({ sending: false, lastSent: { at: new Date().toISOString(), count: 12 } })
+      const error = 'The site could not be reached (fetch failed).'
+      if (offline) {
+        emit({ ...sharingStatus, sending: false, error })
+        return { outcome: 'failed', count: 0, error }
+      }
+      if (sharingStatus.lastSent) {
+        emit({ ...sharingStatus, sending: false })
+        return { outcome: 'nothing' }
+      }
+      emit({ sending: false, lastSent: { at: new Date().toISOString(), count: 12 } })
+      return { outcome: 'sent', count: 12 }
     },
     async resetShareId() {
       console.info('[mock] resetShareId')

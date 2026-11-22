@@ -47,7 +47,6 @@ Want everything at once? Install your language's set instead: it brings this add
 | Spanish (EU) | [Spoken: Spanish (EU)](https://www.curseforge.com/wow/addons/spoken-spanish-eu) |
 | Spanish (AL) | [Spoken: Spanish (AL)](https://www.curseforge.com/wow/addons/spoken-spanish-al) |
 | French | [Spoken: French](https://www.curseforge.com/wow/addons/spoken-french) |
-| Italian | [Spoken: Italian](https://www.curseforge.com/wow/addons/spoken-italian) |
 | Korean | [Spoken: Korean](https://www.curseforge.com/wow/addons/spoken-korean) |
 | Portuguese | [Spoken: Portuguese](https://www.curseforge.com/wow/addons/spoken-portuguese) |
 | Russian | [Spoken: Russian](https://www.curseforge.com/wow/addons/spoken-russian) |
@@ -56,7 +55,7 @@ Want everything at once? Install your language's set instead: it brings this add
 
 <!-- /only -->
 <!-- only:wago -->
-Voice packs in German, Spanish, French, Italian, Korean, Portuguese, Russian and Chinese are on CurseForge.
+Voice packs in German, Spanish, French, Korean, Portuguese, Russian and Chinese are on CurseForge.
 
 <!-- /only -->
 Spoken speaks in your client's language by default. To hear another, pick it under **Voice Language** in the settings.

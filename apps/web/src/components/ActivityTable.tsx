@@ -159,6 +159,8 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       return { what: `restored text v${version}`, quote: null };
     case "text.retired":
       return { what: `took back text v${version}`, quote: null };
+    case "text.player_words":
+      return { what: d.after ? "changed the words said for the player" : "removed the words said for the player", quote: str(d.after) };
     case "name.edited":
       return { what: "renamed", quote: str(d.name) };
     case "name.restored":
@@ -239,6 +241,10 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
         what: `put ${speakerName(d)} in place of ${speakerName((d.from ?? {}) as Record<string, unknown>)} on ${row.subject}`,
         quote: null,
       };
+    case "npc.direction":
+      return d.direction
+        ? { what: `set ${str(d.npcName) ?? row.subject}'s direction`, quote: str(d.direction) }
+        : { what: `cleared ${str(d.npcName) ?? row.subject}'s direction`, quote: null };
     case "npc.resolved":
       return {
         what: `set who ${str(d.npcName) ?? row.subject} is${num(d.sex) === 3 ? " as a woman" : num(d.sex) === 2 ? " as a man" : ""}`,

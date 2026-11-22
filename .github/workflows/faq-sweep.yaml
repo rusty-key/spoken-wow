@@ -7,8 +7,8 @@ name: FAQ sweep
 # The pull request is opened with GITHUB_TOKEN, so no workflow runs on it. The sweep runs the FAQ
 # check itself, and the description warns when it fails.
 #
-# Needs the DISCORD_BOT_TOKEN and ANTHROPIC_API_KEY repo secrets, and "Allow GitHub Actions to
-# create and approve pull requests" in the repository's Actions settings.
+# Needs DISCORD_BOT_TOKEN in the discord environment, the ANTHROPIC_API_KEY repo secret, and
+# "Allow GitHub Actions to create and approve pull requests" in the repository's Actions settings.
 on:
   schedule:
     - cron: "17 6 * * 1" # Mondays, 06:17 UTC
@@ -23,6 +23,8 @@ permissions: {}
 jobs:
   sweep:
     runs-on: ubuntu-latest
+    # Admits master and the release tags only, so a dispatch from a branch cannot read the bot token.
+    environment: discord
     permissions:
       contents: write
       pull-requests: write

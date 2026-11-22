@@ -33,6 +33,7 @@ import { canonicalNpcId, seedFor } from "./seed";
 import { spokenHash } from "./spoken-hash";
 import { currentConfig } from "./settings";
 import { NARRATOR_VOICE, segments, type Segment } from "./narration";
+import { npcDirections } from "./npc-direction";
 import type { Speaker } from "./speakers/speaker";
 import { BUSY, withTakeLock } from "./lock";
 import { busy, failure, type Failure } from "./errors";
@@ -156,14 +157,14 @@ export async function regenerateLine(
   }
 
   const outcome = await withTakeLock("quests", file, async (): Promise<RegenerateResult> => {
-    const config = await currentConfig(lang);
+    const [config, npcDirectionOf] = await Promise.all([currentConfig(lang), npcDirections(lang)]);
     // Inside spokenText and not bolted on at the request, because these are characters the
     // provider bills and the staleness check hashes: a take that under-reported them would
     // be mispriced and permanently stale.
     //
     // The committed pronunciation rules are English's spellings of English words; another
     // language is spoken with its own lexicon, which the speaker applies, and nothing else.
-    const spokenText = shapedText(source, lang, line, speaker.provider, config.raceTags);
+    const spokenText = shapedText(source, lang, line, speaker.provider, config.raceTags, npcDirectionOf(line));
     // Lowest npcId in the group, so a file shared by many NPCs regenerates the same way
     // whichever row the button was pressed on. See canonicalNpcId.
     const seed = seedFor(canonicalNpcId(group), speaker.seedStrategy);

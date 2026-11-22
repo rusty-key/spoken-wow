@@ -16,6 +16,7 @@ jobs:
   closed:
     if: ${{ contains(github.event.issue.labels.*.name, 'from-discord') }}
     runs-on: ubuntu-latest
+    environment: discord
     # GitHub keeps one pending run per group, and a waiting report must not be dropped for
     # another issue's.
     concurrency:

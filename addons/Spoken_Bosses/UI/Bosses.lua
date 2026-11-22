@@ -126,6 +126,11 @@ local function Unlocked()
 	return Bosses:IsUnlocked()
 end
 
+-- Whether a boss's page and model are shown: met, or Unlock Unfound Bosses is on.
+function Bosses:IsRevealed(map, key)
+	return Found(map, key) or Unlocked()
+end
+
 local function OnlyFound()
 	return SpokenBossesSettings ~= nil and SpokenBossesSettings.compendiumFoundOnly == true and not Unlocked()
 end
@@ -236,7 +241,7 @@ local function Creature(map, key)
 	return known and known[map] and known[map][key]
 end
 
--- The creature is the fallback for clients that cannot set a display directly.
+-- The display draws the model; the creature is for the portrait.
 local function Model(map, key)
 	local entry = Creature(map, key)
 	return entry and entry.display and { creatureID = entry.creature, displayID = entry.display }
@@ -407,7 +412,7 @@ local REPORT = {
 	title = REPORT_LABEL,
 }
 Bosses.ReportAction = REPORT
-Bosses.Name, Bosses.Model, Bosses.Unlocked = Name, Model, Unlocked
+Bosses.Name = Name
 
 --- The font file to write `code` (the Text Language by default) in where a page uses `fontObject`,
 --- or nil where none draws it: a text pack's language may need its own.
@@ -518,8 +523,8 @@ local function Unknown(map)
 	return unknown[BossBullet(map)]
 end
 
--- A boss's portrait, at the left of its name on the page's header.
-local function Portrait(map, key)
+--- A boss's portrait, at the left of its name on the page's header.
+function Bosses:Portrait(map, key)
 	local model = Model(map, key)
 	-- A portrait only from a known appearance: asked of the client, a creature it has not met answers
 	-- with the player's own face.
@@ -533,6 +538,25 @@ local function Portrait(map, key)
 	return portrait
 end
 
+--- The line under a boss's name: the dungeon, and where it is. A map the client does not list has
+--- no zone to name.
+function Bosses:Where(map, key)
+	local dungeon = DungeonName(map)
+	local zone = BossZone(map, key)
+	if zone and Index().world[map] then return L.BOSS_IN_FMT:format(MapName(zone)) end
+	if not dungeon then return "" end
+	local where = L.BOSS_IN_FMT:format(dungeon)
+	return zone and (where .. " · " .. MapName(zone)) or where
+end
+
+--- A boss's page header, the same in the Compendium and on the map panel: { title, subtitle, icon,
+--- model, revealed }. A boss not revealed has its own portrait and no model.
+function Bosses:Head(map, boss)
+	local revealed = self:IsRevealed(map, boss.key)
+	return { title = ShownName(map, boss), subtitle = self:Where(map, boss.key), icon = self:Portrait(map, boss.key),
+		model = revealed and Model(map, boss.key) or nil, revealed = revealed }
+end
+
 local function ShowEntry()
 	if not page then return end
 	if not selection then
@@ -543,14 +567,13 @@ local function ShowEntry()
 		local map, key = selection.map, selection.key
 		local boss = Boss(map, key)
 		if not boss then return end
-		local where = Index().world[map] and L.BOSS_IN_FMT:format(MapName(BossZone(map, key)))
-			or (L.BOSS_IN_FMT:format(DungeonName(map)) .. " · " .. MapName(Index().zoneOf[map]))
-		if not Found(map, key) and not Unlocked() then
-			page:Show({ title = ShownName(map, boss), subtitle = where, text = L.BOSS_NOT_FOUND, icon = Unknown(map) })
+		local head = Bosses:Head(map, boss)
+		if not head.revealed then
+			page:Show({ title = head.title, subtitle = head.subtitle, text = L.BOSS_NOT_FOUND, icon = head.icon })
 			return
 		end
 		local story = Story(map, key)
-		page:Show({ title = ShownName(map, boss), subtitle = where, icon = Portrait(map, key), model = Model(map, key),
+		page:Show({ title = head.title, subtitle = head.subtitle, icon = head.icon, model = head.model,
 			text = story or C.NotWritten(), unwritten = story == nil, target = story and { map, key } or nil })
 		return
 	end
@@ -663,10 +686,7 @@ local function Build(panel)
 	Bosses.bosses, Bosses.list = panel, list
 end
 
---- Open the bosses, on where the player stands now, unless they chose something here.
-function Bosses:ShowBosses()
-	if not SpokenCompendium then return end
-	if selection == landed then selection = nil end
+local function OpenTab()
 	if list then
 		list:ClearSearch()
 		filter = ""
@@ -674,6 +694,25 @@ function Bosses:ShowBosses()
 	SpokenCompendium:Open("bosses")
 	SpokenCompendium:Expand()
 	Bosses:RefreshBosses(true)
+end
+
+--- Open the bosses, on where the player stands now, unless they chose something here.
+function Bosses:ShowBosses()
+	if not SpokenCompendium then return end
+	if selection == landed then selection = nil end
+	OpenTab()
+end
+
+--- Open the Compendium on one boss's page, its dungeon and continent opened round it. A boss Found
+--- Only leaves out has no row: the bosses open where the player stands.
+function Bosses:ShowBoss(map, key)
+	if not (SpokenCompendium and Boss(map, key)) then return end
+	if OnlyFound() and not Found(map, key) then return Bosses:ShowBosses() end
+	selection = { boss = true, map = map, key = key }
+	if not Index().world[map] then dungeonOpen[map] = true end
+	local zone = BossZone(map, key)
+	if zone then OpenAround(zone) end
+	OpenTab()
 end
 
 function Bosses:SetupBosses()

@@ -475,7 +475,7 @@ local function HasSomethingToSend()
     return false
 end
 
---- Off while the player listens in a language no client runs in (Italian). HasSoundForCurrent
+--- Off while the player listens in a language no client runs in. HasSoundForCurrent
 --- asks the voice language, so every line its pack has not voiced yet would read as missing
 --- text and send English the corpus already has. Its text comes from its translators, not
 --- from the client, so there is nothing for a player to send for it.
@@ -522,6 +522,52 @@ end
 -- Quest moment -> the words last kept for it with a speaker this session: the window's closing
 -- copy of the same words has no speaker, and is not kept.
 local keptWith = {}
+
+--- The zone map (uiMapID) the player stands in: a town's or a district's map is walked up to its
+--- zone's, and nil where none is above it, as in a dungeon the client files under no zone.
+local ZONE_MAP = (Enum and Enum.UIMapType and Enum.UIMapType.Zone) or 3
+local function ZoneHere()
+    return SpokenCompendium and SpokenCompendium.PlayerZone(function(map)
+        local info = C_Map.GetMapInfo and C_Map.GetMapInfo(map)
+        return info ~= nil and info.mapType == ZONE_MAP
+    end)
+end
+
+-- More zones than any NPC stands in: past this, an envelope's zones are a hand-built list.
+local MAX_ZONES = 8
+
+--- Keep the zone the player met the NPC on screen in, beside the zones met before: the site
+--- learns where a speaker stands from the game itself, gossip and quest givers alike, whether
+--- or not any of its lines is missing. Nothing for another player, or an item, which stands nowhere.
+local function SeeSpeaker()
+    if SharedByPlayer() then
+        return
+    end
+    local kind = NPCKind()
+    if kind ~= "creature" and kind ~= "gameobject" then
+        return
+    end
+    local id, zone = IDFromGUID(Utils:GetNPCGUID()), ZoneHere()
+    if not (id and zone) then
+        return
+    end
+    local npc = format("%s:%d", kind, id)
+    local zones = {}
+    for _, known in ipairs(select(2, Spoken.Gather:GetSeen(npc)) or {}) do
+        if known == zone then
+            return
+        end
+        zones[#zones + 1] = known
+    end
+    if #zones >= MAX_ZONES then
+        table.remove(zones, 1)
+    end
+    zones[#zones + 1] = zone
+    local base = BaseFields()
+    Spoken.Gather:See(npc, zones, Spoken.Contribute:Envelope("seen", {
+        base[1], base[2], { "npc", npc }, { "zones", table.concat(zones, ",") },
+    }))
+end
 
 --- Keep the line on screen for later. Only reached once a caller has established it is
 --- missing or changed (HasGap, which passes `reworded`), or when its model has just arrived
@@ -670,6 +716,10 @@ function Contribute:HasGap()
         and ((not hidden or gathering) or DataModules:IsSplit(id))
     if readBody then
         NPCModel:Prime(guid, "npc")
+    end
+    if gathering then
+        -- Guarded: a sighting is a bonus, and must never cost the player the button.
+        pcall(SeeSpeaker)
     end
     local missing = (not hidden or gathering) and IsMissing()
     local gap = not hidden and missing

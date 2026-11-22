@@ -115,7 +115,7 @@ which fails while `Data/Languages.lua` is out of date. The Lua block check
 
 ## Running the checkout in the game
 
-`/link-addon` (the skill in `.claude/skills/link-addon`) links the worktree's addons into the
+`/link-addon` (the skill in `.agents/skills/link-addon`) links the worktree's addons into the
 client's `Interface/AddOns`. `/reload` then runs the checkout's code. When the worktree is on a server and the
 client on another machine, `/sync-addon` gives the `scripts/developer/sync-addons.sh` command,
 which copies the addons across and with `--watch` keeps them in step. A texture the game did not

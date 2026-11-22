@@ -14,7 +14,7 @@ setfenv(1, SpokenEnv)
 
 local VERSION = 1
 -- Bosses send a report's context only: the site takes no bosses contributions.
-local SOURCES = { quests = true, places = true, readables = true, bosses = true }
+local SOURCES = { quests = true, places = true, readables = true, bosses = true, seen = true }
 
 local MODULUS = 2147483647
 local FACTOR = 31
@@ -177,7 +177,7 @@ function Contribute:PackFields(fields, clip)
     if team then fields[#fields + 1] = { "packTeam", team } end
 end
 
----@param source string  "quests" | "places" | "readables"
+---@param source string  "quests" | "places" | "readables" | "seen"
 ---@param fields table   array of { key, value }, in the order they are written
 ---@param text string|nil the one multi-line field, or nil where the source has none
 ---@return string|nil     the envelope, or nil for a source this format does not carry

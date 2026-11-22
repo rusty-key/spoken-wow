@@ -20,7 +20,7 @@ vi.mock("@/components/useCan", () => ({
   useCan: () => (capability: string) => ["regenerate", "text", "ignore"].includes(capability),
 }));
 
-const facets: Facets = { races: [], genders: [], flavors: [], voices: [], flavorScopes: [] };
+const facets: Facets = { races: [], genders: [], flavors: [], voices: [], flavorScopes: [], zones: [] };
 const line: ResultLine = {
   lineId: "q:1:accept",
   source: "accept",

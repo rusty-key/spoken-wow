@@ -66,7 +66,6 @@ L.OPT_CONTENT_VERSION_UPDATE_FMT = "%2$s -> |cFF00CCFF%1$s|r"
 
 L.OPT_CMD_GROUP = "Commands"
 L.OPT_STOP = "Stop"
-L.OPT_REPLAY = "Replay"
 L.OPT_CMD_SKIP = "Skip Line"
 L.OPT_CMD_SKIP_DESC = "Skips the line being read"
 L.OPT_CMD_READ = "Read Visible Quest"
@@ -98,10 +97,11 @@ L.OPT_PANEL_GREETINGS = "Read Greetings"
 L.OPT_GREETING_LABEL_ALWAYS = "Every Time"
 L.OPT_GREETING_LABEL_ONCE_QUEST = "Once for Quest Givers"
 L.OPT_GREETING_LABEL_ONCE_NPC = "Once per Greeting"
+L.OPT_GREETING_LABEL_ONCE_SESSION = "Once per Session"
 L.OPT_GREETING_LABEL_NEVER = "Never"
 L.OPT_OG_THRALL = "Original Thrall Speech"
 L.OPT_FORGET_GREETINGS = "Forget Greetings Heard"
-L.REASON_FORGET_GREETINGS = "Set Read Greetings to Once per Greeting or Once for Quest Givers to use this."
+L.REASON_FORGET_GREETINGS = "Set Read Greetings to Once per Greeting, Once for Quest Givers or Once per Session to use this."
 L.OPT_FORGET_GREETINGS_DONE = "This character's list of greetings heard is cleared."
 L.OPT_MUTE_NPC = "Mute this NPC's gossip"
 L.OPT_UNMUTE_NPC = "Unmute"
@@ -129,7 +129,6 @@ L.OPT_PACK_INCLUDED = "In All Quests"
 -- Quest and gossip windows
 --------------------------------------------------------------------------------
 
-L.OPT_PLAY = "Play"
 -- The quest window's worded button, where a word has to say what it does.
 L.OPT_LISTEN = "Listen"
 L.OPT_DIALOG_STOP_TIP = "Stop reading"

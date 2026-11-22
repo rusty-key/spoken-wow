@@ -96,6 +96,7 @@ Spoken Manager
 |- SETTINGS
 |    Game folders (list, Add, Remove, Rescan)
 |    Updates (include pre-releases, check on start, manager auto-update)
+|    General (window language, startup, proxy)
 |    Downloads (cache folder, keep downloaded zips)
 |    Sharing (send what Spoken collects, last sent, send now, reset id)
 |    About (versions, links, open log folder)

@@ -126,9 +126,7 @@ tab lists it in The Barrens.
 that are no dungeon, such as the PvP halls) and `battlegrounds`. Three readers use it: the Quests
 exporter (`pipelines/quests/tools/export_compendium.py`), the Readables exporter
 (`pipelines/readables/tools/places.mjs`) and `pipelines/lib/dungeons.mjs`, which writes
-`addons/Spoken/Data/Dungeons.lua` with each name in every language from the client's Map table.
-wago.tools serves Forever's itIT Map table in English since 1.60.1.70374, so the Italian names come
-from 1.60.1.70338 (`STRINGS_BUILD` in `dungeons.mjs`), and a dungeon newer than that has none.
+`addons/Spoken/Data/Dungeons.lua` with each name in every client language from the client's Map table.
 
 ```sh
 make dungeons                          # from the repository root

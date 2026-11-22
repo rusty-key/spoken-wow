@@ -87,7 +87,7 @@ end
 Expect("every section heading the same distance below the section above", Distinct(headingGaps), 1)
 
 ---------------------------------------------------------------- the rows write the settings
--- A dropdown rather than a button that cycles: four named choices, and a player should be
+-- A dropdown rather than a button that cycles: five named choices, and a player should be
 -- able to see them and pick one rather than click through them.
 local db = VO.Addon.db.profile
 db.Audio.GossipFrequency = VO.Enums.GossipFrequency.Always
@@ -140,7 +140,7 @@ local entries = stub.OpenDropdown(greetings)
 local offered = {}
 for _, entry in ipairs(entries) do table.insert(offered, entry.text) end
 Expect("...offering every choice at once", table.concat(offered, "|"),
-    "Every Time|Once for Quest Givers|Once per Greeting|Never")
+    "Every Time|Once for Quest Givers|Once per Greeting|Once per Session|Never")
 Expect("...with the current one ticked", entries[1].checked, true)
 
 Expect("picking one is possible", stub.PickDropdown(greetings, "Once per Greeting"), true)
@@ -151,7 +151,7 @@ Expect("...and relabels", greetings.dropdownText, "Once per Greeting")
 -- to be the same thing, or it can never find where in the list it is.
 Expect("picking a second time works too", stub.PickDropdown(greetings, "Never"), true)
 Expect("...and stores that", db.Audio.GossipFrequency, VO.Enums.GossipFrequency.Never)
-Expect("...with the ticked entry moved", stub.OpenDropdown(greetings)[4].checked, true)
+Expect("...with the ticked entry moved", stub.OpenDropdown(greetings)[5].checked, true)
 
 ---------------------------------------------------------------- the gather switch stays in the player's settings
 -- The switch is the player's alone: quests and readables both feed the one store, so a
@@ -260,7 +260,7 @@ voices.layoutLines[1].remove:Click()
 Expect("...Auto removed", Lines(), "Deutsch | English")
 Expect("...which Quests then speaks", VO.Language:GetVoiceLanguage(), "deDE")
 Expect("...and plays first", table.concat(VO.Language:ResolutionOrder(), ","), "deDE,enUS")
-Expect("...but not a language no installed pack declares", Add("Italiano") or Add("Italian"), false)
+Expect("...but not a language no installed pack declares", Add("日本語") or Add("Japanese"), false)
 voices.layoutLines[2].remove:Click()
 Expect("removing English leaves German alone", Lines(), "Deutsch")
 Expect("...past which Quests is silent", VO.Language:GetFallbackLanguage(), nil)
@@ -346,22 +346,6 @@ do
     Expect("unticking Quest Log turns its buttons off", VO.Addon.db.profile.QuestLogPlayButton, false)
     Expect("...and redraws Spoken's quest log buttons", updated, 1)
     _G.QuestLog_Update, _G.QuestLogFrame = nil, nil
-end
-
--- A voice chosen before its packs went keeps a row to get them back: Italian has official packs,
--- and no Italian pack is installed here to put the language in the list.
-do
-    VO = Boot()
-    _G.SpokenEnv.Addon.db.profile.Language.Voice = "itIT"
-    local panel = stub.LoadQuestsPanel(QUESTS, VO)
-    panel:Setup()
-    local italian = false
-    for _, child in ipairs(panel.panel.content.children) do
-        local text = child.text
-        if type(text) == "string" and string.find(text, "itIT", 1, true) then italian = true end
-    end
-    Expect("a stored Italian voice with no Italian pack still offers the Italian packs", italian, true)
-    _G.SpokenEnv.Addon.db.profile.Language.Voice = nil
 end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

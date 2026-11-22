@@ -70,10 +70,8 @@ The bosses come from `pipelines/lib/bosses.mjs` (`make bosses-extract`), which w
 `DungeonEncounter` table (Forever's build, wago.tools), for each instance map in
 `pipelines/lib/dungeons.json`: the bosses in Forever's order (the client's difficulty 0 and 1 rows, a
 boss only other difficulties list after them; Forever splits a dungeon's bosses over both on one scale),
-each once, named as the difficulty that lists the most of them names it, with its name in every language
-(retail's `DungeonEncounter`, by id or else English name, where wago has no strings of Forever's in a
-language, as for Italian) and a `key` (its English name lowercased, without
-punctuation). The client lists a boss for each difficulty, the Season of Discovery's raid-sized
+each once, named as the difficulty that lists the most of them names it, with its name in every client
+language and a `key` (its English name lowercased, without punctuation). The client lists a boss for each difficulty, the Season of Discovery's raid-sized
 Blackfathom Deeps, Gnomeregan and Sunken Temple among them; a "A and B" row is dropped where A or B is
 a boss on its own, and a name the client spells two ways is one boss (`SAME`).
 
@@ -90,6 +88,13 @@ creature, a portrait or a story, and why, are in [MISSING.md](MISSING.md).
 
 `Data/Stories.lua` holds `SpokenBossStories[map][key]`, the words of a boss's story, from the `boss_line`
 table (`apply-boss-stories.mjs` records them). A boss with no entry says its story is not written yet.
+
+A boss's 3D model is framed by the game from its loaded model's bounding box, through a lens and pose that
+`Data/Cameras.lua` holds (`SpokenBossCameraView`, with `SpokenBossCameraGroups` for the display ids that share a
+model file), made by `pipelines/places/tools/bosses`. `Data/CameraNudges.lua` moves that camera by hand for a
+place, the Compendium's page or the boss's story on the map. The nudges are made with the
+`/spokenbosscam` editor in Spoken Developer (`addons/Spoken_Developer/README.md`), which a player does not have.
+How the framing works is in [BOSSES.md](../places/BOSSES.md).
 
 ## What the sources hold
 
