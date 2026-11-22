@@ -526,7 +526,7 @@ local function RegisterSlashCommand()
     local function Help()
         local lines = {
             { "/sp replay", L.BIND_PLAYPAUSE },
-            { "/sp skip", L.BIND_SKIP },
+            { "/sp skip", L.BIND_SKIP_FORWARD },
             { "/sp previous", L.BIND_SKIP_BACKWARD },
             { "/sp stopall", L.BIND_EJECT },
             { "/sp mute on | off", L.BIND_MUTE },

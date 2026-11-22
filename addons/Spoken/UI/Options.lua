@@ -48,7 +48,7 @@ local STYLE_LABELS = Words({
 -- its string's key.
 local BINDINGS = {
     { "SPOKEN_PLAYPAUSE", "BIND_PLAYPAUSE" },
-    { "SPOKEN_SKIP", "BIND_SKIP" },
+    { "SPOKEN_SKIP", "BIND_SKIP_FORWARD" },
     { "SPOKEN_PREVIOUS", "BIND_SKIP_BACKWARD" },
     { "SPOKEN_STOP", "BIND_EJECT" },
     { "SPOKEN_COMPENDIUM", "BIND_COMPENDIUM" },
