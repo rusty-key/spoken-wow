@@ -345,7 +345,7 @@ def test_a_language_pack_carries_the_words_of_its_lines_without_a_take(tmp_path)
 
 
 def test_a_language_pack_carries_every_quests_title(tmp_path):
-    # Classic Era's client cannot be asked for a title it has not seen: the Compendium showed the
+    # A client knows only the titles of quests it has shown: without these the Compendium showed the
     # English one for every quest the player never opened.
     store = _store(tmp_path, "quests/5-accept.ogg")
     with open(os.path.join(store, "quest-titles.json"), "w", encoding="utf-8") as f:

@@ -159,7 +159,8 @@ local function Title(id, ask)
             return packed
         end
     end
-    -- A voice pack's, which knows quests this client never showed: Classic cannot be asked for those.
+    -- A voice pack's, before the client's: a client knows only the quests it has shown, in its own
+    -- language, and Classic's cannot be asked for the rest.
     local voiced = language ~= VO.Language.BASE and VO.DataModules:PackTitle(id, language)
     if voiced then
         titles[id] = voiced

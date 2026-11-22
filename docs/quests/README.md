@@ -250,9 +250,10 @@ the four packs, of which 0.85 MB is gossip.
 With it comes `audio/quest-titles.json`, every quest's current `entity_name` title in the language.
 `build` writes all of them into every pack as `title_table.lua` (`TitleByQuestID`), loaded on the same
 terms, since the Compendium lists quests whose lines are in packs the player did not install. The
-Compendium titles a quest with it before what the client showed (`UI/QuestsTab.lua` `Title`): Classic
-Era's client has no `C_QuestLog.GetTitleForQuestID`, so without it a quest whose window was never
-opened kept its English title.
+Compendium titles a quest with it before what the client showed (`UI/QuestsTab.lua` `Title`), on
+every client and in a chosen Text Language too. A client knows only the titles of quests it has shown,
+in its own language, and Classic's has no `C_QuestLog.GetTitleForQuestID` to ask for the rest, so
+without it a quest whose window was never opened kept its English title.
 
 `install` moves any existing install aside to `<module>.replaced` rather than deleting it.
 

@@ -226,8 +226,8 @@ async function writeLineText(rows) {
   await writeQuestTitles();
 }
 
-// The quests' titles in the language, for the Compendium: a Classic client has no way to ask for
-// the title of a quest it has not seen, and the pack's own lines are no use without them.
+// The quests' titles in the language, for the Compendium: a client knows only the titles of quests
+// it has shown, and only in its own language.
 async function writeQuestTitles() {
   const titles = Object.fromEntries(
     psql(`select "entityId", to_json("name")::text from "entity_name"
