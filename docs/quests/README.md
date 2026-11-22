@@ -557,8 +557,9 @@ the line is judged or sent — the voiceability gate, the request, and the stale
 hashes, which go through one function (`sentText`) so they cannot disagree. Case follows the
 position, not the token: lowercase mid-sentence, capitalised at a sentence's start and always
 in German. English quest text is the exception: its case follows the token (`$N` is
-"Adventurer", `$n` "adventurer"), the case its takes were made with, so they stay current.
-English book pages follow the position like every other language. A line's female variant, which exists where the English branches on `$G`, gets the
+"Adventurer", `$n` "adventurer"), the case its takes were made with, so they stay current
+(migration 0129 put the tokens back into existing rows). English book pages follow the position
+like every other language. A line's female variant, which exists where the English branches on `$G`, gets the
 feminine word, and a leftover `$g…;` takes that variant's branch; `$u…;`, which ptBR's and
 German's own templates write, is read the same way in every language, and so is Forever's deDE
 gossip form with the separators swapped (`$uBürger;Bürgerin:`, male first, a letter on either
