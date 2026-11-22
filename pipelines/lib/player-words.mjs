@@ -159,6 +159,8 @@ const TOKEN_CASE = new Set(["enUS"]);
 const GLUED = String.raw`(?![\p{sc=Han}\p{sc=Hangul}\p{sc=Hiragana}\p{sc=Katakana}])\p{L}`;
 // Not followed by a glued letter: see "glued" above.
 const TOKEN = new RegExp(String.raw`\$([NnCcRr])(?!${GLUED})`, "gu");
+// English quest text says a glued token too: its takes say "adventurerama" for "$Nama".
+const ANY_PLAYER_TOKEN = /\$([NnCcRr])/g;
 // Not $R: "des Reisenden" is no glued s, so "$Rs" stays refused.
 const TOKEN_GENITIVE = /\$([NnCc])s(?!\p{L})/gu;
 // Not $N or $R: the class is the only glued plural seen in frFR text. Not before an apostrophe
@@ -253,12 +255,15 @@ export function writtenPlayerTokens(text) {
   return text.replace(DOUBLED, "$").replace(GENDER, "$$g$1:$2;").replace(SWAPPED, "$$g$1:$2;");
 }
 
-/** The text as it is spoken in `lang`, by a reader of `playerGender` where the line has one. */
+/**
+ * The text as it is spoken in `lang`, by a reader of `playerGender` where the line has one. A book
+ * page's; a quest line's is speakQuestTokens'.
+ */
 export function speakPlayerTokens(text, lang, playerGender = null) {
   return speak(text, lang, playerGender, false);
 }
 
-/** speakPlayerTokens for a quest line, whose English capitalises as the token is written. */
+/** speakPlayerTokens for a quest line, whose English capitalises as the token is written and says a glued one. */
 export function speakQuestTokens(text, lang, playerGender = null) {
   return speak(text, lang, playerGender, TOKEN_CASE.has(lang));
 }
@@ -286,7 +291,7 @@ function speak(text, lang, playerGender, byToken) {
   if (plural) {
     spoken = spoken.replace(TOKEN_CLASS_PLURAL, (_, token, at, whole) => cased(plural, at, whole, token));
   }
-  return spoken.replace(TOKEN, (_, token, at, whole) =>
+  return spoken.replace(byToken ? ANY_PLAYER_TOKEN : TOKEN, (_, token, at, whole) =>
     cased(token.toUpperCase() === "R" ? words.race : words.name, at, whole, token),
   );
 }

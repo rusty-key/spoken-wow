@@ -14,23 +14,10 @@ from tts_cli.flavors import (apply_fallbacks, consensus_flavor, fallback_flavors
                              flavor_from_sound_name, model_voice, voice_name)
 from tts_cli.flavors import file_key as flavor_file_key
 
-#: `$B` is a line break. `$N`, `$C` and `$R` stay in the text, as every language's do: the site
-#: says them in the language's words when a line is judged and sent, so a change of words reaches
-#: every line.
-REPLACE_DICT = {'$b': '\n', '$B': '\n'}
-
-#: The site leaves a token glued to a letter ("$nath", "$rs") unsaid, so the gate would refuse the
-#: line. Its takes say the English word, so the word is written in.
-GLUED_TOKEN = re.compile(r'\$([NnCcRr])(?=[^\W\d_])')
-GLUED_WORDS = {'n': 'adventurer', 'N': 'Adventurer', 'c': 'adventurer', 'C': 'Adventurer',
-               'r': 'traveler', 'R': 'Traveler'}
-
-
 def written_text(text):
-    """The game's text as the corpus stores it: line breaks for `$B`, a glued token's word."""
-    for k, v in REPLACE_DICT.items():
-        text = text.replace(k, v)
-    return GLUED_TOKEN.sub(lambda m: GLUED_WORDS[m.group(1)], text)
+    """The game's text as the corpus stores it: `$B` as a line break. `$N`, `$C` and `$R` stay, as
+    every language's do, so a change of the language's words reaches every line."""
+    return re.sub(r'\$[bB]', '\n', text)
 
 
 def get_hash(text):

@@ -39,8 +39,7 @@ SCHEMA_VERSION = 6
 DEFAULT_CORPUS_PATH = "corpus/corpus.json.gz"
 INVALID_CHARS = "$<>"
 #: `$N`, `$C` and `$R` in English text, which the site says as English's words, `$` doubled or not.
-#: Not glued to a letter: the site leaves "$nath" unsaid.
-PLAYER_TOKEN = re.compile(r"\$\$?[NnCcRr](?![^\W\d_])")
+PLAYER_TOKEN = re.compile(r"\$\$?[NnCcRr]")
 #: The skipReason of a line whose voice is a model slot nobody has chosen a voice for yet.
 NO_VOICE = "no-voice"
 

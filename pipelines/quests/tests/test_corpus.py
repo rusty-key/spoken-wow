@@ -93,18 +93,16 @@ def test_marks_lines_the_generator_skips():
     assert by_id["q:9:accept"]["skipReason"] == "invalid-chars"
 
 
-def test_a_player_token_is_said_and_a_glued_one_is_not():
+def test_a_player_token_is_said():
     rows = [{**ROWS[0], "cleanedText": text} for text in ("Hi $N, the $r.", "$$N, come.", "Hi $Nama.")]
     lines = build_corpus(pd.DataFrame(rows), SPAWNS)["lines"]
-    assert [line["skipReason"] for line in lines] == [None, None, "invalid-chars"]
+    assert [line["skipReason"] for line in lines] == [None, None, None]
 
 
 def test_keeps_the_players_tokens_for_the_site_to_say():
     from tts_cli.tts_utils import written_text
 
-    assert written_text("Well met, $N.$B$BThe $c and the $R.") == "Well met, $N.\n\nThe $c and the $R."
-    # Glued to a letter, the site would leave it unsaid; its takes say the word written in.
-    assert written_text("Take it from me, $nama, you $Ns.") == "Take it from me, adventurerama, you Adventurers."
+    assert written_text("Well met, $N.$B$BThe $c and the $R, $nama.") == "Well met, $N.\n\nThe $c and the $R, $nama."
 
 
 def test_carries_no_audio_state():

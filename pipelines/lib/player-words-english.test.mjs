@@ -12,7 +12,6 @@ const BAKED = [
   ["$b", "\n"], ["$B", "\n"], ["$n", "adventurer"], ["$N", "Adventurer"],
   ["$C", "Adventurer"], ["$c", "adventurer"], ["$R", "Traveler"], ["$r", "traveler"],
 ];
-const GLUED_WORDS = { n: "adventurer", N: "Adventurer", c: "adventurer", C: "Adventurer", r: "traveler", R: "Traveler" };
 // tts_utils.py: written_text, then preprocess_dataframe's direction strip and $G sides.
 const GENDER = /\$[Gg]\s*([^:;]+?)\s*:\s*([^:;]+?)\s*;/g;
 const cleaned = (text, gender) => {
@@ -20,11 +19,7 @@ const cleaned = (text, gender) => {
   return gender ? text.replace(GENDER, gender === "f" ? "$2" : "$1") : text;
 };
 const baked = (template, gender) => cleaned(BAKED.reduce((t, [k, v]) => t.replaceAll(k, v), template), gender);
-const written = (template, gender) =>
-  cleaned(
-    template.replaceAll("$b", "\n").replaceAll("$B", "\n").replace(/\$([NnCcRr])(?=\p{L})/gu, (_, t) => GLUED_WORDS[t]),
-    gender,
-  );
+const written = (template, gender) => cleaned(template.replace(/\$[bB]/g, "\n"), gender);
 
 test("English's tokens say exactly what the extract used to write, on every corpus line", () => {
   const { lines } = JSON.parse(zlib.gunzipSync(fs.readFileSync(CORPUS)).toString("utf8"));
@@ -37,8 +32,9 @@ test("English's tokens say exactly what the extract used to write, on every corp
   assert.deepEqual(differ.map((line) => line.lineId), []);
 });
 
-test("English capitalises a token as it is written, not by its place in the sentence", () => {
+test("English quest text capitalises a token as it is written, and says a glued one", () => {
   assert.equal(speakQuestTokens("Well met, $N. $n, the $R and the $c.", "enUS"), "Well met, Adventurer. adventurer, the Traveler and the adventurer.");
+  assert.equal(speakQuestTokens("Take it from me, $nama, $rs.", "enUS"), "Take it from me, adventurerama, travelers.");
 });
 
 test("an English book page still capitalises by place, as its takes were made", () => {
