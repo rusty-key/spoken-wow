@@ -106,6 +106,7 @@ export const EN = {
         "Pick target or kill under Show a Boss's Story",
       ],
       browse: "Browse the bosses",
+      position: "Position in the bosses example",
     },
     examplesLabel: "{part} examples",
     noVoice: "Boss stories are voiced by the Spoken Audio: Bosses pack. Without it they show as words in the narrator.",

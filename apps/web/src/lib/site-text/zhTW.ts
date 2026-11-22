@@ -98,6 +98,7 @@ const zhTW: Dictionary = {
         "在「顯示首領故事」中選擇選取目標時或擊殺時",
       ],
       browse: "瀏覽首領",
+      position: "首領範例的播放位置",
     },
     examplesLabel: "{part}範例",
     noVoice: "首領故事由 Spoken Audio: Bosses 語音包配音。沒有它時，故事只會以文字形式顯示在旁白中。",

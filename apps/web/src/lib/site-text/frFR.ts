@@ -104,6 +104,7 @@ const fr: Dictionary = {
         "Choisissez cible ou mort sous «\u00a0Afficher le récit d'un boss\u00a0»",
       ],
       browse: "Parcourir les boss",
+      position: "Position dans l'exemple des boss",
     },
     examplesLabel: "Exemples\u00a0: {part}",
     noVoice:

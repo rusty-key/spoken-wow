@@ -8,6 +8,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   Lock Position disables movement. *([Praxeomatic](https://github.com/Praxeomatic))*
 - **Subtitle dragging stops when you release the mouse.** The move button now has four-way arrows
   and clearer instructions. *([Praxeomatic](https://github.com/Praxeomatic))*
+- **Queue counts pulse without an error when a line is added while Spoken is stopped.** *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.12.0 — 2026-11-22
 

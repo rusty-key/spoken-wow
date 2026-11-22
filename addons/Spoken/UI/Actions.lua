@@ -371,8 +371,8 @@ function Pulse:Step(elapsed)
     end
     if size ~= self.drawn or text ~= burst:GetText() then
         self.drawn = size
-        burst:SetText(text)
         burst:SetFont(self.font, size, self.flags)
+        burst:SetText(text)
         self.glow:SetSize((burst:GetStringWidth() or 0) + self.size * 3, self.size * 3.5)
     end
     burst:SetTextColor(color[1] + (PULSE_GOLD[1] - color[1]) * swell, color[2] + (PULSE_GOLD[2] - color[2]) * swell,
