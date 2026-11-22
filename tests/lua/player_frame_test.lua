@@ -504,6 +504,13 @@ local labels = {}
 for _, entry in ipairs(menu) do table.insert(labels, entry.text) end
 Expect("the menu is the player's entries then each source's in order", table.concat(labels, "|"),
     "Stop or Replay|Skip Backward|Skip Forward|Eject|Settings|Quest settings|Open lore window")
+local ids = {}
+for _, entry in ipairs(menu) do table.insert(ids, entry.id) end
+Expect("the player's menu IDs use standard media terms", table.concat(ids, "|"),
+    "PlayPause|SkipBackward|SkipForward|Eject|Settings|opts|lore")
+Expect("old Previous IDs still resolve for saved minimap assignments",
+    env.Minimap:FindEntry("Previous").id .. "|" .. env.Minimap:FindEntry("Skip").id
+        .. "|" .. env.Minimap:FindEntry("Stop").id, "SkipBackward|SkipForward|Eject")
 env.Minimap:RemoveEntry("places", "lore")
 Expect("RemoveEntry", getn(env.Minimap:BuildMenu()), 6)
 
