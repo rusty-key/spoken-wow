@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -8,7 +8,7 @@ import { pointerText } from "../lib/clip-pointer.mjs";
 import { generateKeys, openJson, sealJson, sha256Text } from "./sign.mjs";
 import { ConflictError, memoryStore } from "./store.mjs";
 import { MIN_SPOKEN_TEAM } from "../lib/packs.mjs";
-import { delist, IMMUTABLE, INDEX_CACHE, latestSpokenRelease, minSpokenFor, promote, publish } from "./publish.mjs";
+import { compareVersions, delist, IMMUTABLE, INDEX_CACHE, latestSpokenRelease, minSpokenFor, promote, publish } from "./publish.mjs";
 
 const keys = generateKeys();
 const minSpoken = { quests: "3.0.0", places: "3.0.0", readables: "3.0.0" };
@@ -170,8 +170,12 @@ test("a language's plain pack, and English's, keep their section's", () => {
   assert.equal(minSpokenFor("SpokenQuestsAudioHorde_deDE", "quests", minSpoken, undefined), "3.0.0");
 });
 
-test("the Spoken that plays team voices is named, if not yet released", () => {
+// A version past the addon's own refuses every team's release with "needs Spoken X".
+test("the Spoken that plays team voices is no later than the addon's version", () => {
+  const toc = readFileSync(new URL("../../addons/Spoken/Spoken.toc", import.meta.url), "utf8");
+  const addon = toc.match(/^## Version: (\S+)/m)[1];
   assert.match(MIN_SPOKEN_TEAM, /^\d+\.\d+\.\d+$/);
+  assert.ok(compareVersions(MIN_SPOKEN_TEAM, addon) <= 0, `MIN_SPOKEN_TEAM ${MIN_SPOKEN_TEAM} is past Spoken ${addon}`);
 });
 
 test("a publish that loses the race to the index fails", async () => {
