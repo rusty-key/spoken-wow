@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Spoken's pages are listed under it in Settings, AddOns, from the start.** A controller can now
+  reach every page; a mouse click on the minus still folds them away.
+  *([rusty-key](https://github.com/rusty-key))*
 - **The controller can enter Spoken's settings pages.** In Settings, AddOns, confirming or
   pressing right on Spoken or one of its pages goes to the page's first row.
   *([rusty-key](https://github.com/rusty-key))*

@@ -49,6 +49,9 @@ local function Asked(frame)
 end
 
 Expect("Spoken registers its page and the modules' pages", #stub.settingsCategories > 1, true)
+local spoken = stub.settingsCategories[1]
+Expect("the first entry is Spoken's own", spoken.name, "Spoken")
+Expect("...which starts unfolded", spoken:IsExpanded(), true)
 for _, category in ipairs(stub.settingsCategories) do
     -- Shown already, the page would get no OnShow when the window first takes it.
     Expect(category.name .. " waits hidden until the settings window shows it", category.frame.shown, false)
