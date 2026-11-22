@@ -687,9 +687,15 @@ _G.GRAY_FONT_COLOR = { r = 0.5, g = 0.5, b = 0.5 }
 _G.UIDropDownMenu_Initialize = nil
 -- The Settings API as 11509 exposes it.
 M.settingsCategories = {}
+-- A category folds its subcategories until something expands it (Blizzard_Category.lua).
+function M.SettingsCategory(c)
+    function c:SetExpanded(expanded) self.expanded = expanded end
+    function c:IsExpanded() return self.expanded end
+    return c
+end
 M.modernSettings = {
-    RegisterCanvasLayoutCategory = function(frame, name) local c = { frame = frame, name = name, GetID = function() return name end }; table.insert(M.settingsCategories, c); return c end,
-    RegisterCanvasLayoutSubcategory = function(parent, frame, name) local c = { frame = frame, name = name, parent = parent }; table.insert(M.settingsCategories, c); return c end,
+    RegisterCanvasLayoutCategory = function(frame, name) local c = M.SettingsCategory({ frame = frame, name = name, GetID = function() return name end }); table.insert(M.settingsCategories, c); return c end,
+    RegisterCanvasLayoutSubcategory = function(parent, frame, name) local c = M.SettingsCategory({ frame = frame, name = name, parent = parent }); table.insert(M.settingsCategories, c); return c end,
     RegisterAddOnCategory = function() end,
     OpenToCategory = function() return true end,
 }
