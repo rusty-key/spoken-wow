@@ -72,12 +72,10 @@ A comment belongs to the PR that introduced it. For a stack:
    there.
 2. Cascade each upper layer onto the new lower tip: `git rebase --onto <new lower> <old lower>
    <upper>`.
-3. If an upper layer already rewrote the same comment, a conflict follows. Resolve only the
-   conflicting upper-layer path by restoring its already-cleaned file from the pre-rebase commit,
-   with a script that writes `git show <old upper>:<path>`. Verify that path against the
-   pre-rebase version (`git diff --quiet <old upper> HEAD -- <path>`), and separately verify that
-   intended lower-layer changes remain in the other paths. Do not require the entire rebased tree
-   to equal the old upper tree. dcg blocks `git checkout --theirs`.
+3. If an upper layer already rewrote the same comment, a conflict follows. Resolve it by
+   restoring the upper layer's already-cleaned file from its pre-rebase commit, with a script that
+   writes `git show <old upper>:<path>`. Then check that the rebased tree equals the pre-rebase
+   one (`git diff --quiet <old upper> HEAD`). dcg blocks `git checkout --theirs`.
 4. Push each branch from its own checkout.
 
 ## 5. Verify
