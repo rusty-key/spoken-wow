@@ -9,10 +9,10 @@
  * CLIENT-SAFE: ContributionTable renders these.
  */
 import { BASE_LANG, clientLang } from "@/lib/lang";
-import { speakPlayerTokens } from "@/lib/player-words";
+import { speakQuestTokens } from "@/lib/player-words";
 import { DECLENSION, withoutDirections } from "@/lib/text-gate";
 
-import { spokenFromTemplate } from "./tokens";
+import { writtenFromTemplate } from "./tokens";
 
 // Up to the next space, so a lost `;` names the branch rather than the rest of the line. Not
 // inside a declension escape, which gets its own hint.
@@ -29,9 +29,9 @@ const DOUBLE_SPACE = /(?<=[^\s.!?…:])(?<![.!?…]["'“”»])[ \u00a0]{2,}\S/
 
 export function textHints(text: string, locale: string): string[] {
   const lang = clientLang(locale) ?? BASE_LANG;
-  // Spoken as the gate will speak the accepted line: English is stored through the extract's
-  // table, which also turns $B into a line break.
-  const spoken = speakPlayerTokens(lang === BASE_LANG ? spokenFromTemplate(text) : text, lang);
+  // Spoken as the gate will speak the accepted line: English is stored as the extract writes it,
+  // which turns $B into a line break.
+  const spoken = speakQuestTokens(lang === BASE_LANG ? writtenFromTemplate(text) : text, lang);
   const judged = withoutDirections(spoken);
   const hints = new Set<string>();
   for (const token of judged.match(LEFTOVER) ?? []) hints.add(`unspoken token ${token} — won't be voiced`);

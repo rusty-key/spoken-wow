@@ -27,7 +27,7 @@ import { commitTake } from "@/lib/takes/commit";
 import { INVALID_CHARS, isVoiceable } from "@/lib/text-gate";
 import { isModelVoice } from "@/lib/voices/voices";
 
-import { speakPlayerTokens } from "@/lib/player-words";
+import { speakQuestTokens } from "@/lib/player-words";
 import { shapedText } from "./files";
 import { canonicalNpcId, seedFor } from "./seed";
 import { spokenHash } from "./spoken-hash";
@@ -235,7 +235,7 @@ export async function regenerateLine(
         // `line.text`, not `source`: code cannot tell a rewrite's respellings from a real change of
         // wording, and a respelling must never reach the screen. Tokens as the voice said them, or
         // a subtitle names the player over a voice saying "adventurer".
-        shownText: speakPlayerTokens(line.text, lang, line.playerGender),
+        shownText: speakQuestTokens(line.text, lang, line.playerGender),
       },
       // A clip ffprobe cannot read still commits, with no length: the pack build measures
       // what is missing.

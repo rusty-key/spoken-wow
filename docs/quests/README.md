@@ -550,21 +550,23 @@ quests contributions with `stage=gossip`. `/reports/gossip` redirects to `/repor
 Lines with no audio are marked. `no audio` is a real gap; `invalid-chars` lines are ones the
 generator never voices until their text is rewritten.
 
-A translation keeps Blizzard's `$N`, `$C` and `$R` in its stored text, and they are not what
-makes it `invalid-chars`: `apps/web/src/lib/player-words.ts` speaks them as the language's
+Every language, English included, keeps Blizzard's `$N`, `$C` and `$R` in its stored text, and
+they are not what makes it `invalid-chars`: `apps/web/src/lib/player-words.ts` speaks them as the language's
 word for "adventurer" and "traveler" (`Abenteurer`, `aventurier`, `путник`, `冒险者`…) wherever
 the line is judged or sent — the voiceability gate, the request, and the staleness and dirt
 hashes, which go through one function (`sentText`) so they cannot disagree. Case follows the
 position, not the token: lowercase mid-sentence, capitalised at a sentence's start and always
-in German. A line's female variant, which exists where the English branches on `$G`, gets the
+in German. English quest text is the exception: its case follows the token (`$N` is
+"Adventurer", `$n` "adventurer"), the case its takes were made with, so they stay current.
+English book pages follow the position like every other language. A line's female variant, which exists where the English branches on `$G`, gets the
 feminine word, and a leftover `$g…;` takes that variant's branch; `$u…;`, which ptBR's and
 German's own templates write, is read the same way in every language, and so is Forever's deDE
 gossip form with the separators swapped (`$uBürger;Bürgerin:`, male first, a letter on either
 side of the `;`). A token whose `$` is doubled (`$$N, …`, as TBC Anniversary and Forever send
-some lines) reads as the token. English quest text has nothing left for it to replace, its
-words having been written in at extraction; a book page in any language, English included,
-goes through the same table (`docs/readables/README.md`). A token glued to a following letter
-(`$Nama`) is left in, so the line stays unvoiceable until a translator rewrites it. Two glued
+some lines) reads as the token. A book page in any language, English included, goes through
+the same table (`docs/readables/README.md`). A token glued to a following letter
+(`$Nama`) is left in, so the line stays unvoiceable until a translator rewrites it; English's
+extract writes the word into one (`adventurerama`), as it always has. Two glued
 `s` are exceptions. German's genitive: `$Ns` and `$Cs` read as `Abenteurers`, or `Abenteurerin`
 on the female variant. French's class plural: `$cs` reads as `aventuriers`, or `aventurières`
 on the female variant. A branch never spans a sentence's end, so one whose `;` was lost stays
@@ -1152,7 +1154,7 @@ character's name), `readerClass` and its gendered forms, `readerClassID`, `reade
 `readerSex`, and on a quest the Compendium knows, `questClasses`. Intake puts the name, class and
 race back as `$N`, `$C` and `$R` (`lib/contributions/reader.ts`), the name whole, by either part
 and in capitals, so a contributed line is a template like an extracted one: stored as
-`originalText`, spoken as `Adventurer`/`Traveler` by the extract's own table, and hashed on the
+`originalText`, stored with its tokens as the extract stores its own (`$B` as a line break), and hashed on the
 template when it is gossip. The name is not kept: `raw`, `meta` and a report's context hold the
 text with the name as `$N` and the class and race as shown, so the rule can run again. An older
 addon put the tokens back itself and sends no `shown`, and its text is taken as it is. The addon

@@ -16,7 +16,7 @@ import path from "node:path";
 import { VOICE_CONFIG_DIR } from "@/lib/paths";
 
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { speakPlayerTokens } from "@/lib/player-words";
+import { speakQuestTokens } from "@/lib/player-words";
 
 import { FALLBACK, fromFileShape, type GenerationConfig } from "./config";
 import { directionFor } from "./narration";
@@ -105,7 +105,7 @@ export function sentText(
   lang: Lang,
   playerGender: "m" | "f" | null,
 ): string {
-  return committedPronunciation(speakPlayerTokens(text, lang, playerGender), lang);
+  return committedPronunciation(speakQuestTokens(text, lang, playerGender), lang);
 }
 
 /**

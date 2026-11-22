@@ -53,7 +53,7 @@ import { lineStates, type CorpusText, type LineState } from "./known";
 import { baseLineId, momentOf } from "./naming";
 import { CONTRIBUTION_COLUMNS, rewriteWaitingTexts, type Contribution } from "./store";
 import { correctionNote } from "./notes";
-import { spokenFromTemplate } from "./tokens";
+import { writtenFromTemplate } from "./tokens";
 
 export type CorrectionOutcome =
   | { ok: true; contribution: Contribution }
@@ -340,7 +340,7 @@ async function correctEnglish(
     return { ok: false, reason: "not-a-correction", message: `${moment} is not a line the corpus has` };
   }
 
-  const text = spokenFromTemplate(template);
+  const text = writtenFromTemplate(template);
   if (rows.some((row) => row.playerGender !== null) && !branchesOnPlayerGender(text)) {
     return {
       ok: false,
