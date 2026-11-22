@@ -3,14 +3,11 @@
  *
  * Blizzard writes `$N`, `$C` and `$R` into quest text and the client puts the player's own
  * words there. A recording is one file for everybody, so it says a word that fits anybody.
- * The English quest extract writes "Adventurer" and "Traveler" into its text once, at
- * extraction (REPLACE_DICT in pipelines/quests/tts_cli/tts_utils.py; contributions/tokens.ts),
- * so English quest text reaches here with nothing left to replace. Everything else -- a quest
- * translation, and a book page in any language -- keeps its tokens as stored, and this puts
- * the language's word in at the point the text is judged and sent: the gate, the request and
- * the staleness hash all see the same string. Kept out of the rows on purpose: a translation
- * reaches the tables from the dump, from another source for Portuguese, from a player and from a
- * translator, and one place to substitute covers all of them without rewriting any of them;
+ * Text keeps its tokens as stored, in every language, and this puts the language's word in at
+ * the point the text is judged and sent: the gate, the request and the staleness hash all see
+ * the same string. Kept out of the rows on purpose: a line reaches the tables from the dump,
+ * from another source for Portuguese, from a player and from a translator, and one place to
+ * substitute covers all of them without rewriting any of them;
  * the words themselves are a native speaker's call, and changing one reaches every line at once
  * (and marks its takes stale, which is what they then are).
  *
@@ -151,6 +148,10 @@ export function validPlayerWords(value) {
 
 /** German capitalises every noun; the rest only at the start of a sentence. */
 const ALWAYS_CAPITAL = new Set(["deDE"]);
+// English capitalises as the token is written: `$N` says "Adventurer" wherever it stands and `$n`
+// "adventurer", even opening a sentence. English's takes were made from text written that way, so
+// any other rule would mark them stale.
+const TOKEN_CASE = new Set(["enUS"]);
 
 // A letter that glues to a token. Chinese and Japanese write no spaces at all, and Korean
 // attaches its particles ("$N님"), so a character of theirs after a token is the next word,
@@ -162,7 +163,7 @@ const TOKEN = new RegExp(String.raw`\$([NnCcRr])(?!${GLUED})`, "gu");
 const TOKEN_GENITIVE = /\$([NnCc])s(?!\p{L})/gu;
 // Not $N or $R: the class is the only glued plural seen in frFR text. Not before an apostrophe
 // either: "$cs'il" is "$c s'il" with its space lost, not a plural.
-const TOKEN_CLASS_PLURAL = /\$[Cc]s(?![\p{L}'’])/gu;
+const TOKEN_CLASS_PLURAL = /\$([Cc])s(?![\p{L}'’])/gu;
 // $gmale:female; and ruRU's $gmale:female:c; whose third field names the token the
 // adjective agrees with. The import resolves the two-field form already; the three-field
 // form slips past its pattern and arrives here. No branch ends a sentence: one whose `;` was
@@ -258,24 +259,25 @@ export function speakPlayerTokens(text, lang, playerGender = null) {
   if (!forms) return text;
   text = speakQuantities(text, lang, forms);
   const words = playerGender === "f" ? forms.f : forms.m;
-  const cased = (word, at, whole) =>
-    ALWAYS_CAPITAL.has(lang) || SENTENCE_START.test(whole.slice(0, at))
-      ? word[0].toUpperCase() + word.slice(1)
-      : word;
+  const capital = (word) => word[0].toUpperCase() + word.slice(1);
+  const cased = (word, at, whole, token) => {
+    if (TOKEN_CASE.has(lang)) return token === token.toUpperCase() ? capital(word) : word;
+    return ALWAYS_CAPITAL.has(lang) || SENTENCE_START.test(whole.slice(0, at)) ? capital(word) : word;
+  };
 
   const side = playerGender === "f" ? "$2" : "$1";
   let spoken = text.replace(DOUBLED, "$").replace(GENDER, side).replace(SWAPPED, side);
   const genitive = words.nameGenitive;
   if (genitive) {
-    spoken = spoken.replace(TOKEN_GENITIVE, (_, _token, at, whole) =>
-      cased(genitive, at, whole),
+    spoken = spoken.replace(TOKEN_GENITIVE, (_, token, at, whole) =>
+      cased(genitive, at, whole, token),
     );
   }
   const plural = words.classPlural;
   if (plural) {
-    spoken = spoken.replace(TOKEN_CLASS_PLURAL, (_, at, whole) => cased(plural, at, whole));
+    spoken = spoken.replace(TOKEN_CLASS_PLURAL, (_, token, at, whole) => cased(plural, at, whole, token));
   }
   return spoken.replace(TOKEN, (_, token, at, whole) =>
-    cased(token.toUpperCase() === "R" ? words.race : words.name, at, whole),
+    cased(token.toUpperCase() === "R" ? words.race : words.name, at, whole, token),
   );
 }

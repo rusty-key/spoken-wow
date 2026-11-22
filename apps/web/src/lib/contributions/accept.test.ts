@@ -488,7 +488,7 @@ describe("resolveContribution: quests accept", () => {
     expect((await speakersOf(second)).map((s) => s.lineId)).toEqual([lineId]);
   });
 
-  it("a line sent with the reader's tokens keeps them as its template and speaks them as the extract does", async () => {
+  it("a line sent with the reader's tokens keeps them, in its template and its text, as the extract does", async () => {
     await speaker(npcId, "tauren", "male", "warrior");
     const template = "Well met, $N. The $R $c walks with the Earth Mother.";
     const id = await gossipContribution(template, npcId);
@@ -499,7 +499,7 @@ describe("resolveContribution: quests accept", () => {
     const group = (await lineIndex()).get(lineId);
     expect(group).toHaveLength(1);
     expect(group![0]).toMatchObject({
-      text: "Well met, Adventurer. The Traveler adventurer walks with the Earth Mother.",
+      text: template,
       originalText: template,
     });
   });
@@ -1084,7 +1084,7 @@ describe("resolveContribution: a greeting in any language", { timeout: 20_000 },
 
     const portuguese = await accepted(await greeting(LOCALE, PORTUGUESE));
     expect((await rows(lineId)).map((row) => [row.lang, row.text])).toEqual([
-      [BASE_LANG, "Welcome to the test lodge, adventurer."],
+      [BASE_LANG, ENGLISH],
       [LOCALE, PORTUGUESE],
     ]);
     expect(await speakersOf(portuguese.id)).toEqual([]);

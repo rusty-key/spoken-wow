@@ -18,7 +18,7 @@ import type { CorpusLine } from "@/lib/corpus";
 import { db, withTeam } from "@/lib/db";
 import { ownerOrAll } from "@/lib/teams/store";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { branchesOnPlayerGender, playerGenderSides, speakPlayerTokens } from "@/lib/player-words";
+import { branchesOnPlayerGender, playerGenderSides } from "@/lib/player-words";
 import { validateOverride } from "@/lib/quests/override";
 import { writeOverride } from "@/lib/quests/overrides";
 import { lockLine, ORD_FLOOR } from "@/lib/quests/speakers";
@@ -54,17 +54,10 @@ function draftsFor(lang: Lang, rows: readonly MomentRow[], text: string) {
     : rows;
   const [male, female] = playerGenderSides(text);
   const drafts = forms.map((row) => {
-    // English is stored spoken. A translation keeps its tokens for player-words.ts, which says them
-    // at the point of sending, so a change to its words reaches this line too.
+    // The tokens stay for player-words.ts, which says them at the point of sending, so a change to
+    // the language's words reaches this line too.
     const side = row.playerGender === "f" ? female : row.playerGender === "m" ? male : text;
-    const draft = validateOverride(
-      {
-        file: audioRelPath(row),
-        lineId: row.lineId,
-        text: lang === BASE_LANG ? speakPlayerTokens(text, lang, row.playerGender) : side,
-      },
-      lang,
-    );
+    const draft = validateOverride({ file: audioRelPath(row), lineId: row.lineId, text: side }, lang);
     return { ...row, file: draft.file, text: draft.text, current: row.text };
   });
   return { split, drafts };

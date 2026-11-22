@@ -16,6 +16,7 @@ matplotlib zone picker is deleted.
 import gzip
 import json
 import os
+import re
 from datetime import datetime, timezone
 
 from tts_cli.flavors import is_model_voice
@@ -37,6 +38,9 @@ from tts_cli.npc_bodies import npc_bodies
 SCHEMA_VERSION = 6
 DEFAULT_CORPUS_PATH = "corpus/corpus.json.gz"
 INVALID_CHARS = "$<>"
+#: `$N`, `$C` and `$R` in English text, which the site says as English's words
+#: (pipelines/lib/player-words.mjs). Not glued to a letter: the site leaves "$nath" unsaid.
+PLAYER_TOKEN = re.compile(r"\$[NnCcRr](?![^\W\d_])")
 #: The skipReason of a line whose voice is a model slot nobody has chosen a voice for yet.
 NO_VOICE = "no-voice"
 
@@ -69,12 +73,17 @@ def _skip_reason(row):
     return None
 
 
+def english_skip_reason(row):
+    """_skip_reason for an English row, whose player tokens the site says."""
+    return _skip_reason({**row, "cleanedText": PLAYER_TOKEN.sub("", row["cleanedText"])})
+
+
 def build_corpus(df, spawn_rows, display_rows=()) -> dict:
     """Turn the preprocessed dataframe, raw spawn rows and creature displays into the corpus
     document."""
     lines = []
     for row in df.to_dict("records"):
-        reason = _skip_reason(row)
+        reason = english_skip_reason(row)
         lines.append({
             "lineId": line_id_for_row(row),
             "source": row["source"],

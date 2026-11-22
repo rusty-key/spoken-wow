@@ -7,7 +7,7 @@
  * An override replaces what is *spoken*. It cannot touch originalText, which is what names
  * the file and what the addon matches on - see the header of migration 0012.
  */
-import { BASE_LANG, type Lang } from "../lang";
+import type { Lang } from "../lang";
 import { branchesOnPlayerGender, playerGenderSides, speakPlayerTokens } from "../player-words";
 import { INVALID_CHARS, hasInvalidChars } from "../text-gate";
 
@@ -72,14 +72,11 @@ export function validateOverride(input: unknown, lang: Lang): { file: string; li
 }
 
 /**
- * Whether either reader's side of the text's `$G` branches holds what cannot be voiced. A
- * translation keeps its tokens for player-words.ts, so a voice maintainer starts from a line holding
- * a `$N`. English text has none left, so one typed there is a mistake.
+ * Whether either reader's side of the text's `$G` branches holds what cannot be voiced. Text
+ * keeps its tokens for player-words.ts, so a voice maintainer starts from a line holding a `$N`.
  */
 export function rewriteHasInvalidChars(text: string, lang: Lang): boolean {
-  return playerGenderSides(text).some((side) =>
-    hasInvalidChars(lang === BASE_LANG ? side : speakPlayerTokens(side, lang)),
-  );
+  return playerGenderSides(text).some((side) => hasInvalidChars(speakPlayerTokens(side, lang)));
 }
 
 /** A voice's name as migration 0071's voice table allows it, or a model slot's. */

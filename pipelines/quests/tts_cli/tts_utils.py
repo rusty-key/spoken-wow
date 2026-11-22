@@ -14,8 +14,23 @@ from tts_cli.flavors import (apply_fallbacks, consensus_flavor, fallback_flavors
                              flavor_from_sound_name, model_voice, voice_name)
 from tts_cli.flavors import file_key as flavor_file_key
 
-REPLACE_DICT = {'$b': '\n', '$B': '\n', '$n': 'adventurer', '$N': 'Adventurer',
-                '$C': 'Adventurer', '$c': 'adventurer', '$R': 'Traveler', '$r': 'traveler'}
+#: `$B` is a line break. `$N`, `$C` and `$R` stay in the text, as every language's do: the site
+#: says them in the language's words at the point a line is judged and sent
+#: (pipelines/lib/player-words.mjs), so a change of words reaches every line.
+REPLACE_DICT = {'$b': '\n', '$B': '\n'}
+
+#: The site leaves a token glued to a letter ("$nath", "$rs") unsaid, so the gate would refuse the
+#: line. Its takes say the English word, so the word is written in.
+GLUED_TOKEN = re.compile(r'\$([NnCcRr])(?=[^\W\d_])')
+GLUED_WORDS = {'n': 'adventurer', 'N': 'Adventurer', 'c': 'adventurer', 'C': 'Adventurer',
+               'r': 'traveler', 'R': 'Traveler'}
+
+
+def written_text(text):
+    """The game's text as the corpus stores it: line breaks for `$B`, a glued token's word."""
+    for k, v in REPLACE_DICT.items():
+        text = text.replace(k, v)
+    return GLUED_TOKEN.sub(lambda m: GLUED_WORDS[m.group(1)], text)
 
 
 def get_hash(text):
@@ -94,10 +109,7 @@ class TTSProcessor:
             for race, gender, flavor in zip(df['race'], df['gender'], df['flavor'])
         ]
 
-        df['cleanedText'] = df['text'].copy()
-
-        for k, v in REPLACE_DICT.items():
-            df['cleanedText'] = df['cleanedText'].str.replace(k, v, regex=False)
+        df['cleanedText'] = df['text'].map(written_text)
 
         df['cleanedText'] = df['cleanedText'].str.replace(r'<.*?>\s', '', regex=True)
 

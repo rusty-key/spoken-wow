@@ -35,7 +35,7 @@ import os
 from collections import Counter
 from datetime import datetime, timezone
 
-from tts_cli.corpus import (GENERIC_TYPES, INVALID_CHARS, NO_VOICE, SCHEMA_VERSION, load_corpus,
+from tts_cli.corpus import (GENERIC_TYPES, NO_VOICE, SCHEMA_VERSION, english_skip_reason, load_corpus,
                             write_corpus)
 from tts_cli.flavors import fallback_flavors, is_model_voice
 from tts_cli.naming import moment_of
@@ -119,7 +119,7 @@ def with_answered_voices(lines, answers):
         race, gender, flavor, voice = answer
         reason = row["skipReason"]
         if reason == NO_VOICE:
-            reason = "invalid-chars" if any(c in row["text"] for c in INVALID_CHARS) else None
+            reason = english_skip_reason({"cleanedText": row["text"]})
         out.append({**row, "race": race, "gender": gender, "flavor": flavor, "voice": voice,
                     "skipReason": reason, "generatable": reason is None})
     return out
