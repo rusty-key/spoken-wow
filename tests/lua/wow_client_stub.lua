@@ -195,6 +195,7 @@ local function Widget(kind, name)
     function w:SetOrientation(v) self.orientation = v end
     function w:GetOrientation() return self.orientation end
     function w:SetSize(a, b) self.width, self.height = a, b end
+    function w:SetRoundLayoutToNearestPixel(v) self.roundLayoutToNearestPixel = v end
     function w:GetWidth() return self.width end
     function w:EnableMouse(v) self.mouseEnabled = v and true or false end
     function w:IsMouseEnabled() return self.mouseEnabled and true or false end
