@@ -98,6 +98,7 @@ const zhCN: Dictionary = {
         "在“显示首领剧情”中选择选中目标时或击杀时",
       ],
       browse: "浏览首领",
+      position: "首领示例的播放位置",
     },
     examplesLabel: "{part}示例",
     noVoice: "首领剧情由 Spoken Audio: Bosses 语音包配音。没有它时，剧情只会以文字形式显示在旁白中。",

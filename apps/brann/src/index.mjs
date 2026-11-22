@@ -4,7 +4,7 @@
 // - Support: reads every channel he can see, and answers a question the FAQ (docs/support/FAQ.md)
 //   covers in a thread under it, in the asker's language. In that thread, and in DMs, he keeps
 //   talking with the asker.
-// - Issues: files each #bugs-forever-era post and each message a moderator marks with 🐛 as a
+// - Issues: files each #bugs post and each message a moderator marks with 🐛 as a
 //   GitHub issue the moment it appears (issues.mjs).
 //
 // Environment (deploy/web/ecosystem.config.js passes these from shared/app.env):

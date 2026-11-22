@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Discord and the GitHub issues: each post in the forum #bugs-forever-era becomes an issue, and so
+// Discord and the GitHub issues: each post in the forum #bugs becomes an issue, and so
 // does any message a moderator reacts to with 🐛 in another channel, with the messages just before
 // it. When the issue is closed, the post or message is told.
 //
@@ -29,10 +29,11 @@ import { fileURLToPath } from "node:url";
 
 import { discord, findChannel, isNamed } from "./language-post.mjs";
 
-export const FORUM = "bugs-forever-era";
-// The forum's earlier name: its posts and their issue footers still use it.
-const OLD_FORUM = "bugs-and-ideas";
-export const isForum = (channel) => isNamed(channel, FORUM) || isNamed(channel, OLD_FORUM);
+export const FORUM = "bugs";
+// The forum's earlier names, still in the footers of the issues filed under them. Without them
+// those posts look unfiled and every sweep files them again.
+const OLD_FORUMS = ["bugs-forever-era", "bugs-and-ideas"];
+export const isForum = (channel) => isNamed(channel, FORUM);
 export const LABEL = "from-discord";
 const FILED = "Logged on GitHub as";
 const STATE_TAGS = ["Fixed", "Not planned"];
@@ -56,7 +57,7 @@ export const TAG_LABELS = {
 };
 
 // The footer's link only: a link inside the quoted post must not stand for the post.
-const FOOTER_LINK = new RegExp(`in \\[#(?:${FORUM}|${OLD_FORUM})\\]\\(https://discord\\.com/channels/(\\d+)/(\\d+)\\) on Discord`);
+const FOOTER_LINK = new RegExp(`in \\[#(?:${[FORUM, ...OLD_FORUMS].join("|")})\\]\\(https://discord\\.com/channels/(\\d+)/(\\d+)\\) on Discord`);
 
 /** The forum thread an issue's footer links, or null. */
 export function threadOf(body) {

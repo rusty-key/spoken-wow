@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { Suspense } from "react";
 
+import ActingBanner, { actingIn } from "@/components/ActingBanner";
 import Link from "@/components/LocaleLink";
 import { BACKSTAGE_HREF } from "@/components/landing/backstage";
 import { body, display } from "@/components/landing/fonts";
@@ -16,6 +18,8 @@ import { NAV } from "@/components/landing/nav";
 import LanguageSelect from "@/components/landing/LanguageSelect";
 import NavSession from "@/components/landing/NavSession";
 import Showcase from "@/components/landing/Showcase";
+import { heroFor } from "@/components/landing/heroFor";
+import { voicesFor } from "@/components/landing/voicesFor";
 import { SiteTextProvider } from "@/components/landing/SiteTextProvider";
 import { DISCORD_INVITE as DISCORD } from "@/lib/discord";
 import { BUILTIN, type BuiltinLang, type Lang } from "@/lib/lang";
@@ -79,7 +83,7 @@ function installRows(lang: Lang, t: SiteText["install"]): InstallRow[] {
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);
-  const t = await siteText(lang);
+  const [t, acting, voices, heroLines] = await Promise.all([siteText(lang), actingIn(lang), voicesFor(lang), heroFor(lang)]);
   const newTab = <span className="sr-only">{t.newTab}</span>;
   const languages: InstallLanguage[] = BUILTIN.map(({ code, native }) => ({
     code,
@@ -90,6 +94,12 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
 
   return (
     <SiteTextProvider text={t}>
+      {/* Suspense because the banner's picker reads the search params. */}
+      {acting && (
+        <Suspense>
+          <ActingBanner {...acting} />
+        </Suspense>
+      )}
       <div className={`bn ${display.variable} ${body.variable}`}>
         <a className="bn-skip" href="#main">
           {t.skip}
@@ -142,7 +152,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                     <img className="bn-logo-era" src="/landing/games/logo-era.png" alt={t.hero.eraAlt} />
                   </div>
                 </div>
-                <HeroLine />
+                <HeroLine lines={heroLines} />
               </div>
             </div>
           </section>
@@ -153,7 +163,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                 <h2 className="bn-display">{t.voices.title}</h2>
                 <p>{t.voices.intro}</p>
               </div>
-              <Showcase />
+              <Showcase voices={voices} />
               <div className="bn-facts">
                 <div>
                   <h3>{t.voices.subtitlesTitle}</h3>

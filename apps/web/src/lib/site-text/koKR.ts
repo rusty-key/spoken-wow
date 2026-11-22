@@ -104,6 +104,7 @@ const ko: Dictionary = {
         "“우두머리 이야기 표시”에서 대상 지정 또는 처치를 고릅니다",
       ],
       browse: "우두머리 둘러보기",
+      position: "우두머리 예시의 재생 위치",
     },
     examplesLabel: "{part} 예시",
     noVoice:

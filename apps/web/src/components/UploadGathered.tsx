@@ -18,6 +18,9 @@ import { plural } from "@/lib/plural";
 import { sendFailureMessage } from "@/lib/contributions/send-failure";
 import { sendInChunks } from "@/lib/contributions/upload";
 
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
+import type { UiText } from "@/lib/ui-text/en";
 import { previewOf } from "./ContributeForm";
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -28,7 +31,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
 type Loaded = { envelopes: string[]; counts: Record<string, number>; unreadable: number; titles: string[] };
 
-function summarise(candidates: readonly string[]): Loaded {
+function summarise(candidates: readonly string[], t: UiText["contribute"]): Loaded {
   const counts: Record<string, number> = {};
   const titles = new Set<string>();
   const envelopes: string[] = [];
@@ -45,14 +48,15 @@ function summarise(candidates: readonly string[]): Loaded {
       }
       continue;
     }
-    const preview = previewOf(envelope);
+    const preview = previewOf(envelope, t);
     if (!preview.ok) {
       unreadable += 1;
       continue;
     }
     envelopes.push(envelope);
     counts[preview.source] = (counts[preview.source] ?? 0) + 1;
-    const title = preview.rows.find((row) => row.label === "Title" || row.label === "Book")?.value;
+    // By the parser's own key, not the label the reader sees: the label is translated.
+    const title = preview.rows.find((row) => row.key === "title" || row.key === "book")?.value;
     if (title) titles.add(title);
   }
   return { envelopes, counts, unreadable, titles: [...titles] };
@@ -60,12 +64,16 @@ function summarise(candidates: readonly string[]): Loaded {
 
 const NOTHING_CARRIED = { accepted: 0, refused: 0, seen: 0 };
 
-function gotten(lines: number, seen: number): string {
-  const parts = [lines || !seen ? plural(lines, "line") : "", seen ? `where you met ${plural(seen, "character")}` : ""];
+function gotten(lines: number, seen: number, t: UiText["contribute"]): string {
+  const parts = [
+    lines || !seen ? plural(lines, "line") : "",
+    seen ? fill(t.whereMet, { what: plural(seen, "character") }) : "",
+  ];
   return parts.filter(Boolean).join(" and ");
 }
 
 export default function UploadGathered({ signedInAs }: { signedInAs: string | null }) {
+  const t = useUiText().contribute;
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -84,13 +92,11 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
     setCarried(NOTHING_CARRIED);
     if (!file) return;
     setFileName(file.name);
-    const next = summarise(envelopesFromSavedVariables(await file.text()));
+    const next = summarise(envelopesFromSavedVariables(await file.text()), t);
     if (next.envelopes.length === 0) {
       setLoaded(null);
       setError(
-        next.unreadable
-          ? "Nothing in that file could be read. Log out of the game once so it writes the file again, then pick it."
-          : "That file holds nothing gathered. It should be SpokenContributions.lua, after gathering was turned on and you logged out.",
+        next.unreadable ? t.nothingReadable : t.nothingGathered,
       );
       return;
     }
@@ -135,18 +141,19 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
     }
     // Only what did not arrive stays, so nobody is told to clear lines the site never got.
     const rest = loaded.envelopes.slice(outcome.sent);
-    setLoaded(summarise(rest));
+    setLoaded(summarise(rest, t));
     setCarried({ accepted: outcome.accepted, refused: outcome.refused, seen: outcome.seen });
-    const unused = outcome.refused ? ` ${outcome.refused} could not be used.` : "";
-    setError(`${outcome.accepted} of them arrived.${unused} ${message} The other ${rest.length} are still here to send.`);
+    const unused = outcome.refused ? fill(t.someRefused, { n: outcome.refused.toLocaleString() }) : "";
+    setError(
+      fill(t.someArrived, { n: outcome.accepted.toLocaleString(), unused, message, rest: rest.length.toLocaleString() }),
+    );
   }
 
   if (result) {
     return (
       <p role="status" className="rounded border p-4 text-sm">
-        Got {gotten(result.accepted, result.seen)} — thank you.
-        {result.refused ? ` ${result.refused} could not be used.` : ""} You can clear the collected lines
-        in the game now: Spoken's settings, Clear Collected Lines.
+        {fill(t.got, { what: gotten(result.accepted, result.seen, t) })}
+        {result.refused ? fill(t.someRefused, { n: result.refused.toLocaleString() }) : ""} {t.clearAfter}
       </p>
     );
   }
@@ -183,10 +190,8 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
           (dragging ? "border-primary-ink bg-muted" : "border-muted-foreground/40 hover:border-muted-foreground hover:bg-muted/50")
         }
       >
-        <strong>{fileName ?? "Drop SpokenContributions.lua here"}</strong>
-        <span className="text-muted-foreground">
-          {fileName ? "Drop another file, or click to choose one." : "or click to choose it"}
-        </span>
+        <strong>{fileName ?? t.dropLua}</strong>
+        <span className="text-muted-foreground">{fileName ? t.dropAnother : t.orClick}</span>
         <input
           ref={input}
           type="file"
@@ -197,19 +202,19 @@ export default function UploadGathered({ signedInAs }: { signedInAs: string | nu
       </div>
 
       {loaded ? (
-        <section aria-label="What will be sent" className="bg-muted rounded border p-3 text-sm">
+        <section aria-label={t.previewLabel} className="bg-muted rounded border p-3 text-sm">
           <ul className="flex flex-col gap-0.5">
             {Object.entries(loaded.counts).map(([source, count]) => (
               <li key={source}>
                 <strong>{count}</strong> {SOURCE_LABELS[source] ?? source}
               </li>
             ))}
-            {loaded.unreadable ? <li>{loaded.unreadable} that could not be read and will be left out</li> : null}
+            {loaded.unreadable ? <li>{fill(t.couldNotBeRead, { n: loaded.unreadable.toLocaleString() })}</li> : null}
           </ul>
           {loaded.titles.length ? (
             <p className="text-muted-foreground mt-2 text-xs">
               {loaded.titles.slice(0, 12).join(" · ")}
-              {loaded.titles.length > 12 ? ` and ${loaded.titles.length - 12} more` : ""}
+              {loaded.titles.length > 12 ? fill(t.andMore, { n: loaded.titles.length - 12 }) : ""}
             </p>
           ) : null}
         </section>

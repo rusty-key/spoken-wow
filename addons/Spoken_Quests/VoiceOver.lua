@@ -530,7 +530,8 @@ local defaults = {
             -- The sound channel and the muting of the client's own NPC dialogue used to
             -- live here. They describe how anything is played rather than what this addon
             -- reads, so they are Spoken's settings now.
-            StopAudioOnDisengage = true,
+            StopAudioOnDisengage = false,
+            StopOnAccept = true,
             -- On, the NPC's own greeting is heard and what Spoken reads waits for it
             -- (GreetingFirst.lua); off, Silence NPC Voices cuts it where a pack has one.
             GreetingFirst = false,
@@ -1287,8 +1288,8 @@ end
 --- QUEST_FINISHED has no accepted/turned-in flag. QUEST_ACCEPTED and QUEST_TURNED_IN are the
 --- signals that prove completion, but the normal click path reports QUEST_FINISHED first, while
 --- other clients report the completion signal first. Keep the offer alive briefly so the direct
---- signal can cancel its close stop; a declined offer is removed only when Stop When Window Closes
---- is on.
+--- signal can cancel its close stop; a declined offer is removed only when the stop waits for
+--- acceptance.
 function Addon:MarkQuestOfferAccepted(questID)
     local offer = self.openQuestOffer
     local acceptedID, offerID = tonumber(questID), tonumber(offer and offer.questID)
@@ -1905,9 +1906,11 @@ function Addon:GOSSIP_SHOW(event, manual)
 end
 
 function Addon:QUEST_FINISHED()
+    local audio = Addon.db.profile.Audio
+    local waitForAccept = audio.StopAudioOnDisengage and not audio.StopOnAccept
     local offer = self.openQuestOffer
     if offer and not offer.accepted and not offer.closeTimer then
-        offer.stopOnClose = Addon.db.profile.Audio.StopAudioOnDisengage
+        offer.stopOnClose = waitForAccept
         offer.closeTimer = self:ScheduleTimer(function()
             offer.closeTimer = nil
             if IsQuestWindowVisible() then
@@ -1941,7 +1944,7 @@ function Addon:QUEST_FINISHED()
     -- queued line without cleanup when the dialog closes.
     for _, retainedTurnIn in ipairs(QuestTurnInRecords()) do
         if not retainedTurnIn.turnedIn and not retainedTurnIn.closeTimer then
-            retainedTurnIn.stopOnClose = Addon.db.profile.Audio.StopAudioOnDisengage
+            retainedTurnIn.stopOnClose = waitForAccept
             retainedTurnIn.closeTimer = self:ScheduleTimer(function()
                 retainedTurnIn.closeTimer = nil
                 if IsQuestWindowVisible() then
@@ -1964,12 +1967,31 @@ function Addon:QUEST_FINISHED()
             end, QUEST_ACCEPT_GRACE)
         end
     end
-    if Addon.db.profile.Audio.StopAudioOnDisengage then
-        local deferOfferStop = offer
-            and currentQuestSoundData and currentQuestSoundData.event == Enums.SoundEvent.QuestAccept
-        local deferTurnInStop = turnIn and IsQuestTurnInSoundData(currentQuestSoundData)
-        if currentQuestSoundData and not deferOfferStop and not deferTurnInStop then
-            Player:Remove(currentQuestSoundData)
+    if audio.StopAudioOnDisengage then
+        if waitForAccept then
+            local defer = offer and currentQuestSoundData and currentQuestSoundData.event == Enums.SoundEvent.QuestAccept
+                or turnIn and IsQuestTurnInSoundData(currentQuestSoundData)
+            if currentQuestSoundData and not defer then
+                Player:Remove(currentQuestSoundData)
+            end
+        else
+            if currentQuestSoundData then
+                Player:Remove(currentQuestSoundData)
+            end
+            -- An addon that moves straight from one quest's dialog to the next leaves the earlier
+            -- quest's line queued under its own record, not as the current line.
+            for _, record in ipairs(QuestTurnInRecords()) do
+                for _, soundData in ipairs(record.soundData) do
+                    Player:Remove(soundData)
+                end
+            end
+            if offer and offer.soundData then
+                Player:Remove(offer.soundData)
+            end
+        end
+        -- A quest giver's greeting is read in the quest frame, so it ends with the frame.
+        if currentGossipSoundData and currentGossipSoundData.event == Enums.SoundEvent.QuestGreeting then
+            Player:Remove(currentGossipSoundData)
         end
     end
     currentQuestSoundData = nil
@@ -1985,6 +2007,9 @@ function Addon:QUEST_FINISHED()
 end
 
 function Addon:GOSSIP_CLOSED()
+    if Addon.db.profile.Audio.StopAudioOnDisengage and currentGossipSoundData then
+        Player:Remove(currentGossipSoundData)
+    end
     currentGossipSoundData = nil
     EndGreetingTextWait()
 

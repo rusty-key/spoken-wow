@@ -2,13 +2,15 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  closedReply, isModerator, issueFor, labelsFor, messageIssueFor, messageOf, reaction, threadOf,
+  closedReply, isForum, isModerator, issueFor, labelsFor, messageIssueFor, messageOf, reaction, threadOf,
 } from "./forum-issues.mjs";
 
 const thread = { id: "222", name: "Quest text cut off", thread_metadata: { create_timestamp: "2026-10-20T12:00:00.000Z" } };
 const starter = (content, extra = {}) => ({ content, author: { username: "pud2000", global_name: "Pud" }, attachments: [], ...extra });
 
 test("only the footer's link stands for the post, not a link the post itself quotes", () => {
+  assert.deepEqual(threadOf("Posted by **Pud** in [#bugs](https://discord.com/channels/111/222) on Discord"),
+    { guild: "111", thread: "222" });
   assert.deepEqual(threadOf("Posted by **Pud** in [#bugs-forever-era](https://discord.com/channels/111/222) on Discord"),
     { guild: "111", thread: "222" });
   assert.deepEqual(threadOf("Posted by **Pud** in [#bugs-and-ideas](https://discord.com/channels/111/222) on Discord"),
@@ -18,6 +20,11 @@ test("only the footer's link stands for the post, not a link the post itself quo
   assert.equal(threadOf(null), null);
   const issue = issueFor({ guild: "111", thread, starter: starter("Same as https://discord.com/channels/111/999"), tagNames: [] });
   assert.deepEqual(threadOf(issue.body), { guild: "111", thread: "222" });
+});
+
+test("the forum is found under its name alone", () => {
+  for (const name of ["bugs", "🐞｜bugs"]) assert.ok(isForum({ name }), name);
+  for (const name of ["bugs-forever-era", "bugs-1-12", "old-bugs"]) assert.ok(!isForum({ name }), name);
 });
 
 test("a post's @names and #numbers neither ping nor link on GitHub", () => {
@@ -41,7 +48,7 @@ test("the issue quotes the post line by line and links back to it", () => {
     "> Only Contribute shows.",
     "",
     "---",
-    "Posted by **Pud** in [#bugs-forever-era](https://discord.com/channels/111/222) on Discord · 2026-10-20T12:00:00.000Z",
+    "Posted by **Pud** in [#bugs](https://discord.com/channels/111/222) on Discord · 2026-10-20T12:00:00.000Z",
   ].join("\n"));
   assert.deepEqual(threadOf(issue.body), { guild: "111", thread: "222" });
 });
@@ -108,7 +115,7 @@ function fakeServer(messages, { reactors = [{ id: "mod" }] } = {}) {
       return { id: "new" };
     }
     if (path === "/users/@me/guilds") return [{ id: "g" }];
-    if (path === "/guilds/g/channels") return [{ id: "forum", guild_id: "g", name: "bugs-forever-era", type: 15 }];
+    if (path === "/guilds/g/channels") return [{ id: "forum", guild_id: "g", name: "bugs", type: 15 }];
     if (path === "/guilds/g") return { id: "g", owner_id: "owner", roles: [{ id: "g", permissions: "0" }, { id: "modrole", permissions: String(1n << 13n) }] };
     if (path === "/guilds/g/members/mod") return { user: { id: "mod" }, roles: ["modrole"] };
     if (path.startsWith("/guilds/g/members/")) return { user: { id: "x" }, roles: [] };
