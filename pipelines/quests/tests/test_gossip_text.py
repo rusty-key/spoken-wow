@@ -26,7 +26,7 @@ def tables(**kwargs):
 
 def test_every_client_locale_but_english_gets_a_table():
     assert set(tables()) == set(CLIENT_LOCALES)
-    assert "enUS" not in CLIENT_LOCALES and "itIT" not in CLIENT_LOCALES
+    assert "enUS" not in CLIENT_LOCALES
 
 
 def test_a_translation_counts_only_while_it_translates_the_current_english():

@@ -5,6 +5,7 @@
 // And the rules AGENTS.md ("Versions and changelogs") sets for the changelog, checked.
 //
 //   node scripts/lib/changelog.mjs section docs/spoken/CHANGELOG.md 3.4.0
+//   node scripts/lib/changelog.mjs unwrap < notes.md
 //   node scripts/lib/changelog.mjs check docs/spoken/CHANGELOG.md 3.4.0 3.3.1 ...
 
 import { readFileSync } from "node:fs";
@@ -12,6 +13,35 @@ import { fileURLToPath } from "node:url";
 
 function linesOf(text) {
   return text.replace(/\r\n/g, "\n").split("\n");
+}
+
+// A line that starts a block of its own, which is never joined to the line above it.
+const BLOCK_START = /^(?:[-*+]\s|\d+[.)]\s|#|>|\||```)/;
+
+/**
+ * The notes with each paragraph and bullet on one line. The changelogs wrap at 100 columns, and
+ * Discord and GitHub's release pages show every line break, so wrapped notes break mid-sentence
+ * there. Blank lines, a new bullet (nested ones too), headings, quotes, tables and code fences
+ * keep their lines.
+ */
+export function unwrap(text) {
+  const out = [];
+  let fenced = false;
+  let joinable = false;
+  for (const line of linesOf(text)) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("```")) {
+      fenced = !fenced;
+      out.push(line);
+      joinable = false;
+    } else if (!fenced && joinable && trimmed !== "" && !BLOCK_START.test(trimmed)) {
+      out[out.length - 1] = `${out[out.length - 1].trimEnd()} ${trimmed}`;
+    } else {
+      out.push(line);
+      joinable = !fenced && trimmed !== "" && !/^(?:#|\|)/.test(trimmed);
+    }
+  }
+  return out.join("\n");
 }
 
 function isHeadingFor(line, version) {
@@ -34,7 +64,7 @@ export function section(text, version) {
       break;
     }
   }
-  return lines.slice(starts[0], end).join("\n").trim();
+  return unwrap(lines.slice(starts[0], end).join("\n").trim());
 }
 
 /** A heading of a group inside a section that names a version: `### 3.4.0`. */
@@ -93,6 +123,8 @@ function main([command, ...args]) {
   if (command === "section") {
     const [file, version] = args;
     process.stdout.write(section(readFileSync(file, "utf8"), version) + "\n");
+  } else if (command === "unwrap") {
+    process.stdout.write(unwrap(readFileSync(0, "utf8")));
   } else if (command === "check") {
     const [file, ...released] = args;
     const found = problems(readFileSync(file, "utf8"), released);
@@ -100,7 +132,7 @@ function main([command, ...args]) {
     if (found.length > 0) process.exit(1);
     console.log(`${file}: in order, ${released.length} released version(s) checked`);
   } else {
-    throw new Error("usage: changelog.mjs section <file> <version> | check <file> [released version...]");
+    throw new Error("usage: changelog.mjs section <file> <version> | unwrap < notes | check <file> [released version...]");
   }
 }
 

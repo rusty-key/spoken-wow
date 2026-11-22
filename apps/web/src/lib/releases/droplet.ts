@@ -10,7 +10,7 @@ import { closeSync, openSync, realpathSync } from "node:fs";
 import { mkdir, open, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import type { ReleaseBump } from "./sections";
+import type { ReleaseBump, ReleaseKind } from "./sections";
 
 const LOG_TAIL_BYTES = 8_000;
 
@@ -28,6 +28,27 @@ export function runsOnDroplet(): boolean {
   return Boolean(process.env.SPOKEN_RELEASE_ENV);
 }
 
+/**
+ * Whether a team that is not official, or whose packs carry its slug, may release: only
+ * where SPOKEN_TEAM_RELEASES=1. Staging sets it; production sets it once a Manager and a Spoken
+ * that list a team's packs have shipped. On the droplet only: the workflow builds from a synced
+ * database, whose sync can give a team's takes to another. A release of a team that is not
+ * official waits for a site owner's review either way.
+ */
+export function teamReleasesOpen(): boolean {
+  return process.env.SPOKEN_TEAM_RELEASES === "1" && runsOnDroplet();
+}
+
+/**
+ * Whether the acting team (actingTeamRow) is refused a release here: one that is not both official
+ * and holding plain packs in the language, where team releases are not open. No team is not refused.
+ * The job refuses the same teams, whose packs it lists under the team
+ * (scripts/manager/release-pack.mjs needsTeamReleases), so a press accepted here is one it builds.
+ */
+export function releasesClosedFor(team: { official: boolean; packName: "plain" | "slug" } | null): boolean {
+  return team !== null && !(team.official && team.packName === "plain") && !teamReleasesOpen();
+}
+
 function runDir(id: string): string | null {
   const env = process.env.SPOKEN_RELEASE_ENV;
   return env ? join(dirname(env), "release-runs", id) : null;
@@ -35,16 +56,38 @@ function runDir(id: string): string | null {
 
 type Spawn = (command: string, args: string[], options: SpawnOptions) => ChildProcess;
 
-export async function startDropletRun(
-  run: { id: string; section: string; lang: string },
-  bump: ReleaseBump,
-  spawnFn: Spawn = spawn,
-): Promise<void> {
+export type DropletJob = {
+  id: string;
+  kind: ReleaseKind;
+  section: string;
+  lang: string;
+  teamSlug: string;
+  bump: ReleaseBump | null;
+  stage: boolean;
+  /** A promote's staged release, which it lists. */
+  staged: unknown;
+};
+
+/** job.json, all release-job.mjs is told of the run: it maps the kind to its command (jobCommand). */
+export function jobOf(run: DropletJob) {
+  return {
+    kind: run.kind,
+    section: run.section,
+    lang: run.lang,
+    bump: run.bump ?? "patch",
+    team: run.teamSlug,
+    stage: run.stage,
+    input: run.kind === "promote" ? run.staged : null,
+  };
+}
+
+export async function startDropletRun(run: DropletJob, spawnFn: Spawn = spawn): Promise<void> {
   const dir = runDir(run.id);
   if (!dir) throw new Error("releases on this machine need SPOKEN_RELEASE_ENV set");
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, "heartbeat"), "");
   await writeFile(join(dir, "log"), "");
+  await writeFile(join(dir, "job.json"), JSON.stringify(jobOf(run)));
 
   // Resolved now, so the job keeps the release it started from through a symlink swap.
   const tools = realpathSync(join(process.env.SPOKEN_PLACES_ROOT ?? process.cwd(), "release-tools"));
@@ -54,7 +97,7 @@ export async function startDropletRun(
       const child = spawnFn(
         "setsid",
         // The site keeps the machine's one CPU.
-        ["--fork", "nice", "-n", "10", process.execPath, join(tools, "scripts/manager/release-job.mjs"), dir, run.section, run.lang, bump],
+        ["--fork", "nice", "-n", "10", process.execPath, join(tools, "scripts/manager/release-job.mjs"), dir],
         {
           cwd: tools,
           env: { NODE_ENV: process.env.NODE_ENV, PATH: process.env.PATH, HOME: process.env.HOME, SPOKEN_RELEASE_ENV: process.env.SPOKEN_RELEASE_ENV },
@@ -104,10 +147,30 @@ export function currentStep(log: string): string | null {
   return last ? `${last[3]}, step ${last[1]} of ${last[2]}` : null;
 }
 
-/** What the last line of a job that exited 0 says came of it. */
-export function outcome(log: string): { state: "done"; version: string | null } | { state: "unchanged" } {
+/**
+ * What the last line of a job that exited 0 says came of it. A staged release waits for review;
+ * a promotion or delisting is done (release.mjs, cli.mjs promote and delist).
+ */
+export function outcome(
+  log: string,
+): { state: "done" | "awaiting_review"; version: string | null } | { state: "unchanged" } {
   if (/^==> nothing changed/m.test(log)) return { state: "unchanged" };
-  return { state: "done", version: /^==> released (\S+?):/m.exec(log)?.[1] ?? null };
+  const staged = /^==> staged(?: (\S+?))?:/m.exec(log);
+  if (staged) return { state: "awaiting_review", version: staged[1] ?? null };
+  return { state: "done", version: /^==> (?:released|promoted) (\S+?):/m.exec(log)?.[1] ?? null };
+}
+
+/** What a staged release left in its run's directory for its promotion; null when it left nothing. */
+export async function readStaged(id: string): Promise<unknown> {
+  const dir = runDir(id);
+  if (!dir) return null;
+  const text = await readFile(join(dir, "staged.json"), "utf8").catch(() => null);
+  if (text === null) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 export function failureReason(log: string, exitCode: number): string {

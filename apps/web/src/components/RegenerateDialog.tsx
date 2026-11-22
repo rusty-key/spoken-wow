@@ -22,7 +22,6 @@ const SKIP_REASONS: [BatchSkip, string][] = [
   ["no-voice", "no voice"],
   ["untranslated", "not translated"],
   ["invalid-chars", "unspeakable characters ($, < or >)"],
-  ["progress", "quest progress text, never voiced"],
   ["shared-file", "same audio file as another line, generated once"],
 ];
 

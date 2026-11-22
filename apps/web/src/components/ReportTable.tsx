@@ -28,6 +28,7 @@ import LineHeading from "@/components/reports/LineHeading";
 import ReportContribution from "@/components/reports/ReportContribution";
 import SortHeader from "@/components/SortHeader";
 import { ReportContextNote } from "@/components/reports/ReportContextFacts";
+import type { PackVersions } from "@/lib/reports/context";
 import { LinkTabs } from "@/components/StatusTabs";
 import { usePendingPush } from "@/components/usePendingPush";
 import { useLocalDates } from "@/components/useLocalDates";
@@ -61,6 +62,7 @@ import { applyResolutions, type ReportGroup } from "@/lib/reports/rows";
 import type { ResultLine as QuestLine } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import type { ResultLine as ZoneLine } from "@/lib/places/search";
+import { SECTION_LABELS } from "@/lib/releases/sections";
 import type { ResultLine as BossLine } from "@/lib/bosses/search";
 import { placesSection } from "@/components/places/sections";
 import { bossesSection } from "@/components/bosses/sections";
@@ -69,13 +71,6 @@ import type { Source } from "@/lib/sections";
 // No facets: the table plays lines, it does not narrow to them.
 const PLACES = placesSection();
 const BOSSES = bossesSection();
-
-const SECTION_LABELS: Record<Section, string> = {
-  quests: "Quests",
-  readables: "Readables",
-  places: "Places",
-  bosses: "Bosses",
-};
 
 const VIEW_LABELS: Record<StatusView, string> = { ...STATUS_LABELS, all: "All" };
 
@@ -105,6 +100,7 @@ export default function ReportTable({
   labelled,
   passTo,
   showNpcPage,
+  latestPacks,
 }: {
   /** This page's lines, each with its reports, in the order the server sorted them. */
   groups: ReportGroup[];
@@ -127,6 +123,8 @@ export default function ReportTable({
   passTo: Queue[];
   /** The NPC page is the admins'; see LineHeading. */
   showNpcPage: boolean;
+  /** The section's released pack versions by language, to flag a report heard on an old pack. */
+  latestPacks: PackVersions;
 }) {
   const when = useLocalDates();
   /**
@@ -399,7 +397,7 @@ export default function ReportTable({
             <span className="text-muted-foreground mr-2 text-xs">{CATEGORY_COLUMN[report.category]}</span>
             {report.body}
           </p>
-          <ReportContextNote context={report.context}>
+          <ReportContextNote context={report.context} latestPacks={latestPacks}>
             {/* The text the reporter's addon saw, as the contributions page would take it. */}
             {canContribute && report.source !== "places" && report.source !== "bosses" && report.context?.text?.trim() ? (
               <ReportContribution

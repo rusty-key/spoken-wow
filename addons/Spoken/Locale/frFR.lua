@@ -6,7 +6,7 @@
 
 setfenv(1, SpokenEnv)
 
-if GetLocale() ~= "frFR" then
+if not Interface:In("frFR") then
 	return
 end
 
@@ -29,6 +29,8 @@ L.MIN_MENU_HINT = "Clic droit pour les options de lecture. Glissez le nom de l'i
 L.MIN_SKIP = "Passer la réplique"
 L.MIN_STOP_ALL = "Tout arrêter"
 L.REPLAY = "Rejouer"
+L.QUEUE = "Mettre en file"
+L.QUEUED = "En file d'attente"
 L.PLAY_NO_VOICE = "Pas encore de voix pour ceci."
 L.STOP_REPLAY = "Arrêter ou rejouer"
 L.BIND_PLAYPAUSE = "Arrêter ou rejouer"
@@ -152,7 +154,7 @@ L.MODULE_NOT_LOADED = "Non chargé"
 L.MODULE_NO_PACK = "|cffff8080Aucun pack de voix installé.|r Sans lui, rien n'est lu à voix haute."
 L.MODULE_RESET = "Réinitialiser"
 L.REASON_PART_OFF = "Activez l'option Activer en haut de cette page pour utiliser ceci."
-L.MODULE_NO_VOICE_FMT = "Aucun pack de voix ne parle %1$s, et Si la voix manque est sur Rester silencieux : rien n'est lu à voix haute."
+L.MODULE_NO_VOICE_FMT = "Aucun pack de voix ne parle %1$s, ni aucune voix suivante de votre liste : rien n'est lu à voix haute."
 L.OPT_PART_CLICK_ON = "Cliquez pour l'activer."
 L.OPT_PART_CLICK_OFF = "Cliquez pour le désactiver."
 L.PART_TURNED_OFF = "il est désactivé dans les paramètres de Spoken"
@@ -165,10 +167,22 @@ L.PART_VOICE = "Packs de voix"
 
 -- Language
 L.OPT_LANGUAGE_TITLE = "Langue"
-L.OPT_VOICE_LANGUAGE = "Langue de la voix"
+L.OPT_VOICES = "Voix, dans l'ordre"
+L.OPT_VOICES_TIP = "Une réplique est lue dans la première voix qui l'a. Au-delà de la dernière, Spoken reste silencieux."
+L.OPT_VOICE_ADD = "Ajouter une voix"
+L.OPT_VOICE_EARLIER = "Plus tôt"
+L.OPT_VOICE_LATER = "Plus tard"
+L.OPT_VOICE_REMOVE = "Retirer"
+L.OPT_VOICE_MISSING = "(non installée)"
 L.OPT_LANG_AUTO_FMT = "Auto (%1$s)"
-L.OPT_FALLBACK_LANGUAGE = "Si la voix manque"
-L.OPT_FALLBACK_NONE = "Rester silencieux"
+L.OPT_VOICE_TEAM_FMT = "%1$s · %2$s"
+L.OPT_TEXT_LANGUAGE = "Langue du texte"
+L.OPT_TEXT_LANGUAGE_SET_FMT = "Le texte sera en %1$s après le rechargement de l'interface."
+L.OPT_TEXT_LANGUAGE_RELOAD = "Tapez /reload pour passer à cette langue."
+L.OPT_INTERFACE_LANGUAGE = "Langue de l'interface"
+L.OPT_INTERFACE_LANGUAGE_SET_FMT = "Les fenêtres et les réglages de Spoken seront en %1$s après le rechargement de l'interface."
+L.OPT_RELOAD_NOW = "Recharger maintenant"
+L.OPT_LATER = "Plus tard"
 
 -- Sound
 L.REASON_VOICE_CHANNEL = "Les voix de Spoken passent par ce son, il n'est donc jamais baissé. Changez Volume de référence pour utiliser ceci."
@@ -217,7 +231,6 @@ L.OPT_DELETE_PROFILE = "Supprimer le profil"
 L.OPT_PROFILE_PICK = "Choisir un profil"
 L.OPT_NEW_CHARACTER_PROFILE = "Profil nouveaux personnages"
 L.OPT_PROFILE_OWN = "Profil propre"
-L.OPT_NEW_CHARACTER_PROFILE_TIP = "Le profil sur lequel un personnage démarre la première fois qu'il se connecte avec Spoken. Les personnages qui ont déjà un profil le gardent."
 L.OPT_START_OVER_TITLE = "Réinitialisation"
 L.OPT_WELCOME_AGAIN = "Afficher la fenêtre de bienvenue"
 L.OPT_RESET_ALL = "Réinitialiser les paramètres de Spoken"

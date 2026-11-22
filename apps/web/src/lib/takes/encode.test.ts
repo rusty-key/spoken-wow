@@ -20,7 +20,11 @@ const { db, closeDb } = await import("@/lib/db");
 const { memoryBlobs, sha256Of, useArchiveForTests } = await import("@/lib/blobs/store");
 const { encodeArchivedForPack, encodeForPack, encodeMissingForPack, encodeOgg, oggDurationSec } = await import("./encode");
 const { commitTake } = await import("./commit");
-const { asSystem } = await import("@/lib/teams/testing");
+const { asSystem, dropTeam, newTeamIn, plainTeam } = await import("@/lib/teams/testing");
+const { asTeam } = await import("@/lib/teams/acting");
+
+const english = async (): Promise<string> =>
+  (await asSystem.query(`select team_of_lang('enUS') as "team"`)).rows[0].team;
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "encode-test-"));
 
@@ -106,12 +110,37 @@ describe.skipIf(!tools)("encodeForPack", () => {
       await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
       expect(await encoded()).toBe(0);
 
-      await encodeMissingForPack("quests", "enUS");
+      await encodeMissingForPack("quests", "enUS", await english());
       expect(await encoded()).toBe(1);
     } finally {
       restore();
       await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
       await asSystem.query(`delete from "take" where "file" = $1`, [file]);
+    }
+  });
+
+  it("encodes a second team's live take before that team's release", async () => {
+    const bucket = memoryBlobs();
+    const restore = useArchiveForTests(bucket, "r2");
+    const master = fs.readFileSync(tone());
+    const sha = sha256Of(master);
+    const file = `gossip/${Math.random().toString(16).slice(2)}encode-second.mp3`;
+    const english = await plainTeam("enUS");
+    const team = await newTeamIn("enUS", false, "encode-second");
+    try {
+      // Committed as English's team, as somebody in it would: enUS has two teams here.
+      await asTeam("enUS", english, () => commitTake("quests", file, master, { lineId: "g:encode-second" }));
+      await asSystem.query(`update "take" set "teamId" = $2 where "file" = $1`, [file, team]);
+      await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
+
+      await encodeMissingForPack("quests", "enUS", team);
+      expect((await db().query(`select 1 from "take_encoding" where "source" = 'quests' and "sha256" = $1`, [sha])).rowCount).toBe(1);
+    } finally {
+      restore();
+      await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
+      await asSystem.query(`delete from "activity" where "subject" = $1`, [file]);
+      await asSystem.query(`delete from "take" where "file" = $1`, [file]);
+      await dropTeam(team);
     }
   });
 
@@ -125,7 +154,7 @@ describe.skipIf(!tools)("encodeForPack", () => {
       await commitTake("quests", file, master, { lineId: "g:encode-missing" });
       await db().query(`update "take_encoding" set "durationSec" = $2 where "sha256" = $1`, [sha, duration]);
 
-      await encodeMissingForPack("quests", "enUS");
+      await encodeMissingForPack("quests", "enUS", await english());
       const { rows } = await db().query(`select "durationSec"::float8 as "d" from "take_encoding" where "sha256" = $1`, [sha]);
       expect(rows).toHaveLength(1);
       expect(rows[0].d).toBeGreaterThan(0.9);
@@ -146,7 +175,7 @@ describe.skipIf(!tools)("encodeForPack", () => {
       await commitTake("quests", file, master, { lineId: "g:encode-missing" });
       await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
 
-      await encodeMissingForPack("quests", "enUS", 0);
+      await encodeMissingForPack("quests", "enUS", await english(), 0);
       expect((await db().query(`select 1 from "take_encoding" where "sha256" = $1`, [sha])).rowCount).toBe(0);
     } finally {
       restore();
@@ -169,7 +198,7 @@ describe.skipIf(!tools)("encodeForPack", () => {
       expect(rows[0].detail.error).not.toContain(os.tmpdir());
 
       // A press that fails on it again says nothing new, so the log keeps the one row.
-      await encodeMissingForPack("quests", "enUS");
+      await encodeMissingForPack("quests", "enUS", await english());
       const { rowCount } = await asSystem.query(
         `select 1 from "activity" where "kind" = 'take.encode_failed' and "subject" = $1`,
         [file],

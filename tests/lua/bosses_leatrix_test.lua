@@ -69,31 +69,48 @@ local overlay = CreateFrame("Frame", nil, WorldMapFrame.ScrollContainer)
 overlay:Hide()
 overlay:SetScript("OnMouseUp", function() end)
 overlay:SetScript("OnMouseWheel", function() end)
+-- Another addon's plain Frames under the world map, shaped like a Leatrix pin and a dungeon
+-- menu row (#1061). Hooking OnClick on either raises in the client, and in the stub.
+local invalidPin = CreateFrame("Frame", nil, WorldMapFrame.ScrollContainer)
+invalidPin.row = { "boss", 0.5, 0.5, 639, "Edwin VanCleef" }
+local invalidMenuRow = CreateFrame("Frame", nil, WorldMapFrame)
+invalidMenuRow.Text = invalidMenuRow:CreateFontString()
+invalidMenuRow.Text:SetText("Gnomeregan")
 local dungeonMenuRow = CreateFrame("Button", nil, WorldMapFrame)
 dungeonMenuRow.Text = dungeonMenuRow:CreateFontString()
 dungeonMenuRow.Text:SetText("Gnomeregan")
 
 local Bosses = { L = { BOSS_NOT_FOUND = "not found" } }
+local met, opened = true, nil
 function Bosses:StoryClip(map, key)
     return { present = { transcript = map .. ":" .. key .. " lore" } }
 end
-function Bosses:IsBossFound() return true end
+function Bosses:IsBossFound() return met end
+local function Model(map, key)
+    local entry = SpokenBossCreatures[map] and SpokenBossCreatures[map][key]
+    return entry and entry.display and { creatureID = entry.creature, displayID = entry.display }
+end
+function Bosses:Head(map, boss)
+    local revealed = self:IsBossFound(map, boss.key)
+        or (_G.SpokenBossesSettings and _G.SpokenBossesSettings.unlockUnfound == true)
+    return { title = Bosses.Name(boss), subtitle = "In " .. SpokenCompendium.DungeonName(map) .. " · Westfall",
+        icon = { creatureID = 639, displayID = 2029 },
+        model = revealed and Model(map, boss.key) or nil, revealed = revealed }
+end
+function Bosses:ShowBoss(map, key) opened = map .. ":" .. key end
 function Bosses:GetAudioClip() return nil end
 function Bosses:QueuedStory() return nil end
 function Bosses:PlayStory() end
 Bosses.ReportAction = { has = function() return true end, open = function() end, title = "Report a Problem" }
 Bosses.Name = function(entry) return entry[GetLocale()] or entry[1] end
-Bosses.Model = function(map, key)
-    local entry = SpokenBossCreatures[map] and SpokenBossCreatures[map][key]
-    return entry and entry.display and { creatureID = entry.creature, displayID = entry.display }
-end
-Bosses.Unlocked = function() return false end
 assert(loadfile(here .. "/../../addons/Spoken_Bosses/MapLore.lua"))("Spoken_Bosses", Bosses)
 local load = assert(loadfile(here .. "/../../addons/Spoken_Bosses/Leatrix.lua"))
 load("Spoken_Bosses", Bosses)
 
 stub.FireEvent("PLAYER_ENTERING_WORLD")
 stub.Advance(0.01)
+Expect("a plain Frame shaped like a Leatrix pin gets no click hook", invalidPin.hooks.OnClick, nil)
+Expect("a plain Frame with a dungeon name gets no click hook", invalidMenuRow.hooks.OnClick, nil)
 WorldMapFrame.mapID = 1426
 shown = nil
 dungeonMenuRow:Click()
@@ -109,7 +126,12 @@ Expect("...with the boss panel title", shown and shown.entry.panelTitle, "Boss S
 Expect("...with the boss story", shown and shown.entry.text, "36:edwin vancleef lore")
 Expect("...with the boss model creature", shown and shown.entry.model and shown.entry.model.creatureID, 639)
 Expect("...with the boss model display", shown and shown.entry.model and shown.entry.model.displayID, 2029)
-Expect("...without a boss header portrait", shown and shown.entry.icon, nil)
+Expect("...with the boss's round portrait", shown and shown.entry.icon and shown.entry.icon.displayID, 2029)
+Expect("...drawn on a page that has no face of its own", shown and shown.entry.face, true)
+Expect("...and where the boss is under its name", shown and shown.entry.subtitle, "In The Deadmines · Westfall")
+Expect("...with Open in Compendium", type(shown and shown.entry.open), "function")
+shown.entry.open()
+Expect("...which opens that boss's page", opened, "36:edwin vancleef")
 Expect("...with the boss report action", shown and shown.entry.reportAction, Bosses.ReportAction)
 
 -- Leatrix uses Balnazzar's alternate phase creature 10813, while Spoken stores 10812.
@@ -126,7 +148,21 @@ WorldMapFrame.mapID = 1420
 shown = nil
 pin:Click()
 Expect("Balnazzar opens from the parent map without a preview", shown ~= nil, true)
-Expect("...with Stratholme's Balnazzar lore without a preview", shown and shown.entry.subtitle, "Stratholme")
+Expect("...with Stratholme's Balnazzar lore without a preview", shown and shown.entry.subtitle, "In Stratholme · Westfall")
+
+-- A boss not met shows its own portrait and cannot be opened: its page has no row under Found Only.
+met = false
+WorldMapFrame.mapID = 36
+pin.row = { "boss", 0.5, 0.5, 639, "Edwin VanCleef" }
+shown = nil
+pin:Click()
+Expect("a boss not met shows the not-found text", shown and shown.entry.text, "not found")
+Expect("...with its own portrait, not the unknown mark", shown and shown.entry.icon and shown.entry.icon.displayID, 2029)
+Expect("...no Open in Compendium", shown and shown.entry.open, nil)
+Expect("...no model", shown and shown.entry.model, nil)
+Expect("...and nothing to play", shown and shown.entry.target, nil)
+met = true
+WorldMapFrame.mapID = 1420
 
 shown = nil
 pin.row = { "boss", 0.5, 0.5, 999999, "Unknown" }
@@ -237,6 +273,22 @@ for _, hook in ipairs(WorldMapFrame.ScrollContainer.hooks.OnMouseUp or {}) do ho
 stub.Advance(0.01)
 Expect("a hidden tooltip's old owner opens no lore", shown, nil)
 _G.LeaMapsPOITooltip = nil
+
+-- A boss the player has not met: its words say so, and its model is not drawn.
+WorldMapFrame.mapID = 36
+pin.row = { "boss", 0.5, 0.5, 639, "Edwin VanCleef" }
+local found = Bosses.IsBossFound
+function Bosses:IsBossFound() return false end
+shown = nil
+pin:Click()
+Expect("a boss not met opens its panel saying so", shown and shown.entry.text, "not found")
+Expect("...with no 3D model", shown and shown.entry.model, nil)
+_G.SpokenBossesSettings = { unlockUnfound = true }
+shown = nil
+pin:Click()
+Expect("...with Unlock Unfound Bosses on, its model drawn", shown and shown.entry.model and shown.entry.model.displayID, 2029)
+_G.SpokenBossesSettings = nil
+Bosses.IsBossFound = found
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll Leatrix boss map tests passed")

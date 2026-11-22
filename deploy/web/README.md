@@ -113,6 +113,10 @@ pm2 environment. They are secrets, and that file is the only place they exist:
 | `RESEND_API_KEY` | a sending key from Resend | sends password reset emails. Unset, `/forgot-password` still says a link is on its way, sends nothing and logs an error |
 | `RESEND_FROM` | `Spoken <noreply@spoken.quest>` | the sender; its domain must be verified in Resend |
 
+Brann, the Discord bot, is the second pm2 app (`brann`). His keys are in `app.env` too, all
+prefixed `BRANN_`. `ecosystem.config.js` gives them to him alone and keeps them from the site.
+`apps/brann/README.md` lists them.
+
 **`SPOKEN_SECRET_KEY` cannot be rotated casually.** Every stored ElevenLabs credential is
 sealed under it, and AES-GCM offers no way to re-seal a credential nothing can open. Change
 it and every collaborator pastes their key again — recoverable, but they have to be told.
@@ -124,6 +128,23 @@ channel's), `SPOKEN_ARCHIVE_BUCKET`, `SPOKEN_ARCHIVE_URL` (its public address) a
 `SPOKEN_ARCHIVE_STORE`. That last one is `disk` until the bucket exists, `dual` while the
 backfill runs, and `r2` after: then takes redirect to the bucket, recordings, clone clips and
 references stream through the site, and the volume is no longer read or written.
+
+**Teams' own buckets** (`docs/platform/STORAGE.md`) need two more in `app.env` before a team
+admin can connect one on `/admin/storage`. `SPOKEN_STORAGE_KEY` (`openssl rand -base64 32`) seals
+each team's bucket key; like `SPOKEN_SECRET_KEY` it cannot be rotated casually, since changing it
+makes every team enter its key again. `SPOKEN_ARCHIVE_TOKEN` (any long random string) lets a
+developer's pull fetch voice actors' recordings through the site; releases need none. In `shared/release.env`,
+`SPOKEN_ARCHIVE_URL=http://127.0.0.1:<PORT>/api/archive/`, with the site's `PORT` from `app.env`,
+overrides app.env's for the release job, so its reads go through the site, which knows which bucket
+holds each clip. Without it the job reads our bucket's own address, and a team's release stops on
+its first take: `sounds.mjs` refuses, naming the variable. The
+`release-packs.yaml` workflow's `SPOKEN_ARCHIVE_URL` variable becomes
+`https://spoken.quest/api/archive/`. Whichever worker leads the queue lands quarantined objects and
+advances moves between buckets once a minute, and samples 50 team-bucket objects for ones a team
+deleted every 15 minutes. `CLOUDFLARE_OAUTH_CLIENT_ID`, `CLOUDFLARE_OAUTH_CLIENT_SECRET` and
+`CLOUDFLARE_OAUTH_SCOPES` switch on "Connect Cloudflare", which makes a team's R2 bucket and key
+for it (STORAGE.md, "Connecting Cloudflare"). It stays hidden without a valid `SPOKEN_STORAGE_KEY`
+too.
 
 Before `SPOKEN_ARCHIVE_STORE` becomes `dual`, install **`oggenc`** beside ffmpeg
 (`apt install vorbis-tools`): with the bucket in use every quests take is encoded to its
@@ -559,6 +580,37 @@ spare first. Before deploying again:
 psql "$PROD_DATABASE_URL" -c 'alter table line_override drop constraint line_override_team_file'
 ```
 
+### Several teams in a language
+
+Migration 0113 enforces one team per person per language with a deferred trigger, and ships with
+the code that makes a second team.
+
+1. **After the deploy, read the migration's notice** in the deploy log. It lists every
+   `(userId, lang)` pair that already spans two teams. The trigger does not touch existing rows, so
+   for each pair pick the team the person leaves and delete **every** `team_member` row they hold
+   in it: one row per capability, and any one left keeps the conflict.
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -c "delete from team_member where \"userId\" = '<userId>' and lang = '<lang>' and \"teamId\" = '<teamId>'"
+   ```
+
+   Then run the conflict query again; it must return no rows:
+
+   ```bash
+   psql "$PROD_DATABASE_URL" -c 'select "userId", lang from team_member group by "userId", lang having count(distinct "teamId") > 1'
+   ```
+
+2. **Rolling back past 0113 while a language has several teams** gives the members of all but its
+   team with plain packs that team's rows: the older release has no overlay, so it resolves every
+   person to the language's privileged team, which 0123 keeps as the one with plain packs. Nothing
+   guards it; each team's own rows stay in the database and come back when the release goes
+   forward again.
+3. **Rolling back to a release before the equal teams** brings back the privileged team: a
+   visitor or worker in no team of a language with several acts as the one with plain packs again,
+   and a language none of whose teams has plain packs shows none of them, since that release finds
+   a language's teams through its privileged one. Nothing is lost; it all comes back when the
+   release goes forward again.
+
 ### Promoting the first admin
 
 There is deliberately no bootstrap path through the UI. Register normally, then, on the
@@ -585,7 +637,8 @@ and follow it by step. One release runs at a time, site-wide. Every section runs
 A press forks `release-tools/scripts/manager/release-job.mjs` out of the worker's process tree, so a
 deploy's pm2 reload does not kill it. It works in a scratch copy of the release's `release-tools/`,
 copies only the clips the channel lacks from the archive to the packs bucket, and reports through
-`shared/release-runs/<run id>/` (`log`, `heartbeat`, `exit`). The last 30 runs are kept. The page
+`shared/release-runs/<run id>/` (`log`, `heartbeat`, `exit`), where the site first writes `job.json`
+(the run's kind, section, language, bump, team and what it lists). The last 30 runs are kept. The page
 shows the step and the end of the log; the whole log is in that directory.
 
 A press never commits, so a pack's version is the one in its `.toc` on the channel. The button is a
@@ -608,7 +661,11 @@ language's activity log with its error.
    R2_ACCESS_KEY_ID=<a token scoped to the packs bucket alone>
    R2_SECRET_ACCESS_KEY=<its secret>
    R2_BUCKET=spoken-packs
+   SPOKEN_ARCHIVE_URL=http://127.0.0.1:<PORT>/api/archive/
    ```
+
+   `<PORT>` is the site's, from `app.env`. The job reads takes through the site, which finds each in
+   whichever bucket keeps it, a team's own included.
 
    It stays out of `app.env` because pm2 merges that file into every site worker, and the Manager
    trusts whatever this key signs. A new key makes every installed Manager reject the channel.
@@ -622,6 +679,91 @@ language's activity log with its error.
 
 A job that stops beating for 3 minutes, from a reboot or an out-of-memory kill, fails on the page's
 next look and frees the lock.
+
+### Team releases
+
+A press by a team that is not official, or whose packs in the language carry its slug, builds that
+team's packs (`docs/platform/TEAMS.md`, *Team releases*). It is refused with a 409 except on a site
+that sets, in `app.env`:
+
+```
+SPOKEN_TEAM_RELEASES=1
+```
+
+Staging sets it. **Production sets it only once a Manager that reads `index-v2.json` and a Spoken
+that orders a language's voices have been released**: before that no player can install a team's
+pack, and a suffixed pack requires a Spoken that is not out. The site reads it for the press, and the
+job takes it from `app.env` too, so `release.mjs` refuses such a pack anywhere it is unset. It works
+on the droplet only (`SPOKEN_RELEASE_ENV` set): the workflow builds from a synced database, which can
+give a team's takes to another, so it cannot build a team's own pack. Restart as above after changing
+it. An official team with plain packs releases as before, with or without it.
+
+**Review.** A release of a team that is not official uploads its packs and lists them nowhere: it
+ends *Waiting for review*, and every site owner gets an email. Review it on `/admin/team-releases`
+(the *Team releases* tab, with the count waiting): read and listen to the lines it changes, open the
+team's takes in the explorer, then **Approve** or **Reject** with a reason the team sees. Approving
+queues a promotion, which writes both indexes once its turn comes; the version is live when that
+run ends, and whoever pressed Release gets an email. If the pack changed on the channel since the
+version was staged (another approval or a delisting), the promotion is refused and the version keeps
+waiting with the reason: reject it and ask the team to release again. A newer version of the same
+pack replaces the waiting one.
+
+**Delisting.** The same page lists every team pack on the channel (teams that are not official).
+**Delist** takes one off both indexes, keeping its files; the team sees "Delisted by a site owner."
+and its next approved release lists it again. An official team's pack is taken off with the release
+workflow, as before.
+
+### The queue
+
+On the droplet, a press while another release runs waits its turn (*Waiting for … to finish* on
+the team's release page) and starts by itself within 15 seconds of the run ahead of it ending,
+whether or not anyone has a release page open; promotions and
+delistings wait in the same queue, so two runs never write the indexes at once. Whoever pressed a
+queued run, or a site owner, can cancel it from the release page. A run whose job fails to start is
+marked failed and the next one starts. A press on GitHub Actions is still refused while another
+runs. If the queue looks stuck, check for a `dispatching` or `running` row in `release_run` whose job
+directory (`shared/release-runs/<id>/`) has no recent heartbeat: the site fails it after three
+minutes without one, the next time anybody opens a release page.
+
+### Deleting a team
+
+A site owner deletes a team from its row on `/admin/teams`: the dialog lists what goes, and Delete
+works once the team's slug is typed (`docs/platform/TEAMS.md`, *Deleting a team*). English's team
+cannot be deleted, nor a team with a release queued, running or being listed.
+
+A team with packs on the channel is delisted first, one `delist` run per pack in the release
+queue, so deleting it works on the droplet only. A team with plain packs in a language counts as
+having all four sections there, even ones never published, since a release before the site's left
+no row. Its row says *Being deleted* with how many are
+done. The rows go when the last one ends; until then the team makes nothing, and its members can
+do nothing in it. A team with no pack on the channel and no plain packs goes at once, wherever
+it is deleted.
+
+If a delisting fails, the row says *Deletion stopped* with the reason, and nothing has been
+deleted. Fix the cause (the log is on the run, under `shared/release-runs/<id>/`) and press
+**Retry**, which queues every delisting again; one with nothing left to take off ends at once.
+Cancelling a queued delisting from the release page stops the deletion the same way.
+
+Nothing in any bucket is deleted: the team's `archive_object` rows go, and the objects stay. A
+language left with no team is switched off; adding a team to it switches it back on. Its text
+reports move to another team of the language, or wait on its text queue with no team; its open
+voice reports are closed as *not an issue*, since their takes go with it.
+
+Migration 0124 is additive. A rollback past it leaves a team being deleted unable to make
+anything, and an older release never finishes the deletion. Once the site goes forward again,
+let the row offer Retry by naming why it stopped:
+
+```bash
+psql "$PROD_DATABASE_URL" -c "update team set \"deleteError\" = 'Interrupted by a rollback' where slug = '<slug>' and \"deletingAt\" is not null"
+```
+
+Before a rollback past 0124, close the open text reports a deletion left with no team (their
+language had no other team), or give each a team by hand: the older code expects every report to
+have one.
+
+```bash
+psql "$PROD_DATABASE_URL" -c "update report set status = 'not_an_issue', \"resolvedAt\" = now() where \"teamId\" is null and status = 'open'"
+```
 
 ### On GitHub Actions
 
@@ -690,7 +832,7 @@ make web-logs                      # pm2 logs spoken
 ```
 
 A deploy does not install nginx config. After a change to `nginx-spoken-api.conf`, such as the
-`/api/v1/` location the contributors' text API needs for long runs, copy it as its header says and
+`/api/v1` location the contributors' text API needs for long runs, copy it as its header says and
 run `sudo nginx -t && sudo systemctl reload nginx`.
 
 Rollback walks strictly backwards in time, so running it repeatedly keeps stepping to older
@@ -706,7 +848,8 @@ Mass regeneration is a queue in Postgres (`regeneration_batch`, `regeneration_jo
 inside the app processes rather than by a separate service. A session-scoped advisory lock
 picks one process to lead, and only that one claims jobs. A process joins leader contention
 the first time one of the `/api/regenerate/queue` routes is called on it — not on boot, but
-lazily.
+lazily. The release queue's tick is apart from it: at boot on the droplet, in pm2's first worker
+(`src/lib/releases/tick.ts`).
 
 **Two things worth knowing:**
 

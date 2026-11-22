@@ -27,7 +27,7 @@ describe("how fish.audio is sent a line", () => {
 describe("a voice marker on fish.audio", () => {
   it("carries its slot's accent into the paragraphs after it", () => {
     const tags = { dwarf: "[Scottish accent]", goblin: "[nasal]" };
-    expect(SHAPE.fish("Aye.\n\n_goblin-male-zany_\nOne.\n\nTwo.", tags.dwarf, tags)).toBe(
+    expect(SHAPE.fish("Aye.\n\n_goblin-male-zany_\nOne.\n\nTwo.", tags.dwarf, { raceTags: tags })).toBe(
       ["[Scottish accent] Aye.", "_goblin-male-zany_", "[nasal] One.", "[nasal] Two."].join(
         PARAGRAPH_BREAK,
       ),

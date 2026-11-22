@@ -80,6 +80,8 @@ export type EffectiveLexicon = {
   syncedAt: string | null;
   updatedAt: string | null;
   updatedBy: string | null;
+  /** A digest of the entries, null with no row: what a writer sends back to say what it read. */
+  version: string | null;
 };
 
 type Row = {
@@ -156,8 +158,10 @@ async function readRow(lang: Lang = BASE_LANG): Promise<Row | undefined> {
 }
 
 export async function readLexicon(lang: Lang = BASE_LANG): Promise<EffectiveLexicon> {
-  const row = await readRow(lang);
+  return effective(await readRow(lang), lang);
+}
 
+function effective(row: Row | undefined, lang: Lang): EffectiveLexicon {
   if (!row) {
     return {
       entries: [],
@@ -171,6 +175,7 @@ export async function readLexicon(lang: Lang = BASE_LANG): Promise<EffectiveLexi
       syncedAt: null,
       updatedAt: null,
       updatedBy: null,
+      version: null,
     };
   }
 
@@ -189,6 +194,7 @@ export async function readLexicon(lang: Lang = BASE_LANG): Promise<EffectiveLexi
     syncedAt: row.syncedAt,
     updatedAt: row.updatedAt,
     updatedBy: row.updatedBy,
+    version: row.digest,
   };
 }
 
@@ -384,25 +390,44 @@ export async function writeLexicon(
   // lexicon_change is the record nothing else in the schema keeps. See lib/generation/dirty.
   const before = (await readRow(lang))?.entries ?? [];
 
-  await queryAs(
+  await insertRow(
+    lang,
+    entries,
+    updatedBy,
+    `do update set
+       "entries"   = excluded."entries",
+       "updatedAt" = excluded."updatedAt",
+       "updatedBy" = excluded."updatedBy"`,
+  );
+
+  return afterSave(before, entries, updatedBy, options, lang);
+}
+
+export const NO_KEY_TO_SYNC = "saved, but not uploaded: there is no ElevenLabs key to upload with";
+
+/** A language's row, as its team; `onConflict` is what a row already there gets. */
+function insertRow(lang: Lang, entries: LexiconEntry[], updatedBy: string, onConflict: string) {
+  const json = JSON.stringify(entries);
+  return queryAs(
     lang,
     lang === BASE_LANG
       ? `insert into "pronunciation_lexicon" ("entries", "updatedAt", "updatedBy")
-         values ($1, now(), $2)
-         on conflict ("teamId") do update set
-           "entries"   = excluded."entries",
-           "updatedAt" = excluded."updatedAt",
-           "updatedBy" = excluded."updatedBy"`
+         values ($1, now(), $2) on conflict ("teamId") ${onConflict}`
       : `insert into "pronunciation_lexicon_locale" ("lang", "entries", "updatedAt", "updatedBy")
-         values ($3, $1, now(), $2)
-         on conflict ("teamId", "lang") do update set
-           "entries"   = excluded."entries",
-           "updatedAt" = excluded."updatedAt",
-           "updatedBy" = excluded."updatedBy"`,
-    lang === BASE_LANG ? [JSON.stringify(entries), updatedBy] : [JSON.stringify(entries), updatedBy, lang],
+         values ($3, $1, now(), $2) on conflict ("teamId", "lang") ${onConflict}`,
+    lang === BASE_LANG ? [json, updatedBy] : [json, updatedBy, lang],
   );
+}
 
-  const syncError = await sync(entries, options, lang);
+async function afterSave(
+  before: LexiconEntry[],
+  entries: LexiconEntry[],
+  updatedBy: string,
+  options: ElevenLabsOptions,
+  lang: Lang,
+): Promise<{ lexicon: EffectiveLexicon; syncError: string | null }> {
+  // Without a key the save stays pending, and the corpus scan rulesFor makes is skipped.
+  const syncError = options.apiKey ? await sync(entries, options, lang) : NO_KEY_TO_SYNC;
   const lexicon = await readLexicon(lang);
 
   // After the sync, so the row can carry the version that shipped it - and unconditionally,
@@ -421,6 +446,75 @@ export async function writeLexicon(
   }
 
   return { lexicon, syncError };
+}
+
+/** `expectedVersion` did not match, or the lexicon kept changing under the edit. */
+export class LexiconConflict extends Error {
+  /** The version last read, for the caller to retry against. */
+  constructor(
+    message: string,
+    readonly version: string | null,
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * Store the entries only if the row still holds what `digest` says it read, null meaning no
+ * row. False when someone saved in between.
+ */
+async function storeIf(
+  lang: Lang,
+  entries: LexiconEntry[],
+  updatedBy: string,
+  digest: string | null,
+): Promise<boolean> {
+  if (digest === null) {
+    return (await insertRow(lang, entries, updatedBy, "do nothing")).rowCount === 1;
+  }
+  const at = rowOf(lang);
+  const { rowCount } = await queryAs(
+    lang,
+    `update ${at.table} set "entries" = $2, "updatedAt" = now(), "updatedBy" = $3
+      where ${at.where} and md5("entries"::text) = $4`,
+    [lang, JSON.stringify(entries), updatedBy, digest],
+  );
+  return rowCount === 1;
+}
+
+const EDIT_ATTEMPTS = 3;
+
+/**
+ * Change part of a lexicon: `edit` gets the entries stored now and returns the new ones.
+ *
+ * The row is one JSON document, so two partial edits racing would each overwrite the other's.
+ * The write is made against the digest it read and redone on a miss. With `expectedVersion`
+ * there is no redo: the caller is saying what it based the edit on, and a miss is a 409.
+ *
+ * An edit that returns the entries it was given writes nothing and uploads nothing.
+ */
+export async function editLexicon<T>(
+  lang: Lang,
+  edit: (entries: LexiconEntry[]) => { entries: LexiconEntry[]; result: T },
+  updatedBy: string,
+  options: ElevenLabsOptions = {},
+  expectedVersion?: string | null,
+): Promise<{ lexicon: EffectiveLexicon; syncError: string | null; result: T }> {
+  let digest: string | null = null;
+  for (let attempt = 0; attempt < EDIT_ATTEMPTS; attempt++) {
+    const row = await readRow(lang);
+    digest = row?.digest ?? null;
+    if (expectedVersion !== undefined && digest !== expectedVersion) {
+      throw new LexiconConflict("the lexicon changed since that version was read", digest);
+    }
+    const before = row?.entries ?? [];
+    const { entries, result } = edit(before);
+    if (entries === before) return { lexicon: effective(row, lang), syncError: null, result };
+    if (await storeIf(lang, entries, updatedBy, digest)) {
+      return { ...(await afterSave(before, entries, updatedBy, options, lang)), result };
+    }
+  }
+  throw new LexiconConflict("the lexicon kept changing during this edit; send it again", digest);
 }
 
 /**

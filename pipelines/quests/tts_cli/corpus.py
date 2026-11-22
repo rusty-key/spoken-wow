@@ -54,8 +54,7 @@ def spawn_key(entity_type: str, entity_id) -> str:
 def _skip_reason(row):
     """Why the generator would not synthesize this row, or None.
 
-    Mirrors TTSProcessor.process_row (tts_cli/tts_utils.py:175-187): progress text is
-    deliberately never voiced, and unresolved template tokens would be read aloud.
+    Unresolved template tokens would be read aloud.
 
     A line in a model voice (flavors.model_voice) has nobody to speak it yet: which voice a
     model gets is still to be chosen, so the line is gathered - it has a line id, a file name
@@ -63,8 +62,6 @@ def _skip_reason(row):
     reason no rewrite of the text can lift; the site asks the voice, not this, for the same
     answer (apps/web/src/lib/text-gate.ts).
     """
-    if row["source"] == "progress":
-        return "progress"
     if is_model_voice(row.get("voice_name")):
         return NO_VOICE
     if any(c in row["cleanedText"] for c in INVALID_CHARS):

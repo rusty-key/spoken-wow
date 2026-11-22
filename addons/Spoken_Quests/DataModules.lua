@@ -49,6 +49,8 @@ local LOAD_ALL_MODULES = true
 ---@field Title string Module's title (TOC ##Title or addon name if missing)
 ---@field Maps number[] Map IDs in which the module should load (TOC ##X-SpokenQuests-DataModule-Maps or ##X-VoiceOver-DataModule-Maps)
 ---@field Language string The language the pack was recorded in (TOC ##X-SpokenQuests-Language; absent means enUS)
+---@field Voice string The voice the pack is in: its Language, or for a team's pack its Language and team ("deDE_stimmen")
+---@field Team? string The slug of the team whose pack this is (TOC ##X-Spoken-Team); nil for a language's plain pack
 
 ---@class DataModule
 ---@field METADATA DataModuleMetadata
@@ -68,6 +70,8 @@ local LOAD_ALL_MODULES = true
 ---@field ItemNameLookupByItemID table<number, string> Maps Item ID to Item name
 ---@field SoundLengthLookupByFileName table<string, number> Maps sound filenames to their duration in seconds
 ---@field WordTimesByFileName? table<string, string> Maps sound filenames to when each word of their line starts, packed as clip.present.timings takes them
+---@field TextByFileName? table<string, string> Maps sound filenames to the words their takes were voiced from
+---@field LineTextByFileName? table<string, string> Maps the filenames of lines with no take to their words
 ---@field QuestFileLookupByNPCID? table<string, table<number, string>> Maps a quest line's filename and its giver's Creature ID to the line in that giver's own voice, where it differs
 ---@field QuestFileLookupByObjectID? table<string, table<number, string>> Maps a quest line's filename and its giver's GameObject ID to the line in that giver's own voice, where it differs
 ---@field GossipFileLookupByNPCSex? table<number, table<number, table<string, string>>> Maps a split Creature ID, the sex it is drawn as (UnitSex) and a gossip line's hash to the file that sex hears
@@ -248,22 +252,22 @@ function DataModules:GetPackLabel(module)
     return (string.gsub(title, "VoiceOver Data %- ", ""))
 end
 
---- The language the player's packs speak to them: the first language in the resolution
---- order that an installed pack is recorded in. With none installed, the chosen language.
+--- The language the player's packs speak to them: the language of the first voice in the
+--- resolution order that an installed pack is in. With none installed, the chosen language.
 ---
 --- What a report is filed under when there is no clip to ask, and what a contribution says
 --- the player was listening to.
 ---@return string code
 function DataModules:GetPackLanguage()
     local order = Language:ResolutionOrder()
-    for _, language in ipairs(order) do
+    for _, voice in ipairs(order) do
         for _, module in self:GetPresentModules() do
-            if module.Language == language then
-                return language
+            if (module.Voice or module.Language) == voice then
+                return module.Language
             end
         end
     end
-    return order[1]
+    return (Language:SplitVoice(order[1]))
 end
 
 --- The newest .toc Version among the installed packs recorded in `language`, or "none" when
@@ -302,6 +306,8 @@ function DataModules:EnumerateAddons(loadModules)
                     end
                 end
             end
+            local language = Language:Normalize(GetAddOnMetadata(i, LANGUAGE_KEY))
+            local voice = Language:VoiceOf(name, language)
             ---@type DataModuleMetadata
             local module =
             {
@@ -312,7 +318,9 @@ function DataModules:EnumerateAddons(loadModules)
                 ContentVersion = GetAddOnMetadata(name, "Version"),
                 Title = GetAddOnMetadata(name, "Title") or name,
                 Maps = maps,
-                Language = Language:Normalize(GetAddOnMetadata(i, LANGUAGE_KEY)),
+                Language = language,
+                Voice = voice,
+                Team = select(2, Language:SplitVoice(voice)),
             }
             self.presentModules[name] = module
             table.insert(self.presentModulesOrdered, module)
@@ -1085,6 +1093,9 @@ function DataModules:PrepareSound(soundData)
     -- then the line's, in each language before the next, so a voice no pack in the player's
     -- language has yet plays the line in that language rather than the voice in another.
     local line = soundData.fileName
+    -- The line's own file, before a giver's voice or the player's sex names another: what its id is
+    -- read from (LineIds).
+    soundData.lineFile = line
     local own = self:GetFileForBody(soundData, line) or self:GetQuestFileForGiver(soundData)
     soundData.fileName = own or line
     if self:ResolveSoundFile(soundData, own and line or GreetingOfVoice(line)) then
@@ -1107,21 +1118,22 @@ end
 ---@param instead string|nil
 ---@return boolean found
 function DataModules:ResolveSoundFile(soundData, instead)
-    -- Language before priority. A pack that holds the line in the language the player
-    -- asked for answers it even if a higher-priority pack holds the same line in another
-    -- language; only when no pack in the selected language has it does the fallback
-    -- language get a turn, and the packs within each language keep their own priority
-    -- order. With only English packs installed -- every install that exists today -- the
-    -- English pass is the only one that finds anything, so the result is what it always was.
+    -- Voice before priority. A pack that holds the line in the voice the player asked for
+    -- answers it even if a higher-priority pack holds the same line in another voice; only
+    -- when no pack in the first voice has it does the next voice get a turn, and the packs
+    -- within each voice keep their own priority order. A voice is a language and its team, so
+    -- a language's plain voice never plays a team's pack, nor a team's voice the plain pack.
+    -- With only English packs installed -- every install that exists today -- the English
+    -- pass is the only one that finds anything, so the result is what it always was.
     --
     -- Gossip falls back like any other line. Its file is named for a hash of the English
     -- text in every language a pack is built in, so the fallback pack holds the same name.
     --
     -- A gossip line may be one moment with lines recorded under other names (GossipAliases:
     -- the same BroadcastText id and voice, minted before anything tied them). Those are asked
-    -- after the line's own name, within each language, so a take in the chosen language under
-    -- a sibling's name beats the fallback language under the line's own.
-    local languages = Language:ResolutionOrder()
+    -- after the line's own name, within each voice, so a take in the chosen voice under a
+    -- sibling's name beats the next voice under the line's own.
+    local voices = Language:ResolutionOrder()
 
     local candidates = {}
     for _, name in ipairs({ soundData.fileName, instead }) do
@@ -1133,12 +1145,13 @@ function DataModules:ResolveSoundFile(soundData, instead)
             end
         end
     end
-    for _, language in ipairs(languages) do
+    for _, voice in ipairs(voices) do
         for _, wantedFileName in ipairs(candidates) do
             local playerGenderedFileName = DataModules:AddPlayerGenderToFilename(wantedFileName)
             for _, module in self:GetModules() do
                 local data = module.SoundLengthLookupByFileName
-                if data and module.METADATA.Language == language then
+                if data and (module.METADATA.Voice or module.METADATA.Language) == voice then
+                    local language = module.METADATA.Language
                     local fileName = wantedFileName
                     local length = data[playerGenderedFileName]
                     if length then
@@ -1152,10 +1165,14 @@ function DataModules:ResolveSoundFile(soundData, instead)
                             module.GetSoundPath and module:GetSoundPath(fileName, soundData.event) or
                             fileName)
                         soundData.length = length
-                        -- Timed to the recording's words, which the window shows only in the
-                        -- client's own language.
-                        soundData.timings = language == Language:GetClientLanguage()
+                        -- Timed to the recording's words, which the captions show only where they
+                        -- are in the Text Language (the client's, on Auto).
+                        local inTextLanguage = language == Language:GetTextLanguage()
+                        soundData.timings = inTextLanguage
                             and module.WordTimesByFileName and module.WordTimesByFileName[fileName] or nil
+                        -- soundData.text stays the window's: matching reads it.
+                        soundData.packText = inTextLanguage
+                            and module.TextByFileName and module.TextByFileName[fileName] or nil
                         soundData.module = module
                         soundData.language = language
                         EasterEggs:Apply(soundData)
@@ -1166,6 +1183,85 @@ function DataModules:ResolveSoundFile(soundData, instead)
         end
     end
     return false
+end
+
+local MOMENTS = { accept = true, progress = true, complete = true }
+local HASH = "^" .. string.rep("%x", 32) .. "$"
+local SEXES = { [2] = "m", [3] = "f" }
+
+--- The ids a line's file name stands for, the player's sex's first (pipelines/quests/tts_cli/naming.py
+--- names both): `{questID}-{moment}[-w{n}]` is q:{questID}:{moment}[:w{n}], an English hash, a
+--- `b{id}-{voice}` and a `{lang}-{hash}` stem are g:{stem}, and `{id}-{voice}` is f:{id}:{voice}. An
+--- m- or f- prefix is the sex the file was made for. Empty for a name none of them fits.
+---@param fileName string|nil
+---@return string[] ids
+function DataModules:LineIds(fileName)
+    if type(fileName) ~= "string" then return {} end
+    local sex, stem = string.match(fileName, "^([mf])%-(.+)$")
+    stem = stem or fileName
+    local id
+    local quest, moment, wording = string.match(stem, "^(%d+)%-(%a+)%-w(%d+)$")
+    if not quest then quest, moment = string.match(stem, "^(%d+)%-(%a+)$") end
+    if quest and MOMENTS[moment] then
+        id = "q:" .. quest .. ":" .. moment .. (wording and (":w" .. wording) or "")
+    elseif string.find(stem, HASH) or string.find(stem, "^b%d+%-")
+        or string.find(stem, "^%a%a%u%u%-%x+$") then
+        id = "g:" .. stem
+    else
+        local broadcast, voice = string.match(stem, "^(%d+)%-(.+)$")
+        if not broadcast then return {} end
+        id = "f:" .. broadcast .. ":" .. voice
+    end
+    sex = sex or (UnitSex and SEXES[UnitSex("player")])
+    if sex then return { id .. ":" .. sex, id } end
+    return { id }
+end
+
+--- A line's words from a voice pack in `language` that did not play it: a Polish pack's under an
+--- English voice. By the file that played and the line's own, each for the player's sex first.
+local function PackWords(self, soundData, language, field)
+    local names = {}
+    for _, name in pairs({ soundData.fileName, soundData.lineFile }) do
+        table.insert(names, self:AddPlayerGenderToFilename(name))
+        table.insert(names, name)
+    end
+    for _, module in self:GetModules() do
+        local texts = module.METADATA.Language == language and module[field]
+        if texts then
+            for _, name in ipairs(names) do
+                if texts[name] then return texts[name] end
+            end
+        end
+    end
+    return nil
+end
+
+--- A line's words in the Text Language the player chose where the recording playing is in another:
+--- a voice pack's in it, which are what its voice says, else a text pack's (Spoken's Texts.lua), else
+--- the words a voice pack carries of a line it has no take of. Its tokens filled in for the player,
+--- and the language. Nil on Auto, and where none has the line.
+--- Given a `language`, its words whether the player chose it or not.
+---@param soundData SoundData
+---@param language string|nil
+---@return string|nil text
+---@return string|nil language
+function DataModules:TextPackText(soundData, language)
+    if not language then
+        local chosen
+        language, chosen = Language:GetTextLanguage()
+        if not chosen then return nil end
+    end
+    local voiced = PackWords(self, soundData, language, "TextByFileName")
+    if voiced then return Utils:FillPlayerTokens(voiced), language end
+    if Spoken and Spoken.TextIn then
+        for _, id in ipairs(self:LineIds(soundData.lineFile or soundData.fileName)) do
+            local text = Spoken:TextIn(language, "quests", "lines", id)
+            if text then return Utils:FillPlayerTokens(text), language end
+        end
+    end
+    local written = PackWords(self, soundData, language, "LineTextByFileName")
+    if written then return Utils:FillPlayerTokens(written), language end
+    return nil
 end
 
 function DataModules:AddPlayerGenderToFilename(fileName)
