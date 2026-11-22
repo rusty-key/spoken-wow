@@ -181,7 +181,8 @@ local active
 local picked = false
 local minimized = false
 local resizer, minimizeButton, minimizeFrame
--- The window under Forever's controller UI, filled in after the page (The controller).
+-- The window under Forever's controller UI. Declared here because the window's code above its
+-- section calls into it.
 local Pad = { pages = {} }
 
 local function Ordered()
@@ -1891,13 +1892,11 @@ end
 -- game's "action blocked" error for each, so what falls in combat waits for its end.
 
 local function GamepadUI()
-	return InputUtil and InputUtil.IsGamepadUIEnabled and InputUtil.IsGamepadUIEnabled() or false
+	return SpokenLayout and SpokenLayout.IsGamepadUI and SpokenLayout.IsGamepadUI() or false
 end
 
 local function CombatRestricted()
-	return C_RestrictedActions and C_RestrictedActions.IsAddOnRestrictionActive and Enum
-		and Enum.AddOnRestrictionType
-		and C_RestrictedActions.IsAddOnRestrictionActive(Enum.AddOnRestrictionType.Combat) or false
+	return SpokenLayout and SpokenLayout.CombatRestricted and SpokenLayout.CombatRestricted() or false
 end
 
 local function Manager()
@@ -2010,7 +2009,16 @@ function Pad.Settle()
 	if not want then Pad.focused = false end
 	if want ~= joined then
 		joined = want
-		if want then manager:FrameShown(window) else manager:FrameHidden(window) end
+		if want then
+			-- Built in sight of the cursor, a tab's frames would make the game look for stops from
+			-- inside Spoken's call, which combat refuses: build them all before it can look.
+			for key, tab in pairs(C.tabs) do
+				if Enabled(tab) then Panel(key) end
+			end
+			manager:FrameShown(window)
+		else
+			manager:FrameHidden(window)
+		end
 	end
 	if Pad.focused then Pad.Bind() else Pad.Unbind() end
 	if Pad.refindLater then Pad.Refind() end
@@ -2108,7 +2116,10 @@ end
 --- on it as it takes the controller.
 function Pad.Follow(frame)
 	frame:HookScript("OnShow", Pad.Settle)
-	frame:HookScript("OnHide", Pad.Settle)
+	frame:HookScript("OnHide", function()
+		Pad.CloseFilter()
+		Pad.Settle()
+	end)
 	-- The cursor starts on the chosen row, where the list shows one.
 	frame.FocusGamepad = function()
 		Pad.focused = true
@@ -2154,8 +2165,8 @@ do
 	function Pad.FollowSearch(box)
 		box:HookScript("OnEditFocusGained", function(self)
 			searching = self
-			AfterCombat()
 			CatchPad(self, true)
+			if self.padCaught then AfterCombat() end
 		end)
 		box:HookScript("OnEditFocusLost", function(self)
 			if searching == self then searching = nil end
@@ -2163,8 +2174,9 @@ do
 		end)
 	end
 
+	-- Only a box holding the controller's buttons: one typed in with a keyboard keeps its focus.
 	function Pad.ReleaseSearch()
-		if searching then searching:ClearFocus() end
+		if searching and searching.padCaught then searching:ClearFocus() end
 	end
 
 	-- The filter under the controller UI: the game's menu, opened by an addon, never takes the
@@ -2323,6 +2335,11 @@ do
 		end)
 		frame.rows[index] = row
 		return row
+	end
+
+	-- Anchored to the window's filter arrow but shown under UIParent, it would outlive the window.
+	function Pad.CloseFilter()
+		if filterPad and filterPad:IsShown() then filterPad:Hide() end
 	end
 
 	--- Open `list`'s filter as the controller's menu, or close it when it is open on `list`.

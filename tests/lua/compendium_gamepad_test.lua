@@ -322,7 +322,10 @@ stub.FireEvent("PLAYER_REGEN_ENABLED")
 gamepadUI = false
 search:SetFocus()
 Expect("with the controller UI off, the box takes no buttons", caught, false)
+stub.FireEvent("PLAYER_REGEN_DISABLED")
+Expect("...and combat starting leaves a keyboard player typing", typing, true)
 search:ClearFocus()
+stub.FireEvent("PLAYER_REGEN_ENABLED")
 gamepadUI = true
 Close()
 
@@ -409,6 +412,34 @@ Expect("...but once combat ends, so the cursor leaves it", Called("popup hidden 
 calls = {}
 stub.FireEvent("PLAYER_REGEN_ENABLED")
 Expect("...and only once", Called("popup hidden filter"), false)
+Close()
+
+-- The filter shows under UIParent, beside the window rather than in it.
+Open()
+C.window:FocusGamepad()
+filter:Show()
+Press("PADFORWARD")
+Expect("the filter is open", pad:IsShown(), true)
+Close()
+Expect("closing the window closes its filter too", pad:IsShown(), false)
+Run(pad, "OnHide")
+
+---------------------------------------------------------------- tabs not yet opened
+-- A tab's frames built in sight of the cursor make the game look for stops from inside Spoken's
+-- call, which combat refuses: a tab first opened in a fight would show "action blocked".
+C:Register("bosses", { label = "Bosses", order = 3, build = function() Record("built bosses") end })
+C:Register("off", { label = "Off", order = 4, enabled = function() return false end,
+    build = function() Record("built off") end })
+calls = {}
+Open()
+local builtAt, joinedAt
+for i, call in ipairs(calls) do
+    if call == "built bosses" then builtAt = builtAt or i end
+    if call == "shown window" then joinedAt = joinedAt or i end
+end
+Expect("a tab never opened is built before the window joins the controller",
+    builtAt ~= nil and joinedAt ~= nil and builtAt < joinedAt, true)
+Expect("...but not the tab of a part switched off", Called("built off"), false)
 Close()
 
 local failures = Failures()
