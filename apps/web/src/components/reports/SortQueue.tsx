@@ -2,7 +2,8 @@
 
 /**
  * The sorting queue: one line with open reports at a time, everything needed to decide on
- * it, and the three answers pinned under the thumb.
+ * it, and the three answers pinned under the thumb. A report filed without a line picked shows
+ * every line its address means.
  *
  * Walks the list the server sorted without navigating, so answering a card costs one
  * request and no page load, and the next card's line is fetched while this one is read.
@@ -21,6 +22,8 @@ import TakeSelector from "@/components/TakeSelector";
 import { PageTextDialog } from "@/components/readables/PageTextDialog";
 import { Player as ReadablesPlayer } from "@/components/readables/Player";
 import { ReportContextNote } from "@/components/reports/ReportContextFacts";
+import ReportContribution from "@/components/reports/ReportContribution";
+import type { PackVersions } from "@/lib/reports/context";
 import { Button } from "@/components/ui/button";
 import { LoreDialog } from "@/components/places/LoreDialog";
 import { Player as PlacesPlayer } from "@/components/places/Player";
@@ -89,15 +92,24 @@ export default function SortQueue({
   groups: initial,
   canRegenerate,
   canEditText,
+  canContribute,
   showNpcPage,
+  latestPacks,
+  addressLines,
 }: {
   source: Source;
   /** The queue as the server sorted it, open reports only, skipped lines already left out. */
   groups: ReportGroup[];
+  /** By group key, every line the address of a group with no line picked means. */
+  addressLines: Record<string, string[]>;
   canRegenerate: boolean;
   canEditText: boolean;
+  /** Whether a report's text from the game can be accepted as the line's (ReportContribution). */
+  canContribute: boolean;
   /** Whether the speaker's name opens the NPC page. See LineHeading. */
   showNpcPage: boolean;
+  /** The section's released pack versions by language, to flag a report heard on an old pack. */
+  latestPacks: PackVersions;
 }) {
   const lang = useLang();
   // Held from the first render: a refresh while sorting brings back a list without the lines
@@ -111,7 +123,10 @@ export default function SortQueue({
   const [versions, setVersions] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  /** On one line's card, or on the whole card when `lineId` is null. */
+  const [notice, setNotice] = useState<{ lineId: string | null; text: string } | null>(null);
+  /** The line a regeneration was asked for, which another card may be picked away from. */
+  const [regenerating, setRegenerating] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   /** Everything on the card unclamped: the line's whole text and every report in full. */
   const [expanded, setExpanded] = useState(false);
@@ -123,14 +138,36 @@ export default function SortQueue({
   const playWhenReady = useRef(false);
 
   const group = groups[index] as ReportGroup | undefined;
-  const lineId = group?.reports[0].lineId ?? null;
-  const looked = lineId === null ? undefined : lines[lineId];
-  const line = looked && looked !== "error" ? looked : null;
-  // The take this session made or restored, else the live one: either way a cache buster, since
-  // a new take keeps its path and the browser would replay the one it replaced.
-  const version = line ? (versions[lineId!] ?? line.take?.version) : undefined;
-  const detail = line ? detailOf(source, line, version, lang) : null;
+  const ids = group ? lineIdsOf(group, addressLines) : [];
+  /** Which of the card's lines the keys, the player and the editor act on. */
+  const [picked, setPicked] = useState(0);
+  const lineId = ids[picked] ?? null;
+  const { line, version, detail, canEdit, canRegenerateLine } = viewOf(lineId);
+  /** The picked line as of the latest render, for a regeneration finishing after a pick. */
+  const pickedId = useRef(lineId);
+  useEffect(() => {
+    pickedId.current = lineId;
+  });
   const answer = answers[index];
+
+  function viewOf(id: string | null): View {
+    const looked = id === null ? undefined : lines[id];
+    const line = looked && looked !== "error" ? looked : null;
+    // The take this session made or restored, else the live one: either way a cache buster,
+    // since a new take keeps its path and the browser would replay the one it replaced.
+    const version = line ? (versions[id!] ?? line.take?.version) : undefined;
+    const detail = line ? detailOf(source, line, version, lang) : null;
+    return {
+      looked,
+      line,
+      version,
+      detail,
+      // A quest line with no text in the language has nothing to override.
+      canEdit: canEditText && line !== null && !(source === "quests" && (line as QuestLine).missing?.text),
+      // An unwritten boss has nothing to voice, and the server would refuse it.
+      canRegenerateLine: canRegenerate && line !== null && detail?.text !== null,
+    };
+  }
 
   const load = useCallback(
     async (id: string) => {
@@ -146,10 +183,9 @@ export default function SortQueue({
 
   useEffect(() => {
     for (const next of groups.slice(index, index + 2)) {
-      const id = next.reports[0].lineId;
-      if (id && !requested.current.has(id)) void load(id);
+      for (const id of lineIdsOf(next, addressLines)) if (!requested.current.has(id)) void load(id);
     }
-  }, [groups, index, load]);
+  }, [groups, addressLines, index, load]);
 
   useEffect(() => {
     if (!playWhenReady.current || !detail?.audioSrc) return;
@@ -161,6 +197,7 @@ export default function SortQueue({
     audio.current?.pause();
     playWhenReady.current = false;
     setIndex(next);
+    setPicked(0);
     setError(null);
     setNotice(null);
     setEditing(false);
@@ -197,21 +234,30 @@ export default function SortQueue({
     return response?.ok ? null : "Couldn't skip. Try again.";
   }
 
-  async function regenerate() {
-    if (!lineId || busy) return;
+  async function regenerate(lineId: string) {
+    if (busy) return;
     setBusy("regenerate");
+    setRegenerating(lineId);
     setError(null);
     setNotice(null);
     const result = await regenerateLine(source, lineId, lang);
     setBusy(null);
+    setRegenerating(null);
     if ("error" in result) return setError(`Regenerate failed: ${result.error}`);
 
     setVersions((current) => ({ ...current, [lineId]: result.version }));
-    setNotice("New take saved.");
-    playWhenReady.current = true;
+    setNotice({ lineId, text: "New take saved." });
+    if (pickedId.current === lineId) playWhenReady.current = true;
     // Refetched rather than patched: a line that had no take until now only gains its audio
     // path from the search.
     void load(lineId);
+  }
+
+  function playLine(at: number) {
+    setPicked(at);
+    if (viewOf(ids[at] ?? null).detail?.audioSrc === detail?.audioSrc) return togglePlay();
+    audio.current?.pause();
+    playWhenReady.current = true;
   }
 
   function togglePlay() {
@@ -225,15 +271,10 @@ export default function SortQueue({
     if (index > 0 && !busy) goTo(index - 1);
   }
 
-  // A quest line with no text in the language has nothing to override.
-  const canEdit = canEditText && line !== null && !(source === "quests" && (line as QuestLine).missing?.text);
-  // An unwritten boss has nothing to voice, and the server would refuse it.
-  const canRegenerateLine = canRegenerate && line !== null && detail?.text !== null;
-
   const keys: Record<string, () => void> = {
     " ": togglePlay,
     e: () => canEdit && !busy && setEditing(true),
-    r: () => canRegenerateLine && void regenerate(),
+    r: () => canRegenerateLine && void regenerate(lineId!),
     x: () => setExpanded((current) => !current),
     p: previous,
     ...Object.fromEntries(ANSWERS.map((each) => [each.key, () => void give(each.answer)])),
@@ -289,9 +330,6 @@ export default function SortQueue({
 
   const total = groups.length;
   const reports = expanded ? group.reports : group.reports.slice(0, PREVIEW);
-  const text = detail?.text ?? "";
-  const unwritten = detail !== null && detail.text === null;
-
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 pt-4 pb-56">
       <header className="flex flex-col gap-2">
@@ -317,117 +355,73 @@ export default function SortQueue({
         </p>
       ) : null}
 
-      <section className="bg-card flex flex-col gap-2 rounded-xl border p-4">
-        {lineId === null ? (
-          <>
-            <p className="font-medium">{group.reports[0].target ? "No line picked" : "About the project"}</p>
-            {group.reports[0].target ? (
-              <p className="text-muted-foreground font-mono text-xs break-all">{group.reports[0].target}</p>
-            ) : null}
-          </>
-        ) : looked === undefined ? (
-          <p className="text-muted-foreground text-sm">Looking up the line…</p>
-        ) : looked === "error" ? (
-          <p className="text-sm">
-            Couldn&apos;t load the line.{" "}
-            <button type="button" className="underline underline-offset-2" onClick={() => void load(lineId)}>
-              Retry
-            </button>
-          </p>
-        ) : line === null || detail === null ? (
-          <p className="text-muted-foreground text-sm">
-            No line in the corpus carries <span className="font-mono">{lineId}</span> any more.
-          </p>
-        ) : (
-          <>
-            <div className="flex flex-col">
-              <LineHeading
-                detail={detail}
-                showNpcPage={showNpcPage}
-                className="leading-snug"
-                asideClassName="mt-0.5"
-              />
-            </div>
-            {/* The text is the expand control, as each report below is: [X] does the same from
-                the keyboard. */}
-            {unwritten ? (
-              <p className="text-muted-foreground text-sm italic">No story in this language yet.</p>
-            ) : (
-              <p
-                className={cn(
-                  "cursor-pointer text-sm whitespace-pre-wrap",
-                  !expanded && text.length > LONG_TEXT && "line-clamp-5",
-                )}
-                aria-expanded={expanded}
-                onClick={() => !endsSelection() && setExpanded(!expanded)}
-              >
-                {text}
-              </p>
-            )}
-            <div className="text-muted-foreground flex items-center gap-3 text-xs">
-              <Link href={explorerHref(source, lineId)} className="font-mono underline-offset-2 hover:underline">
-                {lineId}
-              </Link>
-              <TakeSelector
-                source={source}
-                file={fileOf(source, line)}
-                version={version ?? null}
-                takes={line.take?.takes ?? 0}
-                canRestore={canRegenerate}
-                onRestored={(restored) => {
-                  setVersions((current) => ({ ...current, [lineId]: restored }));
-                  void load(lineId);
-                }}
-              />
-              {detail.stale ? <OutdatedNote /> : null}
-            </div>
-          </>
-        )}
+      {ids.length === 0 ? (
+        <section className="bg-card flex flex-col gap-2 rounded-xl border p-4">
+          <p className="font-medium">{group.reports[0].target ? "No line picked" : "About the project"}</p>
+          {group.reports[0].target ? (
+            <p className="text-muted-foreground font-mono text-xs break-all">{group.reports[0].target}</p>
+          ) : null}
+        </section>
+      ) : null}
+      {!group.reports[0].lineId && ids.length > 0 ? (
+        <p className="text-muted-foreground text-sm">
+          Filed against <span className="font-mono">{group.reports[0].target}</span> without a line picked.{" "}
+          {ids.length === 1 ? "One line answers to it:" : `All ${ids.length} lines that answer to it:`}
+        </p>
+      ) : null}
+      {ids.map((id, at) => (
+          <LineCard
+            key={id}
+            source={source}
+            lineId={id}
+            view={viewOf(id)}
+            picked={at === picked}
+            ringed={ids.length > 1 && at === picked}
+            playing={playing}
+            busy={busy}
+            regenerating={regenerating === id}
+            notice={notice?.lineId === id ? notice.text : null}
+            expanded={expanded}
+            onExpand={() => setExpanded(!expanded)}
+            showNpcPage={showNpcPage}
+            canRegenerate={canRegenerate}
+            onPlay={() => playLine(at)}
+            onEdit={() => {
+              setPicked(at);
+              setEditing(true);
+            }}
+            onRegenerate={() => {
+              setPicked(at);
+              void regenerate(id);
+            }}
+            onRetry={() => void load(id)}
+            onRestored={(restored) => {
+              setVersions((current) => ({ ...current, [id]: restored }));
+              void load(id);
+            }}
+          />
+      ))}
 
-        <div className="mt-1 grid grid-cols-3 gap-2">
-          <Button variant="outline" className="h-11" disabled={!detail?.audioSrc} onClick={togglePlay}>
-            {playing ? <Pause /> : <Play />}
-            {playing ? "Pause" : "Play"}
-            <Hint>[Space]</Hint>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-11"
-            disabled={!canEdit || busy !== null}
-            onClick={() => setEditing(true)}
-          >
-            <Pencil />
-            Edit
-            <Hint>[E]</Hint>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-11"
-            disabled={!canRegenerateLine || busy !== null}
-            onClick={() => void regenerate()}
-            title={
-              !canRegenerate
-                ? "You can't regenerate in this language"
-                : unwritten
-                  ? "No story in this language to voice"
-                  : "Regenerate this line"
-            }
-          >
-            <RefreshCw className={cn(busy === "regenerate" && "animate-spin")} />
-            {busy === "regenerate" ? "Working…" : "Regenerate"}
-            <Hint>[R]</Hint>
-          </Button>
-        </div>
-        {detail && !detail.audioSrc ? <p className="text-muted-foreground text-xs">No audio on file.</p> : null}
-        {notice ? <p className="text-xs text-emerald-500">{notice}</p> : null}
-      </section>
+      {notice && notice.lineId === null ? <p className="text-xs text-emerald-500">{notice.text}</p> : null}
 
       <section className="flex flex-col gap-2">
         <p className="text-sm font-medium">
           {group.reports.length} {group.reports.length === 1 ? "report" : "reports"}
         </p>
         {reports.map((report) => (
-          <ReportPreview key={report.id} report={report} expanded={expanded} />
+          <ReportPreview
+            key={report.id}
+            report={report}
+            expanded={expanded}
+            latestPacks={latestPacks}
+            canContribute={canContribute}
+            onFixed={() => {
+              // The accept rewrote a line's text, not its take: it is voiced again only on Regenerate.
+              // Which line is the server's choice, so the notice and the reload are the card's.
+              setNotice({ lineId: null, text: "Text updated from the report. Regenerate to voice it." });
+              for (const id of ids) void load(id);
+            }}
+          />
         ))}
         {!expanded && group.reports.length > PREVIEW ? (
           <button
@@ -537,13 +531,171 @@ function EditDialog({
   );
 }
 
+function LineCard({
+  source,
+  lineId,
+  view: { looked, line, version, detail, canEdit, canRegenerateLine },
+  picked,
+  ringed,
+  playing,
+  busy,
+  regenerating,
+  notice,
+  expanded,
+  onExpand,
+  showNpcPage,
+  canRegenerate,
+  onPlay,
+  onEdit,
+  onRegenerate,
+  onRetry,
+  onRestored,
+}: {
+  source: Source;
+  lineId: string;
+  view: View;
+  /** The line the keys, the player and the editor act on. */
+  picked: boolean;
+  /** Shows which line is picked when the card holds several. */
+  ringed: boolean;
+  playing: boolean;
+  busy: Busy;
+  regenerating: boolean;
+  notice: string | null;
+  expanded: boolean;
+  onExpand: () => void;
+  showNpcPage: boolean;
+  canRegenerate: boolean;
+  onPlay: () => void;
+  onEdit: () => void;
+  onRegenerate: () => void;
+  onRetry: () => void;
+  onRestored: (version: number) => void;
+}) {
+  const text = detail?.text ?? "";
+  const unwritten = detail !== null && detail.text === null;
+
+  return (
+    <section className={cn("bg-card flex flex-col gap-2 rounded-xl border p-4", ringed && "ring-foreground/40 ring-2")}>
+      {looked === undefined ? (
+        <p className="text-muted-foreground text-sm">Looking up the line…</p>
+      ) : looked === "error" ? (
+        <p className="text-sm">
+          Couldn&apos;t load the line.{" "}
+          <button type="button" className="underline underline-offset-2" onClick={onRetry}>
+            Retry
+          </button>
+        </p>
+      ) : line === null || detail === null ? (
+        <p className="text-muted-foreground text-sm">
+          No line in the corpus carries <span className="font-mono">{lineId}</span> any more.
+        </p>
+      ) : (
+        <>
+          <div className="flex flex-col">
+            <LineHeading detail={detail} showNpcPage={showNpcPage} className="leading-snug" asideClassName="mt-0.5" />
+          </div>
+          {/* The text is the expand control, as each report below is: [X] does the same from
+              the keyboard. */}
+          {unwritten ? (
+            <p className="text-muted-foreground text-sm italic">No story in this language yet.</p>
+          ) : (
+            <p
+              className={cn(
+                "cursor-pointer text-sm whitespace-pre-wrap",
+                !expanded && text.length > LONG_TEXT && "line-clamp-5",
+              )}
+              aria-expanded={expanded}
+              onClick={() => !endsSelection() && onExpand()}
+            >
+              {text}
+            </p>
+          )}
+          <div className="text-muted-foreground flex items-center gap-3 text-xs">
+            <Link href={explorerHref(source, lineId)} className="font-mono underline-offset-2 hover:underline">
+              {lineId}
+            </Link>
+            <TakeSelector
+              source={source}
+              file={fileOf(source, line)}
+              version={version ?? null}
+              takes={line.take?.takes ?? 0}
+              canRestore={canRegenerate}
+              onRestored={onRestored}
+            />
+            {detail.stale ? <OutdatedNote /> : null}
+          </div>
+        </>
+      )}
+
+      <div className="mt-1 grid grid-cols-3 gap-2">
+        <Button variant="outline" className="h-11" disabled={!detail?.audioSrc} onClick={onPlay}>
+          {picked && playing ? <Pause /> : <Play />}
+          {picked && playing ? "Pause" : "Play"}
+          <Hint>[Space]</Hint>
+        </Button>
+        <Button variant="outline" className="h-11" disabled={!canEdit || busy !== null} onClick={onEdit}>
+          <Pencil />
+          Edit
+          <Hint>[E]</Hint>
+        </Button>
+        <Button
+          variant="outline"
+          className="h-11"
+          disabled={!canRegenerateLine || busy !== null}
+          onClick={onRegenerate}
+          title={
+            !canRegenerate
+              ? "You can't regenerate in this language"
+              : unwritten
+                ? "No story in this language to voice"
+                : "Regenerate this line"
+          }
+        >
+          <RefreshCw className={cn(regenerating && "animate-spin")} />
+          {regenerating ? "Working…" : "Regenerate"}
+          <Hint>[R]</Hint>
+        </Button>
+      </div>
+      {detail && !detail.audioSrc ? <p className="text-muted-foreground text-xs">No audio on file.</p> : null}
+      {notice ? <p className="text-xs text-emerald-500">{notice}</p> : null}
+    </section>
+  );
+}
+
+type View = {
+  looked: Looked | undefined;
+  line: SourceLine | null;
+  version: number | undefined;
+  detail: ReturnType<typeof detailOf> | null;
+  canEdit: boolean;
+  canRegenerateLine: boolean;
+};
+
+function lineIdsOf(group: ReportGroup, addressLines: Record<string, string[]>): string[] {
+  const picked = group.reports[0].lineId;
+  return picked ? [picked] : (addressLines[group.key] ?? []);
+}
+
 /** Only where there is a keyboard to press it with: a phone has no use for the hint. */
 function Hint({ children }: { children: ReactNode }) {
   return <span className="hidden opacity-60 pointer-fine:inline">{children}</span>;
 }
 
 /** Never shows the reporter's email or address: who they are is not what triage weighs. */
-function ReportPreview({ report, expanded }: { report: Report; expanded: boolean }) {
+function ReportPreview({
+  report,
+  expanded,
+  latestPacks,
+  canContribute,
+  onFixed,
+}: {
+  report: Report;
+  expanded: boolean;
+  latestPacks: PackVersions;
+  canContribute: boolean;
+  onFixed: () => void;
+}) {
   const [opened, setOpened] = useState(false);
   return (
     <article className="bg-card cursor-pointer rounded-lg border px-3 py-2.5" onClick={() => !endsSelection() && setOpened(!opened)}>
@@ -562,7 +714,11 @@ function ReportPreview({ report, expanded }: { report: Report; expanded: boolean
       >
         {report.body}
       </p>
-      <ReportContextNote context={report.context} />
+      <ReportContextNote context={report.context} latestPacks={latestPacks}>
+        {canContribute && report.source !== "places" && report.source !== "bosses" && report.context?.text?.trim() ? (
+          <ReportContribution report={report} onFixed={onFixed} />
+        ) : null}
+      </ReportContextNote>
     </article>
   );
 }

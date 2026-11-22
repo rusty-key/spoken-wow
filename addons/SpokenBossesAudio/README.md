@@ -2,8 +2,6 @@
 
 Narrated boss stories for **[Spoken](https://www.curseforge.com/wow/addons/spoken)**'s Bosses module. This addon is data only: it does nothing on its own.
 
-On CurseForge it has no project of its own: it ships inside **[Spoken Audio: Places and Bosses](https://www.curseforge.com/wow/addons/spoken-audio-places)**, beside the Places narration.
-
 ## Installing
 
 Install **Spoken** first; this pack is inert without it. Extract into `Interface/AddOns` and leave the folder name as shipped, since Spoken finds packs by folder name. Without a pack, boss stories show as text only.

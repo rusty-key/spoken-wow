@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { aliasesOf, emitAliases, zoneAliasesOf } from "./aliases.mjs";
+import { aliasesOf, emitAliases, withoutUnresolved, zoneAliasesOf } from "./aliases.mjs";
 import { normaliseKey } from "./wiki.mjs";
 
 const rows = (pairs) => pairs.map(([ID, AreaName_lang]) => ({ ID, AreaName_lang }));
@@ -93,11 +93,43 @@ test("Forever's spelling of a place the lore keeps under another key is the same
   assert.equal(byZone.size, 0);
 });
 
+test("a name that is one place's English name and another's translation, in one zone, stays out of the flat table", () => {
+  // deDE names Forever's City of Dalaran "Dalaran", the English name of Alterac's Dalaran, and both
+  // stories are kept under Alterac (1416): the zone cannot tell them apart, so the alias would give
+  // the city's story to Alterac's Dalaran too.
+  const english = rows([[279, "Dalaran"], [16544, "City of Dalaran"]]);
+  const localized = rows([[279, "Dalaran"], [16544, "Dalaran"]]);
+  const wanted = new Set(["dalaran", "city of dalaran"]);
+  const flat = aliasesOf(english, localized, wanted, normaliseKey);
+  const byZone = zoneAliasesOf(
+    [{ english, localized, keyOf: normaliseKey }],
+    maps({ dalaran: [1416], "city of dalaran": [1416] }),
+  );
+  assert.equal(byZone.size, 0);
+  const { aliases, dropped } = withoutUnresolved(flat);
+  assert.deepEqual([...aliases], []);
+  assert.deepEqual(dropped, ["Dalaran"]);
+});
+
+test("in a zone two such places share, the name keys itself; the other place's zone still finds it", () => {
+  // Alpha is alpha's own name and beta's translation; both have stories under map 10, beta also
+  // under map 20. A flat alias would answer on map 10 too and give alpha's visitors beta's story.
+  const english = rows([[1, "Alpha"], [2, "Beta"]]);
+  const localized = rows([[1, "Alpha"], [2, "Alpha"]]);
+  const wanted = new Set(["alpha", "beta"]);
+  const byZone = zoneAliasesOf([{ english, localized, keyOf: normaliseKey }], maps({ alpha: [10], beta: [10, 20] }));
+  assert.deepEqual([...byZone.get("Alpha")], [[20, "beta"]]);
+  const { aliases } = withoutUnresolved(aliasesOf(english, localized, wanted, normaliseKey));
+  assert.equal(aliases.has("Alpha"), false); // map 10: no alias, so "Alpha" keys itself (alpha)
+});
+
 test("a name that is one place's English name and another's translation is told apart by zone", () => {
   const english = rows([[1, "Alpha"], [2, "Beta"]]);
   const localized = rows([[1, "Alpha"], [2, "Alpha"]]);
   const wanted = new Set(["alpha", "beta"]);
-  assert.deepEqual([...aliasesOf(english, localized, wanted, normaliseKey).aliases], [["Alpha", "beta"]]);
+  const flat = aliasesOf(english, localized, wanted, normaliseKey);
+  assert.deepEqual([...flat.aliases], [["Alpha", "beta"]]);
+  assert.deepEqual([...withoutUnresolved(flat).aliases], []);
   const byZone = zoneAliasesOf([{ english, localized, keyOf: normaliseKey }], maps({ alpha: [10], beta: [20] }));
   assert.deepEqual([...byZone.get("Alpha")], [[10, "alpha"], [20, "beta"]]);
 });

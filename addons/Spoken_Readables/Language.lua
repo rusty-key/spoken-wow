@@ -78,6 +78,25 @@ function SpokenReadables:GetClientLanguage()
 	return self.BASE_LANGUAGE
 end
 
+--- The language a page's words are read in: Spoken's Text Language, else the client's, as the
+--- game shows the page. The second value is true where the player chose it, which puts it before
+--- the languages the captions tried before there was a choice.
+function SpokenReadables:GetTextLanguage()
+	if Spoken and Spoken.TextLanguage then
+		local code, chosen = Spoken:TextLanguage()
+		if chosen then return code, true end
+	end
+	return self:GetClientLanguage(), false
+end
+
+--- The font file to write `code` (the Text Language by default) in where a page uses `fontObject`,
+--- or nil where none draws it: a text pack's language may need its own.
+function SpokenReadables:FontFor(fontObject, code)
+	code = code or self:GetTextLanguage()
+	if Spoken and Spoken.FontForLanguage then return Spoken:FontForLanguage(fontObject, code, self) end
+	return fontObject and fontObject.GetFont and fontObject:GetFont() or nil
+end
+
 --- The language the player wants to hear, resolved: "auto" becomes the client's.
 function SpokenReadables:GetVoiceLanguage()
 	-- The one choice on Spoken's page for every module, once made; this addon's own until then.
@@ -110,15 +129,13 @@ function SpokenReadables:GetFallbackLanguage()
 	return stored
 end
 
---- The languages a page may be read in, most wanted first. Never more than two.
+--- The voices a page may be read in, most wanted first: the player's list on Spoken's page once
+--- set, else this addon's own two languages, each its plain voice, never more than two.
 function SpokenReadables:LanguageOrder()
-	local voice = self:GetVoiceLanguage()
-	local order = { voice }
-	local fallback = self:GetFallbackLanguage()
-	if fallback and fallback ~= voice then
-		table.insert(order, fallback)
-	end
-	return order
+	local voice, fallback = self:GetVoiceLanguage(), self:GetFallbackLanguage()
+	if Spoken and Spoken.VoiceOrder then return Spoken:VoiceOrder(voice, fallback) end
+	if fallback and fallback ~= voice then return { voice, fallback } end
+	return { voice }
 end
 
 --- The language a pack is recorded in.
@@ -126,20 +143,31 @@ function SpokenReadables:PackLanguage(pack)
 	return self:NormalizeLanguage(pack and pack.language)
 end
 
---- The language the player's packs speak to them: the first in LanguageOrder that an
---- installed pack is recorded in, or the voice language when none is. What a report is filed
---- under when there is no clip to ask, and what a contribution says the player was hearing.
+--- The voice a pack is in: its language, or its language and team where its .toc names one
+--- ("deDE_stimmen"), as Spoken's registry read it.
+function SpokenReadables:PackVoice(pack)
+	local language = self:PackLanguage(pack)
+	if Spoken and Spoken.VoiceOf and pack and pack.addon then
+		return Spoken:VoiceOf(pack.addon, language)
+	end
+	return language
+end
+
+--- The language the player's packs speak to them: that of the first voice in LanguageOrder an
+--- installed pack is in, or the first voice's when none is. What a report is filed under when
+--- there is no clip to ask, and what a contribution says the player was hearing.
 function SpokenReadables:GetPackLanguage()
 	local order = self:LanguageOrder()
 	local packs = self:GetAudioPacks()
-	for _, language in ipairs(order) do
+	for _, voice in ipairs(order) do
 		for _, pack in ipairs(packs) do
-			if self:PackLanguage(pack) == language then
-				return language
+			if pack.voice == voice then
+				return self:PackLanguage(pack)
 			end
 		end
 	end
-	return order[1]
+	local language = Spoken and Spoken.SplitVoice and Spoken:SplitVoice(order[1])
+	return language or order[1]
 end
 
 --- The .toc Version of the installed pack recorded in `language`, or "none" when no pack

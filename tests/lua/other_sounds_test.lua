@@ -90,6 +90,25 @@ Expect("switching it off mid-line brings the sound back at once", Near(Volume("M
 Q:RemoveAllSoundsFromQueue(); stub.Advance(3)
 lower.Enabled = true
 
+---------------------------------------------------------------- mute
+quests:Enqueue(H.Clip({ length = 20 }))
+stub.Advance(1.5)
+Q:SetMuted(true)
+Expect("muting restores game audio lowered by the line", Near(Volume("Music"), 0.8), true)
+Expect("...and forgets the lowered volumes", env.Addon.db.global.LoweredVolumes, nil)
+Q:SetMuted(false)
+stub.Advance(1)
+Expect("unmuting restarts the line and lowers game audio again", Near(Volume("Music"), 0.4), true)
+Q:RemoveAllSoundsFromQueue(); stub.Advance(3)
+SetVolumes()
+
+Q:SetMuted(true)
+quests:Enqueue(H.Clip({ length = 5 }))
+stub.Advance(1.5)
+Expect("a queue started muted does not lower game audio", Near(Volume("Music"), 0.8), true)
+Q:SetMuted(false)
+Q:RemoveAllSoundsFromQueue(); stub.Advance(3)
+
 ---------------------------------------------------------------- the voice's own channel
 audio.SoundChannel = "Music"
 quests:Enqueue(H.Clip({ length = 5 }))

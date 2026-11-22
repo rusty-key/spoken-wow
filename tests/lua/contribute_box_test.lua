@@ -38,6 +38,16 @@ local link = "https://spoken.quest/contribute#e1=abc"
 Expect("a link is shown", Spoken:ShowContribution(link, "https://x", true), true)
 Expect("the box holds the link itself", box.editBox:GetText(), link)
 Expect("...with the link-specific hint", box.hint:GetText(), "Copy this and open it in your browser:")
+-- A link on one line, as a pack's address is, gets a box no taller than the line: the full
+-- height is for an envelope or a report link, which wrap.
+local short = box.frame:GetHeight()
+Expect("a link that fits on one line gets a short box", short < 120, true)
+local long = "https://spoken.quest/contribute#e1=" .. string.rep("a", 120)
+Spoken:ShowContribution(long, nil, true)
+Expect("a link that wraps gets the full box", box.frame:GetHeight() > short, true)
+Spoken:ShowContribution(envelope, "https://x")
+Expect("...as an envelope does", box.frame:GetHeight() > short, true)
+Spoken:ShowContribution(link, "https://x", true)
 Expect("...and no redundant address line, since the link already carries it", box.address:GetText(), "")
 
 ------------------------------------------------------------------------------- a report
@@ -96,5 +106,48 @@ Expect("...the same size on screen", box.frame:GetScale(), 2)
 Spoken:SetContributeHost(nil)
 Expect("nil puts it back on UIParent", box.frame:GetParent(), _G.UIParent)
 Expect("...at its own size", box.frame:GetScale(), 1)
+
+------------------------------------------------------------------------------- under the controller UI
+-- The controller moves only between windows the frame controls manager knows of. Unregistered,
+-- the box opened over the settings and the d-pad and B went on driving the settings under it.
+box.frame:Hide()
+-- The stub fires OnShow hooks but not OnHide ones; the client fires both.
+local stubHide = box.frame.Hide
+function box.frame:Hide()
+    local was = self:IsShown()
+    stubHide(self)
+    if was then for _, fn in ipairs(self.hooks.OnHide or {}) do fn(self) end end
+end
+local calls = {}
+local restricted = false
+_G.InputUtil = { IsGamepadUIEnabled = function() return true end }
+_G.GamepadMode = { FrameControlsManager = {
+    HandlePopupShown = function(_, frame) table.insert(calls, { "shown", frame }) end,
+    HandlePopupHide = function(_, frame) table.insert(calls, { "hide", frame }) end,
+} }
+_G.Enum = _G.Enum or {}
+_G.Enum.AddOnRestrictionType = { Combat = 1 }
+_G.C_RestrictedActions = { IsAddOnRestrictionActive = function() return restricted end }
+
+Spoken:ShowContribution(link, "https://x", true)
+Expect("the box takes the controller's focus as a popup", calls[1] and calls[1][1], "shown")
+Expect("...for itself", calls[1] and calls[1][2], box.frame)
+Expect("B has a close button to press", type(box.frame.CloseButton), "table")
+box.frame.CloseButton:GetScript("OnClick")(box.frame.CloseButton)
+Expect("closing hands the focus back", calls[2] and calls[2][1], "hide")
+Expect("...from the box", calls[2] and calls[2][2], box.frame)
+
+calls = {}
+restricted = true
+Spoken:ShowContribution(link, "https://x", true)
+box.frame:Hide()
+Expect("in combat the manager is left alone, as it refuses addons then", #calls, 0)
+restricted = false
+
+_G.InputUtil.IsGamepadUIEnabled = function() return false end
+Spoken:ShowContribution(link, "https://x", true)
+box.frame:Hide()
+Expect("without the controller UI it is not registered at all", #calls, 0)
+_G.InputUtil, _G.GamepadMode, _G.C_RestrictedActions = nil, nil, nil
 
 os.exit(Failures() == 0 and 0 or 1)

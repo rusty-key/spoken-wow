@@ -7,7 +7,7 @@
 
 setfenv(1, SpokenEnv)
 
-if GetLocale() ~= "esES" and GetLocale() ~= "esMX" then
+if not Interface:In("esES", "esMX") then
 	return
 end
 
@@ -30,12 +30,15 @@ L.MIN_MENU_HINT = "Clic derecho para opciones de reproducción. Arrastra el nomb
 L.MIN_SKIP = "Omitir línea"
 L.MIN_STOP_ALL = "Detener todo"
 L.REPLAY = "Repetir"
+L.QUEUE = "Poner en cola"
+L.QUEUED = "En cola"
 L.PLAY_NO_VOICE = "Aún no hay voz para esto."
 L.STOP_REPLAY = "Detener o repetir"
 L.BIND_PLAYPAUSE = "Detener o repetir"
 L.SUBTITLE_STOPPED = "Detenido"
 L.STOPPED_REMINDER = "Spoken está detenido, así que las líneas nuevas esperan. Pulsa Repetir u Omitir, o escribe /sp replay, para continuar."
 L.STOP = "Detener"
+L.BIND_MUTE = "Silenciar el audio de Spoken"
 L.SETTINGS = "Configuración"
 L.ON = "Activado"
 L.OFF = "Desactivado"
@@ -159,7 +162,7 @@ L.MODULE_NOT_LOADED = "No cargado"
 L.MODULE_NO_PACK = "|cffff8080Ningún paquete de voces instalado.|r Sin uno no se lee nada en voz alta."
 L.MODULE_RESET = "Restablecer"
 L.REASON_PART_OFF = "Activa «Activar» al principio de esta página para usar esto."
-L.MODULE_NO_VOICE_FMT = "Ningún paquete de voces habla %1$s y «Si falta la voz» está en «Silencio»: no se lee nada en voz alta."
+L.MODULE_NO_VOICE_FMT = "Ningún paquete de voces habla %1$s, ni ninguna voz posterior de tu lista: no se lee nada en voz alta."
 L.OPT_PART_CLICK_ON = "Haz clic para activarlo."
 L.OPT_PART_CLICK_OFF = "Haz clic para desactivarlo."
 L.PART_TURNED_OFF = "está desactivado en la configuración de Spoken"
@@ -180,10 +183,22 @@ L.OPT_LOWER_DIALOG = "Voces de PNJ"
 
 -- Language
 L.OPT_LANGUAGE_TITLE = "Idioma"
-L.OPT_VOICE_LANGUAGE = "Idioma de las voces"
+L.OPT_VOICES = "Voces, por orden"
+L.OPT_VOICES_TIP = "Una línea suena con la primera voz que la tenga. Si ninguna la tiene, Spoken guarda silencio."
+L.OPT_VOICE_ADD = "Añadir una voz"
+L.OPT_VOICE_EARLIER = "Antes"
+L.OPT_VOICE_LATER = "Después"
+L.OPT_VOICE_REMOVE = "Quitar"
+L.OPT_VOICE_MISSING = "(no instalada)"
 L.OPT_LANG_AUTO_FMT = "Automático (%1$s)"
-L.OPT_FALLBACK_LANGUAGE = "Si falta la voz"
-L.OPT_FALLBACK_NONE = "Silencio"
+L.OPT_VOICE_TEAM_FMT = "%1$s · %2$s"
+L.OPT_TEXT_LANGUAGE = "Idioma del texto"
+L.OPT_TEXT_LANGUAGE_SET_FMT = "El texto estará en %1$s cuando se recargue la interfaz."
+L.OPT_TEXT_LANGUAGE_RELOAD = "Escribe /reload para cambiar a él."
+L.OPT_INTERFACE_LANGUAGE = "Idioma de la interfaz"
+L.OPT_INTERFACE_LANGUAGE_SET_FMT = "Las ventanas y los ajustes de Spoken estarán en %1$s cuando se recargue la interfaz."
+L.OPT_RELOAD_NOW = "Recargar ahora"
+L.OPT_LATER = "Más tarde"
 
 -- Keys
 L.OPT_KEYS_TITLE = "Teclas"
@@ -216,10 +231,11 @@ L.OPT_PROFILE_NEW = "Nuevo perfil"
 L.OPT_PROFILE_NEW_PROMPT = "Nombre del nuevo perfil:"
 L.OPT_COPY_PROFILE = "Copiar ajustes de"
 L.OPT_DELETE_PROFILE = "Borrar perfil"
+L.OPT_COPY_PROFILE_CONFIRM = "¿Copiar los ajustes de «%s» en este perfil? Sus propios ajustes se sustituyen."
+L.OPT_DELETE_PROFILE_CONFIRM = "¿Borrar el perfil «%s»? No se puede deshacer."
 L.OPT_PROFILE_PICK = "Elige un perfil"
 L.OPT_NEW_CHARACTER_PROFILE = "Perfil para personajes nuevos"
 L.OPT_PROFILE_OWN = "Perfil propio"
-L.OPT_NEW_CHARACTER_PROFILE_TIP = "El perfil con el que empieza un personaje la primera vez que entra con Spoken. Los personajes que ya tienen un perfil lo conservan."
 L.OPT_START_OVER_TITLE = "Empezar de cero"
 L.OPT_WELCOME_AGAIN = "Mostrar ventana de bienvenida"
 L.OPT_RESET_ALL = "Restablecer configuración de Spoken"

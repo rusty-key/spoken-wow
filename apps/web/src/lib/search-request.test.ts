@@ -4,9 +4,12 @@
  * Worth its own test for the reason links.test.ts exists: a param one side writes and the
  * other does not read produces an unfiltered corpus with a 200 and no error anywhere.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { filtersFromParams } from "./search-request";
+
+// The zones on offer are the vouched sightings'; one is enough to read a zone by.
+vi.mock("@/lib/quests/sightings", () => ({ offeredZones: async () => [{ uiMapID: 1411, name: "Durotar" }] }));
 
 describe("filtersFromParams", () => {
   it("reads the line id a report links with", async () => {
@@ -32,7 +35,7 @@ describe("filtersFromParams", () => {
   });
 
   it("reads the follow-up source by its value, not by the label the dropdown shows", async () => {
-    // SOURCE_LABELS spells it "follow-up" for people; the URL carries the corpus value, and a
+    // SOURCE_LABELS spells it "Follow-up" for people; the URL carries the corpus value, and a
     // hyphenated one would fall outside SOURCES and silently unfilter the search.
     expect((await filtersFromParams(new URLSearchParams("source=followup"), "enUS")).source).toEqual([
       "followup",
@@ -59,5 +62,12 @@ describe("filtersFromParams", () => {
     expect(await client("client=nonsense")).toBe("focus");
     expect(await client("client=anniversary")).toBe("anniversary");
     expect(await client("client=all")).toBe("all");
+  });
+
+  it("reads a zone on offer by its uiMapID, and nothing else", async () => {
+    expect((await filtersFromParams(new URLSearchParams("zone=1411"), "enUS")).zone).toBe(1411);
+    expect((await filtersFromParams(new URLSearchParams("zone=1414"), "enUS")).zone).toBeUndefined();
+    expect((await filtersFromParams(new URLSearchParams("zone=Durotar"), "enUS")).zone).toBeUndefined();
+    expect((await filtersFromParams(new URLSearchParams("zone=01411"), "enUS")).zone).toBeUndefined();
   });
 });

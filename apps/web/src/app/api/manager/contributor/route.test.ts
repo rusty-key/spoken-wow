@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CODES } from "@/lib/lang";
+import { allLangs } from "@/lib/lang";
 import type { Viewer } from "@/lib/permissions";
 
 const who = vi.hoisted(() => ({
@@ -48,8 +48,8 @@ describe("manager contributor route", () => {
     expect((await (await GET()).json()).adminLangs).toEqual(["frFR"]);
   });
 
-  it("a global admin answers every code in CODES", async () => {
+  it("a global admin answers every language", async () => {
     who.role = "admin";
-    expect((await (await GET()).json()).adminLangs).toEqual([...CODES]);
+    expect((await (await GET()).json()).adminLangs).toEqual(allLangs());
   });
 });

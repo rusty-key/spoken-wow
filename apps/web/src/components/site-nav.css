@@ -1,0 +1,179 @@
+/*
+ * The site header on every page but the front page: the front page's top bar from brand.css, with
+ * what differs here. It scrolls away, because the explorers pin their own search bars to the top.
+ */
+
+.sn.bn-nav {
+  position: static;
+  background: var(--bg-deep);
+  backdrop-filter: none;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.bn-theme :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.sn .bn-brand {
+  color: var(--text);
+}
+
+.sn-brand-group {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+}
+.sn-area {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(240, 194, 90, 0.12);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.sn .bn-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.sn .bn-links a[aria-current],
+.sn .bn-links a[data-section] {
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.sn .bn-links a.sn-admin {
+  color: var(--accent);
+}
+.sn-admin svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sn-burger {
+  display: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  cursor: pointer;
+}
+.sn-burger:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* Plain CSS outranks the popover's own utility classes, which sit in a cascade layer. */
+.sn-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 256px;
+  /* A signed-in admin's burger is taller than a phone: the menu scrolls inside the screen. */
+  max-height: calc(var(--radix-popover-content-available-height, 100dvh) - 8px);
+  overflow-y: auto;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+}
+.sn-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 20px;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.sn-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.sn-item[aria-current],
+.sn-item[data-section],
+.sn-pop .sn-admin {
+  color: var(--accent);
+}
+.sn-item svg {
+  width: 14px;
+  height: 14px;
+}
+.sn-account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+.sn-account span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sn-role {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--btn);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.sn-rule {
+  height: 1px;
+  margin: 6px 4px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.sn-pop-lang {
+  padding: 4px 4px 8px;
+}
+
+/*
+ * NARROW must match UserMenu.tsx. The front page folds at 1020px; this bar also carries the
+ * Backstage tag, the language switch and Profile, and needs about 1150px, so it folds at 1200px.
+ */
+@media (width < 1200px) {
+  .sn .bn-links,
+  .sn-wide {
+    display: none;
+  }
+  .sn-burger {
+    display: grid;
+  }
+}
+
+/* The narrowest phones (320px) fit the wordmark, the tag and the burger only with tighter gaps. */
+@media (width < 420px) {
+  .sn.bn-nav .bn-wrap {
+    gap: 12px;
+  }
+  .sn-brand-group {
+    gap: 8px;
+  }
+}

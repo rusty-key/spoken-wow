@@ -38,14 +38,14 @@ describe("installIdFrom", () => {
 });
 
 describe("hitFrom", () => {
-  it("needs a pack language the site serves, and keeps a well-formed version only", () => {
-    expect(hitFrom(submission({ pack: "deDE", packVersion: "2.3.0" }), "q:1:accept")).toEqual({
+  it("needs a pack language the site serves, and keeps a well-formed version only", async () => {
+    expect(await hitFrom(submission({ pack: "deDE", packVersion: "2.3.0" }), "q:1:accept")).toEqual({
       lineId: "q:1:accept",
       packLang: "deDE",
       packVersion: "2.3.0",
     });
-    expect(hitFrom(submission({ pack: "xxXX" }), "q:1:accept")).toBeNull();
-    expect(hitFrom(submission({ pack: "deDE", packVersion: "a b" }), "q:1:accept")?.packVersion).toBeNull();
+    expect(await hitFrom(submission({ pack: "xxXX" }), "q:1:accept")).toBeNull();
+    expect((await hitFrom(submission({ pack: "deDE", packVersion: "a b" }), "q:1:accept"))?.packVersion).toBeNull();
   });
 });
 
@@ -102,7 +102,7 @@ describe("missingAudioRanking", () => {
     }
   });
 
-  it("leaves out progress text, which the addon reports as silent but nothing voices", async () => {
+  it("ranks progress text like any other line", async () => {
     // q:179:progress comes from the seeded corpus, which already lists it through its speakers.
     await db().query(
       `insert into "quest_line"
@@ -116,6 +116,6 @@ describe("missingAudioRanking", () => {
       { lineId: lineA, packLang: lang, packVersion: "1.0.0" },
     ]);
     await recordMissingAudio(installs[1]!, [{ lineId: "q:179:progress", packLang: lang, packVersion: "1.0.0" }]);
-    expect((await missingAudioRanking(lang)).map((row) => row.lineId)).toEqual([lineA]);
+    expect((await missingAudioRanking(lang)).map((row) => row.lineId)).toEqual(["q:179:progress", lineA]);
   });
 });

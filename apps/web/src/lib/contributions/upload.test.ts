@@ -23,7 +23,7 @@ describe("sendInChunks", () => {
     const outcome = await sendInChunks(lines(MAX_ENVELOPES + 1), post, (sent) => progress.push(sent));
 
     expect(post.mock.calls.map(([chunk]) => chunk.length)).toEqual([MAX_ENVELOPES, 1]);
-    expect(outcome).toEqual({ sent: MAX_ENVELOPES + 1, accepted: MAX_ENVELOPES + 1, refused: 0 });
+    expect(outcome).toEqual({ sent: MAX_ENVELOPES + 1, accepted: MAX_ENVELOPES + 1, seen: 0, refused: 0 });
     expect(progress).toEqual([MAX_ENVELOPES, MAX_ENVELOPES + 1]);
   });
 
@@ -42,7 +42,7 @@ describe("sendInChunks", () => {
     const outcome = await sendInChunks(lines(MAX_ENVELOPES * 3), post);
 
     expect(post).toHaveBeenCalledTimes(2);
-    expect(outcome).toEqual({ sent: MAX_ENVELOPES, accepted: MAX_ENVELOPES, refused: 0, failedWith: 429 });
+    expect(outcome).toEqual({ sent: MAX_ENVELOPES, accepted: MAX_ENVELOPES, seen: 0, refused: 0, failedWith: 429 });
   });
 
   it("reports no response at all as null", async () => {
@@ -60,7 +60,13 @@ describe("sendInChunks", () => {
     const outcome = await sendInChunks(lines(2), async (chunk) => accepted(chunk), undefined, {
       accepted: 2000,
       refused: 300,
+      seen: 40,
     });
-    expect(outcome).toEqual({ sent: 2, accepted: 2002, refused: 300 });
+    expect(outcome).toEqual({ sent: 2, accepted: 2002, seen: 40, refused: 300 });
+  });
+
+  it("counts where the player met each NPC apart from the lines", async () => {
+    const outcome = await sendInChunks(lines(3), async () => Response.json({ accepted: 1, seen: 2, refused: {} }));
+    expect(outcome).toMatchObject({ accepted: 1, seen: 2 });
   });
 });

@@ -7,8 +7,22 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { closeDb } from "@/lib/db";
 import { asSystem, systemRows, testUser } from "@/lib/teams/testing";
 
+const droplet = vi.hoisted(() => ({ startDropletRun: vi.fn() }));
+vi.mock("./droplet", async (original) => ({ ...(await original<typeof import("./droplet")>()), ...droplet }));
+
+const encode = vi.hoisted(() => ({ encodeMissingForPack: vi.fn() }));
+vi.mock("@/lib/takes/encode", () => encode);
+
+const mail = vi.hoisted(() => ({ sent: [] as { to: string; subject: string; text: string }[] }));
+vi.mock("@/lib/email", () => ({
+  sendEmail: async (to: string, subject: string, text: string) => {
+    mail.sent.push({ to, subject, text });
+    return true;
+  },
+}));
+
 import { forgetReleaseCheck, syncActive } from "./sync";
-import { activeRun, startRun } from "./store";
+import { activeRun, lastReleasedAt, startRun } from "./store";
 
 function reply(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
@@ -38,6 +52,8 @@ describe("syncActive", () => {
     vi.stubEnv("SPOKEN_RELEASE_GITHUB_REPO", "rusty-key/spoken-wow");
     forgetReleaseCheck();
     vi.spyOn(console, "error").mockImplementation(() => {});
+    droplet.startDropletRun.mockReset().mockResolvedValue(undefined);
+    encode.encodeMissingForPack.mockReset().mockResolvedValue(undefined);
   });
 
   afterEach(async () => {
@@ -53,7 +69,7 @@ describe("syncActive", () => {
   });
 
   async function age(id: string, minutes: number) {
-    await asSystem.query(`update "release_run" set "createdAt" = now() - make_interval(mins => $2) where "id" = $1`, [id, minutes]);
+    await asSystem.query(`update "release_run" set "createdAt" = now() - make_interval(mins => $2), "startedAt" = now() - make_interval(mins => $2) where "id" = $1`, [id, minutes]);
   }
 
   describe("a job on this machine", () => {
@@ -114,6 +130,120 @@ describe("syncActive", () => {
       utimesSync(join(dir, "heartbeat"), old, old);
       expect(await syncActive()).toBeNull();
       expect(await row(run.id)).toMatchObject({ state: "failed", error: "The release process stopped without finishing" });
+    });
+
+    it("starts the next queued run, with its own bump, once the active one settles", async () => {
+      const first = await startRun("bosses", "frFR", user.id);
+      const second = await startRun("places", "deDE", user.id, { bump: "minor" });
+      expect(second.state).toBe("queued");
+      job(first.id, { exit: "0", log: "==> released 1.0.1: SpokenBossesAudio_frFR\n" });
+      expect(await syncActive()).toMatchObject({ id: second.id, state: "dispatching" });
+      expect((await row(first.id)).state).toBe("done");
+      expect(encode.encodeMissingForPack).toHaveBeenCalledWith("places", "deDE", second.teamId);
+      expect(droplet.startDropletRun).toHaveBeenCalledTimes(1);
+      expect(droplet.startDropletRun.mock.calls[0][0]).toMatchObject({ id: second.id, kind: "release", bump: "minor", lang: "deDE" });
+    });
+
+    it("fails a queued run whose job cannot start, and starts the one after it", async () => {
+      const first = await startRun("bosses", "frFR", user.id);
+      const second = await startRun("places", "deDE", user.id);
+      const third = await startRun("readables", "frFR", user.id);
+      droplet.startDropletRun.mockRejectedValueOnce(new Error("spawn setsid ENOENT"));
+      job(first.id, { exit: "0" });
+      expect(await syncActive()).toMatchObject({ id: third.id, state: "dispatching" });
+      expect(await row(second.id)).toMatchObject({ state: "failed", error: "spawn setsid ENOENT" });
+      expect(droplet.startDropletRun).toHaveBeenCalledTimes(2);
+    });
+
+    describe("a staged release", () => {
+      const STAGED = (rev: string) => ({
+        version: "1.0.0",
+        packs: { SpokenBossesAudio_frFR_x: { rev, baseRev: null, manifestSha256: "m", lang: "frFR" } },
+        languages: {},
+      });
+      const stagedLog = "==> step 3/3: publish\n==> staged 1.0.0: SpokenBossesAudio_frFR_x\n";
+      let owner: Awaited<ReturnType<typeof testUser>>;
+
+      beforeEach(async () => {
+        mail.sent.length = 0;
+        owner = await testUser("release-sync-owner");
+        await asSystem.query(`update "user" set "role" = 'admin' where "id" = $1`, [owner.id]);
+      });
+
+      afterEach(async () => {
+        await owner.cleanup();
+      });
+
+      const full = async (id: string) =>
+        (await systemRows<{ state: string; version: string | null; staged: unknown }>(
+          `select "state", "version", "staged" from "release_run" where "id" = $1`, [id],
+        ))[0];
+
+      it("waits for review with what it staged, tells the site owners, and leaves the pending count alone", async () => {
+        const run = await startRun("bosses", "frFR", user.id, { stage: true });
+        job(run.id, { exit: "0", log: stagedLog, "staged.json": JSON.stringify(STAGED("r1")) });
+        expect(await syncActive()).toBeNull();
+        expect(await full(run.id)).toEqual({ state: "awaiting_review", version: "1.0.0", staged: STAGED("r1") });
+        expect((await lastReleasedAt("frFR")).has("bosses")).toBe(false);
+        expect(mail.sent.find((m) => m.to === `${owner.id}@example.invalid`)?.subject).toContain("to review");
+      });
+
+      it("keeps the takes it was built from beside what it staged, for the review", async () => {
+        const run = await startRun("bosses", "frFR", user.id, { stage: true });
+        const takes = { "boss-1": { version: 3, sha256: "a".repeat(64) } };
+        job(run.id, { exit: "0", log: stagedLog, "staged.json": JSON.stringify({ ...STAGED("r1"), takes }) });
+        await syncActive();
+        expect(await full(run.id)).toMatchObject({ state: "awaiting_review", staged: STAGED("r1") });
+        const [kept] = await systemRows<{ takes: unknown }>(`select "takes" from "release_run" where "id" = $1`, [run.id]);
+        expect(kept.takes).toEqual(takes);
+      });
+
+      it("fails when the job says it staged but left no staged.json", async () => {
+        const run = await startRun("bosses", "frFR", user.id, { stage: true });
+        job(run.id, { exit: "0", log: stagedLog });
+        await syncActive();
+        expect(await row(run.id)).toMatchObject({ state: "failed", error: "The release staged nothing the site could read" });
+      });
+
+      it("replaces the version waiting for the same pack only once the new one waits too", async () => {
+        const first = await startRun("bosses", "frFR", user.id, { stage: true });
+        job(first.id, { exit: "0", log: stagedLog, "staged.json": JSON.stringify(STAGED("r1")) });
+        await syncActive();
+
+        const failing = await startRun("bosses", "frFR", user.id, { stage: true });
+        job(failing.id, { exit: "1", log: "error: no\n" });
+        await syncActive();
+        expect((await row(first.id)).state).toBe("awaiting_review");
+
+        const other = await startRun("places", "frFR", user.id, { stage: true });
+        job(other.id, { exit: "0", log: stagedLog, "staged.json": JSON.stringify(STAGED("r2")) });
+        await syncActive();
+        expect((await row(first.id)).state).toBe("awaiting_review");
+
+        const second = await startRun("bosses", "frFR", user.id, { stage: true });
+        job(second.id, { exit: "0", log: stagedLog, "staged.json": JSON.stringify(STAGED("r3")) });
+        await syncActive();
+        expect((await row(first.id)).state).toBe("superseded");
+        expect((await row(second.id)).state).toBe("awaiting_review");
+        expect((await row(other.id)).state).toBe("awaiting_review");
+      });
+    });
+
+    it("starts a queued run when it finds nothing active", async () => {
+      const first = await startRun("bosses", "frFR", user.id);
+      const second = await startRun("places", "deDE", user.id);
+      await asSystem.query(`update "release_run" set "state" = 'failed' where "id" = $1`, [first.id]);
+      expect(await syncActive()).toMatchObject({ id: second.id, state: "dispatching" });
+    });
+
+    it("fails a run whose job never started, once past the encoding's budget, and starts the next", async () => {
+      const lost = await startRun("bosses", "frFR", user.id);
+      const next = await startRun("places", "deDE", user.id);
+      expect(await syncActive(github(null))).toMatchObject({ id: lost.id, state: "dispatching" });
+      await age(lost.id, 3);
+      forgetReleaseCheck();
+      expect(await syncActive(github(null))).toMatchObject({ id: next.id, state: "dispatching" });
+      expect(await row(lost.id)).toMatchObject({ state: "failed", error: "Its job never started: the site restarted before it could" });
     });
 
     it("leaves a run with no job directory to GitHub", async () => {

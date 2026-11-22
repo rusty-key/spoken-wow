@@ -244,7 +244,7 @@ describe("naming", () => {
 
 describe("ignores at two levels", () => {
   it("counts a line ignored in one language only there", async () => {
-    await writeIgnore("q:0:ignore-test", "the Italian never says this", userId, LANG);
+    await writeIgnore("q:0:ignore-test", "the Italian never says this", userId, { lang: LANG });
     expect((await readIgnores(LANG)).get("q:0:ignore-test")?.lang).toBe(LANG);
     expect((await readIgnores("enUS")).has("q:0:ignore-test")).toBe(false);
     expect(await clearIgnore("q:0:ignore-test", LANG, userId)).toBe(true);
@@ -259,7 +259,7 @@ describe("ignores at two levels", () => {
   // Both levels at once since 0038: the broader decision is the one a language reads.
   it("keeps a language's own ignore beside one for every language", async () => {
     await writeIgnore("q:0:ignore-test", "nobody voices this", userId);
-    await writeIgnore("q:0:ignore-test", "nor the Italian", userId, LANG);
+    await writeIgnore("q:0:ignore-test", "nor the Italian", userId, { lang: LANG });
     expect((await readIgnores(LANG)).get("q:0:ignore-test")?.reason).toBe("nobody voices this");
     expect(await clearIgnore("q:0:ignore-test", null, userId)).toBe(true);
     expect((await readIgnores(LANG)).get("q:0:ignore-test")?.reason).toBe("nor the Italian");

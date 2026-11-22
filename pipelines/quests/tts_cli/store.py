@@ -23,6 +23,7 @@ WORD_TIMES_FILE = "word-times.json"
 #: Each live take's words as its pack shows them, by stem, from sounds.mjs: a take's own words
 #: are in no corpus.
 TAKE_TEXT_FILE = "take-text.json"
+LINE_TEXT_FILE = "line-text.json"
 #: Each clip's length by stem, written by sounds.mjs when the store holds pointers, not audio.
 DURATIONS_FILE = "durations.json"
 
@@ -74,6 +75,11 @@ def word_times(store_dir: str) -> dict:
 def take_text(store_dir: str) -> dict:
     """{stem: words} for the takes that have words, empty for a store without the file."""
     return _stem_table(store_dir, TAKE_TEXT_FILE)
+
+
+def line_text(store_dir: str) -> dict:
+    """{line stem: words} for every current line of the store's language, recorded or not."""
+    return _stem_table(store_dir, LINE_TEXT_FILE)
 
 
 def durations(store_dir: str) -> dict:

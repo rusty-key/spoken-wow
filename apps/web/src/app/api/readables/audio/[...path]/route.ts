@@ -3,12 +3,12 @@
  *
  * The places route's shape and guard: membership in the set of paths the corpus can
  * address, traversal-proof by construction. Which take plays is the row's `isCurrent`;
- * the bytes are that take's archived file.
+ * the bytes are that take's archived file. `?team=<slug>` plays another team's live take
+ * instead, and nothing of a file it has none of.
  */
 import { isAddressable } from "@/lib/readables/audio";
 import { langParam } from "@/lib/lang-server";
-import { serveTake } from "@/lib/takes/serve";
-import { livePath } from "@/lib/takes/store";
+import { serveViewed } from "@/lib/teams/viewing";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +22,5 @@ export async function GET(request: Request, context: { params: Promise<{ path: s
   ]);
   if (denied) return denied;
   if (!addressable) return new Response("bad audio path", { status: 400 });
-  return serveTake(request, await livePath("readables", rel.slice(0, -".mp3".length), lang), {
-    immutable: false,
-    lang,
-  });
+  return serveViewed(request, "readables", rel.slice(0, -".mp3".length), lang);
 }

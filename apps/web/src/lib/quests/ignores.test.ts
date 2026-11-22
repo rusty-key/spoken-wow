@@ -6,10 +6,12 @@
  * Needs DATABASE_URL and migrations applied:
  *   docker compose up -d postgres && deploy/bin/migrate.sh "$PWD/web"
  */
-import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
-import { asSystem, ownTeam } from "@/lib/teams/testing";
+import type { Lang } from "@/lib/lang";
+import { asTeams } from "@/lib/teams/acting";
+import { asSystem, dropLang, dropTeam, newTeamIn, ownTeam, systemRows, uniqueLang } from "@/lib/teams/testing";
 
 import { clearIgnore, forgetIgnores, readIgnores, writeIgnore } from "./ignores";
 
@@ -81,7 +83,7 @@ describe("an ignore's team", () => {
   it("is the language's for one language's ignore, which that language reads with the global ones", async () => {
     const german = await ownTeam("deDE");
     try {
-      await writeIgnore(LINE, "german only", null, "deDE");
+      await writeIgnore(LINE, "german only", null, { lang: "deDE" });
       expect(await teamOfRow("deDE")).toEqual([{ teamId: german.team }]);
       expect((await readIgnores("deDE")).get(LINE)?.lang).toBe("deDE");
       expect((await readIgnores("enUS")).has(LINE)).toBe(false);
@@ -91,5 +93,57 @@ describe("an ignore's team", () => {
       await asSystem.query(`delete from "activity" where "subject" = $1 and "kind" like 'ignore.%'`, [LINE]);
       await german.restore();
     }
+  });
+});
+
+describe("a language's own ignore", () => {
+  let lang: Lang;
+  let first: string;
+  let second: string;
+  const as = <T>(team: string, work: () => Promise<T>) => asTeams(new Map([[lang, team]]), work);
+
+  beforeEach(async () => {
+    lang = await uniqueLang();
+    first = await newTeamIn(lang, true, "ignore-first");
+    second = await newTeamIn(lang, false, "ignore-second");
+  });
+
+  afterEach(async () => {
+    await asSystem.query(`delete from "line_ignore" where "lineId" = $1`, [LINE]);
+    await asSystem.query(`delete from "activity" where "lang" = $1`, [lang]);
+    await dropTeam(first);
+    await dropTeam(second);
+    await dropLang(lang);
+  });
+
+  it("hides the line for every team of the language, and only there", async () => {
+    await as(first, () => writeIgnore(LINE, "rejected", null, { lang, wholeLanguage: true }));
+    expect(
+      await systemRows(`select "lang", "teamId" from "line_ignore" where "lineId" = $1`, [LINE]),
+    ).toEqual([{ lang, teamId: null }]);
+    expect((await as(first, () => readIgnores(lang))).has(LINE)).toBe(true);
+    expect((await as(second, () => readIgnores(lang))).has(LINE)).toBe(true);
+    expect((await readIgnores("enUS")).has(LINE)).toBe(false);
+  });
+
+  it("stands beside a team's own ignore of the line and the every-language one", async () => {
+    await writeIgnore(LINE, "everywhere", null);
+    await as(first, () => writeIgnore(LINE, "the language's", null, { lang, wholeLanguage: true }));
+    await as(first, () => writeIgnore(LINE, "the first team's", null, { lang }));
+    expect(await systemRows(`select count(*)::int as "n" from "line_ignore" where "lineId" = $1`, [LINE])).toEqual([
+      { n: 3 },
+    ]);
+  });
+
+  it("leaves a team's own ignore to that team", async () => {
+    await as(first, () => writeIgnore(LINE, "the first team's", null, { lang }));
+    expect((await as(first, () => readIgnores(lang))).has(LINE)).toBe(true);
+    expect((await as(second, () => readIgnores(lang))).has(LINE)).toBe(false);
+  });
+
+  it("is lifted by either team", async () => {
+    await as(first, () => writeIgnore(LINE, "rejected", null, { lang, wholeLanguage: true }));
+    expect(await as(second, () => clearIgnore(LINE, lang, null))).toBe(true);
+    expect((await as(first, () => readIgnores(lang))).has(LINE)).toBe(false);
   });
 });

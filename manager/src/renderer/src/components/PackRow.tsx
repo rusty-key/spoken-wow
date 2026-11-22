@@ -62,8 +62,9 @@ export function PackRow({ gameId, productId, writable, blockedReason, released, 
     else if (job?.action === 'repair') repair()
     else install()
   }
-  // Installed by hand: a repair needs to know the version, an update puts the newest one over it.
-  const canRepair = present && (s !== 'unknown' || !!status?.installedVersion)
+  // Installed by hand: a repair needs to know the version, an update puts the newest one over it. With no release
+  // there is nothing to repair from, only to remove.
+  const canRepair = released && present && (s !== 'unknown' || !!status?.installedVersion)
 
   let action: ReactNode
   if (busy) {

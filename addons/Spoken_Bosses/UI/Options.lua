@@ -8,10 +8,9 @@ local L = Bosses.L
 -- The game's settings list sets its rows 25 in from the canvas's left.
 local INDENT = 25
 
--- The voice pack this addon is made for, and where to get it. CurseForge has no bosses project: the
--- pack is in the Places and Bosses download.
+-- The voice pack this addon is made for, and where to get it.
 local AUDIO_ADDON = "SpokenBossesAudio"
-local AUDIO_URL = "https://www.curseforge.com/wow/addons/spoken-audio-places"
+local AUDIO_URL = "https://www.curseforge.com/wow/addons/spoken-audio-bosses"
 
 local panel
 
