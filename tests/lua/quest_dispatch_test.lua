@@ -174,82 +174,132 @@ lookup[string.format("%d-progress", full)] = 1
 lookup[string.format("%d-complete", full)] = 1
 lookup[string.format("%d-accept", followUp)] = 1
 
--- A player who wants offers quiet until accepted can opt in. Manual Play remains an immediate
--- read, while a declined offer is discarded instead of being replayed on close.
+-- Read After Accepting: a quest's line waits until the quest is accepted or handed in, and a window
+-- closed without either reads nothing. Manual reads do not wait.
 local afterAccept = 106
 lookup[string.format("%d-accept", afterAccept)] = 1
+lookup[string.format("%d-progress", afterAccept)] = 1
+lookup[string.format("%d-complete", afterAccept)] = 1
 VO.Addon.db.profile.Audio.ReadAfterAccept = true
+
+local function OpenOffer(panel, event)
+    world.questID = afterAccept
+    stub.ShowPanel(panel or "QuestFrameDetailPanel")
+    stub.FireEvent(event or "QUEST_DETAIL")
+end
+
+local function CloseWindow()
+    world.questID = 0
+    stub.ShowPanel(nil)
+    stub.FireEvent("QUEST_FINISHED")
+end
+
 StartScenario()
-world.questID = afterAccept
-stub.ShowPanel("QuestFrameDetailPanel")
-stub.FireEvent("QUEST_DETAIL")
+OpenOffer()
 stub.Advance(3)
-Expect("read-after-accept holds an offer open", "")
-world.questID = 0
-stub.ShowPanel(nil)
-stub.FireEvent("QUEST_FINISHED")
+Expect("read-after-accept holds an offer while its window is open", "")
+CloseWindow()
 stub.Advance(3)
 Expect("read-after-accept leaves a declined offer quiet", "")
+
 StartScenario()
-world.questID = afterAccept
-stub.ShowPanel("QuestFrameDetailPanel")
-stub.FireEvent("QUEST_DETAIL")
+OpenOffer()
 stub.Advance(3)
-world.questID = 0
-stub.ShowPanel(nil)
-stub.FireEvent("QUEST_FINISHED")
+CloseWindow()
 stub.FireEvent("QUEST_ACCEPTED", afterAccept)
 stub.Advance(3)
-Expect("read-after-accept plays after accepting", string.format("%d-accept", afterAccept))
+Expect("read-after-accept reads the offer once it is accepted", string.format("%d-accept", afterAccept))
 
--- An offer can stay open longer than the normal snapshot lifetime. It remains available until
--- the player accepts it, even though no sound has played yet.
+-- The server's answer comes after the window has closed, and can be slow.
 StartScenario()
-world.questID = afterAccept
-stub.ShowPanel("QuestFrameDetailPanel")
-stub.FireEvent("QUEST_DETAIL")
-stub.Advance(11)
-world.questID = 0
-stub.ShowPanel(nil)
-stub.FireEvent("QUEST_FINISHED")
+OpenOffer()
+stub.Advance(3)
+CloseWindow()
+stub.Advance(2)
 stub.FireEvent("QUEST_ACCEPTED", afterAccept)
 stub.Advance(3)
-Expect("read-after-accept keeps an offer open past snapshot expiry", string.format("%d-accept", afterAccept))
+Expect("read-after-accept reads an offer whose accept arrives late", string.format("%d-accept", afterAccept))
 
--- Manual readers bypass the deferred automatic offer path.
+-- An offer read slowly is still read when accepted.
+StartScenario()
+OpenOffer()
+stub.Advance(30)
+CloseWindow()
+stub.FireEvent("QUEST_ACCEPTED", afterAccept)
+stub.Advance(3)
+Expect("read-after-accept reads an offer left open a long time", string.format("%d-accept", afterAccept))
+
+-- Declined, then picked up much later another way (a party member's share): the old offer is not read.
+StartScenario()
+OpenOffer()
+stub.Advance(3)
+CloseWindow()
+stub.Advance(12)
+stub.FireEvent("QUEST_ACCEPTED", afterAccept)
+stub.Advance(3)
+Expect("read-after-accept forgets a declined offer", "")
+
+-- Auto-accept closes the window in the frame it opened: nothing reads at the close, the accept reads it.
 StartScenario()
 world.questID = afterAccept
-stub.ShowPanel("QuestFrameDetailPanel")
 stub.FireEvent("QUEST_DETAIL")
+CloseWindow()
+stub.Advance(0.3)
+Expect("read-after-accept does not read an auto-accepted offer at the close", "")
+stub.FireEvent("QUEST_ACCEPTED", afterAccept)
+stub.Advance(3)
+Expect("...and reads it once on the accept", string.format("%d-accept", afterAccept))
+
+-- A turn-in waits for the hand-in, and a progress page followed by its reward page reads the reward.
+StartScenario()
+OpenOffer("QuestFrameProgressPanel", "QUEST_PROGRESS")
+stub.Advance(3)
+OpenOffer("QuestFrameRewardPanel", "QUEST_COMPLETE")
+stub.Advance(3)
+Expect("read-after-accept holds a turn-in while its window is open", "")
+CloseWindow()
+stub.FireEvent("QUEST_TURNED_IN", afterAccept, 0, 0)
+stub.Advance(3)
+Expect("read-after-accept reads the reward page once the quest is handed in",
+    string.format("%d-complete", afterAccept))
+
+StartScenario()
+OpenOffer("QuestFrameProgressPanel", "QUEST_PROGRESS")
+stub.Advance(3)
+CloseWindow()
+stub.Advance(3)
+Expect("read-after-accept leaves a turn-in walked away from quiet", "")
+
+-- Stop When Window Closes does not cut a line that starts after its window: here the accept
+-- arrives before the close, as some clients send it.
+VO.Addon.db.profile.Audio.StopAudioOnDisengage = true
+StartScenario()
+OpenOffer()
+stub.Advance(3)
+stub.FireEvent("QUEST_ACCEPTED", afterAccept)
+CloseWindow()
+stub.Advance(0.6)
+VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
+ExpectCurrent("read-after-accept is not cut by Stop When Window Closes", string.format("%d-accept", afterAccept))
+
+-- A quest-log page has no NPC window behind it and is never accepted, so it reads as before.
+StartScenario()
+world.questID = afterAccept
+stub.ShowPanel("QuestLogDetailFrame")
+stub.Advance(3)
+Expect("read-after-accept still reads a quest-log page", string.format("%d-accept", afterAccept))
+
+StartScenario()
+OpenOffer()
 stub.Advance(3)
 VO.Addon:InvokeQuestHandler("QUEST_DETAIL", "Play button", true)
-Expect("manual Play remains immediate with read-after-accept", string.format("%d-accept", afterAccept))
+Expect("manual Play does not wait for the accept", string.format("%d-accept", afterAccept))
 
 StartScenario()
-world.questID = afterAccept
-stub.ShowPanel("QuestFrameDetailPanel")
-stub.FireEvent("QUEST_DETAIL")
+OpenOffer()
 stub.Advance(3)
 VO.Addon:ReadVisibleQuest("/spq read")
-Expect("/spq read remains immediate with read-after-accept", string.format("%d-accept", afterAccept))
-
--- The QUEST_DETAIL event can expose the previous quest's globals. The deferred branch must
--- capture the stabilized offer so its later QUEST_ACCEPTED event can replay it.
-local staleOffer = 108
-lookup[string.format("%d-accept", staleOffer)] = 1
-StartScenario()
-world.questID = full
-stub.ShowPanel("QuestFrameDetailPanel")
-stub.FireEvent("QUEST_DETAIL")
-world.questID = staleOffer
-stub.Advance(3)
-Expect("read-after-accept keeps a stabilized offer after stale detail globals", "")
-world.questID = 0
-stub.ShowPanel(nil)
-stub.FireEvent("QUEST_FINISHED")
-stub.FireEvent("QUEST_ACCEPTED", staleOffer)
-stub.Advance(3)
-Expect("read-after-accept replays the stabilized offer", string.format("%d-accept", staleOffer))
+Expect("/spq read does not wait for the accept", string.format("%d-accept", afterAccept))
 VO.Addon.db.profile.Audio.ReadAfterAccept = false
 
 -- A page whose event arrives with neither a quest ID nor a title names no quest, and nothing that
@@ -727,23 +777,6 @@ stub.FireEvent("QUEST_FINISHED")
 stub.Advance(5)
 Expect("a page already queued when the window closes is not read again",
     string.format("%d-accept", full))
-
--- Read When Window Closes holds the read until the window closes, and the page is read once. The
--- line is short, so it is over before the watcher sees the window gone and would read the page again.
-lookup["106-accept"] = 0.02
-StartScenario()
-VO.Addon.db.profile.Audio.ReadAfterClose = true
-world.questID = 106
-stub.ShowPanel("QuestFrameDetailPanel")
-stub.FireEvent("QUEST_DETAIL")
-stub.Advance(8)
-Expect("Read When Window Closes holds the offer while the window is open", "")
-world.questID = 0
-stub.ShowPanel(nil)
-stub.FireEvent("QUEST_FINISHED")
-stub.Advance(5)
-VO.Addon.db.profile.Audio.ReadAfterClose = false
-Expect("...and reads it once when the window closes", "106-accept")
 
 -- A replay is not held back by DialogueUI's wait for its window: the window it waits for is not
 -- the page's.

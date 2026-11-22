@@ -2,6 +2,11 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Read After Accepting replaces Read When Window Closes.** A quest reads once you accept or hand it
+  in, and quests you close without either stay quiet. *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.12.1 — 2026-11-22
 
 - **Queue counts pulse without an error when a line is added while Spoken is stopped.** *([anon1231823](https://github.com/anon1231823))*

@@ -227,6 +227,63 @@ local function MarkQuestSnapshotRead(event, questID)
     end
 end
 
+-- With Read After Accepting on, an automatic read waits for QUEST_ACCEPTED or QUEST_TURNED_IN, the
+-- newest page of each quest kept for each. A held read outlives its window by SNAPSHOT_LIFETIME,
+-- because the server's answer to an accept or a turn-in arrives after the window has closed.
+local heldReads = {}
+
+local function PruneHeldReads()
+    local now = GetTime()
+    for i = #heldReads, 1, -1 do
+        local closedAt = heldReads[i].closedAt
+        if closedAt and now - closedAt > SNAPSHOT_LIFETIME then
+            table.remove(heldReads, i)
+        end
+    end
+end
+
+local function HoldRead(soundData)
+    PruneHeldReads()
+    local event = EVENT_OF_SOUND[soundData.event]
+    -- A progress page followed by its reward page is one turn-in: only the reward page is read.
+    local commit = event == "QUEST_DETAIL" and "accept" or "turnin"
+    for i = #heldReads, 1, -1 do
+        local held = heldReads[i]
+        if held.commit == commit and held.soundData.questID == soundData.questID then
+            table.remove(heldReads, i)
+        end
+    end
+    table.insert(heldReads, { commit = commit, event = event, soundData = soundData })
+end
+
+--- The quest `questID` was accepted (`commit` "accept") or handed in ("turnin"): its held reads
+--- start, and its event snapshots are spent, or the replay after this would read them again.
+local function ReleaseHeldReads(commit, questID)
+    PruneHeldReads()
+    for i = 1, #heldReads do
+        local held = heldReads[i]
+        if held and held.commit == commit and held.soundData.questID == questID then
+            table.remove(heldReads, i)
+            for _, snapshot in ipairs(questSnapshots) do
+                if snapshot.event == held.event and snapshot.questID == questID then
+                    snapshot.dispatched = true
+                end
+            end
+            -- Its window has closed, so no later close may stop it as that window's line.
+            held.soundData.addedCallback = nil
+            Player:Enqueue(held.soundData)
+            return
+        end
+    end
+end
+
+local function CloseHeldReads()
+    local closedAt = GetTime()
+    for _, held in ipairs(heldReads) do
+        held.closedAt = held.closedAt or closedAt
+    end
+end
+
 --- An offer recorded after a progress or reward page of its quest: it carries the globals of the
 --- quest just handed in, not an offer of its own.
 local function IsStaleOffer(i)
@@ -540,8 +597,9 @@ local defaults = {
             -- /spq read is typed. GossipFrequency then has nothing to decide.
             Autoplay = true,
             OGThrall = false,
-            -- On, an automatic read starts when the window closes instead of when it opens.
-            ReadAfterClose = false,
+            -- On, an automatic quest read waits until the quest is accepted or handed in, and a
+            -- window closed without either reads nothing.
+            ReadAfterAccept = false,
             -- What NPCs say in chat after this player accepts or turns in a quest
             -- (Followup.lua). Autoplay off silences these too: they read themselves.
             FollowupLines = true,
@@ -630,6 +688,17 @@ function Addon:OnInitialize()
         if global.Compendium then global.Compendium.FoundOnly = nil end
     end
     self:FoldGreetingsHeardByGUID()
+    -- Read After Accepting replaced Read When Window Closes. Its players wanted the line after the
+    -- window, not during it, so they keep that; dropping the key alone would read on open again.
+    for _, profile in pairs(self.db.sv and self.db.sv.profiles or {}) do
+        local audio = profile.Audio
+        if audio and audio.ReadAfterClose ~= nil then
+            if audio.ReadAfterClose == true then
+                audio.ReadAfterAccept = true
+            end
+            audio.ReadAfterClose = nil
+        end
+    end
     self.db.RegisterCallback(self, "OnProfileChanged", "RefreshConfig")
     self.db.RegisterCallback(self, "OnProfileReset", "RefreshConfig")
 
@@ -827,6 +896,10 @@ function Addon:OnInitialize()
             end
             return
         end
+        -- A window closed is not a quest accepted or handed in: its pages wait for that event.
+        if self.db.profile.Audio.ReadAfterAccept then
+            return
+        end
         wipe(newest)
         for i, snapshot in ipairs(questSnapshots) do
             if not snapshot.dispatched and not snapshot.passed then
@@ -861,6 +934,7 @@ function Addon:OnInitialize()
             -- Nothing to poll for: InvokeQuestHandler would refuse every read. The snapshots are
             -- dropped too, so turning autoplay back on does not replay a dialog long closed.
             wipe(questSnapshots)
+            wipe(heldReads)
             ResetCandidate(state)
             -- Said once for each quest opened meanwhile, which is the question a player asks.
             local open = CurrentQuestID()
@@ -1000,6 +1074,7 @@ function Addon:OnInitialize()
     self.questEventRecorderFrame:SetScript("OnEvent", function(_, event, questIDArg, ...)
         if event == "QUEST_FINISHED" then
             lastQuestEvent = nil
+            CloseHeldReads()
             local state = self.autoQuestState
             if state then
                 state.lastHandledKey = nil
@@ -1028,6 +1103,7 @@ function Addon:OnInitialize()
             if self.dataModulesPending then
                 return
             end
+            ReleaseHeldReads(event == "QUEST_ACCEPTED" and "accept" or "turnin", questID)
             local succeeded, replayError = pcall(ReplayQuestSnapshots, event, questID, REPLAYED_ON[event])
             if not succeeded then
                 Debug:Record("auto-watcher-error", tostring(replayError))
@@ -1343,14 +1419,12 @@ function ResolveQuestID(source, questID, questTitle, targetName, questText, quie
         questTitle or ""))
 end
 
--- With Read When Window Closes on, an automatic read waits for the window to close
--- (QUEST_FINISHED). The window shows one quest page at a time, so the last one read is the one kept.
-local pendingRead
-
 local function QueueRead(soundData, manual)
     -- A read from the snapshot of a window that has already closed has nothing left to wait for.
-    if not manual and Addon.db.profile.Audio.ReadAfterClose and not questSnapshotInUse then
-        pendingRead = soundData
+    -- A quest-log page has no NPC window behind it and is never accepted, so it is not held.
+    if not manual and Addon.db.profile.Audio.ReadAfterAccept and not questSnapshotInUse
+        and lastQuestEvent then
+        HoldRead(soundData)
         -- Held counts as handled for the watcher, or it would read the quest again once the window closes.
         MarkQuestSnapshotRead(EVENT_OF_SOUND[soundData.event], soundData.questID)
         local state = Addon.autoQuestState
@@ -1665,8 +1739,8 @@ local function TakeGreetingMute(self, event)
     if not (SPEECH_EVENTS[event] or quest) then
         return
     end
-    -- A quest read that waits for the window to close leaves the NPC's greeting alone.
-    if quest and self.db.profile.Audio.ReadAfterClose then
+    -- A quest read that waits for the accept leaves the NPC's greeting alone.
+    if quest and self.db.profile.Audio.ReadAfterAccept then
         return
     end
     -- Game Greeting First: nothing is cut, and the line waits for the greeting instead.
@@ -1779,7 +1853,7 @@ function Addon:ExpectedLine(event, textIsCurrent)
         end
         return speech.text() or ""
     elseif quest then
-        if self.db.profile.Audio.ReadAfterClose then
+        if self.db.profile.Audio.ReadAfterAccept then
             return nil
         end
         -- The quest ID can still be the previous quest's this early; the worst that costs is
@@ -1997,13 +2071,6 @@ function Addon:QUEST_FINISHED()
     currentQuestSoundData = nil
     currentGossipSoundData = nil
     EndGreetingTextWait()
-    local pending = pendingRead
-    pendingRead = nil
-    if pending then
-        -- Its window has closed, so it is no window's line: the next close leaves it playing.
-        pending.addedCallback = nil
-        Player:Enqueue(pending)
-    end
 end
 
 function Addon:GOSSIP_CLOSED()
