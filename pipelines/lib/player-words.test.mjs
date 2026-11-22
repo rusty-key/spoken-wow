@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { registerPlayerWordRows, speakPlayerTokens, writtenPlayerTokens } from "./player-words.mjs";
+import {
+  builtinPlayerWordsOf,
+  isBuiltinPlayerWords,
+  registerPlayerWordRows,
+  speakPlayerTokens,
+  writtenPlayerTokens,
+} from "./player-words.mjs";
 
 test("a translation's tokens become its language's word", () => {
   assert.equal(speakPlayerTokens("Gut gemacht, $N.", "deDE"), "Gut gemacht, Abenteurer.");
@@ -31,4 +37,11 @@ test("written tokens are left in the two forms the addon fills", () => {
   assert.equal(writtenPlayerTokens("$$N, $uBürger;Bürgerin: und $ugut:gute;!"), "$N, $gBürger:Bürgerin; und $ggut:gute;!");
   assert.equal(writtenPlayerTokens("$gготов:готова:c; $N"), "$gготов:готова; $N");
   assert.equal(writtenPlayerTokens("Hola, $N. $GHe : She;"), "Hola, $N. $gHe:She;");
+});
+
+test("words equal to Spoken's own are the built-in words, so saving them stores no row", () => {
+  const ru = builtinPlayerWordsOf("ruRU");
+  assert.equal(isBuiltinPlayerWords("ruRU", { m: { ...ru.m, cases: {} }, f: { ...ru.f, nameGenitive: "" } }), true);
+  assert.equal(isBuiltinPlayerWords("ruRU", { ...ru, m: { ...ru.m, cases: { 6: { name: "путник" } } } }), false);
+  assert.equal(isBuiltinPlayerWords("plPL", { m: { name: "a", race: "b" }, f: { name: "a", race: "b" } }), false);
 });
