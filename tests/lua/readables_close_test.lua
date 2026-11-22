@@ -68,6 +68,15 @@ bagItems[2] = emptyBook
 stub.FireEvent("BAG_UPDATE", 0)
 Expect("an item without note text is not added", B:IsBookFound(emptyBook), false)
 
+_G.C_Container = {
+    GetContainerNumSlots = function(bag) return bag == 0 and 1 or 0 end,
+    GetContainerItemID = function() return 745 end,
+    GetContainerItemInfo = function() return { stackCount = 3 } end,
+}
+local snapshot = B:ReadableItemSnapshot()
+Expect("a readable stack counts every item received", snapshot[745], 3)
+_G.C_Container = nil
+
 -- The client's CloseItemText: the window goes and ITEM_TEXT_CLOSED follows.
 local closed = 0
 _G.CloseItemText = function()
