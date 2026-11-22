@@ -118,6 +118,9 @@ _G.SmartNavigation = {
         Record("target", frame == C.window and "window" or "other", what)
     end,
 }
+-- What Spoken's settings code checks for before it touches the cursor.
+_G.SMART_NAV_INPUT_DIRECTION = _G.SMART_NAV_INPUT_DIRECTION or {}
+_G.CreateAnchor = _G.CreateAnchor or function(...) return { ... } end
 local ignored = {}
 _G.SmartNavigation_MarkFrameIgnored = function(frame) ignored[frame] = true end
 -- The window's own override bindings, as the client keeps them: key to button, by owner.

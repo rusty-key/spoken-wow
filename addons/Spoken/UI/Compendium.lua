@@ -1904,8 +1904,18 @@ local function Manager()
 end
 
 local joined = false      -- the manager holds the window
-local unmarked = {}       -- frames to take from the cursor once combat ends
 local waiter
+
+local function Locked()
+	return InCombatLockdown and InCombatLockdown() or false
+end
+
+-- Put the cursor on `button` when `frame` next has the controller.
+local function Target(frame, button)
+	if button and SmartNavigation and SmartNavigation.SetTargetButtonForFrame and not CombatRestricted() then
+		SmartNavigation:SetTargetButtonForFrame(frame, button)
+	end
+end
 
 local function AfterCombat()
 	if waiter then return end
@@ -1939,13 +1949,7 @@ end
 --- Take `frame` from the cursor: a drag it cannot make, or a scroll bar beside what moving the
 --- cursor or the right stick scrolls already. Its children go with it.
 function Pad.NoStop(frame)
-	if not (frame and SmartNavigation_MarkFrameIgnored) then return end
-	if CombatRestricted() then
-		unmarked[frame] = true
-		AfterCombat()
-		return
-	end
-	SmartNavigation_MarkFrameIgnored(frame)
+	if frame and SpokenLayout and SpokenLayout.NoStop then SpokenLayout.NoStop(frame) end
 end
 
 --- The cursor's stops looked for again, for rows a redraw added; in combat, once it ends.
@@ -1967,21 +1971,25 @@ local function ShownPage()
 	end
 end
 
--- The chosen row of the shown tab's list, where it is drawn; else, with `orFirst`, its first row.
-local function ChosenRow(orFirst)
+local function ShownList()
 	local tab = active and C.tabs[active]
 	for _, list in ipairs(lists) do
-		if tab and list.panel == tab.panel then
-			local first
-			for _, row in ipairs(list.rows) do
-				if row.row and row:IsVisible() then
-					if row.selected then return row end
-					first = first or row
-				end
-			end
-			return orFirst and first or nil
+		if tab and list.panel == tab.panel then return list end
+	end
+end
+
+-- The chosen row of the shown tab's list, where it is drawn; else, with `orFirst`, its first row.
+local function ChosenRow(orFirst)
+	local list = ShownList()
+	if not list then return nil end
+	local first
+	for _, row in ipairs(list.rows) do
+		if row.row and row:IsVisible() then
+			if row.selected then return row end
+			first = first or row
 		end
 	end
+	return orFirst and first or nil
 end
 
 --- The right stick on the page's words, as on the game's book (ItemTextFrame); the list scrolls
@@ -1992,16 +2000,12 @@ function Pad.Retarget()
 	SmartNavigation:SetScrollFrameForFrame(window, page and page.body.frame or nil)
 end
 
---- Join the manager while the window is shown under the controller UI, leave it otherwise, and
---- mark what combat held back. Run on show and hide, and again once combat ends.
+--- Join the manager while the window is shown under the controller UI, and leave it otherwise.
+--- Run on show and hide, and again once combat ends.
 function Pad.Settle()
 	if CombatRestricted() then
 		AfterCombat()
 		return
-	end
-	for frame in pairs(unmarked) do
-		if SmartNavigation_MarkFrameIgnored then SmartNavigation_MarkFrameIgnored(frame) end
-		unmarked[frame] = nil
 	end
 	local manager = Manager()
 	if not (manager and window) then return end
@@ -2026,42 +2030,28 @@ function Pad.Settle()
 end
 
 -- The shoulders, View and Menu while the window has the controller, as the game's own windows
--- take them (the professions' and the bags' search on View and their filter on Menu, the
--- character sheet's tabs on the shoulders). Override bindings of the window's own, over the game's: its binding stack is
--- secure, and a write to it from an addon taints the d-pad. Bindings cannot change in combat, so
--- they go as combat starts and come back after.
+-- take them. They are override bindings owned by the window: the game's binding stack is secure,
+-- and an addon writing to it taints the d-pad. Bindings cannot change in combat, so they go as
+-- combat starts and come back after.
 local SHOULDER_LEFT = GAMEPAD_SHOULDER_LEFT or "PADLSHOULDER"
 local SHOULDER_RIGHT = GAMEPAD_SHOULDER_RIGHT or "PADRSHOULDER"
 local VIEW = GAMEPAD_MENU_LEFT or "PADBACK"
 local MENU = GAMEPAD_MENU_RIGHT or "PADFORWARD"
 local bound = false
 
--- The shown tab's list.
-local function ShownList()
-	local tab = active and C.tabs[active]
-	for _, list in ipairs(lists) do
-		if tab and list.panel == tab.panel then return list end
-	end
-end
-
 -- The tab `step` along from the shown one, round from the last to the first.
 local function StepTab(step)
-	local keys, at = {}, nil
+	local shown, at = {}, nil
 	for _, button in ipairs(tabButtons or {}) do
 		if button.key and button:IsShown() then
-			table.insert(keys, button.key)
-			if button.key == active then at = #keys end
+			table.insert(shown, button)
+			if button.key == active then at = #shown end
 		end
 	end
-	if #keys < 2 or not at then return end
-	Sound("IG_CHARACTER_INFO_TAB")
-	picked = true
-	C:Select(keys[(at - 1 + step) % #keys + 1])
+	if #shown < 2 or not at then return end
+	shown[(at - 1 + step) % #shown + 1]:Click()
 	-- The cursor would stay on a row of the tab just hidden.
-	local row = ChosenRow(true)
-	if row and SmartNavigation and SmartNavigation.SetTargetButtonForFrame and not CombatRestricted() then
-		SmartNavigation:SetTargetButtonForFrame(window, row)
-	end
+	Target(window, ChosenRow(true))
 end
 
 -- Into the shown tab's search, or out of it again.
@@ -2088,7 +2078,7 @@ end
 
 function Pad.Bind()
 	if bound or not (window and SetOverrideBindingClick) or not GamepadUI()
-		or (InCombatLockdown and InCombatLockdown()) or CombatRestricted() then
+		or Locked() or CombatRestricted() then
 		return
 	end
 	if not Pad.keys then
@@ -2107,7 +2097,7 @@ function Pad.Bind()
 end
 
 function Pad.Unbind()
-	if not bound or not ClearOverrideBindings or (InCombatLockdown and InCombatLockdown()) then return end
+	if not bound or not ClearOverrideBindings or Locked() then return end
 	ClearOverrideBindings(window)
 	bound = false
 end
@@ -2126,10 +2116,7 @@ function Pad.Follow(frame)
 		AfterCombat()
 		Pad.Retarget()
 		Pad.Bind()
-		local row = ChosenRow()
-		if row and SmartNavigation and SmartNavigation.SetTargetButtonForFrame and not CombatRestricted() then
-			SmartNavigation:SetTargetButtonForFrame(frame, row)
-		end
+		Target(frame, ChosenRow())
 	end
 	frame.UnfocusGamepad = function()
 		Pad.focused = false
@@ -2145,10 +2132,6 @@ do
 	-- is the on-screen keyboard's, which sends keys. Taking the buttons is protected: never in
 	-- combat, and given back as combat starts, while the game still allows it.
 	local searching
-
-	local function Locked()
-		return InCombatLockdown and InCombatLockdown() or false
-	end
 
 	local function LeaveSearch(self) self:ClearFocus() end
 
@@ -2179,13 +2162,10 @@ do
 		if searching and searching.padCaught then searching:ClearFocus() end
 	end
 
-	-- The filter under the controller UI: the game's menu, opened by an addon, never takes the
-	-- controller, so a menu of Spoken's own holds the same switches and orders, one row each, drawn
-	-- as the game's is (Blizzard_Menu's MenuStyle1Mixin and MenuVariants), and joins the frame
-	-- controls manager as a popup, as the game's own dialogs do (ReadyCheck, GuildInviteFrame): the
-	-- cursor moves to it as it opens and back to the window as it closes. A ticks a row, B closes
-	-- it, as it closes the game's menus. With the mouse, or in combat, where the manager refuses
-	-- addons, the game's menu opens as before.
+	-- The filter under the controller UI. The game's menu, opened by an addon, never takes the
+	-- controller and taints the frame controls manager, so a menu of Spoken's own, drawn as the
+	-- game's (Blizzard_Menu's MenuStyle1Mixin), joins the manager as a popup instead. With the
+	-- mouse, or in combat, where the manager refuses addons, the game's menu opens as before.
 	local ROW, DIVIDER, MIN_WIDTH = 20, 13, 120
 	local INSET = { left = 8, top = 8, right = 8, bottom = 15 }
 	-- The game's menu draws its background this far past its edges.
@@ -2269,10 +2249,7 @@ do
 			self.focused = true
 			Pad.SettleFilter()
 			local first = self.rows[1]
-			if first and first:IsShown() and SmartNavigation and SmartNavigation.SetTargetButtonForFrame
-				and not CombatRestricted() then
-				SmartNavigation:SetTargetButtonForFrame(self, first)
-			end
+			if first and first:IsShown() then Target(self, first) end
 		end
 		frame.UnfocusGamepad = function(self)
 			self.focused = nil
