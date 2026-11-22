@@ -502,7 +502,7 @@ local menu = env.Minimap:BuildMenu()
 local labels = {}
 for _, entry in ipairs(menu) do table.insert(labels, entry.text) end
 Expect("the menu is the player's entries then each source's in order", table.concat(labels, "|"),
-    "Stop or Replay|Skip Line|Eject|Settings|Quest settings|Open lore window")
+    "Stop or Replay|Skip Forward|Eject|Settings|Quest settings|Open lore window")
 env.Minimap:RemoveEntry("places", "lore")
 Expect("RemoveEntry", getn(env.Minimap:BuildMenu()), 5)
 
@@ -529,7 +529,7 @@ end
 -- A rule before each addon's heading. Without one the headings are the only thing
 -- separating the groups, and a heading reads as a row of the group above it.
 Expect("...listing the player's entries, then each source's under its name, ruled apart",
-    table.concat(shown, "|"), "Stop or Replay|Skip Line|Eject|Settings|---|[Quests]|Quest settings")
+    table.concat(shown, "|"), "Stop or Replay|Skip Forward|Eject|Settings|---|[Quests]|Quest settings")
 Expect("...anchored to the button", stub.openDropDown.dropdownAnchor, mmButton)
 
 -- The menu opens under the cursor, which is still on the button, so the button's tooltip

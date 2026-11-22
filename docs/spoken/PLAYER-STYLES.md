@@ -40,8 +40,8 @@ All of it is in `addons/Spoken/UI/`, one copy for every module.
   round buttons of `Actions.lua`. The game cannot start a sound part-way through, so there is Stop
   and Replay, never Pause and Resume. Previous plays the last line heard ahead of the current one,
   which then speaks again from its start; it reaches back through the last ten lines finished or
-  skipped this session, and greys out when there are none. The keys Stop or Replay, Previous Line,
-  Skip Line and Eject work under every style, Voice Only included. Eject clears every source's
+  skipped this session, and greys out when there are none. The keys Stop or Replay, Skip Backward,
+  Skip Forward and Eject work under every style, Voice Only included. Eject clears every source's
   queued lines using the minimap menu's Eject action; its tooltip says Eject.
 - **After the line's title**, in this order: why the line waits, "(Stopped)" while it is stopped,
   and "+N", the lines waiting behind it. The reason is what `SoundQueue:GetHeldReason` answers:
@@ -150,7 +150,7 @@ name over the line's title, the controls at the header's right, then Rows at Onc
   look the row is hidden: its window is dark whichever is chosen.
 - **Hide Portrait** leaves the face out.
 - Right-click on the face, the name, the title or the panel opens a menu: Stop or Replay, Previous
-  Line, Skip Line, Eject, Open Azeroth's Compendium, Settings, and the line's actions that name themselves.
+  Skip Backward, Skip Forward, Eject, Open Azeroth's Compendium, Settings, and the line's actions that name themselves.
   On the words, right-click skips the line and Shift-right-click opens the menu.
 - Dragged by the panel or the name; the game's own size grabber at the lower right, shown under
   the pointer while unlocked, sets its width. It fades in and out, and out and in again from one
