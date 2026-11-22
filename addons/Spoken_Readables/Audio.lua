@@ -54,9 +54,7 @@ function SpokenReadables:KindMaterial(pageId)
 	return entry and KIND_MATERIAL[entry.type] or nil
 end
 
---- Open is what the item text events say, not the game's frame, which DialogueUI hides. A page
---- not open (of another book than the one open, or nothing open) takes what its kind is written
---- on, else the book.
+--- Item-text events identify the open readable even when DialogueUI hides the game's frame.
 function SpokenReadables:PagePicture(pageId)
 	if IsOpen(self, pageId) then
 		local item = ItemTextGetItem and NotSecret(ItemTextGetItem())
@@ -68,6 +66,11 @@ function SpokenReadables:PagePicture(pageId)
 		if material and MATERIALS[material] then
 			return { kind = "texture", texture = MATERIALS[material], texCoord = ICON_CROP }
 		end
+	end
+	local bookID = pageId and self:PlaceOf(pageId)
+	if bookID and self:ItemForBook(bookID) then
+		local icon, crop = self:ItemIcon(bookID)
+		if icon then return { kind = "texture", texture = icon, texCoord = crop } end
 	end
 	local material = not IsOpen(self, pageId) and self:KindMaterial(pageId)
 	if material then return { kind = "texture", texture = MATERIALS[material], texCoord = ICON_CROP } end

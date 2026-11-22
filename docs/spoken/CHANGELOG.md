@@ -2,6 +2,11 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Readables played from the Compendium show their item's icon in the player.**
+  *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.12.0 — 2026-11-22
 
 - **Previous Line replays what just played,** from the player, `/sp previous` or a key you bind.

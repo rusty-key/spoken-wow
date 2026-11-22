@@ -381,7 +381,8 @@ Only, which leave out what has nothing found or voiced and take it from the coun
 default) or By Type, and the window's Unlock Unfound Readables, which makes every one readable
 here. Without it a readable not found yet is greyed with a padlock, and its page says to open it in
 the world. Carrying a readable's item in the bags finds it too, unopened, so a quest note handed
-in unread is not locked for good; it is not marked heard. A readable that is an item shows that item's icon.
+in unread is not locked for good; it is not marked heard. A readable that is an item shows that item's icon,
+both on its Compendium page and during playback from it, even when the item is no longer in the bags.
 A filter that hides the chosen row moves the page to the nearest row above it that is
 still listed, or to where the player stands; a row chosen only because the player stood there is
 chosen again. The window opens on where the player stands: the dungeon's line, else the zone's,

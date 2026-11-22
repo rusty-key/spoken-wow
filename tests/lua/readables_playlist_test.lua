@@ -25,6 +25,8 @@ _G.SpokenReadablesAudioPacks = {
             [2810] = { file = "2810", len = 8.0 },
             -- William's Shipment, a letter of one page.
             [15] = { file = "15", len = 6.0 },
+            [38] = { file = "38", len = 6.0 },
+            [39] = { file = "39", len = 6.0 },
         },
     },
 }
@@ -88,6 +90,21 @@ Expect("...named by the book, whatever page of it this is: the book is one line"
     "Hillsbrad Town Registry")
 Expect("a page the pack does not carry has no clip", B:ClipFor(263), nil)
 local letter = B:ClipFor(15)
+do
+    local getItemInfoInstant = _G.GetItemInfoInstant
+    _G.GetItemInfoInstant = function(itemID)
+        if itemID == 1327 then return itemID, "Quest", "Note", "", 123456 end
+    end
+    Expect("Wiley's Note has its item icon without an open item-text window",
+        B:ClipFor(38).present.portrait.texture, 123456)
+    Expect("...and its later page keeps the same item icon", B:ClipFor(39).present.portrait.texture, 123456)
+    local _, crop = B:ItemIcon(38)
+    Expect("...with the same crop as the Compendium's item icon",
+        B:ClipFor(38).present.portrait.texCoord, crop)
+    Expect("a world book without an item keeps its book portrait", B:ClipFor(261).present.portrait.texture,
+        [[Interface\AddOns\Spoken\Textures\Book]])
+    _G.GetItemInfoInstant = getItemInfoInstant
+end
 -- A first page that does not open with its title is read after it: the narration reads the title
 -- first, and the captions' words start once it is said.
 local timings = letter.present.timings
