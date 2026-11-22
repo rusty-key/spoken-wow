@@ -247,6 +247,13 @@ pack's words, since no voice says them. Like `TextByFileName`, it loads only whe
 language is the Text Language, which on Auto is the client's. For esMX it is about 3.8 MB across
 the four packs, of which 0.85 MB is gossip.
 
+With it comes `audio/quest-titles.json`, every quest's current `entity_name` title in the language.
+`build` writes all of them into every pack as `title_table.lua` (`TitleByQuestID`), loaded on the same
+terms, since the Compendium lists quests whose lines are in packs the player did not install. The
+Compendium titles a quest with it before what the client showed (`UI/QuestsTab.lua` `Title`): Classic
+Era's client has no `C_QuestLog.GetTitleForQuestID`, so without it a quest whose window was never
+opened kept its English title.
+
 `install` moves any existing install aside to `<module>.replaced` rather than deleting it.
 
 **Icons.** Every addon here carries an `icon.tga` and a `## IconTexture:` line naming

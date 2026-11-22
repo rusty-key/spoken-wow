@@ -22,8 +22,8 @@ from tts_cli.naming import (BROADCAST_SOURCES, followup_stem_from_line_id, gossi
                             several_wordings, split_voice, subfolder_from_line_id,
                             variant_file_name)
 from tts_cli.npc_bodies import GENDER_SEX, body_name
-from tts_cli.store import (SUBFOLDERS, audio_extension, durations, line_text, stored_files, take_text,
-                           word_times)
+from tts_cli.store import (SUBFOLDERS, audio_extension, durations, line_text, quest_titles, stored_files,
+                           take_text, word_times)
 from tts_cli.utils import (get_first_n_words, get_last_n_words,
                            replace_dollar_bs_with_space)
 
@@ -589,6 +589,13 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
                     module_name, "LineTextByFileName", lines, only_on=language or "enUS")
     written.append("line_text_table.lua")
 
+    # Every quest's, in every pack: a Compendium lists the quests of packs the player did not install.
+    # Strings are interned, so a second pack's copy costs only its table.
+    titles = quest_titles(store_dir)
+    write_lua_table(os.path.join(generated_dir, "title_table.lua"),
+                    module_name, "TitleByQuestID", titles, only_on=language or "enUS")
+    written.append("title_table.lua")
+
     shutil.copy2(icon_source(icon_language or language), os.path.join(module_dir, ICON_NAME))
 
     with open(os.path.join(module_dir, "Module.lua"), "w", encoding="utf-8") as f:
@@ -606,7 +613,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
         "tables": sorted(written),
         "tableRows": {**{name: len(data) for name, (_, data) in tables.items()}, **locale_rows,
                       "word_times_table": len(times),
-                      "text_table": len(texts)},
+                      "text_table": len(texts), "title_table": len(titles)},
         "language": language,
     }
 

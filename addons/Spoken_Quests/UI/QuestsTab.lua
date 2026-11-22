@@ -159,6 +159,12 @@ local function Title(id, ask)
             return packed
         end
     end
+    -- A voice pack's, which knows quests this client never showed: Classic cannot be asked for those.
+    local voiced = language ~= VO.Language.BASE and VO.DataModules:PackTitle(id, language)
+    if voiced then
+        titles[id] = voiced
+        return voiced
+    end
     local kept = Kept()
     local title = kept and kept[id] and kept[id].title
     if not title and Locale() ~= "enUS" and C_QuestLog and C_QuestLog.GetTitleForQuestID then

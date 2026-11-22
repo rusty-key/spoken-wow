@@ -181,6 +181,7 @@ rsync -a -f'+ */' -f'- *' "$STORE/" "$staging/"
 [ ! -f "$STORE/word-times.json" ] || cp "$STORE/word-times.json" "$staging/"
 [ ! -f "$STORE/take-text.json" ] || cp "$STORE/take-text.json" "$staging/"
 [ ! -f "$STORE/line-text.json" ] || cp "$STORE/line-text.json" "$staging/"
+[ ! -f "$STORE/quest-titles.json" ] || cp "$STORE/quest-titles.json" "$staging/"
 
 if [ "$ENCODE" = copy ]; then
   echo "copying $count masters (ENCODE=copy)..."

@@ -1264,6 +1264,19 @@ function DataModules:TextPackText(soundData, language)
     return nil
 end
 
+--- A quest's title from a voice pack in `language`, or nil. Only a pack in the language being read
+--- builds its table.
+---@param questID number
+---@param language string
+---@return string|nil title
+function DataModules:PackTitle(questID, language)
+    for _, module in self:GetModules() do
+        local titles = module.METADATA.Language == language and module.TitleByQuestID
+        if titles and titles[questID] then return titles[questID] end
+    end
+    return nil
+end
+
 function DataModules:AddPlayerGenderToFilename(fileName)
     local playerGender = UnitSex("player")
 

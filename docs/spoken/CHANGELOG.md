@@ -7,6 +7,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **`/sp mute [on | off]` and a Mute Spoken Audio key silence Spoken without disabling its
   features.** Lines still queue and show their subtitles and narrator text, one after another, while
   muted. The key has no default; set it in Spoken's settings or the game's key bindings. *([Trusty565](https://github.com/Trusty565))*
+- **Azeroth's Compendium shows quest titles in your language on every client,** including quests
+  you never opened. Needs the next release of your language's quest packs.
+  *([rusty-key](https://github.com/rusty-key))*
 - **Spoken's pages are listed under it in Settings, AddOns, from the start.** A controller can now
   reach every page; a mouse click on the minus still folds them away.
   *([rusty-key](https://github.com/rusty-key))*

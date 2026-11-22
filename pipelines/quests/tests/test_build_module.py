@@ -344,6 +344,25 @@ def test_a_language_pack_carries_the_words_of_its_lines_without_a_take(tmp_path)
     assert "Escrita" not in lines and "Otro paquete" not in lines
 
 
+def test_a_language_pack_carries_every_quests_title(tmp_path):
+    # Classic Era's client cannot be asked for a title it has not seen: the Compendium showed the
+    # English one for every quest the player never opened.
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    with open(os.path.join(store, "quest-titles.json"), "w", encoding="utf-8") as f:
+        json.dump({"5": "Un almuerzo gratis", "9": 'Otro "paquete"'}, f)
+
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="esMX",
+                          include={"quests/5-accept"})
+
+    lua = (tmp_path / "dist" / "Mod" / "generated" / "title_table.lua").read_text(encoding="utf-8")
+    assert "Mod.TitleByQuestID = " in lua
+    assert '[5] = "Un almuerzo gratis"' in lua
+    assert '[9] = "Otro \\"paquete\\""' in lua
+    assert '~= "esMX" then return end' in lua
+    assert "generated\\title_table.lua" in _toc(tmp_path)
+    assert report["tableRows"]["title_table"] == 2
+
+
 def test_text_survives_lua_quoting(tmp_path):
     # A raw newline or an unescaped quote stops the whole pack from loading.
     lua, _ = _text_table(tmp_path, {"quests/5-accept": 'Say "hi"\nC:\\x \tПривет'})
