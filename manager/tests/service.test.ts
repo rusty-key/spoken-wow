@@ -124,28 +124,30 @@ describe('ManagerService', () => {
     expect(githubCalls()).toBe(2)
   })
 
-  it('refreshes the release and community catalogs every 30 minutes', async () => {
+  it('runs the background check every 30 minutes until stopped', async () => {
     const { svc } = await setup()
-    const catalog = vi.spyOn(svc, 'refreshCatalog').mockResolvedValue(svc.catalog)
-    const community = vi.spyOn(svc, 'refreshCommunity').mockResolvedValue(svc.community)
+    const check = vi.spyOn(svc, 'backgroundCheck').mockResolvedValue()
     vi.useFakeTimers()
     try {
       svc.startPeriodicRefresh()
       await vi.advanceTimersByTimeAsync(UPDATE_CHECK_MS)
-      expect(catalog).toHaveBeenCalledWith(true)
-      expect(community).toHaveBeenCalledWith(true)
+      expect(check).toHaveBeenCalledTimes(1)
 
       svc.stopPeriodicRefresh()
-      catalog.mockClear()
-      community.mockClear()
       await vi.advanceTimersByTimeAsync(UPDATE_CHECK_MS)
-      expect(catalog).not.toHaveBeenCalled()
-      expect(community).not.toHaveBeenCalled()
+      expect(check).toHaveBeenCalledTimes(1)
     } finally {
       svc.stopPeriodicRefresh()
       vi.useRealTimers()
       vi.restoreAllMocks()
     }
+  })
+
+  it('checks nothing in the background with update checks and automatic updates off', async () => {
+    const { svc, githubCalls } = await setup()
+    svc.setSettings({ checkOnStart: false, autoUpdateContent: false })
+    await svc.backgroundCheck()
+    expect(githubCalls()).toBe(0)
   })
 
   describe('automatic content updates', () => {
@@ -243,6 +245,36 @@ describe('ManagerService', () => {
       const again = spokenJobs(sent).find((p) => p.jobId !== first)
       expect(again).toBeDefined()
       expect((await waitFor(sent, again!.jobId)).phase).toBe('done')
+    })
+
+    it('keeps a cancelled update skipped through a background check', async () => {
+      let open!: () => void
+      const gate = new Promise<void>((resolve) => (open = resolve))
+      const { svc, game, sent, githubCalls } = await setup({ gate })
+      oldSpoken(path.join(game.addOnsPath, 'Spoken'))
+      svc.setSettings({ checkOnStart: false, autoUpdateContent: true })
+      await svc.refreshCatalog(true)
+
+      const first = spokenJobs(sent)[0]!.jobId
+      svc.jobs.cancel(first)
+      open()
+      expect((await waitFor(sent, first)).phase).toBe('cancelled')
+
+      await svc.backgroundCheck()
+      expect(githubCalls()).toBe(2)
+      expect(new Set(spokenJobs(sent).map((p) => p.jobId))).toEqual(new Set([first]))
+    })
+
+    it('updates after a background check that joins a refresh already running', async () => {
+      const { svc, game, sent } = await setup()
+      oldSpoken(path.join(game.addOnsPath, 'Spoken'))
+      svc.setSettings({ checkOnStart: false, autoUpdateContent: true })
+      await svc.ready
+      const running = svc.refreshCatalog(false)
+      await svc.backgroundCheck()
+      await running
+      const job = spokenJobs(sent)[0]!.jobId
+      expect((await waitFor(sent, job)).phase).toBe('done')
     })
   })
 
