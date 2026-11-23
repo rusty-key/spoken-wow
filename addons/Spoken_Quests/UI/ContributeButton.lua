@@ -297,7 +297,7 @@ function ContributeButton:Refresh()
     -- unless Hide Report Buttons is on.
     if page then
         button:Hide()
-        self.gossip = page == "GOSSIP_SHOW" or page == "QUEST_GREETING"
+        self.gossip = Addon:PartOfPage(page) == "gossip"
         local missing = Contribute:HasGap()
         local reportHidden = _G.Spoken and Spoken.AreReportButtonsHidden and Spoken:AreReportButtonsHidden()
         if missing or not reportHidden then
