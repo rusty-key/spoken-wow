@@ -10,6 +10,7 @@ if not Interface:In("frFR") then
 	return
 end
 
+L.DEVELOPER_TOOLTIP = "Développeur de Spoken"
 L.PLAY = "Lecture"
 L.TRANSCRIPT = "Texte"
 L.OPT_SHOW_NARRATOR = "Afficher le narrateur"

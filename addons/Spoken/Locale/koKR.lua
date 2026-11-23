@@ -10,6 +10,7 @@ if not Interface:In("koKR") then
 	return
 end
 
+L.DEVELOPER_TOOLTIP = "Spoken 개발자"
 L.PLAY = "재생"
 L.TRANSCRIPT = "텍스트"
 L.OPT_SHOW_NARRATOR = "내레이터 표시"

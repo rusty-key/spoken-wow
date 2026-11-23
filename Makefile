@@ -58,6 +58,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/text_packs_test.lua
 	@$(LUA) tests/lua/interface_packs_test.lua
 	@$(LUA) tests/lua/interface_strings_test.lua
+	@$(LUA) tests/lua/developer_tooltip_test.lua
 	@$(LUA) tests/lua/quest_dispatch_test.lua
 	@$(LUA) tests/lua/quest_autoplay_test.lua
 	@$(LUA) tests/lua/gossip_part_test.lua

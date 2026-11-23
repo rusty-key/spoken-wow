@@ -10,6 +10,7 @@ if not Interface:In("ptBR") then
 	return
 end
 
+L.DEVELOPER_TOOLTIP = "Desenvolvedor do Spoken"
 L.PLAY = "Reproduzir"
 L.TRANSCRIPT = "Palavras"
 L.OPT_SHOW_NARRATOR = "Mostrar narrador"
