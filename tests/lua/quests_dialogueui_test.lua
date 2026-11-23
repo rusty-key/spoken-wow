@@ -97,7 +97,7 @@ local opened = {}
 VO.QuestsTab = { Has = function(_, id) return id == 101 end, Open = function(_, id) table.insert(opened, id) end }
 assert(loadfile(QUESTS .. "UI/OpenInCompendium.lua"))("Spoken_Quests", {})
 VO.DataModules:Register("TestPack", {
-    SoundLengthLookupByFileName = { ["101-accept"] = 12, ["101-progress"] = 2,
+    SoundLengthLookupByFileName = { ["101-accept"] = 12, ["101-progress"] = 2, ["101-complete"] = 12,
         ["guard-greeting"] = 2, ["guard-directions"] = 2 },
     GetSoundPath = function(_, fileName) return fileName .. ".ogg" end,
     GossipLookupByNPCID = {
@@ -920,6 +920,82 @@ Expect("the Quests page's Read Automatically stays live with DialogueUI's Auto P
 _G.DialogueUI_DB = nil
 
 env.Addon.PlayerStyle = playerStyle
+
+do
+    local audio, skin = VO.Addon.db.profile.Audio, env.DialogueUIPlayer
+    _G.DialogueUI_DB = { Theme = 1, FrameSize = 2 }
+    _G.DUIFont_Quest_Paragraph = { GetFont = function() return "Fonts/FRIZQT__.TTF", 14 end }
+    DUI.frameWidth, DUI.frameHeight, DUI.frameOffsetX = 624, 734, 0
+    env.Addon.db.profile.Frame.Style = "dialogueui"
+    env.PlayerFrame:RefreshConfig()
+    audio.StopOnAccept = true
+    local exit = stub.Widget("Button")
+    DUI.ExitButton = exit
+    local handlers = { QUEST_DETAIL = "HandleQuestDetail", QUEST_PROGRESS = "HandleQuestProgress",
+        QUEST_COMPLETE = "HandleQuestComplete", QUEST_GREETING = "HandleQuestGreeting", GOSSIP_SHOW = "HandleGossip" }
+    for _, page in ipairs({ "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_GREETING", "GOSSIP_SHOW", "RETURN_TO_GOSSIP" }) do
+        for _, stop in ipairs({ true, false }) do
+            local returning = page == "RETURN_TO_GOSSIP"
+            local event = returning and "QUEST_DETAIL" or page
+            local scenario = page .. " (stop=" .. tostring(stop) .. ")"
+            Spoken:StopAll()
+            skin:SetVisible(false, true)
+            audio.StopAudioOnDisengage = stop
+            world.questID = event == "GOSSIP_SHOW" and 0 or 101
+            world.npcGUID = "Creature-0-0-0-0-4321-0"
+            stub.HidePanels()
+            DUI:Show()
+            local watch = skin.dialogWatches[DUI]
+            watch.scripts.OnShow(watch)
+            DUI:SetAlpha(1)
+            DUI.ContentFrame:SetAlpha(1)
+            if event == "GOSSIP_SHOW" then stub.ShowGossip(GREETING) end
+            world.greetingText = event == "QUEST_GREETING" and GREETING or nil
+            DUI.handler = handlers[event]
+            DUI[DUI.handler](DUI)
+            VO.Addon:InvokeQuestHandler(event, "test", true)
+            Expect(scenario .. ": the dialog owns an active narration", skin:IsEnabled() and skin:Owns(DUI), true)
+            local clicks = 0
+            function exit:Click(mouse)
+                clicks = clicks + 1
+                Expect(scenario .. ": X clicks the current Exit button", self == DUI.ExitButton and mouse, "LeftButton")
+                if returning then
+                    world.questID = 0
+                    stub.ShowGossip(GREETING)
+                    DUI.handler = "HandleGossip"
+                    DUI:HandleGossip()
+                    stub.FireEvent("QUEST_FINISHED")
+                    return
+                end
+                -- The client may deliver the close event after the dialog has hidden.
+                C_Timer.After(0.3, function()
+                    world.questID = 0
+                    stub.HidePanels()
+                    stub.FireEvent(event == "GOSSIP_SHOW" and "GOSSIP_CLOSED" or "QUEST_FINISHED")
+                end)
+                DUI:Hide()
+            end
+            local wasShown = DUI:IsShown()
+            closeButton.scripts.OnClick(closeButton)
+            if wasShown and not DUI:IsShown() then watch.scripts.OnHide(watch) end
+            local appeared = skin.frame:IsShown() and (skin.level or 0) > 0
+            for _ = 1, 12 do
+                wasShown = DUI:IsShown()
+                stub.Advance(0.02)
+                skin:CloseStep(0.02)
+                if wasShown and not DUI:IsShown() then watch.scripts.OnHide(watch) end
+                skin:Tick(0.02)
+                appeared = appeared or (skin.frame:IsShown() and (skin.level or 0) > 0)
+            end
+            Expect(scenario .. ": the page's native exit action runs once", clicks, 1)
+            Expect(scenario .. ": the window follows the native exit action", DUI:IsShown(), returning)
+            Expect(scenario .. ": the narrator never flashes for a stopped line", appeared, not stop and not returning)
+            Expect(scenario .. ": narration follows Stop When Window Closes", Spoken:GetCurrent() ~= nil, not stop)
+            stub.Advance(0.4)
+        end
+    end
+    Spoken:StopAll()
+end
 
 if Failures() > 0 then
     print(string.format("\n%d DialogueUI test(s) failed", Failures()))

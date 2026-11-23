@@ -448,9 +448,21 @@ local function CloseButton()
     close.highlight = close:CreateTexture(nil, "HIGHLIGHT")
     close.highlight:SetAllPoints()
     close.highlight:SetTexCoord(832 / 1024, 896 / 1024, 1488 / 2048, 1552 / 2048)
-    -- As Escape closes it: DialogueUI's own way out.
     close:SetScript("OnClick", function()
-        if type(frame.HideUI) == "function" then frame:HideUI() else frame:Hide() end
+        -- The game's close event can arrive after the narrator has already appeared.
+        if Addon.db.profile.Audio.StopAudioOnDisengage then
+            LookForLine(Bridge:Page())
+            StopLine()
+        end
+        -- The page's exit action preserves DialogueUI's decline tracking and return to gossip.
+        local exit = frame.ExitButton
+        if type(exit) == "table" and type(exit.Click) == "function" then
+            exit:Click("LeftButton")
+        elseif type(frame.HideUI) == "function" then
+            frame:HideUI()
+        else
+            frame:Hide()
+        end
     end)
     return close
 end

@@ -2,6 +2,11 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **DialogueUI's X button closes dialogue without briefly showing the narrator when Stop When Window Closes is on.**
+  *([anon1231823](https://github.com/anon1231823))*
+
 ## 3.12.1 — 2026-11-22
 
 - **Queue counts pulse without an error when a line is added while Spoken is stopped.** *([anon1231823](https://github.com/anon1231823))*

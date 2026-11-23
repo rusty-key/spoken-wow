@@ -1603,6 +1603,12 @@ The data module names no `RequiredDeps`. It used to require `AI_VoiceOver`, whic
 and the original sat disabled — three folder names into this lineage, that is the normal case. The module is `LoadOnDemand` and its `Module.lua` returns early
 unless `VoiceOver.DataModules` exists, so the dependency bought nothing and cost the fork.
 
+On DialogueUI's NPC window, Spoken's X button clicks DialogueUI's current Exit button.
+On a quest offer it behaves exactly like Reject, including DialogueUI's decline tracking
+and returning to the NPC's preceding gossip page where offered. Other pages use their own
+Cancel or Goodbye action. With Stop When Window Closes on, X removes the page's narration
+before invoking Exit, so a delayed close event cannot briefly show the narrator.
+
 ### Immersion
 
 Immersion's talk box shows a quest or gossip page a few sentences at a time, turned by its own
