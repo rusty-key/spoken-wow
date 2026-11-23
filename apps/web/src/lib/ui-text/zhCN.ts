@@ -516,6 +516,7 @@ const zhCN: Dictionary = {
       places: "地点",
       bosses: "首领",
       readables: "书籍",
+      names: "名称",
     },
     ledes: {
       quests: "所有任务与闲谈台词，以及 NPC 在任务之后说的话。搜索、试听、修正。",
@@ -600,6 +601,7 @@ const zhCN: Dictionary = {
       nameEdited: "重命名了",
       nameRestored: "恢复了 v{version} 版名称",
       nameRetired: "撤回了 v{version} 版名称",
+      nameObserved: "保留了游戏显示的名称",
       lexiconAdded: "为“{subject}”添加了发音",
       lexiconEdited: "修改了“{subject}”的发音",
       lexiconRemoved: "移除了“{subject}”的发音",

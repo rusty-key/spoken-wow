@@ -545,6 +545,7 @@ const esMX: Dictionary = {
       places: "Lugares",
       bosses: "Jefes",
       readables: "Libros",
+      names: "Nombres",
     },
     ledes: {
       quests:
@@ -637,6 +638,7 @@ const esMX: Dictionary = {
       playerWordsRemoved: "quitó las palabras que se dicen para el jugador",
       nameEdited: "cambió el nombre",
       nameRestored: "restauró el nombre v{version}",
+      nameObserved: "conservó el nombre que muestra el juego",
       nameRetired: "retiró el nombre v{version}",
       lexiconAdded: "agregó una pronunciación para “{subject}”",
       lexiconEdited: "cambió cómo se pronuncia “{subject}”",

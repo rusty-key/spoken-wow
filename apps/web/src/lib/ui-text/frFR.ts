@@ -545,6 +545,7 @@ const frFR: Dictionary = {
       places: "Zones",
       bosses: "Boss",
       readables: "Livres",
+      names: "Noms",
     },
     ledes: {
       quests:
@@ -637,6 +638,7 @@ const frFR: Dictionary = {
       playerWordsRemoved: "a supprimé les mots dits pour le joueur",
       nameEdited: "a renommé",
       nameRestored: "a restauré le nom v{version}",
+      nameObserved: "a gardé le nom affiché par le jeu",
       nameRetired: "a retiré le nom v{version}",
       lexiconAdded: "a ajouté une prononciation pour “{subject}”",
       lexiconEdited: "a changé la façon de prononcer “{subject}”",

@@ -39,7 +39,7 @@ export default function ContributionsTabs({
           : [
               {
                 value: "names",
-                label: t.names,
+                label: t.tabs.names,
                 href: localeHref(lang, "/contributions/names"),
                 count: names,
               },

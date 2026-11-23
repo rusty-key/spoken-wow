@@ -545,6 +545,7 @@ const koKR: Dictionary = {
       places: "지역",
       bosses: "우두머리",
       readables: "책",
+      names: "이름",
     },
     ledes: {
       quests:
@@ -735,6 +736,7 @@ const koKR: Dictionary = {
       playerWordsRemoved: "플레이어 호칭을 삭제했다",
       nameEdited: "이름을 변경했다",
       nameRestored: "v{version} 이름을 복원했다",
+      nameObserved: "게임이 표시하는 이름을 유지했습니다",
       nameRetired: "v{version} 이름을 철회했다",
       lexiconAdded: "“{subject}”의 발음을 추가했다",
       lexiconEdited: "“{subject}”의 발음을 변경했다",

@@ -539,6 +539,7 @@ const zhTW: Dictionary = {
       places: "地點",
       bosses: "首領",
       readables: "書籍",
+      names: "名稱",
     },
     ledes: {
       quests:
@@ -630,6 +631,7 @@ const zhTW: Dictionary = {
       playerWordsRemoved: "移除了玩家的稱呼",
       nameEdited: "重新命名了",
       nameRestored: "還原了 v{version} 版名稱",
+      nameObserved: "保留了遊戲顯示的名稱",
       nameRetired: "撤回了 v{version} 版名稱",
       lexiconAdded: "為“{subject}”新增了發音",
       lexiconEdited: "修改了“{subject}”的發音",

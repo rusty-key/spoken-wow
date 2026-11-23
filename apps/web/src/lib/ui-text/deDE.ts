@@ -548,6 +548,7 @@ const deDE: Dictionary = {
       places: "Orte",
       bosses: "Bosse",
       readables: "Lesetexte",
+      names: "Namen",
     },
     ledes: {
       quests:
@@ -641,6 +642,7 @@ const deDE: Dictionary = {
       playerWordsRemoved: "entfernte die Worte, die für den Spieler gesagt werden",
       nameEdited: "benannte um",
       nameRestored: "stellte den Namen v{version} wieder her",
+      nameObserved: "behielt den Namen, den das Spiel zeigt",
       nameRetired: "zog den Namen v{version} zurück",
       lexiconAdded: "fügte eine Aussprache für “{subject}” hinzu",
       lexiconEdited: "änderte, wie “{subject}” ausgesprochen wird",

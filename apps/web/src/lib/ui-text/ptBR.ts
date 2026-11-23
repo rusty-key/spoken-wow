@@ -546,6 +546,7 @@ const ptBR: Dictionary = {
       places: "Lugares",
       bosses: "Chefes",
       readables: "Livros",
+      names: "Nomes",
     },
     ledes: {
       quests:
@@ -736,6 +737,7 @@ const ptBR: Dictionary = {
       playerWordsRemoved: "removeu as palavras ditas para o jogador",
       nameEdited: "renomeou",
       nameRestored: "restaurou o nome v{version}",
+      nameObserved: "manteve o nome que o jogo mostra",
       nameRetired: "retirou o nome v{version}",
       lexiconAdded: "adicionou uma pronúncia para “{subject}”",
       lexiconEdited: "mudou como “{subject}” é pronunciado",

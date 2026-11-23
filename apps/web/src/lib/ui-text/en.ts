@@ -565,6 +565,8 @@ export const EN = {
       places: "Places",
       bosses: "Bosses",
       readables: "Readables",
+      /** The contributions queue's extra tab for names the game itself supplied. */
+      names: "Names",
     },
     ledes: {
       quests: "Every quest and gossip line and what NPCs say after a quest. Search, listen, and fix a line.",
@@ -657,6 +659,7 @@ export const EN = {
       nameEdited: "renamed",
       nameRestored: "restored name v{version}",
       nameRetired: "took back name v{version}",
+      nameObserved: "kept the name the game shows",
       lexiconAdded: "added a pronunciation for “{subject}”",
       lexiconEdited: "changed how “{subject}” is pronounced",
       lexiconRemoved: "removed the pronunciation of “{subject}”",

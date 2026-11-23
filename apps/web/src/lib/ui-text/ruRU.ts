@@ -545,6 +545,7 @@ const ruRU: Dictionary = {
       places: "Локации",
       bosses: "Боссы",
       readables: "Книги",
+      names: "Имена",
     },
     ledes: {
       quests:
@@ -637,6 +638,7 @@ const ruRU: Dictionary = {
       playerWordsRemoved: "убрал слова, которые говорились за игрока",
       nameEdited: "переименовал",
       nameRestored: "вернул имя v{version}",
+      nameObserved: "оставил имя, которое показывает игра",
       nameRetired: "отозвал имя v{version}",
       lexiconAdded: "добавил произношение для “{subject}”",
       lexiconEdited: "изменил произношение “{subject}”",
