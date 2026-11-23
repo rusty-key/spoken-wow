@@ -229,20 +229,33 @@ local function EventOnScreen()
     return nil, nil
 end
 
---- The gossip text on screen, or nil once the gossip window is gone. GetGossipText goes on
---- answering with the last words after the window closes -- walking away closes it with no
---- event this addon hears -- so the frame is what says whether they are still being spoken:
---- the game's own, or DialogueUI's in its place. A client without a GossipFrame to ask is
---- taken at its word.
+--- The greeting a quest giver with several quests shows on the quest frame's greeting panel,
+--- the game's own or DialogueUI's in its place, or nil when no such window is up.
+local function GreetingOnScreen()
+    local panel = _G.QuestFrameGreetingPanel
+    if Utils:DialogueUIPage() == "QUEST_GREETING" or (panel and panel.IsVisible and panel:IsVisible()) then
+        return GetGreetingText and NotSecret(GetGreetingText())
+    end
+end
+
+--- The NPC's words on screen and the event they play as: a quest giver's greeting, else the
+--- gossip text, or nil once both windows are gone. GetGossipText goes on answering with the last
+--- words after the window closes -- walking away closes it with no event this addon hears -- so
+--- the frame is what says whether they are still being spoken: the game's own, or DialogueUI's
+--- in its place. A client without a GossipFrame to ask is taken at its word.
 local function GossipOnScreen()
+    local greeting = GreetingOnScreen()
+    if greeting and greeting ~= "" then
+        return greeting, Enums.SoundEvent.QuestGreeting
+    end
     if Utils:DialogueUIPage() == "GOSSIP_SHOW" then
-        return GetGossipText and NotSecret(GetGossipText())
+        return GetGossipText and NotSecret(GetGossipText()), Enums.SoundEvent.Gossip
     end
     local frame = _G.GossipFrame
     if frame and frame.IsVisible and not frame:IsVisible() then
         return nil
     end
-    return GetGossipText and NotSecret(GetGossipText())
+    return GetGossipText and NotSecret(GetGossipText()), Enums.SoundEvent.Gossip
 end
 
 --- Who is reading, onto `fields`, beside a text sent as shown, and the classes `questID` is for
@@ -417,7 +430,7 @@ local function SoundDataForCurrent()
             text = text, unitGUID = Utils:GetNPCGUID() }
     end
 
-    local gossip = GossipOnScreen()
+    local gossip, gossipEvent = GossipOnScreen()
     local guid = Utils:GetNPCGUID()
     local name = Utils:GetNPCName()
     -- Both absent is the case Addon:GOSSIP_SHOW guards with the same test and the comment
@@ -428,7 +441,7 @@ local function SoundDataForCurrent()
     -- who only walked away from a conversation.
     if gossip and gossip ~= "" and (guid or name) then
         return {
-            event = Enums.SoundEvent.Gossip,
+            event = gossipEvent,
             unitGUID = guid,
             name = name,
             unitIsObjectOrItem = Utils:IsNPCObjectOrItem(),
@@ -448,7 +461,7 @@ local function HasSoundForCurrent()
     local soundData = PreparedForCurrent()
     -- Drawn as a body its voice is not, a line plays, and is still a line the site lacks.
     return soundData ~= nil
-        and not (soundData.event == Enums.SoundEvent.Gossip and DataModules:IsOtherBody(soundData))
+        and not (Enums.SoundEvent:IsGossipEvent(soundData.event) and DataModules:IsOtherBody(soundData))
 end
 
 --- The data module the line on screen plays from, or nil when no pack has it.
@@ -495,9 +508,9 @@ local function IsChanged()
         return DataModules:IsTextKnown({ event = event, questID = GetQuestID and NotSecret(GetQuestID()) or 0,
             text = text }) == false
     end
-    local gossip = GossipOnScreen()
+    local gossip, gossipEvent = GossipOnScreen()
     if gossip and gossip ~= "" and NPCID() then
-        return DataModules:IsTextKnown({ event = Enums.SoundEvent.Gossip, unitGUID = Utils:GetNPCGUID(),
+        return DataModules:IsTextKnown({ event = gossipEvent, unitGUID = Utils:GetNPCGUID(),
             name = Utils:GetNPCName(), unitIsObjectOrItem = Utils:IsNPCObjectOrItem(), text = gossip }) == false
     end
     return false

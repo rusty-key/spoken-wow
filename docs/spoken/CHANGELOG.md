@@ -2,6 +2,12 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **A quest giver with several quests offers Contribute for a greeting Spoken has no voice for,**
+  and Collect Missing Lines keeps it, as gossip windows already did.
+  *([svengabr](https://github.com/svengabr))*
+
 ## 3.12.1 — 2026-11-22
 
 - **Queue counts pulse without an error when a line is added while Spoken is stopped.** *([anon1231823](https://github.com/anon1231823))*

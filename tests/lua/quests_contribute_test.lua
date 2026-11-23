@@ -399,6 +399,36 @@ Expect("...in the gossip frame's top right corner", button.anchor and button.anc
 button:GetScript("OnEnter")(button)
 Expect("...saying the line is missing", GameTooltip.text, "Spoken Quests doesn't have this line")
 
+---------------------------------------------------------------- a quest giver's greeting
+-- An NPC with several quests opens the quest frame's greeting panel, not the gossip frame
+-- (#1215). Its words are gossip all the same: a greeting no pack has offers the button there,
+-- and one a pack has offers none.
+stub.HidePanels()
+world.greetingText = "Dark times, Tester. Stay on the road."
+stub.ShowPanel("QuestFrameGreetingPanel")
+stub.FireEvent("QUEST_GREETING")
+Expect("the button appears on a quest giver's greeting", button:IsShown(), true)
+Expect("...in the quest frame's corner", button.anchor and button.anchor.relativeTo == _G.QuestFrame, true)
+GameTooltip.text = nil
+button:GetScript("OnEnter")(button)
+Expect("...saying the line is missing", GameTooltip.text, "Spoken Quests doesn't have this line")
+local greeting = VoiceOver.Contribute:Capture()
+Expect("the greeting is sent with its npc", greeting ~= nil and greeting:match("\nnpc=12345 ") ~= nil, true)
+Expect("...and its words", greeting ~= nil and greeting:match("\nDark times, Tester%. Stay on the road%.\n") ~= nil, true)
+Expect("...and no quest", greeting ~= nil and greeting:match("\nquest=") == nil, true)
+
+do
+    local pack = VoiceOver.DataModules:GetModule("TestPack")
+    local HASH = string.rep("c", 32)
+    pack.SoundLengthLookupByFileName[HASH] = 2
+    pack.GossipLookupByNPCID = { [12345] = { ["Dark times, $n. Stay on the road."] = HASH } }
+    stub.FireEvent("QUEST_GREETING")
+    Expect("a greeting a pack has offers no button", button:IsShown(), false)
+    pack.GossipLookupByNPCID = nil
+    pack.SoundLengthLookupByFileName[HASH] = nil
+end
+world.greetingText = nil
+
 ---------------------------------------------------------------- the closing gossip frame
 -- CloseGossip fires GOSSIP_CLOSED, which refreshes the button, and on a real client the
 -- gossip text is still readable for that instant while the unit behind it is already gone.

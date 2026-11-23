@@ -78,6 +78,12 @@ local function IsFrameVisible(frame)
     return frame:IsShown()
 end
 
+--- The quest giver's greeting panel, when it is the one on screen. Its words are gossip, drawn
+--- on the quest frame.
+local function GreetingPanelOnScreen()
+    return IsFrameVisible(QuestFrameGreetingPanel) and QuestFrameGreetingPanel or nil
+end
+
 --- Which of the three NPC quest panels is on screen, the same priority Contribute:Capture
 --- and ReportButton:CurrentTarget both use.
 local function QuestPanelOnScreen()
@@ -291,7 +297,7 @@ function ContributeButton:Refresh()
     -- unless Hide Report Buttons is on.
     if page then
         button:Hide()
-        self.gossip = page == "GOSSIP_SHOW"
+        self.gossip = page == "GOSSIP_SHOW" or page == "QUEST_GREETING"
         local missing = Contribute:HasGap()
         local reportHidden = _G.Spoken and Spoken.AreReportButtonsHidden and Spoken:AreReportButtonsHidden()
         if missing or not reportHidden then
@@ -311,6 +317,9 @@ function ContributeButton:Refresh()
     local placed
     if QuestPanelOnScreen() then
         self.gossip = false
+        placed = self:PositionAtCorner(_G.QuestFrame, CloseButtonOf(_G.QuestFrame, "QuestFrameCloseButton"))
+    elseif GreetingPanelOnScreen() then
+        self.gossip = true
         placed = self:PositionAtCorner(_G.QuestFrame, CloseButtonOf(_G.QuestFrame, "QuestFrameCloseButton"))
     else
         self.gossip = true
