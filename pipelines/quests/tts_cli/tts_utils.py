@@ -14,8 +14,10 @@ from tts_cli.flavors import (apply_fallbacks, consensus_flavor, fallback_flavors
                              flavor_from_sound_name, model_voice, voice_name)
 from tts_cli.flavors import file_key as flavor_file_key
 
-REPLACE_DICT = {'$b': '\n', '$B': '\n', '$n': 'adventurer', '$N': 'Adventurer',
-                '$C': 'Adventurer', '$c': 'adventurer', '$R': 'Traveler', '$r': 'traveler'}
+def written_text(text):
+    """The game's text as the corpus stores it: `$B` as a line break. `$N`, `$C` and `$R` stay, as
+    every language's do, so a change of the language's words reaches every line."""
+    return re.sub(r'\$[bB]', '\n', text)
 
 
 def get_hash(text):
@@ -94,10 +96,7 @@ class TTSProcessor:
             for race, gender, flavor in zip(df['race'], df['gender'], df['flavor'])
         ]
 
-        df['cleanedText'] = df['text'].copy()
-
-        for k, v in REPLACE_DICT.items():
-            df['cleanedText'] = df['cleanedText'].str.replace(k, v, regex=False)
+        df['cleanedText'] = df['text'].map(written_text)
 
         df['cleanedText'] = df['cleanedText'].str.replace(r'<.*?>\s', '', regex=True)
 

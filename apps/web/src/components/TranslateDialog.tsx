@@ -19,7 +19,7 @@ import { fill } from "@/lib/site-text/format";
 type Version = {
   version: number;
   isCurrent: boolean;
-  origin: "extracted" | "edited" | "contributed" | "community";
+  origin: "extracted" | "edited" | "contributed" | "community" | "observed";
   note: string | null;
   createdAt: string;
   name: string;

@@ -25,6 +25,7 @@ import path from "node:path";
 
 import pg from "pg";
 
+import { speakQuestTokens } from "../../../pipelines/lib/player-words.mjs";
 import { plainTeamSql } from "../../../pipelines/lib/release-team.mjs";
 
 const INVALID_CHARS = "$<>";
@@ -32,7 +33,7 @@ const INVALID_CHARS = "$<>";
 const DIRECTION = /<[A-Z][^<>]*>/g;
 
 function unvoiceable(text) {
-  const spoken = text.replace(DIRECTION, "");
+  const spoken = speakQuestTokens(text, "enUS").replace(DIRECTION, "");
   return [...INVALID_CHARS].some((character) => spoken.includes(character));
 }
 

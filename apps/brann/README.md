@@ -8,7 +8,7 @@ arrives instead of polling on a schedule.
   and answers there, in the language it was asked in. The asker can keep talking to him in that
   thread, or press **Continue in DMs**, and rates his answer with 👍 or 👎. When the FAQ has no answer he stays silent in a channel,
   and in a thread or DM he says he doesn't know and points to the bugs forum.
-- **Issues.** Each post in `#bugs-forever-era` and each message a moderator marks with 🐛 becomes a
+- **Issues.** Each post in `#bugs` and each message a moderator marks with 🐛 becomes a
   GitHub issue as soon as it appears (`src/issues.mjs`, which calls `scripts/lib/forum-issues.mjs`).
   A closed issue is still reported by `.github/workflows/forum-issues.yaml`, because Discord cannot
   see GitHub.

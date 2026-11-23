@@ -83,7 +83,7 @@ import { noVoice } from "./speaker";
 import { noteFor, pageNotes } from "./notes";
 import { CONTRIBUTION_COLUMNS, observationMeta, REJECT_REASON_MAX, type Contribution } from "./store";
 import { MAX_BYTES } from "./envelope";
-import { spokenFromTemplate } from "./tokens";
+import { writtenFromTemplate } from "./tokens";
 import { idOnlyResolution } from "./triage";
 
 const COLUMNS = CONTRIBUTION_COLUMNS;
@@ -481,9 +481,9 @@ type MomentRow = Pick<CorpusLine, "lineId" | "playerGender" | "fileName" | "ques
 };
 
 /**
- * A contributed row for a quest moment, as its first version in `lang`. English speaks the
- * template with "adventurer" in place of $N, $C and $R; another language keeps them, as the
- * dump's own translations do, and is what that client showed, so it is `localeText` too.
+ * A contributed row for a quest moment, as its first version in `lang`. Every language keeps $N,
+ * $C and $R, as the dump's text does; another language's is what that client showed, so it is
+ * `localeText` too.
  */
 async function insertLine(
   client: PoolClient,
@@ -504,7 +504,7 @@ async function insertLine(
      on conflict do nothing`,
     [
       row.lineId, lang, row.source, row.questId, row.questTitle, row.playerGender, row.fileName,
-      english ? spokenFromTemplate(template) : template, row.originalText ?? template,
+      english ? writtenFromTemplate(template) : template, row.originalText ?? template,
       english ? null : template, skipReason === null, skipReason,
       userId, noteFor(contributionId),
     ],

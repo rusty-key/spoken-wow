@@ -153,7 +153,7 @@ describe("contributeReport", () => {
       `select "text" from "quest_line" where "lineId" = $1 and "lang" = 'enUS' and "isCurrent"`,
       [lineId],
     );
-    expect(rows).toEqual([{ text: "Greetings, Adventurer." }]);
+    expect(rows).toEqual([{ text: "Greetings, $N." }]);
   });
 
   it("refuses text the line already speaks, and stores nothing", async () => {

@@ -21,7 +21,7 @@ import { FAQ_PATH, loadFaq } from "./support.mjs";
 const KNOWN = new Set([
   "Quests", "Gossip", "Places", "Bosses", "Readables", "Alliance", "Horde", "Shared", "All",
   "Spoken: English", "Spoken Manager", "CurseForge app", "By hand", "DialogueUI", "Immersion",
-  "Windows", "macOS", "Linux", "#bugs-forever-era",
+  "Windows", "macOS", "Linux", "#bugs",
 ]);
 
 // Commands that are not one of Spoken's words: the game's own, and /sp help, which is what /sp
@@ -47,7 +47,7 @@ function uiText() {
     ...readdirSync(join(ROOT, "addons")).flatMap((addon) => [
       `addons/${addon}/Strings.lua`, `addons/${addon}/Locale/enUS.lua`,
     ]),
-    "manager/src/renderer/src/strings.en.ts",
+    "apps/manager/src/renderer/src/strings.en.ts",
   ];
   const text = [];
   for (const file of files) {

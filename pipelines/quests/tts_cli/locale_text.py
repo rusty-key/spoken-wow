@@ -13,21 +13,27 @@ Postgres, which holds `localeText` -- the line as the world database, and so the
 has it -- for every line imported from there. build reads it and writes guarded tables that
 load only on a client in that locale (see build.locale_tables).
 
+The same file carries the language's current NPC, object and item names, which the pack ships
+the same way: the quest log names a giver who is no longer on screen, and only the database
+knows what to call them.
+
 Nothing here needs a database: this reads and writes the file, and corpus_db does the query.
 """
 from tts_cli.corpus import load_corpus, write_corpus
 
 
-def write_locale_text(path: str, lang: str, lines: list) -> str:
-    """Write one language's rows: [{lineId, originalText, localeText}, ...].
+def write_locale_text(path: str, lang: str, lines: list, names=()) -> str:
+    """Write one language's rows, [{lineId, originalText, localeText}, ...], and its names,
+    [{kind, entityId, name}, ...].
 
     In the corpus's own envelope, so an unchanged export is an identical file.
     """
-    write_corpus(path, {"lang": lang, "lines": lines})
+    write_corpus(path, {"lang": lang, "lines": lines, "names": list(names)})
     return path
 
 
 def load_locale_text(path: str):
-    """(lang, rows) from a file write_locale_text wrote."""
+    """(lang, rows, names) from a file write_locale_text wrote; no names in one written before
+    it carried them."""
     document = load_corpus(path)
-    return document["lang"], document["lines"]
+    return document["lang"], document["lines"], document.get("names", [])

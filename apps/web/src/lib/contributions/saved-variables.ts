@@ -10,7 +10,7 @@
  *
  * Browser-safe on purpose: the page runs this to preview the upload before anything is sent,
  * and only the envelopes -- never the rest of the file -- leave the player's machine. The Spoken
- * Manager imports this file too (manager/electron.vite.config.ts, `@site-contributions`), to
+ * Manager imports this file too (apps/manager/electron.vite.config.ts, `@site-contributions`), to
  * read the same file the same way, so it imports nothing and passes the manager's stricter
  * compiler settings.
  */

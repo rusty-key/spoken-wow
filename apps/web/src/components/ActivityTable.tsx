@@ -185,6 +185,8 @@ export function describe(row: ActivityRow, t: UiText["activity"]["events"]): { w
       return { what: fill(t.nameRestored, { version }), quote: null };
     case "name.retired":
       return { what: fill(t.nameRetired, { version }), quote: null };
+    case "name.observed":
+      return { what: t.nameObserved, quote: str(d.name) };
     case "lexicon.added":
       return { what: fill(t.lexiconAdded, { subject: row.subject ?? "" }), quote: str(d.after) };
     case "lexicon.edited":

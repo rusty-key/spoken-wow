@@ -31,7 +31,6 @@ const ptBR: Dictionary = {
     label: "Idioma da interface",
     hint:
       "As palavras do Backstage, guardadas na sua conta. Isso não muda o idioma que você mantém, que é o código de idioma em cada página de administração.",
-    followPage: "O idioma da própria página",
     saveFailed: "Não foi possível salvar. Tente de novo.",
   },
   admin: {

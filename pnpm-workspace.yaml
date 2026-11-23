@@ -4,3 +4,6 @@ packages:
   - pipelines/readables
   - packages/*
   - scripts/manager
+  # Spoken Manager installs with npm from its own lockfile (manager.yml); in the workspace,
+  # `pnpm -r build` would run its Electron build and pnpm would resolve its dependencies anew.
+  - "!apps/manager"

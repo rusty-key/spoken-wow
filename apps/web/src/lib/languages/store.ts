@@ -19,7 +19,7 @@ import { recordActivity } from "@/lib/activity/store";
 import { inTransaction, query } from "@/lib/db";
 import { BASE_LANG, BUILTIN, allLangs, derivedTags, isLang, type Lang, type PlayerWords } from "@/lib/lang";
 import { loadLanguages } from "@/lib/languages/catalogue";
-import { validPlayerWords } from "@/lib/player-words";
+import { isBuiltinPlayerWords, samePlayerWords } from "@/lib/player-words";
 import { foundLangTeam } from "@/lib/teams/store";
 
 export type LanguageState = { code: Lang; enabled: boolean };
@@ -91,10 +91,13 @@ export async function giveTextToTeam(client: ClientBase, lang: string): Promise<
   await client.query(`update "language" set "textByTeam" = true where "code" = $1`, [lang]);
 }
 
-/** "name / race" for each reader, and the writ's count, for the activity log. */
+/** "name / race" for each reader with its declined forms, and the writ's count, for the activity log. */
 function wordsSummary(words: PlayerWords | null): string | null {
   if (!words) return null;
-  const forms = (side: PlayerWords["m"]) => `${side.name} / ${side.race}`;
+  const forms = (side: PlayerWords["m"]) => {
+    const cases = Object.entries(side.cases ?? {}).map(([n, d]) => ` |3-${n}: ${d.name ?? "-"} / ${d.race ?? "-"}`);
+    return `${side.name} / ${side.race}${cases.join("")}`;
+  };
   const m = forms(words.m);
   const f = forms(words.f);
   const readers = m === f ? m : `${m}; ${f}`;
@@ -103,9 +106,11 @@ function wordsSummary(words: PlayerWords | null): string | null {
 
 /**
  * Sets a language's validated player words, or clears them with null; logged only when they
- * change. Every take whose text holds a token goes stale against the new words.
+ * change. Words equal to Spoken's own clear the row too, so later changes to those still reach
+ * the language. Every take whose text holds a token goes stale against the new words.
  */
-export async function setPlayerWords(lang: Lang, words: PlayerWords | null, userId: string): Promise<void> {
+export async function setPlayerWords(lang: Lang, given: PlayerWords | null, userId: string): Promise<void> {
+  const words = given && isBuiltinPlayerWords(lang, given) ? null : given;
   const before = await inTransaction(async (client) => {
     const { rows } = await client.query<{ before: PlayerWords | null }>(
       `with "before" as (select "playerWords" from "language" where "code" = $1 for update)
@@ -119,7 +124,7 @@ export async function setPlayerWords(lang: Lang, words: PlayerWords | null, user
     return rows[0].before;
   });
   const [was, now] = [wordsSummary(before), wordsSummary(words)];
-  if (JSON.stringify(validPlayerWords(before)) === JSON.stringify(words)) return;
+  if (samePlayerWords(before, words)) return;
   await recordActivity({ kind: "text.player_words", lang, actorId: userId, detail: { before: was, after: now } });
 }
 

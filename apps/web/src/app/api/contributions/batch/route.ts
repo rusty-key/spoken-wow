@@ -16,6 +16,7 @@
  *
  * A `seen` envelope is no contribution: it says which zones the player met an NPC in
  * (lib/contributions/sighting.ts), and goes to npc_sighting under who sent it (lib/quests/sightings.ts).
+ * The name it carries is offered to the language's translators where the addon shows another.
  *
  * Places are refused here. A places contribution is the description the player writes on the
  * page, and a file has none; the addon never gathers them, so one arriving is a hand-built file.
@@ -52,6 +53,7 @@ import { keepClassWords } from "@/lib/contributions/class-words";
 import { sightingFrom, type Sighting } from "@/lib/contributions/sighting";
 import { submissionFrom } from "@/lib/contributions/submission";
 import { recordSightings, uploaderOf } from "@/lib/quests/sightings";
+import { recordObservedNames } from "@/lib/names/observed";
 import type { Submission } from "@/lib/contributions/contributions";
 
 export const dynamic = "force-dynamic";
@@ -149,7 +151,10 @@ export async function POST(request: Request) {
   }
   await createContributions(unknown, identity);
   if (installId) await recordMissingAudio(installId, hits);
-  if (sightings.length > 0) await recordSightings(sightings, uploaderOf({ userId: identity.userId, installId }));
+  if (sightings.length > 0) {
+    const uploader = uploaderOf({ userId: identity.userId, installId });
+    await Promise.all([recordSightings(sightings, uploader), recordObservedNames(sightings, uploader)]);
+  }
 
   await recordContributionHit(ip, installId);
 

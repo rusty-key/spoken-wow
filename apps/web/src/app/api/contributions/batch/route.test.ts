@@ -266,6 +266,26 @@ describe("where the player met each NPC", () => {
     expect(contributions.map((row) => row.source)).toEqual(["readables"]);
   });
 
+  it("offers the name a newer addon's sighting carries to that language's translators", async () => {
+    await db().query(
+      `insert into "entity_name" ("kind", "entityId", "lang", "version", "isCurrent", "origin", "name")
+       values ('creature', $1, 'enUS', 1, true, 'extracted', 'Alba Fairmoon')`,
+      [String(npcId)],
+    );
+    try {
+      const body = `!SPOKEN1 seen\naddon=SpokenQuests/9.9.9\nbuild=1.15.8/63829\nlocale=esMX\nnpc=creature:${npcId}\nzones=1411\nname=Alba Lunaclara\n`;
+      await POST(post({ envelopes: [`${body}sum=${checksum(body)}\n`] }));
+      const { rows } = await db().query(
+        `select "lang", "name", "status" from "name_contribution" where "kind" = 'creature' and "entityId" = $1`,
+        [String(npcId)],
+      );
+      expect(rows).toEqual([{ lang: "esMX", name: "Alba Lunaclara", status: "new" }]);
+    } finally {
+      await db().query(`delete from "name_contribution" where "entityId" = $1`, [String(npcId)]);
+      await db().query(`delete from "entity_name" where "kind" = 'creature' and "entityId" = $1`, [String(npcId)]);
+    }
+  });
+
   it("refuses a sighting no game wrote, and keeps the rest of the file", async () => {
     const response = await POST(post({ envelopes: [seen("1411,Durotar"), seen("1411").replace("1411\n", "1412\n")] }));
     expect(await response.json()).toMatchObject({ accepted: 0, refused: { incomplete: 1, checksum: 1 } });
