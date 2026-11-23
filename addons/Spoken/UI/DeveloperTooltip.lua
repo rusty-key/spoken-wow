@@ -22,17 +22,27 @@ local function AddDeveloper(tooltip)
     end
 end
 
-GameTooltip:HookScript("OnTooltipCleared", function(tooltip) tooltip.spokenDeveloperTag = nil end)
+local function HookTooltip()
+    GameTooltip:HookScript("OnTooltipCleared", function(tooltip) tooltip.spokenDeveloperTag = nil end)
 
--- Classic can expose the processor without using it for native unit tooltips.
-if type(GameTooltip.GetPrimaryTooltipData) == "function" and TooltipDataProcessor
-    and type(TooltipDataProcessor.AddTooltipPostCall) == "function" and Enum and Enum.TooltipDataType then
-    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tooltip, data)
-        data = NotSecret(data)
-        if type(data) ~= "table" or (issecrettable and issecrettable(data)) then return end
-        if issecretvalue and issecretvalue(data.guid) then return end
-        AddDeveloper(tooltip)
-    end)
-elseif GameTooltip:HasScript("OnTooltipSetUnit") then
-    GameTooltip:HookScript("OnTooltipSetUnit", AddDeveloper)
+    -- Classic can expose the processor without using it for native unit tooltips.
+    if type(GameTooltip.GetPrimaryTooltipData) == "function" and TooltipDataProcessor
+        and type(TooltipDataProcessor.AddTooltipPostCall) == "function" and Enum and Enum.TooltipDataType then
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tooltip, data)
+            data = NotSecret(data)
+            if type(data) ~= "table" or (issecrettable and issecrettable(data)) then return end
+            if issecretvalue and issecretvalue(data.guid) then return end
+            AddDeveloper(tooltip)
+        end)
+    elseif GameTooltip:HasScript("OnTooltipSetUnit") then
+        GameTooltip:HookScript("OnTooltipSetUnit", AddDeveloper)
+    end
 end
+
+-- Unit-tooltip modifiers add their target rows during PLAYER_LOGIN.
+local loader = CreateFrame("Frame")
+loader:RegisterEvent("PLAYER_ENTERING_WORLD")
+loader:SetScript("OnEvent", function(self)
+    self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+    HookTooltip()
+end)

@@ -6,7 +6,7 @@ local Expect, Failures = H.Expecter(stub.print)
 local SPOKEN = here .. "/../../addons/Spoken/"
 local ICON = [[|TInterface\AddOns\Spoken\icon.tga:0|t ]]
 
-local function Boot(mode, locale)
+local function Boot(mode, locale, withTarget)
     stub.SetClient(mode == "modern" and "16001" or "11509")
     stub.ResetFrames(); stub.ResetTimers(); stub.ResetSound(); stub.Secrets()
     stub.SetLocale(locale or "enUS")
@@ -15,16 +15,27 @@ local function Boot(mode, locale)
     _G.GameTooltip = tooltip
     tooltip.GetPrimaryTooltipData = mode == "modern" and function() end or false
     tooltip.IsForbidden = function(self) return self.forbidden end
-    local unit, guid, callback
+    local unit, guid
+    local callbacks = {}
     tooltip.GetUnit = function() return "Developer", unit end
     _G.UnitGUID = function() return guid end
     _G.Enum = _G.Enum or {}
     _G.Enum.TooltipDataType = { Unit = 2 }
     _G.TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn)
         Expect("only unit tooltips are registered", kind, Enum.TooltipDataType.Unit)
-        callback = fn
+        callbacks[#callbacks + 1] = fn
     end }
     stub.LoadSpoken(SPOKEN)
+    if withTarget then
+        local function AddTarget(frame) frame:AddLine("Target: You") end
+        if mode == "modern" then
+            TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, AddTarget)
+        else
+            tooltip:HookScript("OnTooltipSetUnit", AddTarget)
+        end
+    end
+    stub.FireEvent("PLAYER_ENTERING_WORLD")
+    local callback = callbacks[#callbacks]
     local function Fire(script)
         for _, fn in ipairs(tooltip.hooks[script] or {}) do fn(tooltip) end
     end
@@ -34,7 +45,11 @@ local function Boot(mode, locale)
     end
     local function Show(value, token)
         guid, unit = value, token or "mouseover"
-        if callback then callback(tooltip, { guid = guid }) else Fire("OnTooltipSetUnit") end
+        if callback then
+            for _, fn in ipairs(callbacks) do fn(tooltip, { guid = guid }) end
+        else
+            Fire("OnTooltipSetUnit")
+        end
         return table.concat(tooltip.lines or {}, "|")
     end
     return tooltip, Clear, Show, callback
@@ -48,6 +63,11 @@ for _, mode in ipairs({ "modern", "legacy" }) do
     Expect(mode .. ": repeated updates do not duplicate the label", Show("Player-6921-001E5110"), ICON .. "Spoken Developer")
     Clear()
     Expect(mode .. ": the second character is tagged after clearing", Show("Player-6921-02CAC851"), ICON .. "Spoken Developer")
+    for _, character in ipairs({ "04564413", "04987F43" }) do
+        Clear()
+        Expect(mode .. ": realm 5149 developer is tagged: " .. character,
+            Show("Player-5149-" .. character), ICON .. "Spoken Developer")
+    end
     if callback then
         Clear()
         callback(tooltip, {})
@@ -82,6 +102,13 @@ for _, mode in ipairs({ "modern", "legacy" }) do
         Expect("restricted tooltip data is never indexed", pcall(callback, tooltip, restricted), true)
         _G.issecrettable = nil
     end
+end
+
+for _, mode in ipairs({ "modern", "legacy" }) do
+    local _, Clear, Show = Boot(mode, "enUS", true)
+    Clear()
+    Expect(mode .. ": Spoken appears below the target row", Show("Player-6921-001E5110"),
+        "Target: You|" .. ICON .. "Spoken Developer")
 end
 
 local translations = {
