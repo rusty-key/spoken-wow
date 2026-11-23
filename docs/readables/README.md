@@ -380,7 +380,9 @@ everything under it, a title lists itself under its place. The filter menu has F
 Only, which leave out what has nothing found or voiced and take it from the counts, By Zone (the
 default) or By Type, and the window's Unlock Unfound Readables, which makes every one readable
 here. Without it a readable not found yet is greyed with a padlock, and its page says to open it in
-the world. A filter that hides the chosen row moves the page to the nearest row above it that is
+the world. Carrying a readable's item in the bags finds it too, unopened, so a quest note handed
+in unread is not locked for good; it is not marked heard. A readable that is an item shows that item's icon.
+A filter that hides the chosen row moves the page to the nearest row above it that is
 still listed, or to where the player stands; a row chosen only because the player stood there is
 chosen again. The window opens on where the player stands: the dungeon's line, else the zone's,
 else the continent's banner.
@@ -445,7 +447,7 @@ fails before anything is sent. `make readables-package` builds `Spoken_Readables
 `readables/v<version>` tag, which `.github/workflows/release-addons.yaml` still builds.
 `scripts/readables/release.sh` carries the two ids in
 `target_curseforge()`, and an unknown target fails on the empty id rather than defaulting, for
-the reason `docs/quests/CLAUDE.md` gives: an id left in that function is an id something
+the reason `docs/quests/AGENTS.md` gives: an id left in that function is an id something
 eventually uploads to, and uploading a readables pack over another project is not recoverable
 from this side.
 

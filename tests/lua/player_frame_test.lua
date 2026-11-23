@@ -114,7 +114,7 @@ ExpectOf("...and pointing at it shows the whole of it", function()
 end, "true " .. long)
 env.SoundQueue:RemoveAllSoundsFromQueue()
 Row("Gryan Stoutmantle", "Wolves Across the Border")
-ExpectOf("...which a line's name in full does not need", function() return F.frame.container.labelHover:IsShown() end, false)
+ExpectOf("...which a line's name in full does not need", function() return F.frame.container.labelHover:IsShown() end, true)
 env.SoundQueue:RemoveAllSoundsFromQueue()
 Row(string.rep("W", math.floor((room - 27) / 7)), long)
 ExpectOf("...not drawn at all where only a fragment of it would fit", function()
@@ -343,15 +343,15 @@ places:Enqueue(H.Clip({ present = { header = "h", label = "l", bullet = "b", por
 Expect("two actions make two buttons", #F.frame.actions.buttons, 2)
 Expect("...each its round icon", F.frame.actions.buttons[1].glyph:GetTexture() .. "|"
     .. F.frame.actions.buttons[2].glyph:GetTexture(), "Read|Report")
-ExpectOf("...in the header's controls after Stop and Skip", function()
-    return #F.row == 4 and F.row[1] == F.play and F.row[2] == F.skip
-        and F.row[3] == F.frame.actions.buttons[1] and F.row[4]:GetParent() == F.controls
+ExpectOf("...in the header's controls after Stop, Previous and Skip", function()
+    return #F.row == 5 and F.row[1] == F.play and F.row[2] == F.previous and F.row[3] == F.skip
+        and F.row[4] == F.frame.actions.buttons[1] and F.row[5]:GetParent() == F.controls
 end, true)
 F.frame.actions.buttons[1]:Click()
 Expect("clicking passes the clip", clicked ~= nil and clicked:sub(1, 5), "read:")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 quests:Enqueue(H.Clip({ present = { header = "h", label = "l", bullet = "b", portrait = { kind = "none" } } }))
-ExpectOf("no actions, Stop and Skip alone", function() return #F.frame.actions.buttons .. " " .. #F.row end, "0 2")
+ExpectOf("no actions, Stop, Previous and Skip alone", function() return #F.frame.actions.buttons .. " " .. #F.row end, "0 3")
 
 ---------------------------------------------------------------- the Talking Head's layout
 -- The window is the game's Talking Head frame as TalkingHeadUI.xml lays it out: 570 by 155, the
@@ -390,10 +390,10 @@ end, "3 false")
 ExpectOf("...above the progress line", function()
     return WordsTop() + 3 * 20 <= column:GetHeight() - F.progress.height
 end, true)
-ExpectOf("the round controls 10 inside the box's shadow at the top and the right, Stop or Replay then Skip", function()
+ExpectOf("the round controls 10 inside the box's shadow at the top and the right, Stop or Replay, Previous then Skip", function()
     local anchor = F.controls.anchor
     return anchor.point .. " " .. tostring(anchor.relativeTo == F.frame) .. " " .. anchor.x .. " " .. anchor.y
-        .. " " .. tostring(F.row[1] == F.play and F.row[2] == F.skip) .. " " .. F.play.state
+        .. " " .. tostring(F.row[1] == F.play and F.row[2] == F.previous and F.row[3] == F.skip) .. " " .. F.play.state
 end, "TOPRIGHT true -22 -25 true stop")
 ExpectOf("...Skip in the subtitle's art", function() return F.skip.bar ~= nil end, true)
 ExpectOf("the progress line along the column's foot, as wide as the words", function()
@@ -839,7 +839,7 @@ Expect("...showing its icon, not a word, in the player's round button", corner.g
 Expect("...the ring round it, as the subtitle's controls have", corner.ring ~= nil, true)
 Expect("...with no label", corner:GetText() or "", "")
 ExpectOf("...in the header after Skip, as the DialogueUI window shows it", function()
-    return corner:GetParent() == env.PlayerFrame.controls and env.PlayerFrame.row[3] == corner
+    return corner:GetParent() == env.PlayerFrame.controls and env.PlayerFrame.row[4] == corner
 end, true)
 -- Sized to be aimed at. Pinned as a floor rather than a number, so it can be tuned but
 -- cannot drift back to something you have to hunt for.

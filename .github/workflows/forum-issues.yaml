@@ -1,6 +1,6 @@
 name: Discord issue closed
 
-# Brann, the Discord bot (apps/brann), files each post in the forum #bugs-forever-era and each
+# Brann, the Discord bot (apps/brann), files each post in the forum #bugs and each
 # message a moderator marks with 🐛 as a GitHub issue the moment it appears. Discord cannot see an
 # issue close, so this tells the post or message instead, and tags a post Fixed or Not planned
 # (scripts/lib/forum-issues.mjs).
@@ -16,6 +16,7 @@ jobs:
   closed:
     if: ${{ contains(github.event.issue.labels.*.name, 'from-discord') }}
     runs-on: ubuntu-latest
+    environment: discord
     # GitHub keeps one pending run per group, and a waiting report must not be dropped for
     # another issue's.
     concurrency:

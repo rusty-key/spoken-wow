@@ -14,6 +14,10 @@
  * its own beside the IP's. Without one, as from a file uploaded on /contribute, known lines are
  * dropped as before.
  *
+ * A `seen` envelope is no contribution: it says which zones the player met an NPC in
+ * (lib/contributions/sighting.ts), and goes to npc_sighting under who sent it (lib/quests/sightings.ts).
+ * The name it carries is offered to the language's translators where the addon shows another.
+ *
  * Places are refused here. A places contribution is the description the player writes on the
  * page, and a file has none; the addon never gathers them, so one arriving is a hand-built file.
  */
@@ -22,7 +26,7 @@ import { after } from "next/server";
 
 import { auth } from "@/lib/auth";
 import { clientIp } from "@/lib/reports/client-ip";
-import { parseEnvelope } from "@/lib/contributions/envelope";
+import { parseGatheredEnvelope, type Envelope } from "@/lib/contributions/envelope";
 import {
   CONTRIBUTION_WINDOW_MS,
   CONTRIBUTIONS_PER_HOUR,
@@ -46,7 +50,10 @@ import {
   recordContributionHit,
 } from "@/lib/contributions/store";
 import { keepClassWords } from "@/lib/contributions/class-words";
+import { sightingFrom, type Sighting } from "@/lib/contributions/sighting";
 import { submissionFrom } from "@/lib/contributions/submission";
+import { recordSightings, uploaderOf } from "@/lib/quests/sightings";
+import { recordObservedNames } from "@/lib/names/observed";
 import type { Submission } from "@/lib/contributions/contributions";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +63,7 @@ export async function POST(request: Request) {
 
   // 200 and not 400, as on the single route: a bot that believes it succeeded stops adapting.
   if (typeof body.website === "string" && body.website.trim()) {
-    return Response.json({ ok: true, accepted: 0, known: 0, counted: 0, refused: {} });
+    return Response.json({ ok: true, accepted: 0, known: 0, counted: 0, seen: 0, refused: {} });
   }
 
   const envelopes = body.envelopes;
@@ -88,6 +95,7 @@ export async function POST(request: Request) {
   };
 
   const sent: Submission[] = [];
+  const sightings: Sighting[] = [];
   const refused: Record<string, number> = {};
   const refuse = (reason: string) => {
     refused[reason] = (refused[reason] ?? 0) + 1;
@@ -98,18 +106,24 @@ export async function POST(request: Request) {
       refuse("malformed");
       continue;
     }
-    // parseEnvelope refuses an oversized one itself; the single route measures first only
-    // because it answers that case with its own status code.
-    const parsed = parseEnvelope(raw);
+    // Parsing refuses an oversized one itself; the single route measures first only because it
+    // answers that case with its own status code.
+    const parsed = parseGatheredEnvelope(raw);
     if (!parsed.ok) {
       refuse(parsed.error);
+      continue;
+    }
+    if (parsed.value.source === "seen") {
+      const sighting = sightingFrom(parsed.value as Envelope<"seen">);
+      if (sighting) sightings.push(sighting);
+      else refuse("incomplete");
       continue;
     }
     if (parsed.value.source === "places") {
       refuse("describe");
       continue;
     }
-    const submission = submissionFrom(parsed.value, null);
+    const submission = submissionFrom(parsed.value as Envelope, null);
     if (!submission) {
       refuse("incomplete");
       continue;
@@ -137,6 +151,10 @@ export async function POST(request: Request) {
   }
   await createContributions(unknown, identity);
   if (installId) await recordMissingAudio(installId, hits);
+  if (sightings.length > 0) {
+    const uploader = uploaderOf({ userId: identity.userId, installId });
+    await Promise.all([recordSightings(sightings, uploader), recordObservedNames(sightings, uploader)]);
+  }
 
   await recordContributionHit(ip, installId);
 
@@ -149,6 +167,7 @@ export async function POST(request: Request) {
     ok: true,
     accepted: submissions.length,
     known,
+    seen: sightings.length,
     counted: hits.length,
     refused,
   });

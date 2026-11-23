@@ -13,6 +13,7 @@ import { recordActivity } from "../activity/store";
 import { fileIndex } from "../audio";
 import type { CorpusLine } from "../corpus";
 import { shapedText } from "../generation/files";
+import { npcDirections } from "../generation/npc-direction";
 import { PROVIDERS } from "../generation/providers";
 import { currentConfig } from "../generation/settings";
 import { spokenHash } from "../generation/spoken-hash";
@@ -125,7 +126,7 @@ export async function writeOverride(
 /**
  * Every hash a take speaking `text` as this override can carry: one per file that resolves to it
  * (its own and its voices') and per provider, since each shapes the words with its own voice's
- * direction. Null for a file no line names, which no take can speak.
+ * direction and its NPC's. Null for a file no line names, which no take can speak.
  */
 async function spokenHashes(
   lang: Lang,
@@ -137,9 +138,13 @@ async function spokenHashes(
   const stem = file.replace(/\.mp3$/, "");
   const lines = [...index].filter(([f]) => f.startsWith(stem) && overrideOf(own, f)).map(([, line]) => line);
   if (lines.length === 0) return null;
-  const { raceTags } = await currentConfig(lang);
+  const [{ raceTags }, npcDirectionOf] = await Promise.all([currentConfig(lang), npcDirections(lang)]);
   return [
-    ...new Set(lines.flatMap((line) => PROVIDERS.map((p) => spokenHash(shapedText(text, lang, line, p, raceTags))))),
+    ...new Set(
+      lines.flatMap((line) =>
+        PROVIDERS.map((p) => spokenHash(shapedText(text, lang, line, p, raceTags, npcDirectionOf(line)))),
+      ),
+    ),
   ];
 }
 

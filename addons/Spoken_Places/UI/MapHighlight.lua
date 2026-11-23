@@ -9,6 +9,10 @@
 -- tiles exactly as Blizzard's MapExplorationPin lays it out. It lights and goes out at once, as
 -- the continent map's own highlight does.
 --
+-- On OpenMap's stitched map the overlay is only the highlight's shape: a mask over a plain colour.
+-- On WoW Forever the overlays are the zone's painted art, which OpenMap draws masked and graded,
+-- so drawing them again showed Blizzard's raw art through OpenMap's map.
+--
 -- Overlays do not say which area they belong to, and an overlay's rectangle reaches into its
 -- neighbours. So each overlay is matched to an area once per map: the area a click resolves to
 -- at most points of a grid over its rectangle. What lights is then the overlay of the area a
@@ -143,10 +147,74 @@ local function Target()
 	return best, layer, mapID
 end
 
+-- The colour an area lights in on OpenMap's map, where the overlay is only its shape.
+local GLOW = { 1, 0.82, 0.25 }
+
+-- Drawn where it lies, not nudged onto the screen's pixel grid: on OpenMap's scaled map,
+-- tiles snapped separately part by a pixel where they meet.
+local function Unsnap(texture)
+	if texture.SetSnapToPixelGrid then texture:SetSnapToPixelGrid(false) end
+	if texture.SetTexelSnappingBias then texture:SetTexelSnappingBias(0) end
+end
+
+-- On WoW Forever an overlay's art does not fade out by its rectangle's edge, so its shape alone
+-- left the rectangle's outline in the glow; OpenMap hides it under masks of its own. A second mask
+-- over the whole overlay fades the glow to nothing at that edge.
+local EDGE = [[Interface\AddOns\Spoken_Places\Textures\Art\HighlightEdge]]
+
+local function NewTile()
+	local tile = state.frame:CreateTexture(nil, "OVERLAY")
+	tile:SetBlendMode("ADD")
+	tile.mask = state.frame:CreateMaskTexture()
+	tile.mask:SetAllPoints(tile)
+	Unsnap(tile)
+	Unsnap(tile.mask)
+	return tile
+end
+
+local function Edge()
+	if not state.edge then
+		state.edge = state.frame:CreateMaskTexture()
+		state.edge:SetTexture(EDGE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+		Unsnap(state.edge)
+	end
+	return state.edge
+end
+
+-- One tile of the overlay: the file itself on Blizzard's map; on OpenMap's, the colour cut to the
+-- file's shape. CLAMP, not CLAMPTOBLACK: a mask clamped to black fades out over its last pixel,
+-- which drew a dark line along every seam between tiles.
+local function Paint(tile, file, right, bottom, shaped)
+	if shaped then
+		tile:SetColorTexture(GLOW[1], GLOW[2], GLOW[3], 1)
+		tile.mask:SetTexture(file, "CLAMP", "CLAMP", "TRILINEAR")
+		tile.mask:SetTexCoord(0, right, 0, bottom)
+		if not tile.masked then
+			tile:AddMaskTexture(tile.mask)
+			tile:AddMaskTexture(Edge())
+			tile.masked = true
+		end
+	else
+		if tile.masked then
+			tile:RemoveMaskTexture(tile.mask)
+			tile:RemoveMaskTexture(Edge())
+			tile.masked = false
+		end
+		tile:SetTexture(file, nil, nil, "TRILINEAR")
+		tile:SetTexCoord(0, right, 0, bottom)
+	end
+end
+
 -- Lays the overlay out in tiles over the map, as MapExplorationPin does.
-local function Light(info, layer)
+local function Light(info, layer, shaped)
 	local tileW, tileH = layer.tileWidth or 256, layer.tileHeight or 256
 	local wide, tall = math.ceil(info.textureWidth / tileW), math.ceil(info.textureHeight / tileH)
+	if shaped then
+		local edge = Edge()
+		edge:ClearAllPoints()
+		edge:SetPoint("TOPLEFT", state.frame, "TOPLEFT", info.offsetX, -info.offsetY)
+		edge:SetSize(info.textureWidth, info.textureHeight)
+	end
 	local n = 0
 	for row = 1, tall do
 		local h = row < tall and tileH or info.textureHeight - tileH * (tall - 1)
@@ -159,13 +227,11 @@ local function Light(info, layer)
 				n = n + 1
 				local tile = state.tiles[n]
 				if not tile then
-					tile = state.frame:CreateTexture(nil, "OVERLAY")
-					tile:SetBlendMode("ADD")
+					tile = NewTile()
 					state.tiles[n] = tile
 				end
-				tile:SetTexture(file, nil, nil, "TRILINEAR")
+				Paint(tile, file, w / fileW, h / fileH, shaped)
 				tile:SetSize(w, h)
-				tile:SetTexCoord(0, w / fileW, 0, h / fileH)
 				tile:ClearAllPoints()
 				tile:SetPoint("TOPLEFT", state.frame, "TOPLEFT", info.offsetX + tileW * (col - 1),
 					-(info.offsetY + tileH * (row - 1)))
@@ -193,17 +259,18 @@ local function OnUpdate()
 	if info and not SpokenPlaces:PlaceOverZone(state.frame, state.canvas, zone, layer) then
 		info = nil
 	end
+	local shaped = SpokenPlaces:OpenMap() ~= nil
 	if info then
 		-- OpenMap's art, which this has to show over, is only built once its map first shows.
 		local level = SpokenPlaces:OverArtLevel(state.level)
 		if level ~= state.levelSet and pcall(state.frame.SetFrameLevel, state.frame, level) then
 			state.levelSet = level
 		end
-		if info ~= state.lit then
-			Light(info, layer)
+		if info ~= state.lit or shaped ~= state.shaped then
+			Light(info, layer, shaped)
 		end
 	end
-	state.lit = info
+	state.lit, state.shaped = info, shaped
 	state.frame:SetShown(info ~= nil)
 end
 

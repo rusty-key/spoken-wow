@@ -16,6 +16,7 @@ local GREETING = "Well met. How can I help?"
 local BANK = "Where is the bank?"
 local DIRECTIONS = "The bank is past the fountain."
 local OTHER = "Keep your blade sharp, friend."
+local SESSION = "This greeting lasts only for the session."
 -- The option picked to reach the page of the clip that started last.
 local lastTitle
 
@@ -27,10 +28,11 @@ local function Boot(client)
     local VO = stub.LoadQuests(QUESTS, SPOKEN)
     dofile(QUESTS .. "UI/DialogPlayButton.lua")
     VO.Addon:OnInitialize()
-    local gossip = { [GREETING] = "greeting-hash", [DIRECTIONS] = "directions-hash", [OTHER] = "other-hash" }
+    local gossip = { [GREETING] = "greeting-hash", [DIRECTIONS] = "directions-hash", [OTHER] = "other-hash",
+        [SESSION] = "session-hash" }
     VO.DataModules:Register("TestPack", {
         SoundLengthLookupByFileName = { ["greeting-hash"] = 1, ["directions-hash"] = 1, ["other-hash"] = 1,
-            ["101-accept"] = 1 },
+            ["session-hash"] = 1, ["101-accept"] = 1 },
         GossipLookupByNPCID = { [12345] = gossip },
         GossipLookupByNPCName = { Guard = gossip },
         GetSoundPath = function(_, fileName) return fileName .. ".ogg" end,
@@ -176,7 +178,8 @@ for _, client in ipairs({ "11509", "16001" }) do
     Leave()
     _G.Spoken:SetPartOn("gossip", true)
 
-    -- Gossip audio continues after its window closes; Stop When Window Closes is for quest audio.
+    -- Stop When Window Closes stops gossip as its window closes, and a quest giver's greeting too,
+    -- as its quest frame closes.
     VO.Addon.db.profile.Audio.GossipFrequency = Frequency.Always
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = true
     stub.ShowGossip(GREETING, { BANK })
@@ -186,12 +189,11 @@ for _, client in ipairs({ "11509", "16001" }) do
     stub.HidePanels()
     stub.FireEvent("GOSSIP_CLOSED")
     stub.Advance(0.1)
-    Expect(client .. ": gossip continues after its window closes", _G.Spoken:GetCurrent() ~= nil, true)
-    _G.Spoken:StopAll()
+    Expect(client .. ": gossip stops as its window closes, under Stop When Window Closes",
+        _G.Spoken:GetCurrent(), nil)
     stub.Advance(1)
     Played(played)
 
-    -- Quest-giver greetings use the same gossip player, and also continue after their frame closes.
     world.questID = 0
     world.greetingText = GREETING
     stub.ShowPanel("QuestFrameGreetingPanel")
@@ -201,8 +203,8 @@ for _, client in ipairs({ "11509", "16001" }) do
     stub.ShowPanel(nil)
     stub.FireEvent("QUEST_FINISHED")
     stub.Advance(0.1)
-    Expect(client .. ": ...and continues as its window closes, under Stop When Window Closes",
-        _G.Spoken:GetCurrent() ~= nil, true)
+    Expect(client .. ": ...and a greeting stops as its quest frame closes",
+        _G.Spoken:GetCurrent(), nil)
     stub.Advance(10)
     Played(played)
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
@@ -243,6 +245,26 @@ for _, client in ipairs({ "11509", "16001" }) do
     Expect(client .. ": an unvoiced NPC's dialog has no mute toggle", mute:IsShown(), false)
     Leave()
     world.npcName, world.npcGUID = voicedName, voicedGUID
+
+    -- Once per Session keeps greetings per NPC like the saved settings, but in memory only.
+    local sessionVO, sessionPlayed = Boot(client)
+    sessionVO.Addon.db.profile.Audio.GossipFrequency = sessionVO.Enums.GossipFrequency.OncePerSession
+    Talk(SESSION)
+    Expect(client .. ": Once per Session plays a greeting the first time", Played(sessionPlayed), "session-hash")
+    Leave()
+    Talk(SESSION)
+    Expect(client .. ": ...holds that greeting back for this session", Played(sessionPlayed), "(nothing)")
+    Leave()
+    sessionVO.Addon:ForgetGreetingsHeard()
+    Talk(SESSION)
+    Expect(client .. ": ...and Forget Greetings Heard lets it play again", Played(sessionPlayed), "session-hash")
+    Leave()
+
+    local reloadedVO, reloadedPlayed = Boot(client)
+    reloadedVO.Addon.db.profile.Audio.GossipFrequency = reloadedVO.Enums.GossipFrequency.OncePerSession
+    Talk(SESSION)
+    Expect(client .. ": ...allows it again after a reload", Played(reloadedPlayed), "session-hash")
+    Leave()
 end
 
 if Failures() > 0 then

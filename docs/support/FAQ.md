@@ -125,7 +125,7 @@ No: the game gives addons no way to see a Discord voice channel. Stop it yoursel
 
 ## Places are only read once
 
-Places reads each zone and area once per character by default. Turn on **Read Every Visit** under When to Read on the **Places** page and choose how long to wait before the same place is read again. **Forget Places Heard** (`/spp forget`) clears this character's list.
+Places reads each zone and area once per character by default. Turn on **Read Every Visit** under When to Read on the **Places** page and choose how long to wait before the same place is read again. **Forget Visited Places** (`/spp forget`) clears this character's list.
 
 ## What are the slash commands?
 
@@ -168,7 +168,7 @@ Press the **Report** (bug) button on the subtitles or the window while the line 
 
 ## How do I report a bug or a Lua error?
 
-First update Spoken, since many errors are already fixed. Then post in the **#bugs-forever-era** forum on the Discord (https://spoken.quest/discord) with your client (Forever, Classic Era or Anniversary), your Spoken version, the full error text and the steps that cause it. The output of `/sp diagnostics` helps. Issues are also welcome on GitHub: https://github.com/rusty-key/spoken-wow/issues
+First update Spoken, since many errors are already fixed. Then post in the **#bugs** forum on the Discord (https://spoken.quest/discord) with your client (Forever, Classic Era or Anniversary), your Spoken version, the full error text and the steps that cause it. The output of `/sp diagnostics` helps. Issues are also welcome on GitHub: https://github.com/rusty-key/spoken-wow/issues
 
 ## How can I send lines that have no voice?
 

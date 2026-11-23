@@ -324,6 +324,45 @@ def test_text_ships_for_the_clips_a_pack_carries(tmp_path):
     assert report["tableRows"]["text_table"] == 1
 
 
+def test_a_language_pack_carries_the_words_of_its_lines_without_a_take(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    tables = {"take-text.json": {"quests/5-accept": "Grabada."},
+              "line-text.json": {"quests/5-accept": "Escrita.", "quests/5-complete": "Sin grabar.",
+                                 "quests/9-accept": "Otro paquete."}}
+    for name, table in tables.items():
+        with open(os.path.join(store, name), "w", encoding="utf-8") as f:
+            json.dump(table, f)
+
+    build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="esMX",
+                 include={"quests/5-accept", "quests/5-complete"})
+
+    generated = tmp_path / "dist" / "Mod" / "generated"
+    takes = (generated / "text_table.lua").read_text(encoding="utf-8")
+    lines = (generated / "line_text_table.lua").read_text(encoding="utf-8")
+    assert '["5-accept"] = "Grabada."' in takes and "Sin grabar" not in takes
+    assert '["5-complete"] = "Sin grabar."' in lines
+    assert "Escrita" not in lines and "Otro paquete" not in lines
+
+
+def test_a_language_pack_carries_every_quests_title(tmp_path):
+    # A client knows only the titles of quests it has shown: without these the Compendium showed the
+    # English one for every quest the player never opened.
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    with open(os.path.join(store, "quest-titles.json"), "w", encoding="utf-8") as f:
+        json.dump({"5": "Un almuerzo gratis", "9": 'Otro "paquete"'}, f)
+
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="esMX",
+                          include={"quests/5-accept"})
+
+    lua = (tmp_path / "dist" / "Mod" / "generated" / "title_table.lua").read_text(encoding="utf-8")
+    assert "Mod.TitleByQuestID = " in lua
+    assert '[5] = "Un almuerzo gratis"' in lua
+    assert '[9] = "Otro \\"paquete\\""' in lua
+    assert '~= "esMX" then return end' in lua
+    assert "generated\\title_table.lua" in _toc(tmp_path)
+    assert report["tableRows"]["title_table"] == 2
+
+
 def test_text_survives_lua_quoting(tmp_path):
     # A raw newline or an unescaped quote stops the whole pack from loading.
     lua, _ = _text_table(tmp_path, {"quests/5-accept": 'Say "hi"\nC:\\x \tПривет'})
@@ -479,6 +518,25 @@ def test_only_a_pack_with_gossip_audio_carries_the_gossip_text_tables(tmp_path, 
         assert (f"generated\\{name}" in toc) is carried
     assert "generated\\quest_id_lookups.lua" in toc
     assert "generated\\npc_body_gossip_file_lookups.lua" in toc
+
+
+def test_a_language_s_pack_names_its_speakers_in_its_own_language(tmp_path):
+    store = _store(tmp_path, "gossip/abc123.ogg")
+    names = [{"kind": "creature", "entityId": "68", "name": "Guardia de Ventormenta"},
+             {"kind": "creature", "entityId": "999", "name": "Nadie"}]
+
+    build_module(CORPUS, store, str(tmp_path / "dist"), "Mod", language="esMX",
+                 locale_text=MX_TEXT, locale_names=names)
+
+    table = _generated(tmp_path, "esMX", "npc_name_lookups.lua")
+    assert ('if not VoiceOver.Language or VoiceOver.Language:GetClientLanguage() ~= "esMX" '
+            'then return end') in table
+    assert "ClientLocaleLookups.NPCNameLookupByNPCID" in table
+    assert '"Guardia de Ventormenta"' in table
+    # An NPC the corpus never names is nothing the addon asks for.
+    assert "Nadie" not in table
+    assert "generated\\esMX\\npc_name_lookups.lua" in _toc(tmp_path)
+    assert '"Stormwind City Guard"' in _generated(tmp_path, "npc_name_lookups.lua")
 
 
 def test_a_language_pack_without_locale_text_has_no_locale_tables(tmp_path):

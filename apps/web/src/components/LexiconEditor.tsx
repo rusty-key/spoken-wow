@@ -21,11 +21,14 @@ import {
   honoursPhonemes,
   kindOf,
   LexiconError,
+  PHONEME_MODELS,
   validateLexicon,
   type LexiconEntry,
 } from "@/lib/generation/lexicon";
 
 type Saved = EffectiveLexicon & { syncError?: string | null };
+
+const PHONEME_MODEL_LIST = new Intl.ListFormat("en", { type: "conjunction" }).format(PHONEME_MODELS);
 
 const MODE_LABELS: Record<PreviewMode, string> = {
   word: "Word",
@@ -622,7 +625,7 @@ function SyncBanner({
       <Banner tone="warn">
         <span>
           Generation uses <code>{modelId}</code>, which ignores phoneme rules — only{" "}
-          <code>eleven_v3</code> and <code>eleven_flash_v2</code> honour them. {phonemes} entries
+          {PHONEME_MODEL_LIST} honour them. {phonemes} entries
           written in IPA are skipped; the respelled ones still apply. Switch the model on Voices,
           or respell those entries.
         </span>
@@ -867,7 +870,7 @@ function Row({
               className="size-7 shrink-0 text-sm"
               title={
                 ipa
-                  ? "Writing IPA. Only eleven_v3 and eleven_flash_v2 honour it — click for a respelling."
+                  ? `Writing IPA. Only ${PHONEME_MODEL_LIST} honour it — click for a respelling.`
                   : "Respelling it as it should be said. Click to write IPA instead."
               }
               aria-label={ipa ? "Switch to a respelling" : "Switch to IPA"}

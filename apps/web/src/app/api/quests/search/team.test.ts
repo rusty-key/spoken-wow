@@ -45,7 +45,7 @@ async function take(team: string, line: { lineId: string; file: string }, said: 
 
 /** What an ElevenLabs take of `line` speaking `text` carries, as regenerating hashes it. */
 async function hashOf(line: CorpusLine, text: string): Promise<string> {
-  return spokenHash(shapedText(text, lang, line, "elevenlabs", (await currentConfig(lang)).raceTags));
+  return spokenHash(shapedText(text, lang, line, "elevenlabs", (await currentConfig(lang)).raceTags, undefined));
 }
 
 async function override(team: string, line: { lineId: string; file: string; line: CorpusLine }, text: string) {

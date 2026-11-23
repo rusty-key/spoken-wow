@@ -128,6 +128,7 @@ Defaults = {
     },
     char = {
         IsPaused = false,
+        IsMuted = false,
     },
 }
 
@@ -481,8 +482,9 @@ end
 --- What Spoken itself says for a report: its version, the queue, the window and the modules
 --- registered. Each module's own follows it in Options:ShowDiagnostics.
 function Addon:PrintDiagnostics()
-    print(format("Spoken %s, API %d, %d queued, %s", AddonVersion, Spoken.API_VERSION,
-        SoundQueue:GetQueueSize(), SoundQueue:IsPaused() and "paused" or "playing"))
+    print(format("Spoken %s, API %d, %d queued, %s%s", AddonVersion, Spoken.API_VERSION,
+        SoundQueue:GetQueueSize(), SoundQueue:IsPaused() and "paused" or "playing",
+        SoundQueue:IsMuted() and ", muted" or ""))
     print("  " .. (Developer:Call("Describe") or "debug log: no Spoken Developer module"))
     for key, source in Sources:Iterate() do
         print(format("  source %s (%s)", key, source.addon or "?"))
@@ -527,7 +529,9 @@ local function RegisterSlashCommand()
         local lines = {
             { "/sp replay", L.BIND_PLAYPAUSE },
             { "/sp skip", L.BIND_SKIP },
+            { "/sp previous", L.BIND_PREVIOUS },
             { "/sp stopall", L.BIND_STOP },
+            { "/sp mute on | off", L.BIND_MUTE },
             { "/sp style subtitles | small | large | dialogueui | voice", L.OPT_PLAYER_STYLE },
             { "/sp narrator on | off", L.OPT_SHOW_NARRATOR },
             { "/sp rows 1 | 2", L.TRANSCRIPT_LINES },
@@ -552,6 +556,11 @@ local function RegisterSlashCommand()
             SoundQueue:RemoveAllSoundsFromQueue()
         elseif command == "skip" then
             SoundQueue:Skip()
+        elseif command == "previous" or command == "prev" then
+            SoundQueue:Previous()
+        elseif verb == "mute" and (rest == "" or rest == "on" or rest == "off") then
+            if rest == "" then SoundQueue:ToggleMuted() else SoundQueue:SetMuted(rest == "on") end
+            print("Spoken: " .. L.BIND_MUTE .. " " .. (SoundQueue:IsMuted() and L.ON or L.OFF))
         elseif command == "compendium" then
             Options:ToggleCompendium()
         elseif (verb == "narrator" or verb == "words" or verb == "transcript") and (rest == "" or rest == "on" or rest == "off") then
@@ -631,7 +640,7 @@ end
 -- and the "blocked from an action" dialog it raises hangs the client (#165). There the chat line
 -- says it alone.
 function Addon:IsGamepadUI()
-    return GetCVar("InputDeviceInterfaceStyle") == "1"
+    return SpokenLayout.IsGamepadUI()
 end
 
 -- Folders an older release installed, which nothing ships any more: Spoken's own before it was
@@ -816,6 +825,7 @@ loader:SetScript("OnEvent", function(_, ev, name)
         Addon:BuildVoiceList()
         Addon:Enable()
         Addon:RetireOldFolders()
+        Gather:DropSent()
         WatchPausedQueue()
         -- A stop belongs to the line it stopped, which a reload drops, so a session never starts stopped.
         SoundQueue:SetPaused(false)

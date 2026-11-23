@@ -46,6 +46,7 @@ local function Install(packs, locale)
             ClientLocaleLookups = pack.clientGossip and { GossipLookupByNPCID = pack.clientGossip },
             GetSoundPath = function(_, fileName) return fileName end,
             TextByFileName = pack.texts,
+            LineTextByFileName = pack.lineTexts,
         })
     end
     return VO
@@ -477,6 +478,22 @@ do
     Expect("Text Language Polish, voice English: the English recording plays", folder, "SpokenQuestsAudio")
     Expect("...captioned in the Polish voice pack's words for the line, before a text pack's",
         VO.DataModules:TextPackText(soundData), "Słowa polskiego głosu.")
+    H.ReadText(nil)
+    _G.SpokenEnv.Addon.db.profile.Language.Voice = nil
+end
+
+-- A voice pack's words of a line it has no take of are no voice's: a text pack's win over them.
+do
+    local VO = Install({ { folder = "SpokenQuestsAudio", lines = { ["101-accept"] = 2 } },
+        { folder = "SpokenQuestsAudio_plPL", language = "plPL", lines = {},
+            lineTexts = { ["101-accept"] = "Słowa bez nagrania." } } })
+    _G.SpokenEnv.Addon.db.profile.Language.Voice = "enUS"
+    H.ReadText("plPL")
+    local _, soundData = Resolve(VO, 101)
+    Expect("a voice pack's words of a line with no take caption it where nothing else has it",
+        VO.DataModules:TextPackText(soundData), "Słowa bez nagrania.")
+    _G.Spoken:RegisterText("plPL", "quests", { lines = { ["q:101:accept"] = "Słowa pakietu tekstu." } })
+    Expect("...and yield to a text pack's", VO.DataModules:TextPackText(soundData), "Słowa pakietu tekstu.")
     H.ReadText(nil)
     _G.SpokenEnv.Addon.db.profile.Language.Voice = nil
 end

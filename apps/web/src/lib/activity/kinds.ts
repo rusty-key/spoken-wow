@@ -89,6 +89,7 @@ export type ActivityDetail = {
   "name.edited": { version: number; name?: string; note?: string | null } & ApiAuditDetail;
   "name.restored": { version: number; from?: number | null };
   "name.retired": { version: number };
+  "name.observed": { version: number; name: string; contribution: number };
   "lexicon.added": { after?: string };
   "lexicon.edited": { before?: string; after?: string };
   "lexicon.removed": { before?: string };
@@ -132,6 +133,7 @@ export type ActivityDetail = {
     npcId: number;
     from: { npcName?: string | null; npcType: string; npcId: number };
   };
+  "npc.direction": { npcName?: string | null; direction?: string | null };
   "type.changed": {
     action: string;
     gender?: string | null;

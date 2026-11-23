@@ -114,7 +114,7 @@ describe("acceptAsWording", () => {
       {
         lineId: `${moment}:w1`,
         fileName: `${quest}-accept-w1`,
-        text: "Oh, you are back, Adventurer.",
+        text: "Oh, you are back, $N.",
         originalText: "Oh, you are back, $N.",
         origin: "contributed",
         generatable: true,
@@ -173,9 +173,18 @@ describe("acceptAsWording", () => {
   it("writes one wording for two accepts at once", async () => {
     const id = await contribution("enUS", "You again?");
     const other = await contribution("enUS", "You again?");
-    const outcomes = await Promise.all([acceptAsWording(id, ACCEPTER), acceptAsWording(id, ACCEPTER), acceptAsWording(other, ACCEPTER)]);
-    // Whichever writes first, the other's text is then a wording the moment has, as it would be one after the other.
-    expect(outcomes.filter((outcome) => !outcome.ok).map((outcome) => outcome.reason)).toEqual(["not-a-correction"]);
+    const [first, again, rival] = await Promise.all([
+      acceptAsWording(id, ACCEPTER),
+      acceptAsWording(id, ACCEPTER),
+      acceptAsWording(other, ACCEPTER),
+    ]);
+    // As one after the other: whichever contribution writes first, the other's text is then a
+    // wording the moment has. Both accepts of `id` answer alike, the later finding the earlier's.
+    expect(again.ok).toBe(first.ok);
+    expect(rival.ok).toBe(!first.ok);
+    for (const outcome of [first, again, rival]) {
+      if (!outcome.ok) expect(outcome.reason).toBe("not-a-correction");
+    }
     const { rows } = await asSystem.query(
       `select "lineId" from "quest_line" where "lineId" like $1 and "lang" = 'enUS' and "originalText" = 'You again?'`,
       [`${moment}:w%`],
@@ -198,7 +207,7 @@ describe("acceptAsWording", () => {
       `select "text" from "quest_line" where "lineId" = $1 and "variant" = 0 and "lang" = 'enUS' and "isCurrent"`,
       [moment],
     );
-    expect(rows).toEqual([{ text: "Oh, you are back, Adventurer. Hello." }]);
+    expect(rows).toEqual([{ text: "Oh, you are back, $N. Hello." }]);
   });
 
   it("refuses a pick that is no wording of the moment", async () => {

@@ -38,6 +38,18 @@ Expect("...holding the newer capture", _G.SpokenContributionsDB.Lines[1].envelop
 Expect("an empty key is refused", Gather:Add("", "x"), false)
 Expect("an empty envelope is refused", Gather:Add("k", ""), false)
 
+Expect("a sighting is kept beside the lines", Gather:See("creature:1", { 1 }, "!SPOKEN1 seen\n"), true)
+Expect("...not among them", Gather:Count(), 1)
+Gather:See("creature:1", { 1, 2 }, "!SPOKEN1 seen\nzones=1,2\nname=Thork\n", "Thork")
+Expect("...once per NPC, holding the newer one", Gather:SeenCount(), 1)
+local kept, zones, name = Gather:GetSeen("creature:1")
+Expect("...read back by its NPC", kept, "!SPOKEN1 seen\nzones=1,2\nname=Thork\n")
+Expect("...with the zones it names", table.concat(zones, ","), "1,2")
+Expect("...and the name it carries", name, "Thork")
+Gather:SetEnabled(false)
+Expect("...and opting out keeps none", Gather:See("creature:2", { 1 }, "!SPOKEN1 seen\n"), false)
+Gather:SetEnabled(true)
+
 for i = 1, Gather.CAP + 5 do
     Gather:Add("cap:" .. i, "e" .. i)
 end
@@ -47,6 +59,23 @@ Expect("...dropping the oldest first", lines[1].key, "cap:6")
 Expect("...and keeping the newest", lines[#lines].key, "cap:" .. (Gather.CAP + 5))
 Gather:Clear()
 Expect("Clear forgets everything", Gather:Count(), 0)
+Expect("...the sightings too", Gather:SeenCount(), 0)
+
+-- The same envelope and mark as apps/manager/tests/share.test.ts's, so the two sides cannot drift apart.
+local cafe = "!SPOKEN1 quests\ntext<<\nCafé.\n>>\nsum=42\n"
+Expect("a sent line is marked by its sum and its length in bytes", Gather:SentMark(cafe), "42:40")
+Expect("...and a string with no sum is not marked", Gather:SentMark("!SPOKEN1 quests\n"), nil)
+Gather:Add("sent", cafe)
+Gather:Add("kept", "!SPOKEN1 quests\nsum=7\n")
+Gather:Add("bare", "no sum")
+Gather:See("creature:9", { 1 }, "!SPOKEN1 seen\nsum=42\n")
+Expect("DropSent does nothing without Sent.lua", Gather:DropSent(), 0)
+_G.SpokenContributionsSent = { ["42:40"] = true, ["7:99"] = true }
+Expect("...and drops the lines the Manager sent", Gather:DropSent(), 1)
+Expect("...and keeps the rest, in order", _G.SpokenContributionsDB.Lines[1].key .. "," .. _G.SpokenContributionsDB.Lines[2].key, "kept,bare")
+Expect("...and the sightings", Gather:SeenCount(), 1)
+_G.SpokenContributionsSent = nil
+Gather:Clear()
 Gather:SetEnabled(false)
 
 ------------------------------------------------------------------------------- quests

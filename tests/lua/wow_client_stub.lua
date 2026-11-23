@@ -168,7 +168,8 @@ local function Widget(kind, name)
     end
     function w:IsVisible()
         if self.name == "UIParent" then return true end
-        if self.name then return world.panels[self.name] and true or false end
+        -- Only a frame's global name counts: an addon may keep its own `name` field on a frame.
+        if type(self.name) == "string" then return world.panels[self.name] and true or false end
         return self.shown
     end
     function w:IsShown() return self:IsVisible() end
@@ -271,7 +272,18 @@ local function Widget(kind, name)
     function w:IsIgnoringParentAlpha() return self.ignoreParentAlpha or false end
     function w:SetID(v) self.id = v end
     function w:GetID() return self.id end
-    function w:SetParent(p) self.parent = p end
+    -- A frame moved under another is among its children from then on, as GetChildren reports.
+    function w:SetParent(p)
+        local old = self.parent
+        if old == p then return end
+        if old and old.children then
+            for i, child in ipairs(old.children) do
+                if child == self then table.remove(old.children, i); break end
+            end
+        end
+        self.parent = p
+        if p and p.children then table.insert(p.children, self) end
+    end
     function w:GetParent() return self.parent end
     -- A hosted player (Addon:ApplyHost) scales to keep its size on screen, and tests read the
     -- scale back. A test standing in for a host sets its own effective scale.
@@ -374,7 +386,7 @@ M.Widget = Widget
 -- them: each the whole of a file named after it, so a test reads which piece of which was drawn
 -- from a texture's file and tex coords.
 local LIST_ATLASES = {
-    ["Objective-Header-CampaignHorde"] = { 274, 42 }, ["Objective-Header-CampaignAlliance"] = { 274, 42 },
+    ["Professions-background-summarylist"] = { 512, 512 },
     ["glues-characterselect-card-singles-c60"] = { 321, 100 },
     ["glues-characterselect-card-singles-hover-c60"] = { 321, 100 },
     ["glues-characterselect-card-selected-c60"] = { 342, 122 },
@@ -500,11 +512,13 @@ local setUnitCount = 0
 local setCreatureCount = 0
 function M.SetUnitCount() return setUnitCount end
 function M.SetCreatureCount() return setCreatureCount end
-function _G.CreateFrame(kind, name, parent)
+function _G.CreateFrame(kind, name, parent, template)
     frameCount = frameCount + 1
     local f = name and Frame(name) or MakeFrame(nil)
     f.frameType = kind
     f.parent = parent
+    -- The game's inset has its background as a texture of its own.
+    if template == "InsetFrameTemplate" then f.Bg = f:CreateTexture(nil, "BACKGROUND") end
     if name then _G[name] = f end
     -- Recorded so a test can ask what a panel built, the way a player reads it: a row is
     -- a control with a label, and a panel that lost one is a setting nobody can reach.
@@ -558,6 +572,51 @@ function _G.CreateFrame(kind, name, parent)
             self.scripts[script] = fn
         end
     end
+    -- A ModelScene keeps what its camera and light were last told, and CreateActor gives an actor that
+    -- keeps what it was told, so a test reads them back the way the client would draw them. `nearCalls`
+    -- counts SetCameraNearClip: a view that is not re-ranked must not touch it. An actor with a model set
+    -- answers IsLoaded with M.actorLoaded (a boolean, or a function of the actor), and once loaded gives
+    -- GetActiveBoundingBox as M.actorBox (six numbers in a table, or a function of the actor returning one;
+    -- nil for a model with no box); before that it gives nothing, as the client does.
+    if kind == "ModelScene" then
+        f.camera = { nearCalls = 0 }
+        f.light = {}
+        f.actors = {}
+        function f:SetCameraPosition(x, y, z) self.camera.position = { x, y, z } end
+        function f:SetCameraOrientationByYawPitchRoll(yaw, pitch, roll) self.camera.yaw, self.camera.pitch, self.camera.roll = yaw, pitch, roll end
+        function f:SetCameraFieldOfView(v) self.camera.fov = v end
+        function f:SetCameraNearClip(v) self.camera.near = v; self.camera.nearCalls = self.camera.nearCalls + 1 end
+        function f:SetCameraFarClip(v) self.camera.far = v end
+        function f:SetLightVisible(v) self.light.visible = v end
+        function f:SetLightType(v) self.light.type = v end
+        function f:SetLightDirection(x, y, z) self.light.direction = { x, y, z } end
+        function f:SetLightDiffuseColor(r, g, b) self.light.diffuse = { r, g, b } end
+        function f:SetLightAmbientColor(r, g, b) self.light.ambient = { r, g, b } end
+        function f:CreateActor()
+            local actor = Widget("Actor")
+            actor.shown = false
+            function actor:SetUseCenterForOrigin(x, y, z) self.useCenter = { x, y, z } end
+            function actor:SetPosition(x, y, z) self.position = { x, y, z } end
+            function actor:SetYaw(v) self.yaw = v end
+            function actor:SetScale(v) self.scale = v end
+            function actor:SetModelByCreatureDisplayID(id) self.displayID = id; self.modelSets = (self.modelSets or 0) + 1 end
+            function actor:SetAnimation(id) self.animation = id end
+            function actor:ClearModel() self.displayID = nil end
+            function actor:IsLoaded()
+                local loaded = M.actorLoaded
+                if type(loaded) == "function" then loaded = loaded(self) end
+                return self.displayID ~= nil and loaded and true or false
+            end
+            function actor:GetActiveBoundingBox()
+                if not self:IsLoaded() then return nil end
+                local box = M.actorBox
+                if type(box) == "function" then box = box(self) end
+                if box then return unpack(box, 1, 6) end
+            end
+            table.insert(self.actors, actor)
+            return actor
+        end
+    end
     -- Kept apart from the PlayerModel above on purpose: that one is the addon's model probe,
     -- tracked as M.playerModel, and the appearance roller must never replace it.
     if kind == "DressUpModel" then
@@ -597,6 +656,8 @@ function _G.SetPortraitTextureFromCreatureDisplayID(texture, display) texture.di
 -- real, since it has not been confirmed against a live client; a test sets this true to
 -- exercise the addon's fallback for that possibility instead of the fast path.
 M.modelCallbackDisabled = false
+M.actorLoaded = true
+M.actorBox = { -0.5, -0.5, 0, 0.5, 0.5, 2 }
 
 --- Fire the model probe's OnModelLoaded script, the way a live client would once the file has
 --- actually finished loading. Probed against a live client: SetUnit followed immediately by
@@ -637,9 +698,15 @@ _G.GRAY_FONT_COLOR = { r = 0.5, g = 0.5, b = 0.5 }
 _G.UIDropDownMenu_Initialize = nil
 -- The Settings API as 11509 exposes it.
 M.settingsCategories = {}
+-- A category folds its subcategories until something expands it (Blizzard_Category.lua).
+local function SettingsCategory(c)
+    function c:SetExpanded(expanded) self.expanded = expanded end
+    function c:IsExpanded() return self.expanded end
+    return c
+end
 M.modernSettings = {
-    RegisterCanvasLayoutCategory = function(frame, name) local c = { frame = frame, name = name, GetID = function() return name end }; table.insert(M.settingsCategories, c); return c end,
-    RegisterCanvasLayoutSubcategory = function(parent, frame, name) local c = { frame = frame, name = name, parent = parent }; table.insert(M.settingsCategories, c); return c end,
+    RegisterCanvasLayoutCategory = function(frame, name) local c = SettingsCategory({ frame = frame, name = name, GetID = function() return name end }); table.insert(M.settingsCategories, c); return c end,
+    RegisterCanvasLayoutSubcategory = function(parent, frame, name) local c = SettingsCategory({ frame = frame, name = name, parent = parent }); table.insert(M.settingsCategories, c); return c end,
     RegisterAddOnCategory = function() end,
     OpenToCategory = function() return true end,
 }

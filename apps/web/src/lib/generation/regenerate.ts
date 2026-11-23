@@ -27,12 +27,13 @@ import { commitTake } from "@/lib/takes/commit";
 import { INVALID_CHARS, isVoiceable } from "@/lib/text-gate";
 import { isModelVoice } from "@/lib/voices/voices";
 
-import { speakPlayerTokens } from "@/lib/player-words";
+import { speakQuestTokens } from "@/lib/player-words";
 import { shapedText } from "./files";
 import { canonicalNpcId, seedFor } from "./seed";
 import { spokenHash } from "./spoken-hash";
 import { currentConfig } from "./settings";
 import { NARRATOR_VOICE, segments, type Segment } from "./narration";
+import { npcDirections } from "./npc-direction";
 import type { Speaker } from "./speakers/speaker";
 import { BUSY, withTakeLock } from "./lock";
 import { busy, failure, type Failure } from "./errors";
@@ -156,14 +157,14 @@ export async function regenerateLine(
   }
 
   const outcome = await withTakeLock("quests", file, async (): Promise<RegenerateResult> => {
-    const config = await currentConfig(lang);
+    const [config, npcDirectionOf] = await Promise.all([currentConfig(lang), npcDirections(lang)]);
     // Inside spokenText and not bolted on at the request, because these are characters the
     // provider bills and the staleness check hashes: a take that under-reported them would
     // be mispriced and permanently stale.
     //
     // The committed pronunciation rules are English's spellings of English words; another
     // language is spoken with its own lexicon, which the speaker applies, and nothing else.
-    const spokenText = shapedText(source, lang, line, speaker.provider, config.raceTags);
+    const spokenText = shapedText(source, lang, line, speaker.provider, config.raceTags, npcDirectionOf(line));
     // Lowest npcId in the group, so a file shared by many NPCs regenerates the same way
     // whichever row the button was pressed on. See canonicalNpcId.
     const seed = seedFor(canonicalNpcId(group), speaker.seedStrategy);
@@ -234,7 +235,7 @@ export async function regenerateLine(
         // `line.text`, not `source`: code cannot tell a rewrite's respellings from a real change of
         // wording, and a respelling must never reach the screen. Tokens as the voice said them, or
         // a subtitle names the player over a voice saying "adventurer".
-        shownText: speakPlayerTokens(line.text, lang, line.playerGender),
+        shownText: speakQuestTokens(line.text, lang, line.playerGender),
       },
       // A clip ffprobe cannot read still commits, with no length: the pack build measures
       // what is missing.

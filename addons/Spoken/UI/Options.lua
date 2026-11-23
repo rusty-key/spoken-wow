@@ -49,8 +49,10 @@ local STYLE_LABELS = Words({
 local BINDINGS = {
     { "SPOKEN_PLAYPAUSE", "BIND_PLAYPAUSE" },
     { "SPOKEN_SKIP", "BIND_SKIP" },
+    { "SPOKEN_PREVIOUS", "BIND_PREVIOUS" },
     { "SPOKEN_STOP", "BIND_STOP" },
     { "SPOKEN_COMPENDIUM", "BIND_COMPENDIUM" },
+    { "SPOKEN_MUTE", "BIND_MUTE" },
 }
 
 --- Name the bindings in the player's language. The category is the name of a string global the
@@ -1164,10 +1166,31 @@ function Options:AddProfiles(layout)
     layout:Dropdown(L.OPT_PROFILE, nil, function() return self:ProfileNames() end,
         function() return self:CurrentProfile() end,
         function(name) self:SetProfile(name); layout:Refresh() end)
+    -- Both act on picking a name, and a dropdown's arrows, or the d-pad's left and right on its
+    -- row, pick one: ask first, or a stray press replaces or deletes a profile.
     layout:Dropdown(L.OPT_COPY_PROFILE, nil, Others, function() return nil end,
-        function(name) self:CopyProfile(name); layout:Refresh() end, nil, Pick)
+        function(name)
+            -- The page stays usable while it asks, so a switch in between must not receive the copy.
+            local into = self:CurrentProfile()
+            Layout.Confirm(format(L.OPT_COPY_PROFILE_CONFIRM, name), _G.ACCEPT or "Accept", L.CANCEL, function()
+                if self:CurrentProfile() ~= into then return end
+                self:CopyProfile(name); layout:Refresh()
+            end)
+            layout:Refresh()
+        end, nil, Pick)
     layout:Dropdown(L.OPT_DELETE_PROFILE, nil, Others, function() return nil end,
-        function(name) self:DeleteProfile(name); layout:Refresh() end, nil, Pick)
+        function(name)
+            Layout.Confirm(format(L.OPT_DELETE_PROFILE_CONFIRM, name), _G.DELETE or "Delete", L.CANCEL, function()
+                self:DeleteProfile(name); layout:Refresh()
+            end)
+            layout:Refresh()
+        end, nil, Pick)
+    local function NewProfile(name)
+        if name and name ~= "" then
+            Options:SetProfile(name)
+            if Options.profileLayout then Options.profileLayout:Refresh() end
+        end
+    end
     if StaticPopupDialogs and StaticPopup_Show then
         StaticPopupDialogs.SPOKEN_NEW_PROFILE = StaticPopupDialogs.SPOKEN_NEW_PROFILE or {
             text = L.OPT_PROFILE_NEW_PROMPT, button1 = _G.ACCEPT or "Accept", button2 = L.CANCEL,
@@ -1178,21 +1201,20 @@ function Options:AddProfiles(layout)
                     local which = StaticPopup_Visible("SPOKEN_NEW_PROFILE")
                     box = which and _G[which .. "EditBox"]
                 end
-                local name = box and box:GetText()
-                if name and name ~= "" then
-                    Options:SetProfile(name)
-                    if Options.profileLayout then Options.profileLayout:Refresh() end
-                end
+                NewProfile(box and box:GetText())
             end,
             EditBoxOnEnterPressed = function(box)
                 local popup = box and box:GetParent()
                 if popup and popup.button1 then popup.button1:Click() end
             end,
         }
-        layout:Button(L.OPT_PROFILE_NEW, 200, function() StaticPopup_Show("SPOKEN_NEW_PROFILE") end)
+        layout:Button(L.OPT_PROFILE_NEW, 200, function()
+            local asked = Layout.Ask(L.OPT_PROFILE_NEW_PROMPT, _G.ACCEPT or "Accept", L.CANCEL, NewProfile)
+            if not asked then StaticPopup_Show("SPOKEN_NEW_PROFILE") end
+        end)
     end
     if Addon.db then
-        layout:Dropdown(L.OPT_NEW_CHARACTER_PROFILE, L.OPT_NEW_CHARACTER_PROFILE_TIP,
+        layout:Dropdown(L.OPT_NEW_CHARACTER_PROFILE, nil,
             -- Only Spoken's saved profiles: it reads the choice before any other settings load.
             function()
                 local names = {}
@@ -1264,6 +1286,61 @@ local function FitScroller()
     scroller:SetContentHeight(TOP + panel.layout:Height() + BOTTOM)
 end
 
+-- Page frame to its layout. The cursor refuses addons in combat, so nothing below runs then.
+local canvases = {}
+-- The page that set the window's target.
+local aimed
+
+-- The game's FocusContainer ends on a row of its own settings list or the button the cursor last
+-- left, both off screen on a canvas page. SetTargetButtonForFrame is the only call that selects a
+-- given button for an addon; it also makes that row the window's fallback target.
+local function SelectFirstRow()
+    local cursor = SmartNavigation
+    if not cursor or Layout.CombatRestricted() or not cursor:IsInFocusGroup() then return end
+    local current = cursor:GetCurrentButton()
+    if current and current:IsVisible() then return end
+    for frame, layout in pairs(canvases) do
+        if frame:IsVisible() then
+            local row = layout and layout:FirstRow()
+            if row then
+                aimed = frame
+                cursor:SetTargetButtonForFrame(_G.SettingsPanel, row)
+            else
+                cursor:SelectTopLeftButton()
+            end
+            return
+        end
+    end
+end
+
+-- The window's own target is the selected category's button. Left on a hidden row, a page the
+-- cursor cannot enter would hide the cursor instead of sending it back to the list.
+local function GiveTargetBack(frame)
+    if aimed ~= frame then return end
+    aimed = nil
+    local settings = _G.SettingsPanel
+    if SmartNavigation and not Layout.CombatRestricted() and settings:IsShown() then
+        local button = settings:GetCategoryList():GetSelectedCategoryButton()
+        SmartNavigation:SetTargetButtonForFrame(settings, button)
+    end
+end
+
+local function AskCursor(frame)
+    if SmartNavigation and SmartNavigation.UpdateParent and not Layout.CombatRestricted() then
+        SmartNavigation:UpdateParent(frame)
+    end
+end
+
+-- The settings window takes a page in with SetParent, which the cursor does not notice, so it
+-- keeps the buttons it found when the window opened. A page asks it to look again as it shows,
+-- and waits hidden: one already shown gets no OnShow when the window first takes it.
+local function ForController(frame, layout)
+    canvases[frame] = layout or false
+    frame:Hide()
+    frame:HookScript("OnShow", AskCursor)
+    frame:HookScript("OnHide", GiveTargetBack)
+end
+
 function Options:Setup()
     if panel then return end
     Build()
@@ -1274,6 +1351,12 @@ function Options:Setup()
     -- under it (Options:RegisterPage).
     FitScroller()
     self.category = Settings.RegisterCanvasLayoutCategory(panel, "Spoken")
+    -- Only a mouse can click the game's + that unfolds an entry, so Spoken's pages start listed.
+    self.category:SetExpanded(true)
+    ForController(panel, panel.layout)
+    if _G.SettingsPanel and _G.SettingsPanel.FocusContainer then
+        hooksecurefunc(_G.SettingsPanel, "FocusContainer", SelectFirstRow)
+    end
     Settings.RegisterAddOnCategory(self.category)
     if not pagesHeld then self:ReleasePages() end
 end
@@ -1318,6 +1401,7 @@ end)
 
 function Options:RegisterPage(page)
     page.category = Settings.RegisterCanvasLayoutSubcategory(self.category, page.frame, page.name)
+    ForController(page.frame, page.layout)
 end
 
 function Options:Open()

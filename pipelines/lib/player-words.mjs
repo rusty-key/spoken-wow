@@ -3,20 +3,21 @@
  *
  * Blizzard writes `$N`, `$C` and `$R` into quest text and the client puts the player's own
  * words there. A recording is one file for everybody, so it says a word that fits anybody.
- * The English quest extract writes "Adventurer" and "Traveler" into its text once, at
- * extraction (REPLACE_DICT in pipelines/quests/tts_cli/tts_utils.py; contributions/tokens.ts),
- * so English quest text reaches here with nothing left to replace. Everything else -- a quest
- * translation, and a book page in any language -- keeps its tokens as stored, and this puts
- * the language's word in at the point the text is judged and sent: the gate, the request and
- * the staleness hash all see the same string. Kept out of the rows on purpose: a translation
- * reaches the tables from the dump, from another source for Portuguese, from a player and from a
- * translator, and one place to substitute covers all of them without rewriting any of them;
+ * Text keeps its tokens as stored, in every language, and this puts the language's word in at
+ * the point the text is judged and sent: the gate, the request and the staleness hash all see
+ * the same string. Kept out of the rows on purpose: a line reaches the tables from the dump,
+ * from another source for Portuguese, from a player and from a translator, and one place to
+ * substitute covers all of them without rewriting any of them;
  * the words themselves are a native speaker's call, and changing one reaches every line at once
  * (and marks its takes stale, which is what they then are).
  *
- * The languages a game client runs in keep their words here and win over any row's. A team's
- * language keeps its own in `language."playerWords"`, which its text maintainers edit on the site
- * and which must be registered before its text is spoken.
+ * The languages a game client runs in keep default words here. A language's row
+ * (`language."playerWords"`), which its text maintainers edit on the site, wins over them, and
+ * is a team's language's only words; it must be registered before the text is spoken.
+ *
+ * ruRU wraps a token in the client's declension escape, `|3-6($c)`: the client prints the class
+ * in grammatical case 6. A reader's `cases` give the word for each case; a case with none keeps
+ * the whole escape, so the gate refuses the line rather than voice "|3-6(путник)".
  *
  * About nine tokens in ten are the reader being addressed ("Gut gemacht, $C."), where any
  * "adventurer" reads naturally. The rest read as awkwardly as the English does and are fixed
@@ -70,18 +71,40 @@ const WORDS = {
   zhTW: { m: { name: "冒險者", race: "旅行者" }, f: { name: "冒險者", race: "旅行者" } },
 };
 
-// The database's words for languages beyond WORDS, by code. On globalThis because the site loads
-// this module once per bundle layer.
+/** The client's declension escape, `|3-6(`, whose case has no word when it reaches the gate. */
+export const DECLENSION = /\|3-\d+\(/;
+
+// The words in each language's row, by code, built-ins included. On globalThis because the site
+// loads this module once per bundle layer.
 const registeredKey = Symbol.for("spoken.playerWords");
 const registered = (globalThis[registeredKey] ??= { byLang: new Map() });
 
-/** Whether `lang`'s words are kept here, so a row's are never read. */
+/** Whether Spoken has default words for `lang`, which a row's words replace. */
 export function hasBuiltinPlayerWords(lang) {
   return Object.hasOwn(WORDS, lang);
 }
 
+export function hasRegisteredPlayerWords(lang) {
+  return registered.byLang.has(lang);
+}
+
+export function builtinPlayerWordsOf(lang) {
+  return hasBuiltinPlayerWords(lang) ? WORDS[lang] : null;
+}
+
+/** Whether `words` say what Spoken's own words for `lang` say. */
+export function isBuiltinPlayerWords(lang, words) {
+  const builtin = builtinPlayerWordsOf(lang);
+  return builtin !== null && samePlayerWords(words, builtin);
+}
+
+/** Whether two sets of words say the same, once trimmed and stripped of empty words. */
+export function samePlayerWords(a, b) {
+  return JSON.stringify(validPlayerWords(a)) === JSON.stringify(validPlayerWords(b));
+}
+
 export function playerWordsOf(lang) {
-  return (hasBuiltinPlayerWords(lang) ? WORDS[lang] : registered.byLang.get(lang)) ?? null;
+  return registered.byLang.get(lang) ?? builtinPlayerWordsOf(lang);
 }
 
 /** Replaces every registered language's words: `entries` is [code, words] pairs, words as stored. */
@@ -89,7 +112,7 @@ export function registerPlayerWords(entries) {
   const byLang = new Map();
   for (const [lang, words] of entries) {
     const valid = validPlayerWords(words);
-    if (valid && !hasBuiltinPlayerWords(lang)) byLang.set(lang, valid);
+    if (valid) byLang.set(lang, valid);
   }
   registered.byLang = byLang;
 }
@@ -105,6 +128,7 @@ export function registerPlayerWordRows(rows) {
 export const WORD_LIMIT = 40;
 const REQUIRED = ["name", "race"];
 const OPTIONAL = ["nameGenitive", "classPlural"];
+const CASE = /^[1-9]$/;
 
 function validWord(value) {
   if (typeof value !== "string") return null;
@@ -127,7 +151,29 @@ function validForms(value) {
     if (word === null) return null;
     if (word) forms[key] = word;
   }
+  if (value.cases != null) {
+    const cases = validCases(value.cases);
+    if (cases === null) return null;
+    if (cases) forms.cases = cases;
+  }
   return forms;
+}
+
+/** `{ "1": { name?, race? }, ... }` without its empty words: undefined when none is left, null when invalid. */
+function validCases(value) {
+  if (typeof value !== "object" || Array.isArray(value)) return null;
+  const cases = {};
+  for (const n of Object.keys(value).sort()) {
+    if (!CASE.test(n) || !value[n] || typeof value[n] !== "object") return null;
+    const declined = {};
+    for (const key of REQUIRED) {
+      const word = optionalWord(value[n][key]);
+      if (word === null) return null;
+      if (word) declined[key] = word;
+    }
+    if (Object.keys(declined).length) cases[n] = declined;
+  }
+  return Object.keys(cases).length ? cases : undefined;
 }
 
 /** An optional word: undefined when absent or empty, null when unspeakable. */
@@ -136,8 +182,9 @@ function optionalWord(value) {
 }
 
 /**
- * Words as `{ m: { name, race, nameGenitive?, classPlural? }, f: {...}, quantity? }`, trimmed, or
- * null when any is missing, empty, longer than WORD_LIMIT, or holds a `$`, `:`, `;` or line break.
+ * Words as `{ m: { name, race, nameGenitive?, classPlural?, cases? }, f: {...}, quantity? }`,
+ * trimmed, or null when any is missing, empty, longer than WORD_LIMIT, or holds a `$`, `:`, `;` or
+ * line break, or a case is not a digit 1 to 9.
  * `quantity` is what a Craftsman's Writ's `$2oa` says.
  */
 export function validPlayerWords(value) {
@@ -151,18 +198,27 @@ export function validPlayerWords(value) {
 
 /** German capitalises every noun; the rest only at the start of a sentence. */
 const ALWAYS_CAPITAL = new Set(["deDE"]);
+// English quest text capitalises as the token is written: `$N` says "Adventurer" wherever it stands
+// and `$n` "adventurer", even opening a sentence. Its takes were made from text written that way,
+// so any other rule would mark them stale. English book pages were voiced by position, and keep it.
+const TOKEN_CASE = new Set(["enUS"]);
 
 // A letter that glues to a token. Chinese and Japanese write no spaces at all, and Korean
 // attaches its particles ("$N님"), so a character of theirs after a token is the next word,
 // not the same one.
 const GLUED = String.raw`(?![\p{sc=Han}\p{sc=Hangul}\p{sc=Hiragana}\p{sc=Katakana}])\p{L}`;
 // Not followed by a glued letter: see "glued" above.
-const TOKEN = new RegExp(String.raw`\$([NnCcRr])(?!${GLUED})`, "gu");
+// Not inside a declension escape: one without its case's word must keep its `$` for the gate.
+const UNDECLINED = String.raw`(?<!${DECLENSION.source})`;
+const TOKEN = new RegExp(String.raw`${UNDECLINED}\$([NnCcRr])(?!${GLUED})`, "gu");
+// English quest text says a glued token too: its takes say "adventurerama" for "$Nama".
+const ANY_PLAYER_TOKEN = new RegExp(String.raw`${UNDECLINED}\$([NnCcRr])`, "gu");
+const DECLINED = /\|3-(\d+)\(\$([NnCcRr])\)/g;
 // Not $R: "des Reisenden" is no glued s, so "$Rs" stays refused.
-const TOKEN_GENITIVE = /\$([NnCc])s(?!\p{L})/gu;
+const TOKEN_GENITIVE = new RegExp(String.raw`${UNDECLINED}\$([NnCc])s(?!\p{L})`, "gu");
 // Not $N or $R: the class is the only glued plural seen in frFR text. Not before an apostrophe
 // either: "$cs'il" is "$c s'il" with its space lost, not a plural.
-const TOKEN_CLASS_PLURAL = /\$[Cc]s(?![\p{L}'’])/gu;
+const TOKEN_CLASS_PLURAL = new RegExp(String.raw`${UNDECLINED}\$([Cc])s(?![\p{L}'’])`, "gu");
 // $gmale:female; and ruRU's $gmale:female:c; whose third field names the token the
 // adjective agrees with. The import resolves the two-field form already; the three-field
 // form slips past its pattern and arrives here. No branch ends a sentence: one whose `;` was
@@ -244,30 +300,55 @@ export function playerGenderSides(text) {
   return [text.replace(GENDER, "$1").replace(SWAPPED, "$1"), text.replace(GENDER, "$2").replace(SWAPPED, "$2")];
 }
 
-/** The text as it is spoken in `lang`, by a reader of `playerGender` where the line has one. */
+/**
+ * The text with its player tokens in the two forms the addon fills (Utils:FillPlayerTokens): `$N`
+ * and `$gmale:female;`. A doubled `$$`, `$u`, its swapped separators and ruRU's third field are not.
+ */
+export function writtenPlayerTokens(text) {
+  return text.replace(DOUBLED, "$").replace(GENDER, "$$g$1:$2;").replace(SWAPPED, "$$g$1:$2;");
+}
+
+/**
+ * The text as it is spoken in `lang`, by a reader of `playerGender` where the line has one. A book
+ * page's; a quest line's is speakQuestTokens'.
+ */
 export function speakPlayerTokens(text, lang, playerGender = null) {
+  return speak(text, lang, playerGender, false);
+}
+
+/** speakPlayerTokens for a quest line, whose English capitalises as the token is written and says a glued one. */
+export function speakQuestTokens(text, lang, playerGender = null) {
+  return speak(text, lang, playerGender, TOKEN_CASE.has(lang));
+}
+
+function speak(text, lang, playerGender, byToken) {
   const forms = playerWordsOf(lang);
   if (!forms) return text;
   text = speakQuantities(text, lang, forms);
   const words = playerGender === "f" ? forms.f : forms.m;
-  const cased = (word, at, whole) =>
-    ALWAYS_CAPITAL.has(lang) || SENTENCE_START.test(whole.slice(0, at))
-      ? word[0].toUpperCase() + word.slice(1)
-      : word;
+  const capital = (word) => word[0].toUpperCase() + word.slice(1);
+  const cased = (word, at, whole, token) => {
+    if (byToken) return token === token.toUpperCase() ? capital(word) : word;
+    return ALWAYS_CAPITAL.has(lang) || SENTENCE_START.test(whole.slice(0, at)) ? capital(word) : word;
+  };
 
   const side = playerGender === "f" ? "$2" : "$1";
   let spoken = text.replace(DOUBLED, "$").replace(GENDER, side).replace(SWAPPED, side);
+  spoken = spoken.replace(DECLINED, (whole, n, token, at, all) => {
+    const word = words.cases?.[n]?.[token.toUpperCase() === "R" ? "race" : "name"];
+    return word ? cased(word, at, all, token) : whole;
+  });
   const genitive = words.nameGenitive;
   if (genitive) {
-    spoken = spoken.replace(TOKEN_GENITIVE, (_, _token, at, whole) =>
-      cased(genitive, at, whole),
+    spoken = spoken.replace(TOKEN_GENITIVE, (_, token, at, whole) =>
+      cased(genitive, at, whole, token),
     );
   }
   const plural = words.classPlural;
   if (plural) {
-    spoken = spoken.replace(TOKEN_CLASS_PLURAL, (_, at, whole) => cased(plural, at, whole));
+    spoken = spoken.replace(TOKEN_CLASS_PLURAL, (_, token, at, whole) => cased(plural, at, whole, token));
   }
-  return spoken.replace(TOKEN, (_, token, at, whole) =>
-    cased(token.toUpperCase() === "R" ? words.race : words.name, at, whole),
+  return spoken.replace(byToken ? ANY_PLAYER_TOKEN : TOKEN, (_, token, at, whole) =>
+    cased(token.toUpperCase() === "R" ? words.race : words.name, at, whole, token),
   );
 }

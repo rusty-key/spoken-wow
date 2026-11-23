@@ -43,10 +43,10 @@ function route(rules: { source: string; destination: string }[], path: string): 
 
 /** The page file under src/app that serves a section's report address. */
 const PAGES = {
-  quests: "[lang]/quests/r/[...target]/page.tsx",
-  places: "[lang]/places/r/[mapID]/[slug]/page.tsx",
-  readables: "[lang]/readables/r/[pageId]/page.tsx",
-  bosses: "[lang]/bosses/r/[map]/[slug]/page.tsx",
+  quests: "[lang]/(backstage)/quests/r/[...target]/page.tsx",
+  places: "[lang]/(backstage)/places/r/[mapID]/[slug]/page.tsx",
+  readables: "[lang]/(backstage)/readables/r/[pageId]/page.tsx",
+  bosses: "[lang]/(backstage)/bosses/r/[map]/[slug]/page.tsx",
 } as const;
 
 type Section = keyof typeof PAGES;

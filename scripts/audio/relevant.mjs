@@ -5,7 +5,7 @@
 // line of a moment it had as `m-`/`f-` lines. Shipped, those would still play: the addon tries the
 // player's `m-`/`f-` file before the plain one.
 
-import { speakPlayerTokens } from "../../pipelines/lib/player-words.mjs";
+import { speakQuestTokens } from "../../pipelines/lib/player-words.mjs";
 
 // A shipped clip and the words it shows must agree on which file a stem belongs to.
 function namedFile(stem, has) {
@@ -40,13 +40,19 @@ export const CURRENT_TEXT_SQL = `select ${LINE_STEM},
            from "quest_line" where "lang" = :'lang' and "isCurrent"
           order by "lineId", "variant"`;
 
-export function currentTextFor(rows, lang) {
+/** Each stem's current line, as written: the first of CURRENT_TEXT_SQL's rows naming it. */
+export function currentLines(rows) {
   const byStem = new Map();
   for (const { stem, text, playerGender } of rows) {
     if (!byStem.has(stem)) byStem.set(stem, { text, playerGender: playerGender || null });
   }
+  return byStem;
+}
+
+export function currentTextFor(rows, lang) {
+  const byStem = currentLines(rows);
   return (stem) => {
     const line = byStem.get(namedFile(stem, (file) => byStem.has(file)));
-    return line && speakPlayerTokens(line.text, lang, line.playerGender);
+    return line && speakQuestTokens(line.text, lang, line.playerGender);
   };
 }

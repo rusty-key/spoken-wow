@@ -60,13 +60,16 @@ L.CMD_VOICE = "  /spp voice      -- '이야기 소리 내어 읽기' 켜기/끄�
 L.CMD_AUTOPLAY = "  /spp autoplay   -- '자동으로 읽기' 켜기/끄기"
 L.CMD_AUDIO = "  /spp audio      -- 설치된 음성 팩"
 L.CMD_LANG = "  /spp lang       -- 텍스트 언어: 목록, 또는 /spp lang <code> 또는 auto로 전환"
-L.CMD_FORGET = "  /spp forget     -- 들은 장소 잊기"
+L.CMD_FORGET = "  /spp forget     -- 방문한 장소 잊기"
 
 
 -- Added in this release: settings pages, subtitles, voice packs, profiles and module switches.
 L.REASON_VOICE = "이 기능을 쓰려면 '이야기 소리 내어 읽기'를 켜세요."
-L.OPT_FORGET_PLACES = "들은 장소 잊기"
+L.OPT_FORGET_PLACES = "방문한 장소 잊기"
 L.OPT_FORGET_PLACES_DONE = "이 캐릭터의 들은 장소 목록을 지웠습니다."
+L.OPT_FORGET_PLACES_CONFIRM = "장소 %d곳을 잊게 됩니다."
+L.OPT_FORGET_PLACES_CONFIRM_ONE = "장소 1곳을 잊게 됩니다."
+L.OPT_FORGET = "잊기"
 L.OPT_DOWNLOAD_ADDRESS = "이 주소를 웹 브라우저에 복사해 넣어 음성 팩을 다운로드하세요."
 L.OTHER_LANDS = "기타 지역"
 L.BATTLEGROUNDS = "전장"

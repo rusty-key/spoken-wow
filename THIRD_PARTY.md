@@ -89,6 +89,8 @@ None of this is the project's to license, and the MIT grant does not reach it.
   apply to it.
 - **Map images, portrait frames and icons** derived from game assets
   (`PortraitFrameAtlas`, the continent maps) are Blizzard's.
+- **The Compendium's header bar and its plus and minus** (`addons/Spoken/Textures/HeaderBar.tga`,
+  `HeaderPlus.tga` and `HeaderMinus.tga`) are cut from the professions window's art and are Blizzard's.
 - **The older `.blp` textures** came with the AI VoiceOver fork, as it shipped them: in
   `addons/Spoken/Textures/` `BackgroundGradient`, `Book`, `MinimapButton`, `PortraitFrameAtlas`,
   `PortraitFrameBackground` and `SettingsButton` (`SettingsButtonSoft` is the same ring with its middle
@@ -129,9 +131,11 @@ None of this is the project's to license, and the MIT grant does not reach it.
   `SubtitleLine.tga`): the band shade and the line's gold fill from shorley's
   [Spoken Subtitles](https://github.com/shorley-gm/spoken-subtitles) (MIT), used as they are
   there.
-- **Stop and Replay glyphs** (`addons/Spoken/Textures/GlyphStop.tga`, `GlyphReplay.tga`): drawn
-  for this project in the gold of the player's play and pause glyphs; Stop is built from the
-  pause glyph's bar.
+- **Stop, Replay and Queue glyphs** (`addons/Spoken/Textures/GlyphStop.tga`, `GlyphReplay.tga`,
+  `GlyphQueue.tga`): drawn for this project in the gold of the player's play and pause glyphs; Stop
+  is built from the pause glyph's bar, and Queue's plus from Stop's gold.
+- **The waiting count's glow** (`addons/Spoken/Textures/CountGlow.tga`): a soft oval drawn for this
+  project.
 - **Link icons** (`addons/Spoken/Textures/Link*.tga`): the GitHub, Discord, CurseForge, Wago and
   Buy Me a Coffee logos, each on a square of its brand colour. GitHub's and Discord's shapes come
   from [Dashboard Icons](https://github.com/homarr-labs/dashboard-icons), CurseForge's and Buy Me
@@ -164,6 +168,13 @@ None of this is the project's to license, and the MIT grant does not reach it.
   writings. The text, and the NPC, quest and place names, are Blizzard's (names from the quest
   corpus), the audio is Spoken's generated audio (see "The generated audio" below), and the word
   times come from the project's alignment of that audio. The reviewer decides whether they ship.
+  The samples exist in each language (`src/components/landing/voices/<locale>.json`, audio in
+  `public/landing/voice/<locale>/`, about 23 MB), taken from spoken.quest's public API by
+  `apps/web/scripts/landing-voices.py`. The speakers' pictures (`icons/npc-<creature id>.png`) and
+  the four boss portraits (`icons/boss-*.png`) are Blizzard's: the NPC pictures are crops of the
+  model screenshots on [Warcraft Wiki](https://warcraft.wiki.gg) (each NPC's own page), and the boss
+  portraits are the Dungeon Journal images, both set in the same frame as the other icons. The reviewer
+  decides whether they ship.
 - **The front page's key art** (`apps/web/public/landing/hero.jpg`, `art-era.jpg`,
   `art-anniversary.jpg`) is Blizzard Entertainment's, resized and compressed from the copies on
   warcraft.wiki.gg. `hero.jpg` is the WoW: Forever key art by Alex Horley, `art-era.jpg` is the left

@@ -18,7 +18,9 @@ setfenv(1, SpokenEnv)
 -- own checksum: an envelope captured again a second later can differ only in the NPC model a
 -- slow cache has since answered, and that should replace the first rather than sit beside it.
 
-Gather = { CAP = 2000 } -- a few kilobytes each, so a full store stays a file the site will take
+-- A line is a few kilobytes and a sighting about a hundred bytes, so a full store stays a file the
+-- site will take.
+Gather = { CAP = 2000, SEEN_CAP = 2000 }
 Spoken.Gather = Gather
 
 -- Read through _G on every call rather than cached: the client assigns the table when the
@@ -31,6 +33,7 @@ local function Store()
         _G.SpokenContributionsDB = store
     end
     store.Lines = store.Lines or {}
+    store.Seen = store.Seen or {}
     return store
 end
 
@@ -55,38 +58,43 @@ function Gather:SetIntroduced()
     Store().Introduced = true
 end
 
-local function IndexOf(key)
-    local lines = Store().Lines
-    for i = 1, #lines do
-        if lines[i].key == key then
+local function IndexOf(key, list)
+    list = list or Store().Lines
+    for i = 1, #list do
+        if list[i].key == key then
             return i
         end
     end
     return nil
 end
 
+-- Keep `entry` in `list` under its key, replacing what that key held, oldest out past `cap`. The
+-- player has almost certainly uploaded those already, or was never going to, and a file that
+-- grows forever is one the site eventually refuses whole.
+local function Keep(list, cap, entry)
+    local at = IndexOf(entry.key, list)
+    if at then
+        list[at] = entry
+        return
+    end
+    list[#list + 1] = entry
+    while #list > cap do
+        table.remove(list, 1)
+    end
+end
+
+local function Valid(key, envelope)
+    return type(key) == "string" and key ~= "" and type(envelope) == "string" and envelope ~= ""
+end
+
 --- Keep one envelope under `key`, replacing whatever that key held. Does nothing unless the
 --- player opted in: a feature addon may call this on every panel without asking first.
 ---@return boolean stored
 function Gather:Add(key, envelope)
-    if not self:IsEnabled() then
+    if not (self:IsEnabled() and Valid(key, envelope)) then
         return false
     end
-    if type(key) ~= "string" or key == "" or type(envelope) ~= "string" or envelope == "" then
-        return false
-    end
-    local lines = Store().Lines
-    local at = IndexOf(key)
-    if at then
-        lines[at].envelope = envelope
-        return true
-    end
-    lines[#lines + 1] = { key = key, envelope = envelope }
-    -- Oldest out first. The player has almost certainly uploaded those already, or was never
-    -- going to, and a file that grows forever is one the site eventually refuses whole.
-    while #lines > self.CAP do
-        table.remove(lines, 1)
-    end
+    Keep(Store().Lines, self.CAP, { key = key, envelope = envelope })
     return true
 end
 
@@ -126,8 +134,71 @@ function Gather:SetTidied()
     Store().Tidied = true
 end
 
+--- Keep one NPC's sighting envelope under `npc` ("creature:3429"), with its zones and name, so
+--- the next sighting compares with them without reading the envelope back. Beside the lines rather than
+--- among them, so sightings never push a line out of CAP; the upload finds every envelope in the
+--- file wherever it sits. Does nothing unless the player opted in.
+---@return boolean stored
+---@param name string|nil
+function Gather:See(npc, zones, envelope, name)
+    if not (self:IsEnabled() and Valid(npc, envelope) and type(zones) == "table") then
+        return false
+    end
+    Keep(Store().Seen, self.SEEN_CAP, { key = npc, zones = zones, envelope = envelope, name = name })
+    return true
+end
+
+--- The envelope kept for `npc`, the zones it names and the name it carries.
+---@return string|nil envelope
+---@return table|nil zones
+---@return string|nil name
+function Gather:GetSeen(npc)
+    local seen = Store().Seen
+    local at = IndexOf(npc, seen)
+    if at then
+        return seen[at].envelope, seen[at].zones, seen[at].name
+    end
+end
+
+function Gather:SeenCount()
+    return #Store().Seen
+end
+
+--- How Sent.lua names a sent envelope: its sum and its length in bytes, read without hashing it.
+--- Nil for anything that is not an envelope. Two lines of one length can share a sum (the checksum
+--- multiplies by 31, so "Aa" and "BB" agree), and a line kept after the send that matches one sent
+--- is dropped unsent. A stronger mark would mean hashing every line here at login.
+function Gather:SentMark(envelope)
+    -- From near the end: the sum is the last line, and a line is a few kilobytes to scan at login.
+    local sum = type(envelope) == "string" and envelope:match("\nsum=(%d+)\n$", math.max(1, #envelope - 32))
+    return sum and string.format("%s:%d", sum, #envelope) or nil
+end
+
+--- Drop every line SpokenContributions/Sent.lua lists. The game saved the file before it loaded
+--- Sent.lua, so a line kept since is not listed and stays. Sightings stay: they are how SeeSpeaker
+--- knows a zone is told already, and without them every visit would send the same zone again.
+---@return number dropped
+function Gather:DropSent()
+    local sent = rawget(_G, "SpokenContributionsSent")
+    if type(sent) ~= "table" or next(sent) == nil then
+        return 0
+    end
+    local lines, kept = Store().Lines, {}
+    for _, entry in ipairs(lines) do
+        local mark = self:SentMark(entry.envelope)
+        if not (mark and sent[mark]) then
+            kept[#kept + 1] = entry
+        end
+    end
+    if #kept < #lines then
+        Store().Lines = kept
+    end
+    return #lines - #kept
+end
+
 --- Forget everything gathered. The addon cannot see the upload happen, so this is the
 --- player's to press once they have sent the file.
 function Gather:Clear()
     Store().Lines = {}
+    Store().Seen = {}
 end

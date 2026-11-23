@@ -121,6 +121,9 @@ class TestDecide:
     def test_an_edit_is_never_overwritten(self):
         assert decide(("edited", "mine"), "the dump's") == "record"
 
+    def test_a_name_kept_from_a_players_client_is_never_overwritten(self):
+        assert decide(("observed", "the client's"), "the dump's") == "record"
+
 
 def test_the_locale_columns_match_the_shared_language_list():
     """The dump's column numbers are stated twice: here, and in pipelines/lib/locales.mjs."""

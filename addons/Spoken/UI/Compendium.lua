@@ -5,11 +5,11 @@
 -- Spoken's, so every module's tab shares one window. The window is the game's portrait frame, resizable from its corner
 -- and folding down to the list. The list is a search box over an inset of rows, with the tab's
 -- switches (Started Only, Discovered Only, Found Only and the like) in the filter menu beside the
--- search. Its rows are drawn in the game's own art: the objective tracker's campaign bar across
--- the list for a banner (a continent, a section, a type of writing), and a line for everything
+-- search. Its rows are drawn in the professions window's look: its header bar across the list for
+-- a banner (a continent, a section, a type of writing), and a line for everything
 -- else: a group of lines (a place, a chain, a kind of quest or of writing) with its plus or minus
 -- and numbers, and each single thing with its tick, quest mark or padlock. What is inside an open
--- group is indented under it, a faint gold line down its left. What the rows are, what a click
+-- group is indented under it. What the rows are, what a click
 -- does and the page beside them are each
 -- tab's own.
 --
@@ -51,35 +51,40 @@ local WINDOW_HEIGHT = 600
 local WINDOW_MIN_HEIGHT = 360
 -- Room for the longest zone name in any language (Portuguese's Cordilheira das Torres de
 -- Pedra) beside its count, found out of all and the share: 27/27 · 100%.
-local LIST_WIDTH = 345
+local LIST_WIDTH = 353
 -- The narrowest the page beside the list lays out at.
 local PAGE_MIN_WIDTH = 278
-local BANNER_ROW = 36
+local BANNER_ROW = 28
 local BANNER_GAP = 14         -- above each banner but the first
 local BANNER_IN = 10          -- a banner's plus or minus from its left
-local BANNER_DROP = 1.5       -- the banner's art sits this much under its row's middle
+local BANNER_DROP = 1.5       -- a flat banner's plus or minus sits this much under its row's middle
 local BANNER_TEXT = 32        -- a banner's name from its left
 local FIRST_GAP = 2           -- above the first row
 local LEAF_ROW = 22
 -- A group (a place, a quest chain, a zone's dungeons, a zone's letters): one line, its plus or
--- minus on the line down its contents, its name over theirs, its numbers on the right.
+-- minus at the left, its name over theirs, its numbers on the right.
 local GROUP_ROW = 24
-local GROUP_FOOT = 0          -- the line down its contents starts under the row, clear of its light
 -- The quest log's plus and minus are drawn 2 left of their picture's middle: the picture moves
--- right by that, so the sign sits on the line down what it opens.
+-- right by that, so the sign sits in the step's column.
 local TOGGLE_SHIFT = 2
 local LEAF_GAP = 4            -- between a banner and the first line under it
 local NEST_AFTER = 2          -- more under an open group's contents, for each one closed there
 local NEST_STEP = 16          -- what an open group holds, this far in under it
--- The line down an open group's contents, this far into the step.
+-- The plus or minus and the chosen row's light stand this far into the step.
 local RAIL_X = 12
-local FOOT, BANNER_FOOT = 3, 2.5
-local LIST_LEFT, LIST_RIGHT = 3, 2
+-- A line's name stands this much over its middle, which the font's own spacing leaves a little low; its
+-- numbers, in a smaller face, one more so that their foot is the name's, and its tick or quest mark as
+-- far as the name.
+local TEXT_LIFT, COUNT_LIFT = 1, 2
+local LIST_LEFT, LIST_RIGHT = 6, 6
+-- The scroll bar stands BAR_SIDE in from the scroll frame's right, BAR_HEAD down from its top and BAR_FOOT
+-- up from its foot. With the rows' own margins that leaves 8 px, measured in the game, between the
+-- inset's border and the rows, between the border and the bar, and between the rows and the bar.
+-- The scroll child ends BAR_ROOM short of the bar, and the rows LIST_RIGHT short of the child's edge.
+local BAR_SIDE, BAR_HEAD, BAR_FOOT, BAR_ROOM = 6, 8, 4, 1
 -- What a banner holds sits this far in from it, one step down the tree; with no banners, nothing
 -- is set in.
 local UNDER_BANNER_IN = 20.4
--- The line down what a banner holds, this far in.
-local BANNER_RAIL_X = 16.4
 local LIST_TOP, LIST_FOOT = 6, 8
 local SCROLL_STEP = 60
 local GRABBER_SIZE = 16
@@ -155,16 +160,6 @@ local function AtlasSpot(atlas)
 	return info
 end
 
--- `texture` showing the part of the atlas at `spot` from x1 to x2 and y1 to y2, in the atlas's own
--- pixels; turned left to right with `mirror`.
-local function AtlasCut(texture, spot, x1, x2, y1, y2, mirror)
-	local l, r, t, b = spot.leftTexCoord, spot.rightTexCoord, spot.topTexCoord, spot.bottomTexCoord
-	local u1, u2 = l + (r - l) * x1 / spot.width, l + (r - l) * x2 / spot.width
-	if mirror then u1, u2 = u2, u1 end
-	texture:SetTexture(spot.file or spot.filename)
-	texture:SetTexCoord(u1, u2, t + (b - t) * y1 / spot.height, t + (b - t) * y2 / spot.height)
-end
-
 local function Sound(kit)
 	if SpokenLayout and SpokenLayout.Sound then SpokenLayout.Sound(kit) end
 end
@@ -186,6 +181,9 @@ local active
 local picked = false
 local minimized = false
 local resizer, minimizeButton, minimizeFrame
+-- The window under Forever's controller UI. Declared here because the window's code above its
+-- section calls into it.
+local Pad = { pages = {} }
 
 local function Ordered()
 	local list = {}
@@ -387,6 +385,7 @@ local function SetMinimized(want)
 	if not minimized and active and C.tabs[active].panel and C.tabs[active].panel.Refresh then
 		C.tabs[active].panel:Refresh()
 	end
+	Pad.Retarget()
 end
 
 --------------------------------------------------------------------------------
@@ -489,6 +488,7 @@ local function BuildChrome()
 		SaveWindowSize()
 		SetCursor(nil)
 	end)
+	Pad.NoStop(resizer)
 end
 
 -- How much further down the chosen tab reaches than the others in EllesmereUI's look, and how far up
@@ -660,7 +660,7 @@ local function LayOutTabs()
 			button:SetPoint("LEFT", tabButtons[i - 1], "RIGHT", gap, 0)
 		end
 		button:SetScript("OnClick", function(self)
-			Sound("igCharacterInfoTab")
+			Sound("IG_CHARACTER_INFO_TAB")
 			picked = true
 			C:Select(self.key)
 		end)
@@ -770,6 +770,7 @@ local function BuildWindow()
 		end
 	end)
 	if UISpecialFrames then table.insert(UISpecialFrames, NAME) end -- close on Escape
+	Pad.Follow(window)
 	C.window = window
 end
 
@@ -826,6 +827,8 @@ function C:Select(key)
 	PaintTabs()
 	if previous ~= key and window:IsShown() and C.tabs[key].onShow then C.tabs[key].onShow(panel) end
 	if panel.Refresh then panel:Refresh() end
+	Pad.Refind()
+	Pad.Retarget()
 	return panel
 end
 
@@ -862,6 +865,7 @@ function C:Relayout()
 	if not window then return end
 	LayOutTabs()
 	PaintTabs()
+	Pad.BuildTabs()
 	if active and C.tabs[active] and not Enabled(C.tabs[active]) then window:Hide() end
 end
 
@@ -911,11 +915,16 @@ local CHECK = "questlog-icon-checkmark-yellow"
 -- One size for every tick in the column down the list's right, on every line.
 local TICK_WIDTH, TICK_HEIGHT = 15, 13
 
--- The campaign header's bar, in its atlas's own pixels: its crest sits half outside the bar at
--- the left end and looked cut off, so the left end is the right one turned round.
-local BAR_HORDE, BAR_ALLIANCE = "Objective-Header-CampaignHorde", "Objective-Header-CampaignAlliance"
-local BAR_TOP, BAR_BOTTOM = 3, 40
-local BAR_MIDDLE, BAR_END = 64, 250
+-- HeaderBar is 256x64 with rounded ends BAR_CAP texels wide. HeaderPlus and HeaderMinus are white, tinted
+-- to the banner's gold.
+local BAR_FILE = [[Interface\AddOns\Spoken\Textures\HeaderBar]]
+local SIGN_FILES = { [true] = [[Interface\AddOns\Spoken\Textures\HeaderMinus]],
+	[false] = [[Interface\AddOns\Spoken\Textures\HeaderPlus]] }
+local BAR_WIDTH, BAR_HEIGHT, BAR_CAP = 256, 64, 24
+local BAR_PIECES = { { 0, BAR_CAP }, { BAR_CAP, BAR_WIDTH - BAR_CAP }, { BAR_WIDTH - BAR_CAP, BAR_WIDTH } }
+local SIGN_SIZE = 14
+local SIGN_INK = { 1, 0.82, 0 }
+local LIST_BACKGROUND = "Professions-background-summarylist"
 
 local ROW_END = 12            -- from a row's right side to its numbers
 local SHARE_INK = { 0.80, 0.76, 0.70 }
@@ -927,27 +936,6 @@ local function Pixels(frame, size, least)
 	return SpokenLayout and SpokenLayout.Pixels and SpokenLayout.Pixels(frame, size, least) or size
 end
 
--- A piece of the faint gold line down an open group's contents: solid, or where the line ends,
--- fading out to its foot.
-local RAIL_INK = { 0.84, 0.71, 0.31, 0.2 }
--- Both ends set every time, solid or not: a row drawn again keeps its texture, and a fade left on
--- it from when it ended the line showed through once more rows came under it.
-local function PaintRail(texture, ends)
-	local r, g, b, a = RAIL_INK[1], RAIL_INK[2], RAIL_INK[3], RAIL_INK[4]
-	local foot = ends and 0 or a
-	texture.fades = ends and true or false
-	texture:SetColorTexture(1, 1, 1, 1)
-	if CreateColor and texture.SetGradient and pcall(texture.SetGradient, texture, "VERTICAL",
-		CreateColor(r, g, b, foot), CreateColor(r, g, b, a)) then
-		return
-	end
-	if texture.SetGradientAlpha then
-		texture:SetGradientAlpha("VERTICAL", r, g, b, foot, r, g, b, a)
-		return
-	end
-	texture:SetColorTexture(r, g, b, (foot + a) / 2)
-end
-
 local function Tint(fontString, colour)
 	fontString:SetTextColor(colour[1], colour[2], colour[3])
 end
@@ -956,14 +944,14 @@ local NAME_INK = { 1, 0.82, 0 }
 local MISSING_INK = { 0.84, 0.71, 0.31 }
 -- The chosen row's edge.
 local EDGE_INK = { 1, 0.82, 0, 0.9 }
--- In EllesmereUI's look: names white and the line down an open group white, as its windows draw
+-- In EllesmereUI's look: names white, as its windows draw
 -- them, the chosen row's edge in its accent, banners as flat boxes and the rows in its
 -- font, where it writes the client's language.
 local flatBanners, listFont
 -- Every list and page built, for what follows EllesmereUI's live changes (OnLooksChanged).
 local lists, pages = {}, {}
 C.Ellesmere(function(skin)
-	NAME_INK, MISSING_INK, RAIL_INK = { 1, 1, 1 }, { 0.62, 0.62, 0.62 }, { 1, 1, 1, 0.15 }
+	NAME_INK, MISSING_INK = { 1, 1, 1 }, { 0.62, 0.62, 0.62 }
 	local r, g, b = skin.GetAccentColor()
 	EDGE_INK = { r, g, b, 0.9 }
 	flatBanners = true
@@ -1037,8 +1025,8 @@ local function ShowAll(parts, shown)
 	for _, part in ipairs(parts) do part:SetShown(shown and true or false) end
 end
 
--- A row's light. A banner brightens; a plain row, or a banner drawn without the game's art, takes
--- a gold wash, stronger when chosen with a gold edge.
+-- A row's light. A banner brightens; a plain row, or EllesmereUI's flat banner, takes a wash under the
+-- pointer and a yellow one when chosen (in EllesmereUI's look its one wash, stronger, with an accent edge).
 local function Light(row)
 	local style = row.row and row.row.style
 	local over, chosen = row.over and true or false, row.selected and true or false
@@ -1049,9 +1037,16 @@ local function Light(row)
 		row.wash:SetColorTexture(1, 1, 1, 0.08)
 		row.edge:SetColorTexture(EDGE_INK[1], EDGE_INK[2], EDGE_INK[3], EDGE_INK[4])
 	end
-	row.wash:SetShown(flat and (over or chosen))
+	if flatBanners then
+		row.wash:SetShown(flat and (over or chosen))
+		row.chosenWash:Hide()
+		row.edge:SetShown(flat and chosen)
+	else
+		row.wash:SetShown(flat and over and not chosen)
+		row.chosenWash:SetShown(flat and chosen)
+		row.edge:Hide()
+	end
 	row.wash:SetAlpha(chosen and 1 or 0.55)
-	row.edge:SetShown(flat and chosen)
 	if row.glow then
 		ShowAll(row.glow, style == "banner" and row.bannerArt and (over or chosen))
 		for _, part in ipairs(row.glow) do part:SetAlpha(chosen and 0.25 or 0.15) end
@@ -1109,10 +1104,15 @@ function C.NewList(panel, opts)
 		Rescroll()
 	end)
 	list.searchBox = searchBox
+	-- The cursor stops on an edit box but has no press of its own for one.
+	searchBox.OnSmartNavClick = function(self) self:SetFocus() end
+	Pad.FollowSearch(searchBox)
 
 	local inset = NewInset(panel)
 	-- The game's dark marble under the list, at its own colour.
-	if type(inset.Bg) == "table" and inset.Bg.SetTexture then
+	-- Forever has the professions list's background; Era keeps the marble.
+	if type(inset.Bg) == "table" and inset.Bg.SetTexture
+		and (IS_ERA or not Atlas(inset.Bg, LIST_BACKGROUND)) then
 		inset.Bg:SetTexture([[Interface\FrameGeneral\UI-Background-Marble]], "REPEAT", "REPEAT")
 		if inset.Bg.SetHorizTile then inset.Bg:SetHorizTile(true); inset.Bg:SetVertTile(true) end
 		if inset.Bg.SetVertexColor then inset.Bg:SetVertexColor(1, 1, 1, 1) end
@@ -1134,7 +1134,7 @@ function C.NewList(panel, opts)
 	end)
 
 	local scroll = CreateFrame("ScrollFrame", nil, inset)
-	scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 4, -4)
+	scroll:SetPoint("TOPLEFT", inset, "TOPLEFT", 4, -2)
 	scroll:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -4, 4)
 	if scroll.SetClipsChildren then scroll:SetClipsChildren(true) end
 	scroll:EnableMouseWheel(true)
@@ -1150,7 +1150,11 @@ function C.NewList(panel, opts)
 	scroll:SetScrollChild(child)
 	list.child = child
 	-- The game's minimal scroll bar down the list's right side, as each part draws its pages'.
-	if opts.addScrollBar then list.bar = opts.addScrollBar(scroll, child, inset) end
+	if opts.addScrollBar then
+		list.bar = opts.addScrollBar(scroll, child, inset)
+		list.bar:SetBarInsets(BAR_SIDE, BAR_HEAD, BAR_FOOT, BAR_ROOM)
+	end
+	Pad.NoStop(list.bar and list.bar.bar)
 
 	-- The filter menu.
 	local function Listed()
@@ -1241,6 +1245,30 @@ function C.NewList(panel, opts)
 			-- As close to the box, and as level with it, as the spellbook's arrow is to its search.
 			button:SetPoint("LEFT", searchBox, "RIGHT", 4, -3)
 			list.filterButton = button
+			-- The game's menu, opened from an addon's arrow under the controller UI, taints the
+			-- frame controls manager and leaves the controller's own filter open beside it.
+			local down = button:GetScript("OnMouseDown")
+			button:SetScript("OnMouseDown", function(self, ...)
+				if Pad.OpenFilter(list) then return end
+				if down then down(self, ...) end
+			end)
+			-- What the menu holds, for the controller's own (Pad.OpenFilter): its checkboxes, then
+			-- the orders to choose one of.
+			list.filterEntries = function()
+				local entries = {}
+				for _, box in ipairs(boxes) do
+					table.insert(entries, { label = box.label, get = box.get, set = function() box.set(not box.get()) end })
+				end
+				if opts.arrange then
+					for _, value in ipairs(opts.arrange.values) do
+						table.insert(entries, { label = opts.arrange.describe(value), radio = true,
+							get = function() return opts.arrange.get() == value end,
+							set = function() Arrange(value) end })
+					end
+				end
+				return entries
+			end
+			button.OnSmartNavClick = function() Pad.Filter(list) end
 		end
 	end
 
@@ -1289,16 +1317,27 @@ function List:AcquireRow(index)
 	if row then
 		return row
 	end
-	row = CreateFrame("Button", nil, self.child)
+	row = Pad.Detached("Button", self.child)
 	row.list = self
+	self.grew = true
 
-	-- A row's light: the professions list's own, faint under the pointer and full when chosen, with
-	-- a gold edge on the chosen one. A flat wash where the client has not got it.
+	-- A flat wash where the client has not got the professions list's hover light.
 	row.wash = row:CreateTexture(nil, "BACKGROUND")
 	if not Atlas(row.wash, "Professions_Recipe_Hover", false) then
 		row.wash:SetColorTexture(1, 1, 1, 0.1)
 	end
 	row.wash:Hide()
+	-- Yellow, as the professions list's chosen row. Era names these atlases without their art, so it gets a flat wash.
+	row.chosenWash = row:CreateTexture(nil, "BACKGROUND")
+	if not IS_ERA and Atlas(row.chosenWash, "Professions_Recipe_Active", false) then
+		-- The client's own.
+	elseif not IS_ERA and Atlas(row.chosenWash, "Professions_Recipe_Hover", false) then
+		row.chosenWash:SetVertexColor(1, 0.82, 0)
+	else
+		row.chosenWash:SetColorTexture(1, 0.82, 0, 0.3)
+	end
+	row.chosenWash:SetAllPoints(row.wash)
+	row.chosenWash:Hide()
 	row.edge = row:CreateTexture(nil, "ARTWORK")
 	row.edge:SetWidth(Pixels(row, 2))
 	row.edge:SetColorTexture(EDGE_INK[1], EDGE_INK[2], EDGE_INK[3], EDGE_INK[4])
@@ -1356,28 +1395,37 @@ local function BannerParts(row)
 	row.headLeft = row:CreateTexture(nil, "BACKGROUND")
 	row.headMiddle = row:CreateTexture(nil, "BACKGROUND")
 	row.headRight = row:CreateTexture(nil, "BACKGROUND")
+	row.heads = { row.headLeft, row.headMiddle, row.headRight }
+	row.headLeft:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+	row.headRight:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
+	row.headMiddle:SetPoint("TOPLEFT", row.headLeft, "TOPRIGHT", 0, 0)
+	row.headMiddle:SetPoint("BOTTOMRIGHT", row.headRight, "BOTTOMLEFT", 0, 0)
 	row.glow = {}
 	for i = 1, 3 do
 		local glow = row:CreateTexture(nil, "BORDER")
 		if glow.SetBlendMode then glow:SetBlendMode("ADD") end
+		glow:SetAllPoints(row.heads[i])
 		glow:Hide()
 		row.glow[i] = glow
 	end
-	-- Where the client has not got the bar: a dark band, a gold line along each edge.
+	-- In three pieces, so the rounded ends are not stretched.
+	for i, piece in ipairs(BAR_PIECES) do
+		for _, part in ipairs({ row.heads[i], row.glow[i] }) do
+			part:SetTexture(BAR_FILE)
+			part:SetTexCoord(piece[1] / BAR_WIDTH, piece[2] / BAR_WIDTH, 0, 1)
+		end
+	end
+	-- EllesmereUI's flat box: a fill and a line along each edge, coloured in DrawBanner.
 	row.bannerFill = row:CreateTexture(nil, "BACKGROUND", nil, -1)
-	row.bannerFill:SetColorTexture(0.17, 0.11, 0.06, 0.95)
 	row.bannerFill:SetAllPoints(row)
 	row.bannerTop = row:CreateTexture(nil, "BORDER")
 	row.bannerTop:SetHeight(Pixels(row, 1))
-	row.bannerTop:SetColorTexture(0.79, 0.63, 0.31, 0.8)
 	row.bannerTop:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
 	row.bannerTop:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
 	row.bannerBottom = row:CreateTexture(nil, "BORDER")
 	row.bannerBottom:SetHeight(Pixels(row, 1))
-	row.bannerBottom:SetColorTexture(0.79, 0.63, 0.31, 0.45)
 	row.bannerBottom:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
 	row.bannerBottom:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
-	-- And down each end, for a flat box.
 	row.bannerLeft = row:CreateTexture(nil, "BORDER")
 	row.bannerLeft:SetWidth(Pixels(row, 1))
 	row.bannerLeft:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
@@ -1399,52 +1447,12 @@ local function ShowStyle(row, style)
 	row.bannerArt = style == "banner" and row.bannerArt
 end
 
--- The faint line down the left of each open group's contents, one for every group a row is inside.
--- Each row draws its share of the line, `gap` up to the row above; a group's or banner's first row
--- draws it on up to that group or banner. The row a line ends at fades it out: the first
--- `goesOn` lines go on into the next row, and the banner's with `bannerGoesOn`.
-local function Rails(row, count, gap, held, underBanner, afterBanner, foot, goesOn, bannerGoesOn)
-	-- In EllesmereUI's look a line starts at the foot of its banner's or group's box, not inside it,
-	-- where it would cross the box's edge or run into the group's plus or minus.
-	local flat = flatBanners
-	if underBanner and not row.bannerRail then
-		row.bannerRail = row:CreateTexture(nil, "BORDER")
-		row.bannerRail:SetWidth(Pixels(row, 1))
-	end
-	if row.bannerRail then
-		PaintRail(row.bannerRail, not bannerGoesOn)
-		row.bannerRail:ClearAllPoints()
-		row.bannerRail:SetPoint("TOPLEFT", row, "TOPLEFT", Pixels(row, BANNER_RAIL_X, 0),
-			gap + ((afterBanner and not flat) and BANNER_FOOT or 0))
-		row.bannerRail:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", Pixels(row, BANNER_RAIL_X, 0), 0)
-		row.bannerRail:SetShown(underBanner and true or false)
-	end
-	row.rails = row.rails or {}
-	for i = 1, math.max(count, #row.rails) do
-		local rail = row.rails[i]
-		if i <= count then
-			if not rail then
-				rail = row:CreateTexture(nil, "BORDER")
-				rail:SetWidth(Pixels(row, 1))
-				row.rails[i] = rail
-			end
-			PaintRail(rail, i > (goesOn or 0))
-			local x = Pixels(row, (underBanner and UNDER_BANNER_IN or 0) + (i - 1) * NEST_STEP + RAIL_X, 0)
-			rail:ClearAllPoints()
-			rail:SetPoint("TOPLEFT", row, "TOPLEFT", x, (i <= held or flat) and gap or gap + (foot or FOOT))
-			rail:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", x, 0)
-			rail:Show()
-		elseif rail then
-			rail:Hide()
-		end
-	end
-end
 
 -- The quest log's own expand and collapse, on a banner or a group. Where nothing inside
 -- opens -- locked, empty, or none found with the tab's only switch on -- greyed, as the name
 -- beside it is. `found`, where an item counts something narrower than what it holds (the quests
 -- completed, not those in progress too).
-local function Toggle(row, item, onlyFound)
+local function Toggle(row, item, onlyFound, bar)
 	local count = item.found or item.count or 0
 	-- A card with nothing inside it (a dungeon's, a city with no areas) has nothing to open: no
 	-- button, rather than a disabled one that does nothing.
@@ -1453,6 +1461,19 @@ local function Toggle(row, item, onlyFound)
 		return
 	end
 	local opens = not item.locked and not (onlyFound and count == 0)
+	if bar then
+		-- The banner's own sign, white art in the bar's gold, dim where there is nothing to open.
+		row.toggle:SetSize(SIGN_SIZE, SIGN_SIZE)
+		row.toggle:SetTexture(SIGN_FILES[opens and item.open and true or false])
+		row.toggle:SetTexCoord(0, 1, 0, 1)
+		if row.toggle.SetDesaturated then row.toggle:SetDesaturated(false) end
+		row.toggle:SetVertexColor(SIGN_INK[1], SIGN_INK[2], SIGN_INK[3])
+		row.toggle:SetAlpha(opens and 1 or 0.45)
+		row.toggle:Show()
+		return
+	end
+	row.toggle:SetSize(16, 16)
+	row.toggle:SetVertexColor(1, 1, 1)
 	local atlas = opens and item.open and "questlog-icon-shrink" or "questlog-icon-expand"
 	-- Era exposes these modern atlas names even though their backing textures are not present. Using
 	-- them paints the missing-texture green square; its older button files are still available.
@@ -1468,15 +1489,14 @@ local function Toggle(row, item, onlyFound)
 	row.toggle:Show()
 end
 
--- The room above the row for `items[i]`, and how many open groups hold both it and the row above.
 local function GapAbove(items, i)
 	local item, before = items[i], items[i - 1]
-	if not before then return FIRST_GAP, 0 end
-	if item.style == "banner" then return BANNER_GAP, 0 end
-	if before.style == "banner" then return LEAF_GAP, 0 end
+	if not before then return FIRST_GAP end
+	if item.style == "banner" then return BANNER_GAP end
+	if before.style == "banner" then return LEAF_GAP end
 	local was, now = before.nest or 0, item.nest or 0
 	-- Lines one under another, as a list: none between them, a little where a group closes.
-	return now < was and (was - now) * NEST_AFTER or 0, math.min(now, was)
+	return now < was and (was - now) * NEST_AFTER or 0
 end
 
 local function RowHeight(item)
@@ -1485,32 +1505,24 @@ local function RowHeight(item)
 	return LEAF_ROW
 end
 
+-- The gap above `items[i]` and its height, in whole screen pixels: unrounded, a 28 bar at 33.6 px drew 33 px
+-- tall here and 34 there.
+local function RowSpan(child, items, i)
+	return Pixels(child, GapAbove(items, i), 0), Pixels(child, RowHeight(items[i]), 1)
+end
+
 local function DrawBanner(row, item, onlyFound)
 	BannerParts(row)
-	local horde = UnitFactionGroup and UnitFactionGroup("player") == "Horde"
-	local spot = (not flatBanners) and AtlasSpot(horde and BAR_HORDE or BAR_ALLIANCE) or nil
-	row.bannerArt = spot ~= nil
-	if spot then
-		local width = spot.width
-		local cap = math.floor((width - BAR_END) * BANNER_ROW / (BAR_BOTTOM - BAR_TOP) + 0.5)
-		local pieces = { { row.headLeft, BAR_END, width, true }, { row.headMiddle, BAR_MIDDLE, BAR_END },
-			{ row.headRight, BAR_END, width } }
-		for i, piece in ipairs(pieces) do
-			AtlasCut(piece[1], spot, piece[2], piece[3], BAR_TOP, BAR_BOTTOM, piece[4])
-			AtlasCut(row.glow[i], spot, piece[2], piece[3], BAR_TOP, BAR_BOTTOM, piece[4])
-			piece[1]:ClearAllPoints()
-		end
-		row.headLeft:SetSize(cap, BANNER_ROW)
-		row.headLeft:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
-		row.headRight:SetSize(cap, BANNER_ROW)
-		row.headRight:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
-		row.headMiddle:SetPoint("TOPLEFT", row.headLeft, "TOPRIGHT", 0, 0)
-		row.headMiddle:SetPoint("BOTTOMRIGHT", row.headRight, "BOTTOMLEFT", 0, 0)
-		for i, piece in ipairs(pieces) do row.glow[i]:SetAllPoints(piece[1]) end
+	row.bannerArt = not flatBanners
+	if row.bannerArt then
+		-- The ends keep their shape at any row height: BAR_CAP texels of the bar's BAR_HEIGHT.
+		local height = Pixels(row, BANNER_ROW, 1)
+		local cap = height * BAR_CAP / BAR_HEIGHT
+		row.headLeft:SetSize(cap, height)
+		row.headRight:SetSize(cap, height)
 	end
-	ShowAll({ row.headLeft, row.headMiddle, row.headRight }, spot ~= nil)
-	ShowAll({ row.bannerFill, row.bannerTop, row.bannerBottom }, spot == nil)
-	ShowAll({ row.bannerLeft, row.bannerRight }, flatBanners)
+	ShowAll(row.heads, row.bannerArt)
+	ShowAll({ row.bannerFill, row.bannerTop, row.bannerBottom, row.bannerLeft, row.bannerRight }, flatBanners)
 	if flatBanners then
 		-- A faint box with a faint edge all round, as EllesmereUI's flat plates are.
 		row.bannerFill:SetColorTexture(1, 1, 1, 0.05)
@@ -1520,27 +1532,23 @@ local function DrawBanner(row, item, onlyFound)
 	end
 
 	row.toggle:ClearAllPoints()
-	-- The plus or minus as far in from the banner's edge as it is from its top and its foot, all
-	-- measured from the banner's gold line, whose middle is 1.5 under the row's.
-	-- The campaign bar's gold line sits under the row's middle; a flat box has its middle. The quest
-	-- log's minus and plus draw their bar 1.5 above their picture's middle (measured in game: the
-	-- minus 1.5 px over the box's middle, the name and the count on it), so the sign alone drops.
-	local drop = flatBanners and 0 or BANNER_DROP
-	local sign = flatBanners and Pixels(row, BANNER_DROP, 0) or BANNER_DROP
+	-- A flat box's sign sits BANNER_DROP under its middle, where the quest log's minus has its bar; the
+	-- bar is level, and so is its sign.
+	local sign = flatBanners and Pixels(row, BANNER_DROP, 0) or 0
 	row.toggle:SetPoint("LEFT", row, "LEFT", BANNER_IN, -sign)
-	Toggle(row, item, onlyFound)
+	Toggle(row, item, onlyFound, row.bannerArt)
 	local locked = item.locked and row.hasLock
 	-- The numbers and padlock in the column the lines' numbers end in.
-	row.lock:SetPoint("RIGHT", row, "RIGHT", -ROW_END, -drop)
-	row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, flatBanners and 0 or -1)
+	row.lock:SetPoint("RIGHT", row, "RIGHT", -ROW_END, 0)
+	row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, row.bannerArt and TEXT_LIFT or 0)
 	row.lock:SetShown(locked and true or false)
 	row.count:SetShown(not locked)
 	RowFont(row, "banner", "GameFontNormal", "GameFontHighlightSmall")
 	Tint(row.count, BANNER_INK)
 	row.count:SetText(item.total and item.total > 0 and (Number(item.count) .. "/" .. Number(item.total)) or "")
-	-- Both on the box's middle line, by their own middle.
-	if flatBanners and row.label.SetJustifyV then row.label:SetJustifyV("MIDDLE"); row.count:SetJustifyV("MIDDLE") end
-	row.label:SetPoint("LEFT", row, "LEFT", BANNER_TEXT, flatBanners and 0 or -1)
+	-- Both on the bar's middle line, by their own middle.
+	if row.label.SetJustifyV then row.label:SetJustifyV("MIDDLE"); row.count:SetJustifyV("MIDDLE") end
+	row.label:SetPoint("LEFT", row, "LEFT", BANNER_TEXT, 0)
 	row.label:SetPoint("RIGHT", locked and row.lock or row.count, "LEFT", -8, 0)
 	if item.locked then Tint(row.label, LOCKED_INK) else Tint(row.label, NAME_INK) end
 	row.label:SetShadowColor(0, 0, 0, 1)
@@ -1548,7 +1556,7 @@ local function DrawBanner(row, item, onlyFound)
 	row.label:SetText(item.label)
 end
 
--- A group: its plus or minus on the line down what it holds, its name in gold over
+-- A group: its plus or minus at the left, its name in gold over
 -- the names of what it holds, and on the right what is found out of all and the share, the quest
 -- mark with how many are under way, a tick once all are found, a padlock on what does not open.
 local function DrawGroup(row, item, indent, onlyFound)
@@ -1566,23 +1574,29 @@ local function DrawGroup(row, item, indent, onlyFound)
 	if ticked then
 		Ticked(row.status)
 		row.status:ClearAllPoints()
-		row.status:SetPoint("CENTER", row, "RIGHT", edge, 0)
+		row.status:SetPoint("CENTER", row, "RIGHT", edge, TEXT_LIFT)
 	end
 	row.status:SetShown(ticked)
 	RowFont(row, "group", "GameFontNormal", "GameFontHighlightSmall")
 	Tint(row.count, SHARE_INK)
 	if ticked then
-		row.count:SetPoint("RIGHT", row.status, "LEFT", -4, 0)
+		row.count:SetPoint("RIGHT", row.status, "LEFT", -4, COUNT_LIFT - TEXT_LIFT)
 	else
-		row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, 0)
+		row.count:SetPoint("RIGHT", row, "RIGHT", -ROW_END, COUNT_LIFT)
 	end
 	local numbers = Numbers(item, total, ratio, ticked)
 	row.count:SetText(numbers)
 	row.count:SetShown(not locked and numbers ~= "")
 
-	row.label:SetPoint("LEFT", row, "LEFT", indent + NEST_STEP + 12, 0)
-	row.label:SetPoint("RIGHT", locked and row.lock or (numbers ~= "" and row.count) or row, locked and "LEFT"
-		or (numbers ~= "" and "LEFT") or "RIGHT", -8, 0)
+	row.label:SetPoint("LEFT", row, "LEFT", indent + NEST_STEP + 12, TEXT_LIFT)
+	-- The numbers are lifted already; the padlock and the row's edge are not.
+	if locked then
+		row.label:SetPoint("RIGHT", row.lock, "LEFT", -8, TEXT_LIFT)
+	elseif numbers ~= "" then
+		row.label:SetPoint("RIGHT", row.count, "LEFT", -8, TEXT_LIFT - COUNT_LIFT)
+	else
+		row.label:SetPoint("RIGHT", row, "RIGHT", -8, TEXT_LIFT)
+	end
 	NameInk(row.label, item)
 	row.label:SetText(item.label)
 end
@@ -1602,7 +1616,7 @@ local function DrawLeaf(row, item, indent)
 	end
 	-- At the row's end, where a padlock goes: one place for what a row's state is.
 	row.status:ClearAllPoints()
-	row.status:SetPoint("CENTER", row, "RIGHT", -(ROW_END + 6), 0)
+	row.status:SetPoint("CENTER", row, "RIGHT", -(ROW_END + 6), TEXT_LIFT)
 	row.status:SetShown(status ~= nil)
 
 	local locked = item.locked and row.hasLock
@@ -1611,9 +1625,9 @@ local function DrawLeaf(row, item, indent)
 	row.count:SetText("")
 	row.count:Hide()
 	RowFont(row, "leaf", "GameFontHighlight")
-	row.label:SetPoint("LEFT", row, "LEFT", indent + 12, 0)
+	row.label:SetPoint("LEFT", row, "LEFT", indent + 12, TEXT_LIFT)
 	-- Clear of the tick, quest mark or padlock at the row's end, which reach 25.5 in.
-	row.label:SetPoint("RIGHT", row, "RIGHT", -28, 0)
+	row.label:SetPoint("RIGHT", row, "RIGHT", -28, TEXT_LIFT)
 	-- Something with nothing to read yet, greyed a little: still there to choose. One not yet
 	-- found, greyer: listed, but it does not open.
 	if item.locked then
@@ -1632,15 +1646,14 @@ function List:Render()
 	local onlyFound = self.opts.onlyGet and self.opts.onlyGet()
 	local unlock = self.panel.tab and self.panel.tab.unlock
 	local unlocked = unlock and unlock.get and unlock.get()
-	local y = LIST_TOP
+	local y = Pixels(self.child, LIST_TOP, 0)
 	local underBanner = false
 	for i, item in ipairs(items) do
 		if unlocked then item.none = false end
 		if item.style == "banner" then underBanner = true end
 		local row = self:AcquireRow(i)
 		row.row = item
-		local gap, held = GapAbove(items, i)
-		local height = RowHeight(item)
+		local gap, height = RowSpan(self.child, items, i)
 		y = y + gap
 		row:SetHeight(height)
 		row:ClearAllPoints()
@@ -1650,12 +1663,6 @@ function List:Render()
 
 		ShowStyle(row, item.style)
 		local nest = item.style ~= "banner" and item.nest or 0
-		local before, after = items[i - 1], items[i + 1]
-		local _, goesOn = 0, 0
-		if after and after.style ~= "banner" then _, goesOn = GapAbove(items, i + 1) end
-		Rails(row, nest, gap, held, item.style ~= "banner" and underBanner,
-			before and before.style == "banner", before and before.style == "group" and GROUP_FOOT or FOOT,
-			goesOn, after ~= nil and after.style ~= "banner")
 		local indent = (underBanner and UNDER_BANNER_IN or 0) + nest * NEST_STEP
 		row.indent = indent
 		row.label:ClearAllPoints()
@@ -1669,7 +1676,7 @@ function List:Render()
 		else
 			DrawLeaf(row, item, indent)
 		end
-		-- A single row's light starts on the line down its left, its gold edge over that line.
+		-- A single row's light starts at the step's column, its gold edge over it.
 		local lit = indent
 		if item.style ~= "banner" and (nest > 0 or underBanner) then lit = indent - (NEST_STEP - RAIL_X) - 0.5 end
 		row.wash:ClearAllPoints()
@@ -1677,7 +1684,7 @@ function List:Render()
 		row.wash:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, 0)
 		row.edge:ClearAllPoints()
 		row.edge:SetPoint("TOPLEFT", row, "TOPLEFT", lit, 0)
-		row.edge:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", lit, 0)
+		row.edge:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", lit, Pixels(row, 2, 0))
 		-- Clicks on the row, not on the room beside its line.
 		if row.SetHitRectInsets then row:SetHitRectInsets(indent, 0, 0, 0) end
 
@@ -1694,6 +1701,10 @@ function List:Render()
 	self.child:SetHeight(math.max(y + LIST_FOOT, 1))
 	self.noMatch:SetShown(#items == 0)
 	self.items = items
+	if self.grew then
+		self.grew = nil
+		Pad.Refind()
+	end
 	return items
 end
 
@@ -1701,10 +1712,10 @@ end
 --- something or the list is filtered again: doing it on every refresh would yank the list out
 --- from under a click.
 function List:ScrollToSelection(items)
-	local y = LIST_TOP
+	local y = Pixels(self.child, LIST_TOP, 0)
 	for i, item in ipairs(items) do
-		y = y + GapAbove(items, i)
-		local height = RowHeight(item)
+		local gap, height = RowSpan(self.child, items, i)
+		y = y + gap
 		if self.opts.isSelected and self.opts.isSelected(item) then
 			local viewHeight = self.scroll:GetHeight() or 0
 			-- GetVerticalScrollRange is stale until the next layout pass, right after
@@ -1876,6 +1887,529 @@ function C.PageHolder(panel, list)
 end
 
 --------------------------------------------------------------------------------
+-- The controller
+--------------------------------------------------------------------------------
+
+-- Under Forever's controller UI the d-pad moves a cursor (SmartNavigation) over the buttons of
+-- the window the frame controls manager has focused, and the manager knows only the windows it
+-- is told of: the game's panels as ShowUIPanel shows them, and this one, which is no panel,
+-- tells it itself on show and hide (FrameControlsManager.lua, forever branch). From there the
+-- game drives it: A presses the button under the cursor, B the window's CloseButton, the
+-- triggers move between windows, and a row moved onto out of sight scrolls the list to it. The
+-- manager and the cursor's setters refuse an addon while combat holds addons back, showing the
+-- game's "action blocked" error for each, so what falls in combat waits for its end.
+
+local function GamepadUI()
+	return SpokenLayout and SpokenLayout.IsGamepadUI and SpokenLayout.IsGamepadUI() or false
+end
+
+local function CombatRestricted()
+	return SpokenLayout and SpokenLayout.CombatRestricted and SpokenLayout.CombatRestricted() or false
+end
+
+local function Manager()
+	return GamepadMode and GamepadMode.FrameControlsManager
+end
+
+local joined = false      -- the manager holds the window
+local waiter
+
+local function Locked()
+	return InCombatLockdown and InCombatLockdown() or false
+end
+
+-- Put the cursor on `button` when `frame` next has the controller.
+local function Target(frame, button)
+	if button and SmartNavigation and SmartNavigation.SetTargetButtonForFrame and not CombatRestricted() then
+		SmartNavigation:SetTargetButtonForFrame(frame, button)
+	end
+end
+
+local function AfterCombat()
+	if waiter then return end
+	waiter = CreateFrame("Frame")
+	waiter:SetScript("OnEvent", function(_, event)
+		if event == "PLAYER_REGEN_DISABLED" then
+			Pad.fighting = true
+			Pad.Unbind()
+			Pad.ReleaseSearch()
+			if Pad.SettleFilter then Pad.SettleFilter() end
+		else
+			Pad.fighting = nil
+			Pad.Settle()
+			Pad.CatchSearch()
+		end
+	end)
+	-- Combat's start comes before the game holds addons back: the last moment to let go of keys.
+	waiter:RegisterEvent("PLAYER_REGEN_DISABLED")
+	waiter:RegisterEvent("PLAYER_REGEN_ENABLED")
+end
+
+--- A frame made with no parent and only then put under `parent`. The game hooks CreateFrame:
+--- for a parent inside the window its cursor is in, it looks for the window's stops again there
+--- and then, from inside the caller, which combat refuses with its "action blocked" error.
+--- SetParent is not hooked; Pad.Refind looks for them instead.
+function Pad.Detached(kind, parent, template)
+	local frame = CreateFrame(kind, nil, nil, template)
+	frame:SetParent(parent)
+	return frame
+end
+
+--- Take `frame` from the cursor: a drag it cannot make, or a scroll bar beside what moving the
+--- cursor or the right stick scrolls already. Its children go with it.
+function Pad.NoStop(frame)
+	if frame and SpokenLayout and SpokenLayout.NoStop then SpokenLayout.NoStop(frame) end
+end
+
+--- The cursor's stops looked for again, for rows a redraw added; in combat, once it ends.
+function Pad.Refind()
+	if not (joined and SmartNavigation and SmartNavigation.RefreshButtonGroups) then return end
+	if CombatRestricted() then
+		Pad.refindLater = true
+		AfterCombat()
+		return
+	end
+	Pad.refindLater = nil
+	SmartNavigation:RefreshButtonGroups(window)
+end
+
+-- The page in sight: the shown tab's, unless the window is folded down to its list. The map's story
+-- panel builds its page the same way and can be in sight beside the window.
+local function ShownPage()
+	for _, page in ipairs(Pad.pages) do
+		local frame = page.frame:IsVisible() and page.frame
+		while frame and frame ~= window do frame = frame:GetParent() end
+		if frame then return page end
+	end
+end
+
+local function ShownList()
+	local tab = active and C.tabs[active]
+	for _, list in ipairs(lists) do
+		if tab and list.panel == tab.panel then return list end
+	end
+end
+
+-- The chosen row of the shown tab's list, where it is drawn; else, with `orFirst`, its first row.
+local function ChosenRow(orFirst)
+	local list = ShownList()
+	if not list then return nil end
+	local first
+	for _, row in ipairs(list.rows) do
+		if row.row and row:IsVisible() then
+			if row.selected then return row end
+			first = first or row
+		end
+	end
+	return orFirst and first or nil
+end
+
+--- The right stick on the page's words, as on the game's book (ItemTextFrame); the list scrolls
+--- as the cursor moves down it.
+function Pad.Retarget()
+	if not (joined and SmartNavigation and SmartNavigation.SetScrollFrameForFrame) or CombatRestricted() then return end
+	local page = not minimized and ShownPage()
+	SmartNavigation:SetScrollFrameForFrame(window, page and page.body.frame or nil)
+end
+
+--- Every tab whose part is on, built now: as the window joins the manager (`joining`), or while
+--- it holds the window, for a part switched on since. Built in sight of the cursor in combat, a
+--- tab's frames would make the game look for stops from inside Spoken's call, which it refuses.
+function Pad.BuildTabs(joining)
+	if not (joining or joined) or CombatRestricted() then return end
+	for key, tab in pairs(C.tabs) do
+		if Enabled(tab) then Panel(key) end
+	end
+end
+
+--- Join the manager while the window is shown under the controller UI, and leave it otherwise.
+--- Run on show and hide, and again once combat ends.
+function Pad.Settle()
+	if CombatRestricted() then
+		AfterCombat()
+		return
+	end
+	local manager = Manager()
+	if not (manager and window) then return end
+	local want = window:IsShown() and GamepadUI()
+	if not want then Pad.focused = false end
+	if want ~= joined then
+		joined = want
+		if want then
+			Pad.BuildTabs(true)
+			manager:FrameShown(window)
+		else
+			manager:FrameHidden(window)
+		end
+	end
+	if Pad.focused then Pad.Bind() else Pad.Unbind() end
+	if Pad.refindLater then Pad.Refind() end
+	-- A tab changed or the window folded in combat left the right stick where it was.
+	Pad.Retarget()
+	-- A part switched on in combat has its tab built only now.
+	Pad.BuildTabs()
+	if Pad.SettleFilter then Pad.SettleFilter() end
+end
+
+-- The shoulders, View and Menu while the window has the controller, as the game's own windows
+-- take them. They are override bindings owned by the window: the game's binding stack is secure,
+-- and an addon writing to it taints the d-pad. Bindings cannot change in combat, so they go as
+-- combat starts and come back after.
+local SHOULDER_LEFT = GAMEPAD_SHOULDER_LEFT or "PADLSHOULDER"
+local SHOULDER_RIGHT = GAMEPAD_SHOULDER_RIGHT or "PADRSHOULDER"
+local VIEW = GAMEPAD_MENU_LEFT or "PADBACK"
+local MENU = GAMEPAD_MENU_RIGHT or "PADFORWARD"
+local bound = false
+
+-- The tab `step` along from the shown one, round from the last to the first.
+local function StepTab(step)
+	local shown, at = {}, nil
+	for _, button in ipairs(tabButtons or {}) do
+		if button.key and button:IsShown() then
+			table.insert(shown, button)
+			if button.key == active then at = #shown end
+		end
+	end
+	if #shown < 2 or not at then return end
+	shown[(at - 1 + step) % #shown + 1]:Click()
+	-- The cursor would stay on a row of the tab just hidden.
+	Target(window, ChosenRow(true))
+end
+
+-- Into the shown tab's search, or out of it again.
+local function Search()
+	local list = ShownList()
+	if not list then return end
+	local box = list.searchBox
+	if box:HasFocus() then box:ClearFocus() else box:SetFocus() end
+end
+
+-- The shown tab's filter menu opened, as Menu opens the professions' and the trainer's: the
+-- game's dropdown opens on the press, the older menu's arrow on its click.
+local function Filter()
+	local list = ShownList()
+	if list then Pad.Filter(list) end
+end
+
+local function KeyButton(suffix, onClick)
+	local button = CreateFrame("Button", NAME .. suffix, nil)
+	button:Hide()
+	button:SetScript("OnClick", onClick)
+	return button
+end
+
+function Pad.Bind()
+	if bound or not (window and SetOverrideBindingClick) or not GamepadUI()
+		or Locked() or CombatRestricted() then
+		return
+	end
+	if not Pad.keys then
+		Pad.keys = {
+			KeyButton("PreviousTab", function() StepTab(-1) end),
+			KeyButton("NextTab", function() StepTab(1) end),
+			KeyButton("Search", Search),
+			KeyButton("Filter", Filter),
+		}
+	end
+	SetOverrideBindingClick(window, true, SHOULDER_LEFT, NAME .. "PreviousTab")
+	SetOverrideBindingClick(window, true, SHOULDER_RIGHT, NAME .. "NextTab")
+	SetOverrideBindingClick(window, true, VIEW, NAME .. "Search")
+	SetOverrideBindingClick(window, true, MENU, NAME .. "Filter")
+	bound = true
+end
+
+function Pad.Unbind()
+	if not bound or not ClearOverrideBindings or Locked() then return end
+	ClearOverrideBindings(window)
+	bound = false
+end
+
+--- Hook the window up: joining and leaving as it shows and hides, and what the manager calls
+--- on it as it takes the controller.
+function Pad.Follow(frame)
+	frame:HookScript("OnShow", Pad.Settle)
+	frame:HookScript("OnHide", function()
+		Pad.CloseFilter()
+		Pad.Settle()
+	end)
+	-- The cursor starts on the chosen row, where the list shows one.
+	frame.FocusGamepad = function()
+		Pad.focused = true
+		AfterCombat()
+		Pad.Retarget()
+		Pad.Bind()
+		Target(frame, ChosenRow())
+	end
+	frame.UnfocusGamepad = function()
+		Pad.focused = false
+		Pad.Unbind()
+	end
+end
+
+do
+	-- The search box under the controller UI. While an edit box has the keyboard, the controller's
+	-- buttons go to it and none of the game's bindings run, so the cursor, B and View are all dead
+	-- there. The box takes the controller's buttons itself while it has the keyboard, and any of
+	-- them gives the keyboard back, as B leaves the game's bag search (ContainerFrame.lua). Typing
+	-- is the on-screen keyboard's, which sends keys. Taking the buttons is protected: never in
+	-- combat, and given back as combat starts, while the game still allows it.
+	local searching
+
+	local function LeaveSearch(self) self:ClearFocus() end
+
+	-- A frame with a script for the controller's buttons takes them all while shown, focused or
+	-- not, so the box has one only while it has the keyboard.
+	local function CatchPad(box, on)
+		if not box.EnableGamePadButton or Locked() then return end
+		if on and not GamepadUI() then return end
+		box:SetScript("OnGamePadButtonDown", on and LeaveSearch or nil)
+		box:EnableGamePadButton(on)
+		box.padCaught = on or nil
+	end
+
+	function Pad.FollowSearch(box)
+		box:HookScript("OnEditFocusGained", function(self)
+			searching = self
+			CatchPad(self, true)
+			if GamepadUI() then AfterCombat() end
+		end)
+		box:HookScript("OnEditFocusLost", function(self)
+			if searching == self then searching = nil end
+			if self.padCaught then CatchPad(self, false) end
+		end)
+	end
+
+	-- A box focused in combat could not take the controller's buttons then, and kept them all.
+	function Pad.CatchSearch()
+		if searching and not searching.padCaught then CatchPad(searching, true) end
+	end
+
+	-- Only a box holding the controller's buttons: one typed in with a keyboard keeps its focus.
+	function Pad.ReleaseSearch()
+		if searching and searching.padCaught then searching:ClearFocus() end
+	end
+
+	-- The filter under the controller UI. The game's menu, opened by an addon, never takes the
+	-- controller and taints the frame controls manager, so a menu of Spoken's own, drawn as the
+	-- game's (Blizzard_Menu's MenuStyle1Mixin), joins the manager as a popup instead. With the
+	-- mouse, or in combat, where the manager refuses addons, the game's menu opens as before.
+	local ROW, DIVIDER, MIN_WIDTH = 20, 13, 120
+	local INSET = { left = 8, top = 8, right = 8, bottom = 15 }
+	-- The game's menu draws its background this far past its edges.
+	local BG_X, BG_Y = 10, 3
+	local filterPad
+
+	local function PaintRow(row)
+		local on = row.entry.get() and true or false
+		local radio = row.entry.radio
+		if not (Atlas(row.mark, radio and "common-dropdown-tickradial" or "common-dropdown-ticksquare", true)
+			and Atlas(row.tick, radio and "common-dropdown-icon-radialtick-yellow"
+				or "common-dropdown-icon-checkmark-yellow", true)) then
+			row.mark:SetTexture(radio and [[Interface\Buttons\UI-RadioButton]] or [[Interface\Buttons\UI-CheckBox-Up]])
+			row.mark:SetTexCoord(0, radio and 0.25 or 1, 0, 1)
+			row.mark:SetSize(16, 16)
+			row.tick:SetTexture(radio and [[Interface\Buttons\UI-RadioButton]] or [[Interface\Buttons\UI-CheckBox-Check]])
+			row.tick:SetTexCoord(radio and 0.25 or 0, radio and 0.5 or 1, 0, 1)
+			row.tick:SetSize(16, 16)
+		end
+		row.mark:ClearAllPoints()
+		row.mark:SetPoint("LEFT", row, "LEFT", radio and -3 or 0, 0)
+		row.tick:ClearAllPoints()
+		if radio then
+			row.tick:SetPoint("TOPLEFT", row.mark, "TOPLEFT")
+		else
+			row.tick:SetPoint("CENTER", row.mark, "CENTER", 2, 1)
+		end
+		row.label:ClearAllPoints()
+		row.label:SetPoint("LEFT", row.mark, "RIGHT", radio and 1 or 7, radio and 0 or 1)
+		row.tick:SetShown(on)
+	end
+
+	local function BuildFilterPad()
+		local frame = CreateFrame("Frame", NAME .. "FilterPad", UIParent)
+		frame:SetFrameStrata("FULLSCREEN_DIALOG")
+		frame:SetToplevel(true)
+		frame:EnableMouse(true)
+		frame:SetClampedToScreen(true)
+		local back = frame:CreateTexture(nil, "BACKGROUND")
+		if Atlas(back, "common-dropdown-bg", false) then
+			back:SetAlpha(0.925)
+		else
+			back:SetColorTexture(0, 0, 0, 0.85)
+		end
+		back:SetPoint("TOPLEFT", -BG_X, BG_Y)
+		back:SetPoint("BOTTOMRIGHT", BG_X, -BG_Y)
+		frame.divider = frame:CreateTexture(nil, "ARTWORK")
+		frame.divider:SetTexture([[Interface\Common\UI-TooltipDivider-Transparent]])
+		frame.divider:SetHeight(DIVIDER)
+		frame.rows = {}
+		frame:Hide()
+		if UISpecialFrames then table.insert(UISpecialFrames, NAME .. "FilterPad") end
+		-- B, as the game's own menus take it (FrameControlsManager's MenuProxy.OnShow).
+		frame.SmartNavigationCloseHandler = function()
+			frame:Hide()
+			return true
+		end
+
+		frame:HookScript("OnShow", function(self)
+			self:RegisterEvent("GLOBAL_MOUSE_DOWN")
+			local manager = Manager()
+			if manager and GamepadUI() and not CombatRestricted() then
+				manager:HandlePopupShown(self)
+				self.joined = true
+			end
+		end)
+		frame:HookScript("OnHide", function(self)
+			self:UnregisterEvent("GLOBAL_MOUSE_DOWN")
+			self.list = nil
+			Pad.SettleFilter()
+		end)
+		-- A click anywhere else closes it, as it closes the game's menus.
+		frame:SetScript("OnEvent", function(self, _, mouseButton)
+			if mouseButton ~= "LeftButton" and mouseButton ~= "RightButton" then return end
+			local button = self.list and self.list.filterButton
+			if not (self:IsMouseOver() or (button and button:IsMouseOver())) then self:Hide() end
+		end)
+		-- The cursor starts on the first row. Taking the controller unfocuses the window, which
+		-- lets go of its keys, so the menu holds Menu itself while it has the controller.
+		frame.FocusGamepad = function(self)
+			self.focused = true
+			Pad.SettleFilter()
+			local first = self.rows[1]
+			if first and first:IsShown() then Target(self, first) end
+		end
+		frame.UnfocusGamepad = function(self)
+			self.focused = nil
+			Pad.SettleFilter()
+		end
+		filterPad = frame
+		return frame
+	end
+
+	-- Menu while the menu has the controller, and the manager told of it closing. Neither can
+	-- happen in combat: run again once it ends.
+	function Pad.SettleFilter()
+		local frame = filterPad
+		if not frame then return end
+		local locked = Locked() or CombatRestricted()
+		local wantKey = frame.focused and frame:IsShown() and not Pad.fighting and GamepadUI()
+			and SetOverrideBindingClick and true or false
+		if (frame.keyBound or false) ~= wantKey and not locked then
+			if wantKey then
+				SetOverrideBindingClick(frame, true, MENU, NAME .. "Filter")
+			else
+				ClearOverrideBindings(frame)
+			end
+			frame.keyBound = wantKey or nil
+		end
+		if frame.joined and not frame:IsShown() then
+			local manager = Manager()
+			if not manager then
+				frame.joined = nil
+			elseif not CombatRestricted() then
+				frame.joined = nil
+				manager:HandlePopupHide(frame)
+			end
+		end
+		if locked and (frame.joined or frame.keyBound) then AfterCombat() end
+	end
+
+	local function FilterRow(frame, index)
+		local row = frame.rows[index]
+		if row then return row end
+		row = CreateFrame("Button", nil, frame)
+		row:SetHeight(ROW)
+		local highlight = row:CreateTexture(nil, "BACKGROUND")
+		highlight:SetTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]])
+		highlight:SetBlendMode("ADD")
+		highlight:SetAllPoints(row)
+		row:SetHighlightTexture(highlight)
+		row.mark = row:CreateTexture(nil, "ARTWORK")
+		row.tick = row:CreateTexture(nil, "ARTWORK", nil, 1)
+		row.label = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+		row.label:SetHeight(ROW)
+		row.label:SetJustifyH("LEFT")
+		row:SetScript("OnClick", function(self)
+			local was = self.entry.get()
+			Sound((was and not self.entry.radio) and "IG_MAINMENU_OPTION_CHECKBOX_OFF" or "IG_MAINMENU_OPTION_CHECKBOX_ON")
+			self.entry.set()
+			for _, each in ipairs(frame.rows) do
+				if each.entry and each:IsShown() then PaintRow(each) end
+			end
+		end)
+		frame.rows[index] = row
+		return row
+	end
+
+	-- Anchored to the window's filter arrow but shown under UIParent, it would outlive the window.
+	function Pad.CloseFilter()
+		if filterPad and filterPad:IsShown() then filterPad:Hide() end
+	end
+
+	--- Open `list`'s filter as the controller's menu, or close it when it is open on `list`.
+	--- Says whether it did: false where the game's menu is to open instead.
+	function Pad.OpenFilter(list)
+		local manager = Manager()
+		if not (GamepadUI() and manager and manager.HandlePopupShown) or CombatRestricted() or not list.filterEntries then
+			return false
+		end
+		local frame = filterPad or BuildFilterPad()
+		if frame:IsShown() then
+			local same = frame.list == list
+			frame:Hide()
+			if same then return true end
+		end
+		local entries = list.filterEntries()
+		local y, widest = -INSET.top, MIN_WIDTH
+		frame.divider:Hide()
+		for i, entry in ipairs(entries) do
+			-- A line between the switches and the orders, as the game's menu has.
+			if entry.radio and i > 1 and not entries[i - 1].radio then
+				frame.divider:ClearAllPoints()
+				frame.divider:SetPoint("TOPLEFT", frame, "TOPLEFT", INSET.left, y)
+				frame.divider:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -INSET.right, y)
+				frame.divider:Show()
+				y = y - DIVIDER
+			end
+			local row = FilterRow(frame, i)
+			row.entry = entry
+			row.label:SetText(entry.label)
+			PaintRow(row)
+			row:ClearAllPoints()
+			row:SetPoint("TOPLEFT", frame, "TOPLEFT", INSET.left, y)
+			row:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -INSET.right, y)
+			row:Show()
+			local width = (row.mark:GetWidth() or 16) + 7 + (row.label:GetStringWidth() or 0) + 20
+			if width > widest then widest = width end
+			y = y - ROW
+		end
+		for i = #entries + 1, #frame.rows do
+			frame.rows[i]:Hide()
+			frame.rows[i].entry = nil
+		end
+		frame:SetSize(INSET.left + widest + INSET.right, -y + INSET.bottom)
+		frame:ClearAllPoints()
+		frame:SetPoint("TOPLEFT", list.filterButton, "BOTTOMLEFT", 0, -2)
+		frame.list = list
+		frame:Show()
+		return true
+	end
+
+	--- The filter opened from the controller: its dialog, else the game's menu as the cursor's A
+	--- presses it (or the older menu's arrow, clicked).
+	function Pad.Filter(list)
+		local button = list.filterButton
+		if not (button and button:IsShown()) or Pad.OpenFilter(list) then return end
+		if button.MouseDown and button.MouseUp and not list.filterMenu then
+			button:MouseDown()
+			button:MouseUp()
+		else
+			button:Click()
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
 -- The page
 --------------------------------------------------------------------------------
 
@@ -1926,16 +2460,8 @@ local function Ink(fontString, color)
 	fontString:SetShadowColor(0, 0, 0, 0)
 end
 
---- A Play button's state for `clip`, the line it plays as the queue holds it (nil when not queued),
---- as the quest log's Play and the subtitle have it: "stop" while it is the head and speaking,
---- "replay" while it is the head and the queue is stopped, "play" otherwise (not queued, waiting,
---- or held by a gate).
 function C.PlayState(clip)
-	local spoken = _G.Spoken
-	if not (clip and spoken and spoken.GetCurrent) or spoken:GetCurrent() ~= clip then return "play" end
-	if spoken:IsPaused() then return "replay" end
-	if spoken:GetNowPlaying() == clip then return "stop" end
-	return "play"
+	return _G.Spoken and _G.Spoken:PlayState(clip) or "play"
 end
 
 --- A click on a Play button whose line is `clip` (nil when not queued): Stop and Replay stop the
@@ -1964,8 +2490,7 @@ function C.PlayTooltip(button, state)
 	local words = _G.SpokenEnv and _G.SpokenEnv.L
 	if not (words and GameTooltip) then return end
 	GameTooltip:SetOwner(button, "ANCHOR_LEFT")
-	local key = state == "stop" and "STOP" or state == "replay" and "REPLAY" or "PLAY"
-	GameTooltip:SetText(words[key])
+	GameTooltip:SetText(words[(state or "play"):upper()])
 	if button.IsEnabled and not button:IsEnabled() then
 		GameTooltip:AddLine(words.PLAY_NO_VOICE, 1, 0.8, 0.2, true)
 	end
@@ -1992,7 +2517,7 @@ local SPELLBOOK_PAGE = { file = ZONES_ART .. "spellbook-Page-Right-C60", coords 
 --- `look`, where given, changes the page's art from the spellbook's for the Compendium:
 --- { art = { file, coords } the parchment; top, right, the heading's room from the page's top and
 --- its right edge; titleSize; oneLine, a title cut short at one line rather than two; backplate = { full,
---- height }; noFace, no round picture by the title }. Spoken Places' page beside the map is the quest
+--- height }; noFace, no round picture by the title unless an entry has `face` }. Spoken Places' page beside the map is the quest
 --- log's details page this way.
 function C.NewPage(parent, addon, play, report, look)
 	look = look or {}
@@ -2000,9 +2525,8 @@ function C.NewPage(parent, addon, play, report, look)
 	local titleSize = look.titleSize or 26
 	local self = setmetatable({ playing = play, reporting = report, defaultPlaying = play,
 		defaultReporting = report, top = top, right = right,
-		titleSize = titleSize, extra = {}, shift = 0, ink = INK, link = LINK, addon = addon }, Page)
-	-- False is a face never made.
-	if look.noFace then self.headFace = false end
+		titleSize = titleSize, extra = {}, shift = 0, ink = INK, link = LINK, addon = addon,
+		noFace = look.noFace }, Page)
 	local frame = CreateFrame("Frame", nil, parent)
 	frame:SetAllPoints()
 	self.frame = frame
@@ -2135,6 +2659,7 @@ function C.NewPage(parent, addon, play, report, look)
 	frame:HookScript("OnSizeChanged", function() self:PlaceDivider() end)
 
 	local body = SpokenTextView.Create(frame, addon)
+	body.cameraPlace = look.place
 	body.frame:SetPoint("TOPLEFT", divider, "BOTTOMLEFT", 6, -2)
 	body.frame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -right, PAD - 6)
 	body:SetInk(INK[1], INK[2], INK[3])
@@ -2142,6 +2667,9 @@ function C.NewPage(parent, addon, play, report, look)
 	-- Text cut off at an edge fades into the parchment under it.
 	if file then body:SetFadeSource(frame, file, coords) end
 	self.body = body
+	Pad.NoStop(body.bar)
+	table.insert(Pad.pages, self)
+	if not self.noFace then self:MakeFace() end
 	local mark = frame:CreateTexture(nil, "BORDER")
 	mark:SetPoint("CENTER", body.frame, "CENTER")
 	mark:Hide()
@@ -2423,20 +2951,33 @@ end
 
 --- entry = { title, subtitle, onSubtitle, text, target = what Play and Report act on, or nil for
 --- none, icon = the round portrait left of the title (a Spoken:CreateSpeakerFace speaker table), the
---- Compendium's tome without it, and none on a page made with `noFace`, model = { displayID,
---- creatureID, scale, zoom, rotation, facing, sequence, x, y, z } above the words, picture = { file, mask } above the words, parts = { { heading, text, buttons } } in place
+--- Compendium's tome without it, and none on a page made with `noFace` unless `face` is set, model = { displayID }
+--- above the words, picture = { file, mask } above the words, parts = { { heading, text, buttons } } in place
 --- of `text`: words in parts, each under its heading with its own buttons (TextView:SetParts) }. With no text, parts, target or unwritten the page is a group's or a place's: no
 --- Play, and its mark in the middle.
 --- onSubtitle(), where given, is what a click on the line under the title does (the map panel's
 --- area story returns to its zone's with it); without it the line is plain words.
-function Page:Show(entry)
-	if self.headFace == nil then
-		local ok, made = false, nil
-		if _G.Spoken and Spoken.CreateSpeakerFace then ok, made = pcall(Spoken.CreateSpeakerFace, Spoken, self.frame, FACE_SIZE) end
-		self.headFace = ok and made or false
-		if made and ok then made:SetPoint("TOPLEFT", self.frame, "TOPLEFT", PAD, -(self.top - 4)) end
+-- The round picture by the title; false is made and failed. Made with the page, not on first show:
+-- a page first shown in combat under the controller UI would build it in sight of the cursor,
+-- which combat refuses. A `noFace` page, the map's, is outside the window and makes it on need.
+function Page:MakeFace()
+	local ok, made = false, nil
+	if _G.Spoken and Spoken.CreateSpeakerFace then
+		ok, made = pcall(Spoken.CreateSpeakerFace, Spoken, self.frame, FACE_SIZE)
+		if not ok then print("|cffff5555Spoken|r: " .. tostring(made)) end
 	end
+	self.headFace = ok and made or false
+	if not (made and ok) then return end
+	made:SetPoint("TOPLEFT", self.frame, "TOPLEFT", PAD, -(self.top - 4))
+end
+
+function Page:Show(entry)
+	if self.headFace == nil and (not self.noFace or entry.face) then self:MakeFace() end
 	local face = self.headFace or nil
+	if face and self.noFace then
+		face:SetShown(entry.face and true or false)
+		if not entry.face then face = nil end
+	end
 	local icon = entry.icon or TOME
 	-- Drawn again only for another picture: a page is shown again on every refresh.
 	if face and icon ~= self.faceIcon then

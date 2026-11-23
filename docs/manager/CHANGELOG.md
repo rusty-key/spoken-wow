@@ -2,6 +2,15 @@
 
 Spoken Launcher until 0.1.2, when it became Spoken Manager.
 
+## 0.2.2 — 2026-11-22
+
+- **The Manager checks for updates every 30 minutes while it runs,** under Check for Updates
+  Automatically in Settings. *([anon1231823](https://github.com/anon1231823))*
+- **Send Now in Settings > Sharing says how many lines it sent,** or that there was nothing new.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Sharing empties SpokenContributions.lua once it has sent the lines,** at your next login or
+  /reload. Needs Spoken 3.12.0. *([rusty-key](https://github.com/rusty-key))*
+
 ## 0.2.1 — 2026-11-21
 
 - **Use a proxy, in Settings > General > Network.** Left empty, the Manager follows the system

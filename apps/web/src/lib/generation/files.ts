@@ -16,7 +16,7 @@ import path from "node:path";
 import { VOICE_CONFIG_DIR } from "@/lib/paths";
 
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { speakPlayerTokens } from "@/lib/player-words";
+import { speakQuestTokens } from "@/lib/player-words";
 
 import { FALLBACK, fromFileShape, type GenerationConfig } from "./config";
 import { directionFor } from "./narration";
@@ -105,13 +105,14 @@ export function sentText(
   lang: Lang,
   playerGender: "m" | "f" | null,
 ): string {
-  return committedPronunciation(speakPlayerTokens(text, lang, playerGender), lang);
+  return committedPronunciation(speakQuestTokens(text, lang, playerGender), lang);
 }
 
 /**
  * A quest line speaking `text` as `provider` is sent it: sentText, then the provider's shaping
- * with the line's voice's direction. Regenerating hashes this into the take, and the staleness
- * check and an override's spoken hashes must arrive at the identical string.
+ * with the line's voice's direction and its file's NPC direction. Regenerating hashes this into
+ * the take, and the staleness check and an override's spoken hashes must arrive at the
+ * identical string.
  */
 export function shapedText(
   text: string,
@@ -119,6 +120,10 @@ export function shapedText(
   line: { voice: string; playerGender: "m" | "f" | null },
   provider: Provider,
   raceTags: Record<string, string>,
+  npc: string | undefined,
 ): string {
-  return SHAPE[provider](sentText(text, lang, line.playerGender), directionFor(line.voice, raceTags), raceTags);
+  return SHAPE[provider](sentText(text, lang, line.playerGender), directionFor(line.voice, raceTags), {
+    raceTags,
+    npc,
+  });
 }

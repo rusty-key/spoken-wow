@@ -150,14 +150,14 @@ end
 local titles, asked = {}, {}
 local function Title(id, ask)
     if titles[id] then return titles[id] end
-    -- A text pack's, in the Text Language the player chose.
+    -- Packs before the client: a client knows only the quests it has shown, in its own language,
+    -- and Classic's cannot be asked for the rest.
     local language, chosen = VO.Language:GetTextLanguage()
-    if chosen and Spoken and Spoken.TextIn then
-        local packed = Spoken:TextIn(language, "quests", "titles", id)
-        if packed then
-            titles[id] = packed
-            return packed
-        end
+    local packed = (chosen and Spoken and Spoken.TextIn and Spoken:TextIn(language, "quests", "titles", id))
+        or (language ~= VO.Language.BASE and VO.DataModules:PackTitle(id, language))
+    if packed then
+        titles[id] = packed
+        return packed
     end
     local kept = Kept()
     local title = kept and kept[id] and kept[id].title
@@ -969,18 +969,20 @@ local function Generalise(text, english)
     return text
 end
 
--- Each moment's words as stored: those kept in this client's language, else the English, or nil.
--- Kept words filled for the other sex are not used where the English has a word for each.
+-- Each moment's words as stored: those kept in this client's language, else the English, or nil,
+-- and whether they were kept. Kept words filled for the other sex are not used where the English
+-- has a word for each.
 local function Stored(id, moment)
     local english = English(id)
     local kept = Kept()
     kept = kept and kept[id]
     local own = kept and kept[moment]
     local text = english[moment]
+    local seen = false
     if type(own) == "table" and own.text and not (own.sex ~= Sex() and (text or ""):find("%$[Gg]")) then
-        text = own.text
+        text, seen = own.text, true
     end
-    if text and text ~= "" then return text end
+    if text and text ~= "" then return text, seen end
 end
 
 local EVENTS = { accept = VO.Enums.SoundEvent.QuestAccept, progress = VO.Enums.SoundEvent.QuestProgress,
@@ -990,16 +992,21 @@ local EVENTS = { accept = VO.Enums.SoundEvent.QuestAccept, progress = VO.Enums.S
 -- first, so the page reads what Play says.
 -- The words matching reads: a moment with several wordings resolves by them, never by a pack's.
 local function SeenText(id, moment)
-    local stored = Stored(id, moment)
-    return stored and QuestsTab:Fill(stored)
+    local stored, seen = Stored(id, moment)
+    return stored and QuestsTab:Fill(stored), seen
 end
 
 -- A text pack's words in the Text Language come after a pack's own, as on the captions.
 local function PartText(id, moment)
-    local soundData = { event = EVENTS[moment], questID = id, text = SeenText(id, moment) }
+    local text, seen = SeenText(id, moment)
+    local soundData = { event = EVENTS[moment], questID = id, text = text }
     VO.DataModules:PrepareSound(soundData)
     if soundData.packText then return QuestsTab:Fill(soundData.packText) end
-    return VO.DataModules:TextPackText(soundData) or soundData.text
+    -- On Auto too, a window this client never showed leaves only the English, and the packs in its
+    -- language carry the words of lines they have no recording of.
+    local language, chosen = VO.Language:GetTextLanguage()
+    local unseen = text and not seen and not chosen and language ~= VO.Language.BASE
+    return VO.DataModules:TextPackText(soundData, unseen and language or nil) or soundData.text
 end
 
 --- Keep what the open quest window shows, in this client's language.
@@ -1010,7 +1017,8 @@ function QuestsTab:Keep(moment, text, title)
     kept[id] = kept[id] or {}
     if type(title) == "string" and title ~= "" then
         kept[id].title = title
-        titles[id] = title
+        -- Asked again, not set: a pack's title comes before the client's.
+        titles[id] = nil
     end
     if type(text) == "string" and text ~= "" then
         kept[id][moment] = { text = Generalise(text, English(id)[moment]), sex = Sex() }
@@ -1641,6 +1649,13 @@ local function Build(panel)
     local holder = C.PageHolder(panel, list)
     -- No Play in the page's corner: each part is said at its own time, and has its own.
     page = C.NewPage(holder, ns)
+    -- The parts' faces and buttons, made with the page. A face made on first show in combat under
+    -- the controller UI would be built in sight of the cursor, which the game refuses then. The
+    -- buttons are built detached, so the cursor finds them only in a look the window asks for.
+    for moment in pairs(BULLETS) do
+        PartFace(moment)
+        PartButtons(moment)
+    end
     -- The parts' Play show Stop while their part plays, and their Report follows Hide Report Buttons.
     if Spoken and Spoken.RegisterCallback then
         Spoken:RegisterCallback("AUDIO_CHANGED", function()

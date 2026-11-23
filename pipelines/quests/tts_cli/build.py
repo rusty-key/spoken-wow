@@ -22,7 +22,8 @@ from tts_cli.naming import (BROADCAST_SOURCES, followup_stem_from_line_id, gossi
                             several_wordings, split_voice, subfolder_from_line_id,
                             variant_file_name)
 from tts_cli.npc_bodies import GENDER_SEX, body_name
-from tts_cli.store import SUBFOLDERS, audio_extension, durations, stored_files, take_text, word_times
+from tts_cli.store import (SUBFOLDERS, audio_extension, durations, line_text, quest_titles, stored_files,
+                           take_text, word_times)
 from tts_cli.utils import (get_first_n_words, get_last_n_words,
                            replace_dollar_bs_with_space)
 
@@ -389,8 +390,8 @@ def carries_gossip(include) -> bool:
 
 #: The tables a language's Gossip pack gets a client-locale copy of: the ones keyed by the
 #: NPC's words and its id. Quest ids come from the client itself on every supported release,
-#: names are only shown, and the name-keyed gossip tables are the fallback for a speaker with
-#: no GUID, which is rare enough to leave to the English text.
+#: and the name-keyed gossip tables are the fallback for a speaker with no GUID, which is rare
+#: enough to leave to the English text. Names have their own copy (LOCALE_NAME_TABLES).
 LOCALE_TABLES = {
     "creature": ("npc_gossip_file_lookups", "GossipLookupByNPCID"),
     "gameobject": ("object_gossip_file_lookups", "GossipLookupByObjectID"),
@@ -424,6 +425,32 @@ def locale_tables(corpus: dict, rows: list, ignored=()) -> dict:
             tables[kind].setdefault(line["npcId"], {})[escape_lua_string(text)] = stem
     return {filename: (table_name, tables[kind])
             for kind, (filename, table_name) in LOCALE_TABLES.items()}
+
+
+#: kind -> the name table build_tables writes for it, as entity_name names the kinds.
+NAME_TABLES = {
+    "creature": "npc_name_lookups",
+    "gameobject": "object_name_lookups",
+    "item": "item_name_lookups",
+}
+
+
+def locale_name_tables(tables: dict, names: list) -> dict:
+    """One language's names for the entities `tables`' English name tables hold, as {output
+    filename: (lua table name, data)}. An entity the corpus never names is left out, as is a
+    name the same as the English, which the English table already answers."""
+    out = {}
+    for kind, filename in NAME_TABLES.items():
+        table_name, english = tables[filename]
+        data = {}
+        for row in names:
+            entity_id = str(row["entityId"])
+            if row["kind"] == kind and entity_id.isdigit() and row["name"] \
+                    and english.get(int(entity_id), row["name"]) != row["name"]:
+                data[int(entity_id)] = row["name"]
+        if data:
+            out[filename] = (table_name, data)
+    return out
 
 
 def write_lua_table(path: str, module_name: str, table_name: str, data,
@@ -482,7 +509,8 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
                  module_name: str = DEFAULT_MODULE_NAME, version: str = "1.0.1",
                  progress: bool = False, ignored=(), include=None,
                  title: str = DEFAULT_TITLE, language: str = None,
-                 locale_text: list = None, icon_language: str = None, toc_extra=()) -> dict:
+                 locale_text: list = None, icon_language: str = None, toc_extra=(),
+                 locale_names=()) -> dict:
     """Assemble the data module. Returns a report.
 
     An ignored line's audio is left behind as well as its lookup entry, so a take made
@@ -500,7 +528,8 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     gossip tables under generated/<language>/, loaded only on a client in it. Only the
     language's pack holding its gossip - Gossip, or All - is given them (cli-main.py refuses
     the rest). The English tables
-    are written either way: they are what matches on an English client.
+    are written either way: they are what matches on an English client. `locale_names` are
+    the language's names from the same file, written beside its gossip tables.
 
     `icon_language` is the badge the pack wears, `language`'s unless given: a team's pack in a
     language nobody drew a badge for wears English's mark, and its title names the language.
@@ -529,9 +558,10 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     silent = set(wordless(corpus)) | set(ignored)
     skip = {os.path.splitext(rel)[0] for rel in ignored_files(corpus, silent)} \
         if silent else set()
-    audio = [rel for rel in stored_files(store_dir)
-             if os.path.splitext(rel)[0] not in skip
-             and (include is None or os.path.splitext(rel)[0] in include)]
+    def carried(stem):
+        return stem not in skip and (include is None or stem in include)
+
+    audio = [rel for rel in stored_files(store_dir) if carried(os.path.splitext(rel)[0])]
     iterator = tqdm(audio, unit="file", desc="Copying audio") if progress else audio
     for rel in iterator:
         shutil.copy2(os.path.join(store_dir, rel), os.path.join(sounds_dir, rel))
@@ -548,8 +578,9 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
 
     locale_rows = {}
     if locale_text is not None:
-        for filename, (table_name, data) in sorted(
-                locale_tables(corpus, locale_text, ignored).items()):
+        localized = {**locale_tables(corpus, locale_text, ignored),
+                     **locale_name_tables(tables, locale_names)}
+        for filename, (table_name, data) in sorted(localized.items()):
             write_lua_table(os.path.join(generated_dir, language, filename + ".lua"),
                             module_name, table_name, data, lang=language)
             written.append(f"{language}\\{filename}.lua")
@@ -579,6 +610,20 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
                     module_name, "TextByFileName", texts, only_on=language or "enUS")
     written.append("text_table.lua")
 
+    # The words of the pack's lines with no take yet, so a quest page reads them in the pack's
+    # language, not English. Apart from the take text: they are no voice's, so a text pack's win.
+    lines = {os.path.basename(stem): text for stem, text in line_text(store_dir).items()
+             if carried(stem) and os.path.basename(stem) not in texts}
+    write_lua_table(os.path.join(generated_dir, "line_text_table.lua"),
+                    module_name, "LineTextByFileName", lines, only_on=language or "enUS")
+    written.append("line_text_table.lua")
+
+    # Every quest's, in every pack: a Compendium lists the quests of packs the player did not install.
+    titles = quest_titles(store_dir)
+    write_lua_table(os.path.join(generated_dir, "title_table.lua"),
+                    module_name, "TitleByQuestID", titles, only_on=language or "enUS")
+    written.append("title_table.lua")
+
     shutil.copy2(icon_source(icon_language or language), os.path.join(module_dir, ICON_NAME))
 
     with open(os.path.join(module_dir, "Module.lua"), "w", encoding="utf-8") as f:
@@ -596,7 +641,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
         "tables": sorted(written),
         "tableRows": {**{name: len(data) for name, (_, data) in tables.items()}, **locale_rows,
                       "word_times_table": len(times),
-                      "text_table": len(texts)},
+                      "text_table": len(texts), "title_table": len(titles)},
         "language": language,
     }
 

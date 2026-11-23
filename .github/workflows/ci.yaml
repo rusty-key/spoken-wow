@@ -43,7 +43,7 @@ jobs:
               - scripts/lib/changelog.mjs
               - scripts/spoken/check-changelog.sh
               - docs/manager/CHANGELOG.md
-              - manager/package.json
+              - apps/manager/package.json
               - scripts/manager/check-changelog.sh
             quests:
               - .github/workflows/ci.yaml
@@ -73,6 +73,9 @@ jobs:
               - pipelines/places/**
               - pipelines/lib/**
               - addons/Spoken_Places/**
+              # The boss camera importer reads the framing from these.
+              - addons/Spoken/UI/TextView.lua
+              - addons/Spoken_Bosses/Data/Cameras.lua
               # The readables pipeline's and the scripts' Node tests run in this job too.
               - pipelines/readables/**
               - scripts/**
@@ -85,7 +88,7 @@ jobs:
               - docs/support/**
               # The FAQ check reads the addons' and the Manager's English strings and commands.
               - addons/**/*.lua
-              - manager/src/renderer/src/strings.en.ts
+              - apps/manager/src/renderer/src/strings.en.ts
               - package.json
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
@@ -112,7 +115,7 @@ jobs:
       - run: python3 pipelines/places/tools/lua-syntax-check.py
       # The changelog's rules: credits under Unreleased, and the .toc's version has a section.
       - run: ./scripts/spoken/check-changelog.sh
-      # The same rules for Spoken Manager's, against manager/package.json.
+      # The same rules for Spoken Manager's, against apps/manager/package.json.
       - run: ./scripts/manager/check-changelog.sh
 
   quests-python:
@@ -203,6 +206,7 @@ jobs:
       - run: node pipelines/places/tools/locale/check-strings.mjs
       - run: pnpm --filter @spoken/readables-pipeline test
       - run: pnpm --filter @spoken/places-pipeline test
+      - run: python3 -m unittest discover -s pipelines/places/tools/bosses -p "test_*.py"
       - run: node --test scripts/lib/*.test.mjs scripts/audio/*.test.mjs scripts/maintainers/*.test.mjs
       - run: pnpm --filter @spoken/brann test
       # The FAQ Brann answers from names only settings and commands the code has.

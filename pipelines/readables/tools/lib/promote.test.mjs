@@ -14,6 +14,13 @@ test("identical text is not recorded at all", () => {
   );
 });
 
+test("a name kept from a player's client is recorded beside, not overwritten", () => {
+  assert.deepEqual(
+    decideImport({ origin: "observed", text: "Cofre" }, { text: "Caja" }),
+    { action: "record" },
+  );
+});
+
 test("new text over an extracted line is promoted", () => {
   assert.deepEqual(
     decideImport({ origin: "extracted", text: "One." }, { text: "Two." }),

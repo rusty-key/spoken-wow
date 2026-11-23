@@ -71,6 +71,7 @@ describe("POST /api/contributions/batch", () => {
       accepted: 2,
       known: 0,
       counted: 0,
+      seen: 0,
       refused: { describe: 1, checksum: 1, malformed: 1 },
     });
 
@@ -101,7 +102,7 @@ describe("POST /api/contributions/batch", () => {
       const response = await POST(
         post({ envelopes: [envelope("Kill six.\n\nThen come back, $N."), envelope("Kill seven.\n\nThen come back, $N.")] }),
       );
-      expect(await response.json()).toEqual({ ok: true, accepted: 2, known: 1, counted: 0, refused: {} });
+      expect(await response.json()).toEqual({ ok: true, accepted: 2, known: 1, counted: 0, seen: 0, refused: {} });
 
       const { rows } = await db().query<{ text: string }>(`select "text" from "contribution" where "ip" = $1`, [ip]);
       expect(rows.map((row) => row.text)).toEqual(["Kill seven.\n\nThen come back, $N."]);
@@ -199,7 +200,7 @@ describe("POST /api/contributions/batch from the manager", () => {
 
   it("counts a known line once per line, pack language and install", async () => {
     const response = await POST(post({ envelopes: [heard("enUS", "2.3.0"), heard("deDE", "none")], installId }));
-    expect(await response.json()).toEqual({ ok: true, accepted: 2, known: 2, counted: 2, refused: {} });
+    expect(await response.json()).toEqual({ ok: true, accepted: 2, known: 2, counted: 2, seen: 0, refused: {} });
     expect(await hits()).toEqual([
       { lineId, packLang: "deDE", packVersion: "none" },
       { lineId, packLang: "enUS", packVersion: "2.3.0" },
@@ -238,5 +239,56 @@ describe("POST /api/contributions/batch from the manager", () => {
     for (let i = 0; i < 4; i++) await POST(post({ envelopes: [readables], installId }));
     expect((await POST(post({ envelopes: [readables], installId }))).status).toBe(429);
     expect((await POST(post({ envelopes: [readables] }))).status).toBe(200);
+  });
+});
+
+describe("where the player met each NPC", () => {
+  const npcId = 990_000_101;
+  const seen = (zones: string, id = npcId) => {
+    const body = `!SPOKEN1 seen\naddon=SpokenQuests/9.9.9\nbuild=1.15.8/63829\nnpc=creature:${id}\nzones=${zones}\n`;
+    return `${body}sum=${checksum(body)}\n`;
+  };
+  const sightings = async () =>
+    (await db().query(`select "uiMapID", "uploader" from "npc_sighting" where "npcId" = $1 order by 1`, [npcId])).rows;
+
+  afterEach(async () => {
+    await db().query(`delete from "npc_sighting" where "npcId" = $1`, [npcId]);
+  });
+
+  it("keeps a sighting beside the lines, under the uploader and never as a contribution", async () => {
+    const response = await POST(post({ envelopes: [seen("1413,1411"), readables] }));
+    expect(await response.json()).toMatchObject({ accepted: 1, seen: 1, refused: {} });
+    const rows = await sightings();
+    expect(rows.map((row) => row.uiMapID)).toEqual([1411, 1413]);
+    // No account and no install: this upload is its own voucher, and no address is kept.
+    expect(rows.every((row) => /^upload:[0-9a-f-]{36}$/.test(row.uploader))).toBe(true);
+    const { rows: contributions } = await db().query(`select "source" from "contribution" where "ip" = $1`, [ip]);
+    expect(contributions.map((row) => row.source)).toEqual(["readables"]);
+  });
+
+  it("offers the name a newer addon's sighting carries to that language's translators", async () => {
+    await db().query(
+      `insert into "entity_name" ("kind", "entityId", "lang", "version", "isCurrent", "origin", "name")
+       values ('creature', $1, 'enUS', 1, true, 'extracted', 'Alba Fairmoon')`,
+      [String(npcId)],
+    );
+    try {
+      const body = `!SPOKEN1 seen\naddon=SpokenQuests/9.9.9\nbuild=1.15.8/63829\nlocale=esMX\nnpc=creature:${npcId}\nzones=1411\nname=Alba Lunaclara\n`;
+      await POST(post({ envelopes: [`${body}sum=${checksum(body)}\n`] }));
+      const { rows } = await db().query(
+        `select "lang", "name", "status" from "name_contribution" where "kind" = 'creature' and "entityId" = $1`,
+        [String(npcId)],
+      );
+      expect(rows).toEqual([{ lang: "esMX", name: "Alba Lunaclara", status: "new" }]);
+    } finally {
+      await db().query(`delete from "name_contribution" where "entityId" = $1`, [String(npcId)]);
+      await db().query(`delete from "entity_name" where "kind" = 'creature' and "entityId" = $1`, [String(npcId)]);
+    }
+  });
+
+  it("refuses a sighting no game wrote, and keeps the rest of the file", async () => {
+    const response = await POST(post({ envelopes: [seen("1411,Durotar"), seen("1411").replace("1411\n", "1412\n")] }));
+    expect(await response.json()).toMatchObject({ accepted: 0, refused: { incomplete: 1, checksum: 1 } });
+    expect(await sightings()).toEqual([]);
   });
 });

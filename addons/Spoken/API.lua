@@ -169,9 +169,9 @@ function Spoken:PrimePortrait(creatureID)
     if style and style ~= "classic" and style ~= "none" and StaticPortrait then StaticPortrait:Prime(creatureID) end
 end
 
---- Play, Skip and, with `report`, Report in a row on one of DialogueUI's dialogs (`dialog`, its
+--- Play, Previous, Skip and, with `report`, Report in a row on one of DialogueUI's dialogs (`dialog`, its
 --- quest window or its book view), for a feature addon to put its line's controls there.
---- `tooltip()` returns the tooltip the dialog uses. The row has `frame`, `play`, `skip` and
+--- `tooltip()` returns the tooltip the dialog uses. The row has `frame`, `play`, `previous`, `skip` and
 --- `report`; `row:SetTip(button, fill)`, `row:ShowTip(button)`, `row:RefreshTip(button)`,
 --- `row:HideTips()`, and `row:Place(buttons, anchor, force)`, right to left from `anchor`. Additive:
 --- guard on the field.
@@ -218,6 +218,12 @@ end
 --
 -- The same goes for the setting that hides those buttons: guard on the method, and an older
 -- player without it simply means the buttons are shown.
+
+--- Whether Forever's controller UI is on. Under it a game popup an addon opens breaks the d-pad
+--- (#165), so a feature addon shows its links in Spoken:ShowContribution instead.
+function Spoken:IsGamepadUI()
+    return Addon:IsGamepadUI()
+end
 
 --- Whether the player turned every Contribute button off in the Spoken settings.
 --- A feature addon asks this in its gap check, and re-asks on CONTRIBUTE_SETTINGS_CHANGED.
@@ -854,6 +860,10 @@ function Spoken:GetNowPlaying()
     return SoundQueue:GetNowPlaying()
 end
 
+function Spoken:CanPrevious()
+    return SoundQueue:CanPrevious()
+end
+
 --- A shallow copy.
 function Spoken:GetQueue()
     return SoundQueue:GetQueue()
@@ -876,6 +886,16 @@ function Spoken:IsPaused()
     return SoundQueue:IsPaused()
 end
 
+function Spoken:IsMuted()
+    return SoundQueue:IsMuted()
+end
+
+--- A Play button's state for `clip` (nil when not queued): "play", "stop", "replay", "queue" or
+--- "queued".
+function Spoken:PlayState(clip)
+    return SoundQueue:PlayState(clip)
+end
+
 function Spoken:GetHeldReason(clip)
     return SoundQueue:GetHeldReason(clip)
 end
@@ -893,17 +913,30 @@ function Spoken:TogglePause()
     return SoundQueue:TogglePauseQueue()
 end
 
+function Spoken:Mute()
+    return SoundQueue:SetMuted(true)
+end
+
+function Spoken:Unmute()
+    return SoundQueue:SetMuted(false)
+end
+
+function Spoken:ToggleMute()
+    return SoundQueue:ToggleMuted()
+end
+
 --- The player's round button, the same one its subtitle shows, for a feature addon's own
 --- window: `kind` "play" (Play's glyph; `button:SetPlaying(on)` shows Stop while a line
---- speaks), "skip" (Skip's glyph; a click skips the line speaking, so it needs no OnClick),
+--- speaks), "previous" (Previous's glyph; a click replays from the short history), "skip"
+--- (Skip's glyph; a click skips the line speaking, so it needs no OnClick),
 --- "report" (the bug), or "icon" (the texture `icon`, cut round). Anchor it and give it OnClick
---- yourself. Play and Skip grey out while disabled.
+--- yourself. Play, Previous and Skip grey out while disabled.
 function Spoken:CreateRoundButton(parent, kind, name, icon)
     return Actions.NewRound(parent, kind, name, icon)
 end
 
 --- `button`, a Button the caller made, dressed as a square Play button with the game's checkbox for
---- its border (`button:SetState("play" | "stop")`, `button:MatchBox(checkbox)`): the quest log's rows.
+--- its border (`button:SetState(state)`, a state of `Spoken:PlayState`, `button:MatchBox(checkbox)`): the quest log's rows.
 function Spoken:DressBoxButton(button)
     return Actions.BoxPlay(button)
 end
@@ -911,6 +944,11 @@ end
 --- End the head; the backlog runs.
 function Spoken:Skip()
     return SoundQueue:Skip()
+end
+
+--- Replay the line before the current one, or the most recent line after the queue drained.
+function Spoken:Previous()
+    return SoundQueue:Previous()
 end
 
 --- Everything, every source, and the paused flag with it.

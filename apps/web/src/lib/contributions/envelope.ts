@@ -20,6 +20,10 @@ export type EnvelopeSource = (typeof SOURCES)[number];
 export const REPORT_SOURCES = [...SOURCES, "bosses"] as const;
 export type ReportSource = (typeof REPORT_SOURCES)[number];
 
+/** The sources in a gathered file: the contributions, and `seen`, which is none. */
+export const GATHERED_SOURCES = [...SOURCES, "seen"] as const;
+export type GatheredSource = (typeof GATHERED_SOURCES)[number];
+
 /**
  * The keys addons released before the rename write, and every raw envelope stored before it
  * carries. Read as the new key forever: a player can paste from a years-old saved file.
@@ -65,6 +69,11 @@ export function checksum(body: string): number {
 
 export function parseEnvelope(raw: string): Result {
   return parse(raw, SOURCES);
+}
+
+/** parseEnvelope for what the addon gathers: the contributions, and where the player met each NPC (sighting.ts). */
+export function parseGatheredEnvelope(raw: string): Result<GatheredSource> {
+  return parse(raw, GATHERED_SOURCES);
 }
 
 /** parseEnvelope for a report's context, which may also be a boss's. */

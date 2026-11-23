@@ -4,19 +4,15 @@ import "@/components/landing/brand.css";
 import "@/components/site-nav.css";
 import "@/components/backstage/backstage.css";
 import localFont from "next/font/local";
-import Image from "next/image";
 import Script from "next/script";
 import { Suspense } from "react";
-import ActingBanner, { actingIn } from "@/components/ActingBanner";
+import { actingIn } from "@/components/ActingBanner";
 import { GrantsProvider } from "@/components/GrantsProvider";
 import { LangProvider } from "@/components/LangProvider";
 import { LanguagesProvider } from "@/components/LanguagesProvider";
-import Link from "@/components/LocaleLink";
 import NavigationProgress from "@/components/NavigationProgress";
-import SiteHeader from "@/components/SiteHeader";
 import { BannerShown } from "@/components/TeamPicker";
-import UserMenu from "@/components/UserMenu";
-import { langTag, registeredExtras } from "@/lib/lang";
+import { langTag, registeredForBrowser } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { cn } from "@/lib/utils";
 import { body, display } from "@/components/landing/fonts";
@@ -36,8 +32,12 @@ export const metadata: Metadata = {
  * pageLang answers an English page without a query or a session read, and the language list for
  * the browser comes from the in-memory registry; only another language
  * asks whether it is switched on, and whether the visitor is an admin who may see it early.
- * The acting banner reads the acting cookie and nothing more unless it names a team for this
+ * The acting check reads the acting cookie and nothing more unless it names a team for this
  * language.
+ *
+ * NO HEADER AND NO READER'S SETTING HERE. The front page reads in its address's language even
+ * for a signed-in reader, and a layout cannot tell which page it wraps: a lookup here would run
+ * for the front page too.
  *
  * NOTHING HERE IS PRERENDERED, including the four English pages that were (the landing page,
  * /quests, /login and /register). A generateStaticParams for English would keep them static,
@@ -56,8 +56,9 @@ export default async function RootLayout({
   const lang = await pageLang(params);
   // From the registry, never the database: it is filled at boot and on every change, and pageLang
   // has already awaited a load for a non-English page. An English page therefore renders with the
-  // database down. Only the languages beyond the built-in ones travel to the browser.
-  const extras = registeredExtras();
+  // database down. Only the languages beyond the built-in ones, and a built-in's row words, travel
+  // to the browser.
+  const extras = registeredForBrowser();
   const acting = await actingIn(lang);
   return (
     // Dark-only for now: this is a tool for listening to game dialog, and the light
@@ -72,28 +73,6 @@ export default async function RootLayout({
         <LanguagesProvider languages={extras}>
           <LangProvider lang={lang}>
             <GrantsProvider>
-              <SiteHeader>
-                <header className="bn-theme bn-nav sn">
-                  <div className="bn-wrap">
-                    <div className="sn-brand-group">
-                      <Link href="/" className="bn-brand" aria-label="Spoken">
-                        <Image src="/landing/icons/spoken-192.png" alt="" width={96} height={96} priority unoptimized />
-                        <span className="bn-brand-name bn-display">Spoken</span>
-                      </Link>
-                      {/* Every page past the front page is Backstage, signed in or not (the explorers
-                          are public), so the tag does not wait for the session and the row never shifts. */}
-                      <span className="sn-area">Backstage</span>
-                    </div>
-                    <UserMenu />
-                  </div>
-                </header>
-              </SiteHeader>
-              {/* Suspense because the banner's picker reads the search params. */}
-              {acting && (
-                <Suspense>
-                  <ActingBanner {...acting} />
-                </Suspense>
-              )}
               <BannerShown shown={acting !== null}>{children}</BannerShown>
             </GrantsProvider>
           </LangProvider>

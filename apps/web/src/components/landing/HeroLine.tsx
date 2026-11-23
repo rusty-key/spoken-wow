@@ -3,28 +3,18 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
-type Line = { icon: string; name: string; subtitle: string; words: string[] };
+import { useSiteText } from "./SiteTextProvider";
 
-const LINES: Line[] = [
-  {
-    icon: "quests",
-    name: "Eagan Peltskinner",
-    subtitle: "Wolves Across the Border",
-    words: "I hate those nasty timber wolves! But I sure like eating.".split(" "),
-  },
-  {
-    icon: "spoken",
-    name: "Innkeeper Farley",
-    subtitle: "Gossip",
-    words: "Welcome to the Lion's Pride Inn. Rest here as long as you like.".split(" "),
-  },
-  {
-    icon: "zones",
-    name: "Elwynn Forest",
-    subtitle: "Zone lore",
-    words: "Green hills roll away from the walls of Stormwind, quiet farms and open road.".split(" "),
-  },
-];
+/** One subtitle line; `kind` says which label stands in for a missing subtitle. */
+export type HeroLineData = {
+  icon: string;
+  name: string;
+  subtitle: string | null;
+  kind: string;
+  words: string[];
+  joiner?: string;
+};
+
 const WORD_MS = 240;
 const PAUSE_STEPS = 10;
 
@@ -34,13 +24,18 @@ const PAUSE_STEPS = 10;
  * bar fills with them, and the next line starts after a pause. Under prefers-reduced-motion the
  * first line stays fully lit.
  */
-export default function HeroLine() {
+export default function HeroLine({ lines: LINES }: { lines: HeroLineData[] }) {
+  const t = useSiteText();
   const [line, setLine] = useState(0);
   const [fading, setFading] = useState(false);
   const [spoken, setSpoken] = useState(0);
   const figure = useRef<HTMLElement>(null);
 
   useEffect(() => {
+    // New lines without a remount (a refreshed payload) restart the timer at line 0; the state must follow it.
+    setLine(0);
+    setSpoken(0);
+    setFading(false);
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setSpoken(LINES[0].words.length);
       return;
@@ -69,12 +64,13 @@ export default function HeroLine() {
       window.clearInterval(timer);
       observer.disconnect();
     };
-  }, []);
+  }, [LINES]);
 
-  const { icon, name, subtitle, words } = LINES[line];
+  const { icon, name, kind, words, joiner } = LINES[line];
+  const subtitle = LINES[line].subtitle ?? (kind === "places" ? t.showcase.places.title : t.showcase.kinds.Gossip);
 
   return (
-    <figure ref={figure} className={fading ? "bn-line bn-line-out" : "bn-line"} aria-label="An example of Spoken's subtitles: a character speaking a line">
+    <figure ref={figure} className={fading ? "bn-line bn-line-out" : "bn-line"} aria-label={t.hero.lineLabel}>
       <div className="bn-line-portrait">
         <Image src={`/landing/icons/${icon}-192.png`} alt="" width={96} height={96} unoptimized />
       </div>
@@ -90,7 +86,7 @@ export default function HeroLine() {
             const lit = on && i >= spoken - 2 && spoken < words.length + 1;
             return (
               <span key={`${line}-${i}`} className={on ? (lit ? "on lit" : "on") : undefined}>
-                {word}{" "}
+                {word}{joiner ?? " "}
               </span>
             );
           })}

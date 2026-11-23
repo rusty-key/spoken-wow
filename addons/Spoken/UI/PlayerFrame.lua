@@ -177,8 +177,9 @@ function PlayerFrame:InitHeader()
     self.controls:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -CORNER_X, -CORNER_Y)
     self.play = Actions.StopButton(self.controls, function() return self:Current() ~= nil end,
         function() self:UpdateControls() end)
+    self.previous = Actions.PreviousButton(self.controls)
     self.skip = Actions.SkipButton(self.controls)
-    self.buttons = { self.play, self.skip }
+    self.buttons = { self.play, self.previous, self.skip }
 
     self.progress = Actions.ProgressBar(container)
     self.progress.track:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", 0, 0)

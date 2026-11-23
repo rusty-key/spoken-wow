@@ -290,6 +290,32 @@ Expect("...and on a closed one lists its bosses one level further in", Has(Shown
 Expect("...a boss is a line with no numbers", RowFor("Edwin VanCleef").row.leaf, true)
 Expect("a boss not met cannot be chosen: its row does nothing", RowFor("Edwin VanCleef").row.locked, true)
 
+-- A boss not met still has its own portrait, and the line under its name stands for a map the client lacks.
+local unmetPortrait = Bosses:Portrait(36, "edwin vancleef")
+Expect("a boss not met has its creature's portrait, not the unknown mark",
+    tostring(unmetPortrait.creatureID) .. "|" .. tostring(unmetPortrait.displayID), "639|2029")
+Expect("the line under a boss's name is its dungeon and where it is", Bosses:Where(36, "edwin vancleef"), "In Deadmines · Westfall")
+Expect("a boss on a map the client does not list is in its dungeon, with no zone",
+    Bosses:Where(2959, SpokenBosses.maps[2959][1].key), Bosses.L.BOSS_IN_FMT:format(SpokenCompendium.DungeonName(2959)))
+local edwinBoss = SpokenBosses.maps[36][1]
+local unmetHead = Bosses:Head(36, edwinBoss)
+Expect("a boss not met has a header with no model, as on the map panel",
+    tostring(unmetHead.revealed) .. "|" .. tostring(unmetHead.model), "false|nil")
+SpokenBossesSettings.unlockUnfound = true
+local unlockedHead = Bosses:Head(36, edwinBoss)
+Expect("...and with Unlock Unfound Bosses on, its model",
+    unlockedHead.revealed and unlockedHead.model and unlockedHead.model.displayID ~= nil, true)
+SpokenBossesSettings.unlockUnfound = false
+-- Found Only leaves the boss's row out, so there is no page to open on.
+SpokenBossesSettings.compendiumFoundOnly = true
+Bosses:ShowBoss(36, "edwin vancleef")
+Expect("Open in Compendium never lands on a boss Found Only leaves out", page.title.text ~= "Edwin VanCleef", true)
+SpokenBossesSettings.compendiumFoundOnly = false
+Bosses:ShowBoss(36, "edwin vancleef")
+Expect("...and with it off, opens the boss's own page", page.title.text, "Edwin VanCleef")
+Click("Deadmines")
+Click("Deadmines")
+
 -- Meeting the boss: its fight starts, whichever difficulty's encounter.
 local edwin
 for _, boss in ipairs(SpokenBosses.maps[36]) do if boss.key == "edwin vancleef" then edwin = boss end end
@@ -343,7 +369,7 @@ Bosses:RefreshBosses()
 Shown()
 Click("Edwin VanCleef")
 Expect("a boss with a creature has its story as one block", page.body.text.text, "He led the Brotherhood.")
-Expect("...and its model above the story", page.body.model.displayID, 1305)
+Expect("...and its model above the story", page.body.modelActor.displayID, 1305)
 Expect("...and its portrait at the left of its name, the title moved right of it", page.face:IsShown() and page.shift > 0, true)
 Expect("...the boss badge on it", page.headFace.speaker.bullet, "boss")
 local badge = page.headFace and page.headFace.badge
