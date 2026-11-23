@@ -97,7 +97,7 @@ Spoken has no recording of that line yet. This is common for quests and NPCs tha
 
 ## Quests do not start reading by themselves
 
-Turn on **Read Automatically** on the **Quests** page of Spoken's settings. **Read When Window Closes** starts the reading when you close the quest window instead of when it opens, and **Stop When Window Closes** stops it as the window closes. **Read Quest Progress Text** decides whether the "not done yet" page reads itself. Every quest in the Quest Log and Blizzard's objective tracker has a Play button either way (**Show Play Button**). Questie's tracker has none: the Questie team asked Spoken to stop adding one.
+Turn on **Read Automatically** on the **Quests** page of Spoken's settings. **Read After Accepting** waits until you accept or hand in the quest, and reads nothing for a quest you close without either. **Stop When Window Closes** stops the reading as the window closes. **Read Quest Progress Text** decides whether the "not done yet" page reads itself. Every quest in the Quest Log and Blizzard's objective tracker has a Play button either way (**Show Play Button**). Questie's tracker has none: the Questie team asked Spoken to stop adding one.
 
 ## Why does an NPC only greet me once?
 
