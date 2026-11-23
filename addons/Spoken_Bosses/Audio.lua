@@ -100,8 +100,9 @@ function Bosses:GetAudioClip(map, key)
 	for _, pack in ipairs(candidates) do
 		local entry = pack.bosses and pack.bosses[map] and pack.bosses[map][key]
 		if entry and entry.file then
+			-- A pack built before packs shipped Ogg names no format, and its clips are mp3.
 			return {
-				path = "Interface\\AddOns\\" .. pack.addon .. "\\Sounds\\" .. entry.file .. ".mp3",
+				path = "Interface\\AddOns\\" .. pack.addon .. "\\Sounds\\" .. entry.file .. (pack.format == "ogg" and ".ogg" or ".mp3"),
 				len = entry.len,
 				times = entry.times,
 				text = type(entry.text) == "string" and entry.text ~= "" and entry.text or nil,

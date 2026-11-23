@@ -81,6 +81,10 @@ Expect("a page has a clip when the pack carries it", clip ~= nil, true)
 Expect("...keyed the way the corpus names the line", clip.key, "b:261")
 Expect("...pointing into the pack's own folder",
     clip.path, [[Interface\AddOns\SpokenReadablesAudio\Sounds\261.mp3]])
+_G.SpokenReadablesAudioPacks.SpokenReadablesAudio.format = "ogg"
+Expect("...in the format its pack declares",
+    B:ClipFor(261).path, [[Interface\AddOns\SpokenReadablesAudio\Sounds\261.ogg]])
+_G.SpokenReadablesAudioPacks.SpokenReadablesAudio.format = nil
 Expect("...carrying the recorded duration", clip.length, 30.5)
 Expect("...carrying the first page's saved captions", clip.present.transcript,
     SpokenReadablesData.pages[261].text)
