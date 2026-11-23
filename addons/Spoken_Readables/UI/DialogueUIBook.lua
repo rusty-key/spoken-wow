@@ -442,7 +442,7 @@ function Book:Mark()
 	end
 	local lit, neighbor
 	if caption.highlight then
-		lit, neighbor = marks.Pick(words.map, caption.speaking and caption.activeWord or nil)
+		lit, neighbor = marks.Pick(words.map, caption.speaking and caption.activeWord or nil, caption.litWords)
 	end
 	local cutP, cutByte = marks.Cut(caption, words.map, words.span, words.paragraphs)
 	if lit == words.lit and neighbor == words.neighbor and cutP == words.cutP and cutByte == words.cutByte then

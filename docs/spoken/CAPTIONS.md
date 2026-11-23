@@ -5,8 +5,8 @@ readables' pages) in each window, and as subtitles. The Small Window and the Dia
 Rows at Once of them, one or two rows, and the Small Window's **+** button expands them to eight;
 the Large Window shows as many rows as its box holds, up to three. The captions follow the
 recording: with **Type Words Out** on (off by default) the words appear as the voice reaches them,
-and with **Highlight Words** on (the default) two adjacent words are lit, in gold, or in deep
-red on parchment. They move, resize and scale with their window.
+and with **Highlight Words** on (the default) the word being read is lit, in gold, or in deep
+red on parchment. **Highlighted Words** (1 by default) can light the next word with it. They move, resize and scale with their window.
 
 The **Subtitles Only** narrator style shows the words without a window instead, low in the middle
 of the screen, under the speaker's face, name and the line's title: a page of whole sentences at a
@@ -167,7 +167,7 @@ windows. See
 ## Captions in another window
 
 `Spoken:GetCaption()` returns the clip, the words and the reading position the captions use, whether
-**Highlight Words** and **Type Words Out** are on, and **Type Out By** (`typewriterBy`). It stays
+**Highlight Words** and **Type Words Out** are on, **Highlighted Words** (`litWords`, 1 or 2), and **Type Out By** (`typewriterBy`). It stays
 current while the captions are hidden or turned off. `Spoken:SplitCaption(text)` splits any text the
 way the captions do, and records where each word sits in that text. With the two, another addon can
 mark the same words in its own copy of the line. Spoken Quests does this inside DialogueUI's window

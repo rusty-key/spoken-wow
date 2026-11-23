@@ -436,6 +436,7 @@ function Transcript:Render()
     local highlighted = cfg.HighlightWord and self.activeWord or nil
     local neighbor
     if highlighted then
+        local pair = cfg.HighlightWords == 2
         -- The words at the page's two ends, past any empty line between paragraphs.
         local firstLine, lastLine = self.topTarget, math.min(#self.lines, self.topTarget + n - 1)
         while firstLine < lastLine and #self.lines[firstLine] == 0 do firstLine = firstLine + 1 end
@@ -445,6 +446,8 @@ function Transcript:Render()
         local lastWord = last and last[#last] and last[#last].word or 0
         if highlighted < firstWord or highlighted > lastWord then
             highlighted = nil -- Manually reading a different page.
+        elseif not pair then
+            neighbor = nil
         elseif highlighted < lastWord then
             neighbor = highlighted + 1
         elseif highlighted > firstWord then
@@ -606,7 +609,7 @@ function Transcript:Reset()
     -- Back to the defaults a first install has (Core.lua). The style stays, as Enabled does: it
     -- is the choice of where captions go, not a tweak.
     local defaults = Defaults.profile.Transcript
-    for _, key in ipairs({ "Lines", "FontSize", "ScrollMode", "HighlightWord", "Typewriter", "TypewriterBy",
+    for _, key in ipairs({ "Lines", "FontSize", "ScrollMode", "HighlightWord", "HighlightWords", "Typewriter", "TypewriterBy",
         "SubtitleShadow", "SubtitleScale", "SubtitleProgress", "SubtitleName", "SubtitleScroll",
         "SubtitleSentences" }) do
         cfg[key] = defaults[key]

@@ -791,6 +791,38 @@ Skin:Update()
 Expect("a name the same as the line's own is said once, in the title", Skin.name:GetText() .. "|" .. Skin.title.text:GetText(), "|Mulgore")
 Spoken:StopAll()
 
+---------------------------------------------------------------- Highlighted Words
+do
+    local words = env.Addon.db.profile.Transcript
+    local saved = { words.Enabled, words.HighlightWord, words.HighlightWords, words.Typewriter }
+    words.Enabled, words.HighlightWord, words.Typewriter = true, true, false
+    Spoken:StopAll()
+    quests:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "Lit", portrait = { kind = "none" },
+        transcript = "The kobolds dig deeper into the mine every night." } }))
+    env.Transcript:Sync()
+    env.Transcript:Update()
+    local function LitCount()
+        local count = 0
+        for _, label in ipairs(T.labels) do
+            local _, n = string.gsub(label:GetText() or "", "|c", "")
+            count = count + n
+        end
+        return count
+    end
+    stub.Advance(1)
+    env.Transcript:Update()
+    words.HighlightWords = 1
+    env.Transcript:RefreshConfig()
+    env.Transcript:Update()
+    Expect("Highlighted Words at 1 lights the word being read alone in the narrator window", LitCount(), 1)
+    words.HighlightWords = 2
+    env.Transcript:RefreshConfig()
+    env.Transcript:Update()
+    Expect("...at 2 the one beside it too", LitCount(), 2)
+    words.Enabled, words.HighlightWord, words.HighlightWords, words.Typewriter = saved[1], saved[2], saved[3], saved[4]
+    Spoken:StopAll()
+end
+
 ---------------------------------------------------------------- the words' edges
 -- A line's room over and under the words, which a line gliding out or in fades through: at
 -- nothing by the time it reaches the edge, so no line is seen cut there.

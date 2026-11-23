@@ -159,6 +159,8 @@ Expect("the last word of a paragraph keeps the one before it lit",
     table.concat({ Marks.Pick({ [1] = { p = 1 }, [2] = { p = 1 }, [3] = { p = 2 } }, 2) }, ","), "2,1")
 Expect("a word the window lacks lights the last one it has",
     table.concat({ Marks.Pick({ [1] = { p = 1 }, [2] = { p = 1 } }, 3) }, ","), "2,1")
+Expect("a count of 1 lights the word alone",
+    table.concat({ Marks.Pick({ [1] = { p = 1 }, [2] = { p = 1 } }, 1, 1) }, ","), "1")
 
 local paras = Paras("Farmer Test: Hello there, traveller.", "Safe roads.")
 map, span = Marks.Align(caption, paras)
@@ -184,7 +186,7 @@ Expect("...and lights only the letters typed so far",
     "Farmer Test: " .. GOLD .. "Hello|r " .. GOLD .. "th|r")
 
 ---------------------------------------------------------------- the highlight alone
-words.HighlightWord, words.Typewriter = true, false
+words.HighlightWord, words.Typewriter, words.HighlightWords = true, false, 2
 DUI:HandleQuestDetail()
 local original1, original2 = Paragraph(1), Paragraph(2)
 world.questID = 101
@@ -206,6 +208,11 @@ local before = DUI.fontStringPool.active[2]
 DUI:HandleQuestDetail()
 Tick(0)
 Expect("a rebuilt page is lit again", Lit(), 2)
+words.HighlightWords = 1
+Tick(0)
+Expect("Highlighted Words at 1 lights only the word being read", Lit(), 1)
+words.HighlightWords = 2
+Tick(0)
 Expect("...and the FontString DialogueUI released is left alone", before:GetText(), nil)
 
 dui.Captions = false

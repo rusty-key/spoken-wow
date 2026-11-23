@@ -192,10 +192,10 @@ do
     local ROWS = {
         -- The wheel's note where Ctrl and the wheel size the window or the subtitles.
         minimal = "Window Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, wheel note, Theme, Hide Portrait, "
-            .. "Show Progress Bar, Rows at Once, Auto-Scroll, Highlight Words, Type Words Out, Type Out By",
+            .. "Show Progress Bar, Rows at Once, Auto-Scroll, Highlight Words, Highlighted Words, Type Words Out, Type Out By",
         -- The large window's words fill the box, so no Rows at Once.
         classic = "Window Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, Hide Portrait, Show Progress Bar, "
-            .. "Auto-Scroll, Highlight Words, Type Words Out, Type Out By",
+            .. "Auto-Scroll, Highlight Words, Highlighted Words, Type Words Out, Type Out By",
         subtitle = "Subtitle Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, subtitles' wheel note, Shadow Behind Words, "
             .. "Show Name and Title, Hide Portrait, Show Progress Bar, Sentences at Once, Auto-Scroll (subtitles), "
             .. "Highlight Words, Type Words Out, Type Out By",
@@ -212,7 +212,7 @@ do
     Options:UpdateRows()
     Expect("the dialogueui style shows the rows it reads", StyleRows(),
         "Window Size, Show Narrator, Quests, Gossip, Word Size, Lock Position, wheel note, Theme, Show Progress Bar, "
-        .. "Rows at Once, Fit Window to Words, Auto-Scroll, Highlight Words, Type Words Out, Type Out By")
+        .. "Rows at Once, Fit Window to Words, Auto-Scroll, Highlight Words, Highlighted Words, Type Words Out, Type Out By")
     chosen = "none"; Options:UpdateRows()
     Expect("voice only shows no words' rows without DialogueUI: nothing of Spoken's is on screen", StyleRows(), "")
     -- DialogueUI's own quest text is marked by them, whatever the style.
@@ -220,7 +220,7 @@ do
     Theme.Installed = function() return true end
     Options:UpdateRows()
     Expect("voice only, with DialogueUI installed, keeps the rows that mark DialogueUI's text", StyleRows(),
-        "Show Narrator, Quests, Gossip, Highlight Words, Type Words Out, Type Out By")
+        "Show Narrator, Quests, Gossip, Highlight Words, Highlighted Words, Type Words Out, Type Out By")
     Theme.Installed = installed
     Theme.Available, env.Addon.PlayerStyle = available, playerStyle
     words.Enabled, words.Typewriter, words.SubtitleScroll = saved[1], saved[2], saved[3]

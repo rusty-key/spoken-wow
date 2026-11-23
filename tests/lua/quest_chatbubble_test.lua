@@ -83,7 +83,14 @@ Say()
 Expect("the line is playing as NPC chat", Spoken:GetCaption() ~= nil, true)
 Expect("the tick keeps going while the line is read", VO.ChatBubble.Tick(), true)
 Expect("the word being read is lit in the bubble", fs.text:find(LIT .. "I|r", 1, true) ~= nil, true)
-Expect("...with the one beside it", fs.text:find(LIT .. "sense|r", 1, true) ~= nil, true)
+Expect("...alone, with the default of one word lit", fs.text:find(LIT .. "sense|r", 1, true), nil)
+env.Addon:Profile("Transcript").HighlightWords = 2
+Reset()
+fs = Bubble(TEXT)
+Say()
+VO.ChatBubble.Tick()
+Expect("with Highlighted Words at 2 the one beside it is lit too", fs.text:find(LIT .. "sense|r", 1, true) ~= nil, true)
+env.Addon:Profile("Transcript").HighlightWords = 1
 Expect("...and the rest as the game wrote it", fs.text:find("brewing. . . .", 1, true) ~= nil, true)
 local first = fs.text
 stub.Advance(3.2)

@@ -107,7 +107,7 @@ local function Tick()
         state.fs, state.text, state.shown, state.para, state.map, state.span = fs, text, text, para, map, span
         state.color = ColorOf(fs)
     end
-    local lit, neighbor = marks.Pick(state.map, caption.speaking and caption.activeWord or nil)
+    local lit, neighbor = marks.Pick(state.map, caption.speaking and caption.activeWord or nil, caption.litWords)
     if lit ~= state.lit or neighbor ~= state.neighbor then
         local spans = marks.Spans(state.map, { state.para }, lit, neighbor)
         local want = marks.Want(state.para, 1, state.span, nil, nil, spans, state.color)

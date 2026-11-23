@@ -95,6 +95,8 @@ Defaults = {
             ScrollMode = "line",
             Lines = 2,
             HighlightWord = true,
+            -- How many words Highlight Words lights at once: 1 or 2.
+            HighlightWords = 1,
             FontSize = 16,
             -- The subtitle player's own (UI/Subtitle.lua).
             Typewriter = false,

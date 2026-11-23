@@ -22,6 +22,7 @@ L.TRANSCRIPT_SCROLL_PAGE = "Página a página"
 L.TRANSCRIPT_SCROLL_OFF = "Desactivado"
 L.TRANSCRIPT_LINES = "Líneas a la vez"
 L.TRANSCRIPT_HIGHLIGHT = "Resaltar palabras"
+L.TRANSCRIPT_HIGHLIGHT_COUNT = "Palabras resaltadas"
 L.TRANSCRIPT_SIZE = "Tamaño de letra"
 L.TRANSCRIPT_HINT = "Desplázate para leer páginas anteriores o posteriores. Haz clic en el texto para volver a seguir la voz; clic derecho para omitir la línea. La sincronización de las palabras es aproximada."
 L.TRANSCRIPT_MENU_HINT = "Mayús-clic derecho abre el menú."
@@ -103,6 +104,7 @@ L.REASON_VOICE_CHANNEL = "Las voces de Spoken suenan por este sonido, así que n
 L.REASON_DIALOG_CHANNEL = "Las voces de Spoken suenan por el mismo sonido que las de los PNJ, así que esto las silenciaría también. Cambia «Volumen controlado por» para usar esto."
 L.REASON_DIALOG_MUTED = "«Silenciar voces de PNJ» está activado, así que las voces de los PNJ ya están en silencio mientras Spoken lee."
 L.REASON_TYPEWRITER = "Activa «Ir escribiendo el texto» para usar esto."
+L.REASON_HIGHLIGHT = "Activa «Resaltar palabras» para usar esto."
 L.REASON_UNTYPED = "Desactiva «Ir escribiendo el texto» para usar esto con subtítulos."
 
 -- Display: narrator style

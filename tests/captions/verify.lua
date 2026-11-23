@@ -79,6 +79,8 @@ E.Addon.db.profile.Frame.Style='minimal'
 E.Addon.db.profile.Frame.MinimalBackground='dark'
 E.Addon.db.profile.Audio.LineGap=0
 E.Addon.db.profile.Transcript.HighlightWord=true
+-- The checks below follow a pair of lit words; the default of one is checked at the start.
+E.Addon.db.profile.Transcript.HighlightWords=2
 -- The checks below follow the words typed in and the progress line, which are off by default.
 E.Addon.db.profile.Transcript.Typewriter=true
 E.Addon.db.profile.Transcript.SubtitleProgress=true
@@ -152,7 +154,10 @@ Check(T.labels[1].textColor[1]==M.title.text.textColor[1] and T.labels[1].shadow
 Check(T.text==long:sub(1,-2),'first text is retained while another NPC is queued')
 Check(M.name:GetText()=='NPC a','speaker belongs to the current clip')
 Check(cfg.Lines==2 and T.frame:GetHeight()<160,'default panel is compact with two caption lines')
-Check(T.activeWord==1 and HighlightCount()==2,'first two words are highlighted at the start')
+Check(T.activeWord==1 and HighlightCount()==2,'with Highlighted Words at 2 the first two words are highlighted at the start')
+cfg.HighlightWords=1; T:RefreshConfig()
+Check(T.activeWord==1 and HighlightCount()==1,'at 1 the first word alone is highlighted')
+cfg.HighlightWords=2; T:RefreshConfig()
 CheckLayout()
 Advance(30)
 Check(T:GetProgress()==.5,'progress follows real queue timing')

@@ -852,6 +852,15 @@ local function Build()
     Only(highlight, MarksWords)
     Requires(highlight, Narrator, L.REASON_NARRATOR)
     Requires(highlight, function() return not (Subtitles() and transcript().Typewriter) end, L.REASON_UNTYPED)
+    layout:Indent()
+    local litWords = layout:Dropdown(L.TRANSCRIPT_HIGHLIGHT_COUNT, nil, { 1, 2 },
+        function() return transcript().HighlightWords == 2 and 2 or 1 end,
+        function(v) transcript().HighlightWords = v end, refreshTranscript,
+        function(v) return tostring(v) end)
+    layout:Outdent()
+    Only(litWords, function() return MarksWords() and not Subtitles() end)
+    Requires(litWords, Narrator, L.REASON_NARRATOR)
+    Requires(litWords, function() return transcript().HighlightWord end, L.REASON_HIGHLIGHT)
     local typewriter = layout:Checkbox(L.TRANSCRIPT_TYPEWRITER, nil,
         function() return transcript().Typewriter end,
         function(v) transcript().Typewriter = v end, refreshTranscript)

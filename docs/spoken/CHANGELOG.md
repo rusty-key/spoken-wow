@@ -2,6 +2,14 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Highlight Words lights one word, and Highlighted Words lets you light two.** The captions, the book
+  view, DialogueUI's text and NPC chat bubbles lit the word being read together with the next one, to
+  cover an estimated timing. Newer recordings carry the real timing, so the word alone is lit by
+  default. Highlighted Words, under Highlight Words, brings the pair back, which suits older
+  recordings, whose timing is still estimated. *([Nucabe](https://github.com/Nucabe))*
+
 ## 3.12.1 — 2026-11-22
 
 - **Queue counts pulse without an error when a line is added while Spoken is stopped.** *([anon1231823](https://github.com/anon1231823))*

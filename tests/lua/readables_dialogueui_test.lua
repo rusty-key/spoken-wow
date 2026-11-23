@@ -200,7 +200,7 @@ view.textureKitID = 1
 function view:ScrollToContent(index) self.scrolledTo = index end
 function view:RebuildContentFromCache() end
 local words = env.Addon.db.profile.Transcript
-words.Enabled, words.HighlightWord, words.Typewriter = true, true, false
+words.Enabled, words.HighlightWord, words.Typewriter, words.HighlightWords = true, true, false, 2
 B.lastPage = 265
 local function Tick(seconds)
     stub.Advance(seconds)
