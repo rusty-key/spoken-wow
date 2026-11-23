@@ -15,7 +15,7 @@ local function AddDeveloper(tooltip)
     local characters = realm and DeveloperCharacters[realm]
     for _, id in ipairs(characters or {}) do
         if id == character then
-            tooltip:AddLine([[|TInterface\AddOns\Spoken\icon.tga:0|t ]] .. L.DEVELOPER_TOOLTIP, 192 / 255, 132 / 255, 252 / 255)
+            tooltip:AddLine([[|TInterface\AddOns\Spoken\icon.tga:0|t ]] .. L.DEVELOPER_TOOLTIP, 0, 229 / 255, 1)
             tooltip.spokenDeveloperTag = true
             return
         end
