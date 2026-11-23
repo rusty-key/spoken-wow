@@ -4,7 +4,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **Spoken developers have a localized “Spoken Developer” label in their player tooltip.**
+- **Spoken developers have Spoken's icon and a localized “Spoken Developer” label in their player tooltip.**
   *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.12.1 — 2026-11-22

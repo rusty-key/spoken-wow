@@ -4,6 +4,7 @@ local stub = require("wow_client_stub")
 local H = require("queue_helpers")
 local Expect, Failures = H.Expecter(stub.print)
 local SPOKEN = here .. "/../../addons/Spoken/"
+local ICON = [[|TInterface\AddOns\Spoken\icon.tga:0|t ]]
 
 local function Boot(mode, locale)
     stub.SetClient(mode == "modern" and "16001" or "11509")
@@ -43,19 +44,19 @@ for _, mode in ipairs({ "modern", "legacy" }) do
     local tooltip, Clear, Show, callback = Boot(mode)
     Expect(mode .. ": the native tooltip pipeline is used", callback ~= nil, mode == "modern")
     Clear()
-    Expect(mode .. ": first developer character is tagged", Show("Player-6921-001E5110"), "Spoken Developer")
-    Expect(mode .. ": repeated updates do not duplicate the label", Show("Player-6921-001E5110"), "Spoken Developer")
+    Expect(mode .. ": first developer character is tagged", Show("Player-6921-001E5110"), ICON .. "Spoken Developer")
+    Expect(mode .. ": repeated updates do not duplicate the label", Show("Player-6921-001E5110"), ICON .. "Spoken Developer")
     Clear()
-    Expect(mode .. ": the second character is tagged after clearing", Show("Player-6921-02CAC851"), "Spoken Developer")
+    Expect(mode .. ": the second character is tagged after clearing", Show("Player-6921-02CAC851"), ICON .. "Spoken Developer")
     if callback then
         Clear()
         callback(tooltip, {})
-        Expect("the tooltip's unit identifies a developer without data.guid", table.concat(tooltip.lines, "|"), "Spoken Developer")
+        Expect("the tooltip's unit identifies a developer without data.guid", table.concat(tooltip.lines, "|"), ICON .. "Spoken Developer")
     end
     local readGUID = UnitGUID
     _G.UnitGUID = function(unit) if unit == "mouseover" then return "Player-6921-001E5110" end end
     Clear()
-    Expect(mode .. ": a missing unit GUID falls back to mouseover like Questie", Show(nil, "target"), "Spoken Developer")
+    Expect(mode .. ": a missing unit GUID falls back to mouseover like Questie", Show(nil, "target"), ICON .. "Spoken Developer")
     _G.UnitGUID = readGUID
     for _, guid in ipairs({ "Player-6921-00000000", "Player-1234-001E5110", "Creature-0-0-0-0-6921-001E5110", "invalid" }) do
         Clear()
@@ -93,7 +94,7 @@ local translations = {
 for locale, label in pairs(translations) do
     local _, Clear, Show = Boot("modern", locale)
     Clear()
-    Expect(locale .. ": the tooltip uses Questie's translated wording with Spoken", Show("Player-6921-001E5110"), label)
+    Expect(locale .. ": the tooltip uses Questie's translated wording with Spoken", Show("Player-6921-001E5110"), ICON .. label)
 end
 
 if Failures() > 0 then os.exit(1) end
