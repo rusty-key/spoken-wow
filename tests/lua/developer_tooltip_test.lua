@@ -47,6 +47,16 @@ for _, mode in ipairs({ "modern", "legacy" }) do
     Expect(mode .. ": repeated updates do not duplicate the label", Show("Player-6921-001E5110"), "Spoken Developer")
     Clear()
     Expect(mode .. ": the second character is tagged after clearing", Show("Player-6921-02CAC851"), "Spoken Developer")
+    if callback then
+        Clear()
+        callback(tooltip, {})
+        Expect("the tooltip's unit identifies a developer without data.guid", table.concat(tooltip.lines, "|"), "Spoken Developer")
+    end
+    local readGUID = UnitGUID
+    _G.UnitGUID = function(unit) if unit == "mouseover" then return "Player-6921-001E5110" end end
+    Clear()
+    Expect(mode .. ": a missing unit GUID falls back to mouseover like Questie", Show(nil, "target"), "Spoken Developer")
+    _G.UnitGUID = readGUID
     for _, guid in ipairs({ "Player-6921-00000000", "Player-1234-001E5110", "Creature-0-0-0-0-6921-001E5110", "invalid" }) do
         Clear()
         Expect(mode .. ": other GUIDs have no label: " .. guid, Show(guid), "")
@@ -59,6 +69,9 @@ for _, mode in ipairs({ "modern", "legacy" }) do
     stub.Secrets("Player-6921-001E5110")
     Expect(mode .. ": secret GUIDs are left alone", Show("Player-6921-001E5110"), "")
     stub.Secrets()
+    stub.Secrets("mouseover")
+    Expect(mode .. ": secret unit tokens are left alone", Show("Player-6921-001E5110", "mouseover"), "")
+    stub.Secrets()
     if callback then
         local other = stub.Widget("GameTooltip")
         callback(other, { guid = "Player-6921-001E5110" })
@@ -67,10 +80,6 @@ for _, mode in ipairs({ "modern", "legacy" }) do
         _G.issecrettable = function(data) return data == restricted end
         Expect("restricted tooltip data is never indexed", pcall(callback, tooltip, restricted), true)
         _G.issecrettable = nil
-    else
-        stub.Secrets("mouseover")
-        Expect("secret unit tokens are left alone", Show("Player-6921-001E5110", "mouseover"), "")
-        stub.Secrets()
     end
 end
 

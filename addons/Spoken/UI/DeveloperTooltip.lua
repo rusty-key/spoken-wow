@@ -1,7 +1,14 @@
 setfenv(1, SpokenEnv)
 
-local function AddDeveloper(tooltip, guid)
+local function AddDeveloper(tooltip)
     if tooltip ~= GameTooltip or (tooltip.IsForbidden and tooltip:IsForbidden()) or tooltip.spokenDeveloperTag then return end
+    local name, unit = tooltip:GetUnit()
+    if issecretvalue and issecretvalue(name) then return end
+    unit = NotSecret(unit)
+    if type(unit) ~= "string" then return end
+    local guid = UnitGUID(unit)
+    if issecretvalue and issecretvalue(guid) then return end
+    if not guid then guid = UnitGUID("mouseover") end
     guid = NotSecret(guid)
     if type(guid) ~= "string" then return end
     local realm, character = guid:match("^Player%-(%d+)%-(%x+)$")
@@ -23,13 +30,9 @@ if type(GameTooltip.GetPrimaryTooltipData) == "function" and TooltipDataProcesso
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tooltip, data)
         data = NotSecret(data)
         if type(data) ~= "table" or (issecrettable and issecrettable(data)) then return end
-        AddDeveloper(tooltip, data.guid)
+        if issecretvalue and issecretvalue(data.guid) then return end
+        AddDeveloper(tooltip)
     end)
 elseif GameTooltip:HasScript("OnTooltipSetUnit") then
-    GameTooltip:HookScript("OnTooltipSetUnit", function(tooltip)
-        if tooltip.IsForbidden and tooltip:IsForbidden() then return end
-        local _, unit = tooltip:GetUnit()
-        unit = NotSecret(unit)
-        if type(unit) == "string" then AddDeveloper(tooltip, UnitGUID(unit)) end
-    end)
+    GameTooltip:HookScript("OnTooltipSetUnit", AddDeveloper)
 end
