@@ -291,8 +291,6 @@ export const EN = {
       inWorld: "in the world",
       carried: "carried",
       onePage: "One page",
-      pagesOne: "1 page",
-      pagesMany: "{n} pages",
       override: "Override",
       overrideTitle: "Change what your team says",
       editTextTitle: "Rewrite this line's text",

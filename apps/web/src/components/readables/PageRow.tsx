@@ -9,6 +9,7 @@ import { ChevronDownIcon, PlayIcon } from "lucide-react";
 
 import { RowActions, StateWord, type RowAction } from "@/components/catalogue/RowParts";
 import { useUiText } from "@/components/UiTextProvider";
+import { plural } from "@/lib/plural";
 import { fill } from "@/lib/site-text/format";
 import { useState } from "react";
 
@@ -57,12 +58,6 @@ type Props = {
 
 // The same colour discipline as the other two explorers: red is only ever a real problem,
 // amber is something that has drifted, grey is a fact about the row.
-const STATE_TONE = {
-  missing: "missing",
-  stale: "stale",
-  current: "current",
-} as const;
-
 /**
  * The heading over one book's pages, which the search returns together: the title, what opens it
  * and which objects or items do, written once rather than in two columns beside every page.
@@ -90,7 +85,7 @@ export function BookHeader({
         {onRename && <RenameButton label={fill(t.catalogue.row.nameIt, { name: line.title })} onClick={() => onRename(line)} />}
         <span className="cat-group-meta">
           {line.ownerKind === "object" ? t.catalogue.row.inWorld : t.catalogue.row.carried} · {materialName(line.material)} ·{" "}
-          {line.pageCount === 1 ? t.catalogue.row.pagesOne : fill(t.catalogue.row.pagesMany, { n: line.pageCount })}
+          {plural(line.pageCount, t.catalogue.row.batch.pageOne, t.catalogue.row.batch.pageMany)}
           {/* Which object or item opens it: two objects sharing a name is why the addon needs a checksum. */}
           <span className="cat-ids"> · {line.ownerIds.join(", ")}</span>
         </span>
@@ -237,7 +232,7 @@ export function PageRow({
           // is in the corpus because the game has it.
           <span className="text-muted-foreground italic">{line.skipReason}</span>
         ) : line.state !== "current" ? (
-          <StateWord tone={STATE_TONE[line.state]}>
+          <StateWord tone={line.state}>
             {line.state === "missing" ? t.catalogue.row.noAudio : t.catalogue.row.outdated}
           </StateWord>
         ) : (

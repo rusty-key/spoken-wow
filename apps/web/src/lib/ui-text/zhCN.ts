@@ -261,8 +261,6 @@ const zhCN: Dictionary = {
       inWorld: "在世界中",
       carried: "随身携带",
       onePage: "只有一页",
-      pagesOne: "1 页",
-      pagesMany: "{n} 页",
       override: "改写",
       overrideTitle: "更改你们团队读的内容",
       editTextTitle: "改写这一行的文本",

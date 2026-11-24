@@ -275,8 +275,6 @@ const deDE: Dictionary = {
       inWorld: "in der Welt",
       carried: "getragen",
       onePage: "Eine Seite",
-      pagesOne: "1 Seite",
-      pagesMany: "{n} Seiten",
       override: "Überschreiben",
       overrideTitle: "Ändern, was dein Team sagt",
       editTextTitle: "Text dieser Zeile umschreiben",

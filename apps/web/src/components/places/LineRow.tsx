@@ -59,12 +59,6 @@ type Props<L extends ExplorerLine> = {
 
 // The same colour discipline as the quests explorer: red is only ever a real problem, amber
 // is something that has drifted, grey is a fact about the row.
-const STATE_TONE = {
-  missing: "missing",
-  stale: "stale",
-  current: "current",
-} as const;
-
 /**
  * The heading over one zone's or instance's lines, which the results come grouped by. A click
  * narrows the list to it.
@@ -251,7 +245,7 @@ export function LineRow<L extends ExplorerLine>({
         ) : state?.phase === "done" ? (
           <StateWord tone="current">v{state.version}</StateWord>
         ) : line.state !== "current" ? (
-          <StateWord tone={STATE_TONE[line.state]}>
+          <StateWord tone={line.state}>
             {line.state === "missing" ? t.catalogue.row.noAudio : t.catalogue.row.outdated}
           </StateWord>
         ) : unwritten ? null : (

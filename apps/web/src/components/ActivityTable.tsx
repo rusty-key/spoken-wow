@@ -29,6 +29,7 @@ import { localeHref, withLang } from "@/lib/lang";
 import { explorerHref, lexiconHref } from "@/lib/links";
 import { capabilityLabel, isCapability } from "@/lib/permissions";
 import { SOURCE_LABELS } from "@/lib/reports/reports";
+import { plural } from "@/lib/plural";
 import { fill as fillFrom } from "@/lib/site-text/format";
 import type { UiText } from "@/lib/ui-text/en";
 import { SOURCES, type Source } from "@/lib/sections";
@@ -124,13 +125,11 @@ export function describe(row: ActivityRow, t: UiText["activity"]["events"]): { w
     case "take.acked":
       return { what: t.takeAcked, quote: row.lineId ? null : row.subject };
     case "marks.cleared": {
-      const count = num(d.count);
-      return { what: count === 1 ? t.marksClearedOne : fill(t.marksClearedMany, { n: count ?? "?" }), quote: null };
+      return { what: counted(num(d.count), t.marksClearedOne, t.marksClearedMany), quote: null };
     }
     case "batch.queued": {
-      const count = num(d.count);
       return {
-        what: count === 1 ? t.batchQueuedOne : fill(t.batchQueuedMany, { n: count ?? "?" }),
+        what: counted(num(d.count), t.batchQueuedOne, t.batchQueuedMany),
         quote: str(d.label),
       };
     }
@@ -147,11 +146,10 @@ export function describe(row: ActivityRow, t: UiText["activity"]["events"]): { w
       };
     }
     case "queue.stopped": {
-      const batches = num(d.batches);
       const cancelled = num(d.cancelled);
       return {
         what: fill(cancelled === 1 ? t.queueStoppedOne : t.queueStoppedMany, {
-          m: batches === 1 ? t.oneBatch : fill(t.manyBatches, { n: batches ?? "?" }),
+          m: counted(num(d.batches), t.oneBatch, t.manyBatches),
           n: cancelled ?? "?",
         }),
         quote: str(d.reason),
@@ -564,9 +562,8 @@ function groupOf(row: ActivityRow): { kind: Group; id: string; count: number } |
   return { kind: fold.kind, id, count: count ?? 0 };
 }
 
-/** "1 line" or "3 lines", where the words are the reader's. */
-function pluralText(count: number, one: string, many: string): string {
-  return `${count.toLocaleString()} ${count === 1 ? one : many}`;
+function counted(count: number | null, one: string, many: string): string {
+  return count === 1 ? one : fillFrom(many, { n: count ?? "?" });
 }
 
 /** The takes a row lets you hear: the new one, and for a restore the one it replaced. */
@@ -794,7 +791,7 @@ export default function ActivityTable({
                         onClick={() => void toggleGroup(row)}
                       >
                         {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-                        {pluralText(group.count, t.nouns.one[group.kind], t.nouns.many[group.kind])}
+                        {plural(group.count, t.nouns.one[group.kind], t.nouns.many[group.kind])}
                       </Button>
                     )}
                   </td>
@@ -822,7 +819,7 @@ export default function ActivityTable({
                                   {num(take.detail.cancelled) !== null && (
                                     <span className="text-muted-foreground">
                                       {" "}
-                                      · {fillFrom(t.cancelled, { n: pluralText(num(take.detail.cancelled)!, t.nouns.lineOne, t.nouns.lineMany) })}
+                                      · {fillFrom(t.cancelled, { n: plural(num(take.detail.cancelled), t.nouns.lineOne, t.nouns.lineMany) })}
                                     </span>
                                   )}
                                 </span>

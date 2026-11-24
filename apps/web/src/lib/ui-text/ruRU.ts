@@ -274,8 +274,6 @@ const ruRU: Dictionary = {
       inWorld: "в мире",
       carried: "носится с собой",
       onePage: "Одна страница",
-      pagesOne: "1 страница",
-      pagesMany: "Страниц: {n}",
       override: "Заменить",
       overrideTitle: "Изменить то, что говорит ваша команда",
       editTextTitle: "Переписать текст этой строки",

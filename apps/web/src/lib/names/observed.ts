@@ -8,17 +8,14 @@ import type { Sighting } from "@/lib/contributions/sighting";
 import { recordActivity } from "@/lib/activity/store";
 import { query } from "@/lib/db";
 import type { ContributionStatus } from "@/lib/contributions/contributions";
-import { BASE_LANG, clientLang, isClientLang, type Lang } from "@/lib/lang";
+import { BASE_LANG, clientLang, type Lang } from "@/lib/lang";
 import { withTextTeam } from "@/lib/teams/store";
 
 import { writeName } from "./store";
 
 export type ObservedKind = Sighting["npcType"];
 
-/** English has no names to review: its names are the corpus's. Nor does a language no client runs in. */
-export function hasObservedNames(lang: Lang): boolean {
-  return lang !== BASE_LANG && isClientLang(lang);
-}
+export { hasObservedNames } from "./has-observed";
 
 /**
  * `alias`'s current English name as `en`, and its current name in its own language as `cur`.

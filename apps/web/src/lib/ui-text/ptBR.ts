@@ -274,8 +274,6 @@ const ptBR: Dictionary = {
       inWorld: "no mundo",
       carried: "carregado",
       onePage: "Uma página",
-      pagesOne: "1 página",
-      pagesMany: "{n} páginas",
       override: "Sobrescrever",
       overrideTitle: "Mudar o que sua equipe diz",
       editTextTitle: "Reescrever o texto desta linha",

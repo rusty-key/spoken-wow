@@ -274,8 +274,6 @@ const koKR: Dictionary = {
       inWorld: "월드에 있음",
       carried: "소지품",
       onePage: "한 쪽",
-      pagesOne: "1쪽",
-      pagesMany: "{n}쪽",
       override: "덮어쓰기",
       overrideTitle: "우리 팀이 말하는 내용 바꾸기",
       editTextTitle: "이 줄의 텍스트 다시 쓰기",

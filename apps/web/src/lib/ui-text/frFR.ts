@@ -274,8 +274,6 @@ const frFR: Dictionary = {
       inWorld: "dans le monde",
       carried: "transporté",
       onePage: "Une page",
-      pagesOne: "1 page",
-      pagesMany: "{n} pages",
       override: "Remplacer",
       overrideTitle: "Changer ce que dit votre équipe",
       editTextTitle: "Réécrire le texte de cette ligne",

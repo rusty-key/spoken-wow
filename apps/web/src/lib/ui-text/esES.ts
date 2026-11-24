@@ -274,8 +274,6 @@ const esES: Dictionary = {
       inWorld: "en el mundo",
       carried: "se lleva encima",
       onePage: "Una página",
-      pagesOne: "1 página",
-      pagesMany: "{n} páginas",
       override: "Sobrescribir",
       overrideTitle: "Cambiar lo que dice tu equipo",
       editTextTitle: "Reescribir el texto de esta línea",

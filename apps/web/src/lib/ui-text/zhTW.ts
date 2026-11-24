@@ -269,8 +269,6 @@ const zhTW: Dictionary = {
       inWorld: "在世界中",
       carried: "隨身攜帶",
       onePage: "只有一頁",
-      pagesOne: "1 頁",
-      pagesMany: "{n} 頁",
       override: "取代",
       overrideTitle: "變更你的團隊唸的內容",
       editTextTitle: "改寫這一行的文字",
