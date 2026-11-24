@@ -373,27 +373,26 @@ function speak(text, lang, playerGender, byToken) {
 // Korean's particle escape, `$c|1이여;여;`: the client prints the first form after a syllable that
 // ends in a consonant (a batchim) and the second after one that ends in a vowel, so it can only be
 // chosen once the word before it is known.
-const PARTICLE = /(?<!\|)\|1([^;|]*);([^;|]*);/g;
+const PARTICLE = new RegExp(String.raw`${ESCAPE_PIPE}1([^;|]*);([^;|]*);`, "g");
 const HANGUL_FIRST = 0xac00;
 const HANGUL_LAST = 0xd7a3;
 // The final consonant ㄹ, which takes 로 rather than 으로 ("길로", not "길으로").
 const RIEUL = 8;
 
-/** The final consonant's index (1 to 27) of a Hangul syllable, 0 for one ending in a vowel or for any other character. */
-function batchim(char) {
-  const code = char?.codePointAt(0) ?? 0;
+/** The final consonant's index (1 to 27) of a Hangul syllable's code, 0 for one ending in a vowel or for any other character. */
+function batchim(code = 0) {
   return code >= HANGUL_FIRST && code <= HANGUL_LAST ? (code - HANGUL_FIRST) % 28 : 0;
 }
 
-/** The form of a Korean particle that follows `word`, given its after-a-consonant and after-a-vowel forms. */
-function particleAfter(word, afterConsonant, afterVowel) {
-  const final = batchim([...word].at(-1));
+/** The form of a Korean particle after the character `code`, given its after-a-consonant and after-a-vowel forms. */
+function particleAfter(code, afterConsonant, afterVowel) {
+  const final = batchim(code);
   if (!final) return afterVowel;
   return final === RIEUL && afterConsonant.startsWith("으로") ? afterVowel : afterConsonant;
 }
 
 function speakParticles(text) {
   return text.replace(PARTICLE, (_, afterConsonant, afterVowel, at, whole) =>
-    particleAfter(whole.slice(0, at), afterConsonant, afterVowel),
+    particleAfter(whole.codePointAt(at - 1), afterConsonant, afterVowel),
   );
 }
