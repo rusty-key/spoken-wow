@@ -244,6 +244,10 @@ title over its page count, grouped so no pause or cue falls between them.
 gravestone read on the way waits for the book. The source has no queue limit, unlike places,
 whose cap drops the oldest waiting clip and here would drop what the player opened.
 
+The player keeps the reading's item icon and page material across its narrated pages, even
+after the readable window closes or another readable opens. Later pages take that appearance
+from the preceding clip; their words, timings and voice are still resolved page by page.
+
 **Settings and reading are kept apart, on purpose.** The settings (autoplay, whole book, one
 line, read once, stop when the book closes, close when read, the voice language and the
 Compendium's switches) live in Spoken's profile under `Writings`, bound by
@@ -381,7 +385,9 @@ Only, which leave out what has nothing found or voiced and take it from the coun
 default) or By Type, and the window's Unlock Unfound Readables, which makes every one readable
 here. Without it a readable not found yet is greyed with a padlock, and its page says to open it in
 the world. Carrying a readable's item in the bags finds it too, unopened, so a quest note handed
-in unread is not locked for good; it is not marked heard. A readable that is an item shows that item's icon.
+in unread is not locked for good; it is not marked heard. A readable that is an item shows that item's icon,
+both on its Compendium page and during playback from it, even when the item is no longer in the bags.
+If no item icon is available, Compendium playback uses the same readable-type icon as the page header.
 A filter that hides the chosen row moves the page to the nearest row above it that is
 still listed, or to where the player stands; a row chosen only because the player stood there is
 chosen again. The window opens on where the player stands: the dungeon's line, else the zone's,

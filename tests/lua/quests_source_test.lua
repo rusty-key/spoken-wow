@@ -444,19 +444,19 @@ Expect("a line the Play button started is queued", Spoken:GetQueueSize(), 1)
 VO.Addon:DispatchDirectEvent("QUEST_FINISHED", "test")
 Expect("closing the quest frame stops it with Read Automatically off", Spoken:GetQueueSize(), 0)
 
--- Read When Window Closes: an automatic read waits for the window to close, and is not read twice.
+-- Read When Window Closes became Read After Accepting: a profile that had it on keeps reading after
+-- the window, one that had it off is left as it was.
+_G.SpokenQuestsSettings = { profiles = {
+    Default = { Audio = { ReadAfterClose = true } },
+    Other = { Audio = { ReadAfterClose = false } },
+} }
 VO, env, Spoken = Boot()
-VO.Addon.db.profile.Audio.ReadAfterClose = true
-world.questID = 101
-VO.Addon:QUEST_DETAIL(nil, nil)
-Expect("with Read When Window Closes on, an automatic read waits while the window is open", Spoken:GetQueueSize(), 0)
-VO.Addon:DispatchDirectEvent("QUEST_FINISHED", "test")
-Expect("...and starts when it closes", Spoken:GetQueueSize(), 1)
-VO.Addon:DispatchDirectEvent("QUEST_FINISHED", "test")
-Expect("...once", Spoken:GetQueueSize(), 1)
-Spoken:StopAll()
-VO.Addon:QUEST_DETAIL(nil, true)
-Expect("a read the player asks for does not wait", Spoken:GetQueueSize(), 1)
+local migrated = _G.SpokenQuestsSettings.profiles
+Expect("Read When Window Closes on becomes Read After Accepting on", migrated.Default.Audio.ReadAfterAccept, true)
+Expect("...and its old key is gone", migrated.Default.Audio.ReadAfterClose, nil)
+Expect("Read When Window Closes off leaves Read After Accepting at its default", migrated.Other.Audio.ReadAfterAccept, nil)
+Expect("...and its old key is gone too", migrated.Other.Audio.ReadAfterClose, nil)
+_G.SpokenQuestsSettings = nil
 
 ---------------------------------------------------------------- the easter egg
 VO, env, Spoken = Boot()
@@ -484,7 +484,7 @@ VO, env, Spoken = Boot()
 local labels = {}
 for _, entry in ipairs(env.Minimap:BuildMenu()) do table.insert(labels, entry.text) end
 Expect("the quests addon adds its entries to the one button", table.concat(labels, "|"),
-    "Stop or Replay|Skip Line|Stop All|Settings|Quests Settings|Gossip Settings")
+    "Stop or Replay|Previous Line|Next Line|Stop All|Settings|Quests Settings|Gossip Settings")
 Expect("...and registers no button of its own", stub.ldbObjects.SpokenQuests, nil)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

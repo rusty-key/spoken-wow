@@ -2,6 +2,34 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **Move profiles between characters and installations with Export Profile and Import Profile**
+  in Spoken's Profiles settings.
+  *([anon1231823](https://github.com/anon1231823))*
+- **Places can share visited and heard history across characters.** Enable Share Across Characters under Places, Reading History. *([rogeriosmorais](https://github.com/rogeriosmorais))*
+- **Quest narration can skip lines heard on another character.** Enable Read Quest Lines Once per Account under Quests; manual playback stays available. *([rogeriosmorais](https://github.com/rogeriosmorais))*
+- **A progress page left in under half a second is read before its reward page,** whether an
+  auto turn-in addon such as Questie or your own click moved on. *([rusty-key](https://github.com/rusty-key))*
+- **New players' world map lights the area under the pointer only once they turn it on** with
+  Area Highlight in Spoken Places' settings. *([rusty-key](https://github.com/rusty-key))*
+- **The player has a Stop All button,** which stops narration and clears the queue. Skip Line
+  is now Next Line, and greys out with no line waiting. *([anon1231823](https://github.com/anon1231823))*
+- **Readables played from the Compendium show the same icon as their Compendium page.** One with
+  no item, gravestones and tablets included, shows its kind's icon. *([anon1231823](https://github.com/anon1231823))*
+- **Round buttons sink and darken while you hold them,** so Play, Stop, Skip and Report answer
+  your click at once. *([rusty-key](https://github.com/rusty-key))*
+- **Notes and other readables keep their icon on every narrated page,** even after closing the readable or opening another one. *([anon1231823](https://github.com/anon1231823))*
+- **Read After Accepting no longer shows an explanatory tooltip.** *([anon1231823](https://github.com/anon1231823))*
+- **With Read After Accepting on, a quest reads once you accept or hand it in.** It replaces Read
+  When Window Closes. *([anon1231823](https://github.com/anon1231823))*
+- **Spoken plays the new, smaller Places, Readables and Bosses sound packs,** and the ones you
+  already have. *([rusty-key](https://github.com/rusty-key))*
+- **A quest giver's greeting offers Contribute when Spoken has no voice for it,** and Collect
+  Missing Lines keeps it. *([svengabr](https://github.com/svengabr))*
+- **Subtitles no longer block clicks or the mouse wheel.** Move them with the arrow button that
+  appears under them on hover. *([Praxeomatic](https://github.com/Praxeomatic))*
+
 ## 3.12.1 — 2026-11-22
 
 - **Queue counts pulse without an error when a line is added while Spoken is stopped.** *([anon1231823](https://github.com/anon1231823))*

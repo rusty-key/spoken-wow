@@ -276,11 +276,7 @@ local function HeardKey(mapID, areaKey)
 end
 
 local function HeardSet()
-	local db = CharDB()
-	if type(db.heard) ~= "table" then
-		db.heard = {}
-	end
-	return db.heard
+	return SpokenPlaces:HistorySet("heard")
 end
 
 -- The wall clock, not GetTime(): a wait can be a month, and GetTime() restarts from zero with the
@@ -303,11 +299,7 @@ function SpokenPlaces:EveryVisitGap()
 end
 
 local function ReadAtSet()
-	local db = CharDB()
-	if type(db.readAt) ~= "table" then
-		db.readAt = {}
-	end
-	return db.readAt
+	return SpokenPlaces:HistorySet("readAt")
 end
 
 function SpokenPlaces:ReadRecently(mapID, areaKey)
@@ -345,8 +337,9 @@ function SpokenPlaces:MarkHeard(mapID, areaKey)
 	if not mapID then
 		return
 	end
-	HeardSet()[HeardKey(mapID, areaKey)] = true
-	ReadAtSet()[HeardKey(mapID, areaKey)] = Now()
+	local key = HeardKey(mapID, areaKey)
+	self:RememberHistory("heard", key, true)
+	self:RememberHistory("readAt", key, Now())
 end
 
 function SpokenPlaces:HeardCount()
@@ -548,12 +541,20 @@ local function SeedLoginArea(attempt)
 
 	-- The subzone is the more specific answer, the same preference /spp play and the
 	-- lore window both apply.
+	if SpokenPlaces:SharesHistory() then
+		local story = SpokenPlaces:Get("autoplaySubzones") and entry
+		if story and not Due(storyMapID, key) or not story and not Due(mapID, nil) then
+			db.greeted = true
+			return true
+		end
+	end
 	if SpokenPlaces:Get("autoplaySubzones") and entry and Enqueue(storyMapID, key) then
 		db.greeted = true
 		return true
 	end
 
-	if SpokenPlaces:GetLore(mapID) and Enqueue(mapID, nil) then
+	if (not SpokenPlaces:SharesHistory() or Due(mapID, nil)) and
+		SpokenPlaces:GetLore(mapID) and Enqueue(mapID, nil) then
 		db.greeted = true
 		return true
 	end
@@ -570,10 +571,7 @@ end
 -- areas it has been narrated. Lets both be tested without rolling another
 -- character, and lets a player hear the lot again.
 function SpokenPlaces:ForgetAutoplayHistory()
-	local db = CharDB()
-	db.greeted = nil
-	db.heard = nil
-	db.readAt = nil
+	self:ForgetHeardHistory()
 end
 
 --------------------------------------------------------------------------------
@@ -585,7 +583,7 @@ end
 -- Every Visit reads on the zone change that comes with a discovery, so a place it read moments ago
 -- is not read twice.
 local function HeardAlready(mapID, key, areaName)
-	if not ReadsKnownPlaces() or Due(mapID, key) then
+	if (not ReadsKnownPlaces() and not SpokenPlaces:SharesHistory()) or Due(mapID, key) then
 		return false
 	end
 	if SpokenPlaces:Get("debug") then
@@ -715,6 +713,8 @@ local function TextFrom(...)
 end
 
 function SpokenPlaces:SetupAutoplay()
+	-- PLAYER_ENTERING_WORLD has already fired by the time modules finish loading.
+	self:MergeHistory()
 	local frame = CreateFrame("Frame")
 	for _, event in ipairs(DISCOVERY_EVENTS) do
 		frame:RegisterEvent(event)

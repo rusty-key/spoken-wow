@@ -1,32 +1,15 @@
+"use client";
+
 import type { ReactNode } from "react";
 
 import { Tabs } from "@/components/backstage/Tabs";
+import { useUiText } from "@/components/UiTextProvider";
 import { langName, localeHref, type Lang } from "@/lib/lang";
+import { fill } from "@/lib/site-text/format";
 
 export type AudioSection = "quests" | "places" | "bosses" | "readables";
 
-const SECTIONS: { value: AudioSection; label: string; lede: string }[] = [
-  {
-    value: "quests",
-    label: "Quests & gossip",
-    lede: "Every quest and gossip line and what NPCs say after a quest. Search, listen, and fix a line.",
-  },
-  {
-    value: "places",
-    label: "Places",
-    lede: "The lore read when you enter a zone or subzone. Written for Spoken, so it can be corrected here.",
-  },
-  {
-    value: "bosses",
-    label: "Bosses",
-    lede: "The story told when a dungeon or raid boss falls. Written for Spoken, so it can be corrected here.",
-  },
-  {
-    value: "readables",
-    label: "Readables",
-    lede: "Every book, letter and plaque, page by page. Blizzard's words, corrected only where a narrator would stumble.",
-  },
-];
+const SECTIONS: AudioSection[] = ["quests", "places", "bosses", "readables"];
 
 /**
  * The four audio pages as one place: a title naming the language, the section tabs, and the
@@ -44,24 +27,24 @@ export default function AudioPage({
   team?: string;
   children: ReactNode;
 }) {
-  const current = SECTIONS.find((each) => each.value === section)!;
+  const t = useUiText().pages;
   const suffix = team ? `?team=${encodeURIComponent(team)}` : "";
   return (
     <main className="bs pb-36">
       <div className="bs-wide">
         <div className="bs-head">
           <div className="min-w-0">
-            <h1 className="bs-title">{langName(lang)} audio</h1>
-            <p className="bs-lede">{current.lede}</p>
+            <h1 className="bs-title">{fill(t.title, { lang: langName(lang) })}</h1>
+            <p className="bs-lede">{t.ledes[section]}</p>
           </div>
         </div>
         <Tabs
-          label="Sections"
+          label={t.sections}
           active={section}
           tabs={SECTIONS.map((each) => ({
-            value: each.value,
-            label: each.label,
-            href: localeHref(lang, `/${each.value}${suffix}`),
+            value: each,
+            label: t.tabs[each],
+            href: localeHref(lang, `/${each}${suffix}`),
           }))}
         />
       </div>

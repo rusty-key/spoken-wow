@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,6 +18,7 @@ import { OverrideError, rewriteHasInvalidChars, validateRewrite } from "@/lib/qu
 import { dropOverride, saveOverride } from "@/lib/quests/override-client";
 import { INVALID_CHARS } from "@/lib/text-gate";
 import type { ResultLine } from "@/lib/search";
+import { fill } from "@/lib/site-text/format";
 import { isModelVoice } from "@/lib/voices/voices";
 
 type Props = {
@@ -40,6 +42,8 @@ type Props = {
  * this can always be reverted to.
  */
 export default function OverrideDialog({ line, onSaved, onRewritten, onCancel }: Props) {
+  const words = useUiText().catalogue.dialogs;
+  const t = words.override;
   const lang = useLang();
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -102,17 +106,13 @@ export default function OverrideDialog({ line, onSaved, onRewritten, onCancel }:
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>What should this line say?</DialogTitle>
-          <DialogDescription>
-            This changes what is spoken, nothing else. The file keeps its name and the addon
-            still finds it, because both come from the original text — so existing audio is
-            not orphaned, only out of date until it is regenerated.
-          </DialogDescription>
+          <DialogTitle>{t.title}</DialogTitle>
+          <DialogDescription>{t.body}</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-2">
           <label htmlFor="override-text" className="text-muted-foreground text-xs">
-            Spoken text · {line.npcName} · {line.audioPath}
+            {fill(t.spokenText, { npc: line.npcName, file: line.audioPath })}
           </label>
           <textarea
             id="override-text"
@@ -126,7 +126,7 @@ export default function OverrideDialog({ line, onSaved, onRewritten, onCancel }:
 
         {line.override && (
           <div className="grid gap-1">
-            <span className="text-muted-foreground text-xs">The corpus says</span>
+            <span className="text-muted-foreground text-xs">{t.corpusSays}</span>
             <p className="text-muted-foreground bg-muted/40 max-h-24 overflow-y-auto rounded-md px-3 py-2 text-xs whitespace-pre-wrap">
               {line.text}
             </p>
@@ -135,16 +135,13 @@ export default function OverrideDialog({ line, onSaved, onRewritten, onCancel }:
 
         {rescues && (
           <p className="text-xs text-emerald-400">
-            This line is not voiced today because its text holds one of {INVALID_CHARS}. Saving
-            this makes it generatable.
+            {fill(t.rescued, { chars: INVALID_CHARS })}
           </p>
         )}
 
         {gendered && (
           <p className="text-muted-foreground text-xs">
-            {line.playerGender
-              ? "This branches on the reader's gender: each side of this line gets its own words."
-              : "This branches on the reader's gender: saving splits the line into a male and a female reader's line, each with its own file, and the speakers come along."}
+            {line.playerGender ? t.genderedChild : t.genderedParent}
           </p>
         )}
 
@@ -159,16 +156,16 @@ export default function OverrideDialog({ line, onSaved, onRewritten, onCancel }:
             variant="ghost"
             disabled={busy || !line.override}
             onClick={() => void send("DELETE")}
-            title={line.override ? "Go back to what the corpus says" : "There is nothing to revert"}
+            title={line.override ? t.revertTitle : t.revertNothing}
           >
-            Revert to original
+            {t.revert}
           </Button>
           <span className="flex gap-2">
             <Button variant="ghost" onClick={onCancel} disabled={busy}>
-              Cancel
+              {words.cancel}
             </Button>
             <Button disabled={busy || !dirty} onClick={() => void send("PUT")}>
-              {busy ? "Saving…" : "Save"}
+              {busy ? words.saving : words.save}
             </Button>
           </span>
         </DialogFooter>

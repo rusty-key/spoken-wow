@@ -79,6 +79,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/background_sound_test.lua
 	@$(LUA) tests/lua/parts_test.lua
 	@$(LUA) tests/lua/settings_ux_test.lua
+	@$(LUA) tests/lua/profile_transfer_test.lua
 	@$(LUA) tests/lua/settings_controller_test.lua
 	@$(LUA) tests/lua/settings_art_test.lua
 	@$(LUA) tests/lua/compendium_gamepad_test.lua
@@ -136,6 +137,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/places_area_at_test.lua
 	@$(LUA) tests/lua/places_openmap_test.lua
 	@$(LUA) tests/lua/places_discovery_test.lua
+	@$(LUA) tests/lua/places_shared_history_test.lua
 	@$(LUA) tests/lua/subtitle_pages_test.lua
 	@$(LUA) tests/lua/defaults_test.lua
 	@$(LUA) tests/lua/scroll_mode_upgrade_test.lua
@@ -143,6 +145,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/names_test.lua
 	@$(LUA) tests/lua/packs_test.lua
 	@$(LUA) tests/lua/quests_options_test.lua
+	@$(LUA) tests/lua/quests_account_history_test.lua
 	@$(LUA) tests/lua/quests_dialogueui_test.lua
 	@$(LUA) tests/lua/quests_immersion_test.lua
 	@$(LUA) tests/lua/readables_source_test.lua
@@ -177,6 +180,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/places_forever_places_test.lua
 	@$(LUA) tests/lua/minimap_compartment_test.lua
 	@$(LUA) tests/lua/bronze_rings_test.lua
+	@$(LUA) tests/lua/round_button_press_test.lua
 	@$(LUA) tests/lua/module_globals_test.lua
 
 # Rewrite the envelope fixtures the TypeScript reader is tested against. A diff here is the

@@ -195,6 +195,7 @@ local function Widget(kind, name)
     function w:SetOrientation(v) self.orientation = v end
     function w:GetOrientation() return self.orientation end
     function w:SetSize(a, b) self.width, self.height = a, b end
+    function w:SetRoundLayoutToNearestPixel(v) self.roundLayoutToNearestPixel = v end
     function w:GetWidth() return self.width end
     function w:EnableMouse(v) self.mouseEnabled = v and true or false end
     function w:IsMouseEnabled() return self.mouseEnabled and true or false end
@@ -307,6 +308,11 @@ local function Widget(kind, name)
     function w:SetDesaturated(v) self.desaturated = v and true or false end
     function w:IsDesaturated() return self.desaturated or false end
     function w:SetVertexColor(r, g, b, a) self.vertexColor = { r, g, b, a } end
+    -- White until tinted, as the client reports a texture nobody has coloured.
+    function w:GetVertexColor()
+        local c = self.vertexColor or {}
+        return c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1
+    end
     function w:CreateTexture(n, layer) local t = Widget("Texture", n); t.parent = self; t.layer = layer; return t end
     -- A mask, as the client hands one back: the small window rounds a portrait with it.
     function w:CreateMaskTexture(n) local t = Widget("MaskTexture", n); t.parent = self; return t end
@@ -1368,7 +1374,7 @@ libs["AceDB-3.0"] = {
         sv.char[charKey] = Merge(defaults.char, sv.char[charKey])
         sv.global = sv.global or {}
         local db = { profile = sv.profiles[startName], char = sv.char[charKey], global = sv.global, sv = sv,
-            keys = { char = charKey } }
+            keys = { char = charKey }, defaults = defaults }
         db.RegisterCallback = function() end
         function db:Shutdown()
             StripDefaults(self.profile, defaults.profile)
@@ -1468,7 +1474,7 @@ end
 --- above, from its tree.
 function M.LoadPlaces(addonDirectory, SpokenPlaces)
     if not _G.SpokenCompendium then dofile(addonDirectory .. "../Spoken/UI/Compendium.lua") end
-    for _, file in ipairs({ "Audio", "Autoplay" }) do
+    for _, file in ipairs({ "History", "Audio", "Autoplay" }) do
         local chunk = assert(loadfile(addonDirectory .. file .. ".lua"))
         chunk("Spoken_Places", SpokenPlaces)
     end

@@ -12,7 +12,7 @@
 ## Notes-zhTW: 在世界地圖上透過 Spoken 朗讀地區和區域傳說。
 ## Version: 3.12.1
 ## Author: rusty
-## SavedVariables: SpokenPlacesSettings, SpokenZonesSettings
+## SavedVariables: SpokenPlacesSettings, SpokenZonesSettings, SpokenPlacesAccountHistory
 ## SavedVariablesPerCharacter: SpokenPlacesCharacter, SpokenZonesCharacter
 ## LoadSavedVariablesFirst: true
 # ^ load-bearing beyond convenience: the generated data files under Data/ ask
@@ -49,6 +49,7 @@ Locale/zhCN.lua
 Locale/zhTW.lua
 Locale/Interface.lua
 Core.lua
+History.lua
 Audio.lua
 Contribute.lua
 Autoplay.lua

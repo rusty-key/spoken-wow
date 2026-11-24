@@ -39,6 +39,8 @@ export type PlayerForms = {
   race: string;
   nameGenitive?: string;
   classPlural?: string;
+  /** German's race word after a definite article ("der Reisende"); with an `n`, every other case. */
+  raceWeak?: string;
   cases?: DeclinedForms;
 };
 /** `quantity` is what a Craftsman's Writ's `$2oa` says, for either reader. */

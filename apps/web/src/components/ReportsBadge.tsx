@@ -14,6 +14,7 @@
  * and the bodies are wanted for the one row somebody clicks.
  */
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
 import { withLang } from "@/lib/lang";
 import { MessageSquareIcon } from "lucide-react";
 import { useState } from "react";
@@ -22,14 +23,11 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { resolveReport } from "@/lib/reports/client";
 import { CATEGORY_COLUMN, STATUS_LABELS, type Report, type Status } from "@/lib/reports/reports";
+import { fill } from "@/lib/site-text/format";
 import type { Source } from "@/lib/sections";
 import { cn } from "@/lib/utils";
 
 const CHIP = "flex items-center gap-0.5 rounded bg-amber-500/15 px-1 text-xs text-amber-400";
-
-function plural(count: number): string {
-  return `${count} open report${count === 1 ? "" : "s"}`;
-}
 
 function when(at: string): string {
   return new Date(at).toLocaleString(undefined, {
@@ -59,6 +57,9 @@ export default function ReportsBadge({ source, lineId, count, canTriage }: Props
 
   // What has been fetched outranks what the search said: resolving from here has to take
   // the chip down without re-running the search the row came from.
+  const t = useUiText().catalogue.reports;
+  const words = useUiText().catalogue.dialogs;
+  const plural = (n: number) => fill(n === 1 ? t.one : t.many, { n });
   const openCount = reports ? reports.filter((report) => report.status === "open").length : count;
 
   // Kept on screen while the popover is up even at zero, so closing the last report does not
@@ -78,7 +79,7 @@ export default function ReportsBadge({ source, lineId, count, canTriage }: Props
     setError(null);
     const params = new URLSearchParams({ source, lineId });
     const response = await fetch(withLang(lang, `/api/reports/line?${params}`)).catch(() => null);
-    if (!response?.ok) return setError("could not load the reports");
+    if (!response?.ok) return setError(t.loadFailed);
     const body = (await response.json()) as { reports: Report[] };
     setReports(body.reports);
   }
@@ -89,7 +90,7 @@ export default function ReportsBadge({ source, lineId, count, canTriage }: Props
     const report = await resolveReport(id, status);
     setBusy(null);
 
-    if (!report) return setError("could not change that report");
+    if (!report) return setError(t.resolveFailed);
     setReports((current) => current?.map((known) => (known.id === report.id ? report : known)));
   }
 
@@ -106,7 +107,7 @@ export default function ReportsBadge({ source, lineId, count, canTriage }: Props
         <button
           type="button"
           title={plural(openCount)}
-          aria-label={`${plural(openCount)} - read them`}
+          aria-label={fill(t.read, { what: plural(openCount) })}
           className={cn(CHIP, "cursor-pointer hover:bg-amber-500/25", openCount === 0 && "opacity-50")}
         >
           <MessageSquareIcon className="size-3" />
@@ -120,9 +121,9 @@ export default function ReportsBadge({ source, lineId, count, canTriage }: Props
       >
         <div className="max-h-96 overflow-y-auto">
           {reports === undefined && !error ? (
-            <p className="text-muted-foreground px-3 py-3 text-xs">Loading…</p>
+            <p className="text-muted-foreground px-3 py-3 text-xs">{words.loading}</p>
           ) : reports?.length === 0 ? (
-            <p className="text-muted-foreground px-3 py-3 text-xs">No reports on this line.</p>
+            <p className="text-muted-foreground px-3 py-3 text-xs">{t.none}</p>
           ) : (
             reports?.map((report) => (
               <div
@@ -156,7 +157,7 @@ export default function ReportsBadge({ source, lineId, count, canTriage }: Props
                         disabled={busy === report.id}
                         onClick={() => void resolve(report.id, "fixed")}
                       >
-                        Fixed
+                        {t.fixed}
                       </Button>
                       <Button
                         size="sm"
@@ -164,7 +165,7 @@ export default function ReportsBadge({ source, lineId, count, canTriage }: Props
                         disabled={busy === report.id}
                         onClick={() => void resolve(report.id, "not_an_issue")}
                       >
-                        Not a problem
+                        {t.notAProblem}
                       </Button>
                       <Button
                         size="sm"
@@ -172,7 +173,7 @@ export default function ReportsBadge({ source, lineId, count, canTriage }: Props
                         disabled={busy === report.id}
                         onClick={() => void resolve(report.id, "minor")}
                       >
-                        Minor
+                        {t.minor}
                       </Button>
                     </>
                   ) : (

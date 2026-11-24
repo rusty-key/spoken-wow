@@ -166,45 +166,49 @@ Expect("Show Progress off: the sample's progress line goes", Subtitle.progressSh
 cfg.SubtitleProgress = saved.SubtitleProgress
 Subtitle:Update()
 
--- Ctrl and the wheel over the subtitles: Subtitle Size, and with Shift Text Size. Without Ctrl, or
--- locked, it does not take the wheel, which zooms the camera.
-local ctrl, shift, wheelOn = false, false, nil
+-- Sizing belongs to the controls; wheel input over the words still reaches the game.
+local ctrl, shift, wheelOn, overControls = false, false, nil, false
 local hadCtrl, hadShift = _G.IsControlKeyDown, _G.IsShiftKeyDown
 _G.IsControlKeyDown = function() return ctrl end
 _G.IsShiftKeyDown = function() return shift end
 Subtitle.frame.IsMouseOver = function() return true end
-Subtitle.frame.EnableMouseWheel = function(_, on) wheelOn = on end
+Subtitle.controls.IsMouseOver = function() return overControls end
+Subtitle.controls.EnableMouseWheel = function(_, on) wheelOn = on end
+Subtitle:FadeControls(1)
 Subtitle:TakeWheel()
-Expect("the subtitles leave the wheel to the camera without Ctrl", wheelOn, nil)
+Expect("the controls leave the wheel to the camera without Ctrl", wheelOn, nil)
 ctrl = true
 Subtitle:TakeWheel()
-Expect("...and take it while Ctrl is held over them", wheelOn, true)
+Expect("Ctrl over the text still leaves the wheel to the camera", wheelOn, nil)
+overControls = true
+Subtitle:TakeWheel()
+Expect("the controls take the wheel while Ctrl is held over them", wheelOn, true)
 local before = cfg.SubtitleScale
-Subtitle.frame:GetScript("OnMouseWheel")(Subtitle.frame, 1)
+Subtitle.controls:GetScript("OnMouseWheel")(Subtitle.controls, 1)
 Expect("Ctrl and the wheel grow Subtitle Size", math.abs(cfg.SubtitleScale - before - 0.05) < 1e-9, true)
 Expect("...drawing them larger", math.abs(Subtitle.frame.spokenBaseScale - cfg.SubtitleScale) < 1e-9, true)
 Expect("...and saying so", _G.GameTooltip.text,
     _G.SpokenEnv.L.OPT_SUBTITLE_SIZE .. ": " .. math.floor(cfg.SubtitleScale * 100 + 0.5) .. "%")
 cfg.SubtitleScale = 1.6
-Subtitle.frame:GetScript("OnMouseWheel")(Subtitle.frame, 1)
+Subtitle.controls:GetScript("OnMouseWheel")(Subtitle.controls, 1)
 Expect("...no further than the slider goes", cfg.SubtitleScale, 1.6)
 cfg.SubtitleScale = before
 shift = true
-Subtitle.frame:GetScript("OnMouseWheel")(Subtitle.frame, 1)
+Subtitle.controls:GetScript("OnMouseWheel")(Subtitle.controls, 1)
 Expect("Ctrl, Shift and the wheel grow Text Size", cfg.FontSize, saved.FontSize + 1)
 cfg.FontSize = saved.FontSize
 shift = false
 _G.SpokenEnv.Addon.db.profile.Frame.LockFrame = true
 Subtitle:TakeWheel()
-Expect("locked, they leave the wheel to the camera", wheelOn, false)
-Subtitle.frame:GetScript("OnMouseWheel")(Subtitle.frame, 1)
+Expect("locked, the controls leave the wheel to the camera", wheelOn, false)
+Subtitle.controls:GetScript("OnMouseWheel")(Subtitle.controls, 1)
 Expect("...and a turn that reaches them changes nothing", cfg.SubtitleScale, before)
 _G.SpokenEnv.Addon.db.profile.Frame.LockFrame = false
 Subtitle:TakeWheel()
 Expect("...unlocked, they take it again", wheelOn, true)
 Subtitle.frame:Hide()
 Subtitle:TakeWheel()
-Expect("...and give it back once they hide", wheelOn, false)
+Expect("...and give it back once the subtitle hides", wheelOn, false)
 Subtitle.frame:Show()
 ctrl = false
 _G.IsControlKeyDown, _G.IsShiftKeyDown = hadCtrl, hadShift

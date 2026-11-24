@@ -445,7 +445,7 @@ function Addon:SetPlayerHost(host)
     -- The subtitles go over the host too, and pass its clicks through.
     if Subtitle.frame then
         self:ApplyHost(Subtitle.frame)
-        Subtitle:Mouse()
+        Subtitle:UpdateControls()
     end
 end
 
@@ -525,10 +525,10 @@ local function RegisterSlashCommand()
     -- page. The words before the colon are the command's own.
     local function Help()
         local lines = {
-            { "/sp replay", L.BIND_PLAYPAUSE },
-            { "/sp skip", L.BIND_SKIP },
-            { "/sp previous", L.BIND_PREVIOUS },
-            { "/sp stopall", L.BIND_STOP },
+            { "/sp replay", L.BIND_STOP_REPLAY },
+            { "/sp skip", L.BIND_SKIP_FORWARD },
+            { "/sp previous", L.BIND_SKIP_BACKWARD },
+            { "/sp stopall", L.BIND_EJECT },
             { "/sp mute on | off", L.BIND_MUTE },
             { "/sp style subtitles | small | large | dialogueui | voice", L.OPT_PLAYER_STYLE },
             { "/sp narrator on | off", L.OPT_SHOW_NARRATOR },
