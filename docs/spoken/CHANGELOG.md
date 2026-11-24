@@ -18,6 +18,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   already have. *([rusty-key](https://github.com/rusty-key))*
 - **A quest giver's greeting offers Contribute when Spoken has no voice for it,** and Collect
   Missing Lines keeps it. *([svengabr](https://github.com/svengabr))*
+- **Subtitles no longer block clicks or the mouse wheel.** Move them with the arrow button that
+  appears under them on hover. *([Praxeomatic](https://github.com/Praxeomatic))*
 
 ## 3.12.1 — 2026-11-22
 

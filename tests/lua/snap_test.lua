@@ -10,7 +10,14 @@ local SPOKEN = here .. "/../../addons/Spoken/"
 stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames()
 stub.settingsCategories = {}; stub.ldbObjects = {}; stub.dbIcons = {}
 _G.UISpecialFrames = _G.UISpecialFrames or {}
+local created, createFrame = {}, CreateFrame
+_G.CreateFrame = function(...)
+    local frame = createFrame(...)
+    created[#created + 1] = frame
+    return frame
+end
 local env = stub.LoadSpoken(SPOKEN)
+_G.CreateFrame = createFrame
 local Snap = env.Snap
 UIParent:SetSize(1000, 800)
 local W, SH = UIParent:GetWidth(), UIParent:GetHeight()
@@ -44,9 +51,16 @@ local cursor = { 0, 0 }
 _G.GetCursorPosition = function() return cursor[1], cursor[2] end
 local shift = false
 _G.IsShiftKeyDown = function() return shift end
+local buttons = { LeftButton = true }
+_G.IsMouseButtonDown = function(button) return buttons[button] or false end
 frame:Show()
 
 Snap.Start(frame, {})
+local driver
+for _, candidate in ipairs(created) do
+    if candidate:GetScript("OnUpdate") == Snap.Move then driver = candidate; break end
+end
+assert(driver, "the active drag has an update driver")
 Expect("a drag is under way", Snap.Active(), frame)
 cursor[1], cursor[2] = 50, -30
 Snap.Move()
@@ -67,6 +81,25 @@ Snap.Start(frame, { locked = function() return locked end })
 locked = true
 Snap.Move()
 Expect("a window locked mid-drag is let go", Snap.Active(), nil)
+
+local moves = 0
+local function Place() moves = moves + 1 end
+Snap.Start(frame, { place = Place })
+driver:GetScript("OnUpdate")()
+Expect("a held drag continues moving", moves, 1)
+-- The release can be missed even while another button remains held.
+buttons.LeftButton, buttons.RightButton = false, true
+driver:GetScript("OnUpdate")()
+Expect("release stops movement before another update", moves, 1)
+Expect("release clears the drag and its update handler",
+    Snap.Active() == nil and driver:GetScript("OnUpdate") == nil, true)
+
+Snap.Start(frame, { button = "RightButton", place = Place })
+driver:GetScript("OnUpdate")()
+buttons.LeftButton, buttons.RightButton = true, false
+driver:GetScript("OnUpdate")()
+Expect("release is tied to the button that started dragging",
+    moves == 2 and Snap.Active() == nil, true)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll snap tests passed")

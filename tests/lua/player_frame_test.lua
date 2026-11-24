@@ -1211,8 +1211,9 @@ do
         quests:Enqueue(H.Clip({ present = { transcript = "A single narrated quest line." } }))
         stub.Advance(0.1)
         if style == "subtitle" then
-            Expect("subtitle puts Stop after Previous Line", view.pause.anchor.relativeTo, view.previous)
-            Expect("subtitle puts Next Line after Stop", view.skip.anchor.relativeTo, view.pause)
+            Expect("subtitle puts Stop after Previous Line", view.pause.anchor.x > view.previous.anchor.x, true)
+            Expect("subtitle puts Next Line after Stop", view.skip.anchor.x > view.pause.anchor.x, true)
+            Expect("subtitle puts Stop All after Next Line", view.eject.anchor.x > view.skip.anchor.x, true)
         end
         env.Actions.SetPausable(controls)
         Expect(style .. " disables Next Line without a next line", view.skip:IsEnabled(), false)
