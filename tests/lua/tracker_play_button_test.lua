@@ -24,18 +24,22 @@ local VO = stub.LoadQuestsOverlay(here .. "/../../addons/Spoken_Quests/", here .
 local Expect, Failures = H.Expecter(print)
 local CreateFrame = _G.CreateFrame
 
-local function PlayOf(block, module)
+-- The Play button `draw` makes on `block`.
+local function PlayMade(block, draw)
     local made = {}
     _G.CreateFrame = function(...)
         local frame = CreateFrame(...)
         made[#made + 1] = frame
         return frame
     end
-    (module or QuestObjectiveTracker):AddBlock(block)
+    draw()
     _G.CreateFrame = CreateFrame
     for _, frame in ipairs(made) do
         if frame.GetParent and frame:GetParent() == block then return frame end
     end
+end
+local function PlayOf(block, module)
+    return PlayMade(block, function() (module or QuestObjectiveTracker):AddBlock(block) end)
 end
 
 VO.Addon:OnInitialize()
@@ -123,19 +127,8 @@ Expect("Kaliel's Tracker's quests get Play", PlayOf(ktBlock, KT_QuestObjectiveTr
 Expect("...and its campaign quests", PlayOf(Block(), KT_CampaignQuestObjectiveTracker) ~= nil, true)
 
 local ktDrawn = Block()
-local made = {}
-_G.CreateFrame = function(...)
-    local frame = CreateFrame(...)
-    made[#made + 1] = frame
-    return frame
-end
 KT_QuestObjectiveTracker.usedBlocks = { [KT_QuestObjectiveTracker.blockTemplate] = { ktDrawn } }
-VO.QuestOverlayUI.UpdateTrackerButtons()
-_G.CreateFrame = CreateFrame
-local ktDrawnPlay
-for _, frame in ipairs(made) do
-    if frame.GetParent and frame:GetParent() == ktDrawn then ktDrawnPlay = frame end
-end
+local ktDrawnPlay = PlayMade(ktDrawn, VO.QuestOverlayUI.UpdateTrackerButtons)
 Expect("a sweep gives Play to a block Kaliel's Tracker drew before Spoken loaded", ktDrawnPlay ~= nil, true)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

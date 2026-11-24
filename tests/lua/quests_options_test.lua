@@ -342,7 +342,6 @@ end
 
 ---------------------------------------------------------------- Kaliel's Tracker
 do
-    -- Kaliel's Tracker brings the tracker modules under its own names.
     _G.KT_QuestObjectiveTracker = {}
     local _, Panel = Boot()
     Panel.panel.layout:Refresh()
