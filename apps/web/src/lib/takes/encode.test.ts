@@ -123,7 +123,7 @@ describe.skipIf(!tools)("encodeForPack", () => {
       await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
       expect(await encoded()).toBe(0);
 
-      await encodeMissingForPack("quests", "enUS", await english());
+      expect(await encodeMissingForPack("quests", "enUS", await english())).toBeGreaterThanOrEqual(1);
       expect(await encoded()).toBe(1);
     } finally {
       restore();
@@ -188,7 +188,7 @@ describe.skipIf(!tools)("encodeForPack", () => {
       await commitTake("quests", file, master, { lineId: "g:encode-missing" });
       await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
 
-      await encodeMissingForPack("quests", "enUS", await english(), 0);
+      expect(await encodeMissingForPack("quests", "enUS", await english(), 0)).toBe(0);
       expect((await db().query(`select 1 from "take_encoding" where "sha256" = $1`, [sha])).rowCount).toBe(0);
     } finally {
       restore();

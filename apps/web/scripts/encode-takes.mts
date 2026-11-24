@@ -14,7 +14,7 @@
 import { ALL_TEAMS, closeDb, queryIn, type TeamId } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { SOURCES, type Source } from "@/lib/sections";
-import { encodeMissingForPack } from "@/lib/takes/encode";
+import { encodeMissingForPack, PROFILE } from "@/lib/takes/encode";
 
 if (!process.env.DATABASE_URL) {
   console.error("DATABASE_URL is unset -- say which database to write to.");
@@ -38,36 +38,34 @@ async function missing(source: Source): Promise<{ lang: Lang; teamId: TeamId; co
     `select t."lang", t."teamId", count(distinct t."sha256")::int as "count"
        from "take" t
        left join "take_encoding" e
-         on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = 'ogg-q0-44k'
+         on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = $2
       where t."source" = $1 and t."isCurrent" and t."sha256" is not null
         and coalesce(e."durationSec", 0) <= 0
       group by t."lang", t."teamId"
       order by t."lang"`,
-    [source],
+    [source, PROFILE],
   );
 }
 
 // A day: unbounded in practice, and under setTimeout's limit, past which Node fires it at once.
 const BUDGET_MS = 24 * 60 * 60_000;
 
-let stuck = 0;
+let encoded = 0;
+let found = 0;
 for (const source of sources) {
   for (const { lang, teamId, count } of await missing(source)) {
     console.log(`${source} ${lang} (team ${teamId}): ${count} takes without an Ogg`);
+    found += count;
     if (dryRun) continue;
     // encodeMissingForPack takes 500 at a time; stop once a round encodes nothing more.
-    for (let left = count; left > 0; ) {
-      await encodeMissingForPack(source, lang, teamId, BUDGET_MS);
-      const now = (await missing(source)).find((row) => row.lang === lang && row.teamId === teamId)?.count ?? 0;
-      console.log(`  ${left - now} encoded, ${now} left`);
-      if (now >= left) {
-        stuck += now;
-        break;
-      }
-      left = now;
+    for (let done; (done = await encodeMissingForPack(source, lang, teamId, BUDGET_MS)) > 0; ) {
+      encoded += done;
+      console.log(`  ${done} encoded`);
     }
   }
 }
 
-if (stuck) console.log(`${stuck} takes could not be encoded: their errors are in the activity log`);
+if (!dryRun && encoded < found) {
+  console.log(`${found - encoded} takes could not be encoded: their errors are in the activity log`);
+}
 await closeDb();
