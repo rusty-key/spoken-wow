@@ -373,7 +373,7 @@ function speak(text, lang, playerGender, byToken) {
 
 // French's `|2`, written before a word ("la légion |2 $n", "|2orc"): the client prints "de " before
 // a consonant and "d'" before a vowel, so it can only be chosen once the token is a word.
-const DE = /(?<!\|)\|2\s*(?=(\p{L}))/gu;
+const DE = new RegExp(String.raw`${ESCAPE_PIPE}2\s*(?=(\p{L}))`, "gu");
 const VOWEL = /^[aeiouyàâäéèêëîïôöùûüÿœæ]/iu;
 
 function speakDe(text) {
