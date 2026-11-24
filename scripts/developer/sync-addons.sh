@@ -28,8 +28,10 @@
 # --watch adds one Mutagen session per addon, one-way from the server, so a saved file reaches
 # the client in a second or two and /reload runs it. One per addon, not one for AddOns: a
 # replica of a folder deletes everything else in it. A new --watch ends the previous sessions,
-# so switching worktree is one command. The sessions outlive this script and survive a reboot
-# of either machine; --stop ends them and leaves the copies in place.
+# so switching worktree is one command. --watch then stays in the window, listing each file as
+# it lands and any problem a session reports (the worktree deleted, an error). Ctrl-C or closing
+# the window ends the sessions and leaves the copies in place, so a watch never outlives the
+# window that shows it. --stop ends sessions left by a window that was killed.
 set -euo pipefail
 
 HOST=${SPOKEN_DEV_HOST:-dev}
@@ -90,6 +92,52 @@ source_of() {
 stop_watch() {
 	command -v mutagen >/dev/null || return 0
 	mutagen sync terminate --label-selector "$LABEL" </dev/null >/dev/null 2>&1 || true
+}
+
+# One line per session in trouble. A worktree deleted on the server shows as its root becoming
+# non-existent, which Mutagen holds as a conflict rather than empty the client's copy.
+problems() {
+	{ mutagen sync list -l --label-selector "$LABEL" </dev/null 2>&1 || true; } | awk '
+		/^Name: / { name = $2 }
+		/^Last error: / { sub(/^Last error: /, ""); print name ": " $0 }
+		/\(alpha\) <root> \(Directory -> <non-existent>\)/ { print name ": the worktree is gone from the server"; gone[name] = 1 }
+		/^Conflicts:/ { conflicts[name] = 1 }
+		END { for (n in conflicts) if (!(n in gone)) print n ": conflicts, see mutagen sync list -l " n }'
+}
+
+# Lists the files Mutagen writes into the client, as it writes them, until Ctrl-C. Mutagen
+# stages a file and moves it into place, so its change time is when it landed.
+follow() {
+	local addons_dir=$1
+	shift
+	local stamp next name file now seen="" found tick=0
+	stamp=$(mktemp -t spoken-sync)
+	next="$stamp.next"
+	trap 'stop_watch; rm -f "$stamp" "$next"; echo; echo "Stopped watching. The copies stay in the client."; exit 0' INT TERM HUP
+	echo "Watching. Saved files are listed as they land; /reload to run them. Ctrl-C stops."
+	while :; do
+		sleep 1
+		touch "$next"
+		now=$(date +%H:%M:%S)
+		for name in "$@"; do
+			# Bounded by $next too, so a file landing during the scan is listed once, next round.
+			while IFS= read -r file; do
+				echo "$now $name/${file#"$addons_dir/$name/"}"
+			done < <(find "$addons_dir/$name" -type f -cnewer "$stamp" ! -cnewer "$next" ! -name "$MARK" 2>/dev/null)
+		done
+		mv "$next" "$stamp"
+		tick=$((tick + 1))
+		[ $((tick % 5)) -eq 0 ] || continue
+		found=$(problems)
+		if [ "$found" != "$seen" ]; then
+			if [ -n "$found" ]; then
+				sed "s/^/$now /" <<<"$found" >&2
+			else
+				echo "$now The sessions are healthy again."
+			fi
+			seen=$found
+		fi
+	done
 }
 
 main() {
@@ -174,8 +222,8 @@ main() {
 				--mode one-way-replica --ignore-vcs --ignore "/$MARK" \
 				"$(source_of "$worktree/addons/$name")" "$addons_dir/$name" </dev/null >/dev/null
 		done
-		echo "Watching: saved files reach the client by themselves. /reload to run them."
-		echo "Status: mutagen sync list --label-selector $LABEL"
+		echo "/reload in game, or restart the client if it has not seen an addon before."
+		follow "$addons_dir" "${names[@]}"
 	fi
 	echo "/reload in game, or restart the client if it has not seen an addon before."
 }
