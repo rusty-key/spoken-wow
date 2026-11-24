@@ -9,8 +9,8 @@
  * CLIENT-SAFE: ContributionTable renders these.
  */
 import { BASE_LANG, clientLang } from "@/lib/lang";
-import { speakQuestTokens } from "@/lib/player-words";
-import { DECLENSION, withoutDirections } from "@/lib/text-gate";
+import { CLIENT_ESCAPE, DECLENSION, speakQuestTokens } from "@/lib/player-words";
+import { withoutDirections } from "@/lib/text-gate";
 
 import { writtenFromTemplate } from "./tokens";
 
@@ -18,6 +18,8 @@ import { writtenFromTemplate } from "./tokens";
 // inside a declension escape, which gets its own hint.
 const LEFTOVER = new RegExp(String.raw`(?<!${DECLENSION.source})\$\S{0,30}`, "g");
 const DECLINED = new RegExp(String.raw`${DECLENSION.source}[^)]{0,30}\)?`, "g");
+// Any other client escape, up to the next space: `|1이여;여;`, `|2`, `|n`.
+const ESCAPE = new RegExp(String.raw`(?!${DECLENSION.source})${CLIENT_ESCAPE.source}\S{0,30}`, "g");
 // Blizzard's English writes "Hmm. . .it says", German "Hm ... vielleicht": an ellipsis, not a gap.
 const SPACED_ELLIPSIS = /\.(?:[ \u00a0]?\.){2,}/g;
 // Not "!", "?" or ":": French spaces before those.
@@ -43,6 +45,7 @@ export function textHints(text: string, locale: string): string[] {
         : `client-filled ${escape} — won't be voiced; put $c, $n or $r back inside`,
     );
   }
+  for (const escape of judged.match(ESCAPE) ?? []) hints.add(`client escape ${escape} — won't be voiced`);
   // Named even beside a token: fixing only the token would still leave the line refused.
   if (/[<>]/.test(judged)) hints.add("unspeakable < or > — won't be voiced");
   // A direction is never spoken, so its own spacing is no gap.

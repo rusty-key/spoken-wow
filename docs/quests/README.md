@@ -579,10 +579,32 @@ words on `/<lang>/player-words`. A language without words for it keeps the token
 unvoiceable.
 ruRU wraps a token in the client's declension escape, `|3-6($c)`, which the game prints in
 grammatical case 6 (`|3-1` genitive, `|3-3` accusative, `|3-6` in address). Each reader's declined
-forms on `/<lang>/player-words` give the word per case number. An escape whose case has no word,
+forms on `/<lang>/player-words` give the word per case number; Spoken's own ruRU words carry
+cases 1, 3 and 6, the ones its text uses. An escape whose case has no word,
 or one around a word rather than a token (`|3-6(Друид)`, a contributor's own class), stays
-unvoiceable.
-Contributions triage shows any token or declension escape still left after this, a bare `<` or `>`, and a gap
+unvoiceable. So does a line holding any other escape the client resolves as it prints the line
+(`|1이;가;`, `|2`, `|4one:few:many;`, `|n`, `|cff…|r`) until the substitution speaks it.
+`|n` is spoken as the line break it prints, and `|cAARRGGBB…|r` as its words, in every language.
+koKR's particle escape, `$c|1이여;여;`, takes its first form after a syllable ending in a
+consonant and its second after a vowel, as the client does, judged on the word the token became
+(`모험가여`); `(으)로` takes `로` after ㄹ.
+A particle glued straight onto a token (`$N이`, `$c을`, written for a name ending in a consonant)
+is chosen the same way, so `$N이` reads `모험가가`.
+frFR's `|2` before a word reads `de ` before a consonant and `d'` before a vowel, judged on the word
+the token became (`légion |2 $n` reads `légion d'aventurier`).
+The plural escape after a number, `1 |4пару:пары:пар;`, reads the form that number takes (Russian's
+one, few and many; one and many where it has two forms). One with no number before it stays.
+In frFR and itIT, the word before a token elides when the token's word starts with a vowel:
+`le $c` reads `l'aventurier`, `du $c` `de l'aventurier`, `ce $c` `cet aventurier`, and itIT's
+`una $c` `un'avventuriera`. An `h` counts as a consonant.
+deDE's `$R` is an adjective used as a noun, so it declines: `ein $R` reads `Reisender`, `der $R`
+`Reisende`, and `dem`, `einen`, `dieses $R` (or `einer $R` on the female variant) `Reisenden`, with
+up to two adjectives between. The weak form is "Race after der" on `/<lang>/player-words`.
+Two damaged branches are spoken too, on the line's one side: zhCN's and zhTW's full-width
+separators (`$G男孩：女孩；`), and a branch that lost its `g` where its first letter is not Latin
+(`$готов:готова;`, `$小伙子:小姑娘;`; ruRU's may lose the `;` as well). Neither makes the line
+branch, so it stays one file for both readers. A Latin one (`$einen Schüler:…;`) stays a token.
+Contributions triage shows any token or client escape still left after this, a bare `<` or `>`, and a gap
 before `.` or `,` or a mid-sentence double space where a gender branch came through empty,
 above the row's text, so a line that would never be voiced is seen before it is accepted.
 Doing this at send time rather than in the rows covers every way a
