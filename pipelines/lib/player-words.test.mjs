@@ -83,3 +83,13 @@ test("French's |2 says de before a consonant and d' before a vowel", () => {
   assert.equal(speakQuestTokens("mon type |2orc !", "frFR"), "mon type d'orc !");
   assert.equal(speakQuestTokens("morceaux |2 mort-vivant.", "frFR"), "morceaux de mort-vivant.");
 });
+
+test("the plural escape takes the form its number does", () => {
+  // q:94240:accept.
+  assert.equal(speakQuestTokens("заказ на 1 |4пару:пары:пар; перчаток", "ruRU"), "заказ на 1 пару перчаток");
+  assert.equal(speakQuestTokens("на 3 |4пару:пары:пар;, 11 |4пару:пары:пар;, 21 |4пару:пары:пар;", "ruRU"), "на 3 пары, 11 пар, 21 пару");
+  assert.equal(speakQuestTokens("12 |4пару:пары:пар; и 5 |4пару:пары:пар;", "ruRU"), "12 пар и 5 пар");
+  assert.equal(speakQuestTokens("1 |4pair:pairs; and 2 |4pair:pairs;", "enUS"), "1 pair and 2 pairs");
+  // With no number before it, nothing says which: it stays for the gate.
+  assert.equal(speakQuestTokens("пару |4пару:пары:пар;", "ruRU"), "пару |4пару:пары:пар;");
+});

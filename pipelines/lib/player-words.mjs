@@ -336,8 +336,27 @@ export function speakQuestTokens(text, lang, playerGender = null) {
 const LINE_BREAK = new RegExp(String.raw`${ESCAPE_PIPE}n`, "g");
 const COLOUR = new RegExp(String.raw`${ESCAPE_PIPE}c[\dA-Fa-f]{8}([^|]*)\|r`, "g");
 
+// The plural escape after a number, `1 |4пару:пары:пар;`: the client prints the form the number
+// takes. Three forms are Russian's one, few and many; two are one and many.
+const PLURAL = /(\d+)(\s*)(?<!\|)\|4([^;|\n]*);/g;
+
+function pluralForm(n, forms) {
+  if (forms.length === 2) return n === 1 ? forms[0] : forms[1];
+  if (n % 10 === 1 && n % 100 !== 11) return forms[0];
+  if (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) return forms[1];
+  return forms[2];
+}
+
+function speakPlurals(text) {
+  return text.replace(PLURAL, (whole, count, space, written) => {
+    const forms = written.split(":");
+    if (forms.length !== 2 && forms.length !== 3) return whole;
+    return `${count}${space}${pluralForm(Number(count), forms)}`;
+  });
+}
+
 function speak(text, lang, playerGender, byToken) {
-  text = text.replace(LINE_BREAK, "\n").replace(COLOUR, "$1");
+  text = speakPlurals(text.replace(LINE_BREAK, "\n").replace(COLOUR, "$1"));
   const forms = playerWordsOf(lang);
   if (!forms) return text;
   text = speakQuantities(text, lang, forms);

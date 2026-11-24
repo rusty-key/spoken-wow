@@ -591,6 +591,8 @@ A particle glued straight onto a token (`$N이`, `$c을`, written for a name end
 is chosen the same way, so `$N이` reads `모험가가`.
 frFR's `|2` before a word reads `de ` before a consonant and `d'` before a vowel, judged on the word
 the token became (`légion |2 $n` reads `légion d'aventurier`).
+The plural escape after a number, `1 |4пару:пары:пар;`, reads the form that number takes (Russian's
+one, few and many; one and many where it has two forms). One with no number before it stays.
 Contributions triage shows any token or client escape still left after this, a bare `<` or `>`, and a gap
 before `.` or `,` or a mid-sentence double space where a gender branch came through empty,
 above the row's text, so a line that would never be voiced is seen before it is accepted.
