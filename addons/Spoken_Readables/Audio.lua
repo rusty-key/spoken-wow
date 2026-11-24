@@ -224,11 +224,6 @@ local function PageStopped(clip, finished)
 	end
 end
 
---- The clip for a page, as the player's queue wants it, or nil when no pack carries it.
----
---- Voice before pack order: a pack in the first voice answers before any other, and a page it
---- lacks falls to the next voice's packs -- page by page, so a partial translation still reads
---- what it has. A language's plain voice never reads from a team's pack, nor the other way.
 -- Letters and digits only, for asking whether a page opens with its own title.
 local function Bare(text)
 	return (string.gsub(string.lower(text or ""), "[%s%p]", ""))
@@ -253,7 +248,15 @@ local function TitleFirstTimings(title, text, length)
 	return timings
 end
 
-function SpokenReadables:ClipFor(pageId)
+--- The clip for a page, as the player's queue wants it, or nil when no pack carries it.
+---
+--- Voice before pack order: a pack in the first voice answers before any other, and a page it
+--- lacks falls to the next voice's packs -- page by page, so a partial translation still reads
+--- what it has. A language's plain voice never reads from a team's pack, nor the other way.
+---
+--- `bookPresentation`, the `present` of the page read before it, gives its portrait and material:
+--- a later page is built after its window may have closed or another book opened.
+function SpokenReadables:ClipFor(pageId, bookPresentation)
 	local bookId, number = self:PlaceOf(pageId)
 	if not bookId then
 		return nil
@@ -279,9 +282,12 @@ function SpokenReadables:ClipFor(pageId)
 				if recorded then
 					timings = entry.times or place.number == 1 and TitleFirstTimings(title, text, length) or nil
 				end
+				local look = bookPresentation
+					or { portrait = self:PagePicture(pageId), material = self:PageMaterial(pageId) }
+				-- A pack built before packs shipped Ogg names no format, and its clips are mp3.
 				return {
 					key = "b:" .. pageId,
-					path = [[Interface\AddOns\]] .. pack.addon .. [[\Sounds\]] .. entry.file .. ".mp3",
+					path = [[Interface\AddOns\]] .. pack.addon .. [[\Sounds\]] .. entry.file .. (pack.format == "ogg" and ".ogg" or ".mp3"),
 					-- 0 means the pack recorded no duration -- an imported take rather than one
 					-- this project cut. The player falls back to its own timer; a wrong number
 					-- here would reset the Play button mid-sentence.
@@ -311,8 +317,8 @@ function SpokenReadables:ClipFor(pageId)
 						bullet = "book",
 						-- A text pack's language may need a font the game's lacks.
 						font = Spoken:ClipFont(shown, self),
-						material = self:PageMaterial(pageId),
-						portrait = self:PagePicture(pageId),
+						material = look.material,
+						portrait = look.portrait,
 						actions = ACTIONS,
 					},
 					stopCallback = PageStopped,

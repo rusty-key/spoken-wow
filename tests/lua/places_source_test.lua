@@ -55,6 +55,9 @@ Z.GetMapName = function(_, id) return names[id] end
 local zone = Z:NewLoreSound(1411, nil)
 Expect("a zone clip keeps the frozen line id as its key", zone.key, "z:1411")
 Expect("...resolves the pack path", zone.path, [[Interface\AddOns\ZoneLoreAudio\Sounds\1411\zone.mp3]])
+_G.ZoneLoreAudioPacks.ZoneLoreAudio.format = "ogg"
+Expect("...in the format its pack declares", Z:NewLoreSound(1411, nil).path, [[Interface\AddOns\ZoneLoreAudio\Sounds\1411\zone.ogg]])
+_G.ZoneLoreAudioPacks.ZoneLoreAudio.format = nil
 Expect("...and the pack's duration", zone.length, 81.9)
 Expect("...headed by where the zone is, its continent, not its own name twice", zone.present.header, "Kalimdor")
 local packZones = _G.ZoneLoreAudioPacks.ZoneLoreAudio.zones

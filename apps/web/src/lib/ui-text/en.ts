@@ -38,7 +38,6 @@ export const EN = {
   interface: {
     label: "Interface language",
     hint: "The words on Backstage, kept with your account. It does not change the language you maintain, which is the code in each admin page.",
-    followPage: "The page's own language",
     saveFailed: "Could not save that. Try again.",
   },
   /** The admin header, its tabs, and the seven pages' own titles. */

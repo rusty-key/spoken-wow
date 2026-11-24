@@ -502,7 +502,7 @@ Designed now so phase 1 does not paint it into a corner; built when the first su
   example `SpokenQuestsAudio_deDE_<team>`, and their `.toc` carries `X-Spoken-Team`. The index entry
   carries the team. Pack folder names are not on the frozen list in [`AGENTS.md`](../../AGENTS.md);
   line ids are, and they do not change.
-- **Manager.** The id check (`manager/src/main/packs-remote.ts:50`, mirrored at
+- **Manager.** The id check (`apps/manager/src/main/packs-remote.ts:50`, mirrored at
   `scripts/manager/publish.mjs:13`) accepts the suffix, and `SPOKEN_FOLDERS` / `products.ts` stop
   being the only list of folders the Manager may install. Today the Manager rejects the whole index
   if one entry fails that check, so team-aware Managers read a versioned index (for example

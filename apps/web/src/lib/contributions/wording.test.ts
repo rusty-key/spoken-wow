@@ -114,7 +114,7 @@ describe("acceptAsWording", () => {
       {
         lineId: `${moment}:w1`,
         fileName: `${quest}-accept-w1`,
-        text: "Oh, you are back, Adventurer.",
+        text: "Oh, you are back, $N.",
         originalText: "Oh, you are back, $N.",
         origin: "contributed",
         generatable: true,
@@ -207,7 +207,7 @@ describe("acceptAsWording", () => {
       `select "text" from "quest_line" where "lineId" = $1 and "variant" = 0 and "lang" = 'enUS' and "isCurrent"`,
       [moment],
     );
-    expect(rows).toEqual([{ text: "Oh, you are back, Adventurer. Hello." }]);
+    expect(rows).toEqual([{ text: "Oh, you are back, $N. Hello." }]);
   });
 
   it("refuses a pick that is no wording of the moment", async () => {

@@ -402,10 +402,10 @@ fill-locales: ## Fill vmangos's empty *_locN columns from TrinityCore (TDB335= T
 export-corpus: check-synced ## quest_line -> corpus/corpus.json.gz (ARGS=--check to compare instead)
 	@$(QUESTS_CLI) export-corpus $(ARGS)
 
-# A language's gossip as its client shows it, for that language's Gossip pack to match on
-# (tts_cli/locale_text.py). Written to the language's work area rather than committed: the
+# A language's gossip as its client shows it, for that language's Gossip pack to match on, and its
+# current NPC names, for the pack to name a speaker who is off screen (tts_cli/locale_text.py). Written to the language's work area rather than committed: the
 # pack build is the only thing that reads it, and it already needs the database for the corpus.
-export-locale-text: ## quest_line localeText -> build/quests/$(LOCALE)/locale-text.json.gz (LOCALE=esMX)
+export-locale-text: ## quest_line localeText and entity_name -> build/quests/$(LOCALE)/locale-text.json.gz (LOCALE=esMX)
 	@test -n "$(filter-out enUS,$(LOCALE))" || { echo "export-locale-text: set LOCALE to a language other than English, e.g. LOCALE=esMX"; exit 2; }
 	@$(QUESTS_CLI) export-locale-text --lang $(LOCALE) --out $(abspath build/quests/$(LOCALE)/locale-text.json.gz)
 

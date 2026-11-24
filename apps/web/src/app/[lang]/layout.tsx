@@ -12,7 +12,7 @@ import { LangProvider } from "@/components/LangProvider";
 import { LanguagesProvider } from "@/components/LanguagesProvider";
 import NavigationProgress from "@/components/NavigationProgress";
 import { BannerShown } from "@/components/TeamPicker";
-import { langTag, registeredExtras } from "@/lib/lang";
+import { langTag, registeredForBrowser } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
 import { cn } from "@/lib/utils";
 import { body, display } from "@/components/landing/fonts";
@@ -56,8 +56,9 @@ export default async function RootLayout({
   const lang = await pageLang(params);
   // From the registry, never the database: it is filled at boot and on every change, and pageLang
   // has already awaited a load for a non-English page. An English page therefore renders with the
-  // database down. Only the languages beyond the built-in ones travel to the browser.
-  const extras = registeredExtras();
+  // database down. Only the languages beyond the built-in ones, and a built-in's row words, travel
+  // to the browser.
+  const extras = registeredForBrowser();
   const acting = await actingIn(lang);
   return (
     // Dark-only for now: this is a tool for listening to game dialog, and the light

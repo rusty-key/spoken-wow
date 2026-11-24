@@ -104,6 +104,7 @@ const es: Dictionary = {
         "Elige entre fijarlo como objetivo o derrotarlo en «Mostrar la historia de un jefe»",
       ],
       browse: "Explorar los jefes",
+      position: "Posición en el ejemplo de jefes",
     },
     examplesLabel: "Ejemplos: {part}",
     noVoice: "Las historias de los jefes tienen voz con el paquete Spoken Audio: Bosses. Sin él se muestran como palabras en el narrador.",

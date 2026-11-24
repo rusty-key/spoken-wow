@@ -35,7 +35,7 @@ import os
 from collections import Counter
 from datetime import datetime, timezone
 
-from tts_cli.corpus import (GENERIC_TYPES, INVALID_CHARS, NO_VOICE, SCHEMA_VERSION, load_corpus,
+from tts_cli.corpus import (GENERIC_TYPES, NO_VOICE, SCHEMA_VERSION, english_skip_reason, load_corpus,
                             write_corpus)
 from tts_cli.flavors import fallback_flavors, is_model_voice
 from tts_cli.naming import moment_of
@@ -119,7 +119,7 @@ def with_answered_voices(lines, answers):
         race, gender, flavor, voice = answer
         reason = row["skipReason"]
         if reason == NO_VOICE:
-            reason = "invalid-chars" if any(c in row["text"] for c in INVALID_CHARS) else None
+            reason = english_skip_reason({"cleanedText": row["text"]})
         out.append({**row, "race": race, "gender": gender, "flavor": flavor, "voice": voice,
                     "skipReason": reason, "generatable": reason is None})
     return out
@@ -1042,6 +1042,9 @@ def export_locale_text(lang, path, verbose=True):
 
     Both of a gendered line's variants are kept. They read differently on screen and name
     the same file, to which the addon adds the player's gender itself.
+
+    The language's current NPC, object and item names go in the same file, for the pack to
+    name a speaker who is not on screen.
     """
     from tts_cli.locale_text import write_locale_text
 
@@ -1061,23 +1064,40 @@ def export_locale_text(lang, path, verbose=True):
             )
             lines = [{"lineId": line_id, "originalText": original, "localeText": text}
                      for line_id, original, text in cur.fetchall()]
+            names = [{"kind": kind, "entityId": entity_id, "name": name}
+                     for _, kind, entity_id, name in _current_names(cur, lang)]
     finally:
         conn.close()
 
-    write_locale_text(path, lang, lines)
+    write_locale_text(path, lang, lines, names)
     if verbose:
-        print(f"wrote {path}: {len(lines)} {lang} gossip lines with client text")
+        print(f"wrote {path}: {len(lines)} {lang} gossip lines with client text, "
+              f"{len(names)} names")
     return lines
+
+
+def _current_names(cur, lang=None):
+    """(lang, kind, entityId, name) of every current NPC, object and item name in `lang`, or in
+    every language but English. What the addon shows for them, whoever wrote it: names are only
+    displayed, and respellings for the voice live in the lexicon, never here."""
+    from tts_cli.giver_names import KINDS
+
+    cur.execute(
+        """select "lang", "kind", "entityId", "name" from "entity_name"
+            where "isCurrent" and "name" <> '' and "kind" = any(%s)
+              and (("lang" = %s) or (%s is null and "lang" <> %s))
+            order by "lang", "kind", "entityId" """,
+        (list(KINDS), lang, lang, LANG),
+    )
+    return cur.fetchall()
 
 
 def export_giver_names(corpus_path, out_dir, verbose=True):
     """Every other language's quest-giver names -> one addon Lua file per language.
 
-    See tts_cli/giver_names.py. The name is the newest *extracted* version rather than the
-    live one, for the reason export_locale_text takes localeText: a translator's edit changes
-    how a name is spoken, and what the addon shows must be what the client shows.
+    See tts_cli/giver_names.py, and _current_names for which name.
     """
-    from tts_cli.giver_names import KINDS, givers, write_every_language
+    from tts_cli.giver_names import givers, write_every_language
     from tts_cli.ignores import load_pack_ignored
 
     corpus = load_corpus(corpus_path)
@@ -1085,17 +1105,8 @@ def export_giver_names(corpus_path, out_dir, verbose=True):
     conn = connect()
     try:
         with conn, conn.cursor() as cur:
-            cur.execute(
-                """select distinct on ("lang", "kind", "entityId")
-                          "lang", "kind", "entityId", "name"
-                     from "entity_name"
-                    where "lang" <> %s and "origin" = 'extracted'
-                      and "kind" = any(%s)
-                    order by "lang", "kind", "entityId", "version" desc""",
-                (LANG, list(KINDS)),
-            )
             by_lang = {}
-            for lang, kind, entity_id, name in cur.fetchall():
+            for lang, kind, entity_id, name in _current_names(cur):
                 by_lang.setdefault(lang, {})[(kind, entity_id)] = name
     finally:
         conn.close()

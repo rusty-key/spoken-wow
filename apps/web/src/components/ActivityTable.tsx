@@ -167,6 +167,8 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
       return { what: `restored name v${version}`, quote: null };
     case "name.retired":
       return { what: `took back name v${version}`, quote: null };
+    case "name.observed":
+      return { what: "kept the name the game shows", quote: str(d.name) };
     case "lexicon.added":
       return { what: `added a pronunciation for “${row.subject}”`, quote: str(d.after) };
     case "lexicon.edited":

@@ -550,21 +550,24 @@ quests contributions with `stage=gossip`. `/reports/gossip` redirects to `/repor
 Lines with no audio are marked. `no audio` is a real gap; `invalid-chars` lines are ones the
 generator never voices until their text is rewritten.
 
-A translation keeps Blizzard's `$N`, `$C` and `$R` in its stored text, and they are not what
-makes it `invalid-chars`: `apps/web/src/lib/player-words.ts` speaks them as the language's
+Every language, English included, keeps Blizzard's `$N`, `$C` and `$R` in its stored text, and
+they are not what makes it `invalid-chars`: `apps/web/src/lib/player-words.ts` speaks them as the language's
 word for "adventurer" and "traveler" (`Abenteurer`, `aventurier`, `путник`, `冒险者`…) wherever
 the line is judged or sent — the voiceability gate, the request, and the staleness and dirt
 hashes, which go through one function (`sentText`) so they cannot disagree. Case follows the
 position, not the token: lowercase mid-sentence, capitalised at a sentence's start and always
-in German. A line's female variant, which exists where the English branches on `$G`, gets the
+in German. English quest text is the exception: its case follows the token (`$N` is
+"Adventurer", `$n` "adventurer"), the case its takes were made with, so they stay current
+(migration 0130 put the tokens back into existing rows). English book pages follow the position
+like every other language. A line's female variant, which exists where the English branches on `$G`, gets the
 feminine word, and a leftover `$g…;` takes that variant's branch; `$u…;`, which ptBR's and
 German's own templates write, is read the same way in every language, and so is Forever's deDE
 gossip form with the separators swapped (`$uBürger;Bürgerin:`, male first, a letter on either
 side of the `;`). A token whose `$` is doubled (`$$N, …`, as TBC Anniversary and Forever send
-some lines) reads as the token. English quest text has nothing left for it to replace, its
-words having been written in at extraction; a book page in any language, English included,
-goes through the same table (`docs/readables/README.md`). A token glued to a following letter
-(`$Nama`) is left in, so the line stays unvoiceable until a translator rewrites it. Two glued
+some lines) reads as the token. A book page in any language, English included, goes through
+the same table (`docs/readables/README.md`). A token glued to a following letter
+(`$Nama`) is left in, so the line stays unvoiceable until a translator rewrites it; English's
+extract writes the word into one (`adventurerama`), as it always has. Two glued
 `s` are exceptions. German's genitive: `$Ns` and `$Cs` read as `Abenteurers`, or `Abenteurerin`
 on the female variant. French's class plural: `$cs` reads as `aventuriers`, or `aventurières`
 on the female variant. A branch never spans a sentence's end, so one whose `;` was lost stays
@@ -574,7 +577,34 @@ English, "algumas unidades de" in ptBR, and "несколько" plus the second
 forms (`порции:порций`). A team's language says what its text maintainers set beside its player
 words on `/<lang>/player-words`. A language without words for it keeps the token and stays
 unvoiceable.
-Contributions triage shows any token still left after this, a bare `<` or `>`, and a gap
+ruRU wraps a token in the client's declension escape, `|3-6($c)`, which the game prints in
+grammatical case 6 (`|3-1` genitive, `|3-3` accusative, `|3-6` in address). Each reader's declined
+forms on `/<lang>/player-words` give the word per case number; Spoken's own ruRU words carry
+cases 1, 3 and 6, the ones its text uses. An escape whose case has no word,
+or one around a word rather than a token (`|3-6(Друид)`, a contributor's own class), stays
+unvoiceable. So does a line holding any other escape the client resolves as it prints the line
+(`|1이;가;`, `|2`, `|4one:few:many;`, `|n`, `|cff…|r`) until the substitution speaks it.
+`|n` is spoken as the line break it prints, and `|cAARRGGBB…|r` as its words, in every language.
+koKR's particle escape, `$c|1이여;여;`, takes its first form after a syllable ending in a
+consonant and its second after a vowel, as the client does, judged on the word the token became
+(`모험가여`); `(으)로` takes `로` after ㄹ.
+A particle glued straight onto a token (`$N이`, `$c을`, written for a name ending in a consonant)
+is chosen the same way, so `$N이` reads `모험가가`.
+frFR's `|2` before a word reads `de ` before a consonant and `d'` before a vowel, judged on the word
+the token became (`légion |2 $n` reads `légion d'aventurier`).
+The plural escape after a number, `1 |4пару:пары:пар;`, reads the form that number takes (Russian's
+one, few and many; one and many where it has two forms). One with no number before it stays.
+In frFR and itIT, the word before a token elides when the token's word starts with a vowel:
+`le $c` reads `l'aventurier`, `du $c` `de l'aventurier`, `ce $c` `cet aventurier`, and itIT's
+`una $c` `un'avventuriera`. An `h` counts as a consonant.
+deDE's `$R` is an adjective used as a noun, so it declines: `ein $R` reads `Reisender`, `der $R`
+`Reisende`, and `dem`, `einen`, `dieses $R` (or `einer $R` on the female variant) `Reisenden`, with
+up to two adjectives between. The weak form is "Race after der" on `/<lang>/player-words`.
+Two damaged branches are spoken too, on the line's one side: zhCN's and zhTW's full-width
+separators (`$G男孩：女孩；`), and a branch that lost its `g` where its first letter is not Latin
+(`$готов:готова;`, `$小伙子:小姑娘;`; ruRU's may lose the `;` as well). Neither makes the line
+branch, so it stays one file for both readers. A Latin one (`$einen Schüler:…;`) stays a token.
+Contributions triage shows any token or client escape still left after this, a bare `<` or `>`, and a gap
 before `.` or `,` or a mid-sentence double space where a gender branch came through empty,
 above the row's text, so a line that would never be voiced is seen before it is accepted.
 Doing this at send time rather than in the rows covers every way a
@@ -1119,6 +1149,15 @@ Manager's install id, or that one anonymous upload; no address is kept), never a
 A zone counts for the zone filter once two uploaders send it, so the Manager sending one player's
 file after every logout is one voice.
 
+The envelope also carries the client's locale and the name it shows for the NPC, and is kept
+again when that name changes, so a giver a patch renames reaches the site too. In a language
+other than English, a name that differs from the language's current one is offered on
+`/contributions/names` (`name_contribution`, `lib/names/observed.ts`), one row per name with a
+count of its uploaders. A translator keeps it or drops it; a dropped name stays dropped when it
+is sent again. A kept name becomes the current one in `entity_name`, as `observed`. An
+`import-locale` records the dump's name beside an `observed` one rather than over it, because
+the dump is older than the client that showed it.
+
 The same text pasted again — by the same player or a different one — bumps a count on the
 existing row rather than filing a second one; different text under the same key stays its own
 row. That count is the triage priority at `/contributions`, the contribution queue's own
@@ -1138,7 +1177,7 @@ character's name), `readerClass` and its gendered forms, `readerClassID`, `reade
 `readerSex`, and on a quest the Compendium knows, `questClasses`. Intake puts the name, class and
 race back as `$N`, `$C` and `$R` (`lib/contributions/reader.ts`), the name whole, by either part
 and in capitals, so a contributed line is a template like an extracted one: stored as
-`originalText`, spoken as `Adventurer`/`Traveler` by the extract's own table, and hashed on the
+`originalText`, stored with its tokens as the extract stores its own (`$B` as a line break), and hashed on the
 template when it is gossip. The name is not kept: `raw`, `meta` and a report's context hold the
 text with the name as `$N` and the class and race as shown, so the rule can run again. An older
 addon put the tokens back itself and sends no `shown`, and its text is taken as it is. The addon
@@ -2033,13 +2072,21 @@ client measured it. An error in the hook is logged and never reaches the client'
 A quest-log play button has no NPC to ask who is speaking. The dialog names its speaker with
 `UnitName("questnpc")` in the client's own language; the log looks the giver up in the pack
 (`NPCIDLookupByQuestID` and its object and item twins) and names them from
-`NPCNameLookupByNPCID`, which is built from the English corpus. So the addon itself ships every
-other language's giver names, `Locale/Names/<lang>.lua`, each returning before it builds
-anything on a client in another locale, and `DataModules:GetObjectName` asks them first. They
-live in the addon rather than in the packs because the name follows the client, not the voice:
-a German client with English packs still shows German names. `make quests-export-giver-names`
-writes them from `entity_name` (`tts_cli/giver_names.py`), after an `import-locale`, along with
-a `Names.xml` that lists them all. Forever's `.toc` lists each file with
+`NPCNameLookupByNPCID`, which is built from the English corpus. A language's pack carries that
+language's own names beside its gossip text: `export-locale-text` writes the language's current
+NPC, object and item names into `locale-text.json.gz`, and the Gossip (or All) pack builds them
+into `ClientLocaleLookups`, loaded only on a client in that locale, for the entities the corpus
+names. `DataModules:GetObjectName` asks those first, so a translator's edit or a name kept on
+`/contributions/names` reaches players with the language's next pack release.
+
+The addon also ships every other language's giver names, `Locale/Names/<lang>.lua`, each returning before it builds
+anything on a client in another locale, and `DataModules:GetObjectName` asks them after the
+packs. They cover a pack built before packs carried names, and a client whose language's pack is
+not installed. `make quests-export-giver-names`
+writes them from `entity_name` (`tts_cli/giver_names.py`), after an `import-locale` or after
+translators keep names on `/contributions/names`, along with a `Names.xml` that lists them all.
+Each name is the language's current one, whoever wrote it: names are only displayed, and
+respellings for the voice live in the lexicon. Forever's `.toc` lists each file with
 `[AllowLoadTextLocale <lang>]`, as it does the gossip text, so the client loads only its own; the
 classic `.toc` files load `Names.xml`. The export stops with the lines to add or remove when
 Forever's `.toc` does not list exactly the files it wrote. Only
