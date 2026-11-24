@@ -4,6 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Progress text keeps reading as a quest moves to its reward page,** even with Stop When Window
+  Closes on. *([anon1231823](https://github.com/anon1231823))*
 - For feature addons: `Spoken:Supports(feature)` says what this Spoken can do, such as
   `"story:boss"`, and a registration with the wrong arguments now raises at your line.
   *([rusty-key](https://github.com/rusty-key))*

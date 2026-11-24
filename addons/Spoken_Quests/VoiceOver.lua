@@ -1458,6 +1458,13 @@ function Addon:MarkQuestTurnedIn(questID)
     end
     if not turnIn then return end
     turnIn.turnedIn = true
+    -- Stop only after a real hand-in. QUEST_FINISHED also closes the progress panel while the
+    -- player advances to the reward panel, so stopping there would cut off the progress text.
+    if self.db.profile.Audio.StopAudioOnDisengage and self.db.profile.Audio.StopOnAccept then
+        for _, soundData in ipairs(turnIn.soundData) do
+            Player:Remove(soundData)
+        end
+    end
     if turnIn.closeTimer then
         self:CancelTimer(turnIn.closeTimer)
         turnIn.closeTimer = nil
@@ -2122,7 +2129,9 @@ function Addon:QUEST_FINISHED()
     -- queued line without cleanup when the dialog closes.
     for _, retainedTurnIn in ipairs(QuestTurnInRecords()) do
         if not retainedTurnIn.turnedIn and not retainedTurnIn.closeTimer then
-            retainedTurnIn.stopOnClose = waitForAccept
+            -- A turn-in's QUEST_FINISHED can be the progress panel changing to the reward panel.
+            -- Let the timer distinguish that transition from an actual exit or cancel.
+            retainedTurnIn.stopOnClose = audio.StopAudioOnDisengage
             retainedTurnIn.closeTimer = self:ScheduleTimer(function()
                 retainedTurnIn.closeTimer = nil
                 if IsQuestWindowVisible() then
@@ -2147,23 +2156,16 @@ function Addon:QUEST_FINISHED()
         end
     end
     if audio.StopAudioOnDisengage then
-        if waitForAccept then
-            local defer = offer and currentQuestSoundData and currentQuestSoundData.event == Enums.SoundEvent.QuestAccept
-                or turnIn and IsQuestTurnInSoundData(currentQuestSoundData)
-            if currentQuestSoundData and not defer then
-                Player:Remove(currentQuestSoundData)
-            end
-        else
-            if currentQuestSoundData then
-                Player:Remove(currentQuestSoundData)
-            end
+        -- Turn-in pages are removed by the close timer, or by MarkQuestTurnedIn when the player
+        -- completes the quest. Removing one here would mistake progress-to-reward for a close.
+        local defer = offer and currentQuestSoundData and currentQuestSoundData.event == Enums.SoundEvent.QuestAccept
+            or turnIn and IsQuestTurnInSoundData(currentQuestSoundData)
+        if currentQuestSoundData and not defer then
+            Player:Remove(currentQuestSoundData)
+        end
+        if not waitForAccept then
             -- An addon that moves straight from one quest's dialog to the next leaves the earlier
             -- quest's line queued under its own record, not as the current line.
-            for _, record in ipairs(QuestTurnInRecords()) do
-                for _, soundData in ipairs(record.soundData) do
-                    Player:Remove(soundData)
-                end
-            end
             if offer and offer.soundData then
                 Player:Remove(offer.soundData)
             end
