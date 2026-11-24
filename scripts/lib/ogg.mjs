@@ -2,7 +2,7 @@
 // The site's encoder (apps/web/src/lib/takes/encode.ts) uses the same two settings, so a clip
 // encoded here sounds the same as the site's; the bytes differ, as oggenc's do every run.
 import { spawn } from "node:child_process";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { mkdir, rename, rm, stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -17,8 +17,9 @@ function run(child, what) {
 /** `from` (any format ffmpeg reads) encoded into `to`, which only appears once it is complete. */
 export async function encodeOgg(from, to) {
   await mkdir(dirname(to), { recursive: true });
-  // The pid too, so two builds sharing a cache cannot write into each other's scratch file.
-  const part = `${to}.${process.pid}.part`;
+  // Unique, so two encodes of one clip, in this build or another sharing the cache, never write
+  // into the same scratch file.
+  const part = `${to}.${randomUUID()}.part`;
   const ffmpeg = spawn("ffmpeg", ["-nostdin", "-loglevel", "error", "-i", from, "-ac", "1", "-map_metadata", "-1", "-bitexact", "-f", "wav", "-"], {
     stdio: ["ignore", "pipe", "inherit"],
   });
@@ -43,6 +44,9 @@ async function sha256Of(file) {
   return hash.digest("hex");
 }
 
+// Encodes running in this process, by cache file.
+const encoding = new Map();
+
 /**
  * `master` encoded, from `cache` when it was encoded before. Keyed by the master's SHA-256 (the
  * take's own hash when the caller has it), so a re-cut line misses rather than reusing a stale
@@ -50,11 +54,11 @@ async function sha256Of(file) {
  */
 export async function cachedOgg(master, cache, sha256 = null) {
   const cached = join(cache, `${sha256 || (await sha256Of(master))}.ogg`);
-  try {
-    await stat(cached);
-  } catch {
-    await encodeOgg(master, cached);
+  // Two live takes can share a master, and so a cache entry: the second waits for the first's encode.
+  if (!encoding.has(cached)) {
+    encoding.set(cached, stat(cached).catch(() => encodeOgg(master, cached)).finally(() => encoding.delete(cached)));
   }
+  await encoding.get(cached);
   return cached;
 }
 

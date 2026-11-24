@@ -9,8 +9,8 @@ match the heading whole.
 
 ## Unreleased
 
-- **The pack is a smaller download,** its stories stored like the quest packs'. Update Spoken to 3.13.0 or later
-  with it. *([rusty-key](https://github.com/rusty-key))*
+- **The pack is a smaller download.** Update Spoken to 3.13.0 or later with it.
+  *([rusty-key](https://github.com/rusty-key))*
 - **The pack has the bosses' icon in the AddOns list, and a language's pack shows its language on
   it.** *([Nucabe](https://github.com/Nucabe))*
 

@@ -347,6 +347,7 @@ if (encodes && kept.length && !(await haveEncoders())) {
 
 let copied = 0;
 const missing = [];
+const failed = [];
 await makeDirs(kept);
 // oggenc is single-threaded, so one per core.
 await eachParallel(kept, async ({ stem, archived, sha256 }) => {
@@ -360,8 +361,13 @@ await eachParallel(kept, async ({ stem, archived, sha256 }) => {
     copied++;
     return;
   }
-  const ogg = await cachedOgg(source, encodes, sha256);
-  await copyFile(ogg, join(paths.out, `${stem}.ogg`), constants.COPYFILE_FICLONE);
+  try {
+    await copyFile(await cachedOgg(source, encodes, sha256), join(paths.out, `${stem}.ogg`), constants.COPYFILE_FICLONE);
+  } catch (error) {
+    // Collected rather than thrown, so the other encoders finish and every bad master is named.
+    failed.push(`${stem} (${sha256 || source}): ${error.message}`);
+    return;
+  }
   if (++copied % 500 === 0) console.log(`  ${copied}/${kept.length} clips`);
 }, encodes ? availableParallelism() : undefined);
 
@@ -376,6 +382,11 @@ if (live.length > kept.length) {
   // Known, and not this machine's fault: the take's clip was not kept before the archive
   // was the record. The line ships without audio, the same as one never generated.
   console.log(`  ${live.length - kept.length} live takes had their clip discarded before the archive kept every take; shipped silent`);
+}
+if (failed.length) {
+  console.error(`  ${failed.length} live takes could not be encoded, e.g.:`);
+  for (const line of failed.slice(0, 5)) console.error(`    ${line}`);
+  process.exit(1);
 }
 if (missing.length) {
   console.error(`  ${missing.length} live takes are not in this machine's archive, e.g.:`);

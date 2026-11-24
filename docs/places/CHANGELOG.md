@@ -9,10 +9,10 @@ is the pack's, and `scripts/zones/release.sh` matches on the kind as well as the
 section with no kind in its heading is the addon's. A language's pack numbers itself too, from
 2.0.0 in step with the English pack (Spanish (AL) shipped first, as 1.0.0), and its sections are headed by its release tag: `## <version> — zones-audio-esMX`.
 
-## Unreleased
+## Unreleased — audio
 
-- **The pack is a smaller download,** its narration stored like the quest packs'. Update Spoken to 3.13.0 or later
-  with it. *([rusty-key](https://github.com/rusty-key))*
+- **The pack is a smaller download.** Update Spoken to 3.13.0 or later with it.
+  *([rusty-key](https://github.com/rusty-key))*
 
 ## 2.1.0 — audio — 2026-10-31
 

@@ -160,7 +160,7 @@ sed -i.bak \
 rm -f "$staging/$folder/$folder.toc.bak"
 
 echo "copying $count clips..."
-rsync -a --exclude '.DS_Store' --exclude '*.part' "$SOUNDS/" "$staging/$folder/Sounds/"
+rsync -a --exclude '.DS_Store' --exclude '*.part' --exclude '.from-takes' "$SOUNDS/" "$staging/$folder/Sounds/"
 
 echo "zipping $folder..."
 (cd "$staging" && zip -r -q -X "$zip_path" "$folder" \
