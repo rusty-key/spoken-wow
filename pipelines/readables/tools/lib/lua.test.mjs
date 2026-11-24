@@ -1,8 +1,20 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { booksLua, indexLua, pageIndex, quote } from "./lua.mjs";
+import { booksLua, indexLua, luaTableId, pageIndex, quote, readableLua } from "./lua.mjs";
 import { pageChecksum } from "./naming.mjs";
+
+test("the Places reader preserves minted books, page text and item owners", () => {
+  const parsed = readableLua(booksLua([{ pageId: "npage", bookId: "nbook", pageNumber: 1,
+    title: "Minted Journal", text: "Words.", ownerKind: "item", ownerIds: [277976] },
+  { pageId: 1, bookId: 1, pageNumber: 1, title: "Numeric", text: "Other words.", ownerKind: "item", ownerIds: [745] }]));
+  assert.deepEqual(parsed.books.get("nbook").pages, ["npage"]);
+  assert.equal(parsed.pageBook.get("npage"), "nbook");
+  assert.equal(parsed.pageText.get("npage"), "Words.");
+  assert.equal(parsed.pageBook.get(1), 1);
+  assert.equal(parsed.itemBook.get(277976), "nbook");
+  assert.equal(parsed.itemBook.get(745), 1);
+});
 
 const entries = [
   { pageId: 10, bookId: 10, pageNumber: 1, pageCount: 2, title: "A Dusty Tome", text: "One." },
@@ -104,6 +116,22 @@ test("a minted page is written as a quoted key", () => {
   const lines = indexLua(pageIndex([{ pageId: "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11", bookId: "n1", pageNumber: 1, title: "X", text: "Y" }]), "extra");
   assert.ok(lines.some((line) => line.includes('= "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11"')));
   assert.equal(lines[0], "\textraIndex = {");
+});
+
+test("a minted book and its pages are fully written by the export", () => {
+  const pageId = "n0b8f4e2a-1c1d-4f7e-9a51-2a0c9d6c7e11";
+  const bookId = "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8";
+  const lua = booksLua([{ pageId, bookId, pageNumber: 1, pageCount: 1, title: "Mechanic's Log",
+    bookTitle: "Gozwin's Mechanic's Log", text: "Y" }]);
+  assert.match(lua, new RegExp(`\\[${pageChecksum("Y")}\\] = "${pageId}"`));
+  assert.match(lua, new RegExp(`\\["${pageId}"\\] = \\{ book = "${bookId}"`));
+  assert.match(lua, new RegExp(`\\["Mechanic's Log"\\]`));
+  assert.match(lua, new RegExp(`\\["${bookId}"\\] = \\{ title = "Gozwin's Mechanic's Log", pages = \\{ "${pageId}" \\} \\}`));
+});
+
+test("database ids keep numeric keys numeric and minted keys quoted", () => {
+  assert.equal(luaTableId("2859"), 2859);
+  assert.equal(luaTableId("nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"), "nc0bf109d-e5d1-494d-ba1b-12a6b27352a8");
 });
 
 test("an item or object names the book it opens", () => {
