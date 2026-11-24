@@ -9,8 +9,8 @@
  * CLIENT-SAFE: ContributionTable renders these.
  */
 import { BASE_LANG, clientLang } from "@/lib/lang";
-import { speakQuestTokens } from "@/lib/player-words";
-import { CLIENT_ESCAPE, DECLENSION, withoutDirections } from "@/lib/text-gate";
+import { CLIENT_ESCAPE, DECLENSION, speakQuestTokens } from "@/lib/player-words";
+import { withoutDirections } from "@/lib/text-gate";
 
 import { writtenFromTemplate } from "./tokens";
 

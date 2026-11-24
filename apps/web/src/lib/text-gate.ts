@@ -22,7 +22,7 @@
  */
 
 import { BASE_LANG, type Lang } from "./lang";
-import { CLIENT_ESCAPE, DECLENSION, speakQuestTokens } from "./player-words";
+import { CLIENT_ESCAPE, speakQuestTokens } from "./player-words";
 import { isModelVoice } from "./voices/voices";
 
 /** Kept as a string, character for character, so the two files can be diffed by eye. */
@@ -44,8 +44,6 @@ const DIRECTION_SPACED = new RegExp(String.raw`\s*` + DIRECTION.source, "g");
 export function withoutDirections(text: string, spaceBefore = false): string {
   return text.replace(spaceBefore ? DIRECTION_SPACED : DIRECTION, "");
 }
-
-export { CLIENT_ESCAPE, DECLENSION };
 
 export function hasInvalidChars(text: string): boolean {
   const spoken = withoutDirections(text);
