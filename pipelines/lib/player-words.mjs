@@ -242,7 +242,12 @@ const GLUED = String.raw`(?![\p{sc=Han}\p{sc=Hangul}\p{sc=Hiragana}\p{sc=Katakan
 // Not followed by a glued letter: see "glued" above.
 // Not inside a declension escape: one without its case's word must keep its `$` for the gate.
 const UNDECLINED = String.raw`(?<!${DECLENSION.source})`;
-const TOKEN = new RegExp(String.raw`${UNDECLINED}\$([NnCcRr])(?!${GLUED})`, "gu");
+/** A token of `letters`, captured, neither glued nor inside a declension escape. */
+const tokenSource = (letters) => String.raw`${UNDECLINED}\$([${letters}])(?!${GLUED})`;
+const TOKEN = new RegExp(tokenSource("NnCcRr"), "gu");
+/** Which of a reader's words a token says. */
+const wordKey = (token) => (token.toUpperCase() === "R" ? "race" : "name");
+const capital = (word) => word[0].toUpperCase() + word.slice(1);
 // English quest text says a glued token too: its takes say "adventurerama" for "$Nama".
 const ANY_PLAYER_TOKEN = new RegExp(String.raw`${UNDECLINED}\$([NnCcRr])`, "gu");
 const DECLINED = /\|3-(\d+)\(\$([NnCcRr])\)/g;
@@ -382,7 +387,6 @@ function speak(text, lang, playerGender, byToken) {
   if (!forms) return text;
   text = speakQuantities(text, lang, forms);
   const words = playerGender === "f" ? forms.f : forms.m;
-  const capital = (word) => word[0].toUpperCase() + word.slice(1);
   const cased = (word, at, whole, token) => {
     if (byToken) return token === token.toUpperCase() ? capital(word) : word;
     return ALWAYS_CAPITAL.has(lang) || SENTENCE_START.test(whole.slice(0, at)) ? capital(word) : word;
@@ -393,7 +397,7 @@ function speak(text, lang, playerGender, byToken) {
   if (lang === "koKR") spoken = spoken.replace(GLUED_PARTICLE, gluedParticleEscape);
   spoken = elide(spoken, lang, words);
   spoken = spoken.replace(DECLINED, (whole, n, token, at, all) => {
-    const word = words.cases?.[n]?.[token.toUpperCase() === "R" ? "race" : "name"];
+    const word = words.cases?.[n]?.[wordKey(token)];
     return word ? cased(word, at, all, token) : whole;
   });
   const genitive = words.nameGenitive;
@@ -407,7 +411,7 @@ function speak(text, lang, playerGender, byToken) {
     spoken = spoken.replace(TOKEN_CLASS_PLURAL, (_, token, at, whole) => cased(plural, at, whole, token));
   }
   spoken = spoken.replace(byToken ? ANY_PLAYER_TOKEN : TOKEN, (_, token, at, whole) =>
-    cased(token.toUpperCase() === "R" ? words.race : words.name, at, whole, token),
+    cased(words[wordKey(token)], at, whole, token),
   );
   return speakDe(speakParticles(spoken));
 }
@@ -441,18 +445,17 @@ const ELISIONS = {
 const ELIDED = Object.fromEntries(
   Object.entries(ELISIONS).map(([lang, table]) => [
     lang,
-    new RegExp(String.raw`(?<![\p{L}'’])(${Object.keys(table).join("|")})\s+(?=${UNDECLINED}\$([NnCcRr])(?!${GLUED}))`, "giu"),
+    new RegExp(String.raw`(?<![\p{L}'’])(${Object.keys(table).join("|")})\s+(?=${tokenSource("NnCcRr")})`, "giu"),
   ]),
 );
 
 function elide(text, lang, words) {
   const table = ELISIONS[lang];
-  if (!table) return text;
+  if (!table || !text.includes("$")) return text;
   return text.replace(ELIDED[lang], (whole, before, token) => {
-    const word = token.toUpperCase() === "R" ? words.race : words.name;
-    if (!VOWEL.test(word)) return whole;
+    if (!VOWEL.test(words[wordKey(token)])) return whole;
     const elided = table[before.toLowerCase()];
-    return before[0] === before[0].toLowerCase() ? elided : elided[0].toUpperCase() + elided.slice(1);
+    return before[0] === before[0].toLowerCase() ? elided : capital(elided);
   });
 }
 
