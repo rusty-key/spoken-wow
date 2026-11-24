@@ -4,10 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **Stop When Window Closes applies only to quest windows.** Gossip keeps reading after its window
-  closes, including when an option opens another NPC window. *([anon1231823](https://github.com/anon1231823))*
-- **Progress text keeps reading as a quest moves to its reward page,** even with Stop When Window
-  Closes on. *([anon1231823](https://github.com/anon1231823))*
+- **With Stop When Window Closes on, a quest's progress text keeps reading on its reward page,**
+  and gossip keeps reading when an option opens the NPC's trainer or vendor. *([anon1231823](https://github.com/anon1231823))*
 - For feature addons: `Spoken:Supports(feature)` says what this Spoken can do, such as
   `"story:boss"`, and a registration with the wrong arguments now raises at your line.
   *([rusty-key](https://github.com/rusty-key))*

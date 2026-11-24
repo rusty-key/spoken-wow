@@ -223,11 +223,11 @@ function SettingsPanel:Setup()
         end, nil, W.OPT_RESET_ALL_TIP)
     end
     -- Switched off, the module is off: everything on its page greys out but its own switch. Read
-    -- Automatically and NPC Voice Before Reading cover the Gossip window too, so they stay live
-    -- while either part is on. Stop When Window Closes is quest-only.
+    -- Automatically, Stop When Window Closes and NPC Voice Before Reading cover the Gossip window
+    -- too, so they stay live while either part is on.
     local function AnyPartOn() return Addon:IsPartOn("quests") or Addon:IsPartOn("gossip") end
     layout:Requires(autoplay, AnyPartOn, W.REASON_PART_OFF)
-    layout:Requires(stopOnClose, PartOn, W.REASON_PART_OFF)
+    layout:Requires(stopOnClose, AnyPartOn, W.REASON_PART_OFF)
     layout:Requires(greetingFirst, AnyPartOn, W.REASON_PART_OFF)
     layout:RequiresAll(PartOn, W.REASON_PART_OFF, switch, autoplay, stopOnClose, greetingFirst)
 

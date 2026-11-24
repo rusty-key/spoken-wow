@@ -178,8 +178,8 @@ for _, client in ipairs({ "11509", "16001" }) do
     Leave()
     _G.Spoken:SetPartOn("gossip", true)
 
-    -- Stop When Window Closes applies to quest windows, not gossip. Gossip keeps playing after
-    -- its frame closes, including when an option opens another NPC window such as a trainer.
+    -- Stop When Window Closes stops gossip as its window closes, and a quest giver's greeting too,
+    -- as its quest frame closes.
     VO.Addon.db.profile.Audio.GossipFrequency = Frequency.Always
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = true
     stub.ShowGossip(GREETING, { BANK })
@@ -188,10 +188,29 @@ for _, client in ipairs({ "11509", "16001" }) do
     Expect(client .. ": gossip is playing before its window closes", _G.Spoken:GetCurrent() ~= nil, true)
     stub.HidePanels()
     stub.FireEvent("GOSSIP_CLOSED")
+    -- The stop waits out the grace period; DialogueUI's narrator must not show the line meanwhile.
+    stub.Advance(0.1)
+    Expect(client .. ": ...a closed gossip line still ends with its window during the wait",
+        VO.Addon:EndsWithWindow(_G.Spoken:GetCurrent()), true)
+    stub.Advance(0.5)
+    Expect(client .. ": gossip stops as its window closes, under Stop When Window Closes",
+        _G.Spoken:GetCurrent(), nil)
+    stub.Advance(1)
+    Played(played)
+
+    -- An option that opens the NPC's trainer closes the gossip window too, but the player has
+    -- not left the NPC.
+    stub.ShowGossip(GREETING, { BANK })
+    stub.FireEvent("GOSSIP_SHOW")
+    stub.Advance(0.3)
+    stub.ShowPanel("ClassTrainerFrame")
+    stub.FireEvent("GOSSIP_CLOSED")
     stub.Advance(0.6)
-    Expect(client .. ": gossip keeps playing under Stop When Window Closes",
+    Expect(client .. ": gossip keeps playing into the NPC's trainer window",
         _G.Spoken:GetCurrent() ~= nil, true)
+    Expect(client .. ": ...and no longer ends with a window", VO.Addon:EndsWithWindow(_G.Spoken:GetCurrent()), false)
     _G.Spoken:StopAll()
+    stub.HidePanels()
     Played(played)
 
     world.questID = 0

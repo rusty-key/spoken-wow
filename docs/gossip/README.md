@@ -100,7 +100,9 @@ Spoken's own page. Gossip adds no saved variable.
   lists them, each with Unmute, and Forget Muted NPCs clears the list. A muted NPC's window shows
   the Listen button, which still reads its line.
 - Stop When Window Closes is on the Quests page and covers the quest, gossip and greeting windows.
-  Closing the quest frame also stops a greeting, but never a quest's own line.
+  Closing the quest frame also stops a greeting, but never a quest's own line. The stop waits half
+  a second and skips a line whose NPC is still being talked to, so an option that opens the NPC's
+  trainer, vendor or quest window keeps the line playing.
 
 ## Commands
 

@@ -14,6 +14,9 @@ local world = {
     rewardText = "",
     npcName = "Innkeeper Test",
     npcGUID = "Creature-0-0-0-0-1234-0",
+    -- False once the player has left the NPC: the client's "npc" and "questnpc" units last only
+    -- while some window of that NPC (gossip, quest, trainer, vendor) is open.
+    npcPresent = true,
     npcFriendly = false,  -- UnitCanAttack: false for townsfolk the player cannot fight
     playerDead = false,   -- UnitIsDeadOrGhost: dead or released as a ghost
     modelFileID = nil,    -- what a loaded PlayerModel answers for the unit on screen
@@ -81,6 +84,7 @@ function M.ShowPanel(name)
     world.panels = {}
     if name then
         world.panels[name] = true
+        world.npcPresent = true
     end
 end
 
@@ -91,6 +95,7 @@ function M.HidePanels()
     M.ShowPanel(nil)
     world.gossipText = nil
     world.gossipOptions = nil
+    world.npcPresent = false
 end
 
 --- The game's secret values: in an instance or in combat the Forever client hands addons some
@@ -482,7 +487,10 @@ function _G.UnitName(unit) return unit == "player" and (world.playerName or "Tes
 function _G.UnitClass() return world.playerClass, world.playerClassFile, world.playerClassID end
 function _G.UnitRace() return world.playerRace, world.playerRaceFile end
 function _G.GetRealmName() return "Realm" end
-function _G.UnitGUID() return world.npcGUID end
+function _G.UnitGUID(unit)
+    if (unit == "npc" or unit == "questnpc") and not world.npcPresent then return nil end
+    return world.npcGUID
+end
 function _G.UnitExists() return true end
 function _G.UnitIsPlayer() return false end
 function _G.UnitCanAttack() return not world.npcFriendly end
@@ -765,6 +773,7 @@ function M.ShowGossip(text, options)
     world.gossipText = text
     world.gossipOptions = options
     world.panels.GossipFrame = true
+    world.npcPresent = true
 end
 local function GossipOptionID(i) return 1000 + i end
 --- The namespaced gossip API. SetClient hands it to the clients that have one.
