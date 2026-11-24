@@ -266,13 +266,8 @@ function SpokenReadables:ClipFor(pageId, bookPresentation)
 				if recorded then
 					timings = entry.times or place.number == 1 and TitleFirstTimings(title, text, length) or nil
 				end
-				local picture, material
-				-- A reading outlives its window and must not take another open book's appearance.
-				if bookPresentation then
-					picture, material = bookPresentation.portrait, bookPresentation.material
-				else
-					picture, material = self:PagePicture(pageId), self:PageMaterial(pageId)
-				end
+				local look = bookPresentation
+					or { portrait = self:PagePicture(pageId), material = self:PageMaterial(pageId) }
 				return {
 					key = "b:" .. pageId,
 					path = [[Interface\AddOns\]] .. pack.addon .. [[\Sounds\]] .. entry.file .. ".mp3",
@@ -305,8 +300,8 @@ function SpokenReadables:ClipFor(pageId, bookPresentation)
 						bullet = "book",
 						-- A text pack's language may need a font the game's lacks.
 						font = Spoken:ClipFont(shown, self),
-						material = material,
-						portrait = picture,
+						material = look.material,
+						portrait = look.portrait,
 						actions = ACTIONS,
 					},
 					stopCallback = PageStopped,
