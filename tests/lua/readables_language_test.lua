@@ -360,12 +360,13 @@ Expect("alone, a pack is listed without a registry", #B:GetAudioPacks(), 1)
 
 ---------------------------------------------------------------- what the page is on
 -- Read in the reading frame, a page shows what it is on: a book from the bags its own icon, a
--- stone tablet a tablet. Queued with no frame open, it shows the book.
+-- stone tablet a tablet. Queued with no frame open, one missing from the Places data shows the
+-- question mark the Compendium lists it under.
 do
     stub.SetLocale("enUS")
     local Bk = Install({ ENGLISH })
-    Expect("a page queued with no frame open shows the book", Bk:ClipFor(PAGE).present.portrait.texture,
-        [[Interface\AddOns\Spoken\Textures\Book]])
+    Expect("a page queued with no frame open and no kind shows the Compendium's question mark",
+        Bk:ClipFor(PAGE).present.portrait.texture, [[Interface\Icons\INV_Misc_QuestionMark]])
     -- Open as the item text events say, not as the game's frame shows: DialogueUI hides that frame
     -- and draws its own.
     Bk.lastPage = PAGE

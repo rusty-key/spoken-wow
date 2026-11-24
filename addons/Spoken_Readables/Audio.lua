@@ -19,10 +19,6 @@ local L = SpokenReadables.L
 -- plays silence and reports nothing.
 local PACK_FORMAT = 1
 
--- The player's own book art. Pointed at rather than copied: Spoken is installed
--- alongside this addon by definition -- it is what the clips are queued through -- and a
--- second copy of the same texture is a second thing to keep in step.
-local BOOK_TEXTURE = [[Interface\AddOns\Spoken\Textures\Book]]
 local ICON_CROP = { 0.08, 0.92, 0.08, 0.92 }
 
 local TYPE_ICONS = {
@@ -33,13 +29,12 @@ local TYPE_ICONS = {
 }
 
 -- Item metadata can be absent while browsing, so the page and queued clip share the type fallback.
+-- A readable missing from the Places data is listed as "other", so it plays as one too.
 function SpokenReadables:ReadableIcon(kind, bookID)
 	local icon, crop
 	if bookID then icon, crop = self:ItemIcon(bookID) end
-	if not icon then
-		icon = kind and ([[Interface\Icons\]] .. (TYPE_ICONS[kind] or TYPE_ICONS.other)) or BOOK_TEXTURE
-	end
-	return icon, crop or (kind and ICON_CROP or nil)
+	if icon then return icon, crop end
+	return [[Interface\Icons\]] .. (TYPE_ICONS[kind] or TYPE_ICONS.other), ICON_CROP
 end
 
 local MATERIALS = {

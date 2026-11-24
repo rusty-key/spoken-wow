@@ -59,7 +59,7 @@ local TYPES, TYPE_NAMES = SpokenReadables.TYPES, SpokenReadables.TYPE_NAMES
 local function TypeLabel(type) return L[(TYPE_NAMES[type] or TYPE_NAMES.other).all] end
 
 local function TypeIcon(type, book)
-	local icon, crop = SpokenReadables:ReadableIcon(type or "other", book)
+	local icon, crop = SpokenReadables:ReadableIcon(type, book)
 	return { objectOrItem = true, icon = icon, iconCrop = crop, bullet = "book" }
 end
 local READABLES_ICON = { objectOrItem = true, icon = C.ICON, bullet = "book" }
