@@ -333,8 +333,8 @@ export function speakQuestTokens(text, lang, playerGender = null) {
 
 // The client prints `|n` as a line break, and `|cAARRGGBB…|r` as the same words in a colour.
 // esES's and esMX's quest text end lines with `|n`.
-const LINE_BREAK = /(?<!\|)\|n/g;
-const COLOUR = /(?<!\|)\|c[\dA-Fa-f]{8}([^|]*)\|r/g;
+const LINE_BREAK = new RegExp(String.raw`${ESCAPE_PIPE}n`, "g");
+const COLOUR = new RegExp(String.raw`${ESCAPE_PIPE}c[\dA-Fa-f]{8}([^|]*)\|r`, "g");
 
 function speak(text, lang, playerGender, byToken) {
   text = text.replace(LINE_BREAK, "\n").replace(COLOUR, "$1");
