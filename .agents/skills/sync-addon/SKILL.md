@@ -31,8 +31,10 @@ It streams the script from the server, so that machine needs no checkout. From a
 Tell the user, briefly:
 
 - It copies the folders `/link-addon` would link, with the same backups, and `--watch` keeps
-  them in step through Mutagen, so after it only `/reload` is needed. A new `--watch` for
-  another worktree replaces it; `--stop` ends it.
+  them in step through Mutagen, so after it only `/reload` is needed. `--watch` stays open in
+  the window and lists each file as it lands, and any problem, such as the worktree being
+  deleted. Ctrl-C or closing the window ends it. A new `--watch` for another worktree replaces
+  it; `--stop` ends one whose window was killed.
 - Without Mutagen (`brew install mutagen-io/mutagen/mutagen`), drop `--watch` and run the
   command again before each `/reload`.
 - The server's ssh host is `dev` unless `SPOKEN_DEV_HOST` names another.
