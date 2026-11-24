@@ -12,6 +12,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   When Window Closes. *([anon1231823](https://github.com/anon1231823))*
 - **Spoken plays the new, smaller Places, Readables and Bosses sound packs,** and the ones you
   already have. *([rusty-key](https://github.com/rusty-key))*
+- **A quest giver's greeting offers Contribute when Spoken has no voice for it,** and Collect
+  Missing Lines keeps it. *([svengabr](https://github.com/svengabr))*
 
 ## 3.12.1 — 2026-11-22
 

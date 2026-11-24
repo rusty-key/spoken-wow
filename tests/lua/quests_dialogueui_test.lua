@@ -815,6 +815,15 @@ Expect("...and it sends the quest DialogueUI shows", envelope and envelope:match
 world.questID = 101
 DUI:HandleQuestDetail()
 Expect("back on a voiced quest, it reports again", corner.missing, false)
+world.greetingText = "Dark times, friend. Stay on the road."
+DUI.handler = "HandleQuestGreeting"
+DUI:HandleQuestGreeting()
+Expect("a quest giver's greeting no pack voices offers it", icon:IsShown() and corner.missing, true)
+Expect("...for the greeting line", Contribute.gossip, true)
+local greeting = VO.Contribute:Capture()
+Expect("...and it sends the greeting DialogueUI shows", greeting and greeting:match("\nquest=") == nil
+    and greeting:match("\nDark times, friend%. Stay on the road%.\n") ~= nil, true)
+world.greetingText = nil
 world.questID = 102
 world.gossipText = "Strange times, friend."
 DUI.handler = "HandleGossip"
