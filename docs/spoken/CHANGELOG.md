@@ -4,8 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **The world map lights the area under your pointer only once you turn it on** with Area
-  Highlight in Spoken Places' settings. *([rusty-key](https://github.com/rusty-key))*
+- **New players' world map lights the area under the pointer only once they turn it on** with
+  Area Highlight in Spoken Places' settings. *([rusty-key](https://github.com/rusty-key))*
 - **Readables played from the Compendium show the same icon as their Compendium page.** One with
   no item, gravestones and tablets included, shows its kind's icon. *([anon1231823](https://github.com/anon1231823))*
 - **Round buttons sink and darken while you hold them,** so Play, Stop, Skip and Report answer
