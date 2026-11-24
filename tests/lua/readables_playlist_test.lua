@@ -25,6 +25,8 @@ _G.SpokenReadablesAudioPacks = {
             [2810] = { file = "2810", len = 8.0 },
             -- William's Shipment, a letter of one page.
             [15] = { file = "15", len = 6.0 },
+            [38] = { file = "38", len = 1 },
+            [39] = { file = "39", len = 1 },
         },
     },
 }
@@ -317,6 +319,54 @@ stub.Advance(41.3)
 Expect("...then the book reads on to its last page", Same(QueuedPages(), { 265 }), true)
 Spoken:StopAll()
 B:StopReading()
+
+---------------------------------------------------------------- the reading's appearance
+do
+    local container = _G.C_Container
+    local icon = 134331
+    _G.C_Container = {
+        GetContainerNumSlots = function(bag) return bag == 0 and 1 or 0 end,
+        GetContainerItemInfo = function() return {
+            iconFileID = icon, hyperlink = "|cffffffff|Hitem:2933::|h[Wiley's Note]|h|r",
+        } end,
+    }
+    local function OpenNote()
+        B:StopReading()
+        Spoken:StopAll()
+        stub.ShowPage({ title = "Wiley's Note", text = SpokenReadablesData.pages[38].text,
+            number = 1, hasNext = true })
+        stub.FireEvent("ITEM_TEXT_READY")
+        local first = Spoken:GetQueue()[1]
+        Expect("Wiley's Note starts on its first page", first and first.pageId, 38)
+        Expect("the first page shows the bag item's icon", first and first.present.portrait.texture, icon)
+        return first
+    end
+    local first = OpenNote()
+    stub.ClosePage()
+    stub.FireEvent("ITEM_TEXT_CLOSED")
+    stub.Advance(1.4)
+    local second = Spoken:GetQueue()[1]
+    Expect("the note continues after its window closes", second and second.pageId, 39)
+    Expect("the second page keeps the note's icon after closing", second and second.present.portrait.texture, icon)
+    Expect("the second page keeps the icon crop", second and second.present.portrait.texCoord,
+        first.present.portrait.texCoord)
+    Expect("the second page keeps the note's material", second and second.present.material, first.present.material)
+
+    first = OpenNote()
+    stub.ShowPage({ title = "Hillsbrad Town Registry", text = SpokenReadablesData.pages[261].text,
+        number = 1, hasNext = true })
+    stub.world.itemTextMaterial = "Stone"
+    stub.FireEvent("ITEM_TEXT_READY")
+    stub.Advance(1.4)
+    second = Spoken:GetQueue()[1]
+    Expect("another readable waits while the note continues", second and second.pageId, 39)
+    Expect("opening another readable does not change the note's icon", second and second.present.portrait.texture, icon)
+    Expect("opening another readable does not change the note's material", second and second.present.material, first.present.material)
+    B:StopReading()
+    stub.ClosePage()
+    stub.FireEvent("ITEM_TEXT_CLOSED")
+    _G.C_Container = container
+end
 
 ---------------------------------------------------------------- with no pack at all
 _G.SpokenReadablesAudioPacks = {}
