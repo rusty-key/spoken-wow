@@ -103,6 +103,8 @@ L.OPT_ROW_LANGUAGE = "Idioma"
 -- Follow-up lines
 L.OPT_PANEL_FOLLOWUP = "Leer el chat de PNJ tras misiones"
 L.OPT_PANEL_PROGRESS = "Leer el progreso de misiones"
+L.OPT_PANEL_ACCOUNT_ONCE = "Leer una vez por cuenta"
+L.OPT_HEARD_QUEST_LINE = "Esta línea de misión ya se escuchó en esta cuenta. Usa Reproducir para volver a oírla."
 L.OPT_PANEL_GREETINGS = "Leer saludos"
 L.OPT_GREETING_LABEL_ALWAYS = "Cada vez"
 L.OPT_GREETING_LABEL_ONCE_QUEST = "Una vez con quien da misiones"

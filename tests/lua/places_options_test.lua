@@ -156,6 +156,16 @@ do
         before and before.layoutReason, Z.L.REASON_EVERY_VISIT)
     Z:Set("autoplayEveryVisit", false); layout:Refresh()
     Expect("...and comes back with it off", before and before.layoutReason, nil)
+
+    local share = Row(Z.L.OPT_SHARE_HISTORY)
+    Expect("a history-sharing checkbox is available", share ~= nil, true)
+    Expect("history sharing is disabled by default", Z:SharesHistory(), false)
+    share:SetChecked(true)
+    share:GetScript("OnClick")(share)
+    Expect("the checkbox enables account history", Z:SharesHistory(), true)
+    share:SetChecked(false)
+    share:GetScript("OnClick")(share)
+    Expect("the checkbox can restore per-character history", Z:SharesHistory(), false)
 end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

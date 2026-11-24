@@ -30,23 +30,37 @@ local SAMPLES = 4
 local explored = {}       -- [mapID] = { zone = bool, keys = { [areaKey] = true } }
 local exploredNames = {}  -- every explored area's name seen in a scan, for the cities
 
-local function CharDB()
-	if type(SpokenPlacesCharacter) ~= "table" then
-		SpokenPlacesCharacter = {}
-	end
-	if type(SpokenPlacesCharacter.visited) ~= "table" then
-		SpokenPlacesCharacter.visited = {}
-	end
-	return SpokenPlacesCharacter
+local function Visited()
+	return SpokenPlaces:HistorySet("visited")
 end
 
 local function VisitKey(mapID, areaKey)
 	return areaKey and (mapID .. "/" .. areaKey) or tostring(mapID)
 end
 
+-- A city has no exploration overlays of its own, so its name on the parent map is what
+-- marks it visited.
+local function ShareExploration(mapID, result)
+	if not (SpokenPlaces:SharesHistory() and result.zone) then return end
+	local visited = Visited()
+	visited[VisitKey(mapID)] = true
+	for key in pairs(result.keys) do
+		visited[VisitKey(mapID, key)] = true
+	end
+	for cityID in pairs(result.cities) do
+		visited[VisitKey(cityID)] = true
+	end
+end
+
+function SpokenPlaces:ShareCachedExploration()
+	for mapID, result in pairs(explored) do
+		ShareExploration(mapID, result)
+	end
+end
+
 --- The explored areas on the map `mapID`, read off its overlays.
 local function Scan(mapID)
-	local result = { zone = false, keys = {}, why = {} }
+	local result = { zone = false, keys = {}, cities = {}, why = {} }
 	explored[mapID] = result
 	local info = C_MapExplorationInfo
 	if not (info and info.GetExploredMapTextures and info.GetExploredAreaIDsAtPosition and C_Map.GetMapArtLayers) then
@@ -57,6 +71,13 @@ local function Scan(mapID)
 	local layer = layers and layers[1]
 	if not ok or not overlays or not layer or layer.layerWidth == 0 then
 		return result
+	end
+	local cityByName = {}
+	for cityID, parent in pairs(SpokenPlaces.CityIn or {}) do
+		if parent == mapID then
+			local name = SpokenPlaces:GetMapName(cityID)
+			if name then cityByName[name] = cityID end
+		end
 	end
 	-- Found by what is explored under its overlays, not by having overlays: some maps carry one
 	-- the game always draws (Moonglade's whole map), explored or not.
@@ -78,12 +99,15 @@ local function Scan(mapID)
 							result.why.zone = result.why.zone or ("explored on its map: " .. name)
 							local key = SpokenPlaces:ResolveAreaKey(name, mapID)
 							if key then result.keys[key] = true end
+							local cityID = cityByName[name]
+							if cityID then result.cities[cityID] = true end
 						end
 					end
 				end
 			end
 		end
 	end
+	ShareExploration(mapID, result)
 	return result
 end
 
@@ -114,7 +138,7 @@ function SpokenPlaces:IsFound(mapID, areaKey)
 	if not mapID then
 		return false
 	end
-	local visited = CharDB().visited
+	local visited = Visited()
 	if areaKey then
 		if visited[VisitKey(mapID, areaKey)] then return true, "stood in" end
 		if Explored(mapID).keys[areaKey] then return true, "explored on the map" end
@@ -146,7 +170,7 @@ end
 --- An area a click on the map just resolved: only an explored one resolves, so it is found, even
 --- where the samples IsFound reads miss its shape (a road, a riverbank).
 function SpokenPlaces:MarkFound(mapID, areaKey)
-	if mapID and areaKey then CharDB().visited[VisitKey(mapID, areaKey)] = true end
+	if mapID and areaKey then self:RememberHistory("visited", VisitKey(mapID, areaKey), true) end
 end
 
 --- Every place counted found, and why, for /spp found.
@@ -190,12 +214,11 @@ local function RecordVisit()
 	if info and info.mapType and info.mapType < 3 then
 		return
 	end
-	local visited = CharDB().visited
-	visited[VisitKey(mapID)] = true
+	SpokenPlaces:RememberHistory("visited", VisitKey(mapID), true)
 	local subZone = GetSubZoneText and NotSecret(GetSubZoneText())
 	if subZone and subZone ~= "" then
 		local _, key = SpokenPlaces:GetSubzoneLore(mapID, subZone)
-		if key then visited[VisitKey(mapID, key)] = true end
+		if key then SpokenPlaces:RememberHistory("visited", VisitKey(mapID, key), true) end
 	end
 end
 

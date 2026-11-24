@@ -46,7 +46,7 @@ local SAVED = {
     { toc = "Spoken_Quests/Spoken_Quests.toc", vars = "SpokenQuestsSettings" },
     { toc = "Spoken_Readables/Spoken_Readables.toc", vars = "SpokenReadablesSettings, SpokenBooksSettings",
         char = "SpokenReadablesCharacter, SpokenBooksCharacter" },
-    { toc = "Spoken_Places/Spoken_Places.toc", vars = "SpokenPlacesSettings, SpokenZonesSettings",
+    { toc = "Spoken_Places/Spoken_Places.toc", vars = "SpokenPlacesSettings, SpokenZonesSettings, SpokenPlacesAccountHistory",
         char = "SpokenPlacesCharacter, SpokenZonesCharacter" },
 }
 for _, addon in ipairs(SAVED) do

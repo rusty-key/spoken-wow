@@ -136,6 +136,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/places_area_at_test.lua
 	@$(LUA) tests/lua/places_openmap_test.lua
 	@$(LUA) tests/lua/places_discovery_test.lua
+	@$(LUA) tests/lua/places_shared_history_test.lua
 	@$(LUA) tests/lua/subtitle_pages_test.lua
 	@$(LUA) tests/lua/defaults_test.lua
 	@$(LUA) tests/lua/scroll_mode_upgrade_test.lua
@@ -143,6 +144,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/names_test.lua
 	@$(LUA) tests/lua/packs_test.lua
 	@$(LUA) tests/lua/quests_options_test.lua
+	@$(LUA) tests/lua/quests_account_history_test.lua
 	@$(LUA) tests/lua/quests_dialogueui_test.lua
 	@$(LUA) tests/lua/quests_immersion_test.lua
 	@$(LUA) tests/lua/readables_source_test.lua
