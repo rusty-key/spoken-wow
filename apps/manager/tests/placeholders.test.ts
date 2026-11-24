@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { S_EN } from '../src/renderer/src/strings.en'
-import { S_DE } from '../src/renderer/src/strings.de'
-import { S_ES } from '../src/renderer/src/strings.es'
-import { S_FR } from '../src/renderer/src/strings.fr'
-import { S_KO } from '../src/renderer/src/strings.ko'
-import { S_PT } from '../src/renderer/src/strings.pt'
-import { S_RU } from '../src/renderer/src/strings.ru'
-import { S_ZH } from '../src/renderer/src/strings.zh'
-import { S_ZH_TW } from '../src/renderer/src/strings.zh-tw'
+import { DICTS } from '../src/renderer/src/strings'
+
+/** The plural helper and its categories word the sentence; they are not values it shows. */
+const NOT_VALUES = new Set(['pluralForm', 'forms', 'zero', 'one', 'two', 'few', 'many', 'other'])
 
 /**
  * Read from the source, not called: `Intl.PluralRules` throws on a stand-in argument and would hide
@@ -26,7 +22,7 @@ function shapes(fn: (...args: unknown[]) => unknown): string {
     // What is left names the values the sentence shows.
     for (const id of expr.matchAll(/\b[a-zA-Z_$][\w$]*\b/g)) {
       const word = id[0]
-      if (word === 'pluralForm' || word === 'forms' || ['zero', 'one', 'two', 'few', 'many', 'other'].includes(word)) continue
+      if (NOT_VALUES.has(word)) continue
       // Bundler artifacts (`__vite_ssr_import_1__`) are not values the sentence shows.
       if (word.startsWith('_')) continue
       if (!found.includes(word)) found.push(word)
@@ -62,7 +58,7 @@ function walk(en: unknown, other: unknown, path: string, out: string[], language
 
 describe('a placeholder is never left unfilled', () => {
   it('both languages fill the same names, in plain strings and in built sentences', () => {
-    for (const [language, dict] of Object.entries({ deDE: S_DE, esES: S_ES, frFR: S_FR, koKR: S_KO, ptBR: S_PT, ruRU: S_RU, zhCN: S_ZH, zhTW: S_ZH_TW })) {
+    for (const [language, dict] of Object.entries(DICTS).filter(([language]) => language !== 'enUS')) {
       const problems: string[] = []
       walk(S_EN, dict, '', problems, language)
       expect(problems, language).toEqual([])

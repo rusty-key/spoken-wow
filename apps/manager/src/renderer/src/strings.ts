@@ -22,7 +22,7 @@ export const COMMUNITY_README_URL = 'https://github.com/rusty-key/spoken-wow/blo
 /** The shape every language file must have: whatever English has, a translation has too. */
 export type Dict = typeof S_EN
 
-const DICTS: Record<UiLanguage, Dict> = {
+export const DICTS: Record<UiLanguage, Dict> = {
   enUS: S_EN,
   deDE: S_DE,
   esES: S_ES,

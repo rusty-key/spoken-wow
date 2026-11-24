@@ -3,14 +3,13 @@ import { FLAVOR_FOLDER_LIST, type Snapshot } from '@shared/types'
 import { pluralForm } from './format'
 import type { Dict } from './strings'
 
-type ManagerPlatform = Snapshot['platform']
-type Platform = ManagerPlatform
+type Platform = Snapshot['platform']
 
-function fileManager(platform: ManagerPlatform): string {
+function fileManager(platform: Platform): string {
   return platform === 'darwin' ? 'Finder' : platform === 'linux' ? 'Dateimanager' : 'Explorer'
 }
 
-function gameFolderExample(platform: ManagerPlatform): string {
+function gameFolderExample(platform: Platform): string {
   if (platform === 'darwin') return '/Applications/World of Warcraft'
   if (platform === 'linux') return 'den World-of-Warcraft-Ordner in deinem Wine-Präfix oder Lutris-/Bottles-Spielordner'
   return 'den Spielordner (zum Beispiel C:\\Program Files (x86)\\World of Warcraft)'
@@ -26,7 +25,7 @@ export const S_DE: Dict = {
   },
   window: { minimize: 'Minimieren', maximize: 'Maximieren', restore: 'Wiederherstellen', close: 'Schließen' },
   strip: { add: 'Spielordner hinzufügen', missing: (label: string) => `${label} ist auf diesem PC nicht installiert` },
-  empty: { title: 'Kein Spiel für Spoken gefunden', text: (platform: ManagerPlatform) => `Spoken läuft auf WoW: Forever, Classic Era und Anniversary. Füge den Ordner hinzu, in dem dein Spiel installiert ist: ${gameFolderExample(platform)}, ein ${FLAVOR_FOLDER_LIST}-Ordner oder ein AddOns-Ordner.`, add: 'Spielordner hinzufügen', scan: 'Erneut suchen', scanning: 'Suche läuft' },
+  empty: { title: 'Kein Spiel für Spoken gefunden', text: (platform: Platform) => `Spoken läuft auf WoW: Forever, Classic Era und Anniversary. Füge den Ordner hinzu, in dem dein Spiel installiert ist: ${gameFolderExample(platform)}, ein ${FLAVOR_FOLDER_LIST}-Ordner oder ein AddOns-Ordner.`, add: 'Spielordner hinzufügen', scan: 'Erneut suchen', scanning: 'Suche läuft' },
   home: {
     title: 'Meine Spiele', sort: 'Sortieren nach', sortInstalled: 'Installierte zuerst', sortName: 'Name', filters: 'Anzeigen', filterAll: 'Alle', filterWith: 'Mit Spoken', filterWithout: 'Ohne Spoken', noMatch: 'Kein Spiel passt zu diesem Filter.', notInstalled: 'Auf diesem PC nicht installiert', addFolder: 'Ordner hinzufügen', whatsNew: 'Neuigkeiten', readAll: 'Alle lesen', noVoice: 'Keine Sprachpakete', voicePacks: (n: number) => `${n} ${pluralForm(n, { one: 'Sprachpaket', other: 'Sprachpakete' })}`, packUpdates: (n: number) => `${n} ${pluralForm(n, { one: 'Sprachpaket-Update', other: 'Sprachpaket-Updates' })}`, installSpoken: 'Spoken installieren', update: 'Aktualisieren', manage: 'Verwalten', voicePacksButton: 'Sprachpakete', openSpoken: (label: string) => `Spoken für ${label} öffnen`
   },

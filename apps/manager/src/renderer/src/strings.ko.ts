@@ -1,6 +1,5 @@
 // Every word the window shows, in Korean.
 import { FLAVOR_FOLDER_LIST, type Snapshot } from '@shared/types'
-import { pluralForm } from './format'
 import type { Dict } from './strings'
 
 type Platform = Snapshot['platform']

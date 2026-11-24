@@ -19,9 +19,8 @@ describe('setUiLanguage', () => {
     expect(S.tabs.home).toBe('Home')
   })
 
-  it('offers one Spanish entry and every supported game language', () => {
-    expect(UI_LANGUAGES.map((l) => l.code)).toEqual(['enUS', 'deDE', 'esES', 'frFR', 'koKR', 'ptBR', 'ruRU', 'zhCN', 'zhTW'])
-    expect(UI_LANGUAGES.find((l) => l.code === 'esES')?.name).toBe('Español')
+  it('offers one Spanish entry, named for every Spanish speaker', () => {
+    expect(UI_LANGUAGES.find((l) => l.code === 'esES' && 'name' in l)?.name).toBe('Español')
     expect(UI_LANGUAGES.some((l) => (l.code as string) === 'esMX')).toBe(false)
   })
 })

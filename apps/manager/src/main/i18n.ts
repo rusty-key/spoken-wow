@@ -263,8 +263,8 @@ const ZH_CN: Record<MessageKey, string> = {
   'tray.quit': '退出 Spoken 管理器'
 }
 
-// The window and main process use complete dictionaries so a chosen language never falls back to
-// English for a message this module can show.
+// Each table is complete, so a message missing in the chosen language fails typecheck instead of
+// showing English.
 const DE: Record<MessageKey, string> = {
   'errors.cancelled': 'Abgebrochen.',
   'errors.failed': 'Etwas ist schiefgelaufen: {text}',
