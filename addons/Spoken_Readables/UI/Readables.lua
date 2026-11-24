@@ -179,7 +179,7 @@ local function Index()
 	end
 	local function ByTitle(a, b)
 		local ta, tb = Title(a), Title(b)
-	if ta == tb then return IDBefore(a, b) end
+		if ta == tb then return IDBefore(a, b) end
 		return ta < tb
 	end
 	for _, zone in pairs(index.zones) do

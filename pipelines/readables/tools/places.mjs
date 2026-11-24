@@ -134,7 +134,7 @@ function table(name) {
 // ---------------------------------------------------------------- the readables
 
 const booksLua = await readFile(BOOKS, "utf8");
-const { books, pageBook, pageText } = readableLua(booksLua);
+const { books, pageBook, pageText, itemBook: ownerBook } = readableLua(booksLua);
 
 // ---------------------------------------------------------------- where on the map
 
@@ -263,6 +263,13 @@ try {
       bookItems.get(pageBook.get(page)).push(Number(r.ID));
     }
   }
+  // A minted book's pages are in no PageID: the corpus records the item a player read it from.
+  for (const [item, book] of ownerBook) {
+    if (typeof book !== "string" || itemBook.has(item)) continue;
+    itemBook.set(item, book);
+    if (!bookItems.has(book)) bookItems.set(book, []);
+    bookItems.get(book).push(item);
+  }
   for (const book of new Set(itemBook.values())) if (!kind.has(book)) kind.set(book, "carried");
   const items = [...itemBook.keys()];
 
@@ -389,9 +396,9 @@ try {
     for (const s of list_) {
       const name = s.quest ? handQuests.get(s.quest) : handObjects.get(s.object);
       if (!name) throw new Error(`book ${book}: no ${s.quest ? `quest ${s.quest}` : `object ${s.object}`} in the world DB`);
-      add(Number(book), s.zones ?? handObjectZones.get(s.object) ?? []);
+      add(luaTableId(book), s.zones ?? handObjectZones.get(s.object) ?? []);
     }
-    if (!kind.has(Number(book))) kind.set(Number(book), "carried");
+    if (!kind.has(luaTableId(book))) kind.set(luaTableId(book), "carried");
   }
 } finally {
   await db.end();
@@ -403,7 +410,7 @@ const gone = (id, book) => cannotBeHad(book.title, book.pages.map((page) => page
 
 const lines = [];
 const counts = { world: 0, carried: 0, wide: 0, event: 0, nowhere: 0, gone: 0, types: {}, inDungeon: 0, dungeons: new Map() };
-for (const [id, book] of [...books].sort((a, b) => a[0] - b[0])) {
+for (const [id, book] of [...books].sort((a, b) => compareIds(a[0], b[0]))) {
   if (gone(id, book)) { counts.gone++; continue; }
   const k = kind.get(id);
   if (!k) { counts.nowhere++; continue; }

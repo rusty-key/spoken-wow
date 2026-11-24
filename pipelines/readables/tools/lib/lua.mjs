@@ -41,7 +41,7 @@ export function luaTableId(id) {
 const LUA_ID = String.raw`(?:\d+|"(?:[^"\\]|\\.)*")`;
 const parseLuaId = (id) => id.startsWith('"') ? id.slice(1, -1) : Number(id);
 
-/** Parse the Books.lua sections consumed by the Places generator. */
+/** Parse the Books.lua sections consumed by the Places generator: books, pages and item owners. */
 export function readableLua(source) {
   const bookPart = source.slice(source.indexOf("\tbooks = {"));
   const books = new Map();
@@ -57,7 +57,13 @@ export function readableLua(source) {
   for (const m of pagePart.matchAll(new RegExp(`\\[(${LUA_ID})\\] = \\{ book = ${LUA_ID}, number = \\d+, text = "((?:[^"\\\\]|\\\\.)*)"`, "g"))) {
     pageText.set(parseLuaId(m[1]), m[2]);
   }
-  return { books, pageBook, pageText };
+  const itemBook = new Map();
+  const itemPart = source.slice(source.indexOf("\towners = {"));
+  const items = itemPart.slice(itemPart.indexOf("\t\titem = {"), itemPart.indexOf("\t\t},"));
+  for (const m of items.matchAll(new RegExp(`\\[(\\d+)\\] = (${LUA_ID}),`, "g"))) {
+    itemBook.set(Number(m[1]), parseLuaId(m[2]));
+  }
+  return { books, pageBook, pageText, itemBook };
 }
 
 export function compareIds(a, b) {

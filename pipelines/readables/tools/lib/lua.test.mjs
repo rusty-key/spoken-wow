@@ -2,17 +2,19 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { booksLua, indexLua, luaTableId, pageIndex, quote, readableLua } from "./lua.mjs";
+import { pageChecksum } from "./naming.mjs";
 
-test("the Places reader preserves minted books and page text", () => {
+test("the Places reader preserves minted books, page text and item owners", () => {
   const parsed = readableLua(booksLua([{ pageId: "npage", bookId: "nbook", pageNumber: 1,
-    title: "Minted Journal", text: "Words." }, { pageId: 1, bookId: 1, pageNumber: 1,
-    title: "Numeric", text: "Other words." }]));
+    title: "Minted Journal", text: "Words.", ownerKind: "item", ownerIds: [277976] },
+  { pageId: 1, bookId: 1, pageNumber: 1, title: "Numeric", text: "Other words.", ownerKind: "item", ownerIds: [745] }]));
   assert.deepEqual(parsed.books.get("nbook").pages, ["npage"]);
   assert.equal(parsed.pageBook.get("npage"), "nbook");
   assert.equal(parsed.pageText.get("npage"), "Words.");
   assert.equal(parsed.pageBook.get(1), 1);
+  assert.equal(parsed.itemBook.get(277976), "nbook");
+  assert.equal(parsed.itemBook.get(745), 1);
 });
-import { pageChecksum } from "./naming.mjs";
 
 const entries = [
   { pageId: 10, bookId: 10, pageNumber: 1, pageCount: 2, title: "A Dusty Tome", text: "One." },
