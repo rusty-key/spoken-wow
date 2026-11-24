@@ -253,6 +253,11 @@ async function writeSelection(held) {
   await writeFile(file, `${JSON.stringify(selected)}\n`);
 }
 
+/** Every directory the takes' clips go in, made once each. */
+function makeDirs(takes) {
+  return Promise.all([...new Set(takes.map(({ stem }) => dirname(join(paths.out, stem))))].map((dir) => mkdir(dir, { recursive: true })));
+}
+
 /** Writes the pointers and returns the live takes left out, by file. */
 async function writeEncodingPointers(pointed) {
   // Encoding one here instead would make players download it again: oggenc's bytes differ every run.
@@ -320,7 +325,7 @@ if (process.env.SPOKEN_CLIP_POINTERS) {
     process.exit(1);
   }
   const pointed = live.filter((take) => take.sha256);
-  await Promise.all([...new Set(pointed.map(({ stem }) => dirname(join(paths.out, stem))))].map((dir) => mkdir(dir, { recursive: true })));
+  await makeDirs(pointed);
   const leftOut = await writeEncodingPointers(pointed);
   if (section === "quests") {
     await writeWordTimes();
@@ -334,19 +339,15 @@ if (process.env.SPOKEN_CLIP_POINTERS) {
 }
 
 const encodes = section === "quests" ? null : encodesOf(section);
-if (encodes && live.some((take) => take.archived) && !(await haveEncoders())) {
+const kept = live.filter((take) => take.archived);
+if (encodes && kept.length && !(await haveEncoders())) {
   console.error("error: encoding the clips needs ffmpeg and oggenc on PATH (brew install ffmpeg vorbis-tools)");
   process.exit(1);
 }
 
 let copied = 0;
-const gone = [];
 const missing = [];
-const kept = live.filter((take) => {
-  if (!take.archived) gone.push(take.file);
-  return take.archived;
-});
-await Promise.all([...new Set(kept.map(({ stem }) => dirname(join(paths.out, stem))))].map((dir) => mkdir(dir, { recursive: true })));
+await makeDirs(kept);
 // oggenc is single-threaded, so one per core.
 await eachParallel(kept, async ({ stem, archived, sha256 }) => {
   const source = join(paths.archive, archived);
@@ -371,10 +372,10 @@ if (section === "quests") {
 
 console.log(`${section}: ${copied} clips in ${paths.out.slice(ROOT.length + 1)}`);
 if (unnamed) console.log(`  ${unnamed} live takes left out: no current line names their file, no lore their place, or their boss is retired`);
-if (gone.length) {
+if (live.length > kept.length) {
   // Known, and not this machine's fault: the take's clip was not kept before the archive
   // was the record. The line ships without audio, the same as one never generated.
-  console.log(`  ${gone.length} live takes had their clip discarded before the archive kept every take; shipped silent`);
+  console.log(`  ${live.length - kept.length} live takes had their clip discarded before the archive kept every take; shipped silent`);
 }
 if (missing.length) {
   console.error(`  ${missing.length} live takes are not in this machine's archive, e.g.:`);
@@ -382,4 +383,4 @@ if (missing.length) {
   console.error(`  Fetch them with:  make ${section}-pull-live${lang === BASE_LANG ? "" : ` LOCALE=${lang}`}`);
   process.exit(1);
 }
-await writeSelection(live.filter((take) => take.archived));
+await writeSelection(kept);

@@ -13,18 +13,12 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { scriptTeamId } from "../../pipelines/lib/release-team.mjs";
 import { archiveOf, encodesOf, ENCODING_PROFILE as PROFILE } from "../lib/archives.mjs";
 import { archiveBase, downloadVerified, eachParallel } from "../lib/download.mjs";
-
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-
-export function cacheDir(lang, root = process.env.CACHE_ROOT ?? join(ROOT, "pipelines/quests/audio-transcoded")) {
-  return join(root, lang === "enUS" ? PROFILE : `${lang}-${PROFILE}`);
-}
 
 /** The cache file's name for a take, from its row and its master's path. */
 export function keyOf(section) {
@@ -92,7 +86,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const rows = liveEncodings(database, section, lang, team);
   const tally = await fillCache(rows, {
     archive: archiveOf(section),
-    cache: section === "quests" ? cacheDir(lang) : encodesOf(section),
+    cache: encodesOf(section, lang),
     base: archiveBase(base),
     key: keyOf(section),
   });

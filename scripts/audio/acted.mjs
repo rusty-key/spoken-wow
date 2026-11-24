@@ -41,6 +41,7 @@ import { BASE_LOCALE, CODES } from "../../pipelines/lib/locales.mjs";
 import { scriptTeam } from "../../pipelines/lib/release-team.mjs";
 import { luaString } from "../../pipelines/places/tools/lib/wiki.mjs";
 import { archiveOf, sourceOf } from "../lib/archives.mjs";
+import { eachParallel } from "../lib/download.mjs";
 import { encodeOgg } from "../lib/ogg.mjs";
 import { actedFolder, audioFamily, englishFolder } from "../lib/packs.mjs";
 
@@ -308,15 +309,6 @@ async function encode(clip, from, to) {
   return encodeOgg(from, to);
 }
 
-/** Every clip encoded, as many at once as there are cores: each encoder is one thread. */
-async function encodeAll(jobs) {
-  const queue = [...jobs];
-  const worker = async () => {
-    for (let job = queue.shift(); job; job = queue.shift()) await encode(...job);
-  };
-  await Promise.all(Array.from({ length: availableParallelism() }, worker));
-}
-
 async function main(args) {
   const list = args.includes("--list");
   const section = args.find((arg) => !arg.startsWith("--"));
@@ -349,12 +341,15 @@ async function main(args) {
   const staging = mkdtempSync(join(tmpdir(), "acted-"));
   const out = join(staging, folder);
   try {
-    await encodeAll(
+    // oggenc is single-threaded, so one per core.
+    await eachParallel(
       clips.map((clip) => [
         clip,
         join(archiveOf(section), clip.archived),
         join(out, packPath(section, clip.file)),
       ]),
+      (job) => encode(...job),
+      availableParallelism(),
     );
 
     const files =

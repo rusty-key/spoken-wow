@@ -1,6 +1,6 @@
 // The Ogg every sound pack ships: ffmpeg decodes to mono, oggenc -q 0 encodes (ogg-q0-44k).
-// The site encodes each take the same way when it is committed (apps/web/src/lib/takes/encode.ts),
-// so a clip encoded here and one the site encoded play the same.
+// The site's encoder (apps/web/src/lib/takes/encode.ts) uses the same two settings, so a clip
+// encoded here sounds the same as the site's; the bytes differ, as oggenc's do every run.
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";

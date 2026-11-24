@@ -71,11 +71,6 @@ else
   title="$PACK_TITLE"
 fi
 
-if [[ $# -gt 0 ]]; then
-  echo "error: Places builds one pack; pass no tier argument" >&2
-  exit 1
-fi
-
 if [[ ! -f "$TOC" ]]; then
   echo "error: $TOC not found" >&2
   exit 1

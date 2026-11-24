@@ -7,13 +7,21 @@ import { join } from "node:path";
 import { after, test } from "node:test";
 
 import { seedDatabase } from "../../pipelines/lib/test-db.mjs";
-import { cacheDir, fillCache, keyOf, liveEncodings } from "./fetch-encodings.mjs";
+import { encodesOf } from "../lib/archives.mjs";
+import { fillCache, keyOf, liveEncodings } from "./fetch-encodings.mjs";
 
 const hash = (algorithm, text) => createHash(algorithm).update(text).digest("hex");
 
-test("names the cache the way package-audio.sh does", () => {
-  assert.equal(cacheDir("enUS", "/c"), "/c/ogg-q0-44k");
-  assert.equal(cacheDir("deDE", "/c"), "/c/deDE-ogg-q0-44k");
+test("names the quests cache the way package-audio.sh does", () => {
+  const before = process.env.CACHE_ROOT;
+  process.env.CACHE_ROOT = "/c";
+  try {
+    assert.equal(encodesOf("quests", "enUS"), "/c/ogg-q0-44k");
+    assert.equal(encodesOf("quests", "deDE"), "/c/deDE-ogg-q0-44k");
+  } finally {
+    if (before === undefined) delete process.env.CACHE_ROOT;
+    else process.env.CACHE_ROOT = before;
+  }
 });
 
 test("lays each encoding under its master's md5, and skips what it cannot place", async () => {
