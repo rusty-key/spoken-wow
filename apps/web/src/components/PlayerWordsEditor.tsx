@@ -36,13 +36,7 @@ const READERS: { key: Reader; other: Reader; label: string; aria: string }[] = [
 ];
 
 function draftFields(forms: PlayerForms | undefined): Record<Field, string> {
-  return {
-    name: forms?.name ?? "",
-    race: forms?.race ?? "",
-    nameGenitive: forms?.nameGenitive ?? "",
-    classPlural: forms?.classPlural ?? "",
-    raceWeak: forms?.raceWeak ?? "",
-  };
+  return Object.fromEntries(FIELDS.map(({ key }) => [key, forms?.[key] ?? ""])) as Record<Field, string>;
 }
 
 function draftCases(words: PlayerWords | null): CaseRow[] {

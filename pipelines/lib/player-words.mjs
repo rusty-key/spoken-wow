@@ -389,17 +389,18 @@ function speak(text, lang, playerGender, byToken) {
   const forms = playerWordsOf(lang);
   if (!forms) return text;
   text = speakQuantities(text, lang, forms);
-  const words = playerGender === "f" ? forms.f : forms.m;
+  const reader = playerGender === "f" ? "f" : "m";
+  const words = forms[reader];
   const cased = (word, at, whole, token) => {
     if (byToken) return token === token.toUpperCase() ? capital(word) : word;
     return ALWAYS_CAPITAL.has(lang) || SENTENCE_START.test(whole.slice(0, at)) ? capital(word) : word;
   };
 
-  const side = playerGender === "f" ? "$2" : "$1";
+  const side = reader === "f" ? "$2" : "$1";
   let spoken = text.replace(DOUBLED, "$").replace(GENDER, side).replace(SWAPPED, side);
   if (lang === "koKR") spoken = spoken.replace(GLUED_PARTICLE, gluedParticleEscape);
   spoken = elide(spoken, lang, words);
-  if (lang === "deDE") spoken = declineGermanRace(spoken, words, playerGender === "f" ? "f" : "m", cased);
+  if (lang === "deDE") spoken = declineGermanRace(spoken, words, reader, cased);
   spoken = spoken.replace(DECLINED, (whole, n, token, at, all) => {
     const word = words.cases?.[n]?.[wordKey(token)];
     return word ? cased(word, at, all, token) : whole;
@@ -464,14 +465,14 @@ const OBLIQUE = {
 };
 // Up to two adjectives may stand between ("dem tapferen jungen $R"); they end in -e or -en.
 const GERMAN_RACE = new RegExp(
-  String.raw`(?<!\p{L})(\p{L}+)((?:\s+\p{Ll}+e[n]?){0,2}\s+)${UNDECLINED}\$[Rr](?!${GLUED})`,
+  String.raw`(?<!\p{L})(\p{L}+)((?:\s+\p{Ll}+e[n]?){0,2}\s+)${tokenSource("Rr")}`,
   "gu",
 );
 
 function declineGermanRace(text, words, reader, cased) {
   const weak = words.raceWeak;
-  if (!weak) return text;
-  return text.replace(GERMAN_RACE, (whole, determiner, between, at, all) => {
+  if (!weak || !/\$[Rr]/.test(text)) return text;
+  return text.replace(GERMAN_RACE, (whole, determiner, between, _token, at, all) => {
     const before = determiner.toLowerCase();
     const word = OBLIQUE[reader].includes(before) ? `${weak}n` : WEAK_NOMINATIVE[reader].includes(before) ? weak : null;
     if (!word) return whole;
