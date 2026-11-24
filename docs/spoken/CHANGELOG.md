@@ -4,6 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **A progress page left in under half a second is read before its reward page,** whether an
+  auto turn-in addon such as Questie or your own click moved on. *([rusty-key](https://github.com/rusty-key))*
 - **New players' world map lights the area under the pointer only once they turn it on** with
   Area Highlight in Spoken Places' settings. *([rusty-key](https://github.com/rusty-key))*
 - **The player has a Stop All button,** which stops narration and clears the queue. Skip Line
