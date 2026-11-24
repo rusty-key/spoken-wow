@@ -6,10 +6,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 - **With Read After Accepting on, a quest reads once you accept or hand it in.** It replaces Read
   When Window Closes. *([anon1231823](https://github.com/anon1231823))*
-- **Subtitles always pass mouse input through.** Move them with the grabber in their hover controls;
-  Lock Position disables movement. *([Praxeomatic](https://github.com/Praxeomatic))*
-- **Subtitle dragging stops when you release the mouse.** The move button now has four-way arrows
-  and clearer instructions. *([Praxeomatic](https://github.com/Praxeomatic))*
+- **Subtitles no longer block clicks or the mouse wheel.** Move them with the arrow button that
+  appears under them on hover. *([Praxeomatic](https://github.com/Praxeomatic))*
 
 ## 3.12.1 — 2026-11-22
 

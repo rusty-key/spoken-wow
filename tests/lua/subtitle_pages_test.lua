@@ -241,8 +241,8 @@ do
     held:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "Next", transcript = "More.",
         portrait = { kind = "none" } } }))
     Subtitle:CountWaiting()
-    Expect("the waiting count stays visible without a mouse target",
-        Subtitle.more:IsShown() and Subtitle.moreHover == nil, true)
+    Expect("the subtitles' count lists the lines waiting under the pointer",
+        tostring(Subtitle.more:IsShown()) .. " " .. tostring(Subtitle.moreHover:IsShown()), "true true")
     holding = false
     env.SoundQueue:RemoveAllSoundsFromQueue()
 end

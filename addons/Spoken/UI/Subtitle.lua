@@ -329,6 +329,7 @@ function Subtitle:Build()
     end
     self.heldDot:SetText("·")
     self.moreDot:SetText("·")
+    self.moreHover = Actions.WaitingHover(self.more)
     self.morePulse = Actions.Pulse(self.more)
     self.waiting = 0
 
@@ -448,6 +449,7 @@ function Subtitle:PlaceRow(left)
         local dot, text, shown = part[1], part[2], part[3]
         dot:SetShown(shown and last and true or false)
         text:SetShown(shown)
+        if text == self.more then self.moreHover:SetShown(shown) end
         if shown then
             text:ClearAllPoints()
             if last then

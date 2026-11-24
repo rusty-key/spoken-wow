@@ -46,10 +46,10 @@ All of it is in `addons/Spoken/UI/`, one copy for every module.
   and "+N", the lines waiting behind it. The reason is what `SoundQueue:GetHeldReason` answers:
   "(Waiting for the NPC to finish speaking.)" under NPC Voice Before Reading, and for a place story
   Places reads by itself, "(Waiting for combat to end.)" or "(Waiting for the cinematic to end.)".
-  A story you ask for with Play does not wait. In the window styles, pointing at "+N" opens a tooltip, Up Next, with
+  A story you ask for with Play does not wait. Pointing at "+N" opens a tooltip, Up Next, with
   the waiting lines in the order they will play, each with its title and who says it, at most
   twelve (`Actions.WaitingTip`). Clicking "+N" does nothing, and a click on it reaches the window
-  under it. The subtitle count is display-only. A line queued while Spoken is stopped waits, as every line does, and the count says
+  under it. A line queued while Spoken is stopped waits, as every line does, and the count says
   so: it swells, lit gold with a glow behind it, and settles back (`Actions.Pulse`). Skip plays the
   waiting line; Replay plays the stopped one first. A count that grows while lines play only fades
   in.
@@ -133,7 +133,7 @@ they do in the windows.
 - **Show Name and Title** off leaves the row out; it still says "(Stopped)", with "+N" after it
   when lines wait behind the stop, or why a line waits, and Hide Portrait waits on it.
 - The text display, including its name, portrait and waiting count, passes clicks, drags and wheel
-  input through to the game. Hovering over it reveals the grabber, Stop or Replay, Previous,
+  input through to the game; pointing at "+N" still lists the waiting lines. Hovering over it reveals the grabber, Stop or Replay, Previous,
   Skip and Report below it.
 - Drag the grabber to move the subtitle and controls together. The controls stay visible during
   the drag and remain within the screen. The position is saved, with snapping to the screen's
