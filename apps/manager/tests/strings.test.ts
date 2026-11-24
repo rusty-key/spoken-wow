@@ -24,12 +24,23 @@ function leaves(value: unknown, prefix = ''): Map<string, unknown> {
   return out
 }
 
+const TRANSLATIONS = { deDE: S_DE, esES: S_ES, frFR: S_FR, koKR: S_KO, ptBR: S_PT, ruRU: S_RU, zhCN: S_ZH, zhTW: S_ZH_TW }
+
 describe('the window language', () => {
   it('no string is left empty', () => {
-    for (const [language, dict] of Object.entries({ enUS: S_EN, deDE: S_DE, esES: S_ES, frFR: S_FR, koKR: S_KO, ptBR: S_PT, ruRU: S_RU, zhCN: S_ZH, zhTW: S_ZH_TW })) {
+    for (const [language, dict] of Object.entries({ enUS: S_EN, ...TRANSLATIONS })) {
       for (const [path, value] of leaves(dict)) {
         if (typeof value === 'string') expect(value.trim(), `${language}.${path}`).not.toBe('')
       }
+    }
+  })
+
+  // The Spoken page reads each module's folder name from the dictionary; a translation without one crashes it.
+  it('every translation has every field English has', () => {
+    const english = [...leaves(S_EN).keys()]
+    for (const [language, dict] of Object.entries(TRANSLATIONS)) {
+      const have = leaves(dict)
+      expect(english.filter((path) => !have.has(path)), language).toEqual([])
     }
   })
 })

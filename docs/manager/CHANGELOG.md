@@ -5,7 +5,7 @@ Spoken Launcher until 0.1.2, when it became Spoken Manager.
 ## Unreleased
 
 - **The Manager speaks German, Spanish, French, Korean, Portuguese, Russian and Traditional
-  Chinese.** Choose the interface language in Settings > General; Spanish is one entry. *([anon1231823](https://github.com/anon1231823))*
+  Chinese.** Choose it under Interface Language in Settings. *([anon1231823](https://github.com/anon1231823))*
 
 ## 0.2.2 — 2026-11-22
 
