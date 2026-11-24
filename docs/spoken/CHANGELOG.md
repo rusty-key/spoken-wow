@@ -4,6 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **The player has a Stop All button,** which stops narration and clears the queue. Skip Line
+  is now Next Line, and greys out with no line waiting. *([anon1231823](https://github.com/anon1231823))*
 - **Readables played from the Compendium show the same icon as their Compendium page.** One with
   no item, gravestones and tablets included, shows its kind's icon. *([anon1231823](https://github.com/anon1231823))*
 - **Round buttons sink and darken while you hold them,** so Play, Stop, Skip and Report answer

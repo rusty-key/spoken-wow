@@ -573,7 +573,7 @@ end
 Expect("...and that a right-click switches Read Automatically", saysRightClick, true)
 play.scripts.OnLeave(play)
 skip.scripts.OnEnter(skip)
-Expect("Skip's tooltip names it", skip.tooltip and skip.tooltip.text, _G.SpokenEnv.L.BIND_SKIP)
+Expect("Skip's tooltip names it", skip.tooltip and skip.tooltip.text, _G.SpokenEnv.L.BIND_SKIP_FORWARD)
 skip.scripts.OnLeave(skip)
 play.scripts.OnClick(play, "LeftButton")
 Expect("left-click again stops it", Spoken:GetQueueSize(), 0)

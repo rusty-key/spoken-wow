@@ -23,7 +23,7 @@ local function Pack(onLoad)
         meta = H.InterfacePackMeta("plPL") }
 end
 local POLISH = function()
-    _G.Spoken:RegisterInterfaceStrings("plPL", "Spoken", { PLAY = "Odtwórz", BIND_PLAYPAUSE = "Zatrzymaj lub powtórz" })
+    _G.Spoken:RegisterInterfaceStrings("plPL", "Spoken", { PLAY = "Odtwórz", BIND_STOP_REPLAY = "Zatrzymaj lub powtórz" })
     _G.Spoken:RegisterInterfaceStrings("plPL", "Readables", { OPT_AUTOPLAY = "Czytaj automatycznie" })
     _G.Spoken:RegisterInterfaceStrings("plPL", "Places", { OPT_SECTION_MAP = "Mapa" })
     _G.Spoken:RegisterInterfaceStrings("deDE", "Spoken", { PLAY = "Nicht diese" })

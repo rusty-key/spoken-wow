@@ -343,15 +343,15 @@ places:Enqueue(H.Clip({ present = { header = "h", label = "l", bullet = "b", por
 Expect("two actions make two buttons", #F.frame.actions.buttons, 2)
 Expect("...each its round icon", F.frame.actions.buttons[1].glyph:GetTexture() .. "|"
     .. F.frame.actions.buttons[2].glyph:GetTexture(), "Read|Report")
-ExpectOf("...in the header's controls after Stop, Previous and Skip", function()
-    return #F.row == 5 and F.row[1] == F.play and F.row[2] == F.previous and F.row[3] == F.skip
-        and F.row[4] == F.frame.actions.buttons[1] and F.row[5]:GetParent() == F.controls
+ExpectOf("...in the header's controls after Previous, Stop, Skip and Eject", function()
+    return #F.row == 6 and F.row[1] == F.previous and F.row[2] == F.play and F.row[3] == F.skip
+        and F.row[4] == F.eject and F.row[5] == F.frame.actions.buttons[1] and F.row[6]:GetParent() == F.controls
 end, true)
 F.frame.actions.buttons[1]:Click()
 Expect("clicking passes the clip", clicked ~= nil and clicked:sub(1, 5), "read:")
 env.SoundQueue:RemoveAllSoundsFromQueue()
 quests:Enqueue(H.Clip({ present = { header = "h", label = "l", bullet = "b", portrait = { kind = "none" } } }))
-ExpectOf("no actions, Stop, Previous and Skip alone", function() return #F.frame.actions.buttons .. " " .. #F.row end, "0 3")
+ExpectOf("no actions, Previous, Stop, Skip and Eject alone", function() return #F.frame.actions.buttons .. " " .. #F.row end, "0 4")
 
 ---------------------------------------------------------------- the Talking Head's layout
 -- The window is the game's Talking Head frame as TalkingHeadUI.xml lays it out: 570 by 155, the
@@ -390,10 +390,11 @@ end, "3 false")
 ExpectOf("...above the progress line", function()
     return WordsTop() + 3 * 20 <= column:GetHeight() - F.progress.height
 end, true)
-ExpectOf("the round controls 10 inside the box's shadow at the top and the right, Stop or Replay, Previous then Skip", function()
+ExpectOf("the round controls 10 inside the box's shadow at the top and the right, Previous, Stop or Replay, Skip then Eject", function()
     local anchor = F.controls.anchor
     return anchor.point .. " " .. tostring(anchor.relativeTo == F.frame) .. " " .. anchor.x .. " " .. anchor.y
-        .. " " .. tostring(F.row[1] == F.play and F.row[2] == F.previous and F.row[3] == F.skip) .. " " .. F.play.state
+        .. " " .. tostring(F.row[1] == F.previous and F.row[2] == F.play and F.row[3] == F.skip
+            and F.row[4] == F.eject) .. " " .. F.play.state
 end, "TOPRIGHT true -22 -25 true stop")
 ExpectOf("...Skip in the subtitle's art", function() return F.skip.bar ~= nil end, true)
 ExpectOf("the progress line along the column's foot, as wide as the words", function()
@@ -502,9 +503,16 @@ local menu = env.Minimap:BuildMenu()
 local labels = {}
 for _, entry in ipairs(menu) do table.insert(labels, entry.text) end
 Expect("the menu is the player's entries then each source's in order", table.concat(labels, "|"),
-    "Stop or Replay|Skip Line|Stop All|Settings|Quest settings|Open lore window")
+    "Stop or Replay|Previous Line|Next Line|Stop All|Settings|Quest settings|Open lore window")
+local ids = {}
+for _, entry in ipairs(menu) do table.insert(ids, entry.id) end
+Expect("the player's menu IDs use standard media terms", table.concat(ids, "|"),
+    "PlayPause|SkipBackward|SkipForward|Eject|Settings|opts|lore")
+Expect("old Previous IDs still resolve for saved minimap assignments",
+    env.Minimap:FindEntry("Previous").id .. "|" .. env.Minimap:FindEntry("Skip").id
+        .. "|" .. env.Minimap:FindEntry("Stop").id, "SkipBackward|SkipForward|Eject")
 env.Minimap:RemoveEntry("places", "lore")
-Expect("RemoveEntry", getn(env.Minimap:BuildMenu()), 5)
+Expect("RemoveEntry", getn(env.Minimap:BuildMenu()), 6)
 
 -- A click on the icon opens the settings at once; the menu is a right-click away.
 local openSettings, settingsOpened = env.Options.Open, false
@@ -529,7 +537,7 @@ end
 -- A rule before each addon's heading. Without one the headings are the only thing
 -- separating the groups, and a heading reads as a row of the group above it.
 Expect("...listing the player's entries, then each source's under its name, ruled apart",
-    table.concat(shown, "|"), "Stop or Replay|Skip Line|Stop All|Settings|---|[Quests]|Quest settings")
+    table.concat(shown, "|"), "Stop or Replay|Previous Line|Next Line|Stop All|Settings|---|[Quests]|Quest settings")
 Expect("...anchored to the button", stub.openDropDown.dropdownAnchor, mmButton)
 
 -- The menu opens under the cursor, which is still on the button, so the button's tooltip
@@ -838,8 +846,8 @@ Expect("the action is a button", corner ~= nil, true)
 Expect("...showing its icon, not a word, in the player's round button", corner.glyph:GetTexture(), ICON)
 Expect("...the ring round it, as the subtitle's controls have", corner.ring ~= nil, true)
 Expect("...with no label", corner:GetText() or "", "")
-ExpectOf("...in the header after Skip, as the DialogueUI window shows it", function()
-    return corner:GetParent() == env.PlayerFrame.controls and env.PlayerFrame.row[4] == corner
+ExpectOf("...in the header after Eject, as the DialogueUI window shows it", function()
+    return corner:GetParent() == env.PlayerFrame.controls and env.PlayerFrame.row[5] == corner
 end, true)
 -- Sized to be aimed at. Pinned as a floor rather than a number, so it can be tuned but
 -- cannot drift back to something you have to hunt for.
@@ -1185,6 +1193,48 @@ end, 0)
 env.SoundQueue:RemoveAllSoundsFromQueue()
 env.Addon:SetPlayerStyle("classic")
 _G.IsShiftKeyDown = hadShift
+
+do
+    env, quests, places = Boot()
+    F = env.PlayerFrame
+    local eject = F.eject
+    Expect("the player has an eject button after Skip", F.buttons[4], eject)
+    Expect("eject draws its own glyph", eject.glyph:GetTexture(), [[Interface\AddOns\Spoken\Textures\GlyphEject]])
+    Expect("...with no separate bar", eject.bar, nil)
+    eject.scripts.OnEnter(eject)
+    Expect("eject explains the Eject action", GameTooltip.lines[1], env.L.BIND_EJECT)
+    for _, style in ipairs({ "classic", "minimal", "subtitle" }) do
+        env.Addon:SetPlayerStyle(style)
+        F:RefreshConfig()
+        local view = style == "classic" and F or style == "minimal" and env.MinimalPlayer or env.Subtitle
+        local controls = view.buttons or { view.pause, view.previous, view.skip, view.eject }
+        quests:Enqueue(H.Clip({ present = { transcript = "A single narrated quest line." } }))
+        stub.Advance(0.1)
+        if style == "subtitle" then
+            Expect("subtitle puts Stop after Previous Line", view.pause.anchor.relativeTo, view.previous)
+            Expect("subtitle puts Next Line after Stop", view.skip.anchor.relativeTo, view.pause)
+        end
+        env.Actions.SetPausable(controls)
+        Expect(style .. " disables Next Line without a next line", view.skip:IsEnabled(), false)
+        Expect(style .. " greys Next Line without a next line", view.skip:GetAlpha(), .4)
+        Expect(style .. " keeps Eject enabled for the current line", view.eject:IsEnabled(), true)
+        view.eject:Click()
+        Expect(style .. " Eject ends the only queued line", Spoken:GetQueueSize(), 0)
+        local stopped = 0
+        local function OnStop() stopped = stopped + 1 end
+        quests:Enqueue(H.Clip({ stopCallback = OnStop, present = { transcript = "A narrated quest line." } }))
+        places:Enqueue(H.Clip({ stopCallback = OnStop, present = { transcript = "A narrated place line." } }))
+        stub.Advance(0.1)
+        Spoken:Pause()
+        Expect(style .. " enables eject for a stopped queue", view.eject:IsEnabled(), true)
+        view.eject:Click()
+        Expect(style .. " eject clears every source's queued lines", Spoken:GetQueueSize(), 0)
+        Expect(style .. " eject stops both lines through the normal callbacks", stopped, 2)
+        Expect(style .. " eject clears the paused flag like the minimap Eject", Spoken:IsPaused(), false)
+        env.Actions.SetPausable({ view.eject })
+        Expect(style .. " disables eject with no queue", view.eject:IsEnabled(), false)
+    end
+end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll player frame tests passed")
