@@ -48,8 +48,9 @@ describe("textHints", () => {
   });
 
   it("names any other client escape left in, which the voice would read out", () => {
-    expect(textHints("빛이 함께하기를, $c|1이여;여;.", "koKR")).toEqual(["client escape |1이여;여;. — won't be voiced"]);
-    expect(textHints("y tendrás mi gratitud eterna.|n", "esMX")).toEqual(["client escape |n — won't be voiced"]);
+    expect(textHints("Mira |Tx:0|t aquí.", "esMX")).toEqual(["client escape |Tx:0|t — won't be voiced"]);
+    // q:4542:accept, whose `|c` lost its colour.
+    expect(textHints("extraña.|c", "esMX")).toEqual(["client escape |c — won't be voiced"]);
   });
 
   it("flags the gap a gender branch resolved to nothing leaves", () => {
