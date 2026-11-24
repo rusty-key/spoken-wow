@@ -42,7 +42,9 @@ test("written tokens are left in the two forms the addon fills", () => {
 
 test("words equal to Spoken's own are the built-in words, so saving them stores no row", () => {
   const ru = builtinPlayerWordsOf("ruRU");
-  assert.equal(isBuiltinPlayerWords("ruRU", { m: { ...ru.m, cases: {} }, f: { ...ru.f, nameGenitive: "" } }), true);
+  assert.equal(isBuiltinPlayerWords("ruRU", { m: { ...ru.m }, f: { ...ru.f, nameGenitive: "" } }), true);
+  const de = builtinPlayerWordsOf("deDE");
+  assert.equal(isBuiltinPlayerWords("deDE", { m: { ...de.m, cases: {} }, f: de.f }), true);
   assert.equal(isBuiltinPlayerWords("ruRU", { ...ru, m: { ...ru.m, cases: { 6: { name: "путник" } } } }), false);
   assert.equal(isBuiltinPlayerWords("plPL", { m: { name: "a", race: "b" }, f: { name: "a", race: "b" } }), false);
 });
@@ -92,4 +94,13 @@ test("the plural escape takes the form its number does", () => {
   assert.equal(speakQuestTokens("1 |4pair:pairs; and 2 |4pair:pairs;", "enUS"), "1 pair and 2 pairs");
   // With no number before it, nothing says which: it stays for the gate.
   assert.equal(speakQuestTokens("пару |4пару:пары:пар;", "ruRU"), "пару |4пару:пары:пар;");
+});
+
+test("ruRU's own words decline for the cases its text uses", () => {
+  // g:… "Добро пожаловать в Стальгорн, |3-6($C).", q:… "Для |3-1($c) это ответственный", and
+  // "Приятно встретить |3-3($r)".
+  assert.equal(speakQuestTokens("Добро пожаловать, |3-6($C). Для |3-1($c) это честь.", "ruRU"), "Добро пожаловать, путник. Для путника это честь.");
+  assert.equal(speakQuestTokens("Приятно встретить |3-3($r).", "ruRU", "f"), "Приятно встретить странницу.");
+  // A case its text never uses has no word, so the line stays unvoiced.
+  assert.equal(speakQuestTokens("как |3-7($r).", "ruRU"), "как |3-7($r).");
 });

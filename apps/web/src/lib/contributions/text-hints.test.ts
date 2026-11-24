@@ -35,8 +35,8 @@ describe("textHints", () => {
   });
 
   it("names a declension escape Player words has no case for, whole", () => {
-    expect(textHints("Приветствую, |3-6($c).", "ruRU")).toEqual([
-      "undeclined |3-6($c) — won't be voiced until Player words has its case",
+    expect(textHints("Как |3-7($r).", "ruRU")).toEqual([
+      "undeclined |3-7($r) — won't be voiced until Player words has its case",
     ]);
   });
 

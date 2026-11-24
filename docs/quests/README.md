@@ -579,7 +579,8 @@ words on `/<lang>/player-words`. A language without words for it keeps the token
 unvoiceable.
 ruRU wraps a token in the client's declension escape, `|3-6($c)`, which the game prints in
 grammatical case 6 (`|3-1` genitive, `|3-3` accusative, `|3-6` in address). Each reader's declined
-forms on `/<lang>/player-words` give the word per case number. An escape whose case has no word,
+forms on `/<lang>/player-words` give the word per case number; Spoken's own ruRU words carry
+cases 1, 3 and 6, the ones its text uses. An escape whose case has no word,
 or one around a word rather than a token (`|3-6(Друид)`, a contributor's own class), stays
 unvoiceable. So does a line holding any other escape the client resolves as it prints the line
 (`|1이;가;`, `|2`, `|4one:few:many;`, `|n`, `|cff…|r`) until the substitution speaks it.

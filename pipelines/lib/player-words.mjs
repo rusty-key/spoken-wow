@@ -17,7 +17,8 @@
  *
  * ruRU wraps a token in the client's declension escape, `|3-6($c)`: the client prints the class
  * in grammatical case 6. A reader's `cases` give the word for each case; a case with none keeps
- * the whole escape, so the gate refuses the line rather than voice "|3-6(путник)".
+ * the whole escape, so the gate refuses the line rather than voice "|3-6(путник)". Spoken's own
+ * ruRU words carry the cases its text uses.
  *
  * About nine tokens in ten are the reader being addressed ("Gut gemacht, $C."), where any
  * "adventurer" reads naturally. The rest read as awkwardly as the English does and are fixed
@@ -65,7 +66,28 @@ const WORDS = {
     f: { name: "aventureira", race: "viajante" },
     quantity: "algumas unidades de",
   },
-  ruRU: { m: { name: "путник", race: "странник" }, f: { name: "путница", race: "странница" } },
+  // The cases its text uses: |3-1 genitive ("Для |3-1($c)"), |3-3 accusative ("встретить |3-3($r)"),
+  // |3-6 in address ("Приветствую, |3-6($C)").
+  ruRU: {
+    m: {
+      name: "путник",
+      race: "странник",
+      cases: {
+        1: { name: "путника", race: "странника" },
+        3: { name: "путника", race: "странника" },
+        6: { name: "путник", race: "странник" },
+      },
+    },
+    f: {
+      name: "путница",
+      race: "странница",
+      cases: {
+        1: { name: "путницы", race: "странницы" },
+        3: { name: "путницу", race: "странницу" },
+        6: { name: "путница", race: "странница" },
+      },
+    },
+  },
   koKR: { m: { name: "모험가", race: "여행자" }, f: { name: "모험가", race: "여행자" } },
   zhCN: { m: { name: "冒险者", race: "旅行者" }, f: { name: "冒险者", race: "旅行者" } },
   zhTW: { m: { name: "冒險者", race: "旅行者" }, f: { name: "冒險者", race: "旅行者" } },
