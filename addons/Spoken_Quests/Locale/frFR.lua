@@ -86,7 +86,7 @@ L.REASON_AUTOPLAY_ON_QUESTS = "Activez l'option Lire automatiquement sur la page
 -- Quest follow-ups
 L.OPT_PANEL_FOLLOWUP = "Lire le chat des PNJ ensuite"
 L.OPT_PANEL_PROGRESS = "Lire la progression des quêtes"
-L.OPT_PANEL_ACCOUNT_ONCE = "Lire les dialogues de quêtes une fois par compte"
+L.OPT_PANEL_ACCOUNT_ONCE = "Lire une fois par compte"
 L.OPT_HEARD_QUEST_LINE = "Ce passage de quête a déjà été écouté sur ce compte. Utilisez Lecture pour le réécouter."
 L.OPT_PANEL_GREETINGS = "Lire les salutations"
 L.OPT_GREETING_LABEL_ALWAYS = "À chaque fois"

@@ -46,12 +46,12 @@ One page, Game Menu, Options, AddOns, Spoken, Places:
 | | Show Pictures | `showPictures` | on |
 | | Read Stories Aloud | `voiceEnabled` | on |
 | Voice Packs | one row per language, Play a Test Line | | |
-| Reading History | Share Places History Across Characters | `SpokenPlacesAccountHistory.shared` | off |
+| Reading History | Share Across Characters | `SpokenPlacesAccountHistory.shared` | off |
 | Reading History | Forget Visited Places | | |
 
 Defaults resets the settings in the table, the tab's two filters, the folded panel and the two
-Developer settings. It leaves the chosen voice pack, Unlock Undiscovered Places and
-Text Size. Two Compendium settings are on Spoken's own page, in its Compendium section: Text Size (`Spoken:CompendiumFontSize()`, one size
+Developer settings. It leaves the chosen voice pack, Share Across Characters (an account setting, outside
+the profile), Unlock Undiscovered Places and Text Size. Two Compendium settings are on Spoken's own page, in its Compendium section: Text Size (`Spoken:CompendiumFontSize()`, one size
 for every tab and the map panel) and Unlock Undiscovered Places (`showUndiscovered`, off by
 default). Spoken's Language section holds Voice Language, If a Voice Is Missing and Text Language,
 which every module reads (`Spoken:TextLanguage()`, Spoken's `Texts.lua`). This page had its own
@@ -228,7 +228,7 @@ The game announces a discovery once per character, and Places reads that message
   every restart, and a month outlasts one. A time ahead of the clock counts as long ago. With it on,
   a discovery of a place read within the wait reads nothing, and Include Places Found Before makes
   no difference, so the panel greys it out. Forget Visited Places clears `readAt` too.
-- Share Places History Across Characters (off by default) joins each character's visited
+- Share Across Characters (off by default) joins each character's visited
   places and heard stories on login and shares new ones as they occur. Read Every Visit still
   repeats stories when enabled. Forget Visited Places clears the shared heard record and
   replay times, not the list of visited places, while sharing is on.

@@ -4,7 +4,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **Places can share visited and heard history across characters.** Enable Share Places History Across Characters under Places, Reading History. *([rogeriosmorais](https://github.com/rogeriosmorais))*
+- **Places can share visited and heard history across characters.** Enable Share Across Characters under Places, Reading History. *([rogeriosmorais](https://github.com/rogeriosmorais))*
 - **Quest narration can skip lines heard on another character.** Enable Read Quest Lines Once per Account under Quests; manual playback stays available. *([rogeriosmorais](https://github.com/rogeriosmorais))*
 - **A progress page left in under half a second is read before its reward page,** whether an
   auto turn-in addon such as Questie or your own click moved on. *([rusty-key](https://github.com/rusty-key))*

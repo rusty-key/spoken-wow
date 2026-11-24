@@ -510,7 +510,8 @@ the Spoken Quests settings page. When enabled, an offer, a progress line and a r
 each play automatically only until that part of the quest has been heard on the account.
 They are independent: hearing an offer does not prevent hearing its reward. Only
 recordings that actually start playing are remembered; queued and dropped recordings do
-not count. The account-wide history uses quest ID and part, not filenames or voice
+not count. They are remembered with the option off too, so turning it on skips what the
+account has already heard. The account-wide history uses quest ID and part, not filenames or voice
 language. Manual playback remains available. The switch and history live in
 `SpokenQuestsSettings.global` regardless of profile. Older playbacks cannot be
 reconstructed, so the history begins when this feature is installed.

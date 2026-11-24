@@ -1812,9 +1812,7 @@ local function TakeGreetingMute(self, event)
     -- Silenced only where a pack reads the line; any other NPC keeps its greeting. A quest whose
     -- ID is not known yet is muted too: its greeting starts now, and with no line the mute lifts.
     local questID = quest and CurrentQuestID()
-    -- QUEST_GREETING is a Gossip line, not one of the three quest moments tracked by
-    -- this setting; its existing greeting-frequency rules still decide whether it plays.
-    -- If the quest ID is unknown, retain the original mute behavior until it resolves.
+    -- A line heard on the account is not read, so muting would leave the page silent.
     if quest and questID and questID ~= 0 and self:SkipsHeardQuestLines()
         and self:HasHeardQuestLine(quest.sound, questID) then
         return
