@@ -148,20 +148,28 @@ end
 
 -- The account hears a quest's offer, progress and reward separately. File names vary with
 -- language, NPC and wording, so the stable quest ID and moment, not the audio file, identify it.
-local QUEST_MOMENTS = {
-    [Enums.SoundEvent.QuestAccept] = "accept",
-    [Enums.SoundEvent.QuestProgress] = "progress",
-    [Enums.SoundEvent.QuestComplete] = "complete",
-}
+local function QuestMoment(event)
+    local quest = QUEST_EVENTS[EVENT_OF_SOUND[event]]
+    return quest and quest.source
+end
 
 local function HeardQuestKey(event, questID)
-    local moment = QUEST_MOMENTS[event]
+    local moment = QuestMoment(event)
     return moment and type(questID) == "number" and questID > 0 and
         (tostring(questID) .. ":" .. moment) or nil
 end
 
 function Addon:SkipsHeardQuestLines()
     return self.db and self.db.global.SkipHeardQuestLines == true
+end
+
+function Addon:SetSkipsHeardQuestLines(on)
+    self.db.global.SkipHeardQuestLines = on and true or false
+    if DialogPlayButton and DialogPlayButton.Refresh then DialogPlayButton:Refresh() end
+end
+
+function Addon:SkipsQuestLine(event, questID)
+    return self:SkipsHeardQuestLines() and self:HasHeardQuestLine(event, questID)
 end
 
 function Addon:HasHeardQuestLine(event, questID)
@@ -1474,10 +1482,9 @@ function ResolveQuestID(source, questID, questTitle, targetName, questText, quie
 end
 
 local function QueueRead(soundData, manual)
-    if not manual and Addon:SkipsHeardQuestLines() and
-        Addon:HasHeardQuestLine(soundData.event, soundData.questID) then
+    if not manual and Addon:SkipsQuestLine(soundData.event, soundData.questID) then
         Debug:Record("quest-heard", format("Not reading quest %d again: its %s was heard on this account",
-            soundData.questID, QUEST_MOMENTS[soundData.event]))
+            soundData.questID, QuestMoment(soundData.event)))
         if Spoken and Spoken.EndMuteGameDialogueAhead then Spoken:EndMuteGameDialogueAhead() end
         return
     end
@@ -1813,8 +1820,7 @@ local function TakeGreetingMute(self, event)
     -- ID is not known yet is muted too: its greeting starts now, and with no line the mute lifts.
     local questID = quest and CurrentQuestID()
     -- A line heard on the account is not read, so muting would leave the page silent.
-    if quest and questID and questID ~= 0 and self:SkipsHeardQuestLines()
-        and self:HasHeardQuestLine(quest.sound, questID) then
+    if quest and self:SkipsQuestLine(quest.sound, questID) then
         return
     end
     if (quest and (not questID or questID == 0)) or self:ExpectedLine(event) then

@@ -38,8 +38,8 @@ local function VisitKey(mapID, areaKey)
 	return areaKey and (mapID .. "/" .. areaKey) or tostring(mapID)
 end
 
--- Export one cached or newly scanned map in the same way. Cities have no exploration
--- overlays of their own, so remember their map IDs when their names appear on a parent map.
+-- A city has no exploration overlays of its own, so its name on the parent map is what
+-- marks it visited.
 local function ShareExploration(mapID, result)
 	if not (SpokenPlaces:SharesHistory() and result.zone) then return end
 	local visited = Visited()
@@ -47,13 +47,12 @@ local function ShareExploration(mapID, result)
 	for key in pairs(result.keys) do
 		visited[VisitKey(mapID, key)] = true
 	end
-	for cityID in pairs(result.cities or {}) do
+	for cityID in pairs(result.cities) do
 		visited[VisitKey(cityID)] = true
 	end
 end
 
 function SpokenPlaces:ShareCachedExploration()
-	if not self:SharesHistory() then return end
 	for mapID, result in pairs(explored) do
 		ShareExploration(mapID, result)
 	end

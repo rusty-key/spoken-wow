@@ -63,10 +63,7 @@ function SettingsPanel:Setup()
         function(value) Addon:SetProgressText(value) end)
     local once = layout:Checkbox(L.OPT_PANEL_ACCOUNT_ONCE, nil,
         function() return Addon:SkipsHeardQuestLines() end,
-        function(value)
-            Addon.db.global.SkipHeardQuestLines = value and true or false
-            if DialogPlayButton and DialogPlayButton.Refresh then DialogPlayButton:Refresh() end
-        end)
+        function(value) Addon:SetSkipsHeardQuestLines(value) end)
     layout:Outdent()
     layout:Requires(followup, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
     layout:Requires(progress, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)

@@ -29,17 +29,15 @@ function SpokenPlaces:SetSharesHistory(on)
 	-- Changes made while sharing was off must be included when it is enabled again.
 	merged = {}
 	if on then
-		self:HistorySet("heard")
-		self:HistorySet("readAt")
-		self:HistorySet("visited")
+		self:MergeHistory()
 		-- The map might have been scanned before the switch was enabled. Export that
 		-- cache now instead of waiting for the next world-map refresh.
 		if self.ShareCachedExploration then self:ShareCachedExploration() end
 	end
 end
 
--- Called at login and after loading screens. A returning character's existing records
--- must be visible to alts even if they do not enter a new place this session.
+-- A returning character's existing records must be visible to alts even if they do not
+-- enter a new place this session.
 function SpokenPlaces:MergeHistory()
 	if not self:SharesHistory() then return end
 	self:HistorySet("heard")
@@ -54,7 +52,7 @@ function SpokenPlaces:HistorySet(kind)
 	local account = Account()
 	local shared = Set(account, kind)
 	if merged[kind] ~= own then
-		-- Forget Places Heard clears the account's history. An alt that has not logged in
+		-- Forget Visited Places clears the account's history. An alt that has not logged in
 		-- since then must not silently restore its old heard list on the next login.
 		local resetAt = kind ~= "visited" and account.heardResetAt
 		for key, value in pairs(own) do
@@ -89,5 +87,4 @@ function SpokenPlaces:ForgetHeardHistory()
 		account.heard, account.readAt = nil, nil
 		account.heardResetAt = (time or os.time)()
 	end
-	merged.heard, merged.readAt = nil, nil
 end

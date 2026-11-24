@@ -542,10 +542,8 @@ local function SeedLoginArea(attempt)
 	-- The subzone is the more specific answer, the same preference /spp play and the
 	-- lore window both apply.
 	if SpokenPlaces:SharesHistory() then
-		local storyHeard = SpokenPlaces:Get("autoplaySubzones") and entry and
-			not Due(storyMapID, key)
-		local zoneHeard = not Due(mapID, nil)
-		if storyHeard or (not (SpokenPlaces:Get("autoplaySubzones") and entry) and zoneHeard) then
+		local story = SpokenPlaces:Get("autoplaySubzones") and entry
+		if story and not Due(storyMapID, key) or not story and not Due(mapID, nil) then
 			db.greeted = true
 			return true
 		end
@@ -716,7 +714,6 @@ end
 
 function SpokenPlaces:SetupAutoplay()
 	-- PLAYER_ENTERING_WORLD has already fired by the time modules finish loading.
-	-- Merge at setup for that first login, and on subsequent loading screens below.
 	self:MergeHistory()
 	local frame = CreateFrame("Frame")
 	for _, event in ipairs(DISCOVERY_EVENTS) do
@@ -738,7 +735,6 @@ function SpokenPlaces:SetupAutoplay()
 			return
 		end
 		if event == "PLAYER_ENTERING_WORLD" then
-			SpokenPlaces:MergeHistory()
 			ReadInstance()
 			return
 		end

@@ -45,7 +45,6 @@ Expect("login merges an alt's heard record without waiting for discovery", third
 Expect("...and its last-read times", third:HistorySet("readAt")["1451"], now - 30)
 Expect("...and the discovered locations", third:HistorySet("visited")["1451"], true)
 
--- Continue with the second character's own records for the off/on tests.
 SpokenPlacesCharacter = { heard = { ["1420"] = true }, readAt = { ["1420"] = now - 20 },
     visited = { ["1420"] = true } }
 
