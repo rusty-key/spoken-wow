@@ -151,19 +151,6 @@ type Props = {
 };
 
 /**
- * A line's kind under its quest title. Lower case and shorter than the filter labels, since the
- * quest is already named right above it.
- */
-const SOURCE_WORDS: Record<string, string> = {
-  accept: "accept",
-  progress: "progress",
-  complete: "complete",
-  gossip: "gossip",
-  followup: "after the quest",
-  chatter: "NPC chat",
-};
-
-/**
  * The heading over one NPC's lines: who speaks, in which voice, and the ways to that NPC. Relies
  * on the results coming sorted by speaker, so each NPC's lines sit together under one heading.
  */
@@ -482,7 +469,7 @@ export default function LineRow({
         )}
         {/* Beneath the state: a line can be current and dirty at once, and one word cannot say both. */}
         {dirty && (
-          <div className="cat-state cat-state-stale mt-0.5" title={t.pronunciationMoved}>
+          <div className="cat-state cat-state-stale mt-0.5" title={t.pronunciationMovedWhy}>
             {t.pronunciationMoved}
           </div>
         )}

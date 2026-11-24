@@ -80,7 +80,6 @@ export const queuedRun = (view: ReleaseView, lang: Lang, section: ReleaseSection
 
 // A shell, because useToast has to find a provider above the component that calls it.
 export default function ReleasePanel(props: { lang: Lang; initial: ReleaseView }) {
-  const t = useUiText();
   return (
     <Toaster>
       <Panel {...props} />

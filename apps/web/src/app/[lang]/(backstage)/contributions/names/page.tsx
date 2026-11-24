@@ -56,7 +56,7 @@ export default async function Page({
       description={t.lede}
     >
       <div className="mb-6">
-        <ContributionsTabs lang={lang} section="names" pending={pending} names={waiting} />
+        <ContributionsTabs lang={lang} section="names" pending={pending} names={waiting} showNames />
       </div>
       <div className="mb-5">
         <Tabs

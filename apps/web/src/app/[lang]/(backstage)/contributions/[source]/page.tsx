@@ -297,7 +297,7 @@ export default async function Page({
           </>
         }
       >
-        <ContributionsTabs lang={lang} section={source} />
+        <ContributionsTabs lang={lang} section={source} showNames={hasObservedNames(lang)} />
       </BackstagePage>
     );
   }
@@ -469,7 +469,7 @@ export default async function Page({
       description="Lines players' game clients sent. Compare each with the original, then keep it or drop it. Kept lines are voiced in a later voicing run."
     >
       <div className="mb-6">
-        <ContributionsTabs lang={lang} section={source} pending={pending} names={names} />
+        <ContributionsTabs lang={lang} section={source} pending={pending} names={names} showNames={hasObservedNames(lang)} />
       </div>
         <ContributionTable
           // Showing only corrections leaves the lines out; their count stays on the switch.

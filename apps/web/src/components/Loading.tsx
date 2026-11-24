@@ -12,8 +12,8 @@ import { useUiText } from "@/components/UiTextProvider";
  * Tall enough to hold the space the table will take, so the pagination and the player do
  * not jump up and then back down when the rows land.
  *
- * A client component for its words: the layout's UiTextProvider is what carries them, and a
- * spinner that reads the reader's language is worth less than nothing reading it.
+ * A client component because its words come from the layout's UiTextProvider, which a server
+ * component cannot read.
  */
 export function Loading({ what = "lines" }: { what?: "lines" | "pages" }) {
   const words = useUiText().catalogue;

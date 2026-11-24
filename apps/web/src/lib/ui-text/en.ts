@@ -284,6 +284,8 @@ export const EN = {
       /** Why the audio is out of date, which the tooltip says and the label cannot. */
       outdatedWhy: "Made from text that has since changed",
       pronunciationMoved: "pronunciation moved",
+      /** Why the take is marked, which the tooltip says and the label cannot. */
+      pronunciationMovedWhy: "Cut before a pronunciation it speaks was changed",
       overrideSays: "What your team's audio says",
       noStory: "No story in this language yet.",
       changeNote: "Why this change? (optional, kept with the version)",
@@ -359,6 +361,7 @@ export const EN = {
         ignoreFor: "Never voice this line: {subject}",
         ignoredFor: "Ignored: {subject}",
         clearMarkFor: "Clear the pronunciation mark on {subject}",
+        clearMarkForPage: "Clear the pronunciation mark on page {page} of {title}",
         nameQuestFor: "Name the quest {id}",
         addSpeakerFor: "Add another speaker: another NPC who says {subject}",
         replaceSpeakerFor: "Replace the speaker: put another NPC in {name}'s place on this line",
@@ -700,7 +703,6 @@ export const EN = {
       npcResolvedWoman: "set who {name} is as a woman",
       npcResolvedMan: "set who {name} is as a man",
       typeChanged: "{action} {subject}",
-      typeChangedDefault: "changed {subject}",
       /** Just the verb, for the case where the log carries no action of its own. */
       typeChangedDefaultAction: "changed",
       grantAdded: "gave {name} {capability}",

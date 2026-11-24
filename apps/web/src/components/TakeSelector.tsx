@@ -211,7 +211,7 @@ export default function TakeSelector({
       <PopoverTrigger asChild>
         <button
           type="button"
-          title={fill(t.count, { n: takes, version: version ?? 0 })}
+          title={fill(t.count, { n: takes, version: version ?? "?" })}
           aria-label={fill(t.choose, { n: takes })}
           className={cn(
             "text-muted-foreground hover:text-foreground flex cursor-pointer items-center gap-0.5 rounded-sm font-mono text-xs",

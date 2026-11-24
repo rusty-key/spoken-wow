@@ -272,8 +272,8 @@ export function LineRow<L extends ExplorerLine>({
         {/* Beneath the state rather than inside it: the text has not moved, so this line is
             `current` and dirty at once, and one word cannot say both. */}
         {line.dirty && !unwritten && (
-          <div className="text-amber-300" title={t.catalogue.row.pronunciationMoved}>
-            pronunciation
+          <div className="text-amber-300" title={t.catalogue.row.pronunciationMovedWhy}>
+            {t.catalogue.row.pronunciationMoved}
           </div>
         )}
       </td>
@@ -323,9 +323,9 @@ export function LineRow<L extends ExplorerLine>({
             ...(canRegenerate && line.dirty && !unwritten
               ? [
                   {
-                    label: "Clear the pronunciation mark",
-                    aria: `Clear the pronunciation mark on ${line.name}`,
-                    title: "The take stays; only the mark goes",
+                    label: t.catalogue.row.clearMark,
+                    aria: fill(t.catalogue.row.actions.clearMarkFor, { subject: line.name }),
+                    title: t.catalogue.row.clearMarkTitle,
                     onClick: () => onClearDirty(line),
                   },
                 ]

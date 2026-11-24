@@ -5,7 +5,6 @@ import { useUiText } from "@/components/UiTextProvider";
 import type { PendingCounts } from "@/lib/contributions/pending";
 import { SECTIONS, type Section } from "@/lib/contributions/query";
 import { localeHref, type Lang } from "@/lib/lang";
-import { hasObservedNames } from "@/lib/names/observed";
 
 /**
  * The sections of /contributions as chips, each with how many new rows wait in it, corrections to
@@ -16,11 +15,14 @@ export default function ContributionsTabs({
   section,
   pending,
   names,
+  showNames,
 }: {
   lang: Lang;
   section: Section | "names";
   pending?: PendingCounts;
   names?: number;
+  /** Whether the language has observed names; `lib/names/observed` is server-only, so the page decides. */
+  showNames: boolean;
 }) {
   const t = useUiText().pages;
   return (
@@ -34,7 +36,7 @@ export default function ContributionsTabs({
           href: localeHref(lang, `/contributions/${key}`),
           count: pending?.sections[key],
         })),
-        ...(!hasObservedNames(lang)
+        ...(!showNames
           ? []
           : [
               {

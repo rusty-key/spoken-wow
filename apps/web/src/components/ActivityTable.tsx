@@ -94,9 +94,8 @@ function change(before: string | null, after: string | null): string | null {
  */
 export function describe(row: ActivityRow, t: UiText["activity"]["events"]): { what: string; quote: string | null } {
   const d = row.detail;
-  // A version the log did not carry reads as 0 rather than as an empty hole in the sentence;
-  // every caller that has one prints it.
-  const version = num(d.version) ?? 0;
+  // A count or version the log did not carry reads as "?": a 0 would state something false.
+  const version = num(d.version) ?? "?";
   const fill = fillFrom;
   switch (row.kind) {
     case "take.generated": {
@@ -125,13 +124,13 @@ export function describe(row: ActivityRow, t: UiText["activity"]["events"]): { w
     case "take.acked":
       return { what: t.takeAcked, quote: row.lineId ? null : row.subject };
     case "marks.cleared": {
-      const count = num(d.count) ?? 0;
-      return { what: count === 1 ? t.marksClearedOne : fill(t.marksClearedMany, { n: count }), quote: null };
+      const count = num(d.count);
+      return { what: count === 1 ? t.marksClearedOne : fill(t.marksClearedMany, { n: count ?? "?" }), quote: null };
     }
     case "batch.queued": {
-      const count = num(d.count) ?? 0;
+      const count = num(d.count);
       return {
-        what: count === 1 ? t.batchQueuedOne : fill(t.batchQueuedMany, { n: count }),
+        what: count === 1 ? t.batchQueuedOne : fill(t.batchQueuedMany, { n: count ?? "?" }),
         quote: str(d.label),
       };
     }
@@ -139,7 +138,7 @@ export function describe(row: ActivityRow, t: UiText["activity"]["events"]): { w
       const cancelled = num(d.cancelled);
       return {
         what:
-          cancelled === null
+          !cancelled
             ? t.batchStopped
             : cancelled === 1
               ? t.batchStoppedCancellingOne
@@ -148,12 +147,12 @@ export function describe(row: ActivityRow, t: UiText["activity"]["events"]): { w
       };
     }
     case "queue.stopped": {
-      const batches = num(d.batches) ?? 0;
-      const cancelled = num(d.cancelled) ?? 0;
+      const batches = num(d.batches);
+      const cancelled = num(d.cancelled);
       return {
-        what: fill(batches === 1 ? t.queueStoppedOne : t.queueStoppedMany, {
-          m: batches === 1 ? t.oneBatch : fill(t.manyBatches, { n: batches }),
-          n: cancelled,
+        what: fill(cancelled === 1 ? t.queueStoppedOne : t.queueStoppedMany, {
+          m: batches === 1 ? t.oneBatch : fill(t.manyBatches, { n: batches ?? "?" }),
+          n: cancelled ?? "?",
         }),
         quote: str(d.reason),
       };
@@ -567,10 +566,11 @@ function groupOf(row: ActivityRow): { kind: Group; id: string; count: number } |
 
 /** "1 line" or "3 lines", where the words are the reader's. */
 function pluralText(count: number, one: string, many: string): string {
-  return count === 1 ? one : `${count.toLocaleString()} ${many}`;
+  return `${count.toLocaleString()} ${count === 1 ? one : many}`;
 }
 
-/** The takes a row lets you hear: the new one, and for a restore the one it replaced. */function takesOf(row: ActivityRow): Take[] {
+/** The takes a row lets you hear: the new one, and for a restore the one it replaced. */
+function takesOf(row: ActivityRow): Take[] {
   if (!row.source || !row.subject) return [];
   const version = num(row.detail.version);
   if (version === null) return [];
@@ -794,7 +794,7 @@ export default function ActivityTable({
                         onClick={() => void toggleGroup(row)}
                       >
                         {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-                        {group.count === 1 ? t.nouns.one[group.kind] : `${group.count.toLocaleString()} ${t.nouns.many[group.kind]}`}
+                        {pluralText(group.count, t.nouns.one[group.kind], t.nouns.many[group.kind])}
                       </Button>
                     )}
                   </td>
@@ -822,7 +822,7 @@ export default function ActivityTable({
                                   {num(take.detail.cancelled) !== null && (
                                     <span className="text-muted-foreground">
                                       {" "}
-                                      · {fillFrom(t.cancelled, { n: pluralText(num(take.detail.cancelled) ?? 0, t.nouns.lineOne, t.nouns.lineMany) })}
+                                      · {fillFrom(t.cancelled, { n: pluralText(num(take.detail.cancelled)!, t.nouns.lineOne, t.nouns.lineMany) })}
                                     </span>
                                   )}
                                 </span>

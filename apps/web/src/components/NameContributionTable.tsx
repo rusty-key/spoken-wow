@@ -44,7 +44,7 @@ export default function NameContributionTable({ initial }: { initial: NameContri
       inFlight.current.delete(id);
       setBusy(new Set(inFlight.current));
     }
-  }, []);
+  }, [t.failed]);
 
   if (initial.length === 0) {
     return <p className="text-muted-foreground text-sm">{t.nothing}</p>;

@@ -259,8 +259,8 @@ export function PageRow({
         {/* Beneath the state rather than inside it: the text has not moved, so this page is
             `current` and dirty at once, and one word cannot say both. */}
         {line.dirty && (
-          <div className="text-amber-300" title={t.catalogue.row.pronunciationMoved}>
-            pronunciation
+          <div className="text-amber-300" title={t.catalogue.row.pronunciationMovedWhy}>
+            {t.catalogue.row.pronunciationMoved}
           </div>
         )}
       </td>
@@ -309,9 +309,9 @@ export function PageRow({
             ...(canRegenerate && line.dirty
               ? [
                   {
-                    label: "Clear the pronunciation mark",
-                    aria: `Clear the pronunciation mark on page ${line.pageNumber} of ${line.title}`,
-                    title: "The take stays; only the mark goes",
+                    label: t.catalogue.row.clearMark,
+                    aria: fill(t.catalogue.row.actions.clearMarkForPage, { page: line.pageNumber, title: line.title }),
+                    title: t.catalogue.row.clearMarkTitle,
                     onClick: () => onClearDirty(line),
                   },
                 ]

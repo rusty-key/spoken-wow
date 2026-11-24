@@ -48,7 +48,6 @@ export default function ActorTakeCell({
   onChanged: () => void;
 }) {
   const t = useUiText().catalogue.takes;
-  const words = useUiText().catalogue.dialogs;
   const lang = useLang();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);

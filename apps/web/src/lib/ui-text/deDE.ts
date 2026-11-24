@@ -269,6 +269,7 @@ const deDE: Dictionary = {
       outdated: "Audio veraltet",
       outdatedWhy: "Aus einem Text erzeugt, der sich seither geändert hat",
       pronunciationMoved: "Aussprache verschoben",
+      pronunciationMovedWhy: "Erzeugt, bevor sich eine Aussprache darin geändert hat",
       overrideSays: "Was das Audio deines Teams sagt",
       noStory: "Noch keine Erzählung in dieser Sprache.",
       changeNote: "Warum diese Änderung? (optional, wird bei der Version gespeichert)",
@@ -344,6 +345,7 @@ const deDE: Dictionary = {
         ignoreFor: "Diese Zeile nie vertonen: {subject}",
         ignoredFor: "Ignoriert: {subject}",
         clearMarkFor: "Aussprachemarke auf {subject} entfernen",
+        clearMarkForPage: "Aussprachemarke auf Seite {page} aus {title} entfernen",
         nameQuestFor: "Die Quest {id} benennen",
         addSpeakerFor: "Weiteren Sprecher hinzufügen: ein weiterer NPC, der {subject} sagt",
         replaceSpeakerFor:
@@ -684,7 +686,6 @@ const deDE: Dictionary = {
       npcResolvedWoman: "legte fest, dass {name} eine Frau ist",
       npcResolvedMan: "legte fest, dass {name} ein Mann ist",
       typeChanged: "{action} {subject}",
-      typeChangedDefault: "änderte {subject}",
       typeChangedDefaultAction: "änderte",
       grantAdded: "gab {name} {capability}",
       grantRemoved: "entzog {name} {capability}",
