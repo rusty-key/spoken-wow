@@ -638,14 +638,14 @@ stub.Advance(5)
 Expect("auto turn-in reads progress then complete",
     string.format("%d-progress, %d-complete", full, full))
 
--- Auto turn-in where the reward page waits for the player to pick a reward (Questie, #1099): the
--- progress page is on screen 0.24 s, too short for the watcher, which reads the reward page first.
-local function AutoTurnInPickingReward()
+-- A turn-in where the reward page waits for the player to pick a reward. An auto turn-in shows the
+-- progress page 0.24 s, too short for the watcher, which reads the reward page first.
+local function TurnInPickingReward(progressSeconds)
     StartScenario()
     world.questID = full
     stub.ShowPanel("QuestFrameProgressPanel")
     stub.FireEvent("QUEST_PROGRESS")
-    stub.Advance(0.24)
+    stub.Advance(progressSeconds)
     stub.FireEvent("QUEST_FINISHED")
     stub.ShowPanel("QuestFrameRewardPanel")
     stub.FireEvent("QUEST_COMPLETE")
@@ -656,30 +656,16 @@ local function AutoTurnInPickingReward()
     stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
     stub.Advance(5)
 end
-AutoTurnInPickingReward()
+TurnInPickingReward(0.24)
 Expect("auto turn-in with a reward to pick reads progress then complete",
     string.format("%d-progress, %d-complete", full, full))
 
 VO.Addon.db.profile.Audio.ProgressText = false
-AutoTurnInPickingReward()
+TurnInPickingReward(0.24)
 VO.Addon.db.profile.Audio.ProgressText = true
 Expect("...and with Read Quest Progress Text off, complete alone", string.format("%d-complete", full))
 
--- A progress page the watcher read in the open window is not read again before the reward page.
-StartScenario()
-world.questID = full
-stub.ShowPanel("QuestFrameProgressPanel")
-stub.FireEvent("QUEST_PROGRESS")
-stub.Advance(1)
-stub.FireEvent("QUEST_FINISHED")
-stub.ShowPanel("QuestFrameRewardPanel")
-stub.FireEvent("QUEST_COMPLETE")
-stub.Advance(3)
-world.questID = 0
-stub.ShowPanel(nil)
-stub.FireEvent("QUEST_FINISHED")
-stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
-stub.Advance(5)
+TurnInPickingReward(1)
 Expect("a progress page read in the window is read once",
     string.format("%d-progress, %d-complete", full, full))
 
