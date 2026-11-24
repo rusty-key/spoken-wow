@@ -43,7 +43,8 @@ local defaults = {
 	fontSize = 12,
 	showPictures = true,
 	-- How bright the area under the pointer lights on a zone map; 0 turns the highlight off.
-	highlightOpacity = 0.35,
+	-- Off, so the map looks as the game draws it until a player asks for the highlight.
+	highlightOpacity = 0,
 	-- Off, so Azeroth's Compendium opens only the places this character has found (Discovery.lua).
 	showUndiscovered = false,
 	-- Azeroth's Compendium's Discovered Only, in its filter menu.
@@ -114,6 +115,14 @@ local function MergeDefaults()
 	if not SpokenPlacesSettings.discoveredOnlyDefaultOn then
 		SpokenPlacesSettings.discoveredOnlyDefaultOn = true
 		SpokenPlacesSettings.loreDiscoveredOnly = true
+	end
+	-- The highlight was 0.35 by default, stored in every profile, where it reads the same as a
+	-- player's choice: a 0.35 is turned off once behind this marker. Any other value was chosen.
+	if not SpokenPlacesSettings.highlightDefaultOff then
+		SpokenPlacesSettings.highlightDefaultOff = true
+		if SpokenPlacesSettings.highlightOpacity == 0.35 then
+			SpokenPlacesSettings.highlightOpacity = 0
+		end
 	end
 
 	SpokenPlaces.db = SpokenPlacesSettings
