@@ -188,10 +188,26 @@ for _, client in ipairs({ "11509", "16001" }) do
     Expect(client .. ": gossip is playing before its window closes", _G.Spoken:GetCurrent() ~= nil, true)
     stub.HidePanels()
     stub.FireEvent("GOSSIP_CLOSED")
-    stub.Advance(0.1)
+    stub.Advance(0.6)
     Expect(client .. ": gossip stops as its window closes, under Stop When Window Closes",
         _G.Spoken:GetCurrent(), nil)
     stub.Advance(1)
+    Played(played)
+
+    -- Selecting a trainer instruction closes GossipFrame while opening the trainer window. That
+    -- transition is not a real disengage, so the gossip line must continue through it.
+    stub.ShowGossip(GREETING, { BANK })
+    stub.FireEvent("GOSSIP_SHOW")
+    stub.Advance(0.3)
+    stub.ShowPanel("ClassTrainerFrame")
+    stub.FireEvent("GOSSIP_CLOSED")
+    stub.Advance(0.6)
+    Expect(client .. ": trainer instructions do not stop the current gossip line",
+        _G.Spoken:GetCurrent() ~= nil, true)
+    stub.HidePanels()
+    stub.Advance(0.6)
+    Expect(client .. ": closing the trainer window eventually stops the gossip line",
+        _G.Spoken:GetCurrent(), nil)
     Played(played)
 
     world.questID = 0

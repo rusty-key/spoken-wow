@@ -388,6 +388,16 @@ local function IsQuestWindowVisible()
         or IsFrameVisible(QuestFrameGreetingPanel)
 end
 
+-- GOSSIP_CLOSED also fires when a gossip option opens another NPC interaction window, such as
+-- a class trainer. Keep the current gossip line through that transition; the close timer below
+-- stops it only once all of those windows are gone.
+local function IsInteractionWindowVisible()
+    return IsFrameVisible(GossipFrame)
+        or IsQuestWindowVisible()
+        or IsFrameVisible(ClassTrainerFrame)
+        or IsFrameVisible(TrainerFrame)
+end
+
 -- The Forever client's gamepad UI takes over every popup as it opens, inside the code that
 -- opened it. Opened by an addon, that taints the gamepad's bindings: the next close is blocked,
 -- and the "blocked from an action" dialog it raises hangs the client (#165). What this addon
@@ -713,6 +723,7 @@ local function GiveVoiceBack(event)
 end
 local currentQuestSoundData
 local currentGossipSoundData
+local currentGossipCloseTimer
 -- Once per Session reads this instead of hasSeenGossipForNPC, which still records every
 -- greeting. In memory only, so every NPC greets again after a reload or relog.
 local sessionGreetingsHeard = {}
@@ -2184,9 +2195,26 @@ end
 
 function Addon:GOSSIP_CLOSED()
     if Addon.db.profile.Audio.StopAudioOnDisengage and currentGossipSoundData then
-        Player:Remove(currentGossipSoundData)
+        local soundData = currentGossipSoundData
+        if currentGossipCloseTimer then
+            self:CancelTimer(currentGossipCloseTimer)
+        end
+        local function StopWhenInteractionCloses()
+            currentGossipCloseTimer = nil
+            if currentGossipSoundData ~= soundData then
+                return
+            end
+            if IsInteractionWindowVisible() then
+                currentGossipCloseTimer = self:ScheduleTimer(StopWhenInteractionCloses, QUEST_ACCEPT_GRACE)
+                return
+            end
+            Player:Remove(soundData)
+            currentGossipSoundData = nil
+        end
+        currentGossipCloseTimer = self:ScheduleTimer(StopWhenInteractionCloses, QUEST_ACCEPT_GRACE)
+    else
+        currentGossipSoundData = nil
     end
-    currentGossipSoundData = nil
     EndGreetingTextWait()
     Player:RefreshConfig()
 
