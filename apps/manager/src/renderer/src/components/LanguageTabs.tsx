@@ -1,5 +1,5 @@
 import { useId, useState, type ReactNode } from 'react'
-import { languageName } from '@shared/products'
+import { useLanguageName } from '../store'
 
 /** The chosen language, falling back to the first when the account no longer holds it. */
 export function useLanguageTab(langs: string[]): [string, (lang: string) => void] {
@@ -9,12 +9,13 @@ export function useLanguageTab(langs: string[]): [string, (lang: string) => void
 
 export function LanguageTabs({ langs, value, onChange, label, children }: { langs: string[]; value: string; onChange: (lang: string) => void; label: string; children: ReactNode }): ReactNode {
   const id = useId()
+  const name = useLanguageName()
   return (
     <>
       <div className="subtabs subtabs-wrap" role="tablist" aria-label={label}>
         {langs.map((l) => (
           <button key={l} type="button" role="tab" id={`${id}-${l}`} aria-selected={value === l} aria-controls={`${id}-panel`} className="subtab" onClick={() => onChange(l)}>
-            {languageName(l)}
+            {name(l)}
           </button>
         ))}
       </div>

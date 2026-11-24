@@ -244,6 +244,10 @@ title over its page count, grouped so no pause or cue falls between them.
 gravestone read on the way waits for the book. The source has no queue limit, unlike places,
 whose cap drops the oldest waiting clip and here would drop what the player opened.
 
+The player keeps the reading's item icon and page material across its narrated pages, even
+after the readable window closes or another readable opens. Later pages take that appearance
+from the preceding clip; their words, timings and voice are still resolved page by page.
+
 **Settings and reading are kept apart, on purpose.** The settings (autoplay, whole book, one
 line, read once, stop when the book closes, close when read, the voice language and the
 Compendium's switches) live in Spoken's profile under `Writings`, bound by

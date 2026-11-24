@@ -54,6 +54,11 @@ Expect("...not as words alone", clip.textOnly, nil)
 Expect("...with the recording's word timings", clip.present.timings, "0 1 2")
 Expect("...and the part counts the pack", table.concat(Bosses:PackNames(), ","), "SpokenBossesAudio")
 
+local ogg = Pack("SpokenBossesAudio", "enUS", 128)
+ogg.format = "ogg"
+clip = Setup("enUS", "auto", "enUS", { SpokenBossesAudio = ogg })
+Expect("an Ogg pack: the clip is its Ogg", clip.path, "Interface\\AddOns\\SpokenBossesAudio\\Sounds\\36\\edwin-vancleef.ogg")
+
 clip = Setup("enUS", "auto", "enUS", { SpokenBossesAudio = Pack("SpokenBossesAudio", "enUS", 128, { [36] = {} }) })
 Expect("a pack without the boss: text only", tostring(clip.path) .. "|" .. tostring(clip.textOnly), "nil|true")
 

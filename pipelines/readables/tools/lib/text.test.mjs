@@ -80,6 +80,11 @@ test("a page holding a declension escape is not generatable", () => {
   assert.deepEqual(isGeneratable("Приветствую, |3-6(Друид)."), { generatable: false, skipReason: "substitution" });
 });
 
+test("a page holding any other client escape is not generatable", () => {
+  assert.deepEqual(isGeneratable("Bonjour, |2 orc."), { generatable: false, skipReason: "substitution" });
+  assert.deepEqual(isGeneratable("Fin.|n"), { generatable: false, skipReason: "substitution" });
+});
+
 test("ordinary prose is generatable", () => {
   assert.deepEqual(isGeneratable("The rains have come."), { generatable: true, skipReason: null });
 });

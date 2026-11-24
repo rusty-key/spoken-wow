@@ -1,5 +1,4 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { languageName } from '@shared/products'
 import type { ContributorView, JobProgress, ManualZip, PublishResult, ReleaseRow, RowState, StoreId } from '@shared/types'
 import { storeConfigured } from '@shared/types'
 import { api, errorText } from '../api'
@@ -8,7 +7,7 @@ import { IconExternal, IconRefresh } from '../components/Icons'
 import { ProgressTrack } from '../components/JobBar'
 import { STORES, canZip, liveRunText, publishJobFor, releasableCount, resultLines, rowHint, rowUploadLabel, runPercent, skipReasonText, storeName } from '../contributor'
 import { formatBytes, formatSpeed } from '../format'
-import { jobKey, useGame, useStore } from '../store'
+import { jobKey, useGame, useLanguageName, useStore } from '../store'
 import { S } from '../strings'
 
 export function Release({ view, lang }: { view: ContributorView; lang: string }): ReactNode {
@@ -221,6 +220,7 @@ function RowItem({ row, store, storeBusy, gameId, lang, onUpload }: { row: Relea
 
 function Result({ result }: { result: PublishResult }): ReactNode {
   const lines = resultLines(result)
+  const languageName = useLanguageName()
   return (
     <div className="contrib-result">
       <h4 className="field-label">{S.contributor.resultTitle(storeName(result.store), languageName(result.lang))}</h4>

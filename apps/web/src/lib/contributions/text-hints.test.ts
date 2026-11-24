@@ -35,8 +35,8 @@ describe("textHints", () => {
   });
 
   it("names a declension escape Player words has no case for, whole", () => {
-    expect(textHints("Приветствую, |3-6($c).", "ruRU")).toEqual([
-      "undeclined |3-6($c) — won't be voiced until Player words has its case",
+    expect(textHints("Как |3-7($r).", "ruRU")).toEqual([
+      "undeclined |3-7($r) — won't be voiced until Player words has its case",
     ]);
   });
 
@@ -45,6 +45,12 @@ describe("textHints", () => {
     expect(textHints("Спасибо, |3-6(Охотник).", "ruRU")).toEqual([
       "client-filled |3-6(Охотник) — won't be voiced; put $c, $n or $r back inside",
     ]);
+  });
+
+  it("names any other client escape left in, which the voice would read out", () => {
+    expect(textHints("Mira |Tx:0|t aquí.", "esMX")).toEqual(["client escape |Tx:0|t — won't be voiced"]);
+    // q:4542:accept, whose `|c` lost its colour.
+    expect(textHints("extraña.|c", "esMX")).toEqual(["client escape |c — won't be voiced"]);
   });
 
   it("flags the gap a gender branch resolved to nothing leaves", () => {
