@@ -38,23 +38,24 @@ export function luaTableId(id) {
   return /^\d+$/.test(value) ? Number(value) : value;
 }
 
+const LUA_STRING = String.raw`"((?:[^"\\]|\\.)*)"`;
 const LUA_ID = String.raw`(?:\d+|"(?:[^"\\]|\\.)*")`;
 const parseLuaId = (id) => id.startsWith('"') ? id.slice(1, -1) : Number(id);
+const parseLuaIds = (text) => [...text.matchAll(new RegExp(LUA_ID, "g"))].map(([id]) => parseLuaId(id));
 
 /** Parse the Books.lua sections consumed by the Places generator: books, pages and item owners. */
 export function readableLua(source) {
   const bookPart = source.slice(source.indexOf("\tbooks = {"));
   const books = new Map();
-  const parseLuaIds = (text) => [...text.matchAll(new RegExp(LUA_ID, "g"))].map(([id]) => parseLuaId(id));
-  for (const m of bookPart.matchAll(new RegExp(`\\[(${LUA_ID})\\] = \\{ title = "((?:[^"\\\\]|\\\\.)*)", pages = \\{ ([^}]*) \\}`, "g"))) {
+  for (const m of bookPart.matchAll(new RegExp(`\\[(${LUA_ID})\\] = \\{ title = ${LUA_STRING}, pages = \\{ ([^}]*) \\}`, "g"))) {
     books.set(parseLuaId(m[1]), { title: m[2], pages: parseLuaIds(m[3]) });
   }
+  if (books.size === 0) throw new Error("no books found");
   const pageBook = new Map();
   for (const [id, book] of books) for (const page of book.pages) pageBook.set(page, id);
-  if (books.size === 0) throw new Error("no books found");
   const pageText = new Map();
   const pagePart = source.slice(source.indexOf("\tpages = {"), source.indexOf("\tbooks = {"));
-  for (const m of pagePart.matchAll(new RegExp(`\\[(${LUA_ID})\\] = \\{ book = ${LUA_ID}, number = \\d+, text = "((?:[^"\\\\]|\\\\.)*)"`, "g"))) {
+  for (const m of pagePart.matchAll(new RegExp(`\\[(${LUA_ID})\\] = \\{ book = ${LUA_ID}, number = \\d+, text = ${LUA_STRING}`, "g"))) {
     pageText.set(parseLuaId(m[1]), m[2]);
   }
   const itemBook = new Map();

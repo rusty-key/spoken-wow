@@ -118,7 +118,6 @@ const TYPE_BY_HAND = {
   2838: "letter", // From the Desk of Lord Victor Nefarius: "To Whom It May Concern, ..."
   10322: "note", // Bloody Note: three pages, which would make it a book
   11007: "letter", // Advisor Nazgrel's Instructions: "Elf, As a guest of the Horde, ..."
-  ["nc0bf109d-e5d1-494d-ba1b-12a6b27352a8"]: "journal", // Gozwin's Mechanic's Log
   // The soldiers' letters from the Scourge invasion, and the reports the Keeper of the Rolls
   // mails back for them.
   2882: "letter", 2883: "letter", 2884: "letter",
@@ -255,21 +254,17 @@ try {
 
   // Carried: the items whose first page is a readable's.
   const itemBook = new Map();
-  for (const r of await table("ItemSparse")) {
-    const page = luaTableId(r.PageID ?? 0);
-    if (pageBook.has(page)) {
-      itemBook.set(Number(r.ID), pageBook.get(page));
-      if (!bookItems.has(pageBook.get(page))) bookItems.set(pageBook.get(page), []);
-      bookItems.get(pageBook.get(page)).push(Number(r.ID));
-    }
-  }
-  // A minted book's pages are in no PageID: the corpus records the item a player read it from.
-  for (const [item, book] of ownerBook) {
-    if (typeof book !== "string" || itemBook.has(item)) continue;
+  const carry = (item, book) => {
     itemBook.set(item, book);
     if (!bookItems.has(book)) bookItems.set(book, []);
     bookItems.get(book).push(item);
+  };
+  for (const r of await table("ItemSparse")) {
+    const page = Number(r.PageID || 0);
+    if (pageBook.has(page)) carry(Number(r.ID), pageBook.get(page));
   }
+  // A minted book's pages are in no PageID: the corpus records the item a player read it from.
+  for (const [item, book] of ownerBook) if (typeof book === "string" && !itemBook.has(item)) carry(item, book);
   for (const book of new Set(itemBook.values())) if (!kind.has(book)) kind.set(book, "carried");
   const items = [...itemBook.keys()];
 
@@ -392,13 +387,14 @@ try {
   const handQuests = await names(QUEST, "ID", "LogTitle", hand.filter((s) => s.quest).map((s) => s.quest));
   const handObjects = await names(OBJECT, "entry", "name", hand.filter((s) => s.object).map((s) => s.object));
   const handObjectZones = await spawnZones("gameobject", hand.filter((s) => s.object).map((s) => s.object));
-  for (const [book, list_] of Object.entries(SOURCES_BY_HAND)) {
+  for (const [key, list_] of Object.entries(SOURCES_BY_HAND)) {
+    const book = luaTableId(key);
     for (const s of list_) {
       const name = s.quest ? handQuests.get(s.quest) : handObjects.get(s.object);
       if (!name) throw new Error(`book ${book}: no ${s.quest ? `quest ${s.quest}` : `object ${s.object}`} in the world DB`);
-      add(luaTableId(book), s.zones ?? handObjectZones.get(s.object) ?? []);
+      add(book, s.zones ?? handObjectZones.get(s.object) ?? []);
     }
-    if (!kind.has(luaTableId(book))) kind.set(luaTableId(book), "carried");
+    if (!kind.has(book)) kind.set(book, "carried");
   }
 } finally {
   await db.end();

@@ -23,7 +23,7 @@ import pg from "pg";
 import { isClientLocale } from "../../../lib/locales.mjs";
 import { releaseTeamSql } from "../../../lib/release-team.mjs";
 import { packTimes } from "../../../lib/word-times.mjs";
-import { canBeHad, compareIds, indexLua, luaId, pageIndex, quote } from "./lua.mjs";
+import { canBeHad, compareIds, indexLua, luaId, luaTableId, pageIndex, quote } from "./lua.mjs";
 import { PLAYER_WORDS_SQL, registerPlayerWordRows } from "../../../lib/player-words.mjs";
 import { shownPage } from "./text.mjs";
 
@@ -71,9 +71,7 @@ export function localeEntries(pages, names) {
     const kind = page.ownerKind === "object" ? "gameobject" : "item";
     const owned = page.ownerIds.map((id) => byOwner.get(`${kind}:${id}`)).filter(Boolean);
     const titles = [...new Set(owned.length ? owned : [page.ownTitle].filter(Boolean))].sort();
-    const pageId = page.numeric ? Number(page.pageId) : page.pageId;
-    const bookId = /^\d+$/.test(page.bookId) ? Number(page.bookId) : page.bookId;
-    const entry = { pageId, bookId, pageNumber: page.pageNumber, texts: page.texts, titles };
+    const entry = { pageId: luaTableId(page.pageId), bookId: luaTableId(page.bookId), pageNumber: page.pageNumber, texts: page.texts, titles };
     (page.inEnglish && page.numeric ? known : extra).push(entry);
   }
   return { known, extra };
@@ -189,8 +187,8 @@ export async function buildLookup({ lang = LANG, out = lookupPath(lang) } = {}) 
     const rows = canBeHad(
       clips.rows.map((r) => ({
         ...r,
-        pageId: r.numeric ? Number(r.pageId) : r.pageId,
-        bookId: /^\d+$/.test(r.bookId) ? Number(r.bookId) : r.bookId,
+        pageId: luaTableId(r.pageId),
+        bookId: luaTableId(r.bookId),
       })),
     );
 

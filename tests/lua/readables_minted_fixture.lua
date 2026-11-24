@@ -7,5 +7,5 @@ return function(B)
     data.pages[page] = { book = book, number = 1, text = text }
     data.owners.item[277976] = book
     data.index["Mechanic's Log"] = { [1] = { [B:ChecksumOf(text)] = page } }
-    return book
+    return page
 end

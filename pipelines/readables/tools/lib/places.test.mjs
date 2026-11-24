@@ -64,6 +64,7 @@ test("journals and diaries are one type, carried or on a shelf", () => {
   assert.equal(typeOf({ title: "A Faded Journal Page", icons: [NOTE] }), "journal");
   assert.equal(typeOf({ title: "Damp Diary Page (Day 4)", icons: [NOTE] }), "journal");
   assert.equal(typeOf({ title: "Diary of Weavil", icons: [BOOK] }), "journal");
+  assert.equal(typeOf({ title: "Gozwin's Mechanic's Log", icons: [BOOK] }), "journal");
   assert.equal(typeOf({ title: "Baelog's Journal", world: true, texts: ["I've sent Eric and Olaf"] }), "journal");
 });
 

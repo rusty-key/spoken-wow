@@ -26,7 +26,7 @@ export function cannotBeHad(title, texts = [], bookId = null) {
 // A title that names its own form says what it is better than its item's icon does: the game
 // gave "Maybell's Love Letter" a scroll's icon and "Crystallized Note" a tablet's.
 const FORM_TYPE = [
-  [/journal|diary/i, "journal"], [/letter|missive|envelope/i, "letter"],
+  [/journal|diary|\blog\b/i, "journal"], [/letter|missive|envelope/i, "letter"],
   [/\bnote\b|parchment/i, "note"], [/scroll/i, "scroll"], [/tablet/i, "tablet"],
 ];
 // Then the icon, then the rest of the title.

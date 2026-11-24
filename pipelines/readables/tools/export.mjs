@@ -26,13 +26,10 @@ if (!url) throw new Error("DATABASE_URL is not set -- the readables corpus lives
 const pool = new pg.Pool({ connectionString: url });
 
 try {
-  // Only a minted book is titled by its owner. An extracted book keeps its first page's title,
-  // which places.mjs types and filters it by; the owner's name, editable on the site, would
-  // regroup it on the next export.
+  // Only a minted book takes its owner's name. An extracted book keeps its first page's title,
+  // which places.mjs types and filters by, so a site edit to an owner's name cannot regroup it.
   const { rows } = await pool.query(
-    `select case when p."pageTextId" is not null then p."pageTextId"::text
-                   else substr(p."lineId", 3) end as "pageId",
-            p."pageTextId" is not null as "numeric", p."bookId" as "bookId", p."pageNumber",
+    `select coalesce(p."pageTextId"::text, substr(p."lineId", 3)) as "pageId", p."bookId", p."pageNumber",
             count(*) over (partition by p."bookId")::int as "pageCount", l."title", l."text",
             case when p."pageTextId" is null then coalesce((select n."name" from "entity_name" n
                        where n."kind" = case p."ownerKind" when 'object' then 'gameobject' else 'item' end
@@ -55,7 +52,7 @@ try {
   }
 
   for (const row of rows) {
-    if (row.numeric) row.pageId = Number(row.pageId);
+    row.pageId = luaTableId(row.pageId);
     row.bookId = luaTableId(row.bookId);
   }
 
