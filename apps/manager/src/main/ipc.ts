@@ -1,9 +1,8 @@
 // The handlers for every channel in shared/api.ts. Each argument is checked before it is used.
 import { BrowserWindow, dialog, ipcMain, shell, type IpcMainInvokeEvent } from 'electron'
 import { CHANNELS, type InstallOptions, type StoreInput, type UpdaterState } from '../shared/api'
-import { LANGUAGES } from '../shared/products'
 import type { Settings, StoreId } from '../shared/types'
-import { cleanVoiceAuthors, DEFAULT_SETTINGS } from '../shared/types'
+import { cleanVoiceAuthors, DEFAULT_SETTINGS, LANG_CODE } from '../shared/types'
 import { languageFolders } from '../shared/products'
 import { isAllowedExternalUrl, openableDirectory, revealableZip } from './external'
 import type { ManagerService } from './service'
@@ -34,8 +33,9 @@ export function contributorStore(v: unknown): StoreId {
   return v
 }
 
+// Only the shape: which languages the account may release is the site's answer (requireAdmin), and teams add new ones.
 export function contributorLang(v: unknown): string {
-  if (typeof v !== 'string' || !LANGUAGES.some((l) => l.code === v)) throw new Error('Invalid language')
+  if (typeof v !== 'string' || !LANG_CODE.test(v)) throw new Error('Invalid language')
   return v
 }
 
