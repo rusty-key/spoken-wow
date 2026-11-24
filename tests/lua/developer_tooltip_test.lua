@@ -13,11 +13,17 @@ local function Boot(mode, locale, withTarget)
     _G.SpokenSettings = nil
     local tooltip = stub.Widget("GameTooltip")
     _G.GameTooltip = tooltip
-    tooltip.GetPrimaryTooltipData = mode == "modern" and function() end or false
+    if mode == "modern" then
+        local hasScript = tooltip.HasScript
+        tooltip.HasScript = function(self, script)
+            return script ~= "OnTooltipSetUnit" and hasScript(self, script)
+        end
+    end
     tooltip.IsForbidden = function(self) return self.forbidden end
     local unit, guid
     local callbacks = {}
     tooltip.GetUnit = function() return "Developer", unit end
+    tooltip.SetNoUnit = function() unit = nil end
     _G.UnitGUID = function() return guid end
     _G.Enum = _G.Enum or {}
     _G.Enum.TooltipDataType = { Unit = 2 }
@@ -57,7 +63,8 @@ end
 
 for _, mode in ipairs({ "modern", "legacy" }) do
     local tooltip, Clear, Show, callback = Boot(mode)
-    Expect(mode .. ": the native tooltip pipeline is used", callback ~= nil, mode == "modern")
+    Expect(mode .. ": the native tooltip pipeline is used, even where Classic exposes the processor",
+        callback ~= nil, mode == "modern")
     Clear()
     Expect(mode .. ": first developer character is tagged", Show("Player-6921-001E5110"), ICON .. "Spoken Developer")
     Expect(mode .. ": repeated updates do not duplicate the label", Show("Player-6921-001E5110"), ICON .. "Spoken Developer")
@@ -72,11 +79,15 @@ for _, mode in ipairs({ "modern", "legacy" }) do
         Clear()
         callback(tooltip, {})
         Expect("the tooltip's unit identifies a developer without data.guid", table.concat(tooltip.lines, "|"), ICON .. "Spoken Developer")
+        Clear()
+        tooltip.SetNoUnit()
+        callback(tooltip, { guid = "Player-6921-001E5110" })
+        Expect("data.guid identifies a developer without a unit token", table.concat(tooltip.lines, "|"), ICON .. "Spoken Developer")
     end
     local readGUID = UnitGUID
     _G.UnitGUID = function(unit) if unit == "mouseover" then return "Player-6921-001E5110" end end
     Clear()
-    Expect(mode .. ": a missing unit GUID falls back to mouseover like Questie", Show(nil, "target"), ICON .. "Spoken Developer")
+    Expect(mode .. ": a unit without a GUID is not tagged from the mouseover", Show(nil, "target"), "")
     _G.UnitGUID = readGUID
     for _, guid in ipairs({ "Player-6921-00000000", "Player-1234-001E5110", "Creature-0-0-0-0-6921-001E5110", "invalid" }) do
         Clear()
@@ -90,9 +101,15 @@ for _, mode in ipairs({ "modern", "legacy" }) do
     stub.Secrets("Player-6921-001E5110")
     Expect(mode .. ": secret GUIDs are left alone", Show("Player-6921-001E5110"), "")
     stub.Secrets()
-    stub.Secrets("mouseover")
-    Expect(mode .. ": secret unit tokens are left alone", Show("Player-6921-001E5110", "mouseover"), "")
+    stub.Secrets("Developer")
+    Expect(mode .. ": a secret name still shows the label", Show("Player-6921-001E5110"), ICON .. "Spoken Developer")
     stub.Secrets()
+    if not callback then
+        Clear()
+        stub.Secrets("mouseover")
+        Expect(mode .. ": secret unit tokens are left alone", Show("Player-6921-001E5110", "mouseover"), "")
+        stub.Secrets()
+    end
     if callback then
         local other = stub.Widget("GameTooltip")
         callback(other, { guid = "Player-6921-001E5110" })
