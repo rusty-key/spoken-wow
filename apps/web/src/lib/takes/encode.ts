@@ -244,13 +244,19 @@ async function encodeFromArchive(source: Source, sha256: string, take?: EncodedT
  * `budgetMs` in all, even for one slow encode, which carries on alone and records itself when it
  * finishes. Newest first, since those are the takes the release is about to send, and a take that
  * failed in the past day last, so a take that will never encode does not spend every press's time.
- * Returns how many it encoded, out of at most 500.
+ * Takes at most 500, and says how many it encoded and how many it tried that had not failed in the
+ * past day: a caller that goes on while those are left reaches every take once.
  */
-export async function encodeMissingForPack(source: Source, lang: Lang, team: TeamId, budgetMs = 30_000): Promise<number> {
+export async function encodeMissingForPack(
+  source: Source,
+  lang: Lang,
+  team: TeamId,
+  budgetMs = 30_000,
+): Promise<{ encoded: number; fresh: number }> {
   const until = Date.now() + budgetMs;
-  const missing = await queryIn<{ sha256: string; file: string; version: number; lineId: string | null }>(
+  const missing = await queryIn<{ sha256: string; file: string; version: number; lineId: string | null; failedBefore: boolean }>(
     ALL_TEAMS,
-    `select "sha256", "file", "version", "lineId" from (
+    `select "sha256", "file", "version", "lineId", "failedBefore" from (
        select distinct on (t."sha256") t."sha256", t."file", t."version", t."lineId", t."createdAt"
          from "take" t
          left join "take_encoding" e
@@ -260,15 +266,15 @@ export async function encodeMissingForPack(source: Source, lang: Lang, team: Tea
           and coalesce(e."durationSec", 0) <= 0
         order by t."sha256", t."createdAt" desc
      ) live
-     order by exists (select 1 from "activity" a
+     cross join lateral (select exists (select 1 from "activity" a
                        where a."lang" = $2 and a."at" > now() - interval '1 day' and a."kind" = $4
-                         and a."subject" = live."file" and a."detail"->>'version' = live."version"::text),
-              "createdAt" desc
+                         and a."subject" = live."file" and a."detail"->>'version' = live."version"::text) as "failedBefore") f
+     order by "failedBefore", "createdAt" desc
      limit 500`,
     [source, lang, PROFILE, FAILED, team],
   );
-  let encodedCount = 0;
-  for (const { sha256, ...take } of missing) {
+  const counts = { encoded: 0, fresh: 0 };
+  for (const { sha256, failedBefore, ...take } of missing) {
     const left = until - Date.now();
     if (left <= 0) break;
     let timer: NodeJS.Timeout | undefined;
@@ -278,9 +284,10 @@ export async function encodeMissingForPack(source: Source, lang: Lang, team: Tea
     const result = await Promise.race([encoded, outOfTime]);
     clearTimeout(timer);
     if (result === "late") break;
-    if (result) encodedCount++;
+    if (result) counts.encoded++;
+    if (!failedBefore) counts.fresh++;
   }
-  return encodedCount;
+  return counts;
 }
 
 /** For a take put back live, which may be older than encoding at commit. Never throws. */

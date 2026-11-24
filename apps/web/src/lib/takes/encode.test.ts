@@ -123,7 +123,7 @@ describe.skipIf(!tools)("encodeForPack", () => {
       await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
       expect(await encoded()).toBe(0);
 
-      expect(await encodeMissingForPack("quests", "enUS", await english())).toBeGreaterThanOrEqual(1);
+      expect((await encodeMissingForPack("quests", "enUS", await english())).encoded).toBeGreaterThanOrEqual(1);
       expect(await encoded()).toBe(1);
     } finally {
       restore();
@@ -188,7 +188,7 @@ describe.skipIf(!tools)("encodeForPack", () => {
       await commitTake("quests", file, master, { lineId: "g:encode-missing" });
       await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
 
-      expect(await encodeMissingForPack("quests", "enUS", await english(), 0)).toBe(0);
+      expect(await encodeMissingForPack("quests", "enUS", await english(), 0)).toEqual({ encoded: 0, fresh: 0 });
       expect((await db().query(`select 1 from "take_encoding" where "sha256" = $1`, [sha])).rowCount).toBe(0);
     } finally {
       restore();
@@ -210,8 +210,9 @@ describe.skipIf(!tools)("encodeForPack", () => {
       expect(rows[0].detail.error).toMatch(/ffmpeg exited/);
       expect(rows[0].detail.error).not.toContain(os.tmpdir());
 
-      // A press that fails on it again says nothing new, so the log keeps the one row.
-      await encodeMissingForPack("quests", "enUS", await english());
+      // A press that fails on it again says nothing new, so the log keeps the one row, and counts
+      // it as tried before, which is what ends a backfill.
+      expect((await encodeMissingForPack("quests", "enUS", await english())).fresh).toBe(0);
       const { rowCount } = await asSystem.query(
         `select 1 from "activity" where "kind" = 'take.encode_failed' and "subject" = $1`,
         [file],

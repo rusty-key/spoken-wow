@@ -57,10 +57,13 @@ for (const source of sources) {
     console.log(`${source} ${lang} (team ${teamId}): ${count} takes without an Ogg`);
     found += count;
     if (dryRun) continue;
-    // encodeMissingForPack takes 500 at a time; stop once a round encodes nothing more.
-    for (let done; (done = await encodeMissingForPack(source, lang, teamId, BUDGET_MS)) > 0; ) {
-      encoded += done;
-      console.log(`  ${done} encoded`);
+    // 500 at a time, the ones that failed before last: once a round tries none that had not, every
+    // take has had its turn.
+    for (;;) {
+      const round = await encodeMissingForPack(source, lang, teamId, BUDGET_MS);
+      encoded += round.encoded;
+      console.log(`  ${round.encoded} encoded`);
+      if (round.fresh === 0) break;
     }
   }
 }
