@@ -75,3 +75,11 @@ test("a Korean particle glued to a token takes the form that follows the word", 
   // Not a particle where Hangul runs on: 입니다, 님, 에게 stay as written.
   assert.equal(speakQuestTokens("$N입니다. $C님, $c에게.", "koKR"), "모험가입니다. 모험가님, 모험가에게.");
 });
+
+test("French's |2 says de before a consonant and d' before a vowel", () => {
+  // g:5283b76d…, q:2418:complete, q:96987:accept and q:1955:complete.
+  assert.equal(speakQuestTokens("la puissante légion |2 $n ?", "frFR"), "la puissante légion d'aventurier ?");
+  assert.equal(speakQuestTokens("rencontré |2 $R plus fiable", "frFR"), "rencontré de voyageur plus fiable");
+  assert.equal(speakQuestTokens("mon type |2orc !", "frFR"), "mon type d'orc !");
+  assert.equal(speakQuestTokens("morceaux |2 mort-vivant.", "frFR"), "morceaux de mort-vivant.");
+});

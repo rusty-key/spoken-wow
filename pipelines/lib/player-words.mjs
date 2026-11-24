@@ -368,7 +368,16 @@ function speak(text, lang, playerGender, byToken) {
   spoken = spoken.replace(byToken ? ANY_PLAYER_TOKEN : TOKEN, (_, token, at, whole) =>
     cased(token.toUpperCase() === "R" ? words.race : words.name, at, whole, token),
   );
-  return speakParticles(spoken);
+  return speakDe(speakParticles(spoken));
+}
+
+// French's `|2`, written before a word ("la légion |2 $n", "|2orc"): the client prints "de " before
+// a consonant and "d'" before a vowel, so it can only be chosen once the token is a word.
+const DE = /(?<!\|)\|2\s*(?=(\p{L}))/gu;
+const VOWEL = /^[aeiouyàâäéèêëîïôöùûüÿœæ]/iu;
+
+function speakDe(text) {
+  return text.replace(DE, (_, next) => (VOWEL.test(next) ? "d'" : "de "));
 }
 
 // Korean's particle escape, `$c|1이여;여;`: the client prints the first form after a syllable that

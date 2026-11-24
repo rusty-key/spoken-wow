@@ -589,6 +589,8 @@ consonant and its second after a vowel, as the client does, judged on the word t
 (`모험가여`); `(으)로` takes `로` after ㄹ.
 A particle glued straight onto a token (`$N이`, `$c을`, written for a name ending in a consonant)
 is chosen the same way, so `$N이` reads `모험가가`.
+frFR's `|2` before a word reads `de ` before a consonant and `d'` before a vowel, judged on the word
+the token became (`légion |2 $n` reads `légion d'aventurier`).
 Contributions triage shows any token or client escape still left after this, a bare `<` or `>`, and a gap
 before `.` or `,` or a mid-sentence double space where a gender branch came through empty,
 above the row's text, so a line that would never be voiced is seen before it is accepted.
