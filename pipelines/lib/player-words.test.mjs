@@ -6,6 +6,7 @@ import {
   isBuiltinPlayerWords,
   registerPlayerWordRows,
   speakPlayerTokens,
+  speakQuestTokens,
   writtenPlayerTokens,
 } from "./player-words.mjs";
 
@@ -44,4 +45,13 @@ test("words equal to Spoken's own are the built-in words, so saving them stores 
   assert.equal(isBuiltinPlayerWords("ruRU", { m: { ...ru.m, cases: {} }, f: { ...ru.f, nameGenitive: "" } }), true);
   assert.equal(isBuiltinPlayerWords("ruRU", { ...ru, m: { ...ru.m, cases: { 6: { name: "путник" } } } }), false);
   assert.equal(isBuiltinPlayerWords("plPL", { m: { name: "a", race: "b" }, f: { name: "a", race: "b" } }), false);
+});
+
+test("a line break and a colour are spoken as the client prints them, in any language", () => {
+  // q:4542's neighbours in esMX end with `|n`.
+  assert.equal(speakQuestTokens("y tendrás mi gratitud eterna.|n", "esMX"), "y tendrás mi gratitud eterna.\n");
+  assert.equal(speakPlayerTokens("Lis |cff00ff00ceci|r, $N.", "frFR"), "Lis ceci, aventurier.");
+  assert.equal(speakPlayerTokens("Fin.|n", "xxXX"), "Fin.\n");
+  // A `|c` with no colour, as q:4542:accept writes it, is no colour: it stays for the gate.
+  assert.equal(speakQuestTokens("extraña.|n|c|n", "esMX"), "extraña.\n|c\n");
 });

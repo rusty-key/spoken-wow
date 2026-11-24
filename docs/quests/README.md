@@ -583,6 +583,7 @@ forms on `/<lang>/player-words` give the word per case number. An escape whose c
 or one around a word rather than a token (`|3-6(Друид)`, a contributor's own class), stays
 unvoiceable. So does a line holding any other escape the client resolves as it prints the line
 (`|1이;가;`, `|2`, `|4one:few:many;`, `|n`, `|cff…|r`) until the substitution speaks it.
+`|n` is spoken as the line break it prints, and `|cAARRGGBB…|r` as its words, in every language.
 Contributions triage shows any token or client escape still left after this, a bare `<` or `>`, and a gap
 before `.` or `,` or a mid-sentence double space where a gender branch came through empty,
 above the row's text, so a line that would never be voiced is seen before it is accepted.
