@@ -4,6 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Readables played from the Compendium show the same icon as their Compendium page.** One with
+  no item, gravestones and tablets included, shows its kind's icon. *([anon1231823](https://github.com/anon1231823))*
 - **Round buttons sink and darken while you hold them,** so Play, Stop, Skip and Report answer
   your click at once. *([rusty-key](https://github.com/rusty-key))*
 - **Notes and other readables keep their icon on every narrated page,** even after closing the readable or opening another one. *([anon1231823](https://github.com/anon1231823))*

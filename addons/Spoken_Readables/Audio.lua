@@ -19,13 +19,30 @@ local L = SpokenReadables.L
 -- plays silence and reports nothing.
 local PACK_FORMAT = 1
 
--- The player's own book art. Pointed at rather than copied: Spoken is installed
--- alongside this addon by definition -- it is what the clips are queued through -- and a
--- second copy of the same texture is a second thing to keep in step.
-local BOOK_TEXTURE = [[Interface\AddOns\Spoken\Textures\Book]]
-
--- A page's picture: a bag item's own icon, else the material it is on, else the book.
 local ICON_CROP = { 0.08, 0.92, 0.08, 0.92 }
+
+local TYPE_ICONS = {}
+for kind, icon in pairs({
+	book = "INV_Misc_Book_09", journal = "INV_Misc_Book_11", letter = "INV_Letter_15", note = "INV_Misc_Note_01",
+	scroll = "INV_Scroll_03", tablet = "INV_Misc_StoneTablet_11", plaque = "INV_Misc_Note_06",
+	grave = "INV_Misc_Bone_HumanSkull_01", exhibit = "INV_Misc_Statue_01", picture = "INV_Misc_Map_01",
+	other = "INV_Misc_QuestionMark",
+}) do TYPE_ICONS[kind] = [[Interface\Icons\]] .. icon end
+
+local function BookType(book)
+	local places = _G.SpokenReadablesPlaces and SpokenReadablesPlaces.books
+	local place = book and places and places[book]
+	return place and place.type
+end
+
+-- The Compendium's header and the player's picture both come from here, so they cannot disagree.
+-- A readable missing from the Places data is listed as "other", so it plays as one too.
+function SpokenReadables:ReadableIcon(kind, bookID)
+	local icon, crop = self:ItemIcon(bookID)
+	if icon then return icon, crop end
+	return TYPE_ICONS[kind] or TYPE_ICONS.other, ICON_CROP
+end
+
 local MATERIALS = {
 	Stone = [[Interface\Icons\INV_Misc_StoneTablet_01]],
 	Marble = [[Interface\Icons\INV_Misc_StoneTablet_07]],
@@ -49,14 +66,10 @@ end
 --- What `pageId`'s readable is written on by its kind, or nil for paper.
 function SpokenReadables:KindMaterial(pageId)
 	local place = pageId and self:Data() and self:Data().pages[pageId]
-	local places = _G.SpokenReadablesPlaces and SpokenReadablesPlaces.books
-	local entry = place and places and places[place.book]
-	return entry and KIND_MATERIAL[entry.type] or nil
+	return place and KIND_MATERIAL[BookType(place.book)] or nil
 end
 
---- Open is what the item text events say, not the game's frame, which DialogueUI hides. A page
---- not open (of another book than the one open, or nothing open) takes what its kind is written
---- on, else the book.
+--- Item-text events identify the open readable even when DialogueUI hides the game's frame.
 function SpokenReadables:PagePicture(pageId)
 	if IsOpen(self, pageId) then
 		local item = ItemTextGetItem and NotSecret(ItemTextGetItem())
@@ -69,9 +82,9 @@ function SpokenReadables:PagePicture(pageId)
 			return { kind = "texture", texture = MATERIALS[material], texCoord = ICON_CROP }
 		end
 	end
-	local material = not IsOpen(self, pageId) and self:KindMaterial(pageId)
-	if material then return { kind = "texture", texture = MATERIALS[material], texCoord = ICON_CROP } end
-	return { kind = "texture", texture = BOOK_TEXTURE }
+	local bookID = pageId and self:PlaceOf(pageId)
+	local icon, crop = self:ReadableIcon(BookType(bookID), bookID)
+	return { kind = "texture", texture = icon, texCoord = crop }
 end
 
 --- What `pageId` is written on (ItemTextGetMaterial: Parchment, Stone, Marble...): the game's
@@ -101,9 +114,7 @@ SpokenReadables.TYPE_NAMES = {
 
 --- What `book` is (a book, a letter, a gravestone...), as the Compendium sorts it.
 function SpokenReadables:KindOf(book)
-	local places = _G.SpokenReadablesPlaces and SpokenReadablesPlaces.books
-	local place = places and places[book]
-	return L[(self.TYPE_NAMES[place and place.type] or self.TYPE_NAMES.other).one]
+	return L[(self.TYPE_NAMES[BookType(book)] or self.TYPE_NAMES.other).one]
 end
 
 --- Whether a book is one line in the queue (Read Book as One Line), rather than a line per page.

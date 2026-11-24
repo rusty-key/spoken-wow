@@ -58,17 +58,9 @@ local function EventLabel(key) return EVENT_NAMES[key] and L[EVENT_NAMES[key]] o
 local TYPES, TYPE_NAMES = SpokenReadables.TYPES, SpokenReadables.TYPE_NAMES
 local function TypeLabel(type) return L[(TYPE_NAMES[type] or TYPE_NAMES.other).all] end
 
-local TYPE_ICONS = {
-	book = "INV_Misc_Book_09", journal = "INV_Misc_Book_11", letter = "INV_Letter_15", note = "INV_Misc_Note_01",
-	scroll = "INV_Scroll_03", tablet = "INV_Misc_StoneTablet_11", plaque = "INV_Misc_Note_06",
-	grave = "INV_Misc_Bone_HumanSkull_01", exhibit = "INV_Misc_Statue_01", picture = "INV_Misc_Map_01",
-	other = "INV_Misc_QuestionMark",
-}
 local function TypeIcon(type, book)
-	local icon, crop
-	if book then icon, crop = SpokenReadables:ItemIcon(book) end
-	return { objectOrItem = true, icon = icon or ([[Interface\Icons\]] .. (TYPE_ICONS[type] or TYPE_ICONS.other)),
-		iconCrop = crop, bullet = "book" }
+	local icon, crop = SpokenReadables:ReadableIcon(type, book)
+	return { objectOrItem = true, icon = icon, iconCrop = crop, bullet = "book" }
 end
 local READABLES_ICON = { objectOrItem = true, icon = C.ICON, bullet = "book" }
 local filter = ""
