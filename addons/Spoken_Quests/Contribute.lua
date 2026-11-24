@@ -229,11 +229,10 @@ local function EventOnScreen()
     return nil, nil
 end
 
---- The greeting a quest giver with several quests shows on the quest frame's greeting panel,
---- the game's own or DialogueUI's in its place, or nil when no such window is up.
-local function GreetingOnScreen()
+--- The greeting a quest giver with several quests shows, in the game's window or DialogueUI's.
+local function GreetingOnScreen(page)
     local panel = _G.QuestFrameGreetingPanel
-    if Utils:DialogueUIPage() == "QUEST_GREETING" or (panel and panel.IsVisible and panel:IsVisible()) then
+    if page == "QUEST_GREETING" or (panel and panel.IsVisible and panel:IsVisible()) then
         return GetGreetingText and NotSecret(GetGreetingText())
     end
 end
@@ -244,15 +243,13 @@ end
 --- the frame is what says whether they are still being spoken: the game's own, or DialogueUI's
 --- in its place. A client without a GossipFrame to ask is taken at its word.
 local function GossipOnScreen()
-    local greeting = GreetingOnScreen()
+    local page = Utils:DialogueUIPage()
+    local greeting = GreetingOnScreen(page)
     if greeting and greeting ~= "" then
         return greeting, Enums.SoundEvent.QuestGreeting
     end
-    if Utils:DialogueUIPage() == "GOSSIP_SHOW" then
-        return GetGossipText and NotSecret(GetGossipText()), Enums.SoundEvent.Gossip
-    end
     local frame = _G.GossipFrame
-    if frame and frame.IsVisible and not frame:IsVisible() then
+    if page ~= "GOSSIP_SHOW" and frame and frame.IsVisible and not frame:IsVisible() then
         return nil
     end
     return GetGossipText and NotSecret(GetGossipText()), Enums.SoundEvent.Gossip

@@ -400,9 +400,9 @@ button:GetScript("OnEnter")(button)
 Expect("...saying the line is missing", GameTooltip.text, "Spoken Quests doesn't have this line")
 
 ---------------------------------------------------------------- a quest giver's greeting
--- An NPC with several quests opens the quest frame's greeting panel, not the gossip frame
--- (#1215). Its words are gossip all the same: a greeting no pack has offers the button there,
--- and one a pack has offers none.
+-- An NPC with several quests opens the quest frame's greeting panel, not the gossip frame.
+-- Its words are gossip all the same: a greeting no pack has offers the button there, and one a
+-- pack has offers none.
 stub.HidePanels()
 world.greetingText = "Dark times, Tester. Stay on the road."
 stub.ShowPanel("QuestFrameGreetingPanel")

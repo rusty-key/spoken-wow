@@ -78,12 +78,6 @@ local function IsFrameVisible(frame)
     return frame:IsShown()
 end
 
---- The quest giver's greeting panel, when it is the one on screen. Its words are gossip, drawn
---- on the quest frame.
-local function GreetingPanelOnScreen()
-    return IsFrameVisible(QuestFrameGreetingPanel) and QuestFrameGreetingPanel or nil
-end
-
 --- Which of the three NPC quest panels is on screen, the same priority Contribute:Capture
 --- and ReportButton:CurrentTarget both use.
 local function QuestPanelOnScreen()
@@ -315,11 +309,10 @@ function ContributeButton:Refresh()
     end
 
     local placed
-    if QuestPanelOnScreen() then
-        self.gossip = false
-        placed = self:PositionAtCorner(_G.QuestFrame, CloseButtonOf(_G.QuestFrame, "QuestFrameCloseButton"))
-    elseif GreetingPanelOnScreen() then
-        self.gossip = true
+    local questPanel = QuestPanelOnScreen()
+    -- A quest giver's greeting is gossip, drawn on the quest frame.
+    if questPanel or IsFrameVisible(QuestFrameGreetingPanel) then
+        self.gossip = not questPanel
         placed = self:PositionAtCorner(_G.QuestFrame, CloseButtonOf(_G.QuestFrame, "QuestFrameCloseButton"))
     else
         self.gossip = true
