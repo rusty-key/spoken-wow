@@ -1166,7 +1166,7 @@ end
 
 local function ProfileStores()
     local stores = {}
-    if Addon.db then table.insert(stores, { key = "spoken", db = Addon.db }) end
+    if Addon.db and Addon.db.GetProfiles then table.insert(stores, { key = "spoken", db = Addon.db }) end
     for key, source in Sources:Iterate() do
         if type(source.profiles) == "function" then
             local ok, db = pcall(source.profiles)
@@ -1178,10 +1178,54 @@ local function ProfileStores()
     return stores
 end
 
-local function EncodedProfile()
-    local stores = {}
+local function At(value, key)
+    if type(value) == "table" then return value[key] end
+end
+
+local function DefaultsOf(db)
+    return type(db.defaults) == "table" and db.defaults.profile or nil
+end
+
+-- Only what differs from the defaults goes in the string, as AceDB saves at logout: a default
+-- carried over would stay the player's choice on an install whose default is another, and a
+-- later change to the default would never reach them.
+local function Changed(value, default)
+    if type(value) ~= "table" then
+        if value == default then return nil end
+        return value
+    end
+    local out = {}
+    for key, item in pairs(value) do out[key] = Changed(item, At(default, key)) end
+    if type(default) == "table" and next(out) == nil then return nil end
+    return out
+end
+
+-- Over the defaults a reset has just put back, so a setting the string lacks (it came from
+-- another version) keeps this install's default instead of reading as nil, and a value of
+-- another type than its default cannot replace it.
+local function MergeOver(destination, source, defaults)
+    for key, value in pairs(source) do
+        local default = At(defaults, key)
+        if default == nil or type(default) == type(value) then
+            if type(value) == "table" then
+                if type(destination[key]) ~= "table" then destination[key] = {} end
+                MergeOver(destination[key], value, default)
+            else
+                destination[key] = value
+            end
+        end
+    end
+end
+
+--- The current profile as a string to paste on another character or install, or nil.
+function Options:ProfileString()
+    local stores, exported = {}, {}
+    -- Several parts can share one database (Spoken Quests' quests, gossip and chatter).
     for _, store in ipairs(ProfileStores()) do
-        stores[#stores + 1] = { key = store.key, values = store.db.profile }
+        if not exported[store.db] then
+            exported[store.db] = true
+            stores[#stores + 1] = { key = store.key, values = Changed(store.db.profile, DefaultsOf(store.db)) or {} }
+        end
     end
     local ok, parts = pcall(SerializeProfile, { version = 1, stores = stores })
     if not ok then return nil end
@@ -1208,20 +1252,8 @@ local function DecodedProfile(payload)
     return parsed
 end
 
-local function CopyTable(destination, source)
-    for key in pairs(destination) do destination[key] = nil end
-    for key, value in pairs(source) do
-        if type(value) == "table" then
-            destination[key] = {}
-            CopyTable(destination[key], value)
-        else
-            destination[key] = value
-        end
-    end
-end
-
 function Options:ExportProfile()
-    local payload = EncodedProfile()
+    local payload = self:ProfileString()
     if not payload then
         print("|cFF00CCFFSpoken:|r " .. L.OPT_PROFILE_EXPORT_FAILED)
         return
@@ -1234,22 +1266,27 @@ function Options:ImportProfile(payload)
     if not imported then return false end
     local stores, byKey = ProfileStores(), {}
     for _, store in ipairs(stores) do byKey[store.key] = store.db end
-    local seen, updates = {}, {}
+    local seen, updates, updated = {}, {}, {}
     for _, entry in ipairs(imported.stores) do
         if type(entry) ~= "table" or type(entry.key) ~= "string" or type(entry.values) ~= "table" or seen[entry.key] then return false end
         seen[entry.key] = true
-        if byKey[entry.key] then updates[#updates + 1] = { db = byKey[entry.key], values = entry.values } end
-    end
-    if not seen.spoken then return false end
-    for _, update in ipairs(updates) do CopyTable(update.db.profile, update.values) end
-    local current = self:CurrentProfile()
-    if current then
-        for _, store in ipairs(ProfileStores()) do
-            local callbacks = store.db.callbacks
-            if callbacks and callbacks.Fire then pcall(callbacks.Fire, callbacks, "OnProfileChanged", store.db, current) end
+        local db = byKey[entry.key]
+        if db and not updated[db] then
+            updated[db] = true
+            updates[#updates + 1] = { db = db, values = entry.values }
         end
     end
-    Addon:ApplyProfile()
+    if not seen.spoken then return false end
+    local current = self:CurrentProfile()
+    for _, update in ipairs(updates) do
+        update.db:ResetProfile(nil, true)
+        MergeOver(update.db.profile, update.values, DefaultsOf(update.db))
+    end
+    -- What a profile switch does, so each part rebinds its settings to the new tables and applies them.
+    for _, update in ipairs(updates) do
+        local callbacks = update.db.callbacks
+        if callbacks and callbacks.Fire then callbacks:Fire("OnProfileChanged", update.db, current) end
+    end
     return true
 end
 
@@ -1306,7 +1343,10 @@ local function BuildProfileTransfer()
             print("|cFF00CCFFSpoken:|r " .. L.OPT_PROFILE_IMPORT_FAILED)
             return
         end
+        -- The page stays usable while it asks, so a switch in between must not receive the import.
+        local into = Options:CurrentProfile()
         Layout.Confirm(L.OPT_PROFILE_IMPORT_CONFIRM, L.OPT_PROFILE_IMPORT, L.CANCEL, function()
+            if Options:CurrentProfile() ~= into then return end
             if Options:ImportProfile(payload) then
                 frame:Hide()
                 if Options.profileLayout then Options.profileLayout:Refresh() end

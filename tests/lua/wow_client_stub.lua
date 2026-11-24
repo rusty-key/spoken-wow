@@ -1374,7 +1374,7 @@ libs["AceDB-3.0"] = {
         sv.char[charKey] = Merge(defaults.char, sv.char[charKey])
         sv.global = sv.global or {}
         local db = { profile = sv.profiles[startName], char = sv.char[charKey], global = sv.global, sv = sv,
-            keys = { char = charKey } }
+            keys = { char = charKey }, defaults = defaults }
         db.RegisterCallback = function() end
         function db:Shutdown()
             StripDefaults(self.profile, defaults.profile)

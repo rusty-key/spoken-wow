@@ -79,6 +79,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/background_sound_test.lua
 	@$(LUA) tests/lua/parts_test.lua
 	@$(LUA) tests/lua/settings_ux_test.lua
+	@$(LUA) tests/lua/profile_transfer_test.lua
 	@$(LUA) tests/lua/settings_controller_test.lua
 	@$(LUA) tests/lua/settings_art_test.lua
 	@$(LUA) tests/lua/compendium_gamepad_test.lua
