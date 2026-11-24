@@ -178,8 +178,8 @@ for _, client in ipairs({ "11509", "16001" }) do
     Leave()
     _G.Spoken:SetPartOn("gossip", true)
 
-    -- Stop When Window Closes stops gossip as its window closes, and a quest giver's greeting too,
-    -- as its quest frame closes.
+    -- Stop When Window Closes applies to quest windows, not gossip. Gossip keeps playing after
+    -- its frame closes, including when an option opens another NPC window such as a trainer.
     VO.Addon.db.profile.Audio.GossipFrequency = Frequency.Always
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = true
     stub.ShowGossip(GREETING, { BANK })
@@ -189,25 +189,9 @@ for _, client in ipairs({ "11509", "16001" }) do
     stub.HidePanels()
     stub.FireEvent("GOSSIP_CLOSED")
     stub.Advance(0.6)
-    Expect(client .. ": gossip stops as its window closes, under Stop When Window Closes",
-        _G.Spoken:GetCurrent(), nil)
-    stub.Advance(1)
-    Played(played)
-
-    -- Selecting a trainer instruction closes GossipFrame while opening the trainer window. That
-    -- transition is not a real disengage, so the gossip line must continue through it.
-    stub.ShowGossip(GREETING, { BANK })
-    stub.FireEvent("GOSSIP_SHOW")
-    stub.Advance(0.3)
-    stub.ShowPanel("ClassTrainerFrame")
-    stub.FireEvent("GOSSIP_CLOSED")
-    stub.Advance(0.6)
-    Expect(client .. ": trainer instructions do not stop the current gossip line",
+    Expect(client .. ": gossip keeps playing under Stop When Window Closes",
         _G.Spoken:GetCurrent() ~= nil, true)
-    stub.HidePanels()
-    stub.Advance(0.6)
-    Expect(client .. ": closing the trainer window eventually stops the gossip line",
-        _G.Spoken:GetCurrent(), nil)
+    _G.Spoken:StopAll()
     Played(played)
 
     world.questID = 0

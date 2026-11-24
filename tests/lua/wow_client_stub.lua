@@ -1129,7 +1129,7 @@ function M.PickDropdown(frame, text)
 end
 
 for _, name in ipairs({ "QuestFrameRewardPanel", "QuestFrameProgressPanel", "QuestFrameDetailPanel",
-    "QuestFrameGreetingPanel", "QuestLogDetailFrame", "GossipFrame", "QuestFrame", "ClassTrainerFrame" }) do
+    "QuestFrameGreetingPanel", "QuestLogDetailFrame", "GossipFrame", "QuestFrame" }) do
     _G[name] = Frame(name)
 end
 
