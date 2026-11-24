@@ -46,7 +46,7 @@ import { fileURLToPath } from "node:url";
 import { readLines, shipped } from "../../pipelines/places/tools/lib/loredata.mjs";
 import { assignFiles } from "../../pipelines/places/tools/voice/naming.mjs";
 import { packTimes } from "../../pipelines/lib/word-times.mjs";
-import { archiveOf, ENCODING_PROFILE, sourceOf } from "../lib/archives.mjs";
+import { archiveOf, encodesOf, ENCODING_PROFILE, sourceOf } from "../lib/archives.mjs";
 import { pointerText } from "../lib/clip-pointer.mjs";
 import { archiveBase, eachParallel, fetchRetrying } from "../lib/download.mjs";
 import { cachedOgg, haveEncoders } from "../lib/ogg.mjs";
@@ -57,14 +57,6 @@ import { CURRENT_TEXT_SQL, NAMED_QUESTS_SQL, currentLines, currentTextFor, named
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 const BASE_LANG = "enUS";
-
-// Where a section's encodes are kept between builds: a cache, not a record. Bosses share places'.
-const PLACES_ENCODES = join(ROOT, "pipelines/places/audio-transcoded", ENCODING_PROFILE);
-const ENCODES = {
-  places: PLACES_ENCODES,
-  bosses: PLACES_ENCODES,
-  readables: join(ROOT, "pipelines/readables/audio-transcoded", ENCODING_PROFILE),
-};
 
 const SECTIONS = {
   quests: { archive: archiveOf("quests"), out: join(ROOT, "pipelines/quests/audio") },
@@ -341,7 +333,7 @@ if (process.env.SPOKEN_CLIP_POINTERS) {
   process.exit(0);
 }
 
-const encodes = ENCODES[section];
+const encodes = section === "quests" ? null : encodesOf(section);
 if (encodes && live.some((take) => take.archived) && !(await haveEncoders())) {
   console.error("error: encoding the clips needs ffmpeg and oggenc on PATH (brew install ffmpeg vorbis-tools)");
   process.exit(1);

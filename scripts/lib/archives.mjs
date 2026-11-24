@@ -9,8 +9,15 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
-// The encoding a quests pack ships. Must match package-audio.sh's default and lib/takes/encode.ts.
+// The encoding every pack ships. Must match quests/package-audio.sh's default and lib/takes/encode.ts.
 export const ENCODING_PROFILE = "ogg-q0-44k";
+
+// Where Places, Readables and Bosses keep their Oggs between builds, keyed by each master's
+// SHA-256: a cache, not a record. Bosses share places'. Quests' is package-audio.sh's own.
+export function encodesOf(section) {
+  const pipeline = section === "readables" ? "readables" : "places";
+  return join(ROOT, "pipelines", pipeline, "audio-transcoded", ENCODING_PROFILE);
+}
 
 // Bosses have no pipeline of their own: their takes sit beside places', in a directory of their
 // own (apps/web/src/lib/takes/adapters.ts says the same).
