@@ -17,7 +17,8 @@
  *
  * ruRU wraps a token in the client's declension escape, `|3-6($c)`: the client prints the class
  * in grammatical case 6. A reader's `cases` give the word for each case; a case with none keeps
- * the whole escape, so the gate refuses the line rather than voice "|3-6(путник)".
+ * the whole escape, so the gate refuses the line rather than voice "|3-6(путник)". Spoken's own
+ * ruRU words carry the cases its text uses.
  *
  * About nine tokens in ten are the reader being addressed ("Gut gemacht, $C."), where any
  * "adventurer" reads naturally. The rest read as awkwardly as the English does and are fixed
@@ -37,6 +38,9 @@
  * `nameGenitive` is what a $N or $C with a glued "s" says, in a language whose templates write
  * one; the feminine German genitive takes no s. `classPlural` is what a $C with a glued "s" says
  * where that s is a plural, as frFR's "$cs" is: the game prints the class with the s on.
+ * `raceWeak` is German's race word after a definite article, where an adjective used as a noun
+ * declines weak ("der Reisende", not "der Reisender"); with an `n` on, it is every case but the
+ * nominative ("dem Reisenden", "einer Reisenden").
  *
  * The feminine form is what a line's female variant says: where the English line branches on
  * $G, the translation is imported twice, `playerGender` "m" and "f", and the addon plays the
@@ -51,8 +55,8 @@ const WORDS = {
     quantity: "an order of",
   },
   deDE: {
-    m: { name: "Abenteurer", race: "Reisender", nameGenitive: "Abenteurers" },
-    f: { name: "Abenteurerin", race: "Reisende", nameGenitive: "Abenteurerin" },
+    m: { name: "Abenteurer", race: "Reisender", nameGenitive: "Abenteurers", raceWeak: "Reisende" },
+    f: { name: "Abenteurerin", race: "Reisende", nameGenitive: "Abenteurerin", raceWeak: "Reisende" },
   },
   esES: { m: { name: "aventurero", race: "viajero" }, f: { name: "aventurera", race: "viajera" } },
   esMX: { m: { name: "aventurero", race: "viajero" }, f: { name: "aventurera", race: "viajera" } },
@@ -65,7 +69,28 @@ const WORDS = {
     f: { name: "aventureira", race: "viajante" },
     quantity: "algumas unidades de",
   },
-  ruRU: { m: { name: "путник", race: "странник" }, f: { name: "путница", race: "странница" } },
+  // The cases its text uses: |3-1 genitive ("Для |3-1($c)"), |3-3 accusative ("встретить |3-3($r)"),
+  // |3-6 in address ("Приветствую, |3-6($C)").
+  ruRU: {
+    m: {
+      name: "путник",
+      race: "странник",
+      cases: {
+        1: { name: "путника", race: "странника" },
+        3: { name: "путника", race: "странника" },
+        6: { name: "путник", race: "странник" },
+      },
+    },
+    f: {
+      name: "путница",
+      race: "странница",
+      cases: {
+        1: { name: "путницы", race: "странницы" },
+        3: { name: "путницу", race: "странницу" },
+        6: { name: "путница", race: "странница" },
+      },
+    },
+  },
   koKR: { m: { name: "모험가", race: "여행자" }, f: { name: "모험가", race: "여행자" } },
   zhCN: { m: { name: "冒险者", race: "旅行者" }, f: { name: "冒险者", race: "旅行者" } },
   zhTW: { m: { name: "冒險者", race: "旅行者" }, f: { name: "冒險者", race: "旅行者" } },
@@ -73,6 +98,16 @@ const WORDS = {
 
 /** The client's declension escape, `|3-6(`, whose case has no word when it reaches the gate. */
 export const DECLENSION = /\|3-\d+\(/;
+
+/** A `|` that opens an escape: not the second of a literal `||`. */
+const ESCAPE_PIPE = String.raw`(?<!\|)\|`;
+
+/**
+ * Any escape the client resolves as it prints a line: a declension, Korean's particle `|1이;가;`,
+ * French's `|2`, ruRU's plural `|4пару:пары:пар;`, a line break `|n`, a colour `|cff…|r`. One
+ * left in is read out as written. `||` is the client's own literal pipe.
+ */
+export const CLIENT_ESCAPE = new RegExp(String.raw`${ESCAPE_PIPE}[\dA-Za-z]`);
 
 // The words in each language's row, by code, built-ins included. On globalThis because the site
 // loads this module once per bundle layer.
@@ -127,7 +162,7 @@ export function registerPlayerWordRows(rows) {
 
 export const WORD_LIMIT = 40;
 const REQUIRED = ["name", "race"];
-const OPTIONAL = ["nameGenitive", "classPlural"];
+const OPTIONAL = ["nameGenitive", "classPlural", "raceWeak"];
 const CASE = /^[1-9]$/;
 
 function validWord(value) {
@@ -210,7 +245,12 @@ const GLUED = String.raw`(?![\p{sc=Han}\p{sc=Hangul}\p{sc=Hiragana}\p{sc=Katakan
 // Not followed by a glued letter: see "glued" above.
 // Not inside a declension escape: one without its case's word must keep its `$` for the gate.
 const UNDECLINED = String.raw`(?<!${DECLENSION.source})`;
-const TOKEN = new RegExp(String.raw`${UNDECLINED}\$([NnCcRr])(?!${GLUED})`, "gu");
+/** A token of `letters`, captured, neither glued nor inside a declension escape. */
+const tokenSource = (letters) => String.raw`${UNDECLINED}\$([${letters}])(?!${GLUED})`;
+const TOKEN = new RegExp(tokenSource("NnCcRr"), "gu");
+/** Which of a reader's words a token says. */
+const wordKey = (token) => (token.toUpperCase() === "R" ? "race" : "name");
+const capital = (word) => word[0].toUpperCase() + word.slice(1);
 // English quest text says a glued token too: its takes say "adventurerama" for "$Nama".
 const ANY_PLAYER_TOKEN = new RegExp(String.raw`${UNDECLINED}\$([NnCcRr])`, "gu");
 const DECLINED = /\|3-(\d+)\(\$([NnCcRr])\)/g;
@@ -225,7 +265,13 @@ const TOKEN_CLASS_PLURAL = new RegExp(String.raw`${UNDECLINED}\$([Cc])s(?![\p{L}
 // lost would otherwise run on to a later sentence's `;` and drop the words between unheard.
 const ENDS = ".!?…。！？";
 const FIELD = String.raw`[^:;${ENDS}\n]`;
-const BRANCH = String.raw`\s*(${FIELD}+?)\s*:\s*(${FIELD}+?)\s*(?::${FIELD}*)?;`;
+/** A branch's two fields between `colons` and closed by `semis`, and ruRU's optional third field where `third`. */
+function branch(colons, semis, third) {
+  const field = `[^${colons}${semis}${ENDS}\n]`;
+  const thirdField = third ? String.raw`(?:[${colons}]${field}*)?` : "";
+  return String.raw`\s*(${field}+?)\s*[${colons}]\s*(${field}+?)\s*${thirdField}[${semis}]`;
+}
+const BRANCH = branch(":", ";", true);
 // $u is the same branch: ptBR's templates write it, and deDE's Forever quests.
 const GENDER = new RegExp(String.raw`\$[GgUu]` + BRANCH, "g");
 // Forever's deDE gossip also writes $u with its separators swapped, "$uBürger;Bürgerin:", male
@@ -235,6 +281,13 @@ const GENDER = new RegExp(String.raw`\$[GgUu]` + BRANCH, "g");
 // on to a later colon and drop the words between unheard.
 const SWAPPED = new RegExp(String.raw`\$[Uu]\s*(${FIELD}+?)(?<=\p{L});(?=\p{L})(${FIELD}+?)\s*:`, "gu");
 const HAS_GENDER = new RegExp(`${GENDER.source}|${SWAPPED.source}`, "u");
+// Two damaged branches the translations write, spoken but never counted as branching: the line
+// keeps one file for both readers, as it does today. zhCN and zhTW write the separators full width
+// ("$G男孩：女孩；"). ruRU, zhCN and zhTW lose the `g` ("$готов:готова;", "$小伙子:小姑娘;"), which
+// only a letter outside the Latin alphabet tells apart from a token; ruRU's then often loses its
+// `;` too, and its female field ends with the word. Han, written without spaces, keeps needing it.
+const FULL_WIDTH = new RegExp(String.raw`\$[GgUu]` + branch(":：", ";；", false), "gu");
+const LOST_G = /\$(?![A-Za-z\d$])([\p{L}\p{M}-]+)\s*[:：]\s*([\p{L}\p{M}-]+?)(?:\s*[;；]|(?<!\p{sc=Han})(?![\p{L}\p{M}-]))/gu;
 // TBC Anniversary and Forever send some lines with the token's $ doubled ("$$N, …"), which the
 // client reads as the token itself. Left doubled, a genitive "$$Ns" would say "$Abenteurers".
 const DOUBLED = new RegExp(String.raw`\$\$(?=[NnCcRr](?!${GLUED})|[NnCc]s(?!\p{L}))`, "gu");
@@ -321,21 +374,49 @@ export function speakQuestTokens(text, lang, playerGender = null) {
   return speak(text, lang, playerGender, TOKEN_CASE.has(lang));
 }
 
+// The client prints `|n` as a line break, and `|cAARRGGBB…|r` as the same words in a colour.
+// esES's and esMX's quest text end lines with `|n`.
+const LINE_BREAK = new RegExp(String.raw`${ESCAPE_PIPE}n`, "g");
+const COLOUR = new RegExp(String.raw`${ESCAPE_PIPE}c[\dA-Fa-f]{8}([^|]*)\|r`, "g");
+
+// The plural escape after a number, `1 |4пару:пары:пар;`: the client prints the form the number
+// takes in the line's language: one, few and many for three forms, one and the rest for two.
+const PLURAL = new RegExp(String.raw`(\d+)(\s*)${ESCAPE_PIPE}4([^;|\n]*);`, "g");
+const PLURAL_INDEX = { one: 0, few: 1, many: 2 };
+const pluralRules = new Map();
+
+function speakPlurals(text, lang) {
+  return text.replace(PLURAL, (whole, count, space, written) => {
+    const forms = written.split(":");
+    if (forms.length !== 2 && forms.length !== 3) return whole;
+    const bcp47 = lang.replace(/^([a-z]{2})([A-Z]{2})$/, "$1-$2");
+    if (!pluralRules.has(bcp47)) pluralRules.set(bcp47, new Intl.PluralRules(bcp47));
+    const category = pluralRules.get(bcp47).select(Number(count));
+    const at = forms.length === 2 ? (category === "one" ? 0 : 1) : (PLURAL_INDEX[category] ?? 2);
+    return `${count}${space}${forms[at]}`;
+  });
+}
+
 function speak(text, lang, playerGender, byToken) {
+  text = speakPlurals(text.replace(LINE_BREAK, "\n").replace(COLOUR, "$1"), lang);
   const forms = playerWordsOf(lang);
   if (!forms) return text;
   text = speakQuantities(text, lang, forms);
-  const words = playerGender === "f" ? forms.f : forms.m;
-  const capital = (word) => word[0].toUpperCase() + word.slice(1);
+  const reader = playerGender === "f" ? "f" : "m";
+  const words = forms[reader];
   const cased = (word, at, whole, token) => {
     if (byToken) return token === token.toUpperCase() ? capital(word) : word;
     return ALWAYS_CAPITAL.has(lang) || SENTENCE_START.test(whole.slice(0, at)) ? capital(word) : word;
   };
 
-  const side = playerGender === "f" ? "$2" : "$1";
+  const side = reader === "f" ? "$2" : "$1";
   let spoken = text.replace(DOUBLED, "$").replace(GENDER, side).replace(SWAPPED, side);
+  spoken = spoken.replace(FULL_WIDTH, side).replace(LOST_G, side);
+  if (lang === "koKR") spoken = spoken.replace(GLUED_PARTICLE, gluedParticleEscape);
+  spoken = elide(spoken, lang, words);
+  if (lang === "deDE") spoken = declineGermanRace(spoken, words, reader, cased);
   spoken = spoken.replace(DECLINED, (whole, n, token, at, all) => {
-    const word = words.cases?.[n]?.[token.toUpperCase() === "R" ? "race" : "name"];
+    const word = words.cases?.[n]?.[wordKey(token)];
     return word ? cased(word, at, all, token) : whole;
   });
   const genitive = words.nameGenitive;
@@ -348,7 +429,123 @@ function speak(text, lang, playerGender, byToken) {
   if (plural) {
     spoken = spoken.replace(TOKEN_CLASS_PLURAL, (_, token, at, whole) => cased(plural, at, whole, token));
   }
-  return spoken.replace(byToken ? ANY_PLAYER_TOKEN : TOKEN, (_, token, at, whole) =>
-    cased(token.toUpperCase() === "R" ? words.race : words.name, at, whole, token),
+  spoken = spoken.replace(byToken ? ANY_PLAYER_TOKEN : TOKEN, (_, token, at, whole) =>
+    cased(words[wordKey(token)], at, whole, token),
+  );
+  return speakDe(speakParticles(spoken));
+}
+
+// French's `|2`, written before a word ("la légion |2 $n", "|2orc"): the client prints "de " before
+// a consonant and "d'" before a vowel, so it can only be chosen once the token is a word.
+const DE = new RegExp(String.raw`${ESCAPE_PIPE}2\s*(?=(\p{L}))`, "gu");
+const VOWEL = /^[aeiouyàâäéèêëîïôöùûüÿœæ]/iu;
+
+function speakDe(text) {
+  return text.replace(DE, (_, next) => (VOWEL.test(next) ? "d'" : "de "));
+}
+
+// A word before a token was written for whatever word the token became, and French and Italian
+// elide it before a vowel: "le $c" is "l'aventurier", "una $c" is "un'avventuriera". Each maps a
+// word to what it becomes there; one ending in a space stays a separate word ("ce" is "cet ").
+// An `h` stays a consonant: whether it elides depends on the word, as with `|2`.
+const ELISIONS = {
+  frFR: {
+    le: "l'", la: "l'", de: "d'", que: "qu'", jusque: "jusqu'", lorsque: "lorsqu'", puisque: "puisqu'",
+    du: "de l'", au: "à l'", ce: "cet ", ma: "mon ", ta: "ton ", sa: "son ",
+  },
+  itIT: {
+    il: "l'", lo: "l'", la: "l'", una: "un'", del: "dell'", dello: "dell'", della: "dell'",
+    al: "all'", allo: "all'", alla: "all'", nel: "nell'", nello: "nell'", nella: "nell'",
+    dal: "dall'", dallo: "dall'", dalla: "dall'", sul: "sull'", sullo: "sull'", sulla: "sull'",
+    quel: "quell'", quello: "quell'", quella: "quell'", questo: "quest'", questa: "quest'",
+    bello: "bell'", bella: "bell'", buona: "buon'",
+  },
+};
+const ELIDED = Object.fromEntries(
+  Object.entries(ELISIONS).map(([lang, table]) => [
+    lang,
+    new RegExp(String.raw`(?<![\p{L}'’])(${Object.keys(table).join("|")})\s+(?=${tokenSource("NnCcRr")})`, "giu"),
+  ]),
+);
+
+// The German determiners after which $R's adjective-noun declines weak, by the reader's gender:
+// the nominative after a definite one ("der Reisende") and every other case after any ("einem
+// Reisenden", "der Reisenden" for a woman). "ein", "eine" and "die" leave the word as it is.
+const WEAK_NOMINATIVE = { m: ["der", "dieser", "jener", "jeder", "welcher"], f: [] };
+const ARTICLE_STEMS = ["ein", "kein", "mein", "dein", "sein", "ihr", "unser", "eur", "dies", "jen", "jed", "welch"];
+const OBLIQUE = {
+  m: ["dem", "den", "des", ...ARTICLE_STEMS.flatMap((stem) => [`${stem}em`, `${stem}en`, `${stem}es`])],
+  f: ["der", ...ARTICLE_STEMS.map((stem) => `${stem}er`)],
+};
+// Up to two adjectives may stand between ("dem tapferen jungen $R"); they end in -e or -en.
+const GERMAN_RACE = new RegExp(
+  String.raw`(?<!\p{L})(\p{L}+)((?:\s+\p{Ll}+e[n]?){0,2}\s+)${tokenSource("Rr")}`,
+  "gu",
+);
+
+function declineGermanRace(text, words, reader, cased) {
+  const weak = words.raceWeak;
+  if (!weak || !/\$[Rr]/.test(text)) return text;
+  return text.replace(GERMAN_RACE, (whole, determiner, between, _token, at, all) => {
+    const before = determiner.toLowerCase();
+    const word = OBLIQUE[reader].includes(before) ? `${weak}n` : WEAK_NOMINATIVE[reader].includes(before) ? weak : null;
+    if (!word) return whole;
+    const tokenAt = at + determiner.length + between.length;
+    return `${determiner}${between}${cased(word, tokenAt, all, "R")}`;
+  });
+}
+
+function elide(text, lang, words) {
+  const table = ELISIONS[lang];
+  if (!table || !text.includes("$")) return text;
+  return text.replace(ELIDED[lang], (whole, before, token) => {
+    if (!VOWEL.test(words[wordKey(token)])) return whole;
+    const elided = table[before.toLowerCase()];
+    return before[0] === before[0].toLowerCase() ? elided : capital(elided);
+  });
+}
+
+// Korean's particle escape, `$c|1이여;여;`: the client prints the first form after a syllable that
+// ends in a consonant (a batchim) and the second after one that ends in a vowel, so it can only be
+// chosen once the word before it is known.
+const PARTICLE = new RegExp(String.raw`${ESCAPE_PIPE}1([^;|]*);([^;|]*);`, "g");
+const HANGUL_FIRST = 0xac00;
+const HANGUL_LAST = 0xd7a3;
+// The final consonant ㄹ, which takes 로 rather than 으로 ("길로", not "길으로").
+const RIEUL = 8;
+
+/** The final consonant's index (1 to 27) of a Hangul syllable's code, 0 for one ending in a vowel or for any other character. */
+function batchim(code = 0) {
+  return code >= HANGUL_FIRST && code <= HANGUL_LAST ? (code - HANGUL_FIRST) % 28 : 0;
+}
+
+/** The form of a Korean particle after the character `code`, given its after-a-consonant and after-a-vowel forms. */
+function particleAfter(code, afterConsonant, afterVowel) {
+  const final = batchim(code);
+  if (!final) return afterVowel;
+  return final === RIEUL && afterConsonant.startsWith("으로") ? afterVowel : afterConsonant;
+}
+
+// koKR's translators also glue a particle straight onto a token, in the form a name ending in a
+// consonant would take ("$N이", "$c을"). The word the token becomes may end in a vowel, which
+// takes the other form ("모험가가"), so a glued particle is chosen as the escape's would be.
+// Both forms of each, longest first, and only where the particle ends the word: "$N이다" is no 이.
+const PARTICLE_PAIRS = [
+  ["이라고", "라고"], ["이라면", "라면"], ["이라도", "라도"], ["이라는", "라는"], ["으로서", "로서"],
+  ["으로써", "로써"], ["이여", "여"], ["이라", "라"], ["이야", "야"], ["이나", "나"], ["이랑", "랑"],
+  ["이며", "며"], ["이란", "란"], ["으로", "로"], ["이", "가"], ["을", "를"], ["은", "는"], ["과", "와"], ["아", "야"],
+];
+const PAIR_OF = new Map(PARTICLE_PAIRS.flatMap((pair) => pair.map((form) => [form, pair])));
+const PARTICLE_FORMS = [...PAIR_OF.keys()].sort((a, b) => b.length - a.length).join("|");
+const GLUED_PARTICLE = new RegExp(String.raw`(\$[NnCcRr])(${PARTICLE_FORMS})(?!\p{sc=Hangul})`, "gu");
+
+function gluedParticleEscape(_, token, particle) {
+  const [afterConsonant, afterVowel] = PAIR_OF.get(particle);
+  return `${token}|1${afterConsonant};${afterVowel};`;
+}
+
+function speakParticles(text) {
+  return text.replace(PARTICLE, (_, afterConsonant, afterVowel, at, whole) =>
+    particleAfter(whole.codePointAt(at - 1), afterConsonant, afterVowel),
   );
 }

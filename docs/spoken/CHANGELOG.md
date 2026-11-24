@@ -4,8 +4,20 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **The player has a Stop All button,** which stops narration and clears the queue. Skip Line
+  is now Next Line, and greys out with no line waiting. *([anon1231823](https://github.com/anon1231823))*
+- **Readables played from the Compendium show the same icon as their Compendium page.** One with
+  no item, gravestones and tablets included, shows its kind's icon. *([anon1231823](https://github.com/anon1231823))*
+- **Round buttons sink and darken while you hold them,** so Play, Stop, Skip and Report answer
+  your click at once. *([rusty-key](https://github.com/rusty-key))*
+- **Notes and other readables keep their icon on every narrated page,** even after closing the readable or opening another one. *([anon1231823](https://github.com/anon1231823))*
+- **Read After Accepting no longer shows an explanatory tooltip.** *([anon1231823](https://github.com/anon1231823))*
 - **With Read After Accepting on, a quest reads once you accept or hand it in.** It replaces Read
   When Window Closes. *([anon1231823](https://github.com/anon1231823))*
+- **Spoken plays the new, smaller Places, Readables and Bosses sound packs,** and the ones you
+  already have. *([rusty-key](https://github.com/rusty-key))*
+- **A quest giver's greeting offers Contribute when Spoken has no voice for it,** and Collect
+  Missing Lines keeps it. *([svengabr](https://github.com/svengabr))*
 - **Subtitles no longer block clicks or the mouse wheel.** Move them with the arrow button that
   appears under them on hover. *([Praxeomatic](https://github.com/Praxeomatic))*
 

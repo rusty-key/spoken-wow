@@ -908,7 +908,7 @@ function Subtitle:Corner(clip)
     local row = { self.mover }
     -- Preview can be positioned without exposing playback actions for an unrelated queue.
     local playback = not self.sample
-    for _, control in ipairs({ self.pause, self.previous, self.skip }) do
+    for _, control in ipairs({ self.previous, self.pause, self.skip, self.eject }) do
         control:SetShown(playback)
         if playback then row[#row + 1] = control end
     end
@@ -921,7 +921,7 @@ end
 function Subtitle:BuildControls()
     local frame = self.frame
     local controls = CreateFrame("Frame", nil, frame)
-    controls:SetSize(CONTROL_SIZE * 5 + CONTROL_GAP * 4, CONTROL_SIZE)
+    controls:SetSize(CONTROL_SIZE * 6 + CONTROL_GAP * 5, CONTROL_SIZE)
     controls:SetFrameLevel(frame:GetFrameLevel() + 2)
     controls:SetAlpha(0)
     controls:Hide()
@@ -962,22 +962,25 @@ function Subtitle:BuildControls()
     frame:SetScript("OnHide", HideControls)
 
     local pause = Actions.StopButton(controls, nil, function() self:UpdateControls() end)
-    pause:SetPoint("LEFT", mover, "RIGHT", CONTROL_GAP, 0)
-    self.pause = pause
-
     local previous = Actions.PreviousButton(controls)
-    previous:SetPoint("LEFT", pause, "RIGHT", CONTROL_GAP, 0)
+    previous:SetPoint("LEFT", mover, "RIGHT", CONTROL_GAP, 0)
     self.previous = previous
 
+    pause:SetPoint("LEFT", previous, "RIGHT", CONTROL_GAP, 0)
+    self.pause = pause
+
     local skip = Actions.SkipButton(controls)
-    skip:SetPoint("LEFT", previous, "RIGHT", CONTROL_GAP, 0)
+    skip:SetPoint("LEFT", pause, "RIGHT", CONTROL_GAP, 0)
     self.skip = skip
+    local eject = Actions.EjectButton(controls)
+    eject:SetPoint("LEFT", skip, "RIGHT", CONTROL_GAP, 0)
+    self.eject = eject
     self:UpdateControls()
 
     -- Report, in the same ring, with the action's own bug icon: what the windows show in their
     -- corner, and what it does is the action's, as there.
     local report = Actions.RoundButton(controls)
-    report:SetPoint("LEFT", skip, "RIGHT", CONTROL_GAP, 0)
+    report:SetPoint("LEFT", eject, "RIGHT", CONTROL_GAP, 0)
     report:SetScript("OnClick", function()
         if report.action and report.action.onClick then report.action.onClick(report.clip) end
     end)
@@ -1004,7 +1007,7 @@ end
 
 function Subtitle:UpdateControls()
     Actions.SetPlayGlyph(self.pause, Actions.HeadState())
-    Actions.SetPausable({ self.pause, self.previous, self.skip })
+    Actions.SetPausable({ self.pause, self.previous, self.skip, self.eject })
     local locked = Locked()
     self.mover:SetAlpha(locked and .4 or 1)
     if locked then

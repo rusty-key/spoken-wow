@@ -89,7 +89,7 @@ Spoken's queue is stopped, so nothing new plays until you carry on. Press **Repl
 
 ## How do I hear a line again after it finished?
 
-**Replay** only works on a line that is still in the queue, such as one you stopped. It cannot bring back a line that has already finished. To hear a finished quest, place or book again, open Azeroth's Compendium (`/sp compendium`) and play it from its page.
+**Replay** only works on a line that is still in the queue, such as one you stopped. To hear the line that just played, press **Previous Line** on the player, type `/sp previous`, or bind a key to it. To hear an older quest, place, book or boss story again, open Azeroth's Compendium (`/sp compendium`) and play it from its page.
 
 ## An NPC or quest is silent
 
@@ -101,7 +101,7 @@ Turn on **Read Automatically** on the **Quests** page of Spoken's settings. **Re
 
 ## Why does an NPC only greet me once?
 
-**Read Greetings**, on the **Gossip** page, is **Once for Quest Givers** by default: a quest giver's greeting is read once, and other NPCs greet every time. Choose **Every Time**, **Once per Greeting** or **Never** instead. **Forget Greetings Heard** clears the list for this character.
+**Read Greetings**, on the **Gossip** page, is **Once for Quest Givers** by default: a quest giver's greeting is read once, and other NPCs greet every time. Choose **Every Time**, **Once per Greeting**, **Once per Session** or **Never** instead. **Forget Greetings Heard** clears the list for this character. To silence one NPC's greetings, press the speaker button on Spoken's window while its greeting plays; the **Gossip** page lists the muted NPCs, each with a button to unmute it.
 
 ## How do I change or turn off the subtitles?
 
@@ -119,6 +119,10 @@ Spoken plays through the game's **Master Volume** by default; **Volume Follows**
 
 No: the game gives addons no way to see a Discord voice channel. Stop it yourself with the **Stop or Replay** or **Stop All** keys (in the Spoken category of Key Bindings), `/sp stopall`, or the minimap button. To stop a part reading at all, turn it off under **What Spoken Reads**. **Read in Battlegrounds**, under While Spoken Reads, keeps Spoken quiet in battlegrounds and arenas.
 
+## How do I mute Spoken without turning it off?
+
+Type `/sp mute` (or `/sp mute on` and `/sp mute off`), or press the **Mute Spoken Audio** key. Lines still queue and show their subtitles while muted. The key has no default: set it in Spoken's settings or in the game's Key Bindings. The game's own sound toggle (Ctrl+S) does not silence Spoken.
+
 ## Place stories stop when I enter combat
 
 **Stop When Combat Starts**, under Read Automatically on the **Places** page, is off by default; when it is on, a story that started on its own stops when a fight begins and plays again from the start once it ends. Either way, a story that has not started yet waits for the fight to end, and a story you start with Play keeps going.
@@ -131,7 +135,9 @@ Places reads each zone and area once per character by default. Turn on **Read Ev
 
 - `/sp`: stop or replay the line
 - `/sp skip`: skip the current line
+- `/sp previous`: play the line that just played again
 - `/sp stopall`: stop and clear the queue
+- `/sp mute`: silence Spoken, or turn its sound back on (`/sp mute on` or `/sp mute off`)
 - `/sp compendium`: open Azeroth's Compendium
 - `/sp settings`: settings
 - `/sp reset`: put the window and subtitles back in place
@@ -158,6 +164,10 @@ Voice packs exist in English, German, Spanish (Spain and Latin America), French,
 
 No game client runs in languages such as Italian or Polish, so Spoken never picks them by itself: install the pack (the Spoken Manager lists community packs on its **Community** page), then add the language under **Voices, in Order**.
 
+## The subtitles are in another language than the voice
+
+**Text Language**, in the Language section of Spoken's settings page, picks the language of the words in captions, subtitles and Azeroth's Compendium, apart from the voice. It offers the language of every voice pack you have installed. Set it to the language you hear, such as French, to read along in that language.
+
 ## Can I hear another team's voices for my language?
 
 Yes, where a language has packs from more than one team. Install them from the Spoken Manager's **Voice Packs** page, where each team's packs say who made them. Each team's pack is a voice of its own under **Voices, in Order**, named "Deutsch · {team}", beside the language's own "Deutsch". Put the one you want first; the voices after it fill in the lines it has not recorded.
@@ -172,7 +182,7 @@ First update Spoken, since many errors are already fixed. Then post in the **#bu
 
 ## How can I send lines that have no voice?
 
-- The easiest: turn on **Sharing** in the Spoken Manager's Settings, and it sends the collected lines for you after each logout or `/reload`.
+- The easiest: install the Spoken Manager, the desktop app (https://github.com/rusty-key/spoken-wow/releases/tag/manager-latest), and turn on **Sharing** in its Settings. It sends the collected lines for you after each logout or `/reload`, and the lines it has sent leave `SpokenContributions.lua` at your next login. Sharing is not in the in-game addon's settings.
 - Or press **Contribute** when Spoken shows it, open the link and press Send.
 - Or turn on **Collect Missing Lines** in Spoken's settings (or `/sp collect`), play as usual, log out or `/reload`, then upload `WTF/Account/<your account>/SavedVariables/SpokenContributions.lua` at https://spoken.quest/contribute
 

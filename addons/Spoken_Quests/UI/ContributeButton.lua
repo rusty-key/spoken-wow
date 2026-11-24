@@ -291,7 +291,7 @@ function ContributeButton:Refresh()
     -- unless Hide Report Buttons is on.
     if page then
         button:Hide()
-        self.gossip = page == "GOSSIP_SHOW"
+        self.gossip = Addon:PartOfPage(page) == "gossip"
         local missing = Contribute:HasGap()
         local reportHidden = _G.Spoken and Spoken.AreReportButtonsHidden and Spoken:AreReportButtonsHidden()
         if missing or not reportHidden then
@@ -309,8 +309,10 @@ function ContributeButton:Refresh()
     end
 
     local placed
-    if QuestPanelOnScreen() then
-        self.gossip = false
+    local questPanel = QuestPanelOnScreen()
+    -- A quest giver's greeting is gossip, drawn on the quest frame.
+    if questPanel or IsFrameVisible(QuestFrameGreetingPanel) then
+        self.gossip = not questPanel
         placed = self:PositionAtCorner(_G.QuestFrame, CloseButtonOf(_G.QuestFrame, "QuestFrameCloseButton"))
     else
         self.gossip = true
