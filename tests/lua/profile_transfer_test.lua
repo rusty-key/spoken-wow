@@ -45,7 +45,6 @@ Expect("a setting the string does not have keeps this install's default", Spoken
 Expect("a default of the exporting install is not carried over as a choice", Spoken().Frame.LockFrame, true)
 Defaults.profile.Frame.ImportedLater, Defaults.profile.Frame.LockFrame = nil, false
 
--- A value of another type than its default is left out, not written over the default.
 Spoken().Frame.FrameScale = "large"
 local wrongType = Options:ProfileString()
 Spoken().Frame.FrameScale = 1.1
@@ -58,5 +57,8 @@ for label, bad in pairs({ empty = "", unprefixed = payload:sub(6), noise = "SPP1
     Expect("a " .. label .. " string is refused", Options:ImportProfile(bad), false)
 end
 Expect("...and the profile is untouched", Spoken().Frame.FrameScale, 1.3)
+
+Options:ExportProfile()
+Expect("Export Profile opens the window with the string", _G.SpokenProfileTransfer ~= nil and _G.SpokenProfileTransfer:IsShown(), true)
 
 if Failures() > 0 then print(Failures() .. " failure(s)"); os.exit(1) end

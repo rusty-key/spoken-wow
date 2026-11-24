@@ -1063,8 +1063,14 @@ end
 local PROFILE_FORMAT = "SPP1:"
 local PROFILE_MAX_DEPTH = 40
 local PROFILE_MAX_ITEMS = 10000
-local profileTransfer
-local ShowProfileTransfer
+
+local function Say(message) print("|cFF00CCFFSpoken:|r " .. message) end
+
+local function Deflate() return LibStub and LibStub:GetLibrary("LibDeflate", true) end
+
+local function Finite(value)
+    return value == value and value ~= math.huge and value ~= -math.huge
+end
 
 local function ProfileKeys(value)
     if type(value) ~= "table" then return {} end
@@ -1084,7 +1090,7 @@ end
 
 -- A small length-prefixed format keeps profile strings safe to paste even when a setting contains
 -- punctuation or a newline. It deliberately accepts only the types settings can store.
-local function SerializeProfile(value, out, depth, seen)
+local function SerializeProfile(value, out, depth)
     depth = depth or 0
     if depth > PROFILE_MAX_DEPTH then error("profile is too deeply nested") end
     out = out or {}
@@ -1094,22 +1100,18 @@ local function SerializeProfile(value, out, depth, seen)
     elseif kind == "boolean" then
         out[#out + 1] = value and "b1" or "b0"
     elseif kind == "number" then
-        if value ~= value or value == math.huge or value == -math.huge then error("profile has an invalid number") end
+        if not Finite(value) then error("profile has an invalid number") end
         out[#out + 1] = "d" .. format("%.17g", value) .. ";"
     elseif kind == "string" then
         out[#out + 1] = "s" .. tostring(#value) .. ":" .. value
     elseif kind == "table" then
-        seen = seen or {}
-        if seen[value] then error("profile contains a cycle") end
-        seen[value] = true
         local keys = ProfileKeys(value)
         if #keys > PROFILE_MAX_ITEMS then error("profile has too many entries") end
         out[#out + 1] = "t" .. tostring(#keys) .. ":"
         for _, key in ipairs(keys) do
-            SerializeProfile(key, out, depth + 1, seen)
-            SerializeProfile(value[key], out, depth + 1, seen)
+            SerializeProfile(key, out, depth + 1)
+            SerializeProfile(value[key], out, depth + 1)
         end
-        seen[value] = nil
     else
         error("profile has an unsupported value")
     end
@@ -1139,7 +1141,7 @@ local function DeserializeProfile(text, position, depth)
         local stop = string.find(text, ";", position, true)
         if not stop then error("profile is truncated") end
         local value = tonumber(string.sub(text, position, stop - 1))
-        if not value or value ~= value or value == math.huge or value == -math.huge then error("profile has an invalid number") end
+        if not value or not Finite(value) then error("profile has an invalid number") end
         return value, stop + 1
     elseif tag == "s" then
         local length
@@ -1154,7 +1156,7 @@ local function DeserializeProfile(text, position, depth)
         for _ = 1, count do
             local key
             key, position = DeserializeProfile(text, position, depth + 1)
-            if key == nil or (type(key) ~= "string" and type(key) ~= "number") then error("profile has an invalid key") end
+            if type(key) ~= "string" and type(key) ~= "number" then error("profile has an invalid key") end
             local item
             item, position = DeserializeProfile(text, position, depth + 1)
             value[key] = item
@@ -1164,14 +1166,20 @@ local function DeserializeProfile(text, position, depth)
     error("profile has an unknown value type")
 end
 
+--- Each AceDB object once, under the first part that names it: Spoken Quests' quests, gossip
+--- and chatter share one, and a copy or reset applied to it three times fires three times.
 local function ProfileStores()
-    local stores = {}
-    if Addon.db and Addon.db.GetProfiles then table.insert(stores, { key = "spoken", db = Addon.db }) end
+    local stores, added = {}, {}
+    if Addon.db and Addon.db.GetProfiles then
+        table.insert(stores, { key = "spoken", db = Addon.db })
+        added[Addon.db] = true
+    end
     for key, source in Sources:Iterate() do
         if type(source.profiles) == "function" then
             local ok, db = pcall(source.profiles)
-            if ok and type(db) == "table" and db.GetProfiles and db.profile then
+            if ok and type(db) == "table" and db.GetProfiles and db.profile and not added[db] then
                 table.insert(stores, { key = key, db = db })
+                added[db] = true
             end
         end
     end
@@ -1219,17 +1227,13 @@ end
 
 --- The current profile as a string to paste on another character or install, or nil.
 function Options:ProfileString()
-    local stores, exported = {}, {}
-    -- Several parts can share one database (Spoken Quests' quests, gossip and chatter).
+    local stores = {}
     for _, store in ipairs(ProfileStores()) do
-        if not exported[store.db] then
-            exported[store.db] = true
-            stores[#stores + 1] = { key = store.key, values = Changed(store.db.profile, DefaultsOf(store.db)) or {} }
-        end
+        stores[#stores + 1] = { key = store.key, values = Changed(store.db.profile, DefaultsOf(store.db)) or {} }
     end
-    local ok, parts = pcall(SerializeProfile, { version = 1, stores = stores })
+    local ok, parts = pcall(SerializeProfile, stores)
     if not ok then return nil end
-    local lib = LibStub and LibStub:GetLibrary("LibDeflate", true)
+    local lib = Deflate()
     if not lib then return nil end
     local compressed = lib:CompressDeflate(table.concat(parts), { level = 5 })
     return compressed and PROFILE_FORMAT .. lib:EncodeForPrint(compressed) or nil
@@ -1237,7 +1241,7 @@ end
 
 local function DecodedProfile(payload)
     if type(payload) ~= "string" or not string.match(payload, "^" .. PROFILE_FORMAT) then return nil end
-    local lib = LibStub and LibStub:GetLibrary("LibDeflate", true)
+    local lib = Deflate()
     if not lib then return nil end
     local encoded = string.sub(payload, #PROFILE_FORMAT + 1):gsub("%s", "")
     local ok, compressed = pcall(lib.DecodeForPrint, lib, encoded)
@@ -1247,47 +1251,47 @@ local function DecodedProfile(payload)
     if not ok or type(decompressed) ~= "string" then return nil end
     local parsed, position
     ok, parsed, position = pcall(DeserializeProfile, decompressed)
-    if not ok or position ~= #decompressed + 1 or type(parsed) ~= "table"
-        or parsed.version ~= 1 or type(parsed.stores) ~= "table" then return nil end
-    return parsed
+    if not ok or position ~= #decompressed + 1 or type(parsed) ~= "table" then return nil end
+    local values, hasSpoken = {}, false
+    for _, entry in ipairs(parsed) do
+        if type(entry) ~= "table" or type(entry.key) ~= "string" or type(entry.values) ~= "table" then return nil end
+        values[entry.key] = values[entry.key] or entry.values
+        hasSpoken = hasSpoken or entry.key == "spoken"
+    end
+    return hasSpoken and values or nil
 end
 
-function Options:ExportProfile()
-    local payload = self:ProfileString()
-    if not payload then
-        print("|cFF00CCFFSpoken:|r " .. L.OPT_PROFILE_EXPORT_FAILED)
-        return
+local function ApplyImported(values)
+    local current = Options:CurrentProfile()
+    local stores = {}
+    for _, store in ipairs(ProfileStores()) do
+        if values[store.key] then
+            store.db:ResetProfile(nil, true)
+            MergeOver(store.db.profile, values[store.key], DefaultsOf(store.db))
+            table.insert(stores, store)
+        end
     end
-    ShowProfileTransfer("export", payload)
+    -- What a profile switch does, so each part rebinds its settings to the new tables and applies them.
+    for _, store in ipairs(stores) do
+        local callbacks = store.db.callbacks
+        if callbacks and callbacks.Fire then callbacks:Fire("OnProfileChanged", store.db, current) end
+    end
 end
 
 function Options:ImportProfile(payload)
-    local imported = DecodedProfile(payload)
-    if not imported then return false end
-    local stores, byKey = ProfileStores(), {}
-    for _, store in ipairs(stores) do byKey[store.key] = store.db end
-    local seen, updates, updated = {}, {}, {}
-    for _, entry in ipairs(imported.stores) do
-        if type(entry) ~= "table" or type(entry.key) ~= "string" or type(entry.values) ~= "table" or seen[entry.key] then return false end
-        seen[entry.key] = true
-        local db = byKey[entry.key]
-        if db and not updated[db] then
-            updated[db] = true
-            updates[#updates + 1] = { db = db, values = entry.values }
-        end
-    end
-    if not seen.spoken then return false end
-    local current = self:CurrentProfile()
-    for _, update in ipairs(updates) do
-        update.db:ResetProfile(nil, true)
-        MergeOver(update.db.profile, update.values, DefaultsOf(update.db))
-    end
-    -- What a profile switch does, so each part rebinds its settings to the new tables and applies them.
-    for _, update in ipairs(updates) do
-        local callbacks = update.db.callbacks
-        if callbacks and callbacks.Fire then callbacks:Fire("OnProfileChanged", update.db, current) end
-    end
+    local values = DecodedProfile(payload)
+    if not values then return false end
+    ApplyImported(values)
     return true
+end
+
+--- Ask before `accept` acts on the current profile, and drop it if another is chosen meanwhile:
+--- the page stays usable while it asks.
+function Options:ConfirmOnProfile(question, acceptLabel, accept)
+    local into = self:CurrentProfile()
+    Layout.Confirm(question, acceptLabel, L.CANCEL, function()
+        if self:CurrentProfile() == into then accept() end
+    end)
 end
 
 local function BuildProfileTransfer()
@@ -1331,34 +1335,38 @@ local function BuildProfileTransfer()
     edit:SetHeight(height - 130)
     if edit.SetFontObject then edit:SetFontObject(ChatFontNormal) end
     scroll:SetScrollChild(edit)
-    edit:SetScript("OnEscapePressed", function(self) self:GetParent():GetParent():Hide() end)
+    edit:SetScript("OnEscapePressed", function() frame:Hide() end)
+    local transfer = { frame = frame, title = title, hint = hint, edit = edit }
+    -- An exported string stays selectable for copying but cannot be edited.
+    edit:SetScript("OnTextChanged", function()
+        if transfer.locked and edit:GetText() ~= transfer.locked then
+            edit:SetText(transfer.locked)
+            edit:HighlightText()
+        end
+    end)
 
     local action = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
     action:SetSize(150, 24)
     action:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 18, 20)
     action:SetText(L.OPT_PROFILE_IMPORT)
     action:SetScript("OnClick", function()
-        local payload = edit:GetText()
-        if not DecodedProfile(payload) then
-            print("|cFF00CCFFSpoken:|r " .. L.OPT_PROFILE_IMPORT_FAILED)
+        local values = DecodedProfile(edit:GetText())
+        if not values then
+            Say(L.OPT_PROFILE_IMPORT_FAILED)
             return
         end
-        -- The page stays usable while it asks, so a switch in between must not receive the import.
-        local into = Options:CurrentProfile()
-        Layout.Confirm(L.OPT_PROFILE_IMPORT_CONFIRM, L.OPT_PROFILE_IMPORT, L.CANCEL, function()
-            if Options:CurrentProfile() ~= into then return end
-            if Options:ImportProfile(payload) then
-                frame:Hide()
-                if Options.profileLayout then Options.profileLayout:Refresh() end
-                print("|cFF00CCFFSpoken:|r " .. L.OPT_PROFILE_IMPORTED)
-            else
-                print("|cFF00CCFFSpoken:|r " .. L.OPT_PROFILE_IMPORT_FAILED)
-            end
+        Options:ConfirmOnProfile(L.OPT_PROFILE_IMPORT_CONFIRM, L.OPT_PROFILE_IMPORT, function()
+            ApplyImported(values)
+            frame:Hide()
+            if Options.profileLayout then Options.profileLayout:Refresh() end
+            Say(L.OPT_PROFILE_IMPORTED)
         end)
     end)
     local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -8)
     close:SetScript("OnClick", function() frame:Hide() end)
+    -- So a controller's B closes it.
+    Layout.FollowController(frame, close)
     if Ellesmere and Ellesmere.When then
         Ellesmere:When(function(skin)
             skin.Shell(frame, { noTopBar = true })
@@ -1367,31 +1375,33 @@ local function BuildProfileTransfer()
             skin.WhiteButtonLabel(action)
         end)
     end
-    return { frame = frame, title = title, hint = hint, edit = edit, action = action }
+    transfer.action = action
+    return transfer
 end
 
-ShowProfileTransfer = function(mode, payload)
+local profileTransfer
+--- The transfer window: `payload` to copy for an export, none for an import.
+local function ShowProfileTransfer(payload)
     profileTransfer = profileTransfer or BuildProfileTransfer()
-    local export = mode == "export"
+    local export = payload ~= nil
     profileTransfer.title:SetText(export and L.OPT_PROFILE_EXPORT or L.OPT_PROFILE_IMPORT)
     profileTransfer.hint:SetText(export and L.OPT_PROFILE_EXPORT_HINT or L.OPT_PROFILE_IMPORT_HINT)
     profileTransfer.action:SetShown(not export)
-    if export then
-        profileTransfer.locked = payload
-        profileTransfer.edit:SetScript("OnTextChanged", function(edit)
-            if profileTransfer.locked and edit:GetText() ~= profileTransfer.locked then
-                edit:SetText(profileTransfer.locked)
-                edit:HighlightText()
-            end
-        end)
-    else
-        profileTransfer.locked = nil
-        profileTransfer.edit:SetScript("OnTextChanged", nil)
-    end
-    profileTransfer.edit:SetText(export and payload or "")
+    profileTransfer.locked = nil
+    profileTransfer.edit:SetText(payload or "")
+    profileTransfer.locked = payload
     profileTransfer.frame:Show()
     profileTransfer.edit:SetFocus()
     if export then profileTransfer.edit:HighlightText() end
+end
+
+function Options:ExportProfile()
+    local payload = self:ProfileString()
+    if not payload then
+        Say(L.OPT_PROFILE_EXPORT_FAILED)
+        return
+    end
+    ShowProfileTransfer(payload)
 end
 
 --- Every AceDB object a profile choice applies to: the player's, then each installed part's
@@ -1489,10 +1499,7 @@ function Options:AddProfiles(layout)
     -- row, pick one: ask first, or a stray press replaces or deletes a profile.
     layout:Dropdown(L.OPT_COPY_PROFILE, nil, Others, function() return nil end,
         function(name)
-            -- The page stays usable while it asks, so a switch in between must not receive the copy.
-            local into = self:CurrentProfile()
-            Layout.Confirm(format(L.OPT_COPY_PROFILE_CONFIRM, name), _G.ACCEPT or "Accept", L.CANCEL, function()
-                if self:CurrentProfile() ~= into then return end
+            self:ConfirmOnProfile(format(L.OPT_COPY_PROFILE_CONFIRM, name), _G.ACCEPT or "Accept", function()
                 self:CopyProfile(name); layout:Refresh()
             end)
             layout:Refresh()
@@ -1533,7 +1540,7 @@ function Options:AddProfiles(layout)
         end)
     end
     layout:Button(L.OPT_PROFILE_EXPORT, 200, function() self:ExportProfile() end)
-    layout:Button(L.OPT_PROFILE_IMPORT, 200, function() ShowProfileTransfer("import") end)
+    layout:Button(L.OPT_PROFILE_IMPORT, 200, function() ShowProfileTransfer() end)
     if Addon.db then
         layout:Dropdown(L.OPT_NEW_CHARACTER_PROFILE, nil,
             -- Only Spoken's saved profiles: it reads the choice before any other settings load.
