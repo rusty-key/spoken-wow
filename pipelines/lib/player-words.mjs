@@ -265,7 +265,13 @@ const TOKEN_CLASS_PLURAL = new RegExp(String.raw`${UNDECLINED}\$([Cc])s(?![\p{L}
 // lost would otherwise run on to a later sentence's `;` and drop the words between unheard.
 const ENDS = ".!?…。！？";
 const FIELD = String.raw`[^:;${ENDS}\n]`;
-const BRANCH = String.raw`\s*(${FIELD}+?)\s*:\s*(${FIELD}+?)\s*(?::${FIELD}*)?;`;
+/** A branch's two fields between `colons` and closed by `semis`, and ruRU's optional third field where `third`. */
+function branch(colons, semis, third) {
+  const field = `[^${colons}${semis}${ENDS}\n]`;
+  const thirdField = third ? String.raw`(?:[${colons}]${field}*)?` : "";
+  return String.raw`\s*(${field}+?)\s*[${colons}]\s*(${field}+?)\s*${thirdField}[${semis}]`;
+}
+const BRANCH = branch(":", ";", true);
 // $u is the same branch: ptBR's templates write it, and deDE's Forever quests.
 const GENDER = new RegExp(String.raw`\$[GgUu]` + BRANCH, "g");
 // Forever's deDE gossip also writes $u with its separators swapped, "$uBürger;Bürgerin:", male
@@ -280,10 +286,7 @@ const HAS_GENDER = new RegExp(`${GENDER.source}|${SWAPPED.source}`, "u");
 // ("$G男孩：女孩；"). ruRU, zhCN and zhTW lose the `g` ("$готов:готова;", "$小伙子:小姑娘;"), which
 // only a letter outside the Latin alphabet tells apart from a token; ruRU's then often loses its
 // `;` too, and its female field ends with the word. Han, written without spaces, keeps needing it.
-const FULL_WIDTH = new RegExp(
-  String.raw`\$[GgUu]\s*([^:;：；${ENDS}\n]+?)\s*[:：]\s*([^:;：；${ENDS}\n]+?)\s*[;；]`,
-  "gu",
-);
+const FULL_WIDTH = new RegExp(String.raw`\$[GgUu]` + branch(":：", ";；", false), "gu");
 const LOST_G = /\$(?![A-Za-z\d$])([\p{L}\p{M}-]+)\s*[:：]\s*([\p{L}\p{M}-]+?)(?:\s*[;；]|(?<!\p{sc=Han})(?![\p{L}\p{M}-]))/gu;
 // TBC Anniversary and Forever send some lines with the token's $ doubled ("$$N, …"), which the
 // client reads as the token itself. Left doubled, a genitive "$$Ns" would say "$Abenteurers".
