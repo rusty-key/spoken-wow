@@ -2045,8 +2045,10 @@ quest from `QUEST_PROGRESS` (Questie) shows the progress page for about a quarte
 when the reward page then waits for the player to pick a reward, the watcher reads that page
 first. Before it does, it reads the quest's progress page from its record, if nothing has read
 it, so the progress line plays and then the reward's, as when `QUEST_TURNED_IN` replays both.
-That window is still open, so its close stops the progress line as it stops the reward's. Read
-Quest Progress Text off, or Read After Accepting on, reads the reward page alone.
+That window is still open, so its close stops the progress line as it stops the reward's. A
+player who clicks Continue within 0.4 s hears the progress line too: the client does not say
+whether an addon or the player clicked. Read Quest Progress Text off, or Read After Accepting on,
+reads the reward page alone.
 
 `tests/lua/quest_overlay_test.lua` covers the other thing the quest UI owes a player: the play
 button beside each quest in the quest log. There are two quest logs to draw it in. The old one
