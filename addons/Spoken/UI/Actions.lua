@@ -76,6 +76,36 @@ function Actions.TintWithRings(ring)
     TintRing(ring)
 end
 
+local PRESSED_SHADE = 0.7
+
+-- Held, the glyph (and Skip's bar) sinks a pixel and darkens. Its own colour is given back after,
+-- so a tint another look gave it survives. A button hidden while held never hears the release.
+local function Sinks(button)
+    local pressed, saved = false, {}
+    local function Press(down)
+        if pressed == down then return end
+        pressed = down
+        local offset = down and 1 or -1
+        button.glyph:AdjustPointsOffset(offset, -offset)
+        if not down then
+            for texture, colour in pairs(saved) do texture:SetVertexColor(unpack(colour)) end
+            saved = {}
+            return
+        end
+        -- Skip's bar is added after this runs, so it is looked up at the press.
+        for _, texture in ipairs({ button.glyph, button.bar }) do
+            local r, g, b, a = texture:GetVertexColor()
+            saved[texture] = { r, g, b, a }
+            texture:SetVertexColor(r * PRESSED_SHADE, g * PRESSED_SHADE, b * PRESSED_SHADE, a)
+        end
+    end
+    button:HookScript("OnMouseDown", function(self, mouse)
+        if mouse == "LeftButton" and self:IsEnabled() then Press(true) end
+    end)
+    button:HookScript("OnMouseUp", function() Press(false) end)
+    button:HookScript("OnHide", function() Press(false) end)
+end
+
 --- Dress `button` as the player's round buttons are -- the windows' pause, the subtitle's
 --- controls: the ring round its edge, `icon` inside it, brighter under the pointer. Sized by the
 --- button, so a corner icon and a subtitle control are the same button at different sizes. With
@@ -96,6 +126,7 @@ function Actions.RoundIcon(button, icon, own)
     button:HookScript("OnEnter", function() if button:IsEnabled() then glyph:SetAlpha(1) end end)
     button:HookScript("OnLeave", function() if button:IsEnabled() then glyph:SetAlpha(GLYPH_ALPHA) end end)
     button.ring, button.glyph = ring, glyph
+    Sinks(button)
     if Ellesmere and not own then Ellesmere:When(function(skin) Actions.Square(skin, button) end) end
     return button
 end
@@ -168,9 +199,10 @@ end
 -- A line's button shows one of four glyphs: Play for a line a click starts, Stop while it
 -- speaks, Replay once it is stopped and still at the head, and a plus for "queue" and "queued",
 -- a line that waits or would wait behind another. Play is the portrait atlas's cell; the others
--- are drawn in its gold, each in a 93-wide cell of a 128 canvas.
+-- are drawn in its gold, each in a 93-wide cell of a 128 canvas, as are Stop All's eject mark and
+-- the subtitle's four-arrow move mark.
 local GLYPHS = { stop = ART .. "GlyphStop", replay = ART .. "GlyphReplay", queue = ART .. "GlyphQueue",
-    queued = ART .. "GlyphQueue" }
+    queued = ART .. "GlyphQueue", eject = ART .. "GlyphEject", move = ART .. "GlyphMove" }
 local CELL = 93 / 128
 local PLAY_LEFT, PLAY_RIGHT = 0, 93 / PORTRAIT_ATLAS_SIZE
 local PLAY_TOP, PLAY_BOTTOM = 419 / PORTRAIT_ATLAS_SIZE, 1
@@ -222,7 +254,16 @@ function Actions.Previous()
     return previous
 end
 
--- Skip, or with `back` Previous: the play glyph against a bar, mirrored to point back.
+local function Tip(button, tip)
+    button:SetScript("OnEnter", function()
+        button.glyph:SetAlpha(1)
+        GameTooltip:SetOwner(button, "ANCHOR_TOP")
+        GameTooltip:SetText(tip)
+        GameTooltip:Show()
+    end)
+end
+
+--- Skip, or with `back` Previous: the play glyph against a bar, mirrored to point back.
 local function StepButton(parent, name, back)
     local step = Actions.RoundButton(parent, 10, name, true)
     Actions.Glyph(step.glyph, "play")
@@ -240,19 +281,17 @@ local function StepButton(parent, name, back)
     if step.bar.SetColorTexture then step.bar:SetColorTexture(1, 0.82, 0, 0.85) end
     -- Squared once the bar exists, so EllesmereUI keeps it with the glyph.
     if Ellesmere then Ellesmere:When(function(skin) Actions.Square(skin, step) end) end
-    local tip = back and L.BIND_PREVIOUS or L.BIND_SKIP
-    step:SetScript("OnEnter", function()
-        step.glyph:SetAlpha(1)
-        GameTooltip:SetOwner(step, "ANCHOR_TOP")
-        GameTooltip:SetText(tip)
-        GameTooltip:Show()
-    end)
+    Tip(step, back and L.BIND_SKIP_BACKWARD or L.BIND_SKIP_FORWARD)
     return step
 end
 
 --- Skip: the round button with the play glyph against a bar, the usual "next" mark.
 function Actions.SkipButton(parent, name)
     local skip = StepButton(parent, name)
+    -- Next Line advances to a waiting line; Eject is the control that ends the current one.
+    skip.canAct = function()
+        return SoundQueue:GetQueueSize() > 1 and SoundQueue:CanBePaused()
+    end
     skip:SetScript("OnClick", Actions.Skip)
     return skip
 end
@@ -268,6 +307,18 @@ function Actions.PreviousButton(parent, name)
         return replayed
     end)
     return previous
+end
+
+--- Stop All, sized with the step buttons beside it. Its own picture: Play turned upward over
+--- a bar read as a blob at 10 px.
+function Actions.EjectButton(parent, name)
+    local eject = Actions.RoundButton(parent, 10, name, true)
+    Actions.Glyph(eject.glyph, "eject")
+    if Ellesmere then Ellesmere:When(function(skin) Actions.Square(skin, eject) end) end
+    Tip(eject, L.BIND_EJECT)
+    eject.canAct = function() return SoundQueue:GetQueueSize() > 0 end
+    eject:SetScript("OnClick", function() SoundQueue:RemoveAllSoundsFromQueue() end)
+    return eject
 end
 
 --- Stop or Replay for the line at the head. `allowed()`, optional, says whether the window has
@@ -935,9 +986,9 @@ function Actions.DialogRow(dialog, tooltip, report)
     row.play = Round("play")
     row.play:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     row.previous = Round("previous")
-    row.tips[row.previous] = function(tip) tip:SetText(L.BIND_PREVIOUS) end
+    row.tips[row.previous] = function(tip) tip:SetText(L.BIND_SKIP_BACKWARD) end
     row.skip = Round("skip")
-    row.tips[row.skip] = function(tip) tip:SetText(L.BIND_SKIP) end
+    row.tips[row.skip] = function(tip) tip:SetText(L.BIND_SKIP_FORWARD) end
     if report then row.report = Round("report") end
     return row
 end

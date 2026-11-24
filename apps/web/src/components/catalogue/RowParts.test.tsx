@@ -60,10 +60,10 @@ test("the More menu is named for its line", async () => {
 });
 
 test("the batch button names the task when the list shows missing or outdated audio", () => {
-  const { rerender } = render(<BatchGenerate total={10} state="missing" noun={["line", "lines"]} onClick={() => {}} />);
+  const { rerender } = render(<BatchGenerate total={10} state="missing" noun="line" onClick={() => {}} />);
   expect(screen.getByRole("button").textContent).toBe("Generate audio for 10 lines");
-  rerender(<BatchGenerate total={1} state="stale" noun={["line", "lines"]} onClick={() => {}} />);
+  rerender(<BatchGenerate total={1} state="stale" noun="line" onClick={() => {}} />);
   expect(screen.getByRole("button").textContent).toBe("Regenerate 1 outdated line");
-  rerender(<BatchGenerate total={10} state={undefined} noun={["page", "pages"]} onClick={() => {}} />);
+  rerender(<BatchGenerate total={10} state={undefined} noun="page" onClick={() => {}} />);
   expect(screen.getByRole("button").textContent).toBe("Regenerate all 10 pages");
 });

@@ -12,6 +12,7 @@ import ApiKeyRequiredDialog from "@/components/ApiKeyRequiredDialog";
 import Key from "@/components/Key";
 import Pagination from "@/components/Pagination";
 import { Loading, Refreshing } from "@/components/Loading";
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import RegenerateDialog, { type PendingBatch } from "@/components/RegenerateDialog";
 import RegenerationPanel from "@/components/RegenerationPanel";
@@ -65,6 +66,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
   section: ExplorerSection<L, F>;
 } & TeamView) {
   const { source, api, nameOf } = section;
+  const t = useUiText();
   const lang = useLang();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -699,7 +701,7 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
           )}
 
           {canRegenerate && result && result.total > 0 && (
-            <BatchGenerate total={result.total} state={filters.state} noun={["line", "lines"]} onClick={askToRegenerateAll} />
+            <BatchGenerate total={result.total} state={filters.state} noun="line" onClick={askToRegenerateAll} />
           )}
         </div>
 
@@ -730,15 +732,15 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
             <thead>
               <tr>
                 <th>
-                  <span className="sr-only">Play</span>
+                  <span className="sr-only">{t.catalogue.columns.play}</span>
                 </th>
                 <th>{section.labels.text}</th>
                 <th>{section.labels.name}</th>
-                <th>Audio</th>
-                {showMadeBy && <th>Made by</th>}
-                {showRecordings && <th>Voice actor</th>}
+                <th>{t.catalogue.columns.audio}</th>
+                {showMadeBy && <th>{t.catalogue.columns.madeBy}</th>}
+                {showRecordings && <th>{t.catalogue.columns.voiceActor}</th>}
                 <th>
-                  <span className="sr-only">Actions</span>
+                  <span className="sr-only">{t.catalogue.columns.actions}</span>
                 </th>
               </tr>
             </thead>
@@ -803,15 +805,15 @@ export function Explorer<L extends ExplorerLine, F extends ExplorerFilters>({
           </table>
         </div>
 
-        {result && result.total === 0 && !loading && <p className="cat-empty">Nothing matches these filters.</p>}
+        {result && result.total === 0 && !loading && <p className="cat-empty">{t.catalogue.emptyFilters}</p>}
       </div>
 
       <div className="bs-wide">
         <Pagination page={page} pageCount={pages} onPage={(next) => updateUrl({ page: next })} />
 
         <p className="text-muted-foreground mt-6 flex flex-wrap items-center gap-1.5 text-xs">
-          <Key>/</Key> search · <Key>space</Key> play/pause · <Key>j</Key> <Key>k</Key> next and
-          previous line on this page
+          <Key>/</Key> {t.catalogue.shortcuts.search} · <Key>space</Key> {t.catalogue.shortcuts.playPause} · <Key>j</Key> <Key>k</Key> {" "}
+          {t.catalogue.shortcuts.step}
         </p>
       </div>
 

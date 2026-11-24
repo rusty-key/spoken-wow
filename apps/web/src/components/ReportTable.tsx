@@ -13,6 +13,7 @@
  * stranger's address serves no purpose that reading their report does not.
  */
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
 import { localeHref } from "@/lib/lang";
 import Link from "@/components/LocaleLink";
 import { useRouter } from "next/navigation";
@@ -137,6 +138,7 @@ export default function ReportTable({
    */
   const { pending, push } = usePendingPush();
   const { refresh } = useRouter();
+  const t = useUiText();
   const lang = useLang();
   const [resolved, setResolved] = useState<Record<number, Report>>({});
   /** Reports with a resolution in flight. A set, because a group resolves all of its at once. */
@@ -457,7 +459,7 @@ export default function ReportTable({
   return (
     <>
       <LinkTabs
-        label="Section"
+        label={t.reports.section}
         onGo={push}
         active={filters.section}
         tabs={SECTIONS.map((section) => ({
@@ -467,7 +469,7 @@ export default function ReportTable({
         }))}
       />
       <LinkTabs
-        label="Status"
+        label={t.reports.status}
         onGo={push}
         active={filters.view}
         tabs={STATUS_VIEWS.map((view) => ({
@@ -480,13 +482,13 @@ export default function ReportTable({
         <Input
           type="search"
           value={query}
-          placeholder="What they said, the line or who sent it…"
-          aria-label="Search"
+          placeholder={t.reports.searchPlaceholder}
+          aria-label={t.reports.search}
           className="h-8 min-w-0 basis-64"
           onChange={(event) => setQuery(event.target.value)}
         />
         <FilterChip
-          label="complaint"
+          label={t.reports.complaint}
           value={filters.category === "all" ? undefined : filters.category}
           options={CATEGORY_OPTIONS}
           onChange={(next) => go({ category: (next as Category | undefined) ?? "all" })}
@@ -499,7 +501,7 @@ export default function ReportTable({
       </nav>
 
       {groups.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Nothing here.</p>
+        <p className="text-muted-foreground text-sm">{t.reports.nothing}</p>
       ) : (
         <table
           aria-busy={pending}
@@ -507,7 +509,7 @@ export default function ReportTable({
         >
           <thead className="text-muted-foreground text-left text-xs">
             <tr>
-              <th className="border-b py-2 pr-3 font-normal">Where</th>
+              <th className="border-b py-2 pr-3 font-normal">{t.reports.where}</th>
               <th className="border-b py-2 font-normal" />
               <SortHeader
                 column="filed"
@@ -516,7 +518,7 @@ export default function ReportTable({
               >
                 Filed
               </SortHeader>
-              <th className="border-b py-2 pr-3 font-normal">What</th>
+              <th className="border-b py-2 pr-3 font-normal">{t.reports.what}</th>
               <th className="border-b py-2 font-normal" />
             </tr>
           </thead>

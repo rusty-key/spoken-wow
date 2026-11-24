@@ -4,6 +4,8 @@ import { Loader2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 import { Button } from "@/components/ui/button";
 import { useFileDrop } from "@/components/useFileDrop";
 import { withLang } from "@/lib/lang";
@@ -50,6 +52,7 @@ type Progress = { done: number; total: number; failed: { name: string; error: st
  * page: a session is recorded from a script, not from whatever the filter shows.
  */
 export default function RecordingDropZone({ source, onUploaded }: { source: Source; onUploaded: () => void }) {
+  const t = useUiText().catalogue.recording;
   const lang = useLang();
   const input = useRef<HTMLInputElement>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -114,7 +117,7 @@ export default function RecordingDropZone({ source, onUploaded }: { source: Sour
     >
       <div className="flex flex-wrap items-center gap-2">
         <Upload className="text-muted-foreground size-4" />
-        <span>Drop a session&apos;s recordings here, or</span>
+        <span>{t.drop}</span>
         <Button variant="outline" size="xs" disabled={uploading} onClick={() => input.current?.click()}>
           choose files
         </Button>
@@ -168,7 +171,7 @@ export default function RecordingDropZone({ source, onUploaded }: { source: Sour
           <div className="flex items-center gap-2">
             {uploading && <Loader2 className="size-3 animate-spin" />}
             <span>
-              {uploading ? "Uploading" : "Uploaded"} {progress.done - progress.failed.length} of {progress.total}
+              {uploading ? t.uploading : t.uploaded} {fill(t.of, { done: progress.done - progress.failed.length, total: progress.total })}
               {progress.failed.length > 0 && `, ${progress.failed.length} refused`}
             </span>
           </div>

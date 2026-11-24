@@ -71,6 +71,19 @@ B:SetupSource()
 dofile(READABLES .. "Data/Books.lua")
 dofile(READABLES .. "Data/Places.lua")
 local L = B.L
+
+-- Compendium ordering must keep numeric and minted IDs comparable when titles collide.
+local MIXED_BOOK = "n00000000-0000-4000-8000-000000000001"
+SpokenReadablesData.pages[990010] = { book = 990010, number = 1, text = "Words of a mixed title." }
+SpokenReadablesData.pages["n00000000-0000-4000-8000-000000000002"] = {
+    book = MIXED_BOOK, number = 1, text = "Different words of a mixed title."
+}
+SpokenReadablesData.books[990010] = { title = "Mixed ID Title", pages = { 990010 } }
+SpokenReadablesData.books[MIXED_BOOK] = {
+    title = "Mixed ID Title", pages = { "n00000000-0000-4000-8000-000000000002" }
+}
+SpokenReadablesPlaces.books[990010] = { kind = "carried", type = "note" }
+SpokenReadablesPlaces.books[MIXED_BOOK] = { kind = "carried", type = "note" }
 -- One readable whose event the data does not name, as an older export left every one.
 SpokenReadablesPlaces.books[2878].event = true
 
@@ -1642,10 +1655,49 @@ B.lastPage = nil
 Expect("a gravestone played with nothing open is on stone", B:PageMaterial(FirstPage(2731)), "Stone")
 Expect("...a plaque on bronze", B:PageMaterial(FirstPage(KURDRAN)), "Bronze")
 Expect("...a letter on paper", B:PageMaterial(FirstPage(LETTER)), nil)
-Expect("...its picture the stone's", B:PagePicture(FirstPage(2731)).texture, B.MATERIALS.Stone)
+Expect("...its portrait the Compendium's gravestone icon", B:PagePicture(FirstPage(2731)).texture,
+    [[Interface\Icons\INV_Misc_Bone_HumanSkull_01]])
 B.lastPage = FirstPage(LETTER)
 Expect("...and another page open in the world lends it nothing", B:PageMaterial(FirstPage(2731)), "Stone")
 B.lastPage = nil
+
+do
+    local packs, getInfo, cItem = _G.SpokenReadablesAudioPacks, _G.GetItemInfoInstant, _G.C_Item
+    local unlocked = SpokenReadablesSettings.unlockUnfound
+    _G.GetItemInfoInstant = function() return nil end
+    _G.C_Item = nil
+    _G.SpokenReadablesAudioPacks = { SpokenReadablesAudio = { version = 1, pages = {
+        [38] = { file = "38", len = 6 }, [39] = { file = "39", len = 6 }, [48] = { file = "48", len = 6 },
+    } } }
+    SpokenReadablesSettings.unlockUnfound = true
+    for _, writing in ipairs({
+        { "Wiley's Note", [[Interface\Icons\INV_Misc_Note_01]] },
+        { "A Mysterious Message", [[Interface\Icons\INV_Letter_15]] },
+    }) do
+        B:StopReading()
+        Search(writing[1])
+        Click(writing[1])
+        Expect(writing[1] .. " has its type icon when the item API has no icon", page.headFace.speaker.icon, writing[2])
+        page.play.scripts.OnClick(page.play)
+        local playing = Spoken:GetNowPlaying()
+        Expect(writing[1] .. " plays through the Compendium button", playing ~= nil, true)
+        Expect(writing[1] .. " playback matches the Compendium icon without an item icon",
+            playing and playing.present.portrait.texture, page.headFace.speaker.icon)
+        Expect(writing[1] .. " playback matches the Compendium icon crop",
+            playing and playing.present.portrait.texCoord, page.headFace.speaker.iconCrop)
+        stub.Advance(0.5)
+        local portrait = env.PlayerFrame.frame.portrait
+        Expect(writing[1] .. " is drawn with that icon in the player",
+            portrait.texture and portrait.texture:GetTexture(), writing[2])
+        Spoken:Pause()
+        Expect(writing[1] .. " keeps its icon when playback is stopped",
+            portrait.texture and portrait.texture:GetTexture(), writing[2])
+    end
+    B:StopReading()
+    _G.SpokenReadablesAudioPacks, _G.GetItemInfoInstant, _G.C_Item = packs, getInfo, cItem
+    SpokenReadablesSettings.unlockUnfound = unlocked
+    Search("")
+end
 
 -- Text Size, on Spoken's page: the words read at it, and drawn again when it changes.
 do

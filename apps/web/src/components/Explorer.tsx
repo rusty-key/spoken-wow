@@ -22,6 +22,7 @@ import RegenerationPanel from "./RegenerationPanel";
 import SearchBar from "./SearchBar";
 import TeamPicker from "./TeamPicker";
 import { Loading, Refreshing } from "@/components/Loading";
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import { audioStateFromParams } from "@/lib/audio-state";
 import { useSession } from "@/lib/auth-client";
@@ -48,6 +49,7 @@ import { useCan } from "@/components/useCan";
 import { useHistoryMode } from "@/components/useHistoryMode";
 import { canConfigureGeneration, isAdmin } from "@/lib/permissions";
 import { isVoiceable } from "@/lib/text-gate";
+import { fill } from "@/lib/site-text/format";
 import { isModelVoice } from "@/lib/voices/voices";
 import type { Filter, LineFilters, ResultLine, SearchResult } from "@/lib/search";
 import { fetchRows, patchRows } from "@/lib/row-refresh";
@@ -113,6 +115,7 @@ function questNarrowing(line: ResultLine) {
 
 export default function Explorer({ facets, teams, viewed, home }: { facets: Facets } & TeamView) {
   const router = useRouter();
+  const t = useUiText().catalogue;
   const lang = useLang();
   const params = useSearchParams();
   const pathname = usePathname();
@@ -878,10 +881,10 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
         {filters.line && (
           <div className="text-muted-foreground mt-3 flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs">
             <span>
-              Showing one line: <span className="font-mono">{filters.line}</span>
+              {t.showingOne} <span className="font-mono">{filters.line}</span>
             </span>
             <Button size="xs" variant="ghost" onClick={() => updateFilters({ line: undefined })}>
-              Show everything
+              {t.showEverything}
             </Button>
           </div>
         )}
@@ -892,14 +895,14 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
               corpus-wide count is what the "pronunciation moved" filter is for. */}
           {showRegenerate && marked > 0 && (
             <span className="flex items-center gap-1 text-sm text-amber-300">
-              {marked} pronunciation on this page
+              {fill(t.markedHere, { n: marked })}
               <Button size="xs" variant="ghost" onClick={() => void clearAllDirty()}>
-                clear all matching
+                {t.clearAllMatching}
               </Button>
             </span>
           )}
           {showRegenerate && result && result.total > 0 && (
-            <BatchGenerate total={result.total} state={filters.state} noun={["line", "lines"]} onClick={() => void requestBatch()} />
+            <BatchGenerate total={result.total} state={filters.state} noun="line" onClick={() => void requestBatch()} />
           )}
         </div>
 
@@ -933,15 +936,15 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
               <thead>
                 <tr>
                   <th>
-                    <span className="sr-only">Play</span>
+                    <span className="sr-only">{t.columns.play}</span>
                   </th>
-                  <th>Line</th>
-                  <th>Quest</th>
-                  <th>Audio</th>
-                  {showMadeBy && <th>Made by</th>}
-                  {showRecordings && <th>Voice actor</th>}
+                  <th>{t.columns.line}</th>
+                  <th>{t.columns.quest}</th>
+                  <th>{t.columns.audio}</th>
+                  {showMadeBy && <th>{t.columns.madeBy}</th>}
+                  {showRecordings && <th>{t.columns.voiceActor}</th>}
                   <th>
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{t.columns.actions}</span>
                   </th>
                 </tr>
               </thead>
@@ -996,7 +999,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
           </div>
         )}
 
-        {result && result.lines.length === 0 && <p className="cat-empty">No lines match this search.</p>}
+        {result && result.lines.length === 0 && <p className="cat-empty">{t.empty}</p>}
       </div>
 
       <div className="bs-wide">
@@ -1007,8 +1010,8 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
         />
 
         <p className="text-muted-foreground mt-6 flex flex-wrap items-center gap-1.5 text-xs">
-          <Key>/</Key> search · <Key>space</Key> play/pause · <Key>j</Key> <Key>k</Key> next
-          and previous line on this page
+          <Key>/</Key> {t.shortcuts.search} · <Key>space</Key> {t.shortcuts.playPause} · <Key>j</Key> <Key>k</Key> {" "}
+          {t.shortcuts.step}
         </p>
       </div>
 

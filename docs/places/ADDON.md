@@ -46,11 +46,12 @@ One page, Game Menu, Options, AddOns, Spoken, Places:
 | | Show Pictures | `showPictures` | on |
 | | Read Stories Aloud | `voiceEnabled` | on |
 | Voice Packs | one row per language, Play a Test Line | | |
+| Reading History | Share Across Characters | `SpokenPlacesAccountHistory.shared` | off |
 | Reading History | Forget Visited Places | | |
 
 Defaults resets the settings in the table, the tab's two filters, the folded panel and the two
-Developer settings. It leaves the chosen voice pack, Unlock Undiscovered Places and
-Text Size. Two Compendium settings are on Spoken's own page, in its Compendium section: Text Size (`Spoken:CompendiumFontSize()`, one size
+Developer settings. It leaves the chosen voice pack, Share Across Characters (an account setting, outside
+the profile), Unlock Undiscovered Places and Text Size. Two Compendium settings are on Spoken's own page, in its Compendium section: Text Size (`Spoken:CompendiumFontSize()`, one size
 for every tab and the map panel) and Unlock Undiscovered Places (`showUndiscovered`, off by
 default). Spoken's Language section holds Voice Language, If a Voice Is Missing and Text Language,
 which every module reads (`Spoken:TextLanguage()`, Spoken's `Texts.lua`). This page had its own
@@ -73,7 +74,9 @@ The first time, the old table is kept in Spoken's `global.ModulesLegacy`, and a 
 Choosing another profile in Spoken, copying one over or resetting it rebinds the table, and a
 profile made or reset then starts from the defaults. The `dump` key written by `/spp dump` is not
 copied, and sits in the profile's table, which is also what `SpokenPlacesSettings` is saved as. `SpokenPlacesCharacter` (per character) holds
-`greeted`, `heard`, `readAt` and `visited`.
+`greeted`, `heard`, `readAt` and `visited`. With sharing enabled, `SpokenPlacesAccountHistory` remembers visited and heard
+places for the whole account. Old character records merge on login without changing the
+client's exploration flags or a character's SavedVariables.
 
 `## LoadSavedVariablesFirst: true` is needed. The data files under `Data/` ask `Language.lua`
 which language to build while they load, and it answers from the saved variable. Without the line
@@ -225,6 +228,10 @@ The game announces a discovery once per character, and Places reads that message
   every restart, and a month outlasts one. A time ahead of the clock counts as long ago. With it on,
   a discovery of a place read within the wait reads nothing, and Include Places Found Before makes
   no difference, so the panel greys it out. Forget Visited Places clears `readAt` too.
+- Share Across Characters (off by default) joins each character's visited
+  places and heard stories on login and shares new ones as they occur. Read Every Visit still
+  repeats stories when enabled. Forget Visited Places clears the shared heard record and
+  replay times, not the list of visited places, while sharing is on.
 - Include Places Found Before also reads on zone change, once per place, for a character that
   explored before installing. `heard` records places when a clip starts, not when it is queued.
   It was off by default, and every profile stored that off; loading a profile turns it on once

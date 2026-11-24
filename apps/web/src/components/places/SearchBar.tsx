@@ -11,9 +11,11 @@ import {
   type ActiveFilter,
   type Option,
 } from "@/components/catalogue/CatalogueSearch";
+import { useUiText } from "@/components/UiTextProvider";
 import type { MadeByFacets } from "@/lib/takes/made-by";
-import { AUDIO_STATE_LABELS, type StateCounts } from "@/lib/audio-state";
+import type { StateCounts } from "@/lib/audio-state";
 import { RECORDED_OPTIONS, type Recorded } from "@/lib/recordings/live";
+import { fill } from "@/lib/site-text/format";
 import type { ExplorerFilters, ExplorerSection } from "@/components/explorer/section";
 
 /**
@@ -59,8 +61,15 @@ export function SearchBar({
   onChange,
   onClearAll,
 }: Props) {
+  const text = useUiText();
+  const s = text.catalogue.search;
+  const f = s.fields;
+  const v = s.values;
+  const l = s.labels;
+  const facetsText = text.catalogue.facets;
+  const recordedOptions = RECORDED_OPTIONS.map((option) => ({ value: option.value, label: facetsText.recorded[option.value] }));
   const fieldName = (field: string) =>
-    field === "any" ? "Anywhere" : field === "name" ? section.labels.name : field === "text" ? section.labels.text : capital(field);
+    field === "any" ? s.scopes.any : field === "name" ? section.labels.name : field === "text" ? section.labels.text : capital(field);
   const fieldOptions: Option[] = fields.map((field) => ({ value: field, label: fieldName(field) }));
   const kindOptions: Option[] = kinds.map((kind) => ({ value: kind, label: `${capital(kind)}s` }));
   const facetOptions: Option[] = section.facets.map((facet) => ({ value: String(facet.value), label: facet.label }));
@@ -71,7 +80,7 @@ export function SearchBar({
     ? [
         {
           key: "reported",
-          label: "Reported",
+          label: f.reports,
           tone: "reported" as const,
           pressed: filters.reports === "open",
           onPress: () => onChange({ reports: filters.reports === "open" ? undefined : "open" }),
@@ -83,21 +92,21 @@ export function SearchBar({
   const add = (key: string, label: string, value: string | undefined, clear: Partial<ExplorerFilters>) => {
     if (value) active.push({ key, label, value, onRemove: () => onChange(clear) });
   };
-  add("state", "Audio", filters.state && AUDIO_STATE_LABELS[filters.state], { state: undefined });
-  add("reports", "Reported", filters.reports === "open" ? "open reports" : undefined, { reports: undefined });
+  add("state", f.state, filters.state ? facetsText.audioLower[filters.state] : undefined, { state: undefined });
+  add("reports", f.reports, filters.reports === "open" ? v.open : undefined, { reports: undefined });
   add("mapID", section.facetLabel, filters.mapID === undefined ? undefined : labelOf(facetOptions, String(filters.mapID)), { mapID: undefined });
-  add("kind", "Kind", filters.kind && labelOf(kindOptions, filters.kind), { kind: undefined });
-  add("model", "Model", filters.model, { model: undefined });
-  add("author", "Made by", filters.author && labelOf(authors, filters.author), { author: undefined });
-  add("recorded", "Voice actor", filters.recorded && labelOf(RECORDED_OPTIONS, filters.recorded), { recorded: undefined });
+  add("kind", l.kind, filters.kind ? labelOf(kindOptions, filters.kind) : undefined, { kind: undefined });
+  add("model", f.model, filters.model, { model: undefined });
+  add("author", f.author, filters.author ? labelOf(authors, filters.author) : undefined, { author: undefined });
+  add("recorded", f.recorded, filters.recorded ? labelOf(recordedOptions, filters.recorded) : undefined, { recorded: undefined });
   if (filters.generatedAfter || filters.generatedBefore) {
-    add("generated", "Made", `${filters.generatedAfter ?? "…"} to ${filters.generatedBefore ?? "today"}`, {
+    add("generated", f.generated, fill(v.between, { from: filters.generatedAfter ?? "…", to: filters.generatedBefore ?? v.today }), {
       generatedAfter: undefined,
       generatedBefore: undefined,
     });
   }
-  add("dirty", "Pronunciation", filters.dirty ? "moved" : undefined, { dirty: undefined });
-  add("short", "Length", filters.short ? "short only" : undefined, { short: undefined });
+  add("dirty", f.dirty, filters.dirty ? v.moved : undefined, { dirty: undefined });
+  add("short", l.length, filters.short ? v.shortOnly : undefined, { short: undefined });
 
   return (
     <CatalogueSearch
@@ -120,7 +129,7 @@ export function SearchBar({
       onClearAll={onClearAll}
       groups={
         <>
-          <FilterGroup title="Where" description={`Which ${section.facetLabel.toLowerCase()} the line belongs to.`}>
+          <FilterGroup title={l.where} description={fill(l.whereHint, { facet: section.facetLabel.toLowerCase() })}>
             <FilterSelect
               label={section.facetLabel}
               value={filters.mapID === undefined ? undefined : String(filters.mapID)}
@@ -129,7 +138,7 @@ export function SearchBar({
             />
             {kindOptions.length > 0 && (
               <FilterSegments
-                label="Kind"
+                label={l.kind}
                 value={filters.kind}
                 options={kindOptions}
                 onChange={(kind) => onChange({ kind: kind as ExplorerFilters["kind"] })}
@@ -137,28 +146,28 @@ export function SearchBar({
             )}
           </FilterGroup>
 
-          <FilterGroup title="The take" description="How the audio was made.">
+          <FilterGroup title={s.groups.take} description={s.groups.takeHint}>
             {madeBy && (
               <>
-                <FilterSelect label="Model" value={filters.model} options={madeBy.models.map((value) => ({ value, label: value }))} onChange={(model) => onChange({ model })} />
-                <FilterSelect label="Made by" any="Anyone" value={filters.author} options={authors} onChange={(author) => onChange({ author })} />
+                <FilterSelect label={f.model} value={filters.model} options={madeBy.models.map((value) => ({ value, label: value }))} onChange={(model) => onChange({ model })} />
+                <FilterSelect label={f.author} any={v.anyone} value={filters.author} options={authors} onChange={(author) => onChange({ author })} />
               </>
             )}
             {recordable && (
               <FilterSelect
-                label="Voice actor"
+                label={f.recorded}
                 value={filters.recorded}
-                options={RECORDED_OPTIONS}
+                options={recordedOptions}
                 onChange={(recorded) => onChange({ recorded: recorded as Recorded | undefined })}
               />
             )}
-            <FilterDates label="Made between" after={filters.generatedAfter} before={filters.generatedBefore} onChange={onChange} />
+            <FilterDates label={l.madeBetween} after={filters.generatedAfter} before={filters.generatedBefore} onChange={onChange} />
           </FilterGroup>
 
-          <FilterGroup title="Marked lines" description="Lines whose audio may need another look.">
+          <FilterGroup title={s.groups.marked} description={l.markedLinesHint}>
             {/* Not a value of "audio": a line can be up to date and carry this at once. */}
-            <FilterToggle label="Pronunciation moved" checked={filters.dirty ?? false} onChange={(dirty) => onChange({ dirty: dirty || undefined })} />
-            <FilterToggle label="Short lines only" checked={filters.short ?? false} onChange={(short) => onChange({ short: short || undefined })} />
+            <FilterToggle label={l.pronunciationMoved} checked={filters.dirty ?? false} onChange={(dirty) => onChange({ dirty: dirty || undefined })} />
+            <FilterToggle label={l.shortOnly} checked={filters.short ?? false} onChange={(short) => onChange({ short: short || undefined })} />
           </FilterGroup>
         </>
       }

@@ -18,6 +18,13 @@ describe('the main process speaks the chosen language', () => {
     expect(t('errors.failed', { text: 'boom' })).toBe('出了点问题：boom')
   })
 
+  it('uses the selected language for the common main-process errors', () => {
+    setMainLanguage('deDE')
+    expect(t('errors.failed', { text: 'boom' })).toBe('Etwas ist schiefgelaufen: boom')
+    setMainLanguage('zhTW')
+    expect(t('errors.cancelled')).toBe('已取消。')
+  })
+
   it('translates what is thrown at the moment it is thrown, not when the module loaded', () => {
     expect(linkedMessage()).toContain('development checkout')
     setMainLanguage('zhCN')

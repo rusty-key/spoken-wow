@@ -12,6 +12,7 @@ import { ArrowLeft, Pause, Pencil, Play, RefreshCw, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
 import { ACCEPT_TONE, LiteButton, REJECT_TONE } from "@/components/LiteControls";
 import Link from "@/components/LocaleLink";
 import OverrideDialog from "@/components/OverrideDialog";
@@ -111,6 +112,7 @@ export default function SortQueue({
   /** The section's released pack versions by language, to flag a report heard on an old pack. */
   latestPacks: PackVersions;
 }) {
+  const t = useUiText();
   const lang = useLang();
   // Held from the first render: a refresh while sorting brings back a list without the lines
   // already answered, and the position would then point past the card on screen.
@@ -303,7 +305,7 @@ export default function SortQueue({
       size="sm"
       onClick={previous}
       disabled={index === 0 || busy !== null}
-      title="Go back to the last line and change its answer"
+      title={t.reports.goBack}
     >
       <Undo2 />
       Previous
@@ -314,7 +316,7 @@ export default function SortQueue({
   if (!group) {
     return (
       <main className="mx-auto flex max-w-xl flex-col items-center px-4 pt-16 pb-24 text-center">
-        <p className="text-2xl font-semibold">All sorted</p>
+        <p className="text-2xl font-semibold">{t.reports.allSorted}</p>
         <p className="text-muted-foreground mt-2 text-sm">
           No open {SOURCE_LABELS[source].toLowerCase()} reports left in your queue.
         </p>
@@ -334,7 +336,7 @@ export default function SortQueue({
     <main className="mx-auto flex max-w-xl flex-col gap-4 px-4 pt-4 pb-56">
       <header className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <Link href="/reports/sort" aria-label="Back to sections" className="hover:bg-muted -ml-2 rounded-md p-2">
+          <Link href="/reports/sort" aria-label={t.reports.backToSections} className="hover:bg-muted -ml-2 rounded-md p-2">
             <ArrowLeft className="size-5" />
           </Link>
           <span className="flex-1 font-medium">{SOURCE_LABELS[source]}</span>
@@ -572,13 +574,14 @@ function LineCard({
   onRetry: () => void;
   onRestored: (version: number) => void;
 }) {
+  const t = useUiText();
   const text = detail?.text ?? "";
   const unwritten = detail !== null && detail.text === null;
 
   return (
     <section className={cn("bg-card flex flex-col gap-2 rounded-xl border p-4", ringed && "ring-foreground/40 ring-2")}>
       {looked === undefined ? (
-        <p className="text-muted-foreground text-sm">Looking up the line…</p>
+        <p className="text-muted-foreground text-sm">{t.reports.lookingUp}</p>
       ) : looked === "error" ? (
         <p className="text-sm">
           Couldn&apos;t load the line.{" "}
@@ -598,7 +601,7 @@ function LineCard({
           {/* The text is the expand control, as each report below is: [X] does the same from
               the keyboard. */}
           {unwritten ? (
-            <p className="text-muted-foreground text-sm italic">No story in this language yet.</p>
+            <p className="text-muted-foreground text-sm italic">{t.reports.noStory}</p>
           ) : (
             <p
               className={cn(
@@ -657,7 +660,7 @@ function LineCard({
           <Hint>[R]</Hint>
         </Button>
       </div>
-      {detail && !detail.audioSrc ? <p className="text-muted-foreground text-xs">No audio on file.</p> : null}
+      {detail && !detail.audioSrc ? <p className="text-muted-foreground text-xs">{t.reports.noAudioOnFile}</p> : null}
       {notice ? <p className="text-xs text-emerald-500">{notice}</p> : null}
     </section>
   );

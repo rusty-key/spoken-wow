@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import ReleaseLog from "@/components/ReleaseLog";
 import ReleaseReview from "@/components/ReleaseReview";
 import { Toaster, useToast } from "@/components/ui/toast";
+import { useUiText } from "@/components/UiTextProvider";
 import { useLocalDates } from "@/components/useLocalDates";
 import { langName, type Lang } from "@/lib/lang";
 import { cn } from "@/lib/utils";
@@ -293,6 +294,7 @@ function SectionCard({
   bumpable: boolean;
   onRelease: (bump: ReleaseBump) => void;
 }) {
+  const t = useUiText();
   const date = useLocalDates();
   const logRun = current ?? last;
   const [reviewing, setReviewing] = useState(false);
@@ -319,7 +321,7 @@ function SectionCard({
         </span>
       </header>
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-        <dt className="text-muted-foreground">Last release</dt>
+        <dt className="text-muted-foreground">{t.release.lastRelease}</dt>
         <dd className="tabular-nums">
           {released?.startedAt ? (
             <>
@@ -329,10 +331,10 @@ function SectionCard({
               {released.by && <span className="text-muted-foreground"> · {released.by}</span>}
             </>
           ) : (
-            <span className="text-muted-foreground">Not released from here yet</span>
+            <span className="text-muted-foreground">{t.release.notReleasedYet}</span>
           )}
         </dd>
-        <dt className="text-muted-foreground">Unreleased</dt>
+        <dt className="text-muted-foreground">{t.release.unreleased}</dt>
         <dd className="tabular-nums">
           {nothing ? (
             <span className="text-muted-foreground">
@@ -361,7 +363,7 @@ function SectionCard({
             </>
           )}
         </dd>
-        <dt className="text-muted-foreground">Status</dt>
+        <dt className="text-muted-foreground">{t.release.status}</dt>
         <dd className="min-w-0">
           {current ? (
             <span className="inline-flex flex-wrap items-center gap-x-2">
@@ -400,10 +402,10 @@ function SectionCard({
                 )}
               />
               {outcomeText(last)}
-              {last.githubUrl && <RunLink run={last}>Run</RunLink>}
+              {last.githubUrl && <RunLink run={last}>{t.release.run}</RunLink>}
             </span>
           ) : (
-            <span className="text-muted-foreground">Ready</span>
+            <span className="text-muted-foreground">{t.release.ready}</span>
           )}
         </dd>
       </dl>
@@ -412,9 +414,9 @@ function SectionCard({
         <div className="mr-auto flex min-w-0 flex-wrap items-center gap-x-3">
           {logRun && <ReleaseLog run={logRun} />}
           {current ? (
-            <p className="text-muted-foreground text-xs">Releasing now. You can leave this page.</p>
+            <p className="text-muted-foreground text-xs">{t.release.releasingNow}</p>
           ) : queued ? (
-            <p className="text-muted-foreground text-xs">It starts by itself. You can leave this page.</p>
+            <p className="text-muted-foreground text-xs">{t.release.startsByItself}</p>
           ) : (
             waitingFor && !bumpable && <p className="text-muted-foreground text-xs">Waits for {waitingFor} to finish.</p>
           )}
@@ -459,6 +461,7 @@ function SectionCard({
  * the "100/415 blobs" it counts. A run that announces neither shows no bar rather than a guess.
  */
 function Progress({ run }: { run: RunView }) {
+  const t = useUiText();
   const step = /step (\d+) of (\d+)/.exec(run.step ?? "");
   if (!step) return null;
   const [at, of] = [Number(step[1]), Number(step[2])];
@@ -469,7 +472,7 @@ function Progress({ run }: { run: RunView }) {
     <div>
       <div
         role="progressbar"
-        aria-label="Release progress"
+        aria-label={t.release.progress}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(share * 100)}

@@ -8,6 +8,8 @@ import FilterLink from "@/components/FilterLink";
 import { ChevronDownIcon, PlayIcon } from "lucide-react";
 
 import { RowActions, StateWord, type RowAction } from "@/components/catalogue/RowParts";
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 import { useState } from "react";
 
 import ReportsBadge from "@/components/ReportsBadge";
@@ -57,18 +59,6 @@ type Props<L extends ExplorerLine> = {
 
 // The same colour discipline as the quests explorer: red is only ever a real problem, amber
 // is something that has drifted, grey is a fact about the row.
-const STATE_TONE = {
-  missing: "missing",
-  stale: "stale",
-  current: "current",
-} as const;
-
-const STATE_LABEL = {
-  missing: "no audio",
-  stale: "audio outdated",
-  current: "",
-} as const;
-
 /**
  * The heading over one zone's or instance's lines, which the results come grouped by. A click
  * narrows the list to it.
@@ -86,12 +76,13 @@ export function GroupHeader<L extends ExplorerLine>({
   onNarrow: (line: L) => void;
   href: (line: L) => string;
 }) {
+  const t = useUiText();
   const chip = section.chip(line);
   return (
     <tr className="cat-group">
       <th colSpan={columns} scope="colgroup">
         {chip === null ? null : (
-          <FilterLink href={href(line)} onApply={() => onNarrow(line)} className="cat-group-name" title={`Show only ${chip}`}>
+          <FilterLink href={href(line)} onApply={() => onNarrow(line)} className="cat-group-name" title={fill(t.catalogue.row.showOnly, { name: chip })}>
             <Untranslated missing={line.zoneNameMissing}>{chip}</Untranslated>
           </FilterLink>
         )}
@@ -127,13 +118,17 @@ export function LineRow<L extends ExplorerLine>({
   // English standing in for the language is not this language's text to override, and the
   // route refuses it.
   const overridable = !unwritten && line.translated !== false;
+  const t = useUiText();
   const [expanded, setExpanded] = useState(false);
   // Missing or outdated audio makes generating the row's task: a gold button, not a menu item.
   const needsTake = canRegenerate && !unwritten && (line.state === "missing" || line.state === "stale");
   const generate: RowAction = {
-    label: line.state === "missing" ? "Generate" : "Regenerate",
-    aria: `${line.state === "missing" ? "Generate" : "Regenerate"} ${line.name}`,
-    disabled: state?.phase === "busy" ? "Generating already" : undefined,
+    label: line.state === "missing" ? t.catalogue.row.generate : t.catalogue.row.regenerate,
+    aria: fill(
+      line.state === "missing" ? t.catalogue.row.actions.generateForPlace : t.catalogue.row.actions.regenerateForPlace,
+      { subject: line.name },
+    ),
+    disabled: state?.phase === "busy" ? t.catalogue.row.generatingAlready : undefined,
     emphasis: needsTake,
     onClick: () => onRegenerate(line),
   };
@@ -167,7 +162,7 @@ export function LineRow<L extends ExplorerLine>({
             disabled={!playable}
             onClick={() => onPlay(line)}
             title={playable ? `${line.file}.mp3` : undefined}
-            aria-label={`Play ${line.name}`}
+            aria-label={fill(t.catalogue.row.actions.playFor, { subject: line.name })}
             className="cat-play"
           >
             <PlayIcon />
@@ -180,7 +175,7 @@ export function LineRow<L extends ExplorerLine>({
           {/* An untranslated line shows the English in its place, marked as such, so the
               reader still sees what the line is about and that it is waiting to be written. */}
           {unwritten ? (
-            <span className="text-muted-foreground min-w-0 flex-1 italic">No story in this language yet.</span>
+            <span className="text-muted-foreground min-w-0 flex-1 italic">{t.catalogue.row.noStory}</span>
           ) : (
             <div className="min-w-0 flex-1">
               <span className={cn("block whitespace-pre-wrap", !expanded && "line-clamp-1")}>
@@ -191,7 +186,7 @@ export function LineRow<L extends ExplorerLine>({
               {line.override && (
                 <span
                   className={cn("cat-override", !expanded && "line-clamp-1")}
-                  title="What your team's audio says"
+                  title={t.catalogue.row.overrideSays}
                 >
                   {line.override.text}
                 </span>
@@ -214,8 +209,8 @@ export function LineRow<L extends ExplorerLine>({
           {/* A row click reaches no keyboard, so expanding needs a real control too. */}
           <button
             aria-expanded={expanded}
-            aria-label={expanded ? "Collapse this line" : "Show the whole line"}
-            title={expanded ? "Collapse" : "Show the whole line"}
+            aria-label={expanded ? t.catalogue.row.collapse : t.catalogue.row.showWhole}
+            title={expanded ? t.catalogue.row.collapseShort : t.catalogue.row.showWhole}
             onClick={() => setExpanded((open) => !open)}
             className="cat-expand"
           >
@@ -231,7 +226,7 @@ export function LineRow<L extends ExplorerLine>({
           ) : (
             <Untranslated missing={line.nameMissing}>{line.name}</Untranslated>
           )}
-          {onRename && <RenameButton label={`Name ${line.name}`} onClick={() => onRename(line)} />}
+          {onRename && <RenameButton label={fill(t.catalogue.row.nameIt, { name: line.name })} onClick={() => onRename(line)} />}
         </span>
         {section.detail && <span className="cat-two-sub">{section.detail(line)}</span>}
       </td>
@@ -244,13 +239,15 @@ export function LineRow<L extends ExplorerLine>({
         {/* The regeneration outcome replaces the state: once a line has just been made,
             "no audio" is stale and confusing rather than merely redundant. */}
         {state?.phase === "busy" ? (
-          <StateWord tone="skip">Generating…</StateWord>
+          <StateWord tone="skip">{t.catalogue.row.generating}</StateWord>
         ) : state?.phase === "error" ? (
           <StateWord tone="error">{state.message}</StateWord>
         ) : state?.phase === "done" ? (
           <StateWord tone="current">v{state.version}</StateWord>
-        ) : STATE_LABEL[line.state] ? (
-          <StateWord tone={STATE_TONE[line.state]}>{STATE_LABEL[line.state]}</StateWord>
+        ) : line.state !== "current" ? (
+          <StateWord tone={line.state}>
+            {line.state === "missing" ? t.catalogue.row.noAudio : t.catalogue.row.outdated}
+          </StateWord>
         ) : unwritten ? null : (
           // Which take is live, and the way to any other. The label IS the control, so
           // there is no second icon for a history nobody knew was there.
@@ -266,8 +263,8 @@ export function LineRow<L extends ExplorerLine>({
         {/* Beneath the state rather than inside it: the text has not moved, so this line is
             `current` and dirty at once, and one word cannot say both. */}
         {line.dirty && !unwritten && (
-          <div className="text-amber-300" title="Cut before a pronunciation it speaks was changed">
-            pronunciation
+          <div className="text-amber-300" title={t.catalogue.row.pronunciationMovedWhy}>
+            {t.catalogue.row.pronunciationMoved}
           </div>
         )}
       </td>
@@ -293,7 +290,7 @@ export function LineRow<L extends ExplorerLine>({
             // Rewriting the prose is free and not an audio action, so it has its own gate: a
             // translator writes a language they may not regenerate.
             ...(canEdit
-              ? [{ label: "Edit", aria: `Edit the text of ${line.name}`, title: "Rewrite this line's text", onClick: () => onEditText(line) }]
+              ? [{ label: t.catalogue.row.edit, aria: fill(t.catalogue.row.actions.editTextFor, { subject: line.name }), title: t.catalogue.row.editTextTitle, onClick: () => onEditText(line) }]
               : []),
             ...(needsTake ? [generate] : []),
           ]}
@@ -303,23 +300,23 @@ export function LineRow<L extends ExplorerLine>({
             ...(canRegenerate && overridable
               ? [
                   {
-                    label: "Override",
-                    aria: `Override the text of ${line.name}`,
-                    title: "Change what your team says",
+                    label: t.catalogue.row.override,
+                    aria: fill(t.catalogue.row.actions.overrideFor, { subject: line.name }),
+                    title: t.catalogue.row.overrideTitle,
                     marked: Boolean(line.override),
                     onClick: () => onOverride(line),
                   },
                 ]
               : []),
             // Outside the edit gates: reporting is what a visitor who cannot sign in has.
-            ...(onReport ? [{ label: "Report a problem", aria: `Report a problem with ${line.name}`, onClick: () => onReport(line) }] : []),
+            ...(onReport ? [{ label: t.catalogue.row.report, aria: fill(t.catalogue.row.actions.reportFor, { subject: line.name }), onClick: () => onReport(line) }] : []),
             // Only on a dirty row: a clean one would be offering to clear nothing.
             ...(canRegenerate && line.dirty && !unwritten
               ? [
                   {
-                    label: "Clear the pronunciation mark",
-                    aria: `Clear the pronunciation mark on ${line.name}`,
-                    title: "The take stays; only the mark goes",
+                    label: t.catalogue.row.clearMark,
+                    aria: fill(t.catalogue.row.actions.clearMarkFor, { subject: line.name }),
+                    title: t.catalogue.row.clearMarkTitle,
                     onClick: () => onClearDirty(line),
                   },
                 ]

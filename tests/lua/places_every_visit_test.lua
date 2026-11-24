@@ -130,5 +130,20 @@ Z:ForgetAutoplayHistory()
 ZoneChanged(Z)
 Expect("after Forget Visited Places, the place is read on the next arrival", Spoken:GetQueueSize(), 2)
 
+-- An account-wide read on one character suppresses the same zone and area on the next.
+-- Read Every Visit is deliberately off in both so it cannot override the sharing toggle.
+SpokenPlacesAccountHistory = nil
+Z = Boot({ autoplayExplored = true, autoplayEveryVisit = false })
+Z:SetSharesHistory(true)
+Expect("first character's zone and area are spoken", ArriveAndListen(Z), 2)
+Z = Boot({ autoplayExplored = true, autoplayEveryVisit = false })
+Expect("another character sees the account-wide setting", Z:SharesHistory(), true)
+Expect("another character does not repeat the heard stories", ArriveAndListen(Z), 0)
+Z:OnAreaDiscovered("Razor Hill")
+Expect("a new character's discovery does not repeat it either", Spoken:GetQueueSize(), 0)
+Z:ForgetAutoplayHistory()
+ZoneChanged(Z)
+Expect("account-wide forget allows the stories again", Spoken:GetQueueSize(), 2)
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll every-visit tests passed")

@@ -8,6 +8,8 @@ import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 import { STAGE_LABELS } from "@/components/contribution-chips";
 import SendersButton from "@/components/SendersButton";
 import { useLocalDates } from "@/components/useLocalDates";
@@ -86,6 +88,7 @@ export default function CorrectionTable({
   initial: CorrectionRow[];
 }) {
   const when = useLocalDates();
+  const t = useUiText();
   const lang = useLang();
   /**
    * Statuses changed here, with the server's status they were changed from: once a refresh brings
@@ -249,7 +252,7 @@ export default function CorrectionTable({
             </div>
 
             <div className="min-w-0">
-              <p className="bs-label">{row.wordings.length > 1 ? "Ours now · pick the wording it changes" : "Ours now"}</p>
+              <p className="bs-label">{row.wordings.length > 1 ? t.corrections.pickWording : t.corrections.oursNow}</p>
               {row.wordings.length > 1 ? (
                 <ul className="flex flex-col gap-2">
                   {row.wordings.map((line, index) => (
@@ -259,7 +262,7 @@ export default function CorrectionTable({
                       ) : (
                         <button
                           type="button"
-                          title="Set the player's text against this wording"
+                          title={t.corrections.setAgainst}
                           className="text-muted-foreground hover:text-foreground text-left whitespace-pre-wrap"
                           onClick={() => setPicked((all) => ({ ...all, [row.id]: index }))}
                         >
@@ -277,12 +280,12 @@ export default function CorrectionTable({
             </div>
 
             <div className="min-w-0">
-              <p className="bs-label">Theirs</p>
+              <p className="bs-label">{t.corrections.theirs}</p>
               {editing ? (
                 <textarea
                   className="bs-textarea"
                   value={after}
-                  aria-label="The player's text"
+                  aria-label={t.corrections.playerText}
                   rows={Math.max(3, after.split("\n").length + 1)}
                   onChange={(event) => setDrafts((all) => ({ ...all, [row.id]: event.target.value }))}
                 />
@@ -295,19 +298,19 @@ export default function CorrectionTable({
                   disabled={hold}
                   title={
                     classWord
-                      ? "Stop putting this quest's class word back in contributions"
-                      : "This quest names a class as a word of its own, not the reader's class: put the word back in this quest's waiting and future contributions"
+                      ? t.corrections.stopPuttingBack
+                      : t.corrections.putWordBack
                   }
                   className="text-muted-foreground hover:text-foreground mt-1 text-xs underline-offset-2 hover:underline"
                   onClick={() => row.quest && void markClassWord(row.id, row.quest.questId, !classWord)}
                 >
-                  {classWord ? "Class word kept for this quest · undo" : "$c is this quest's own word"}
+                  {classWord ? t.corrections.classWordKept : t.corrections.classWordOwn}
                 </button>
               ) : null}
               {current === "rejected" ? (
                 <ul className="bs-findings">
                   <li className="bs-finding bs-finding-drop">
-                    {(reasonsOf[row.id] ?? row.rejectReason) ? `Rejected: ${reasonsOf[row.id] ?? row.rejectReason}` : "Rejected, no reason given."}
+                    {(reasonsOf[row.id] ?? row.rejectReason) ? fill(t.corrections.rejected, { reason: reasonsOf[row.id] ?? row.rejectReason ?? "" }) : t.corrections.rejectedNoReason}
                   </li>
                 </ul>
               ) : null}
@@ -320,7 +323,7 @@ export default function CorrectionTable({
                     type="button"
                     className="bs-btn"
                     disabled={hold}
-                    title={source === "readables" ? "Take the player's text as this page's words" : "Take the player's text as what this line speaks"}
+                    title={source === "readables" ? t.corrections.takeAsPage : t.corrections.takeAsText}
                     onClick={() => void resolve(row.id, "accepted", fixOf(row))}
                   >
                     Replace ours
@@ -343,12 +346,12 @@ export default function CorrectionTable({
                       disabled={hold}
                       title={
                         splits
-                          ? "Keep our text and add the player's beside it: as another wording, or one for each player gender"
-                          : "Keep our text and add the player's as another wording of this moment"
+                          ? t.corrections.addBeside
+                          : t.corrections.addAsWording
                       }
                       onClick={() => (splits ? setKeepingId(chooser ? null : row.id) : keepAsWording())}
                     >
-                      {splits ? "Keep both…" : "Keep both"}
+                      {splits ? t.corrections.keepBothMore : t.corrections.keepBoth}
                     </button>
                   ) : null}
                   <button
@@ -359,7 +362,7 @@ export default function CorrectionTable({
                       setDrafts(({ [row.id]: open, ...rest }) => (open === undefined ? { ...rest, [row.id]: savedOf(row) } : rest))
                     }
                   >
-                    {editing ? "Cancel edit" : "Edit text"}
+                    {editing ? t.corrections.cancelEdit : t.corrections.editText}
                   </button>
                   <button type="button" className="bs-btn bs-btn-text" disabled={hold} onClick={() => setDroppingId(dropping ? null : row.id)}>
                     Drop…
@@ -385,18 +388,18 @@ export default function CorrectionTable({
               </span>
               <span>Filed {when(row.createdAt)}</span>
               <Link href={localeHref(lang, wording.editHref)} className="underline underline-offset-[3px]">
-                {source === "readables" ? "Open the page" : "Open the line"}
+                {source === "readables" ? t.corrections.openPage : t.corrections.openLine}
               </Link>
             </div>
             {row.body ? (
               <div className="bs-aside">
-                <p className="bs-label">What the player said was wrong</p>
+                <p className="bs-label">{t.corrections.saidWrong}</p>
                 <p className="bs-text">{row.body}</p>
               </div>
             ) : null}
             {chooser ? (
               <div className="bs-reasons bs-choices">
-                <p>Keep both how? A split plays ours to one gender and theirs to the other.</p>
+                <p>{t.corrections.keepBothHow}</p>
                 <button type="button" className="bs-reason" disabled={hold} onClick={keepAsWording}>
                   As another wording
                 </button>
@@ -437,7 +440,10 @@ export default function CorrectionTable({
       {initial.length > limit ? (
         <div className="px-4 py-3">
           <button type="button" className="bs-btn bs-btn-text" onClick={() => setLimit((shown) => shown + CORRECTIONS_SHOWN)}>
-            Show {Math.min(CORRECTIONS_SHOWN, initial.length - limit)} more of {initial.length - limit}
+            {fill(t.corrections.showMore, {
+              n: Math.min(CORRECTIONS_SHOWN, initial.length - limit),
+              m: initial.length - limit,
+            })}
           </button>
         </div>
       ) : null}

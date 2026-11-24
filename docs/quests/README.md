@@ -505,6 +505,17 @@ source filter narrows to it. In the addon, **Read Quest Progress Text** (`Audio.
 on by default, under Read Automatically) lets a player stop the progress page reading itself;
 its Play button and `/spq read` still play it.
 
+**Read Quest Lines Once per Account** is an opt-in checkbox under Read Automatically on
+the Spoken Quests settings page. When enabled, an offer, a progress line and a reward
+each play automatically only until that part of the quest has been heard on the account.
+They are independent: hearing an offer does not prevent hearing its reward. Only
+recordings that actually start playing are remembered; queued and dropped recordings do
+not count. They are remembered with the option off too, so turning it on skips what the
+account has already heard. The account-wide history uses quest ID and part, not filenames or voice
+language. Manual playback remains available. The switch and history live in
+`SpokenQuestsSettings.global` regardless of profile. Older playbacks cannot be
+reconstructed, so the history begins when this feature is installed.
+
 **The level filter is for spending a limited budget on low-level quests first.** `?minLevel=` and
 `?maxLevel=` bound the quest's level, both inclusive, and a batch started from the page uses them
 too. The level lives in `quest_level`, loaded from an extract by a one-off script. A line with no
@@ -579,10 +590,32 @@ words on `/<lang>/player-words`. A language without words for it keeps the token
 unvoiceable.
 ruRU wraps a token in the client's declension escape, `|3-6($c)`, which the game prints in
 grammatical case 6 (`|3-1` genitive, `|3-3` accusative, `|3-6` in address). Each reader's declined
-forms on `/<lang>/player-words` give the word per case number. An escape whose case has no word,
+forms on `/<lang>/player-words` give the word per case number; Spoken's own ruRU words carry
+cases 1, 3 and 6, the ones its text uses. An escape whose case has no word,
 or one around a word rather than a token (`|3-6(Друид)`, a contributor's own class), stays
-unvoiceable.
-Contributions triage shows any token or declension escape still left after this, a bare `<` or `>`, and a gap
+unvoiceable. So does a line holding any other escape the client resolves as it prints the line
+(`|1이;가;`, `|2`, `|4one:few:many;`, `|n`, `|cff…|r`) until the substitution speaks it.
+`|n` is spoken as the line break it prints, and `|cAARRGGBB…|r` as its words, in every language.
+koKR's particle escape, `$c|1이여;여;`, takes its first form after a syllable ending in a
+consonant and its second after a vowel, as the client does, judged on the word the token became
+(`모험가여`); `(으)로` takes `로` after ㄹ.
+A particle glued straight onto a token (`$N이`, `$c을`, written for a name ending in a consonant)
+is chosen the same way, so `$N이` reads `모험가가`.
+frFR's `|2` before a word reads `de ` before a consonant and `d'` before a vowel, judged on the word
+the token became (`légion |2 $n` reads `légion d'aventurier`).
+The plural escape after a number, `1 |4пару:пары:пар;`, reads the form that number takes (Russian's
+one, few and many; one and many where it has two forms). One with no number before it stays.
+In frFR and itIT, the word before a token elides when the token's word starts with a vowel:
+`le $c` reads `l'aventurier`, `du $c` `de l'aventurier`, `ce $c` `cet aventurier`, and itIT's
+`una $c` `un'avventuriera`. An `h` counts as a consonant.
+deDE's `$R` is an adjective used as a noun, so it declines: `ein $R` reads `Reisender`, `der $R`
+`Reisende`, and `dem`, `einen`, `dieses $R` (or `einer $R` on the female variant) `Reisenden`, with
+up to two adjectives between. The weak form is "Race after der" on `/<lang>/player-words`.
+Two damaged branches are spoken too, on the line's one side: zhCN's and zhTW's full-width
+separators (`$G男孩：女孩；`), and a branch that lost its `g` where its first letter is not Latin
+(`$готов:готова;`, `$小伙子:小姑娘;`; ruRU's may lose the `;` as well). Neither makes the line
+branch, so it stays one file for both readers. A Latin one (`$einen Schüler:…;`) stays a token.
+Contributions triage shows any token or client escape still left after this, a bare `<` or `>`, and a gap
 before `.` or `,` or a mid-sentence double space where a gender branch came through empty,
 above the row's text, so a line that would never be voiced is seen before it is accepted.
 Doing this at send time rather than in the rows covers every way a
@@ -2017,6 +2050,16 @@ of its event, whatever quest the globals named when the event arrived, and it an
 pages of the quest the watcher read are marked read; another quest's pages still wait for their
 own event. A page shown again keeps its mark. A replay bypasses DialogueUI's wait for its window
 and reads the record, whatever else is open, and no window's close stops it.
+
+The watcher reads a page only after it has stayed on screen 0.4 s. An addon that completes the
+quest from `QUEST_PROGRESS` (Questie) shows the progress page for about a quarter of a second, and
+when the reward page then waits for the player to pick a reward, the watcher reads that page
+first. Before it does, it reads the quest's progress page from its record, if nothing has read
+it, so the progress line plays and then the reward's, as when `QUEST_TURNED_IN` replays both.
+That window is still open, so its close stops the progress line as it stops the reward's. A
+player who clicks Continue within 0.4 s hears the progress line too: the client does not say
+whether an addon or the player clicked. Read Quest Progress Text off, or Read After Accepting on,
+reads the reward page alone.
 
 `tests/lua/quest_overlay_test.lua` covers the other thing the quest UI owes a player: the play
 button beside each quest in the quest log. There are two quest logs to draw it in. The old one

@@ -85,6 +85,11 @@ SpokenPlacesSettings.discoveredOnlyDefaultOn = nil
 Z:OnSettingsBound()
 Expect("an off stored before it was on by default is turned on once", Z:Get("loreDiscoveredOnly"), true)
 Z:Set("loreDiscoveredOnly", false)
+Expect("the map highlight is off in a fresh profile", Z:Get("highlightOpacity"), 0)
+Z:Set("highlightOpacity", 0.35)
+Z:OnSettingsBound()
+Expect("...and a stored highlight is kept", Z:Get("highlightOpacity"), 0.35)
+Z:Set("highlightOpacity", 0)
 -- The rest is about the unfiltered list: the row is a place this character has not found.
 Spoken:StopAll()
 for _, file in ipairs({ "UI/LorePage" }) do assert(loadfile(PLACES .. file .. ".lua"))("Spoken_Places", Z) end

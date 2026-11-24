@@ -220,7 +220,15 @@ export interface ProductStatus {
  */
 export const UI_LANGUAGES = [
   { code: 'enUS', bcp47: 'en-US' },
-  { code: 'zhCN', bcp47: 'zh-CN' }
+  { code: 'deDE', bcp47: 'de-DE' },
+  // One Spanish window serves both Spanish voice languages, so it is not named after Spain.
+  { code: 'esES', bcp47: 'es-ES', name: 'Español' },
+  { code: 'frFR', bcp47: 'fr-FR' },
+  { code: 'koKR', bcp47: 'ko-KR' },
+  { code: 'ptBR', bcp47: 'pt-BR' },
+  { code: 'ruRU', bcp47: 'ru-RU' },
+  { code: 'zhCN', bcp47: 'zh-CN' },
+  { code: 'zhTW', bcp47: 'zh-TW' }
 ] as const
 
 export type UiLanguage = (typeof UI_LANGUAGES)[number]['code']

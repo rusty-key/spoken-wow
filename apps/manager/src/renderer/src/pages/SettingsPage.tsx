@@ -202,7 +202,7 @@ function GeneralSection(): ReactNode {
       <Select label={S.settings.languageName} value={settings.uiLanguage} onChange={(v) => set({ uiLanguage: v as UiLanguage })}>
         {UI_LANGUAGES.map((l) => (
           <option key={l.code} value={l.code}>
-            {languageName(l.code)}
+            {'name' in l ? l.name : languageName(l.code)}
           </option>
         ))}
       </Select>

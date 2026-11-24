@@ -136,6 +136,21 @@ GossipPanel.panel.layout:Refresh()
 Expect("ticking it again brings the frequency back", greetings.dropdownDisabled, false)
 Expect("...and Read NPC Chat After Quests", followup and followup.layoutReason, nil)
 
+local accountOnce
+for _, child in ipairs(SettingsPanel.panel.content.children) do
+    if type(child.text) == "table" and child.text.text == VO.L.OPT_PANEL_ACCOUNT_ONCE then
+        accountOnce = child
+    end
+end
+Expect("a quest replay setting is exposed in Quests", accountOnce ~= nil, true)
+Expect("the account replay setting is off by default", VO.Addon:SkipsHeardQuestLines(), false)
+accountOnce:SetChecked(true)
+accountOnce:GetScript("OnClick")(accountOnce)
+Expect("the checkbox enables account-wide replay suppression", VO.Addon.db.global.SkipHeardQuestLines, true)
+accountOnce:SetChecked(false)
+accountOnce:GetScript("OnClick")(accountOnce)
+Expect("the checkbox can disable replay suppression", VO.Addon:SkipsHeardQuestLines(), false)
+
 local entries = stub.OpenDropdown(greetings)
 local offered = {}
 for _, entry in ipairs(entries) do table.insert(offered, entry.text) end

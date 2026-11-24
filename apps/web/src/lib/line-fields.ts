@@ -21,26 +21,6 @@ export type Source = (typeof SOURCES)[number];
 export type NpcType = (typeof NPC_TYPES)[number];
 
 /**
- * What the filters show for each source and speaker type. The corpus values are identifiers
- * ("followup" names the corpus rows and the followup/ folder) and read as typos in a filter, so
- * each gets the words a person would use. The URL keeps carrying the value, never the label.
- */
-export const SOURCE_LABELS: Record<Source, string> = {
-  accept: "Quest accept",
-  progress: "Quest progress",
-  complete: "Quest complete",
-  gossip: "Gossip",
-  followup: "Follow-up",
-  chatter: "NPC chat",
-};
-
-export const NPC_TYPE_LABELS: Record<NpcType, string> = {
-  creature: "NPC",
-  gameobject: "Object",
-  item: "Item",
-};
-
-/**
  * The source filter off a query string: `source=accept,gossip`, comma-separated so a link made
  * when it took one value still reads. Unknown values are dropped, and none left is no filter.
  */

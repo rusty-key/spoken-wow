@@ -61,9 +61,13 @@ function SettingsPanel:Setup()
     local progress = layout:Checkbox(L.OPT_PANEL_PROGRESS, nil,
         function() return Addon:IsProgressTextOn() end,
         function(value) Addon:SetProgressText(value) end)
+    local once = layout:Checkbox(L.OPT_PANEL_ACCOUNT_ONCE, nil,
+        function() return Addon:SkipsHeardQuestLines() end,
+        function(value) Addon:SetSkipsHeardQuestLines(value) end)
     layout:Outdent()
     layout:Requires(followup, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
     layout:Requires(progress, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
+    layout:Requires(once, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
     local stopOnClose = layout:Checkbox(L.OPT_PANEL_STOP_ON_CLOSE, nil,
         function() return audio().StopAudioOnDisengage end,
         function(value) audio().StopAudioOnDisengage = value end,
@@ -82,9 +86,9 @@ function SettingsPanel:Setup()
             if value then GreetingFirst:SetDialogApart() end
         end)
     layout:Requires(greetingFirst, function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
-    layout:Requires(layout:Checkbox(L.OPT_PANEL_READ_AFTER_CLOSE, nil,
-        function() return audio().ReadAfterClose end,
-        function(value) audio().ReadAfterClose = value end),
+    layout:Requires(layout:Checkbox(L.OPT_PANEL_READ_AFTER_ACCEPT, nil,
+        function() return audio().ReadAfterAccept end,
+        function(value) audio().ReadAfterAccept = value end),
         function() return Addon:IsAutoplayOn() end, L.REASON_AUTOPLAY)
 
     local function HasQuestLog()

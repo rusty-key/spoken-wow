@@ -158,11 +158,16 @@ function Widget:StartMoving() self.moving=true end
 function Widget:StopMovingOrSizing() self.moving=false end
 function Widget:SetFrameStrata(v) self.strata=v end
 function Widget:GetFrameStrata() return self.strata or 'MEDIUM' end
+function Widget:EnableMouse(v) self.mouseEnabled=v end
+function Widget:EnableMouseWheel(v) self.wheelEnabled=v end
+function Widget:Enable() self.enabled=true end
+function Widget:Disable() self.enabled=false end
+function Widget:IsEnabled() return self.enabled~=false end
 for _,method in ipairs({'SetClampedToScreen','SetMovable','SetResizable',
-    'SetBackdropColor','SetBackdropBorderColor','EnableMouse','RegisterForDrag','RegisterForClicks',
-    'SetJustifyH','SetJustifyV','SetSpacing','StartSizing','SetClipsChildren','EnableMouseWheel',
+    'SetBackdropColor','SetBackdropBorderColor','RegisterForDrag','RegisterForClicks',
+    'SetJustifyH','SetJustifyV','SetSpacing','StartSizing','SetClipsChildren',
     'SetColorTexture','RegisterEvent','SetUserPlaced','SetTexCoord','SetVertexColor',
-    'SetStatusBarTexture','SetMinMaxValues','SetValue','SetStatusBarColor','Enable','Disable','AddLine',
+    'SetStatusBarTexture','SetMinMaxValues','SetValue','SetStatusBarColor','AddLine',
     'SetBlendMode'}) do Widget[method]=function() end end
 CreateFrame=function(kind,name,parent)
     local w=New(parent,kind); if name then _G[name]=w end; return w

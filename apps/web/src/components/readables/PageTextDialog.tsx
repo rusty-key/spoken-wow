@@ -1,6 +1,7 @@
 "use client";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
 import { withLang } from "@/lib/lang";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
@@ -43,6 +44,7 @@ type Props = {
 };
 
 export function PageTextDialog({ line, onClose, onSaved }: Props) {
+  const t = useUiText();
   const lang = useLang();
   const dialog = useRef<HTMLDialogElement | null>(null);
   const [text, setText] = useState("");
@@ -193,7 +195,7 @@ export function PageTextDialog({ line, onClose, onSaved }: Props) {
       <input
         value={note}
         onChange={(event) => setNote(event.target.value)}
-        placeholder="Why this change? (optional, kept with the version)"
+        placeholder={t.catalogue.row.changeNote}
         className="border-border bg-background mt-3 w-full rounded border p-2 text-sm"
       />
 
@@ -223,7 +225,7 @@ export function PageTextDialog({ line, onClose, onSaved }: Props) {
                     type="button"
                     disabled={busy}
                     onClick={() => void restore(version.version)}
-                    title="Make this the live text"
+                    title={t.catalogue.row.makeLiveText}
                     className="text-muted-foreground/50 hover:bg-accent hover:text-foreground ml-auto shrink-0 rounded p-1"
                   >
                     <RotateCcw size={12} />

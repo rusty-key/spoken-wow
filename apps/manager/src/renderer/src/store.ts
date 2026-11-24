@@ -4,6 +4,7 @@ import { createContext, createElement, useContext, useEffect, useMemo, useReduce
 import type { AddGameResult, ManagerApi, UpdaterState } from '@shared/api'
 import type { Catalog, CatalogUpdate, CommunityCatalog, ContributorView, GameInstall, JobProgress, Product, ProductStatus, SendResult, Settings, SharingStatus, Snapshot, VoiceLanguage } from '@shared/types'
 import { DEFAULT_SETTINGS, isSupportedFlavor } from '@shared/types'
+import { languageName } from '@shared/products'
 import { api, errorText } from './api'
 import type { Platform } from './strings'
 import { setUiLanguage } from './strings'
@@ -449,6 +450,12 @@ export function useStore(): Store {
 export function useSupportedGames(): GameInstall[] {
   const { state } = useStore()
   return useMemo(() => state.games.filter((g) => isSupportedFlavor(g.flavor)), [state.games])
+}
+
+/** Only the channel's index names a team's language. */
+export function useLanguageName(): (code: string) => string {
+  const { state } = useStore()
+  return (code) => state.languages.find((l) => l.code === code)?.name ?? languageName(code)
 }
 
 /** The game the Spoken, Voice packs and Community pages show: the chosen one, else the first supported. */

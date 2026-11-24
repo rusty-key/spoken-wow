@@ -1,6 +1,7 @@
 "use client";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
 import { withLang } from "@/lib/lang";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, RotateCcw } from "lucide-react";
@@ -42,6 +43,7 @@ type Props<L extends ExplorerLine> = {
 };
 
 export function LoreDialog<L extends ExplorerLine>({ section, line, onClose, onSaved }: Props<L>) {
+  const t = useUiText();
   const lang = useLang();
   const route = `${section.api}/${section.textApi}`;
   // Places derives its short text from `full` on save, so one box writes both.
@@ -196,7 +198,7 @@ export function LoreDialog<L extends ExplorerLine>({ section, line, onClose, onS
       <input
         value={note}
         onChange={(event) => setNote(event.target.value)}
-        placeholder="Why this change? (optional, kept with the version)"
+        placeholder={t.catalogue.row.changeNote}
         className="mt-3 w-full rounded border border-border bg-background p-2 text-sm"
       />
 
@@ -222,7 +224,7 @@ export function LoreDialog<L extends ExplorerLine>({ section, line, onClose, onS
                     type="button"
                     disabled={busy}
                     onClick={() => void restore(version.version)}
-                    title="Make this the live text"
+                    title={t.catalogue.row.makeLiveText}
                     className="ml-auto shrink-0 rounded p-1 text-muted-foreground/50 hover:bg-accent hover:text-foreground"
                   >
                     <RotateCcw size={12} />

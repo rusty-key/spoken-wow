@@ -1,14 +1,11 @@
+"use client";
+
 import { Chips } from "@/components/backstage/Tabs";
+import { useUiText } from "@/components/UiTextProvider";
 import type { PendingCounts } from "@/lib/contributions/pending";
 import { SECTIONS, type Section } from "@/lib/contributions/query";
 import { localeHref, type Lang } from "@/lib/lang";
-import { hasObservedNames } from "@/lib/names/observed";
-
-const SECTION_LABELS: Record<Section, string> = {
-  quests: "Quests & gossip",
-  readables: "Readables",
-  places: "Places",
-};
+import { hasObservedNames } from "@/lib/names/has-observed";
 
 /**
  * The sections of /contributions as chips, each with how many new rows wait in it, corrections to
@@ -25,18 +22,28 @@ export default function ContributionsTabs({
   pending?: PendingCounts;
   names?: number;
 }) {
+  const t = useUiText().pages;
   return (
     <Chips
-      label="Section"
+      label={t.sections}
       active={section}
       tabs={[
         ...SECTIONS.map((key) => ({
           value: key,
-          label: SECTION_LABELS[key],
+          label: t.tabs[key],
           href: localeHref(lang, `/contributions/${key}`),
           count: pending?.sections[key],
         })),
-        ...(!hasObservedNames(lang) ? [] : [{ value: "names", label: "Names", href: localeHref(lang, "/contributions/names"), count: names }]),
+        ...(!hasObservedNames(lang)
+          ? []
+          : [
+              {
+                value: "names",
+                label: t.tabs.names,
+                href: localeHref(lang, "/contributions/names"),
+                count: names,
+              },
+            ]),
       ]}
     />
   );
