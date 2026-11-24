@@ -142,7 +142,7 @@ const EN = {
 
 export type MessageKey = keyof typeof EN
 
-const ZH: Record<MessageKey, string> = {
+const ZH_CN: Record<MessageKey, string> = {
   'errors.cancelled': '已取消。',
   'errors.failed': '出了点问题：{text}',
 
@@ -267,60 +267,151 @@ const ZH: Record<MessageKey, string> = {
 // be thrown while a language is being changed. Rare diagnostic wording inherits English until it
 // is needed by a translated workflow.
 const DE: Partial<Record<MessageKey, string>> = {
-  'errors.cancelled': 'Abgebrochen.', 'errors.failed': 'Etwas ist schiefgelaufen: {text}', 'jobs.waiting': 'Warte auf einen anderen Vorgang für dieses Spiel',
-  'games.chooseFirst': 'Wähle zuerst einen Ordner.', 'games.notThere': 'Dieser Ordner existiert nicht.', 'games.addFailed': 'Der Ordner konnte nicht hinzugefügt werden.',
-  'service.upToDate': 'Spoken ist aktuell.', 'service.waitForJobs': 'Warte zuerst, bis laufende Downloads und Installationen beendet sind.', 'service.turnOnSharing': 'Aktiviere zuerst das Teilen.',
-  'contributor.reachSite': 'Die Website ist nicht erreichbar.', 'contributor.signInFirst': 'Melde dich zuerst auf der Website an.', 'contributor.badCredentials': 'E-Mail oder Passwort ist falsch.',
-  'upload.reachStore': 'Verbindung zu {store} nicht möglich.', 'upload.notInstalled': '{folder} ist nicht installiert.', 'upload.cannotRead': '{folder} konnte nicht gelesen werden.',
-  'updater.installFailed': 'Das Update konnte nicht installiert werden. Versuche es erneut oder schließe den Manager und öffne ihn wieder.', 'updater.checkFailed': 'Es konnte nicht nach einem neuen Manager gesucht werden. Prüfe deine Verbindung.', 'tray.show': 'Spoken Manager anzeigen', 'tray.quit': 'Spoken Manager beenden'
+  'errors.cancelled': 'Abgebrochen.',
+  'errors.failed': 'Etwas ist schiefgelaufen: {text}',
+  'jobs.waiting': 'Warte auf einen anderen Vorgang für dieses Spiel',
+  'games.chooseFirst': 'Wähle zuerst einen Ordner.',
+  'games.notThere': 'Dieser Ordner existiert nicht.',
+  'games.addFailed': 'Der Ordner konnte nicht hinzugefügt werden.',
+  'service.upToDate': 'Spoken ist aktuell.',
+  'service.waitForJobs': 'Warte zuerst, bis laufende Downloads und Installationen beendet sind.',
+  'service.turnOnSharing': 'Aktiviere zuerst das Teilen.',
+  'contributor.reachSite': 'Die Website ist nicht erreichbar.',
+  'contributor.signInFirst': 'Melde dich zuerst auf der Website an.',
+  'contributor.badCredentials': 'E-Mail oder Passwort ist falsch.',
+  'upload.reachStore': 'Verbindung zu {store} nicht möglich.',
+  'upload.notInstalled': '{folder} ist nicht installiert.',
+  'upload.cannotRead': '{folder} konnte nicht gelesen werden.',
+  'updater.installFailed': 'Das Update konnte nicht installiert werden. Versuche es erneut oder schließe den Manager und öffne ihn wieder.',
+  'updater.checkFailed': 'Es konnte nicht nach einem neuen Manager gesucht werden. Prüfe deine Verbindung.',
+  'tray.show': 'Spoken Manager anzeigen',
+  'tray.quit': 'Spoken Manager beenden'
 }
 const ES: Partial<Record<MessageKey, string>> = {
-  'errors.cancelled': 'Cancelado.', 'errors.failed': 'Algo salió mal: {text}', 'jobs.waiting': 'Esperando otra tarea en este juego',
-  'games.chooseFirst': 'Elige primero una carpeta.', 'games.notThere': 'Esa carpeta no existe.', 'games.addFailed': 'No se pudo añadir esa carpeta.',
-  'service.upToDate': 'Spoken está actualizado.', 'service.waitForJobs': 'Espera a que terminen las descargas e instalaciones en curso.', 'service.turnOnSharing': 'Activa primero Compartir.',
-  'contributor.reachSite': 'No se pudo acceder al sitio.', 'contributor.signInFirst': 'Inicia sesión primero en el sitio.', 'contributor.badCredentials': 'El correo o la contraseña no son correctos.',
-  'upload.reachStore': 'No se pudo acceder a {store}.', 'upload.notInstalled': '{folder} no está instalado.', 'upload.cannotRead': 'No se pudo leer {folder}.',
-  'updater.installFailed': 'No se pudo instalar la actualización. Inténtalo de nuevo o cierra y vuelve a abrir el administrador.', 'updater.checkFailed': 'No se pudo buscar un administrador nuevo. Comprueba tu conexión.', 'tray.show': 'Mostrar Spoken Manager', 'tray.quit': 'Salir de Spoken Manager'
+  'errors.cancelled': 'Cancelado.',
+  'errors.failed': 'Algo salió mal: {text}',
+  'jobs.waiting': 'Esperando otra tarea en este juego',
+  'games.chooseFirst': 'Elige primero una carpeta.',
+  'games.notThere': 'Esa carpeta no existe.',
+  'games.addFailed': 'No se pudo añadir esa carpeta.',
+  'service.upToDate': 'Spoken está actualizado.',
+  'service.waitForJobs': 'Espera a que terminen las descargas e instalaciones en curso.',
+  'service.turnOnSharing': 'Activa primero Compartir.',
+  'contributor.reachSite': 'No se pudo acceder al sitio.',
+  'contributor.signInFirst': 'Inicia sesión primero en el sitio.',
+  'contributor.badCredentials': 'El correo o la contraseña no son correctos.',
+  'upload.reachStore': 'No se pudo acceder a {store}.',
+  'upload.notInstalled': '{folder} no está instalado.',
+  'upload.cannotRead': 'No se pudo leer {folder}.',
+  'updater.installFailed': 'No se pudo instalar la actualización. Inténtalo de nuevo o cierra y vuelve a abrir el administrador.',
+  'updater.checkFailed': 'No se pudo buscar un administrador nuevo. Comprueba tu conexión.',
+  'tray.show': 'Mostrar Spoken Manager',
+  'tray.quit': 'Salir de Spoken Manager'
 }
 const FR: Partial<Record<MessageKey, string>> = {
-  'errors.cancelled': 'Annulé.', 'errors.failed': 'Une erreur est survenue : {text}', 'jobs.waiting': 'En attente d’une autre tâche pour ce jeu',
-  'games.chooseFirst': 'Choisis d’abord un dossier.', 'games.notThere': 'Ce dossier n’existe pas.', 'games.addFailed': 'Impossible d’ajouter ce dossier.',
-  'service.upToDate': 'Spoken est à jour.', 'service.waitForJobs': 'Attends la fin des téléchargements et installations en cours.', 'service.turnOnSharing': 'Active d’abord le partage.',
-  'contributor.reachSite': 'Impossible de joindre le site.', 'contributor.signInFirst': 'Connecte-toi d’abord au site.', 'contributor.badCredentials': 'Cet e-mail ou ce mot de passe est incorrect.',
-  'upload.reachStore': 'Impossible de joindre {store}.', 'upload.notInstalled': '{folder} n’est pas installé.', 'upload.cannotRead': 'Impossible de lire {folder}.',
-  'updater.installFailed': 'Impossible d’installer la mise à jour. Réessaie ou ferme puis rouvre le Manager.', 'updater.checkFailed': 'Impossible de rechercher un nouveau Manager. Vérifie ta connexion.', 'tray.show': 'Afficher Spoken Manager', 'tray.quit': 'Quitter Spoken Manager'
+  'errors.cancelled': 'Annulé.',
+  'errors.failed': 'Une erreur est survenue : {text}',
+  'jobs.waiting': 'En attente d’une autre tâche pour ce jeu',
+  'games.chooseFirst': 'Choisis d’abord un dossier.',
+  'games.notThere': 'Ce dossier n’existe pas.',
+  'games.addFailed': 'Impossible d’ajouter ce dossier.',
+  'service.upToDate': 'Spoken est à jour.',
+  'service.waitForJobs': 'Attends la fin des téléchargements et installations en cours.',
+  'service.turnOnSharing': 'Active d’abord le partage.',
+  'contributor.reachSite': 'Impossible de joindre le site.',
+  'contributor.signInFirst': 'Connecte-toi d’abord au site.',
+  'contributor.badCredentials': 'Cet e-mail ou ce mot de passe est incorrect.',
+  'upload.reachStore': 'Impossible de joindre {store}.',
+  'upload.notInstalled': '{folder} n’est pas installé.',
+  'upload.cannotRead': 'Impossible de lire {folder}.',
+  'updater.installFailed': 'Impossible d’installer la mise à jour. Réessaie ou ferme puis rouvre le Manager.',
+  'updater.checkFailed': 'Impossible de rechercher un nouveau Manager. Vérifie ta connexion.',
+  'tray.show': 'Afficher Spoken Manager',
+  'tray.quit': 'Quitter Spoken Manager'
 }
 const KO: Partial<Record<MessageKey, string>> = {
-  'errors.cancelled': '취소됨.', 'errors.failed': '문제가 발생했습니다: {text}', 'jobs.waiting': '이 게임의 다른 작업을 기다리는 중',
-  'games.chooseFirst': '먼저 폴더를 선택하세요.', 'games.notThere': '폴더가 존재하지 않습니다.', 'games.addFailed': '폴더를 추가할 수 없습니다.',
-  'service.upToDate': 'Spoken이 최신 상태입니다.', 'service.waitForJobs': '진행 중인 다운로드와 설치가 끝날 때까지 기다리세요.', 'service.turnOnSharing': '먼저 공유를 켜세요.',
-  'contributor.reachSite': '사이트에 연결할 수 없습니다.', 'contributor.signInFirst': '먼저 사이트에 로그인하세요.', 'contributor.badCredentials': '이메일 또는 비밀번호가 올바르지 않습니다.',
-  'upload.reachStore': '{store}에 연결할 수 없습니다.', 'upload.notInstalled': '{folder}이(가) 설치되지 않았습니다.', 'upload.cannotRead': '{folder}을(를) 읽을 수 없습니다.',
-  'updater.installFailed': '업데이트를 설치할 수 없습니다. 다시 시도하거나 Manager를 닫았다가 다시 여세요.', 'updater.checkFailed': '새 Manager를 확인할 수 없습니다. 연결을 확인하세요.', 'tray.show': 'Spoken Manager 표시', 'tray.quit': 'Spoken Manager 종료'
+  'errors.cancelled': '취소됨.',
+  'errors.failed': '문제가 발생했습니다: {text}',
+  'jobs.waiting': '이 게임의 다른 작업을 기다리는 중',
+  'games.chooseFirst': '먼저 폴더를 선택하세요.',
+  'games.notThere': '폴더가 존재하지 않습니다.',
+  'games.addFailed': '폴더를 추가할 수 없습니다.',
+  'service.upToDate': 'Spoken이 최신 상태입니다.',
+  'service.waitForJobs': '진행 중인 다운로드와 설치가 끝날 때까지 기다리세요.',
+  'service.turnOnSharing': '먼저 공유를 켜세요.',
+  'contributor.reachSite': '사이트에 연결할 수 없습니다.',
+  'contributor.signInFirst': '먼저 사이트에 로그인하세요.',
+  'contributor.badCredentials': '이메일 또는 비밀번호가 올바르지 않습니다.',
+  'upload.reachStore': '{store}에 연결할 수 없습니다.',
+  'upload.notInstalled': '{folder}이(가) 설치되지 않았습니다.',
+  'upload.cannotRead': '{folder}을(를) 읽을 수 없습니다.',
+  'updater.installFailed': '업데이트를 설치할 수 없습니다. 다시 시도하거나 Manager를 닫았다가 다시 여세요.',
+  'updater.checkFailed': '새 Manager를 확인할 수 없습니다. 연결을 확인하세요.',
+  'tray.show': 'Spoken Manager 표시',
+  'tray.quit': 'Spoken Manager 종료'
 }
 const PT: Partial<Record<MessageKey, string>> = {
-  'errors.cancelled': 'Cancelado.', 'errors.failed': 'Algo deu errado: {text}', 'jobs.waiting': 'Aguardando outra tarefa neste jogo',
-  'games.chooseFirst': 'Escolha uma pasta primeiro.', 'games.notThere': 'Essa pasta não existe.', 'games.addFailed': 'Não foi possível adicionar essa pasta.',
-  'service.upToDate': 'O Spoken está atualizado.', 'service.waitForJobs': 'Aguarde o fim dos downloads e instalações em andamento.', 'service.turnOnSharing': 'Ative o compartilhamento primeiro.',
-  'contributor.reachSite': 'Não foi possível acessar o site.', 'contributor.signInFirst': 'Entre primeiro no site.', 'contributor.badCredentials': 'O e-mail ou a senha não estão corretos.',
-  'upload.reachStore': 'Não foi possível acessar {store}.', 'upload.notInstalled': '{folder} não está instalado.', 'upload.cannotRead': 'Não foi possível ler {folder}.',
-  'updater.installFailed': 'Não foi possível instalar a atualização. Tente novamente ou feche e abra o Manager.', 'updater.checkFailed': 'Não foi possível verificar um novo Manager. Verifique sua conexão.', 'tray.show': 'Mostrar Spoken Manager', 'tray.quit': 'Sair do Spoken Manager'
+  'errors.cancelled': 'Cancelado.',
+  'errors.failed': 'Algo deu errado: {text}',
+  'jobs.waiting': 'Aguardando outra tarefa neste jogo',
+  'games.chooseFirst': 'Escolha uma pasta primeiro.',
+  'games.notThere': 'Essa pasta não existe.',
+  'games.addFailed': 'Não foi possível adicionar essa pasta.',
+  'service.upToDate': 'O Spoken está atualizado.',
+  'service.waitForJobs': 'Aguarde o fim dos downloads e instalações em andamento.',
+  'service.turnOnSharing': 'Ative o compartilhamento primeiro.',
+  'contributor.reachSite': 'Não foi possível acessar o site.',
+  'contributor.signInFirst': 'Entre primeiro no site.',
+  'contributor.badCredentials': 'O e-mail ou a senha não estão corretos.',
+  'upload.reachStore': 'Não foi possível acessar {store}.',
+  'upload.notInstalled': '{folder} não está instalado.',
+  'upload.cannotRead': 'Não foi possível ler {folder}.',
+  'updater.installFailed': 'Não foi possível instalar a atualização. Tente novamente ou feche e abra o Manager.',
+  'updater.checkFailed': 'Não foi possível verificar um novo Manager. Verifique sua conexão.',
+  'tray.show': 'Mostrar Spoken Manager',
+  'tray.quit': 'Sair do Spoken Manager'
 }
 const RU: Partial<Record<MessageKey, string>> = {
-  'errors.cancelled': 'Отменено.', 'errors.failed': 'Что-то пошло не так: {text}', 'jobs.waiting': 'Ожидание другой задачи для этой игры',
-  'games.chooseFirst': 'Сначала выберите папку.', 'games.notThere': 'Этой папки не существует.', 'games.addFailed': 'Не удалось добавить папку.',
-  'service.upToDate': 'Spoken обновлён.', 'service.waitForJobs': 'Сначала дождитесь завершения загрузок и установок.', 'service.turnOnSharing': 'Сначала включите общий доступ.',
-  'contributor.reachSite': 'Не удалось связаться с сайтом.', 'contributor.signInFirst': 'Сначала войдите на сайт.', 'contributor.badCredentials': 'Неверный адрес электронной почты или пароль.',
-  'upload.reachStore': 'Не удалось связаться с {store}.', 'upload.notInstalled': '{folder} не установлен.', 'upload.cannotRead': 'Не удалось прочитать {folder}.',
-  'updater.installFailed': 'Не удалось установить обновление. Повторите попытку или закройте и снова откройте менеджер.', 'updater.checkFailed': 'Не удалось проверить наличие нового менеджера. Проверьте подключение.', 'tray.show': 'Показать Spoken Manager', 'tray.quit': 'Выйти из Spoken Manager'
+  'errors.cancelled': 'Отменено.',
+  'errors.failed': 'Что-то пошло не так: {text}',
+  'jobs.waiting': 'Ожидание другой задачи для этой игры',
+  'games.chooseFirst': 'Сначала выберите папку.',
+  'games.notThere': 'Этой папки не существует.',
+  'games.addFailed': 'Не удалось добавить папку.',
+  'service.upToDate': 'Spoken обновлён.',
+  'service.waitForJobs': 'Сначала дождитесь завершения загрузок и установок.',
+  'service.turnOnSharing': 'Сначала включите общий доступ.',
+  'contributor.reachSite': 'Не удалось связаться с сайтом.',
+  'contributor.signInFirst': 'Сначала войдите на сайт.',
+  'contributor.badCredentials': 'Неверный адрес электронной почты или пароль.',
+  'upload.reachStore': 'Не удалось связаться с {store}.',
+  'upload.notInstalled': '{folder} не установлен.',
+  'upload.cannotRead': 'Не удалось прочитать {folder}.',
+  'updater.installFailed': 'Не удалось установить обновление. Повторите попытку или закройте и снова откройте менеджер.',
+  'updater.checkFailed': 'Не удалось проверить наличие нового менеджера. Проверьте подключение.',
+  'tray.show': 'Показать Spoken Manager',
+  'tray.quit': 'Выйти из Spoken Manager'
 }
 const ZH_TW: Partial<Record<MessageKey, string>> = {
-  'errors.cancelled': '已取消。', 'errors.failed': '發生問題：{text}', 'jobs.waiting': '正在等待這個遊戲的其他作業',
-  'games.chooseFirst': '請先選擇資料夾。', 'games.notThere': '這個資料夾不存在。', 'games.addFailed': '無法加入這個資料夾。',
-  'service.upToDate': 'Spoken 已是最新。', 'service.waitForJobs': '請先等待目前的下載與安裝完成。', 'service.turnOnSharing': '請先開啟分享。',
-  'contributor.reachSite': '無法連線到網站。', 'contributor.signInFirst': '請先登入網站。', 'contributor.badCredentials': '電子郵件或密碼不正確。',
-  'upload.reachStore': '無法連線到 {store}。', 'upload.notInstalled': '{folder} 尚未安裝。', 'upload.cannotRead': '無法讀取 {folder}。',
-  'updater.installFailed': '無法安裝更新。請重試，或關閉管理器後重新開啟。', 'updater.checkFailed': '無法檢查新的管理器。請檢查連線。', 'tray.show': '顯示 Spoken 管理器', 'tray.quit': '退出 Spoken 管理器'
+  'errors.cancelled': '已取消。',
+  'errors.failed': '發生問題：{text}',
+  'jobs.waiting': '正在等待這個遊戲的其他作業',
+  'games.chooseFirst': '請先選擇資料夾。',
+  'games.notThere': '這個資料夾不存在。',
+  'games.addFailed': '無法加入這個資料夾。',
+  'service.upToDate': 'Spoken 已是最新。',
+  'service.waitForJobs': '請先等待目前的下載與安裝完成。',
+  'service.turnOnSharing': '請先開啟分享。',
+  'contributor.reachSite': '無法連線到網站。',
+  'contributor.signInFirst': '請先登入網站。',
+  'contributor.badCredentials': '電子郵件或密碼不正確。',
+  'upload.reachStore': '無法連線到 {store}。',
+  'upload.notInstalled': '{folder} 尚未安裝。',
+  'upload.cannotRead': '無法讀取 {folder}。',
+  'updater.installFailed': '無法安裝更新。請重試，或關閉管理器後重新開啟。',
+  'updater.checkFailed': '無法檢查新的管理器。請檢查連線。',
+  'tray.show': '顯示 Spoken 管理器',
+  'tray.quit': '退出 Spoken 管理器'
 }
 
 const MESSAGES: Record<UiLanguage, Record<MessageKey, string>> = {
@@ -331,7 +422,7 @@ const MESSAGES: Record<UiLanguage, Record<MessageKey, string>> = {
   koKR: { ...EN, ...KO },
   ptBR: { ...EN, ...PT },
   ruRU: { ...EN, ...RU },
-  zhCN: ZH,
+  zhCN: ZH_CN,
   zhTW: { ...EN, ...ZH_TW }
 }
 
