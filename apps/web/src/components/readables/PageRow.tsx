@@ -7,11 +7,7 @@ import { Untranslated, UntranslatedMark } from "@/components/Untranslated";
 import FilterLink from "@/components/FilterLink";
 import { ChevronDownIcon, PlayIcon } from "lucide-react";
 
-import {
-  RowActions,
-  StateWord,
-  type RowAction,
-} from "@/components/catalogue/RowParts";
+import { RowActions, StateWord, type RowAction } from "@/components/catalogue/RowParts";
 import { useUiText } from "@/components/UiTextProvider";
 import { fill } from "@/lib/site-text/format";
 import { useState } from "react";
@@ -88,30 +84,13 @@ export function BookHeader({
   return (
     <tr className="cat-group">
       <th colSpan={columns} scope="colgroup">
-        <FilterLink
-          href={bookHref(line)}
-          onApply={() => onSelectBook(line)}
-          className="cat-group-name"
-          title={fill(t.catalogue.row.showOnly, { name: line.title })}
-        >
-          <Untranslated missing={line.missing?.title}>
-            {line.title}
-          </Untranslated>
+        <FilterLink href={bookHref(line)} onApply={() => onSelectBook(line)} className="cat-group-name" title={fill(t.catalogue.row.showOnly, { name: line.title })}>
+          <Untranslated missing={line.missing?.title}>{line.title}</Untranslated>
         </FilterLink>
-        {onRename && (
-          <RenameButton
-            label={fill(t.catalogue.row.nameIt, { name: line.title })}
-            onClick={() => onRename(line)}
-          />
-        )}
+        {onRename && <RenameButton label={fill(t.catalogue.row.nameIt, { name: line.title })} onClick={() => onRename(line)} />}
         <span className="cat-group-meta">
-          {line.ownerKind === "object"
-            ? t.catalogue.row.inWorld
-            : t.catalogue.row.carried}{" "}
-          · {materialName(line.material)} ·{" "}
-          {line.pageCount === 1
-            ? t.catalogue.row.pagesOne
-            : fill(t.catalogue.row.pagesMany, { n: line.pageCount })}
+          {line.ownerKind === "object" ? t.catalogue.row.inWorld : t.catalogue.row.carried} · {materialName(line.material)} ·{" "}
+          {line.pageCount === 1 ? t.catalogue.row.pagesOne : fill(t.catalogue.row.pagesMany, { n: line.pageCount })}
           {/* Which object or item opens it: two objects sharing a name is why the addon needs a checksum. */}
           <span className="cat-ids"> · {line.ownerIds.join(", ")}</span>
         </span>
@@ -143,25 +122,15 @@ export function PageRow({
   const t = useUiText();
   const [expanded, setExpanded] = useState(false);
   // Missing or outdated audio makes generating the row's task: a gold button, not a menu item.
-  const needsTake =
-    canRegenerate &&
-    line.generatable &&
-    (line.state === "missing" || line.state === "stale");
+  const needsTake = canRegenerate && line.generatable && (line.state === "missing" || line.state === "stale");
   const generate: RowAction = {
-    label:
-      line.state === "missing"
-        ? t.catalogue.row.generate
-        : t.catalogue.row.regenerate,
+    label: line.state === "missing" ? t.catalogue.row.generate : t.catalogue.row.regenerate,
     aria: fill(
-      line.state === "missing"
-        ? t.catalogue.row.actions.generateForPage
-        : t.catalogue.row.actions.regenerateForPage,
+      line.state === "missing" ? t.catalogue.row.actions.generateForPage : t.catalogue.row.actions.regenerateForPage,
       { page: line.pageNumber, title: line.title },
     ),
     disabled: !line.generatable
-      ? fill(t.catalogue.row.actions.cannotVoice, {
-          reason: line.skipReason ?? "",
-        })
+      ? fill(t.catalogue.row.actions.cannotVoice, { reason: line.skipReason ?? "" })
       : state?.phase === "busy"
         ? t.catalogue.row.generatingAlready
         : undefined,
@@ -178,8 +147,7 @@ export function PageRow({
    */
   function toggleFromRow(event: React.MouseEvent<HTMLTableRowElement>) {
     const target = event.target as HTMLElement | null;
-    if (target?.closest("button, a, input, textarea, select, [role='dialog']"))
-      return;
+    if (target?.closest("button, a, input, textarea, select, [role='dialog']")) return;
     if (endsSelection()) return;
     setExpanded((open) => !open);
   }
@@ -197,10 +165,7 @@ export function PageRow({
           disabled={!playable}
           onClick={() => onPlay(line)}
           title={playable ? `${line.file}.mp3` : undefined}
-          aria-label={fill(t.catalogue.row.actions.playForPage, {
-            page: line.pageNumber,
-            title: line.title,
-          })}
+          aria-label={fill(t.catalogue.row.actions.playForPage, { page: line.pageNumber, title: line.title })}
           className="cat-play"
         >
           <PlayIcon />
@@ -210,15 +175,8 @@ export function PageRow({
       <td>
         <div className="cat-line">
           <div className="min-w-0 flex-1">
-            <span
-              className={cn(
-                "block whitespace-pre-wrap",
-                !expanded && "line-clamp-1",
-              )}
-            >
-              <Untranslated missing={line.missing?.text}>
-                {shownText(line)}
-              </Untranslated>
+            <span className={cn("block whitespace-pre-wrap", !expanded && "line-clamp-1")}>
+              <Untranslated missing={line.missing?.text}>{shownText(line)}</Untranslated>
             </span>
             {/* Under the original rather than in its place: the original is what the page and
                 the game still show, and the override is only what the team's take says. */}
@@ -249,38 +207,18 @@ export function PageRow({
               needs a real control. It doubles as the only thing saying rows expand. */}
           <button
             aria-expanded={expanded}
-            aria-label={
-              expanded
-                ? t.catalogue.row.collapsePage
-                : t.catalogue.row.showWholePage
-            }
-            title={
-              expanded
-                ? t.catalogue.row.collapseShort
-                : t.catalogue.row.showWholePage
-            }
+            aria-label={expanded ? t.catalogue.row.collapsePage : t.catalogue.row.showWholePage}
+            title={expanded ? t.catalogue.row.collapseShort : t.catalogue.row.showWholePage}
             onClick={() => setExpanded((open) => !open)}
             className="cat-expand"
           >
-            <ChevronDownIcon
-              className={cn(
-                "size-3.5 transition-transform",
-                expanded && "rotate-180",
-              )}
-            />
+            <ChevronDownIcon className={cn("size-3.5 transition-transform", expanded && "rotate-180")} />
           </button>
         </div>
       </td>
 
       <td>
-        <span className="cat-two-top">
-          {line.pageCount > 1
-            ? fill(t.catalogue.pageOf, {
-                page: line.pageNumber,
-                count: line.pageCount,
-              })
-            : t.catalogue.row.onePage}
-        </span>
+        <span className="cat-two-top">{line.pageCount > 1 ? fill(t.catalogue.pageOf, { page: line.pageNumber, count: line.pageCount }) : t.catalogue.row.onePage}</span>
         <span className="cat-two-sub">{line.chars} characters</span>
       </td>
 
@@ -297,14 +235,10 @@ export function PageRow({
         ) : !line.generatable ? (
           // Why this page is silent, rather than leaving it looking merely un-narrated. It
           // is in the corpus because the game has it.
-          <span className="text-muted-foreground italic">
-            {line.skipReason}
-          </span>
+          <span className="text-muted-foreground italic">{line.skipReason}</span>
         ) : line.state !== "current" ? (
           <StateWord tone={STATE_TONE[line.state]}>
-            {line.state === "missing"
-              ? t.catalogue.row.noAudio
-              : t.catalogue.row.outdated}
+            {line.state === "missing" ? t.catalogue.row.noAudio : t.catalogue.row.outdated}
           </StateWord>
         ) : (
           // Which take is live, and the way to any other. The label IS the control: the
@@ -322,10 +256,7 @@ export function PageRow({
         {/* Beneath the state rather than inside it: the text has not moved, so this page is
             `current` and dirty at once, and one word cannot say both. */}
         {line.dirty && (
-          <div
-            className="text-amber-300"
-            title={t.catalogue.row.pronunciationMovedWhy}
-          >
+          <div className="text-amber-300" title={t.catalogue.row.pronunciationMovedWhy}>
             {t.catalogue.row.pronunciationMoved}
           </div>
         )}
@@ -343,83 +274,46 @@ export function PageRow({
 
       <td className="cat-cell-actions">
         <RowActions
-          subject={fill(t.catalogue.row.actions.pageSubject, {
-            page: line.pageNumber,
-            title: line.title,
-          })}
+          subject={fill(t.catalogue.row.actions.pageSubject, { page: line.pageNumber, title: line.title })}
           badge={
-            <ReportsBadge
-              source="readables"
-              lineId={line.id}
-              count={line.reportsOpen}
-              canTriage={canTriage}
-            />
+            <ReportsBadge source="readables" lineId={line.id} count={line.reportsOpen} canTriage={canTriage} />
           }
           primary={[
             // Gated although free: the edit is what a later regeneration would speak.
             ...(canEdit
-              ? [
-                  {
-                    label: t.catalogue.row.edit,
-                    aria: fill(t.catalogue.row.actions.editTextForPage, {
-                      page: line.pageNumber,
-                      title: line.title,
-                    }),
-                    title: t.catalogue.row.editPageTitle,
-                    onClick: () => onEditText(line),
-                  },
-                ]
+              ? [{ label: t.catalogue.row.edit, aria: fill(t.catalogue.row.actions.editTextForPage, { page: line.pageNumber, title: line.title }), title: t.catalogue.row.editPageTitle, onClick: () => onEditText(line) }]
               : []),
             ...(needsTake ? [generate] : []),
           ]}
-          more={
-            [
-              ...(canRegenerate && !needsTake ? [generate] : []),
-              // An override changes only what the team's take says, so it needs what regenerating
-              // needs. English standing in for the language is not this language's text to override.
-              ...(canRegenerate && !line.missing?.text
-                ? [
-                    {
-                      label: t.catalogue.row.override,
-                      aria: fill(t.catalogue.row.actions.overrideForPage, {
-                        page: line.pageNumber,
-                        title: line.title,
-                      }),
-                      title: t.catalogue.row.overrideTitle,
-                      marked: line.override !== null,
-                      onClick: () => onOverride(line),
-                    },
-                  ]
-                : []),
-              // Outside the edit gates: reporting is what a reader who cannot sign in has.
-              ...(onReport
-                ? [
-                    {
-                      label: t.catalogue.row.report,
-                      aria: fill(t.catalogue.row.actions.reportForPage, {
-                        page: line.pageNumber,
-                        title: line.title,
-                      }),
-                      onClick: () => onReport(line),
-                    },
-                  ]
-                : []),
-              // Only on a dirty row: a clean one would be offering to clear nothing.
-              ...(canRegenerate && line.dirty
-                ? [
-                    {
-                      label: t.catalogue.row.clearMark,
-                      aria: fill(t.catalogue.row.actions.clearMarkForPage, {
-                        page: line.pageNumber,
-                        title: line.title,
-                      }),
-                      title: t.catalogue.row.clearMarkTitle,
-                      onClick: () => onClearDirty(line),
-                    },
-                  ]
-                : []),
-            ] satisfies RowAction[]
-          }
+          more={[
+            ...(canRegenerate && !needsTake ? [generate] : []),
+            // An override changes only what the team's take says, so it needs what regenerating
+            // needs. English standing in for the language is not this language's text to override.
+            ...(canRegenerate && !line.missing?.text
+              ? [
+                  {
+                    label: t.catalogue.row.override,
+                    aria: fill(t.catalogue.row.actions.overrideForPage, { page: line.pageNumber, title: line.title }),
+                    title: t.catalogue.row.overrideTitle,
+                    marked: line.override !== null,
+                    onClick: () => onOverride(line),
+                  },
+                ]
+              : []),
+            // Outside the edit gates: reporting is what a reader who cannot sign in has.
+            ...(onReport ? [{ label: t.catalogue.row.report, aria: fill(t.catalogue.row.actions.reportForPage, { page: line.pageNumber, title: line.title }), onClick: () => onReport(line) }] : []),
+            // Only on a dirty row: a clean one would be offering to clear nothing.
+            ...(canRegenerate && line.dirty
+              ? [
+                  {
+                    label: t.catalogue.row.clearMark,
+                    aria: fill(t.catalogue.row.actions.clearMarkForPage, { page: line.pageNumber, title: line.title }),
+                    title: t.catalogue.row.clearMarkTitle,
+                    onClick: () => onClearDirty(line),
+                  },
+                ]
+              : []),
+          ] satisfies RowAction[]}
         />
       </td>
     </tr>

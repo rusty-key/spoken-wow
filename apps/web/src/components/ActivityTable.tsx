@@ -21,13 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { usePendingPush } from "@/components/usePendingPush";
 import { useLocalDates } from "@/components/useLocalDates";
-import {
-  CATEGORIES,
-  categoryOf,
-  FOLDS,
-  type Category,
-  type Group,
-} from "@/lib/activity/kinds";
+import { CATEGORIES, categoryOf, FOLDS, type Category, type Group } from "@/lib/activity/kinds";
 import type { ActivityRow } from "@/lib/activity/store";
 import { usd } from "@/lib/generation/money";
 import { isProvider, PROVIDER_NAME } from "@/lib/generation/providers";
@@ -48,16 +42,12 @@ type Filter = {
   to?: string;
 };
 
+
 /** One take the transport bar can be pointed at. */
 type Take = { source: Source; file: string; version: number };
 
 const TIME: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
-const DAY: Intl.DateTimeFormatOptions = {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-};
+const DAY: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric", year: "numeric" };
 
 /** A capability the way /admin names it, or the raw string when a later release wrote one. */
 function grantName(value: unknown): string | null {
@@ -85,9 +75,7 @@ function bodyWords(d: Record<string, unknown>): string {
 /** An NPC an activity names, by name or else by kind and id. */
 function speakerName(d: Record<string, unknown>, anNpc: string): string {
   const id = num(d.npcId);
-  return (
-    str(d.npcName) ?? (id === null ? anNpc : `${str(d.npcType) ?? "NPC"} ${id}`)
-  );
+  return str(d.npcName) ?? (id === null ? anNpc : `${str(d.npcType) ?? "NPC"} ${id}`);
 }
 
 /** "a → b", or whichever half is known: rows backfilled from older tables carry neither. */
@@ -104,10 +92,7 @@ function change(before: string | null, after: string | null): string | null {
  * own language. Where English branched inside a sentence, the branches are separate keys:
  * a sentence cut into pieces does not translate.
  */
-export function describe(
-  row: ActivityRow,
-  t: UiText["activity"]["events"],
-): { what: string; quote: string | null } {
+export function describe(row: ActivityRow, t: UiText["activity"]["events"]): { what: string; quote: string | null } {
   const d = row.detail;
   // A count or version the log did not carry reads as "?": a 0 would state something false.
   const version = num(d.version) ?? "?";
@@ -120,13 +105,8 @@ export function describe(
           : num(d.credits) !== null
             ? fill(t.credits, { n: num(d.credits)!.toLocaleString() })
             : null;
-      const provider = isProvider(d.provider)
-        ? fill(t.takeGeneratedProvider, { provider: PROVIDER_NAME[d.provider] })
-        : "";
-      return {
-        what: fill(t.takeGenerated, { version, provider }),
-        quote: cost,
-      };
+      const provider = isProvider(d.provider) ? fill(t.takeGeneratedProvider, { provider: PROVIDER_NAME[d.provider] }) : "";
+      return { what: fill(t.takeGenerated, { version, provider }), quote: cost };
     }
     case "take.restored":
       return {
@@ -136,10 +116,7 @@ export function describe(
         quote: null,
       };
     case "take.encode_failed":
-      return {
-        what: fill(t.takeEncodeFailed, { version }),
-        quote: str(d.error),
-      };
+      return { what: fill(t.takeEncodeFailed, { version }), quote: str(d.error) };
     case "recording.uploaded":
       return { what: fill(t.recordingUploaded, { version }), quote: null };
     case "recording.removed":
@@ -148,32 +125,24 @@ export function describe(
       return { what: t.takeAcked, quote: row.lineId ? null : row.subject };
     case "marks.cleared": {
       const count = num(d.count);
-      return {
-        what:
-          count === 1
-            ? t.marksClearedOne
-            : fill(t.marksClearedMany, { n: count ?? "?" }),
-        quote: null,
-      };
+      return { what: count === 1 ? t.marksClearedOne : fill(t.marksClearedMany, { n: count ?? "?" }), quote: null };
     }
     case "batch.queued": {
       const count = num(d.count);
       return {
-        what:
-          count === 1
-            ? t.batchQueuedOne
-            : fill(t.batchQueuedMany, { n: count ?? "?" }),
+        what: count === 1 ? t.batchQueuedOne : fill(t.batchQueuedMany, { n: count ?? "?" }),
         quote: str(d.label),
       };
     }
     case "batch.stopped": {
       const cancelled = num(d.cancelled);
       return {
-        what: !cancelled
-          ? t.batchStopped
-          : cancelled === 1
-            ? t.batchStoppedCancellingOne
-            : fill(t.batchStoppedCancellingMany, { n: cancelled }),
+        what:
+          !cancelled
+            ? t.batchStopped
+            : cancelled === 1
+              ? t.batchStoppedCancellingOne
+              : fill(t.batchStoppedCancellingMany, { n: cancelled }),
         quote: str(d.reason) ?? str(d.label),
       };
     }
@@ -182,10 +151,7 @@ export function describe(
       const cancelled = num(d.cancelled);
       return {
         what: fill(cancelled === 1 ? t.queueStoppedOne : t.queueStoppedMany, {
-          m:
-            batches === 1
-              ? t.oneBatch
-              : fill(t.manyBatches, { n: batches ?? "?" }),
+          m: batches === 1 ? t.oneBatch : fill(t.manyBatches, { n: batches ?? "?" }),
           n: cancelled ?? "?",
         }),
         quote: str(d.reason),
@@ -197,10 +163,7 @@ export function describe(
       return { what: t.queueResumed, quote: null };
     case "text.edited":
       if (num(d.contribution)) {
-        return {
-          what: fill(t.tookCorrection, { id: num(d.contribution)! }),
-          quote: str(d.text),
-        };
+        return { what: fill(t.tookCorrection, { id: num(d.contribution)! }), quote: str(d.text) };
       }
       return {
         what: version ? fill(t.textEditedVersion, { version }) : t.textEdited,
@@ -224,90 +187,54 @@ export function describe(
     case "name.observed":
       return { what: t.nameObserved, quote: str(d.name) };
     case "lexicon.added":
-      return {
-        what: fill(t.lexiconAdded, { subject: row.subject ?? "" }),
-        quote: str(d.after),
-      };
+      return { what: fill(t.lexiconAdded, { subject: row.subject ?? "" }), quote: str(d.after) };
     case "lexicon.edited":
       return {
         what: fill(t.lexiconEdited, { subject: row.subject ?? "" }),
         quote: change(str(d.before), str(d.after)),
       };
     case "lexicon.removed":
-      return {
-        what: fill(t.lexiconRemoved, { subject: row.subject ?? "" }),
-        quote: str(d.before),
-      };
+      return { what: fill(t.lexiconRemoved, { subject: row.subject ?? "" }), quote: str(d.before) };
     case "override.set":
       if (num(d.contribution)) {
-        return {
-          what: fill(t.tookCorrection, { id: num(d.contribution)! }),
-          quote: str(d.text),
-        };
+        return { what: fill(t.tookCorrection, { id: num(d.contribution)! }), quote: str(d.text) };
       }
       return { what: t.overrideSet, quote: str(d.text) };
     case "override.cleared":
       return { what: t.overrideCleared, quote: str(d.before) };
     case "ignore.set":
-      return {
-        what: row.lang === null ? t.ignoreSetEvery : t.ignoreSet,
-        quote: str(d.reason),
-      };
+      return { what: row.lang === null ? t.ignoreSetEvery : t.ignoreSet, quote: str(d.reason) };
     case "ignore.cleared":
       return { what: t.ignoreCleared, quote: null };
     case "setting.changed":
       return {
-        what:
-          str(d.setting) === "raceTags"
-            ? t.settingRaceTags
-            : t.settingGeneration,
+        what: str(d.setting) === "raceTags" ? t.settingRaceTags : t.settingGeneration,
         quote: null,
       };
     case "voice.cloned":
       return {
         what: num(d.sampleCount)
-          ? fill(t.voiceClonedSamples, {
-              subject: row.subject ?? "",
-              n: num(d.sampleCount)!,
-            })
+          ? fill(t.voiceClonedSamples, { subject: row.subject ?? "", n: num(d.sampleCount)! })
           : fill(t.voiceCloned, { subject: row.subject ?? "" }),
         quote: null,
       };
     case "voice.adopted":
       return {
         what: str(d.from)
-          ? fill(t.voiceAdoptedFrom, {
-              subject: row.subject ?? "",
-              from: str(d.from)!,
-            })
+          ? fill(t.voiceAdoptedFrom, { subject: row.subject ?? "", from: str(d.from)! })
           : fill(t.voiceAdopted, { subject: row.subject ?? "" }),
         quote: null,
       };
     case "reference.set":
-      return {
-        what: fill(t.referenceSet, { subject: row.subject ?? "" }),
-        quote: str(d.transcript),
-      };
+      return { what: fill(t.referenceSet, { subject: row.subject ?? "" }), quote: str(d.transcript) };
     case "reference.edited":
-      return {
-        what: fill(t.referenceEdited, { subject: row.subject ?? "" }),
-        quote: str(d.transcript),
-      };
+      return { what: fill(t.referenceEdited, { subject: row.subject ?? "" }), quote: str(d.transcript) };
     case "reference.deleted":
-      return {
-        what: fill(t.referenceDeleted, { subject: row.subject ?? "" }),
-        quote: null,
-      };
+      return { what: fill(t.referenceDeleted, { subject: row.subject ?? "" }), quote: null };
     case "reference.pinned":
-      return {
-        what: fill(t.referencePinned, { subject: row.subject ?? "" }),
-        quote: null,
-      };
+      return { what: fill(t.referencePinned, { subject: row.subject ?? "" }), quote: null };
     case "reference.unpinned":
-      return {
-        what: fill(t.referenceUnpinned, { subject: row.subject ?? "" }),
-        quote: null,
-      };
+      return { what: fill(t.referenceUnpinned, { subject: row.subject ?? "" }), quote: null };
     case "sample.added":
     case "sample.deleted":
     case "sample.imported":
@@ -332,81 +259,39 @@ export function describe(
               : one
                 ? t.sampleMergedOne
                 : t.sampleMergedMany;
-      return {
-        what: fill(key, { subject, n: files.length }),
-        quote: files.join(", ") || null,
-      };
+      return { what: fill(key, { subject, n: files.length }), quote: files.join(", ") || null };
     }
     case "npc.split":
       return d.race
-        ? {
-            what: fill(t.npcSplitBody, {
-              name: str(d.npcName) ?? row.subject ?? "",
-            }),
-            quote: bodyWords(d),
-          }
-        : {
-            what: fill(t.npcSplit, {
-              name: str(d.npcName) ?? row.subject ?? "",
-            }),
-            quote: null,
-          };
+        ? { what: fill(t.npcSplitBody, { name: str(d.npcName) ?? row.subject ?? "" }), quote: bodyWords(d) }
+        : { what: fill(t.npcSplit, { name: str(d.npcName) ?? row.subject ?? "" }), quote: null };
     case "npc.unsplit":
       return d.race
-        ? {
-            what: fill(t.npcUnsplitBody, {
-              name: str(d.npcName) ?? row.subject ?? "",
-            }),
-            quote: bodyWords(d),
-          }
-        : {
-            what: fill(t.npcUnsplit, {
-              name: str(d.npcName) ?? row.subject ?? "",
-            }),
-            quote: null,
-          };
+        ? { what: fill(t.npcUnsplitBody, { name: str(d.npcName) ?? row.subject ?? "" }), quote: bodyWords(d) }
+        : { what: fill(t.npcUnsplit, { name: str(d.npcName) ?? row.subject ?? "" }), quote: null };
     case "npc.speaker_added":
       return {
-        what: fill(t.npcSpeakerAdded, {
-          speaker: speakerName(d, t.anNode),
-          subject: row.subject ?? "",
-        }),
+        what: fill(t.npcSpeakerAdded, { speaker: speakerName(d, t.anNode), subject: row.subject ?? "" }),
         quote: null,
       };
     case "npc.speaker_removed":
       return {
-        what: fill(t.npcSpeakerRemoved, {
-          speaker: speakerName(d, t.anNode),
-          subject: row.subject ?? "",
-        }),
+        what: fill(t.npcSpeakerRemoved, { speaker: speakerName(d, t.anNode), subject: row.subject ?? "" }),
         quote: null,
       };
     case "npc.speaker_replaced":
       return {
         what: fill(t.npcSpeakerReplaced, {
           speaker: speakerName(d, t.anNode),
-          from: speakerName(
-            (d.from ?? {}) as Record<string, unknown>,
-            t.anNode,
-          ),
+          from: speakerName((d.from ?? {}) as Record<string, unknown>, t.anNode),
           subject: row.subject ?? "",
         }),
         quote: null,
       };
     case "npc.direction":
       return d.direction
-        ? {
-            what: fill(t.npcDirectionSet, {
-              name: str(d.npcName) ?? row.subject ?? "",
-            }),
-            quote: str(d.direction),
-          }
-        : {
-            what: fill(t.npcDirectionCleared, {
-              name: str(d.npcName) ?? row.subject ?? "",
-            }),
-            quote: null,
-          };
+        ? { what: fill(t.npcDirectionSet, { name: str(d.npcName) ?? row.subject ?? "" }), quote: str(d.direction) }
+        : { what: fill(t.npcDirectionCleared, { name: str(d.npcName) ?? row.subject ?? "" }), quote: null };
     case "npc.resolved": {
       const name = str(d.npcName) ?? row.subject ?? "";
       return {
@@ -416,23 +301,16 @@ export function describe(
             : num(d.sex) === 2
               ? fill(t.npcResolvedMan, { name })
               : fill(t.npcResolved, { name }),
-        quote:
-          [str(d.race), str(d.gender), str(d.flavor)]
-            .filter(Boolean)
-            .join(" · ") || null,
+        quote: [str(d.race), str(d.gender), str(d.flavor)].filter(Boolean).join(" · ") || null,
       };
     }
     case "type.changed":
       return {
         what: fill(t.typeChanged, {
-          action:
-            str(d.action)?.replace("-", " ") ?? t.typeChangedDefaultAction,
+          action: str(d.action)?.replace("-", " ") ?? t.typeChangedDefaultAction,
           subject: row.subject ?? "",
         }),
-        quote:
-          [str(d.gender), str(d.flavor), str(d.voice)]
-            .filter(Boolean)
-            .join(" · ") || null,
+        quote: [str(d.gender), str(d.flavor), str(d.voice)].filter(Boolean).join(" · ") || null,
       };
     case "grant.added":
       return {
@@ -459,48 +337,26 @@ export function describe(
         quote: null,
       };
     case "invite.resent":
-      return {
-        what: fill(t.inviteResent, { email: str(d.email) ?? t.someone }),
-        quote: null,
-      };
+      return { what: fill(t.inviteResent, { email: str(d.email) ?? t.someone }), quote: null };
     case "invite.accepted":
-      return {
-        what: fill(t.inviteAccepted, {
-          capabilities: grantNames(d.capabilities),
-        }),
-        quote: null,
-      };
+      return { what: fill(t.inviteAccepted, { capabilities: grantNames(d.capabilities) }), quote: null };
     case "invite.revoked":
-      return {
-        what: fill(t.inviteRevoked, { email: str(d.email) ?? t.someone }),
-        quote: null,
-      };
+      return { what: fill(t.inviteRevoked, { email: str(d.email) ?? t.someone }), quote: null };
     case "language.toggled":
       return { what: d.enabled ? t.languageOn : t.languageOff, quote: null };
     case "language.added":
-      return {
-        what: fill(t.languageAdded, { name: str(d.name) ?? "" }).trim(),
-        quote: null,
-      };
+      return { what: fill(t.languageAdded, { name: str(d.name) ?? "" }).trim(), quote: null };
     case "team.created":
-      return {
-        what: fill(t.teamCreated, { slug: str(d.slug) ?? "" }).trim(),
-        quote: null,
-      };
+      return { what: fill(t.teamCreated, { slug: str(d.slug) ?? "" }).trim(), quote: null };
     case "team.deleted": {
       const members = Array.isArray(d.members) ? d.members : [];
       const slug = str(d.slug) ?? t.unknown;
       return {
         what: members.length
-          ? fill(
-              members.length === 1
-                ? t.teamDeletedMembersOne
-                : t.teamDeletedMembersMany,
-              {
-                slug,
-                n: members.length,
-              },
-            )
+          ? fill(members.length === 1 ? t.teamDeletedMembersOne : t.teamDeletedMembersMany, {
+              slug,
+              n: members.length,
+            })
           : fill(t.teamDeleted, { slug }),
         quote: null,
       };
@@ -523,32 +379,21 @@ export function describe(
       };
     case "team.language_moved":
       return {
-        what: fill(t.teamLanguageMoved, {
-          from: str(d.from) ?? t.unknown,
-          to: str(d.to) ?? t.unknown,
-        }),
+        what: fill(t.teamLanguageMoved, { from: str(d.from) ?? t.unknown, to: str(d.to) ?? t.unknown }),
         quote: null,
       };
     case "team.second_in_language":
       return {
-        what: fill(
-          d.settings === "copy"
-            ? t.teamSecondInLanguageCopy
-            : t.teamSecondInLanguage,
-          {
-            slug: str(d.slug) ?? t.unknown,
-            beside: str(d.beside) ?? t.unknown,
-          },
-        ),
+        what: fill(d.settings === "copy" ? t.teamSecondInLanguageCopy : t.teamSecondInLanguage, {
+          slug: str(d.slug) ?? t.unknown,
+          beside: str(d.beside) ?? t.unknown,
+        }),
         quote: null,
       };
     case "team.joined_language":
       return {
         what: str(d.from)
-          ? fill(t.teamJoinedLanguageFrom, {
-              slug: str(d.slug) ?? t.unknown,
-              from: str(d.from)!,
-            })
+          ? fill(t.teamJoinedLanguageFrom, { slug: str(d.slug) ?? t.unknown, from: str(d.from)! })
           : fill(t.teamJoinedLanguage, { slug: str(d.slug) ?? t.unknown }),
         quote: null,
       };
@@ -571,68 +416,34 @@ export function describe(
     }
     case "release.approved":
       return {
-        what: fill(t.releaseApproved, {
-          section: str(d.section) ?? t.aSection,
-        }),
+        what: fill(t.releaseApproved, { section: str(d.section) ?? t.aSection }),
         quote: str(d.version),
       };
     case "release.rejected":
       return {
-        what: join(
-          fill(t.releaseRejected, { section: str(d.section) ?? t.aSection }),
-          str(d.version),
-        ),
+        what: join(fill(t.releaseRejected, { section: str(d.section) ?? t.aSection }), str(d.version)),
         quote: str(d.reason),
       };
     case "release.delisted":
       return {
-        what: fill(t.releaseDelisted, {
-          section: str(d.section) ?? t.aSection,
-        }),
+        what: fill(t.releaseDelisted, { section: str(d.section) ?? t.aSection }),
         quote: null,
       };
     case "pack.submitted":
-      return {
-        what: join(
-          fill(t.packSubmitted, { pack: row.subject ?? "" }),
-          str(d.version),
-        ),
-        quote: null,
-      };
+      return { what: join(fill(t.packSubmitted, { pack: row.subject ?? "" }), str(d.version)), quote: null };
     case "pack.approved":
-      return {
-        what: join(
-          fill(t.packApproved, { pack: row.subject ?? "" }),
-          str(d.version),
-        ),
-        quote: null,
-      };
+      return { what: join(fill(t.packApproved, { pack: row.subject ?? "" }), str(d.version)), quote: null };
     case "pack.rejected":
       return {
-        what: join(
-          fill(t.packRejected, { pack: row.subject ?? "" }),
-          str(d.version),
-        ),
+        what: join(fill(t.packRejected, { pack: row.subject ?? "" }), str(d.version)),
         quote: str(d.reason),
       };
     case "pack.withdrawn":
-      return {
-        what: join(
-          fill(t.packWithdrawn, { pack: row.subject ?? "" }),
-          str(d.version),
-        ),
-        quote: null,
-      };
+      return { what: join(fill(t.packWithdrawn, { pack: row.subject ?? "" }), str(d.version)), quote: null };
     case "pack.listed":
-      return {
-        what: fill(t.packListed, { pack: row.subject ?? "" }),
-        quote: null,
-      };
+      return { what: fill(t.packListed, { pack: row.subject ?? "" }), quote: null };
     case "pack.unlisted":
-      return {
-        what: fill(t.packUnlisted, { pack: row.subject ?? "" }),
-        quote: null,
-      };
+      return { what: fill(t.packUnlisted, { pack: row.subject ?? "" }), quote: null };
     case "pack.owner":
       return {
         what: d.ownerId
@@ -646,10 +457,7 @@ export function describe(
         quote: str(d.teamName),
       };
     case "request.withdrawn":
-      return {
-        what: fill(t.requestWithdrawn, { lang: str(d.lang) ?? t.aLanguage }),
-        quote: null,
-      };
+      return { what: fill(t.requestWithdrawn, { lang: str(d.lang) ?? t.aLanguage }), quote: null };
     case "request.approved":
       return {
         what: fill(t.requestApproved, { lang: str(d.lang) ?? t.aLanguage }),
@@ -663,9 +471,7 @@ export function describe(
     case "contribution.resolved":
       return {
         what: fill(
-          d.correction
-            ? t.contributionResolvedCorrection
-            : t.contributionResolved,
+          d.correction ? t.contributionResolvedCorrection : t.contributionResolved,
           { status: str(d.status) ?? t.resolved },
         ).trim(),
         quote: str(d.key),
@@ -681,10 +487,7 @@ export function describe(
         quote: str(d.category),
       };
     case "report.passed":
-      return {
-        what: d.to === "text" ? t.reportPassedText : t.reportPassedTeam,
-        quote: null,
-      };
+      return { what: d.to === "text" ? t.reportPassedText : t.reportPassedTeam, quote: null };
     case "user.role_changed":
       return {
         what: fill(t.userRole, {
@@ -699,17 +502,12 @@ export function describe(
         quote: str(d.banReason),
       };
     case "user.unbanned":
-      return {
-        what: fill(t.userUnbanned, { name: row.subjectName ?? t.aRemovedUser }),
-        quote: null,
-      };
+      return { what: fill(t.userUnbanned, { name: row.subjectName ?? t.aRemovedUser }), quote: null };
     case "user.removed":
       return { what: t.userRemoved, quote: null };
     case "user.impersonated":
       return {
-        what: fill(t.userImpersonated, {
-          name: row.subjectName ?? t.aRemovedUser,
-        }),
+        what: fill(t.userImpersonated, { name: row.subjectName ?? t.aRemovedUser }),
         quote: null,
       };
     // A kind this page does not know: one a newer release wrote before a rollback to this
@@ -729,53 +527,36 @@ function target(
   row: ActivityRow,
   t: UiText["activity"]["events"]["links"],
 ): { href: string; label: string } | null {
-  if (row.source && row.lineId)
-    return { href: explorerHref(row.source, row.lineId), label: row.lineId };
+  if (row.source && row.lineId) return { href: explorerHref(row.source, row.lineId), label: row.lineId };
   if (categoryOf(row.kind) === "voices") {
     return row.subject ? { href: "/voices", label: row.subject } : null;
   }
   if (row.kind.startsWith("lexicon.") && row.subject) {
     return { href: lexiconHref(row.subject), label: t.pronunciation };
   }
-  if (
-    row.kind.startsWith("grant.") ||
-    row.kind.startsWith("invite.") ||
-    row.kind.startsWith("user.")
-  ) {
+  if (row.kind.startsWith("grant.") || row.kind.startsWith("invite.") || row.kind.startsWith("user.")) {
     return { href: "/admin", label: t.users };
   }
   if (row.kind.startsWith("report.")) {
-    return {
-      href: "/reports?view=all",
-      label: fillFrom(t.report, { id: row.subject ?? "" }),
-    };
+    return { href: "/reports?view=all", label: fillFrom(t.report, { id: row.subject ?? "" }) };
   }
-  if (row.kind.startsWith("pack."))
-    return { href: "/admin/packs", label: t.packs };
-  if (row.kind.startsWith("request."))
-    return { href: "/admin/teams", label: t.requests };
+  if (row.kind.startsWith("pack.")) return { href: "/admin/packs", label: t.packs };
+  if (row.kind.startsWith("request.")) return { href: "/admin/teams", label: t.requests };
   if (row.kind.startsWith("contribution.")) {
-    return {
-      href: "/contributions",
-      label: fillFrom(t.contribution, { id: row.subject ?? "" }),
-    };
+    return { href: "/contributions", label: fillFrom(t.contribution, { id: row.subject ?? "" }) };
   }
   return null;
 }
 
 const FOLD_OF = new Map(
-  (Object.entries(FOLDS) as [Group, (typeof FOLDS)[Group]][]).map(
-    ([kind, fold]) => [fold.parent as string, { kind, ...fold }],
-  ),
+  (Object.entries(FOLDS) as [Group, (typeof FOLDS)[Group]][]).map(([kind, fold]) => [fold.parent as string, { kind, ...fold }]),
 );
 
 /**
  * The rows a row opens onto, if it folds any (FOLDS). For a batch, `count` is what the
  * server counted for the page's day range.
  */
-function groupOf(
-  row: ActivityRow,
-): { kind: Group; id: string; count: number } | null {
+function groupOf(row: ActivityRow): { kind: Group; id: string; count: number } | null {
   const fold = FOLD_OF.get(row.kind);
   const id = fold && str(row.detail[fold.key]);
   if (!fold || !id) return null;
@@ -793,11 +574,7 @@ function takesOf(row: ActivityRow): Take[] {
   if (!row.source || !row.subject) return [];
   const version = num(row.detail.version);
   if (version === null) return [];
-  const take = (v: number): Take => ({
-    source: row.source!,
-    file: row.subject!,
-    version: v,
-  });
+  const take = (v: number): Take => ({ source: row.source!, file: row.subject!, version: v });
   if (row.kind === "take.generated") return [take(version)];
   if (row.kind === "take.restored") {
     const from = num(row.detail.from);
@@ -807,15 +584,7 @@ function takesOf(row: ActivityRow): Take[] {
 }
 
 /** A play button for one take, sized for a row or for a batch's list. */
-function PlayTake({
-  take,
-  onPlay,
-  compact,
-}: {
-  take: Take;
-  onPlay: (take: Take) => void;
-  compact?: boolean;
-}) {
+function PlayTake({ take, onPlay, compact }: { take: Take; onPlay: (take: Take) => void; compact?: boolean }) {
   const t = useUiText().activity;
   return (
     <Button
@@ -847,14 +616,8 @@ export default function ActivityTable({
 }) {
   const text = useUiText();
   const t = text.activity;
-  const categoryOptions = CATEGORIES.map((category) => ({
-    value: category,
-    label: t.categories[category],
-  }));
-  const sourceOptions = SOURCES.map((source) => ({
-    value: source,
-    label: t.sections[source],
-  }));
+  const categoryOptions = CATEGORIES.map((category) => ({ value: category, label: t.categories[category] }));
+  const sourceOptions = SOURCES.map((source) => ({ value: source, label: t.sections[source] }));
   const date = useLocalDates();
   const lang = useLang();
   const { pending, push } = usePendingPush();
@@ -865,9 +628,7 @@ export default function ActivityTable({
   const [open, setOpen] = useState<string | null>(null);
   const loading = useRef(new Set<string>());
   // Keyed by group and day range: the same batch lists different takes under another range.
-  const [groups, setGroups] = useState<
-    Record<string, ActivityRow[] | "failed">
-  >({});
+  const [groups, setGroups] = useState<Record<string, ActivityRow[] | "failed">>({});
   const rangeKey = `${filter.from ?? ""}:${filter.to ?? ""}`;
 
   useEffect(() => {
@@ -905,8 +666,7 @@ export default function ActivityTable({
     push(localeHref(lang, `/activity${params.size ? `?${params}` : ""}`));
   }
 
-  const keyOf = (group: { kind: Group; id: string }) =>
-    `${group.kind}:${group.id}:${rangeKey}`;
+  const keyOf = (group: { kind: Group; id: string }) => `${group.kind}:${group.id}:${rangeKey}`;
 
   async function toggleGroup(row: ActivityRow) {
     const group = groupOf(row);
@@ -915,18 +675,13 @@ export default function ActivityTable({
     const opening = open !== row.id;
     setOpen(opening ? row.id : null);
     // A failed load is tried again on the next open; one still in flight is not.
-    if (!opening || Array.isArray(groups[key]) || loading.current.has(key))
-      return;
+    if (!opening || Array.isArray(groups[key]) || loading.current.has(key)) return;
     loading.current.add(key);
     const params = new URLSearchParams({ id: group.id, kind: group.kind });
     if (filter.from) params.set("from", filter.from);
     if (filter.to) params.set("to", filter.to);
-    const response = await fetch(
-      withLang(lang, `/api/activity/batch?${params}`),
-    ).catch(() => null);
-    const takes = response?.ok
-      ? ((await response.json()) as { takes: ActivityRow[] }).takes
-      : null;
+    const response = await fetch(withLang(lang, `/api/activity/batch?${params}`)).catch(() => null);
+    const takes = response?.ok ? ((await response.json()) as { takes: ActivityRow[] }).takes : null;
     loading.current.delete(key);
     setGroups((current) => ({ ...current, [key]: takes ?? "failed" }));
   }
@@ -946,10 +701,7 @@ export default function ActivityTable({
         <FilterChip
           label={t.who}
           value={filter.actorId}
-          options={actors.map((actor) => ({
-            value: actor.id,
-            label: actor.name,
-          }))}
+          options={actors.map((actor) => ({ value: actor.id, label: actor.name }))}
           onChange={(value) => go({ actorId: value })}
         />
         <FilterChip
@@ -958,16 +710,8 @@ export default function ActivityTable({
           options={sourceOptions}
           onChange={(value) => go({ source: value })}
         />
-        <DateChip
-          label={t.from}
-          value={filter.from}
-          onChange={(value) => go({ from: value })}
-        />
-        <DateChip
-          label={t.to}
-          value={filter.to}
-          onChange={(value) => go({ to: value })}
-        />
+        <DateChip label={t.from} value={filter.from} onChange={(value) => go({ from: value })} />
+        <DateChip label={t.to} value={filter.to} onChange={(value) => go({ to: value })} />
         {pending && <Refreshing />}
       </nav>
 
@@ -1006,19 +750,12 @@ export default function ActivityTable({
               const expanded = group !== null && open === row.id;
 
               out.push(
-                <tr
-                  key={row.id}
-                  className="align-top [&>td]:border-b [&>td]:py-2 [&>td]:leading-5"
-                >
+                <tr key={row.id} className="align-top [&>td]:border-b [&>td]:py-2 [&>td]:leading-5">
                   <td className="text-muted-foreground w-14 pr-3 text-xs whitespace-nowrap tabular-nums">
                     {date(row.at, TIME)}
                   </td>
                   <td className="w-40 max-w-[10rem] truncate pr-3 font-medium">
-                    {row.actorName ?? (
-                      <span className="text-muted-foreground font-normal">
-                        {t.system}
-                      </span>
-                    )}
+                    {row.actorName ?? <span className="text-muted-foreground font-normal">{t.system}</span>}
                   </td>
                   <td className="pr-3">
                     <div className="flex flex-wrap items-center gap-x-2">
@@ -1039,10 +776,7 @@ export default function ActivityTable({
                       )}
                     </div>
                     {quote && (
-                      <p
-                        className="text-muted-foreground line-clamp-2 text-xs"
-                        title={quote}
-                      >
+                      <p className="text-muted-foreground line-clamp-2 text-xs" title={quote}>
                         {quote}
                       </p>
                     )}
@@ -1059,16 +793,8 @@ export default function ActivityTable({
                         aria-expanded={expanded}
                         onClick={() => void toggleGroup(row)}
                       >
-                        {expanded ? (
-                          <ChevronDown className="size-3.5" />
-                        ) : (
-                          <ChevronRight className="size-3.5" />
-                        )}
-                        {pluralText(
-                          group.count,
-                          t.nouns.one[group.kind],
-                          t.nouns.many[group.kind],
-                        )}
+                        {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+                        {pluralText(group.count, t.nouns.one[group.kind], t.nouns.many[group.kind])}
                       </Button>
                     )}
                   </td>
@@ -1082,41 +808,21 @@ export default function ActivityTable({
                     <td />
                     <td colSpan={3} className="border-b pb-2">
                       {inner === undefined ? (
-                        <p className="text-muted-foreground py-2 text-xs">
-                          {fillFrom(t.loadingGroup, {
-                            what: t.nouns.many[group.kind],
-                          })}
-                        </p>
+                        <p className="text-muted-foreground py-2 text-xs">{fillFrom(t.loadingGroup, { what: t.nouns.many[group.kind] })}</p>
                       ) : inner === "failed" ? (
-                        <p className="text-destructive py-2 text-xs">
-                          {fillFrom(t.groupFailed, {
-                            what: t.nouns.many[group.kind],
-                          })}
-                        </p>
+                        <p className="text-destructive py-2 text-xs">{fillFrom(t.groupFailed, { what: t.nouns.many[group.kind] })}</p>
                       ) : (
                         <ul className="max-h-80 overflow-y-auto text-xs">
                           {inner.map((take) => (
-                            <li
-                              key={take.id}
-                              className="flex items-center gap-2 py-0.5"
-                            >
-                              <span className="text-muted-foreground w-12 tabular-nums">
-                                {date(take.at, TIME)}
-                              </span>
+                            <li key={take.id} className="flex items-center gap-2 py-0.5">
+                              <span className="text-muted-foreground w-12 tabular-nums">{date(take.at, TIME)}</span>
                               {take.kind === "batch.stopped" ? (
                                 <span className="truncate">
                                   {str(take.detail.label) ?? t.aBatch}
                                   {num(take.detail.cancelled) !== null && (
                                     <span className="text-muted-foreground">
                                       {" "}
-                                      ·{" "}
-                                      {fillFrom(t.cancelled, {
-                                        n: pluralText(
-                                          num(take.detail.cancelled)!,
-                                          t.nouns.lineOne,
-                                          t.nouns.lineMany,
-                                        ),
-                                      })}
+                                      · {fillFrom(t.cancelled, { n: pluralText(num(take.detail.cancelled)!, t.nouns.lineOne, t.nouns.lineMany) })}
                                     </span>
                                   )}
                                 </span>
@@ -1128,17 +834,10 @@ export default function ActivityTable({
                                   {take.lineId}
                                 </Link>
                               ) : (
-                                <span className="truncate font-mono">
-                                  {take.subject}
-                                </span>
+                                <span className="truncate font-mono">{take.subject}</span>
                               )}
                               {takesOf(take).map((one) => (
-                                <PlayTake
-                                  key={one.version}
-                                  take={one}
-                                  onPlay={play}
-                                  compact
-                                />
+                                <PlayTake key={one.version} take={one} onPlay={play} compact />
                               ))}
                             </li>
                           ))}
@@ -1186,10 +885,7 @@ export default function ActivityTable({
             )}
             title={playing.file}
             meta={`v${playing.version}`}
-            downloadName={`${playing.file
-              .split("/")
-              .pop()
-              ?.replace(/\.mp3$/, "")}-v${playing.version}.mp3`}
+            downloadName={`${playing.file.split("/").pop()?.replace(/\.mp3$/, "")}-v${playing.version}.mp3`}
           />
         </div>
       )}
