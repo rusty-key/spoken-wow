@@ -134,3 +134,14 @@ test("German's race word declines weak after an article", () => {
     registerPlayerWordRows([]);
   }
 });
+
+test("a branch with full-width separators or a lost g is spoken on the reader's side", () => {
+  assert.equal(speakQuestTokens("一個神奇的冬幕節……小$G男孩：女孩；。", "zhTW"), "一個神奇的冬幕節……小男孩。");
+  assert.equal(speakQuestTokens("你好，$g先生：女士；。", "zhTW", "f"), "你好，女士。");
+  assert.equal(speakQuestTokens("只是开玩笑啦，$小伙子:小姑娘;……", "zhCN"), "只是开玩笑啦，小伙子……");
+  assert.equal(speakQuestTokens("Ты $готов:готова; идти?", "ruRU", "f"), "Ты готова идти?");
+  assert.equal(speakQuestTokens("чтобы ты не $сопротивлялся:сопротивлялась. Ладно.", "ruRU"), "чтобы ты не сопротивлялся. Ладно.");
+  // Han with no `;` has no end to its female field, and a Latin one reads as a token: both stay.
+  assert.equal(speakQuestTokens("你好，$先生:小姐。", "zhTW"), "你好，$先生:小姐。");
+  assert.equal(speakQuestTokens("Ihr seid $einen würdigen Schüler:eine würdige Schülerin;.", "deDE"), "Ihr seid $einen würdigen Schüler:eine würdige Schülerin;.");
+});

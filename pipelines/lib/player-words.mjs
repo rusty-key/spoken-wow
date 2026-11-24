@@ -275,6 +275,16 @@ const GENDER = new RegExp(String.raw`\$[GgUu]` + BRANCH, "g");
 // on to a later colon and drop the words between unheard.
 const SWAPPED = new RegExp(String.raw`\$[Uu]\s*(${FIELD}+?)(?<=\p{L});(?=\p{L})(${FIELD}+?)\s*:`, "gu");
 const HAS_GENDER = new RegExp(`${GENDER.source}|${SWAPPED.source}`, "u");
+// Two damaged branches the translations write, spoken but never counted as branching: the line
+// keeps one file for both readers, as it does today. zhCN and zhTW write the separators full width
+// ("$G男孩：女孩；"). ruRU, zhCN and zhTW lose the `g` ("$готов:готова;", "$小伙子:小姑娘;"), which
+// only a letter outside the Latin alphabet tells apart from a token; ruRU's then often loses its
+// `;` too, and its female field ends with the word. Han, written without spaces, keeps needing it.
+const FULL_WIDTH = new RegExp(
+  String.raw`\$[GgUu]\s*([^:;：；${ENDS}\n]+?)\s*[:：]\s*([^:;：；${ENDS}\n]+?)\s*[;；]`,
+  "gu",
+);
+const LOST_G = /\$(?![A-Za-z\d$])([\p{L}\p{M}-]+)\s*[:：]\s*([\p{L}\p{M}-]+?)(?:\s*[;；]|(?<!\p{sc=Han})(?![\p{L}\p{M}-]))/gu;
 // TBC Anniversary and Forever send some lines with the token's $ doubled ("$$N, …"), which the
 // client reads as the token itself. Left doubled, a genitive "$$Ns" would say "$Abenteurers".
 const DOUBLED = new RegExp(String.raw`\$\$(?=[NnCcRr](?!${GLUED})|[NnCc]s(?!\p{L}))`, "gu");
@@ -398,6 +408,7 @@ function speak(text, lang, playerGender, byToken) {
 
   const side = reader === "f" ? "$2" : "$1";
   let spoken = text.replace(DOUBLED, "$").replace(GENDER, side).replace(SWAPPED, side);
+  spoken = spoken.replace(FULL_WIDTH, side).replace(LOST_G, side);
   if (lang === "koKR") spoken = spoken.replace(GLUED_PARTICLE, gluedParticleEscape);
   spoken = elide(spoken, lang, words);
   if (lang === "deDE") spoken = declineGermanRace(spoken, words, reader, cased);

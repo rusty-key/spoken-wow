@@ -600,6 +600,10 @@ In frFR and itIT, the word before a token elides when the token's word starts wi
 deDE's `$R` is an adjective used as a noun, so it declines: `ein $R` reads `Reisender`, `der $R`
 `Reisende`, and `dem`, `einen`, `dieses $R` (or `einer $R` on the female variant) `Reisenden`, with
 up to two adjectives between. The weak form is "Race after der" on `/<lang>/player-words`.
+Two damaged branches are spoken too, on the line's one side: zhCN's and zhTW's full-width
+separators (`$G男孩：女孩；`), and a branch that lost its `g` where its first letter is not Latin
+(`$готов:готова;`, `$小伙子:小姑娘;`; ruRU's may lose the `;` as well). Neither makes the line
+branch, so it stays one file for both readers. A Latin one (`$einen Schüler:…;`) stays a token.
 Contributions triage shows any token or client escape still left after this, a bare `<` or `>`, and a gap
 before `.` or `,` or a mid-sentence double space where a gender branch came through empty,
 above the row's text, so a line that would never be voiced is seen before it is accepted.
