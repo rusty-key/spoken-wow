@@ -648,8 +648,8 @@ version, a page's `version:` or `docs/quests/CHANGELOG.md` counts only for a pac
 yet. A press that changes nothing, or that fails, releases nothing, and the page says so.
 
 Quests needs `python3` with psycopg2, once, as root: `apt-get install python3-psycopg2`. Its other
-imports ship in `release-tools/`. Its clips are the Oggs in `take_encoding`, so nothing is encoded
-during a release. A press first spends up to 30 seconds encoding, on the site and newest first, the
+imports ship in `release-tools/`. Every section's clips are the Oggs in `take_encoding`, so nothing
+is encoded during a release. A press first spends up to 30 seconds encoding, on the site and newest first, the
 language's live takes whose encoding failed at commit or has no duration. A live take still without
 either stops the release with its name, and the next press carries on. Each failed encode is in the
 language's activity log with its error.

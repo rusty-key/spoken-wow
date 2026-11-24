@@ -92,7 +92,9 @@ have a page: deDE, esES, esMX, frFR, koKR, ptBR, ruRU, zhCN, zhTW. Spoken's sett
 those pages, from the table `PACK_PAGES` in `addons/Spoken/API.lua`, which
 `tests/lua/packs_test.lua` keeps in step with them.
 
-A language pack ships at one quality and has no second tier. The English pack is
+Every pack ships one quality: Ogg Vorbis (`ogg-q0-44k`), as the quests packs do. `make places-sounds`
+encodes each live master into `Sounds/` through a cache keyed by its hash, and a Manager release
+points at the Ogg the site encoded when the take was committed instead. The English pack is
 `addons/SpokenPlacesAudio`: its `.toc` and `Data/Sounds.lua` are committed and its `Sounds/` folder
 is not. `ZoneLoreAudio64`, a 64 kbps tier, is retired and never uploaded to again.
 

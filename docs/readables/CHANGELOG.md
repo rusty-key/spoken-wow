@@ -5,6 +5,8 @@ existing compatible sound pack unless the release notes say otherwise.
 
 ## Unreleased
 
+- **The pack is a smaller download,** its narration stored like the quest packs'. Update Spoken to 3.13.0 or later
+  with it. *([rusty-key](https://github.com/rusty-key))*
 - **Language packs carry pages English lacks.** A page that exists only in another language, such
   as one a player sent in, is in that language's pack with its place in its book, so Spoken finds
   and reads it. *([rusty-key](https://github.com/rusty-key))*

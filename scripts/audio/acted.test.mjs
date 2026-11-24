@@ -13,10 +13,10 @@ test("a recording is read from where the site archived it", () => {
   assert.equal(recordedDir("readables", "ptBR", "1381"), "recorded/ptBR/1381");
 });
 
-test("each clip lands where its player looks, quests in Ogg and the others in mp3", () => {
+test("each clip lands where its player looks, in Ogg as every pack's", () => {
   assert.equal(packPath("quests", "quests/33-accept.mp3"), "generated/sounds/quests/33-accept.ogg");
-  assert.equal(packPath("places", "947/zone"), "Sounds/947/zone.mp3");
-  assert.equal(packPath("readables", "1381"), "Sounds/1381.mp3");
+  assert.equal(packPath("places", "947/zone"), "Sounds/947/zone.ogg");
+  assert.equal(packPath("readables", "1381"), "Sounds/1381.ogg");
 });
 
 test("everybody is credited once, earliest first", () => {
@@ -34,6 +34,7 @@ test("the places overlay registers apart from the packs, keyed like a pack", () 
   assert.match(lua, /\["razor hill"\] = \{ file = "1411\\\\razor-hill", len = 2.5 \}/);
   assert.match(lua, /language = "deDE"/);
   assert.match(lua, /credits = \{ "A" \}/);
+  assert.match(lua, /^\tformat = "ogg",$/m);
   assert.throws(() => placesLua("deDE", [clip("1/x", { lineId: "q:1:accept" })], []));
 });
 
@@ -41,6 +42,7 @@ test("the readables overlay registers apart from the packs, by page id", () => {
   const lua = readablesLua("enUS", [clip("1381")], ["A"]);
   assert.match(lua, /SpokenReadablesAudioOverlays\[ADDON_NAME\] = overlay/);
   assert.match(lua, /\[1381\] = \{ file = "1381", len = 2.5 \}/);
+  assert.match(lua, /^\tformat = "ogg",$/m);
 });
 
 test("the quests overlay is a module whose length table is its list of lines", () => {

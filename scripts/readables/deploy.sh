@@ -22,7 +22,7 @@
 # without a redeploy, exactly as an edit to a .lua does.
 #
 # The narration itself is NOT in the repository -- audio lives outside git -- so the pack
-# folder here carries the lookup and the mp3s are whatever has been pulled into
+# folder here carries the lookup and the clips are whatever has been pulled into
 # addons/SpokenReadablesAudio/Sounds. --status says how many that is.
 #
 # SavedVariables live under WTF/, not in the addon folder, so neither mode can
@@ -84,8 +84,8 @@ case "$mode" in
     # otherwise indistinguishable from a broken lookup.
     sounds="$REPO/addons/SpokenReadablesAudio/Sounds"
     if [[ -d "$sounds" ]]; then
-      count="$(find "$sounds" -name '*.mp3' | wc -l | tr -d ' ')"
-      echo "voicelines      $count mp3 in $sounds"
+      count="$(find "$sounds" -name '*.ogg' | wc -l | tr -d ' ')"
+      echo "voicelines      $count ogg in $sounds"
     fi
     exit 0
     ;;

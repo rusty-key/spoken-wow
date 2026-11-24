@@ -108,10 +108,12 @@ superpowers/
 # Every readables take, pulled from the droplet.
 /pipelines/readables/audio-history/
 
-# Transcoded sound-pack clips, keyed by the checksum of the master they came from.
-# A build cache: scripts/places/package-audio.sh refills it, and prunes entries whose
-# master has been re-cut. Outside dist/ so `make clean` does not cost a five-minute
-# re-encode. Roughly half the size of Sounds/ per tier.
+# Readables clips encoded to Ogg; the same cache as places' above.
+/pipelines/readables/audio-transcoded/
+
+# Places' and Bosses' clips encoded to Ogg, keyed by the hash of the master each came from.
+# A build cache: scripts/audio/sounds.mjs fills it, and anything in it can be deleted and
+# encoded again. Outside dist/ so `make clean` does not cost a long re-encode.
 /pipelines/places/audio-transcoded/
 
 # Every places take, pulled from the droplet: the only places audio there is. Grows without

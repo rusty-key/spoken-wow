@@ -78,3 +78,7 @@ test("a take with no text has no text field", () => {
   );
   assert.equal(renderLookup(entries).includes("text ="), false);
 });
+
+test("the pack says its clips are Ogg, which Spoken_Bosses plays by that extension", () => {
+  assert.match(renderLookup([{ map: 36, key: "a", file: "36/a", len: 1 }]), /^\tformat = "ogg",$/m);
+});

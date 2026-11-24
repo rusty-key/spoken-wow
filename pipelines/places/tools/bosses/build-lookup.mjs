@@ -69,6 +69,8 @@ export function renderLookup(entries) {
     "local pack = {",
     // Bumped only when the shape below changes in a way Spoken_Bosses cannot read.
     "\tversion = 1,",
+    // A Spoken from before packs shipped Ogg plays mp3; MIN_SPOKEN (scripts/lib/packs.mjs) keeps it off this pack.
+    '\tformat = "ogg",',
     "\tbosses = {",
   ];
 
@@ -88,7 +90,7 @@ export function renderLookup(entries) {
     "local GetAddOnMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata",
     "",
     "-- The folder name comes from the loader, so one generated file serves every pack",
-    "-- built from this tree: they differ only in their .toc and their mp3s.",
+    "-- built from this tree: they differ only in their .toc and their clips.",
     "pack.addon = ADDON_NAME",
     'pack.quality = GetAddOnMeta(ADDON_NAME, "X-SpokenBosses-Quality") or "standard"',
     'pack.bitrate = tonumber(GetAddOnMeta(ADDON_NAME, "X-SpokenBosses-Bitrate")) or 0',

@@ -42,16 +42,16 @@ test("a pack with no voices is refused", () => {
   assert.doesNotThrow(() => refuseEmpty(parseLookup(renderLookup([entry])), "ptBR"));
 });
 
-test("a lookup entry whose mp3 is missing fails", () => {
+test("a lookup entry whose clip is missing fails", () => {
   const { problems } = check({ onDisk: new Set() });
   assert.equal(problems.length, 1);
-  assert.match(problems[0], /36\/edwin-vancleef\.mp3.*not on disk/);
+  assert.match(problems[0], /36\/edwin-vancleef\.ogg.*not on disk/);
 });
 
-test("an mp3 the lookup does not list fails", () => {
+test("a clip the lookup does not list fails", () => {
   const { problems } = check({ onDisk: new Set(["36/edwin-vancleef", "36/orphan"]) });
   assert.equal(problems.length, 1);
-  assert.match(problems[0], /36\/orphan\.mp3/);
+  assert.match(problems[0], /36\/orphan\.ogg/);
 });
 
 test("a len more than 0.01 s off the take fails, and within it passes", () => {

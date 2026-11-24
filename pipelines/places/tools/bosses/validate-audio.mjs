@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 //
-// Checks SpokenBossesAudio's lookup, the mp3s beside it and the live takes against each other.
+// Checks SpokenBossesAudio's lookup, the clips beside it and the live takes against each other.
 //
 //   node pipelines/places/tools/bosses/validate-audio.mjs [--lang deDE]
 //
-// Fails on a lookup entry with no mp3, an mp3 with no entry, an entry whose len is missing or
+// Fails on a lookup entry with no clip, a clip with no entry, an entry whose len is missing or
 // more than 0.01 s off its take's, and an entry its take does not back. A lookup row pointing
 // at a missing file plays silence in-game and reports nothing, which is what this is for.
 //
@@ -60,7 +60,7 @@ export function parseLookup(lua) {
 
 /**
  * @param lookup  parseLookup's entries
- * @param onDisk  the mp3s in Sounds/, as paths without the extension
+ * @param onDisk  the clips in Sounds/, as paths without the extension
  * @param takes   the live takes: { lineId, file, durationSec, spokenHash }
  * @param hashes  lineId -> the hash of the current story's spoken text
  */
@@ -73,7 +73,7 @@ export function checkPack({ lookup, onDisk, takes, hashes }) {
   for (const entry of lookup) {
     const id = `boss:${entry.map}:${entry.key}`;
     listed.add(entry.file);
-    if (!onDisk.has(entry.file)) problems.push(`${id}: the lookup names ${entry.file}.mp3, which is not on disk`);
+    if (!onDisk.has(entry.file)) problems.push(`${id}: the lookup names ${entry.file}.ogg, which is not on disk`);
     if (!Number.isFinite(entry.len) || entry.len <= 0) problems.push(`${id}: no len in the lookup`);
 
     const take = byLine.get(id);
@@ -91,7 +91,7 @@ export function checkPack({ lookup, onDisk, takes, hashes }) {
   }
 
   for (const file of [...onDisk].sort()) {
-    if (!listed.has(file)) problems.push(`${file}.mp3 is on disk, but the lookup does not list it`);
+    if (!listed.has(file)) problems.push(`${file}.ogg is on disk, but the lookup does not list it`);
   }
   return { problems, notes };
 }
@@ -104,13 +104,13 @@ export function refuseEmpty(lookup, lang) {
   if (lookup.length === 0) throw new Error(`${lang} has no live boss takes, so there is no pack to build`);
 }
 
-async function mp3sOnDisk(dir, prefix = "") {
+async function clipsOnDisk(dir, prefix = "") {
   if (!existsSync(dir)) return [];
   const found = [];
   for (const item of await readdir(dir, { withFileTypes: true })) {
     const rel = prefix ? `${prefix}/${item.name}` : item.name;
-    if (item.isDirectory()) found.push(...(await mp3sOnDisk(join(dir, item.name), rel)));
-    else if (item.name.endsWith(".mp3")) found.push(rel.replace(/\.mp3$/, ""));
+    if (item.isDirectory()) found.push(...(await clipsOnDisk(join(dir, item.name), rel)));
+    else if (item.name.endsWith(".ogg")) found.push(rel.replace(/\.ogg$/, ""));
   }
   return found;
 }
@@ -124,7 +124,7 @@ async function main() {
   if (!existsSync(path)) throw new Error(`no ${path}: make bosses-lookup${lang === BASE_LANG ? "" : ` LOCALE=${lang}`}`);
   const [lua, onDisk, takes, bosses, stories, rules] = await Promise.all([
     readFile(path, "utf8"),
-    mp3sOnDisk(soundsDir(lang)),
+    clipsOnDisk(soundsDir(lang)),
     readLiveTakes(lang),
     readBosses({ includeRetired: true }),
     readStories(),
@@ -141,7 +141,7 @@ async function main() {
   const lookup = parseLookup(lua);
   refuseEmpty(lookup, lang);
   const { problems, notes } = checkPack({ lookup, onDisk: new Set(onDisk), takes, hashes });
-  console.log(`${lang}: ${lookup.length} lookup entries, ${onDisk.length} mp3s`);
+  console.log(`${lang}: ${lookup.length} lookup entries, ${onDisk.length} clips`);
   for (const note of notes) console.log(`  note: ${note}`);
   if (problems.length > 0) {
     for (const problem of problems) console.error(`  ${problem}`);

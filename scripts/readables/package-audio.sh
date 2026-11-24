@@ -20,8 +20,8 @@ pack_field() { node "$REPO/scripts/lib/packs.mjs" get readables "$LOCALE" - "$1"
 folder="$(pack_field folder)"; title="$(pack_field name)"
 version="$(pack_field version)"; slug="$(pack_field slug)"
 
-count="$(find "$WORK/Sounds" -name '*.mp3' 2>/dev/null | wc -l | tr -d ' ')"
-[[ "$count" -gt 0 ]] || { echo "error: no mp3 files in $WORK/Sounds -- make readables-pull-live readables-sounds LOCALE=$LOCALE" >&2; exit 1; }
+count="$(find "$WORK/Sounds" -name '*.ogg' 2>/dev/null | wc -l | tr -d ' ')"
+[[ "$count" -gt 0 ]] || { echo "error: no ogg files in $WORK/Sounds -- make readables-pull-live readables-sounds LOCALE=$LOCALE" >&2; exit 1; }
 [[ -f "$WORK/Data/Sounds.lua" ]] || { echo "error: no $WORK/Data/Sounds.lua -- make readables-lookup LOCALE=$LOCALE" >&2; exit 1; }
 
 node "$REPO/scripts/descriptions.mjs" --write >/dev/null
@@ -51,11 +51,11 @@ fi
 mkdir -p "$DIST"
 zip_path="$DIST/$folder-$version.zip"
 rm -f "$zip_path"
-# Stored, not deflated, as English's: the payload is mp3.
+# Stored, not deflated, as English's: the payload is Ogg.
 (cd "$staging" && zip -r -0 -q -X "$zip_path" "$folder" -x '*.DS_Store' '*/.*')
 # The manager channel publishes dist/<folder>/, so it must hold the tree the zip holds.
 rm -rf "$DIST/$folder"
 rsync -a --exclude '.[!.]*' "$staging/$folder/" "$DIST/$folder/"
 # rsync keeps mtimes, and publish.mjs reads a .toc older than the zip as a stale build.
 touch "$DIST/$folder/$folder.toc"
-echo "built dist/$folder-$version.zip ($count mp3, $(du -h "$zip_path" | cut -f1))"
+echo "built dist/$folder-$version.zip ($count clips, $(du -h "$zip_path" | cut -f1))"

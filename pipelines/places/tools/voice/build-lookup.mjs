@@ -22,7 +22,7 @@ import { close as closeStore, loadCurrentLore, loadManifest, packDir, soundsDir 
 // The manifest stores a POSIX path because that is what the files on disk are.
 // WoW addresses its own files with backslashes, and Audio.lua already builds the
 // prefix that way, so emitting "1411/zone" here would produce
-// "Interface\AddOns\ZoneLoreAudio\Sounds\1411/zone.mp3" -- a mixed-separator path
+// "Interface\AddOns\ZoneLoreAudio\Sounds\1411/zone.ogg" -- a mixed-separator path
 // that is not worth finding out about in-game, where it plays silence.
 function luaPath(file) {
   return quote(file.replace(/\//g, "\\"));
@@ -68,8 +68,8 @@ export async function buildLookup() {
       notShipped++;
       continue;
     }
-    if (!existsSync(join(soundsDir(), `${record.file}.mp3`))) {
-      console.warn(`warning: ${id} is in the manifest but ${record.file}.mp3 is not on disk`);
+    if (!existsSync(join(soundsDir(), `${record.file}.ogg`))) {
+      console.warn(`warning: ${id} is in the manifest but ${record.file}.ogg is not on disk`);
       missingFiles++;
       continue;
     }
@@ -107,6 +107,8 @@ export async function buildLookup() {
     // Audio.lua refuses a pack whose format it does not know rather than playing
     // silence, so this is the compatibility contract between the two addons.
     "\tversion = 1,",
+    // A Spoken from before packs shipped Ogg plays mp3; MIN_SPOKEN (scripts/lib/packs.mjs) keeps it off this pack.
+    '\tformat = "ogg",',
     "\tzones = {",
   ];
 
@@ -138,7 +140,7 @@ export async function buildLookup() {
     "",
     "-- The folder name comes from the loader rather than being baked in, so one",
     "-- generated file serves every pack built from this tree: the English pack and a",
-    "-- language's ship the same Sounds.lua and differ only in their .toc and their mp3s.",
+    "-- language's ship the same Sounds.lua and differ only in their .toc and their clips.",
     "pack.addon = ADDON_NAME",
     'pack.quality = GetAddOnMeta(ADDON_NAME, "X-SpokenPlaces-Quality") or "standard"',
     'pack.bitrate = tonumber(GetAddOnMeta(ADDON_NAME, "X-SpokenPlaces-Bitrate")) or 0',

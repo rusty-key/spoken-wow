@@ -54,9 +54,9 @@ fi
 grep -q '^## X-SpokenBosses-Language:' "$TOC" \
   || { echo "error: $TOC has no '## X-SpokenBosses-Language:' line to rewrite" >&2; exit 1; }
 
-count="$(find "$SOUNDS" -name '*.mp3' 2>/dev/null | wc -l | tr -d ' ' || true)"
+count="$(find "$SOUNDS" -name '*.ogg' 2>/dev/null | wc -l | tr -d ' ' || true)"
 if [[ "$count" -eq 0 ]]; then
-  echo "error: no mp3 files in $SOUNDS" >&2
+  echo "error: no ogg files in $SOUNDS" >&2
   echo "       Generate some first, on the site, then:  $next" >&2
   exit 1
 fi
@@ -94,7 +94,7 @@ rm -f "$staging/$folder/$folder.toc.bak"
 echo "copying $count clips..."
 rsync -a --exclude '.DS_Store' --exclude '*.part' --exclude '.from-takes' "$SOUNDS/" "$staging/$folder/Sounds/"
 
-# Stored, not deflated: the payload is mp3.
+# Stored, not deflated: the payload is Ogg.
 (cd "$staging" && zip -r -0 -q -X "$zip_path" "$folder" -x '*.DS_Store' '*/.*')
 
 # The manager channel publishes dist/<folder>/, so it must hold the tree the zip holds.

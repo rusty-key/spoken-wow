@@ -22,14 +22,16 @@
 // The folder is only ever emptied if this script made it -- it leaves a marker -- so a
 // folder holding audio from before the archive was the record is refused, not deleted.
 //
-// Copies are clones where the filesystem has them (APFS, btrfs, XFS): no extra space and
-// next to no time, and unlike a hard link, a tool that later writes into Sounds/ cannot
-// reach the archive. The database is asked through psql, as scripts/db/ does, so this needs
-// no node_modules.
+// Quests clips are cloned where the filesystem can (APFS, btrfs, XFS): no extra space, and a tool
+// that later writes into the folder cannot reach the archive the way it could through a hard link.
+// scripts/quests/package-audio.sh encodes them. Places, Readables and Bosses ship their folder as
+// it is, so their clips are encoded here into the pack's Ogg, through a cache keyed by each
+// master's hash. The database is asked through psql, as scripts/db/ does, so this needs no
+// node_modules.
 //
 // SPOKEN_CLIP_POINTERS=1 writes pointers instead (scripts/lib/clip-pointer.mjs), for a Manager
-// pack built without its clips on this machine. A quests pointer names the take's encoding, the Ogg
-// its pack ships, and durations.json carries what the build would otherwise read from the clips.
+// pack built without its clips on this machine. A pointer names the take's encoding, the Ogg its
+// pack ships. For quests, durations.json carries what the build would otherwise read from the clips.
 //
 // SPOKEN_SELECTED_TAKES=<file> writes there, once the folder is made, the takes it holds, as
 // { <take file>: { version, sha256 } }: what a staged release built from, which its review plays
@@ -37,6 +39,7 @@
 import { execFileSync } from "node:child_process";
 import { constants, existsSync, readdirSync } from "node:fs";
 import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
+import { availableParallelism } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -44,8 +47,9 @@ import { readLines, shipped } from "../../pipelines/places/tools/lib/loredata.mj
 import { assignFiles } from "../../pipelines/places/tools/voice/naming.mjs";
 import { packTimes } from "../../pipelines/lib/word-times.mjs";
 import { archiveOf, ENCODING_PROFILE, sourceOf } from "../lib/archives.mjs";
-import { pointerText, writePointers } from "../lib/clip-pointer.mjs";
+import { pointerText } from "../lib/clip-pointer.mjs";
 import { archiveBase, eachParallel, fetchRetrying } from "../lib/download.mjs";
+import { cachedOgg, haveEncoders } from "../lib/ogg.mjs";
 import { releaseTeamSql } from "../../pipelines/lib/release-team.mjs";
 import { PLAYER_WORDS_SQL, registerPlayerWordRows, writtenPlayerTokens } from "../../pipelines/lib/player-words.mjs";
 import { CURRENT_TEXT_SQL, NAMED_QUESTS_SQL, currentLines, currentTextFor, namedBy } from "./relevant.mjs";
@@ -53,6 +57,14 @@ import { CURRENT_TEXT_SQL, NAMED_QUESTS_SQL, currentLines, currentTextFor, named
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 const BASE_LANG = "enUS";
+
+// Where a section's encodes are kept between builds: a cache, not a record. Bosses share places'.
+const PLACES_ENCODES = join(ROOT, "pipelines/places/audio-transcoded", ENCODING_PROFILE);
+const ENCODES = {
+  places: PLACES_ENCODES,
+  bosses: PLACES_ENCODES,
+  readables: join(ROOT, "pipelines/readables/audio-transcoded", ENCODING_PROFILE),
+};
 
 const SECTIONS = {
   quests: { archive: archiveOf("quests"), out: join(ROOT, "pipelines/quests/audio") },
@@ -108,7 +120,7 @@ const inTeamBucket = (prefix, sha) =>
   teamBuckets ? `exists (select 1 from "archive_object" a where a."prefix" = '${prefix}' and a."sha256" = ${sha} and not a."pending")::text` : `'false'`;
 
 // A quests file carries its extension and the other two do not; the archive directory is the file
-// without it either way. Only quests takes have an Ogg.
+// without it either way.
 const listing = psql(`select t."file", coalesce(t."archiveFile", ''),
                              coalesce(array_to_json(t."wordTimes")::text, ''), coalesce(t."sha256", ''),
                              coalesce(e."encodedSha256", ''), coalesce(e."bytes"::text, ''), coalesce(e."durationSec"::text, ''),
@@ -249,7 +261,7 @@ async function writeSelection(held) {
   await writeFile(file, `${JSON.stringify(selected)}\n`);
 }
 
-/** Writes the quests pointers and returns the live takes left out, by file. */
+/** Writes the pointers and returns the live takes left out, by file. */
 async function writeEncodingPointers(pointed) {
   // Encoding one here instead would make players download it again: oggenc's bytes differ every run.
   const lacking = pointed.filter((take) => !take.encodedSha256 || !take.durationSec);
@@ -274,14 +286,23 @@ async function writeEncodingPointers(pointed) {
     for (const line of unreachable.slice(0, 5)) console.error(`  ${line}`);
     process.exit(1);
   }
+  // Every Places, Readables and Bosses clip is named by its lookup, which a missing file fails, so
+  // a clip its team deleted stops the build, named as such: the team voices the line again.
+  if (gone.size && section !== "quests") {
+    console.error(`error: ${gone.size} live takes were deleted from their team's bucket: regenerate them, e.g. ${[...gone][0]}`);
+    process.exit(1);
+  }
   if (gone.size) console.warn(`  ${gone.size} live takes left out: their team deleted the Ogg from its bucket, e.g. ${[...gone][0]}`);
   let done = 0;
   await eachParallel(pointed.filter((take) => !gone.has(take.file)), async ({ stem, encodedSha256, bytes }) => {
     await writeFile(join(paths.out, `${stem}.ogg`), pointerText(encodedSha256, bytes, "encodings"));
     if (++done % 5000 === 0) console.log(`  ${done}/${pointed.length - gone.size} pointers`);
   });
-  const durations = Object.fromEntries(pointed.filter((take) => !gone.has(take.file)).map(({ stem, durationSec }) => [stem, Number(durationSec)]));
-  await writeFile(join(paths.out, "durations.json"), `${JSON.stringify(durations)}\n`);
+  // Only the quests build reads no database for its lengths; anywhere else this file would ship.
+  if (section === "quests") {
+    const durations = Object.fromEntries(pointed.filter((take) => !gone.has(take.file)).map(({ stem, durationSec }) => [stem, Number(durationSec)]));
+    await writeFile(join(paths.out, "durations.json"), `${JSON.stringify(durations)}\n`);
+  }
   return gone;
 }
 
@@ -308,55 +329,48 @@ if (process.env.SPOKEN_CLIP_POINTERS) {
   }
   const pointed = live.filter((take) => take.sha256);
   await Promise.all([...new Set(pointed.map(({ stem }) => dirname(join(paths.out, stem))))].map((dir) => mkdir(dir, { recursive: true })));
-  let absent = [];
-  let leftOut = new Set();
+  const leftOut = await writeEncodingPointers(pointed);
   if (section === "quests") {
-    leftOut = await writeEncodingPointers(pointed);
     await writeWordTimes();
     await writeTakeText();
-  } else absent = await writePointers(pointed.map(({ stem, sha256 }) => ({ sha256, target: join(paths.out, `${stem}.mp3`) })), process.env.SPOKEN_ARCHIVE_URL);
-  console.log(`${section}: ${pointed.length - absent.length - leftOut.size} pointers in ${paths.out.slice(ROOT.length + 1)}`);
+  }
+  console.log(`${section}: ${pointed.length - leftOut.size} pointers in ${paths.out.slice(ROOT.length + 1)}`);
   if (unnamed) console.log(`  ${unnamed} live takes left out: no current line names their file, no lore their place, or their boss is retired`);
   if (live.length > pointed.length) console.log(`  ${live.length - pointed.length} live takes had their clip discarded before the archive kept every take; shipped silent`);
-  // Every Places, Readables and Bosses clip is named by its lookup, which a missing file fails, so a
-  // clip its team deleted stops the build too, named as such: the team voices the line again.
-  // Only quests leave such a line out (writeEncodingPointers).
-  if (absent.length) {
-    const teamTargets = new Set(pointed.filter((take) => take.teamTake).map(({ stem }) => join(paths.out, `${stem}.mp3`)));
-    const deleted = absent.filter(({ target, reason }) => teamTargets.has(target) && reason === "HTTP 404");
-    if (deleted.length) console.error(`  ${deleted.length} live takes were deleted from their team's bucket: regenerate them, e.g. ${deleted[0].target}`);
-    console.error(`  ${absent.length} live takes are not in the archive, e.g.:`);
-    for (const { target, reason } of absent.slice(0, 5)) console.error(`    ${target}: ${reason}`);
-    process.exit(1);
-  }
   await writeSelection(pointed.filter((take) => !leftOut.has(take.file)));
   process.exit(0);
+}
+
+const encodes = ENCODES[section];
+if (encodes && live.some((take) => take.archived) && !(await haveEncoders())) {
+  console.error("error: encoding the clips needs ffmpeg and oggenc on PATH (brew install ffmpeg vorbis-tools)");
+  process.exit(1);
 }
 
 let copied = 0;
 const gone = [];
 const missing = [];
-const made = new Set();
-for (const { file, stem, archived } of live) {
-  if (!archived) {
-    gone.push(file);
-    continue;
-  }
+const kept = live.filter((take) => {
+  if (!take.archived) gone.push(take.file);
+  return take.archived;
+});
+await Promise.all([...new Set(kept.map(({ stem }) => dirname(join(paths.out, stem))))].map((dir) => mkdir(dir, { recursive: true })));
+// oggenc is single-threaded, so one per core.
+await eachParallel(kept, async ({ stem, archived, sha256 }) => {
   const source = join(paths.archive, archived);
-  const target = join(paths.out, `${stem}.mp3`);
-  const dir = dirname(target);
-  if (!made.has(dir)) {
-    await mkdir(dir, { recursive: true });
-    made.add(dir);
-  }
-  try {
-    await copyFile(source, target, constants.COPYFILE_FICLONE);
-    copied++;
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
+  if (!existsSync(source)) {
     missing.push(source);
+    return;
   }
-}
+  if (!encodes) {
+    await copyFile(source, join(paths.out, `${stem}.mp3`), constants.COPYFILE_FICLONE);
+    copied++;
+    return;
+  }
+  const ogg = await cachedOgg(source, encodes, sha256);
+  await copyFile(ogg, join(paths.out, `${stem}.ogg`), constants.COPYFILE_FICLONE);
+  if (++copied % 500 === 0) console.log(`  ${copied}/${kept.length} clips`);
+}, encodes ? availableParallelism() : undefined);
 
 if (section === "quests") {
   await writeWordTimes();

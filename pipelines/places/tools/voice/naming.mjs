@@ -7,7 +7,7 @@
 //   lineId   z:{mapID}                 s:{mapID}:{canonicalKey}
 //   file     {mapID}/zone              {mapID}/{slug}
 //
-// The lookup table stores `file` without an extension; the addon appends ".mp3".
+// The lookup table stores `file` without an extension; the addon appends the pack's extension.
 
 import { createHash } from "node:crypto";
 
