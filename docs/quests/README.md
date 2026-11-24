@@ -594,6 +594,9 @@ frFR's `|2` before a word reads `de ` before a consonant and `d'` before a vowel
 the token became (`légion |2 $n` reads `légion d'aventurier`).
 The plural escape after a number, `1 |4пару:пары:пар;`, reads the form that number takes (Russian's
 one, few and many; one and many where it has two forms). One with no number before it stays.
+In frFR and itIT, the word before a token elides when the token's word starts with a vowel:
+`le $c` reads `l'aventurier`, `du $c` `de l'aventurier`, `ce $c` `cet aventurier`, and itIT's
+`una $c` `un'avventuriera`. An `h` counts as a consonant.
 Contributions triage shows any token or client escape still left after this, a bare `<` or `>`, and a gap
 before `.` or `,` or a mid-sentence double space where a gender branch came through empty,
 above the row's text, so a line that would never be voiced is seen before it is accepted.

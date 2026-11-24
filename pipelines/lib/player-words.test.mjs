@@ -104,3 +104,20 @@ test("ruRU's own words decline for the cases its text uses", () => {
   // A case its text never uses has no word, so the line stays unvoiced.
   assert.equal(speakQuestTokens("как |3-7($r).", "ruRU"), "как |3-7($r).");
 });
+
+test("a French or Italian word before a token elides before a vowel", () => {
+  assert.equal(speakQuestTokens("Bienvenue, jeune $c. Le $c que $c doit être.", "frFR"), "Bienvenue, jeune aventurier. L'aventurier qu'aventurier doit être.");
+  assert.equal(speakQuestTokens("Le travail du $c, ce $c.", "frFR"), "Le travail de l'aventurier, cet aventurier.");
+  assert.equal(speakQuestTokens("Sa $c.", "frFR", "f"), "Son aventurière.");
+  // voyageur starts with a consonant: no elision.
+  assert.equal(speakQuestTokens("le $r", "frFR"), "le voyageur");
+  registerPlayerWordRows([
+    ["itIT", '{"m": {"name": "avventuriero", "race": "viaggiatore"}, "f": {"name": "avventuriera", "race": "viaggiatrice"}}'],
+  ]);
+  try {
+    assert.equal(speakQuestTokens("Sei una $c coraggiosa, il $c della $c.", "itIT", "f"), "Sei un'avventuriera coraggiosa, l'avventuriera dell'avventuriera.");
+    assert.equal(speakQuestTokens("Il $c e una $r.", "itIT"), "L'avventuriero e una viaggiatore.");
+  } finally {
+    registerPlayerWordRows([]);
+  }
+});

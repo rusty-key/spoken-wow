@@ -391,6 +391,7 @@ function speak(text, lang, playerGender, byToken) {
   const side = playerGender === "f" ? "$2" : "$1";
   let spoken = text.replace(DOUBLED, "$").replace(GENDER, side).replace(SWAPPED, side);
   if (lang === "koKR") spoken = spoken.replace(GLUED_PARTICLE, gluedParticleEscape);
+  spoken = elide(spoken, lang, words);
   spoken = spoken.replace(DECLINED, (whole, n, token, at, all) => {
     const word = words.cases?.[n]?.[token.toUpperCase() === "R" ? "race" : "name"];
     return word ? cased(word, at, all, token) : whole;
@@ -418,6 +419,41 @@ const VOWEL = /^[aeiouyàâäéèêëîïôöùûüÿœæ]/iu;
 
 function speakDe(text) {
   return text.replace(DE, (_, next) => (VOWEL.test(next) ? "d'" : "de "));
+}
+
+// A word before a token was written for whatever word the token became, and French and Italian
+// elide it before a vowel: "le $c" is "l'aventurier", "una $c" is "un'avventuriera". Each maps a
+// word to what it becomes there; one ending in a space stays a separate word ("ce" is "cet ").
+// An `h` stays a consonant: whether it elides depends on the word, as with `|2`.
+const ELISIONS = {
+  frFR: {
+    le: "l'", la: "l'", de: "d'", que: "qu'", jusque: "jusqu'", lorsque: "lorsqu'", puisque: "puisqu'",
+    du: "de l'", au: "à l'", ce: "cet ", ma: "mon ", ta: "ton ", sa: "son ",
+  },
+  itIT: {
+    il: "l'", lo: "l'", la: "l'", una: "un'", del: "dell'", dello: "dell'", della: "dell'",
+    al: "all'", allo: "all'", alla: "all'", nel: "nell'", nello: "nell'", nella: "nell'",
+    dal: "dall'", dallo: "dall'", dalla: "dall'", sul: "sull'", sullo: "sull'", sulla: "sull'",
+    quel: "quell'", quello: "quell'", quella: "quell'", questo: "quest'", questa: "quest'",
+    bello: "bell'", bella: "bell'", buona: "buon'",
+  },
+};
+const ELIDED = Object.fromEntries(
+  Object.entries(ELISIONS).map(([lang, table]) => [
+    lang,
+    new RegExp(String.raw`(?<![\p{L}'’])(${Object.keys(table).join("|")})\s+(?=${UNDECLINED}\$([NnCcRr])(?!${GLUED}))`, "giu"),
+  ]),
+);
+
+function elide(text, lang, words) {
+  const table = ELISIONS[lang];
+  if (!table) return text;
+  return text.replace(ELIDED[lang], (whole, before, token) => {
+    const word = token.toUpperCase() === "R" ? words.race : words.name;
+    if (!VOWEL.test(word)) return whole;
+    const elided = table[before.toLowerCase()];
+    return before[0] === before[0].toLowerCase() ? elided : elided[0].toUpperCase() + elided.slice(1);
+  });
 }
 
 // Korean's particle escape, `$c|1이여;여;`: the client prints the first form after a syllable that
