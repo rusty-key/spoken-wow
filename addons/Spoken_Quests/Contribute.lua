@@ -229,20 +229,30 @@ local function EventOnScreen()
     return nil, nil
 end
 
---- The gossip text on screen, or nil once the gossip window is gone. GetGossipText goes on
---- answering with the last words after the window closes -- walking away closes it with no
---- event this addon hears -- so the frame is what says whether they are still being spoken:
---- the game's own, or DialogueUI's in its place. A client without a GossipFrame to ask is
---- taken at its word.
+--- The greeting a quest giver with several quests shows, in the game's window or DialogueUI's.
+local function GreetingOnScreen(page)
+    local panel = _G.QuestFrameGreetingPanel
+    if page == "QUEST_GREETING" or (panel and panel.IsVisible and panel:IsVisible()) then
+        return GetGreetingText and NotSecret(GetGreetingText())
+    end
+end
+
+--- The NPC's words on screen and the event they play as: a quest giver's greeting, else the
+--- gossip text, or nil once both windows are gone. GetGossipText goes on answering with the last
+--- words after the window closes -- walking away closes it with no event this addon hears -- so
+--- the frame is what says whether they are still being spoken: the game's own, or DialogueUI's
+--- in its place. A client without a GossipFrame to ask is taken at its word.
 local function GossipOnScreen()
-    if Utils:DialogueUIPage() == "GOSSIP_SHOW" then
-        return GetGossipText and NotSecret(GetGossipText())
+    local page = Utils:DialogueUIPage()
+    local greeting = GreetingOnScreen(page)
+    if greeting and greeting ~= "" then
+        return greeting, Enums.SoundEvent.QuestGreeting
     end
     local frame = _G.GossipFrame
-    if frame and frame.IsVisible and not frame:IsVisible() then
+    if page ~= "GOSSIP_SHOW" and frame and frame.IsVisible and not frame:IsVisible() then
         return nil
     end
-    return GetGossipText and NotSecret(GetGossipText())
+    return GetGossipText and NotSecret(GetGossipText()), Enums.SoundEvent.Gossip
 end
 
 --- Who is reading, onto `fields`, beside a text sent as shown, and the classes `questID` is for
@@ -417,7 +427,7 @@ local function SoundDataForCurrent()
             text = text, unitGUID = Utils:GetNPCGUID() }
     end
 
-    local gossip = GossipOnScreen()
+    local gossip, gossipEvent = GossipOnScreen()
     local guid = Utils:GetNPCGUID()
     local name = Utils:GetNPCName()
     -- Both absent is the case Addon:GOSSIP_SHOW guards with the same test and the comment
@@ -428,7 +438,7 @@ local function SoundDataForCurrent()
     -- who only walked away from a conversation.
     if gossip and gossip ~= "" and (guid or name) then
         return {
-            event = Enums.SoundEvent.Gossip,
+            event = gossipEvent,
             unitGUID = guid,
             name = name,
             unitIsObjectOrItem = Utils:IsNPCObjectOrItem(),
@@ -448,7 +458,7 @@ local function HasSoundForCurrent()
     local soundData = PreparedForCurrent()
     -- Drawn as a body its voice is not, a line plays, and is still a line the site lacks.
     return soundData ~= nil
-        and not (soundData.event == Enums.SoundEvent.Gossip and DataModules:IsOtherBody(soundData))
+        and not (Enums.SoundEvent:IsGossipEvent(soundData.event) and DataModules:IsOtherBody(soundData))
 end
 
 --- The data module the line on screen plays from, or nil when no pack has it.
@@ -495,9 +505,9 @@ local function IsChanged()
         return DataModules:IsTextKnown({ event = event, questID = GetQuestID and NotSecret(GetQuestID()) or 0,
             text = text }) == false
     end
-    local gossip = GossipOnScreen()
+    local gossip, gossipEvent = GossipOnScreen()
     if gossip and gossip ~= "" and NPCID() then
-        return DataModules:IsTextKnown({ event = Enums.SoundEvent.Gossip, unitGUID = Utils:GetNPCGUID(),
+        return DataModules:IsTextKnown({ event = gossipEvent, unitGUID = Utils:GetNPCGUID(),
             name = Utils:GetNPCName(), unitIsObjectOrItem = Utils:IsNPCObjectOrItem(), text = gossip }) == false
     end
     return false
@@ -536,9 +546,10 @@ end
 -- More zones than any NPC stands in: past this, an envelope's zones are a hand-built list.
 local MAX_ZONES = 8
 
---- Keep the zone the player met the NPC on screen in, beside the zones met before: the site
---- learns where a speaker stands from the game itself, gossip and quest givers alike, whether
---- or not any of its lines is missing. Nothing for another player, or an item, which stands nowhere.
+--- Keep the zone the NPC on screen was met in, beside the zones met before, and the name the client
+--- shows, for gossip and quest givers alike, whether or not any of its lines is missing. A changed
+--- name is kept again, so a giver a patch renamed reaches the site. Nothing for another player, or
+--- an item, which stands nowhere.
 local function SeeSpeaker()
     if SharedByPlayer() then
         return
@@ -552,21 +563,35 @@ local function SeeSpeaker()
         return
     end
     local npc = format("%s:%d", kind, id)
+    local _, keptZones, keptName = Spoken.Gather:GetSeen(npc)
+    -- The same unit the id came from. A window that cannot read the name keeps the one it had.
+    local name = Utils:GetNPCName()
+    if not name or name == "" then
+        name = keptName
+    end
+    local met = false
+    for _, known in ipairs(keptZones or {}) do
+        met = met or known == zone
+    end
+    if met and keptName == name then
+        return
+    end
     local zones = {}
-    for _, known in ipairs(select(2, Spoken.Gather:GetSeen(npc)) or {}) do
-        if known == zone then
-            return
-        end
+    for _, known in ipairs(keptZones or {}) do
         zones[#zones + 1] = known
     end
-    if #zones >= MAX_ZONES then
-        table.remove(zones, 1)
+    if not met then
+        if #zones >= MAX_ZONES then
+            table.remove(zones, 1)
+        end
+        zones[#zones + 1] = zone
     end
-    zones[#zones + 1] = zone
     local base = BaseFields()
-    Spoken.Gather:See(npc, zones, Spoken.Contribute:Envelope("seen", {
-        base[1], base[2], { "npc", npc }, { "zones", table.concat(zones, ",") },
-    }))
+    local fields = { base[1], base[2], base[3], { "npc", npc }, { "zones", table.concat(zones, ",") } }
+    if name then
+        fields[#fields + 1] = { "name", name }
+    end
+    Spoken.Gather:See(npc, zones, Spoken.Contribute:Envelope("seen", fields), name)
 end
 
 --- Keep the line on screen for later. Only reached once a caller has established it is

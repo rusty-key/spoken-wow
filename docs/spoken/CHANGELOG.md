@@ -7,58 +7,65 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **Move profiles between characters and installations with Export Profile and Import Profile**
   in Spoken's Profiles settings.
   *([anon1231823](https://github.com/anon1231823))*
+- **New players' world map lights the area under the pointer only once they turn it on** with
+  Area Highlight in Spoken Places' settings. *([rusty-key](https://github.com/rusty-key))*
+- **The player has a Stop All button,** which stops narration and clears the queue. Skip Line
+  is now Next Line, and greys out with no line waiting. *([anon1231823](https://github.com/anon1231823))*
+- **Readables played from the Compendium show the same icon as their Compendium page.** One with
+  no item, gravestones and tablets included, shows its kind's icon. *([anon1231823](https://github.com/anon1231823))*
+- **Round buttons sink and darken while you hold them,** so Play, Stop, Skip and Report answer
+  your click at once. *([rusty-key](https://github.com/rusty-key))*
+- **Notes and other readables keep their icon on every narrated page,** even after closing the readable or opening another one. *([anon1231823](https://github.com/anon1231823))*
+- **Read After Accepting no longer shows an explanatory tooltip.** *([anon1231823](https://github.com/anon1231823))*
+- **With Read After Accepting on, a quest reads once you accept or hand it in.** It replaces Read
+  When Window Closes. *([anon1231823](https://github.com/anon1231823))*
+- **Spoken plays the new, smaller Places, Readables and Bosses sound packs,** and the ones you
+  already have. *([rusty-key](https://github.com/rusty-key))*
+- **A quest giver's greeting offers Contribute when Spoken has no voice for it,** and Collect
+  Missing Lines keeps it. *([svengabr](https://github.com/svengabr))*
+- **Subtitles no longer block clicks or the mouse wheel.** Move them with the arrow button that
+  appears under them on hover. *([Praxeomatic](https://github.com/Praxeomatic))*
 
-- **`/sp mute [on | off]` and a Mute Spoken Audio key silence Spoken without disabling its
-  features.** Lines still queue and show their subtitles and narrator text, one after another, while
-  muted. The key has no default; set it in Spoken's settings or the game's key bindings. *([Trusty565](https://github.com/Trusty565))*
-- **Azeroth's Compendium shows quest titles in your language on every client,** including quests
-  you never opened. Needs the next release of your language's quest packs.
-  *([rusty-key](https://github.com/rusty-key))*
-- **Lines the Spoken Manager has sent leave SpokenContributions.lua at login,** so the file no
-  longer grows while Sharing is on. *([rusty-key](https://github.com/rusty-key))*
-- **Spoken's pages are listed under it in Settings, AddOns, from the start.** A controller can now
-  reach every page; a mouse click on the minus still folds them away.
-  *([rusty-key](https://github.com/rusty-key))*
-- **The controller can enter Spoken's settings pages.** In Settings, AddOns, confirming or
-  pressing right on Spoken or one of its pages goes to the page's first row.
-  *([rusty-key](https://github.com/rusty-key))*
-- **Forget Places Heard is now Forget Visited Places, and asks before it clears.** The button
-  shows how many places the character has heard, and the question says how many it will forget.
-  *([Ozzadar](https://github.com/Ozzadar))*
-- **Area Highlight no longer shows Blizzard's zone art through OpenMap's map.** On OpenMap's map
-  the area under the cursor now lights in a gold glow in the area's shape, over OpenMap's own art.
-  Blizzard's map lights as before. *([Loukky](https://github.com/Loukky))*
-- **A line that arrives while Spoken is stopped shows that it waits.** The "+N" after the line's
-  title swells and glows when a line joins a stopped queue; Skip plays it. With Show Name and Title
-  off, the subtitles count it after "(Stopped)". Play buttons in the quest log and the Compendium
-  show a plus while Spoken reads another line: a click queues the line after it, and the plus
-  stays while the line waits. *([rusty-key](https://github.com/rusty-key))*
-- **Collecting lines also notes which zone you met each quest giver and speaker in**, so the
-  site can sort lines by zone. It goes up with your collected lines, and nothing else about
-  where you were. *([rusty-key](https://github.com/rusty-key))*
-- **Quest pages in the Compendium read in your language before a line is voiced.** A quest you have
-  not opened, whose line has no recording in your language yet, showed its English. It now shows
-  the words your language's quest packs carry, once those packs are rebuilt.
-  *([rusty-key](https://github.com/rusty-key))*
-- **The Compendium's lists take the professions window's look,** with gold header bars and a yellow light on
-  the chosen row. *([Nucabe](https://github.com/Nucabe))*
-- **A boss's model sits on a frayed paper edge**, on the map panel and in the Compendium. On the map,
-  a boss also has its portrait and Open in Compendium. *([Nucabe](https://github.com/Nucabe))*
-- **A boss's model fits its frame whole, standing idle**, and two bosses in overlapping windows no longer
-  cut into each other. *([Nucabe](https://github.com/Nucabe))*
-- **A boss you have not met shows its own portrait**, not the question mark. *([Nucabe](https://github.com/Nucabe))*
-- **Read Greetings has a Once per Session choice.** An NPC greets you once each session: after a
-  reload or relog it greets again. Greetings are kept per NPC, so guards that share an NPC ID share
-  one greeting. *([anon1231823](https://github.com/anon1231823))*
-- **The settings pages work with the controller UI.** Each row is one stop: left and right step a
-  slider or dropdown, and A ticks or opens it. *([nobbs](https://github.com/nobbs))*
-- **Download, Report and the settings questions keep the controller working.** They open in
-  Spoken's own window, which B closes. *([nobbs](https://github.com/nobbs))*
-- **Copy Settings From and Delete Profile ask first.** *([nobbs](https://github.com/nobbs))*
-- **Previous Line replays recent playback.** The narrator keeps a short history after lines finish or
-  are skipped, adds Previous controls to the player styles and DialogueUI rows, and exposes the
-  action through `/sp previous` and a bindable key.
+## 3.12.1 — 2026-11-22
+
+- **Queue counts pulse without an error when a line is added while Spoken is stopped.** *([anon1231823](https://github.com/anon1231823))*
+- **Collecting lines also notes each speaker's name as your game shows it,** so translators can
+  show quest givers by the names your game uses. *([rusty-key](https://github.com/rusty-key))*
+- **Quest givers in the quest log carry your language's names,** as its translators set them, once
+  your language's voice pack is updated. *([rusty-key](https://github.com/rusty-key))*
+
+## 3.12.0 — 2026-11-22
+
+- **Previous Line replays what just played,** from the player, `/sp previous` or a key you bind.
   *([anon1231823](https://github.com/anon1231823))*
+- **`/sp mute` and a Mute Spoken Audio key silence Spoken.** Lines still queue and show their
+  subtitles while muted. *([Trusty565](https://github.com/Trusty565))*
+- **Stop When Window Closes stops every quest and gossip line when its window closes, and starts
+  off.** To keep accepted quests reading, turn off Stop Narration When Accepting.
+  *([rusty-key](https://github.com/rusty-key))*
+- **A line that arrives while Spoken is stopped shows that it waits,** in the "+N" after the
+  title. Play buttons show a plus while another line reads; a click queues the line after it.
+  *([rusty-key](https://github.com/rusty-key))*
+- **Read Greetings has a Once per Session choice.** *([anon1231823](https://github.com/anon1231823))*
+- **Spoken works with a controller:** its settings pages, Azeroth's Compendium and its questions.
+  In the Compendium, LB and RB switch tabs. *([nobbs](https://github.com/nobbs))*
+- **Spoken's pages are listed under it in Settings, AddOns,** and the controller can enter each
+  one. *([rusty-key](https://github.com/rusty-key))*
+- **Copy Settings From and Delete Profile ask first.** *([nobbs](https://github.com/nobbs))*
+- **Forget Places Heard is now Forget Visited Places,** and asks first, saying how many places it
+  will forget. *([Ozzadar](https://github.com/Ozzadar))*
+- **Azeroth's Compendium shows quest titles and text in your language on every client,** before a
+  line is voiced. Needs the next release of your language's quest packs. *([rusty-key](https://github.com/rusty-key))*
+- **Notes and books you carry count as found in the Compendium,** even unopened, and show their
+  item's icon. *([anon1231823](https://github.com/anon1231823))*
+- **The Compendium's lists take the professions window's look.** *([Nucabe](https://github.com/Nucabe))*
+- **A boss's model stands whole on a frayed paper edge,** on the map and in the Compendium. A boss
+  you have not met shows its own portrait. *([Nucabe](https://github.com/Nucabe))*
+- **Area Highlight lights OpenMap's map with a gold glow** in the area's shape. *([Loukky](https://github.com/Loukky))*
+- **SpokenContributions.lua no longer grows while Sharing is on.** Lines the Spoken Manager has
+  sent leave it at login. *([rusty-key](https://github.com/rusty-key))*
+- **Collecting lines also notes the zone you met each speaker in,** so the site can sort lines by
+  zone. *([rusty-key](https://github.com/rusty-key))*
 
 ## 3.11.0 — 2026-11-21
 

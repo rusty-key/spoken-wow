@@ -124,7 +124,8 @@ function MinimalPlayer:Initialize(original)
         function() self:UpdateControls() end)
     self.previous = Actions.PreviousButton(self.controls)
     self.skip = Actions.SkipButton(self.controls)
-    self.buttons = { self.play, self.previous, self.skip }
+    self.eject = Actions.EjectButton(self.controls)
+    self.buttons = { self.previous, self.play, self.skip, self.eject }
 
     self.name = Font(self.header, 16, 1, .82, 0)
     self.name:SetHeight(NAME_HEIGHT)
@@ -212,9 +213,9 @@ function MinimalPlayer:BuildMenu()
         return button
     end
     self.menuPlay = Item(L.STOP, function() if SoundQueue:CanBePaused() then SoundQueue:TogglePauseQueue() end end)
-    self.menuPrevious = Item(L.BIND_PREVIOUS, function() SoundQueue:Previous() end)
-    self.menuSkip = Item(L.MIN_SKIP, function() SoundQueue:Skip() end)
-    self.menuStop = Item(L.MIN_STOP_ALL, function() SoundQueue:RemoveAllSoundsFromQueue() end)
+    self.menuPrevious = Item(L.BIND_SKIP_BACKWARD, function() SoundQueue:Previous() end)
+    self.menuSkip = Item(L.BIND_SKIP_FORWARD, function() SoundQueue:Skip() end)
+    self.menuStop = Item(L.BIND_EJECT, function() SoundQueue:RemoveAllSoundsFromQueue() end)
     -- The minimap menu's rows too: the Compendium and the settings.
     Item(L.OPT_COMPENDIUM_OPEN, function() Options:ToggleCompendium() end)
     Item(L.SETTINGS, function() Options:Open() end)

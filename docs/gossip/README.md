@@ -118,4 +118,5 @@ gossip, and `/sp settings` opens Spoken's page.
 - `docs/quests/README.md` explains how the lines, their BroadcastText ids and the aliases are
   made: "Gossip text for every client" and "Which greeting a text is".
 - The Report address for a greeting is `…/quests/r/npc/{creatureID}`, and a gameobject has
-  `…/quests/r/object/{objectID}`. The Contribute button appears where no pack has the line.
+  `…/quests/r/object/{objectID}`. The Contribute button appears where no pack has the line, on the
+  gossip window and on the quest frame's greeting panel alike.

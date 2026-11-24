@@ -271,7 +271,7 @@ export async function textChangeCount(section: ReleaseSection, lang: Lang, since
         and ((a."lang" = $2 and a."source" = $1 and a."kind" = any($5::text[]))
              -- An ignore in every language has no language of its own, and the build applies it.
              or (a."lang" is null and a."source" = $1 and a."kind" in ('ignore.set', 'ignore.cleared'))
-             or (a."lang" = $2 and a."source" is null and a."kind" in ('name.edited', 'name.restored', 'name.retired')
+             or (a."lang" = $2 and a."source" is null and a."kind" in ('name.edited', 'name.restored', 'name.retired', 'name.observed')
                  and split_part(a."subject", ':', 1) = any($6::text[])))
         and not exists (select 1 from "take" t
                           left join until_live on until_live."file" = t."file"

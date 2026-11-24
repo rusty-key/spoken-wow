@@ -83,7 +83,9 @@ function Snap.Move()
     local drag = state
     local frame = drag.frame
     local options = drag.options
-    if not frame:IsShown() or (options.locked and options.locked()) then
+    -- Releasing off the drag handle may not trigger its OnDragStop.
+    if not frame:IsShown() or (options.locked and options.locked())
+        or (IsMouseButtonDown and not IsMouseButtonDown(options.button or "LeftButton")) then
         Snap.Stop()
         return
     end
@@ -112,7 +114,7 @@ end
 
 --- Start dragging `frame` after the pointer. `options`: home() the place its top left rests at by
 --- default (left, top), locked() true to let go, place(left, top, width, height) to put it somewhere
---- other than by its top left.
+--- other than by its top left, button the one whose release ends the drag (LeftButton).
 function Snap.Start(frame, options)
     local left, top = frame:GetLeft(), frame:GetTop()
     if not left or not top then return end

@@ -19,6 +19,7 @@ import { isEnabled } from "@/lib/languages/store";
 import { currentSession } from "@/lib/session";
 import { viewerOf } from "@/lib/grants/store";
 import { worksIn } from "@/lib/permissions";
+import { uiLangOf } from "@/lib/users/ui-language";
 
 /**
  * Whether the person asking may see a language that is switched off: an admin, or anybody
@@ -36,6 +37,19 @@ async function mayPreview(lang: Lang): Promise<boolean> {
 export async function worksHere(lang: Lang): Promise<boolean> {
   return mayPreview(lang);
 }
+
+/**
+ * The language Backstage's words are read in: a signed-in reader's saved setting, English if they
+ * never chose, and the `[lang]` segment for a signed-out visitor. A translator opens pages in the
+ * language they maintain, and must not have the interface follow it. Only the words follow this;
+ * the front page never asks, and `lang` stays the page's language for the lines, teams and packs
+ * it shows. Cached: the layout, page and metadata all ask.
+ */
+export const readingLang = cache(async (pageLang: Lang): Promise<Lang> => {
+  const session = await currentSession();
+  if (!session) return pageLang;
+  return (await uiLangOf(session.user.id)) ?? BASE_LANG;
+});
 
 /** Cached per render: the layout and the page under it both ask, of the same language. */
 const visible = cache(async (lang: Lang): Promise<boolean> => {

@@ -1,3 +1,4 @@
+import { useUiText } from "@/components/UiTextProvider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -16,11 +17,12 @@ export function Untranslated({
   children: React.ReactNode;
   className?: string;
 }) {
+  const t = useUiText().catalogue.untranslated;
   if (!missing) return <>{children}</>;
   return (
     <span
       className={cn("italic opacity-70", className)}
-      title="Not translated yet; shown in English"
+      title={t.title}
     >
       {children}
     </span>
@@ -29,12 +31,13 @@ export function Untranslated({
 
 /** The marker beside a line's text, where the other facts about the text sit. */
 export function UntranslatedMark() {
+  const t = useUiText().catalogue.untranslated;
   return (
     <span
       className="text-muted-foreground rounded border px-1 leading-4"
-      title="Not translated yet; the English is shown in its place, and it cannot be voiced"
+      title={t.markTitle}
     >
-      untranslated
+      {t.mark}
     </span>
   );
 }

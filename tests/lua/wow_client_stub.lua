@@ -195,6 +195,7 @@ local function Widget(kind, name)
     function w:SetOrientation(v) self.orientation = v end
     function w:GetOrientation() return self.orientation end
     function w:SetSize(a, b) self.width, self.height = a, b end
+    function w:SetRoundLayoutToNearestPixel(v) self.roundLayoutToNearestPixel = v end
     function w:GetWidth() return self.width end
     function w:EnableMouse(v) self.mouseEnabled = v and true or false end
     function w:IsMouseEnabled() return self.mouseEnabled and true or false end
@@ -272,7 +273,18 @@ local function Widget(kind, name)
     function w:IsIgnoringParentAlpha() return self.ignoreParentAlpha or false end
     function w:SetID(v) self.id = v end
     function w:GetID() return self.id end
-    function w:SetParent(p) self.parent = p end
+    -- A frame moved under another is among its children from then on, as GetChildren reports.
+    function w:SetParent(p)
+        local old = self.parent
+        if old == p then return end
+        if old and old.children then
+            for i, child in ipairs(old.children) do
+                if child == self then table.remove(old.children, i); break end
+            end
+        end
+        self.parent = p
+        if p and p.children then table.insert(p.children, self) end
+    end
     function w:GetParent() return self.parent end
     -- A hosted player (Addon:ApplyHost) scales to keep its size on screen, and tests read the
     -- scale back. A test standing in for a host sets its own effective scale.
@@ -296,6 +308,11 @@ local function Widget(kind, name)
     function w:SetDesaturated(v) self.desaturated = v and true or false end
     function w:IsDesaturated() return self.desaturated or false end
     function w:SetVertexColor(r, g, b, a) self.vertexColor = { r, g, b, a } end
+    -- White until tinted, as the client reports a texture nobody has coloured.
+    function w:GetVertexColor()
+        local c = self.vertexColor or {}
+        return c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1
+    end
     function w:CreateTexture(n, layer) local t = Widget("Texture", n); t.parent = self; t.layer = layer; return t end
     -- A mask, as the client hands one back: the small window rounds a portrait with it.
     function w:CreateMaskTexture(n) local t = Widget("MaskTexture", n); t.parent = self; return t end

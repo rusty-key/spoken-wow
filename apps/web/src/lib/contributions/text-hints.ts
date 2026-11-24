@@ -9,13 +9,17 @@
  * CLIENT-SAFE: ContributionTable renders these.
  */
 import { BASE_LANG, clientLang } from "@/lib/lang";
-import { speakPlayerTokens } from "@/lib/player-words";
+import { CLIENT_ESCAPE, DECLENSION, speakQuestTokens } from "@/lib/player-words";
 import { withoutDirections } from "@/lib/text-gate";
 
-import { spokenFromTemplate } from "./tokens";
+import { writtenFromTemplate } from "./tokens";
 
-// Up to the next space, so a lost `;` names the branch rather than the rest of the line.
-const LEFTOVER = /\$\S{0,30}/g;
+// Up to the next space, so a lost `;` names the branch rather than the rest of the line. Not
+// inside a declension escape, which gets its own hint.
+const LEFTOVER = new RegExp(String.raw`(?<!${DECLENSION.source})\$\S{0,30}`, "g");
+const DECLINED = new RegExp(String.raw`${DECLENSION.source}[^)]{0,30}\)?`, "g");
+// Any other client escape, up to the next space: `|1이여;여;`, `|2`, `|n`.
+const ESCAPE = new RegExp(String.raw`(?!${DECLENSION.source})${CLIENT_ESCAPE.source}\S{0,30}`, "g");
 // Blizzard's English writes "Hmm. . .it says", German "Hm ... vielleicht": an ellipsis, not a gap.
 const SPACED_ELLIPSIS = /\.(?:[ \u00a0]?\.){2,}/g;
 // Not "!", "?" or ":": French spaces before those.
@@ -27,12 +31,21 @@ const DOUBLE_SPACE = /(?<=[^\s.!?…:])(?<![.!?…]["'“”»])[ \u00a0]{2,}\S/
 
 export function textHints(text: string, locale: string): string[] {
   const lang = clientLang(locale) ?? BASE_LANG;
-  // Spoken as the gate will speak the accepted line: English is stored through the extract's
-  // table, which also turns $B into a line break.
-  const spoken = speakPlayerTokens(lang === BASE_LANG ? spokenFromTemplate(text) : text, lang);
+  // Spoken as the gate will speak the accepted line: English is stored as the extract writes it,
+  // which turns $B into a line break.
+  const spoken = speakQuestTokens(lang === BASE_LANG ? writtenFromTemplate(text) : text, lang);
   const judged = withoutDirections(spoken);
   const hints = new Set<string>();
   for (const token of judged.match(LEFTOVER) ?? []) hints.add(`unspoken token ${token} — won't be voiced`);
+  for (const escape of judged.match(DECLINED) ?? []) {
+    // Only a token inside is declined; a word inside is the contributor's own class or race.
+    hints.add(
+      escape.includes("($")
+        ? `undeclined ${escape} — won't be voiced until Player words has its case`
+        : `client-filled ${escape} — won't be voiced; put $c, $n or $r back inside`,
+    );
+  }
+  for (const escape of judged.match(ESCAPE) ?? []) hints.add(`client escape ${escape} — won't be voiced`);
   // Named even beside a token: fixing only the token would still leave the line refused.
   if (/[<>]/.test(judged)) hints.add("unspeakable < or > — won't be voiced");
   // A direction is never spoken, so its own spacing is no gap.

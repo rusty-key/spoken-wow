@@ -8,7 +8,7 @@ those lines can be restored.
 WHY NO CORPUS REBUILD. The direction was never lost - only the *cleaned* text lost it, and
 `originalText` in the committed corpus still carries it. So the restored text is recovered by
 re-running the same cleaning against `originalText` and omitting the one strip. That is
-reproduced here from tts_cli, not reimplemented: REPLACE_DICT and the `$G` pattern are
+reproduced here from tts_cli, not reimplemented: written_text and the `$G` pattern are
 imported, so a change there changes this.
 
 THE SAFETY INVARIANT, and the reason to trust the output: for every line emitted, stripping
@@ -37,7 +37,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from tts_cli.tts_utils import REPLACE_DICT  # noqa: E402
+from tts_cli.tts_utils import written_text  # noqa: E402
 
 CORPUS = Path(__file__).resolve().parent.parent / "corpus" / "corpus.json.gz"
 
@@ -56,8 +56,7 @@ ANY_SPAN = re.compile(r"<([^<>]*)>")
 
 def cleaned(text: str, player_gender: str | None) -> str:
     """The pipeline's cleaning, minus the strip."""
-    for token, replacement in REPLACE_DICT.items():
-        text = text.replace(token, replacement)
+    text = written_text(text)
     if player_gender == "m":
         text = GENDER.sub(r"\1", text)
     elif player_gender == "f":

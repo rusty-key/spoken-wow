@@ -25,6 +25,7 @@ import { SearchBar } from "@/components/readables/SearchBar";
 import TeamPicker from "@/components/TeamPicker";
 import { Wide } from "@/components/Width";
 import { Loading, Refreshing } from "@/components/Loading";
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import type { BookFacet } from "@/lib/readables/catalogue";
 import { forTeam, isOwn, keepTeam, otherTeam, type TeamView } from "@/lib/teams/view";
@@ -58,6 +59,7 @@ const DEBOUNCE_MS = 500;
 type Batch = PendingBatch & { lineIds: string[] };
 
 export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } & TeamView) {
+  const t = useUiText();
   const lang = useLang();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -567,7 +569,7 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
             </Button>
           )}
           {canRegenerate && result && result.total > 0 && (
-            <BatchGenerate total={result.total} state={filters.state} noun={["page", "pages"]} onClick={askToRegenerateAll} />
+            <BatchGenerate total={result.total} state={filters.state} noun="page" onClick={askToRegenerateAll} />
           )}
         </div>
 
@@ -576,9 +578,9 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
 
       <Wide>
         {loading && !result ? (
-          <Loading label="Loading pages…" />
+          <Loading what="pages" />
         ) : result && result.lines.length === 0 ? (
-          <p className="text-muted-foreground text-sm">Nothing matches these filters.</p>
+          <p className="text-muted-foreground text-sm">{t.catalogue.emptyFilters}</p>
         ) : (
           result && (
             <div aria-busy={loading} className={`transition-opacity ${loading ? "opacity-60" : ""}`}>

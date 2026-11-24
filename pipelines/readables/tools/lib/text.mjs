@@ -1,4 +1,4 @@
-import { speakPlayerTokens } from "../../../lib/player-words.mjs";
+import { CLIENT_ESCAPE, speakPlayerTokens } from "../../../lib/player-words.mjs";
 
 // Page text as it comes out of vmangos, and as it goes to a narrator.
 //
@@ -11,8 +11,11 @@ import { speakPlayerTokens } from "../../../lib/player-words.mjs";
 /** Pages whose text is a maintenance placeholder rather than anything a player reads. */
 const PLACEHOLDERS = new Set(["missing text", "texto ausente", "test", "placeholder"]);
 
-/** What the game substitutes at runtime and a recording cannot: $N, $C, $R, $Gx:y;. */
-const SUBSTITUTION = /\$[a-zA-Z]/;
+/**
+ * What the game substitutes at runtime and a recording cannot: $N, $C, $R, $Gx:y;, and a client
+ * escape such as ruRU's declension `|3-6(...)`, left whole when its case has no word.
+ */
+const SUBSTITUTION = new RegExp(String.raw`\$[a-zA-Z]|${CLIENT_ESCAPE.source}`);
 
 /**
  * The tags the signed pages are written in, and nothing else in angle brackets.

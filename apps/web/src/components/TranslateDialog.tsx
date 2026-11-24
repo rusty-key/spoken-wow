@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { withLang } from "@/lib/lang";
 
 import { useLang } from "./LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 
 // Writing a name in the page's language that the English corpus has: a quest's, an NPC's, a
 // book's owner's, a place's.
@@ -17,7 +19,7 @@ import { useLang } from "./LangProvider";
 type Version = {
   version: number;
   isCurrent: boolean;
-  origin: "extracted" | "edited" | "contributed" | "community";
+  origin: "extracted" | "edited" | "contributed" | "community" | "observed";
   note: string | null;
   createdAt: string;
   name: string;
@@ -44,6 +46,8 @@ type Props = {
 };
 
 export function TranslateDialog({ subject, onClose, onSaved }: Props) {
+  const words = useUiText().catalogue.dialogs;
+  const t = words.translate;
   const lang = useLang();
   const dialog = useRef<HTMLDialogElement | null>(null);
   const [value, setValue] = useState("");
@@ -146,7 +150,7 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
       <input
         value={note}
         onChange={(event) => setNote(event.target.value)}
-        placeholder="Why this wording? (optional, kept with the version)"
+        placeholder={t.note}
         className="border-border bg-background mt-3 w-full rounded border p-2 text-sm"
       />
 
@@ -155,7 +159,7 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
       {versions !== null && versions.length > 1 && (
         <details className="mt-3">
           <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-xs">
-            {versions.length} versions
+            {fill(t.versions, { n: versions.length })}
           </summary>
           <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto text-xs">
             {versions.map((version) => (
@@ -168,7 +172,7 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
                   {version.note ?? version.name}
                 </span>
                 {version.isCurrent ? (
-                  <span className="ml-auto shrink-0 text-emerald-400">live</span>
+                  <span className="ml-auto shrink-0 text-emerald-400">{words.live}</span>
                 ) : null}
               </li>
             ))}
@@ -182,7 +186,7 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
           onClick={onClose}
           className="border-border hover:bg-accent rounded border px-3 py-1"
         >
-          Cancel
+          {words.cancel}
         </button>
         <button
           type="button"
@@ -191,7 +195,7 @@ export function TranslateDialog({ subject, onClose, onSaved }: Props) {
           className="bg-primary text-primary-foreground flex items-center gap-1.5 rounded px-3 py-1 hover:opacity-90 disabled:opacity-40"
         >
           {busy && <Loader2 size={13} className="animate-spin" />}
-          Save
+          {words.save}
         </button>
       </div>
     </dialog>

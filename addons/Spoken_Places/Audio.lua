@@ -505,7 +505,8 @@ function SpokenPlaces:GetAudioClip(mapID, areaKey)
 	for _, pack in ipairs(candidates) do
 		local clip = ClipIn(pack, mapID, areaKey)
 		if clip and clip.file then
-			return "Interface\\AddOns\\" .. pack.addon .. "\\Sounds\\" .. clip.file .. ".mp3",
+			-- A pack built before packs shipped Ogg names no format, and its clips are mp3.
+			return "Interface\\AddOns\\" .. pack.addon .. "\\Sounds\\" .. clip.file .. (pack.format == "ogg" and ".ogg" or ".mp3"),
 				clip.len, pack, clip.file, clip.times, clip.text
 		end
 	end

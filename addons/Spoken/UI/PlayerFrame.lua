@@ -179,7 +179,8 @@ function PlayerFrame:InitHeader()
         function() self:UpdateControls() end)
     self.previous = Actions.PreviousButton(self.controls)
     self.skip = Actions.SkipButton(self.controls)
-    self.buttons = { self.play, self.previous, self.skip }
+    self.eject = Actions.EjectButton(self.controls)
+    self.buttons = { self.previous, self.play, self.skip, self.eject }
 
     self.progress = Actions.ProgressBar(container)
     self.progress.track:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", 0, 0)
@@ -214,9 +215,9 @@ function PlayerFrame:InitMover()
         GameTooltip:Show()
     end)
     mover:HookScript("OnLeave", function() SetCursor(nil); GameTooltip_Hide() end)
-    mover:HookScript("OnMouseDown", function()
+    mover:HookScript("OnMouseDown", function(_, button)
         if Addon:IsFrameLocked() then return end
-        Snap.Start(self.frame, { locked = function() return Addon:IsFrameLocked() end })
+        Snap.Start(self.frame, { button = button, locked = function() return Addon:IsFrameLocked() end })
     end)
     mover:HookScript("OnMouseUp", function()
         if Addon:IsFrameLocked() then return end

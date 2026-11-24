@@ -102,21 +102,16 @@ def test_spoken_ships_with_its_modules_for_blizzard_clients(player_built):
     names, files = player_built[f"{PLAYER}-{version}.zip"]
     tocs = tocs_in(files, PLAYER)
     assert sorted(tocs) == sorted(f"{PLAYER}/{PLAYER}{suffix}.toc" for suffix in FLAVORS)
-    # Contributions loads beside the player so gathered lines have their own SavedVariables file.
+    # Spoken, the folder that names the gathered-lines file
+    # (addons/SpokenContributions/SpokenContributions.toc): its .toc, its icon and Sent.lua, the list
+    # the Spoken Manager writes of what the site took. Then the three modules and Spoken Bosses: one
+    # download with everything in it.
     assert {entry.split("/", 1)[0] for entry in names} == {PLAYER, "SpokenContributions",
                                                           "Spoken_Quests", "Spoken_Readables", "Spoken_Places",
                                                           "Spoken_Bosses"}
-    folder = "SpokenContributions"
-    manifest = f"{folder}/{folder}.toc"
-    with open(os.path.join(REPO, "addons", manifest), "rb") as handle:
-        source_manifest = handle.read()
-    assert files[manifest] == source_manifest
-    # The manifest owns the Lua payload, including the Manager's sent-line handoff.
-    declared = {line.strip().replace("\\", "/")
-                for line in source_manifest.decode("utf-8").splitlines()
-                if line.strip() and not line.lstrip().startswith("#")}
-    assert {name for name in files if name.startswith(f"{folder}/")} \
-        == {manifest, f"{folder}/icon.tga"} | {f"{folder}/{entry}" for entry in declared}
+    assert sorted(name for name in names if name.startswith("SpokenContributions/") and not name.endswith("/")) \
+        == ["SpokenContributions/Sent.lua", "SpokenContributions/SpokenContributions.toc",
+            "SpokenContributions/icon.tga"]
 
 
 def test_the_compendium_files_are_spoken_s_alone():

@@ -8,6 +8,9 @@ import FilterLink from "@/components/FilterLink";
 import { ChevronDownIcon, PlayIcon } from "lucide-react";
 
 import { RowActions, StateWord, type RowAction } from "@/components/catalogue/RowParts";
+import { useUiText } from "@/components/UiTextProvider";
+import { plural } from "@/lib/plural";
+import { fill } from "@/lib/site-text/format";
 import { useState } from "react";
 
 import ReportsBadge from "@/components/ReportsBadge";
@@ -55,18 +58,6 @@ type Props = {
 
 // The same colour discipline as the other two explorers: red is only ever a real problem,
 // amber is something that has drifted, grey is a fact about the row.
-const STATE_TONE = {
-  missing: "missing",
-  stale: "stale",
-  current: "current",
-} as const;
-
-const STATE_LABEL = {
-  missing: "no audio",
-  stale: "audio outdated",
-  current: "",
-} as const;
-
 /**
  * The heading over one book's pages, which the search returns together: the title, what opens it
  * and which objects or items do, written once rather than in two columns beside every page.
@@ -84,16 +75,17 @@ export function BookHeader({
   bookHref: (line: ResultLine) => string;
   onRename: ((line: ResultLine) => void) | null;
 }) {
+  const t = useUiText();
   return (
     <tr className="cat-group">
       <th colSpan={columns} scope="colgroup">
-        <FilterLink href={bookHref(line)} onApply={() => onSelectBook(line)} className="cat-group-name" title={`Show only ${line.title}`}>
+        <FilterLink href={bookHref(line)} onApply={() => onSelectBook(line)} className="cat-group-name" title={fill(t.catalogue.row.showOnly, { name: line.title })}>
           <Untranslated missing={line.missing?.title}>{line.title}</Untranslated>
         </FilterLink>
-        {onRename && <RenameButton label={`Name ${line.title}`} onClick={() => onRename(line)} />}
+        {onRename && <RenameButton label={fill(t.catalogue.row.nameIt, { name: line.title })} onClick={() => onRename(line)} />}
         <span className="cat-group-meta">
-          {line.ownerKind === "object" ? "in the world" : "carried"} · {materialName(line.material)} ·{" "}
-          {line.pageCount === 1 ? "1 page" : `${line.pageCount} pages`}
+          {line.ownerKind === "object" ? t.catalogue.row.inWorld : t.catalogue.row.carried} · {materialName(line.material)} ·{" "}
+          {plural(line.pageCount, t.catalogue.row.batch.pageOne, t.catalogue.row.batch.pageMany)}
           {/* Which object or item opens it: two objects sharing a name is why the addon needs a checksum. */}
           <span className="cat-ids"> · {line.ownerIds.join(", ")}</span>
         </span>
@@ -122,16 +114,20 @@ export function PageRow({
   onOverrideAnswered,
 }: Props) {
   const playable = line.state !== "missing";
+  const t = useUiText();
   const [expanded, setExpanded] = useState(false);
   // Missing or outdated audio makes generating the row's task: a gold button, not a menu item.
   const needsTake = canRegenerate && line.generatable && (line.state === "missing" || line.state === "stale");
   const generate: RowAction = {
-    label: line.state === "missing" ? "Generate" : "Regenerate",
-    aria: `${line.state === "missing" ? "Generate" : "Regenerate"} page ${line.pageNumber} of ${line.title}`,
+    label: line.state === "missing" ? t.catalogue.row.generate : t.catalogue.row.regenerate,
+    aria: fill(
+      line.state === "missing" ? t.catalogue.row.actions.generateForPage : t.catalogue.row.actions.regenerateForPage,
+      { page: line.pageNumber, title: line.title },
+    ),
     disabled: !line.generatable
-      ? `This page cannot be voiced: ${line.skipReason}`
+      ? fill(t.catalogue.row.actions.cannotVoice, { reason: line.skipReason ?? "" })
       : state?.phase === "busy"
-        ? "Generating already"
+        ? t.catalogue.row.generatingAlready
         : undefined,
     emphasis: needsTake,
     onClick: () => onRegenerate(line),
@@ -164,7 +160,7 @@ export function PageRow({
           disabled={!playable}
           onClick={() => onPlay(line)}
           title={playable ? `${line.file}.mp3` : undefined}
-          aria-label={`Play page ${line.pageNumber} of ${line.title}`}
+          aria-label={fill(t.catalogue.row.actions.playForPage, { page: line.pageNumber, title: line.title })}
           className="cat-play"
         >
           <PlayIcon />
@@ -182,7 +178,7 @@ export function PageRow({
             {line.override && (
               <span
                 className={cn("cat-override", !expanded && "line-clamp-1")}
-                title="What your team's audio says"
+                title={t.catalogue.row.overrideSays}
               >
                 {line.override.text}
               </span>
@@ -206,8 +202,8 @@ export function PageRow({
               needs a real control. It doubles as the only thing saying rows expand. */}
           <button
             aria-expanded={expanded}
-            aria-label={expanded ? "Collapse this page" : "Show the whole page"}
-            title={expanded ? "Collapse" : "Show the whole page"}
+            aria-label={expanded ? t.catalogue.row.collapsePage : t.catalogue.row.showWholePage}
+            title={expanded ? t.catalogue.row.collapseShort : t.catalogue.row.showWholePage}
             onClick={() => setExpanded((open) => !open)}
             className="cat-expand"
           >
@@ -217,7 +213,7 @@ export function PageRow({
       </td>
 
       <td>
-        <span className="cat-two-top">{line.pageCount > 1 ? `Page ${line.pageNumber} of ${line.pageCount}` : "One page"}</span>
+        <span className="cat-two-top">{line.pageCount > 1 ? fill(t.catalogue.pageOf, { page: line.pageNumber, count: line.pageCount }) : t.catalogue.row.onePage}</span>
         <span className="cat-two-sub">{line.chars} characters</span>
       </td>
 
@@ -226,7 +222,7 @@ export function PageRow({
           the question this screen is most often asked. */}
       <td className="whitespace-nowrap">
         {state?.phase === "busy" ? (
-          <StateWord tone="skip">Generating…</StateWord>
+          <StateWord tone="skip">{t.catalogue.row.generating}</StateWord>
         ) : state?.phase === "error" ? (
           <StateWord tone="error">{state.message}</StateWord>
         ) : state?.phase === "done" ? (
@@ -235,8 +231,10 @@ export function PageRow({
           // Why this page is silent, rather than leaving it looking merely un-narrated. It
           // is in the corpus because the game has it.
           <span className="text-muted-foreground italic">{line.skipReason}</span>
-        ) : STATE_LABEL[line.state] ? (
-          <StateWord tone={STATE_TONE[line.state]}>{STATE_LABEL[line.state]}</StateWord>
+        ) : line.state !== "current" ? (
+          <StateWord tone={line.state}>
+            {line.state === "missing" ? t.catalogue.row.noAudio : t.catalogue.row.outdated}
+          </StateWord>
         ) : (
           // Which take is live, and the way to any other. The label IS the control: the
           // number is the question, and "which other numbers are there" is what a click
@@ -253,8 +251,8 @@ export function PageRow({
         {/* Beneath the state rather than inside it: the text has not moved, so this page is
             `current` and dirty at once, and one word cannot say both. */}
         {line.dirty && (
-          <div className="text-amber-300" title="Cut before a pronunciation it speaks was changed">
-            pronunciation
+          <div className="text-amber-300" title={t.catalogue.row.pronunciationMovedWhy}>
+            {t.catalogue.row.pronunciationMoved}
           </div>
         )}
       </td>
@@ -271,14 +269,14 @@ export function PageRow({
 
       <td className="cat-cell-actions">
         <RowActions
-          subject={`page ${line.pageNumber} of ${line.title}`}
+          subject={fill(t.catalogue.row.actions.pageSubject, { page: line.pageNumber, title: line.title })}
           badge={
             <ReportsBadge source="readables" lineId={line.id} count={line.reportsOpen} canTriage={canTriage} />
           }
           primary={[
             // Gated although free: the edit is what a later regeneration would speak.
             ...(canEdit
-              ? [{ label: "Edit", aria: `Edit the text of page ${line.pageNumber} of ${line.title}`, title: "Rewrite what this page says", onClick: () => onEditText(line) }]
+              ? [{ label: t.catalogue.row.edit, aria: fill(t.catalogue.row.actions.editTextForPage, { page: line.pageNumber, title: line.title }), title: t.catalogue.row.editPageTitle, onClick: () => onEditText(line) }]
               : []),
             ...(needsTake ? [generate] : []),
           ]}
@@ -289,23 +287,23 @@ export function PageRow({
             ...(canRegenerate && !line.missing?.text
               ? [
                   {
-                    label: "Override",
-                    aria: `Override the text of page ${line.pageNumber} of ${line.title}`,
-                    title: "Change what your team says",
+                    label: t.catalogue.row.override,
+                    aria: fill(t.catalogue.row.actions.overrideForPage, { page: line.pageNumber, title: line.title }),
+                    title: t.catalogue.row.overrideTitle,
                     marked: line.override !== null,
                     onClick: () => onOverride(line),
                   },
                 ]
               : []),
             // Outside the edit gates: reporting is what a reader who cannot sign in has.
-            ...(onReport ? [{ label: "Report a problem", aria: `Report a problem with page ${line.pageNumber} of ${line.title}`, onClick: () => onReport(line) }] : []),
+            ...(onReport ? [{ label: t.catalogue.row.report, aria: fill(t.catalogue.row.actions.reportForPage, { page: line.pageNumber, title: line.title }), onClick: () => onReport(line) }] : []),
             // Only on a dirty row: a clean one would be offering to clear nothing.
             ...(canRegenerate && line.dirty
               ? [
                   {
-                    label: "Clear the pronunciation mark",
-                    aria: `Clear the pronunciation mark on page ${line.pageNumber} of ${line.title}`,
-                    title: "The take stays; only the mark goes",
+                    label: t.catalogue.row.clearMark,
+                    aria: fill(t.catalogue.row.actions.clearMarkForPage, { page: line.pageNumber, title: line.title }),
+                    title: t.catalogue.row.clearMarkTitle,
                     onClick: () => onClearDirty(line),
                   },
                 ]

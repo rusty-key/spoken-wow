@@ -81,6 +81,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/settings_ux_test.lua
 	@$(LUA) tests/lua/settings_controller_test.lua
 	@$(LUA) tests/lua/settings_art_test.lua
+	@$(LUA) tests/lua/compendium_gamepad_test.lua
 	@$(LUA) tests/lua/settings_gamepad_test.lua
 	@$(LUA) tests/lua/quests_gamepad_copy_test.lua
 	@for lang in enUS deDE esES esMX frFR ptBR ruRU koKR zhCN zhTW; do $(LUA) tests/lua/settings_fit_test.lua $$lang || exit 1; done
@@ -176,6 +177,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/places_forever_places_test.lua
 	@$(LUA) tests/lua/minimap_compartment_test.lua
 	@$(LUA) tests/lua/bronze_rings_test.lua
+	@$(LUA) tests/lua/round_button_press_test.lua
 	@$(LUA) tests/lua/module_globals_test.lua
 
 # Rewrite the envelope fixtures the TypeScript reader is tested against. A diff here is the

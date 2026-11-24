@@ -18,6 +18,8 @@ import { useFileDrop } from "@/components/useFileDrop";
 import type { RecordedTexts } from "@/lib/broadcast/store";
 import { parseBroadcastCache, type CachedBroadcastText } from "@/lib/broadcast/cache";
 import { sendFailureMessage } from "@/lib/contributions/send-failure";
+import { fill } from "@/lib/site-text/format";
+import { useUiText } from "@/components/UiTextProvider";
 import { BASE_LANG, BUILTIN, isClientLang, type Lang } from "@/lib/lang";
 
 const CLIENT_LOCALES = BUILTIN.filter((locale) => locale.client);
@@ -43,6 +45,7 @@ function merge(caches: { build: number; texts: CachedBroadcastText[] }[]): Loade
 }
 
 export default function UploadBroadcastCache({ signedIn, lang }: { signedIn: boolean; lang: Lang }) {
+  const t = useUiText().contribute;
   const [locale, setLocale] = useState<Lang>(isClientLang(lang) ? lang : BASE_LANG);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,7 +72,7 @@ export default function UploadBroadcastCache({ signedIn, lang }: { signedIn: boo
     const picked = files.filter((file) => file.name.startsWith("DBCache.bin"));
     if (picked.length === 0) {
       setLoaded(null);
-      setError("No DBCache files there. They are in Cache/ADB/<language>/.");
+      setError(t.noCacheFiles);
       return;
     }
     const parsed = await Promise.all(
@@ -83,7 +86,7 @@ export default function UploadBroadcastCache({ signedIn, lang }: { signedIn: boo
     );
     const next = merge(parsed.filter((cache) => cache !== null));
     setLoaded(next.texts > 0 ? next : null);
-    if (next.texts === 0) setError("Those files hold no NPC text. Talk to a few NPCs, log out, and pick them again.");
+    if (next.texts === 0) setError(t.cacheEmpty);
   }
 
   async function send() {
@@ -116,7 +119,7 @@ export default function UploadBroadcastCache({ signedIn, lang }: { signedIn: boo
   return (
     <div className="flex max-w-xl flex-col gap-4">
       <label className="flex items-center gap-2 text-sm">
-        Game language
+        {t.gameLanguage}
         <select
           value={locale}
           onChange={(event) => setLocale(event.target.value as Lang)}
@@ -147,9 +150,9 @@ export default function UploadBroadcastCache({ signedIn, lang }: { signedIn: boo
         }
       >
         <strong>
-          {loaded ? `${loaded.files} files, ${loaded.texts} texts` : "Drop the DBCache files or their folder here"}
+          {loaded ? fill(t.cacheCounts, { files: loaded.files.toLocaleString(), texts: loaded.texts.toLocaleString() }) : t.dropCache}
         </strong>
-        <span className="text-muted-foreground">or click to choose them</span>
+        <span className="text-muted-foreground">{t.orClickThem}</span>
         <input
           ref={input}
           type="file"
@@ -167,14 +170,14 @@ export default function UploadBroadcastCache({ signedIn, lang }: { signedIn: boo
 
       {sent ? (
         <p role="status" className="rounded border p-4 text-sm">
-          Got {sent.texts} texts — {sent.added} new, {sent.changed} updated. Thank you.
+          {fill(t.cacheSent, { texts: sent.texts.toLocaleString(), added: sent.added.toLocaleString(), changed: sent.changed.toLocaleString() })}
         </p>
       ) : null}
 
       {loaded ? (
         <div>
           <Button onClick={() => void send()} disabled={busy}>
-            {busy ? "Sending…" : `Send ${loaded.texts} texts as ${locale}`}
+            {busy ? t.sending : fill(t.sendAs, { texts: loaded.texts.toLocaleString(), lang: locale })}
           </Button>
         </div>
       ) : null}

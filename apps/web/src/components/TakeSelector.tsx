@@ -1,6 +1,8 @@
 "use client";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 import { withLang } from "@/lib/lang";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, Loader2, Pause, Play, RotateCcw } from "lucide-react";
@@ -69,6 +71,8 @@ export default function TakeSelector({
   /** Called with the version now live, so the row and the player can catch up. */
   onRestored: (version: number) => void;
 }) {
+  const t = useUiText().catalogue.takes;
+  const words = useUiText().catalogue.dialogs;
   const lang = useLang();
   const [open, setOpen] = useState(false);
   const [list, setList] = useState<Take[] | null>(null);
@@ -195,7 +199,7 @@ export default function TakeSelector({
     return version === null ? null : (
       <span
         className="text-muted-foreground font-mono text-xs"
-        title={takes <= 1 ? "The only take" : `${takes} takes; v${version} is live`}
+        title={takes <= 1 ? t.only : fill(t.count, { n: takes, version })}
       >
         v{version}
       </span>
@@ -207,8 +211,8 @@ export default function TakeSelector({
       <PopoverTrigger asChild>
         <button
           type="button"
-          title={`${takes} takes; v${version} is live`}
-          aria-label={`Choose which of ${takes} takes is live`}
+          title={fill(t.count, { n: takes, version: version ?? "?" })}
+          aria-label={fill(t.choose, { n: takes })}
           className={cn(
             "text-muted-foreground hover:text-foreground flex cursor-pointer items-center gap-0.5 rounded-sm font-mono text-xs",
             "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
@@ -220,7 +224,7 @@ export default function TakeSelector({
       </PopoverTrigger>
 
       <PopoverContent className="w-96">
-        <div className="mb-2 text-sm font-medium">Takes</div>
+        <div className="mb-2 text-sm font-medium">{t.heading}</div>
 
         {error && (
           <p role="alert" className="text-destructive mb-2 text-xs">
@@ -229,11 +233,9 @@ export default function TakeSelector({
         )}
 
         {list === null ? (
-          <p className="text-muted-foreground text-xs">Loading…</p>
+          <p className="text-muted-foreground text-xs">{words.loading}</p>
         ) : list.length === 0 ? (
-          <p className="text-muted-foreground text-xs">
-            No takes recorded. The first regeneration keeps whatever is there now.
-          </p>
+          <p className="text-muted-foreground text-xs">{t.empty}</p>
         ) : (
           // Capped and scrolled, because nothing prunes takes any more: a line re-rolled
           // two hundred times has two hundred rows here, and a list that long runs off the
@@ -251,7 +253,7 @@ export default function TakeSelector({
                 <Button
                   variant="ghost"
                   size="icon-xs"
-                  title="Play this take"
+                  title={t.play}
                   onClick={() => togglePlay(take.version)}
                 >
                   {playing === take.version ? <Pause /> : <Play />}
@@ -263,12 +265,12 @@ export default function TakeSelector({
                     {take.origin !== "generated" && (
                       <span
                         className="text-muted-foreground"
-                        title="Nothing recorded how this take was made"
+                        title={t.noOrigin}
                       >
-                        no record
+                        {t.noRecord}
                       </span>
                     )}
-                    {take.isCurrent && <span className="text-emerald-400">live</span>}
+                    {take.isCurrent && <span className="text-emerald-400">{words.live}</span>}
                   </div>
                   <div className="text-muted-foreground truncate">
                     {when(take.createdAt)}
@@ -287,10 +289,10 @@ export default function TakeSelector({
                     size="xs"
                     disabled={busy !== null}
                     onClick={() => void restore(take.version)}
-                    title="Make this the take the addon plays"
+                    title={t.makeLive}
                   >
                     {busy === take.version ? <Loader2 className="animate-spin" /> : <RotateCcw />}
-                    Restore
+                    {t.restore}
                   </Button>
                 )}
               </li>

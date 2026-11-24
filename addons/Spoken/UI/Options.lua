@@ -47,10 +47,10 @@ local STYLE_LABELS = Words({
 -- The game's key bindings list these in a Spoken category (Bindings.xml): each by its binding and
 -- its string's key.
 local BINDINGS = {
-    { "SPOKEN_PLAYPAUSE", "BIND_PLAYPAUSE" },
-    { "SPOKEN_SKIP", "BIND_SKIP" },
-    { "SPOKEN_PREVIOUS", "BIND_PREVIOUS" },
-    { "SPOKEN_STOP", "BIND_STOP" },
+    { "SPOKEN_PLAYPAUSE", "BIND_STOP_REPLAY" },
+    { "SPOKEN_SKIP", "BIND_SKIP_FORWARD" },
+    { "SPOKEN_PREVIOUS", "BIND_SKIP_BACKWARD" },
+    { "SPOKEN_STOP", "BIND_EJECT" },
     { "SPOKEN_COMPENDIUM", "BIND_COMPENDIUM" },
     { "SPOKEN_MUTE", "BIND_MUTE" },
 }

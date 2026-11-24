@@ -89,6 +89,7 @@ export type ActivityDetail = {
   "name.edited": { version: number; name?: string; note?: string | null } & ApiAuditDetail;
   "name.restored": { version: number; from?: number | null };
   "name.retired": { version: number };
+  "name.observed": { version: number; name: string; contribution: number };
   "lexicon.added": { after?: string };
   "lexicon.edited": { before?: string; after?: string };
   "lexicon.removed": { before?: string };
@@ -228,12 +229,12 @@ export type ActivityKind = keyof ActivityDetail;
  * because it cuts takes for as long as the queue runs, so the server counts them per range.
  */
 export const FOLDS = {
-  batch: { parent: "batch.queued", child: "take.generated", key: "batchId", count: null, noun: ["take", "takes"] },
-  marks: { parent: "marks.cleared", child: "take.acked", key: "groupId", count: "count", noun: ["file", "files"] },
-  stops: { parent: "queue.stopped", child: "batch.stopped", key: "groupId", count: "batches", noun: ["batch", "batches"] },
+  batch: { parent: "batch.queued", child: "take.generated", key: "batchId", count: null },
+  marks: { parent: "marks.cleared", child: "take.acked", key: "groupId", count: "count" },
+  stops: { parent: "queue.stopped", child: "batch.stopped", key: "groupId", count: "batches" },
 } as const satisfies Record<
   string,
-  { parent: ActivityKind; child: ActivityKind; key: string; count: string | null; noun: readonly [string, string] }
+  { parent: ActivityKind; child: ActivityKind; key: string; count: string | null }
 >;
 export type Group = keyof typeof FOLDS;
 

@@ -3,9 +3,10 @@ import { Fragment } from "react";
 /**
  * What the game fills in for each player: `$N` name, `$C` class, `$R` race, `$G`/`$U`
  * male:female (`$gReisender:Reisende;`), the doubled `$$N` of TBC and Forever, and the genitive
- * `$Ns`/`$Cs`. Matched loosely on purpose: this only marks them for the eye.
+ * `$Ns`/`$Cs`, and ruRU's declension escape `|3-6($c)` whole. Matched loosely on purpose: this
+ * only marks them for the eye.
  */
-export const PLACEHOLDER = /(\$\$?[GgUu][^;]*;|\$\$?[NnCcRr]s?(?![A-Za-z]))/g;
+export const PLACEHOLDER = /(\|3-\d+\([^)]*\)|\$\$?[GgUu][^;]*;|\$\$?[NnCcRr]s?(?![A-Za-z]))/g;
 
 /**
  * A line with its placeholders marked, and optionally one span struck through and another added:

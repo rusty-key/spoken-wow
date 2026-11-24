@@ -390,8 +390,8 @@ def carries_gossip(include) -> bool:
 
 #: The tables a language's Gossip pack gets a client-locale copy of: the ones keyed by the
 #: NPC's words and its id. Quest ids come from the client itself on every supported release,
-#: names are only shown, and the name-keyed gossip tables are the fallback for a speaker with
-#: no GUID, which is rare enough to leave to the English text.
+#: and the name-keyed gossip tables are the fallback for a speaker with no GUID, which is rare
+#: enough to leave to the English text. Names have their own copy (LOCALE_NAME_TABLES).
 LOCALE_TABLES = {
     "creature": ("npc_gossip_file_lookups", "GossipLookupByNPCID"),
     "gameobject": ("object_gossip_file_lookups", "GossipLookupByObjectID"),
@@ -425,6 +425,32 @@ def locale_tables(corpus: dict, rows: list, ignored=()) -> dict:
             tables[kind].setdefault(line["npcId"], {})[escape_lua_string(text)] = stem
     return {filename: (table_name, tables[kind])
             for kind, (filename, table_name) in LOCALE_TABLES.items()}
+
+
+#: kind -> the name table build_tables writes for it, as entity_name names the kinds.
+NAME_TABLES = {
+    "creature": "npc_name_lookups",
+    "gameobject": "object_name_lookups",
+    "item": "item_name_lookups",
+}
+
+
+def locale_name_tables(tables: dict, names: list) -> dict:
+    """One language's names for the entities `tables`' English name tables hold, as {output
+    filename: (lua table name, data)}. An entity the corpus never names is left out, as is a
+    name the same as the English, which the English table already answers."""
+    out = {}
+    for kind, filename in NAME_TABLES.items():
+        table_name, english = tables[filename]
+        data = {}
+        for row in names:
+            entity_id = str(row["entityId"])
+            if row["kind"] == kind and entity_id.isdigit() and row["name"] \
+                    and english.get(int(entity_id), row["name"]) != row["name"]:
+                data[int(entity_id)] = row["name"]
+        if data:
+            out[filename] = (table_name, data)
+    return out
 
 
 def write_lua_table(path: str, module_name: str, table_name: str, data,
@@ -483,7 +509,8 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
                  module_name: str = DEFAULT_MODULE_NAME, version: str = "1.0.1",
                  progress: bool = False, ignored=(), include=None,
                  title: str = DEFAULT_TITLE, language: str = None,
-                 locale_text: list = None, icon_language: str = None, toc_extra=()) -> dict:
+                 locale_text: list = None, icon_language: str = None, toc_extra=(),
+                 locale_names=()) -> dict:
     """Assemble the data module. Returns a report.
 
     An ignored line's audio is left behind as well as its lookup entry, so a take made
@@ -501,7 +528,8 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     gossip tables under generated/<language>/, loaded only on a client in it. Only the
     language's pack holding its gossip - Gossip, or All - is given them (cli-main.py refuses
     the rest). The English tables
-    are written either way: they are what matches on an English client.
+    are written either way: they are what matches on an English client. `locale_names` are
+    the language's names from the same file, written beside its gossip tables.
 
     `icon_language` is the badge the pack wears, `language`'s unless given: a team's pack in a
     language nobody drew a badge for wears English's mark, and its title names the language.
@@ -550,8 +578,9 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
 
     locale_rows = {}
     if locale_text is not None:
-        for filename, (table_name, data) in sorted(
-                locale_tables(corpus, locale_text, ignored).items()):
+        localized = {**locale_tables(corpus, locale_text, ignored),
+                     **locale_name_tables(tables, locale_names)}
+        for filename, (table_name, data) in sorted(localized.items()):
             write_lua_table(os.path.join(generated_dir, language, filename + ".lua"),
                             module_name, table_name, data, lang=language)
             written.append(f"{language}\\{filename}.lua")

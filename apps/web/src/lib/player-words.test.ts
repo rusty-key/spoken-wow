@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { registerPlayerWords } from "../../../../pipelines/lib/player-words.mjs";
-import { type LanguageInfo, type PlayerWords, registerLanguages } from "./lang";
+import { type LanguageInfo, type PlayerWords, registerLanguages, registeredForBrowser } from "./lang";
 import {
   branchesOnPlayerGender,
   hasBuiltinPlayerWords,
@@ -70,11 +70,19 @@ describe("speakPlayerTokens", () => {
       expect(speakPlayerTokens(line, "xxXX")).toBe(line);
     });
 
-    it("never lets a row change a built-in language's words", () => {
+    it("lets a built-in language's row replace Spoken's words, and returns to them without one", () => {
       registerPlayerWords([["frFR", ITALIAN]]);
+      expect(speakPlayerTokens("Merci, $N.", "frFR")).toBe("Merci, avventuriero.");
+      registerPlayerWords([]);
       expect(speakPlayerTokens("Merci, $N.", "frFR")).toBe("Merci, aventurier.");
       expect(hasBuiltinPlayerWords("frFR")).toBe(true);
       expect(hasBuiltinPlayerWords("xxXX")).toBe(false);
+    });
+
+    it("reaches the browser for a built-in language whose row holds words", () => {
+      registerLanguages([{ ...TEAM_LANGUAGE, code: "ruRU", client: true, playerWords: ITALIAN }]);
+      expect(registeredForBrowser().map((info) => info.code)).toEqual(["ruRU"]);
+      expect(speakPlayerTokens("$N.", "ruRU")).toBe("Avventuriero.");
     });
   });
 
@@ -100,6 +108,50 @@ describe("speakPlayerTokens", () => {
       expect(validPlayerWords({ m: { name: "$N", race: "x" }, f: ITALIAN.f })).toBeNull();
       expect(validPlayerWords({ m: { name: "a:b", race: "x" }, f: ITALIAN.f })).toBeNull();
       expect(validPlayerWords({ m: { name: "x".repeat(41), race: "x" }, f: ITALIAN.f })).toBeNull();
+    });
+
+    it("keeps declined forms by case, dropping empty ones, and refuses a case that is not a digit", () => {
+      const cases = { "6": { name: " путник ", race: "" }, "3": { name: "", race: "" } };
+      expect(validPlayerWords({ m: { ...ITALIAN.m, cases }, f: ITALIAN.f })).toEqual({
+        m: { ...ITALIAN.m, cases: { "6": { name: "путник" } } },
+        f: ITALIAN.f,
+      });
+      expect(validPlayerWords({ m: { ...ITALIAN.m, cases: { "3": { name: "", race: "" } } }, f: ITALIAN.f })).toEqual(
+        ITALIAN,
+      );
+      expect(validPlayerWords({ m: { ...ITALIAN.m, cases: { "10": { name: "x" } } }, f: ITALIAN.f })).toBeNull();
+      expect(validPlayerWords({ m: { ...ITALIAN.m, cases: { "1": { name: "$c" } } }, f: ITALIAN.f })).toBeNull();
+    });
+  });
+
+  describe("ruRU's declension escape", () => {
+    const RUSSIAN: PlayerWords = {
+      m: { name: "путник", race: "странник", cases: { "1": { name: "путника" }, "3": { race: "странника" }, "6": { name: "путник" } } },
+      f: { name: "путница", race: "странница", cases: { "1": { name: "путницы" }, "3": { race: "странницу" }, "6": { name: "путница" } } },
+    };
+    afterEach(() => registerPlayerWords([]));
+
+    it("says the declined word for the escape's case, by the reader's gender", () => {
+      registerPlayerWords([["ruRU", RUSSIAN]]);
+      expect(speakPlayerTokens("Приветствую, |3-6($c). Для |3-1($C) это выбор.", "ruRU")).toBe(
+        "Приветствую, путник. Для путника это выбор.",
+      );
+      expect(speakPlayerTokens("Приятно встретить |3-3($r), $gкоторый:которая; не боится.", "ruRU", "f")).toBe(
+        "Приятно встретить странницу, которая не боится.",
+      );
+      expect(speakPlayerTokens("|3-6($c), удачи.", "ruRU")).toBe("Путник, удачи.");
+    });
+
+    it("keeps an escape whose case has no word, so the gate refuses the line", () => {
+      registerPlayerWords([["ruRU", RUSSIAN]]);
+      expect(speakPlayerTokens("Удачи, |3-4($c), $n.", "ruRU")).toBe("Удачи, |3-4($c), путник.");
+      expect(skipReasonFor("Удачи, |3-4($c).", "ruRU")).toBe("invalid-chars");
+      expect(skipReasonFor("Удачи, |3-6($c).", "ruRU")).toBeNull();
+    });
+
+    it("refuses an escape around a word, which a client filled with its own class", () => {
+      registerPlayerWords([["ruRU", RUSSIAN]]);
+      expect(skipReasonFor("Спасибо, |3-6(Охотник).", "ruRU")).toBe("invalid-chars");
     });
   });
 

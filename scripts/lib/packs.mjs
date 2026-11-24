@@ -214,9 +214,7 @@ export const MIN_SPOKEN = { quests: "3.0.0", places: "3.0.0", readables: "3.0.0"
 
 // The oldest Spoken that keeps a team's pack (<Pack>_<lang>_<slug>) apart from its language's plain
 // one, as a voice of its own: an older one loads both as one language, and they fight over priority.
-// PLACEHOLDER: the Spoken release that ships team voices sets this to its own version. Until then
-// it is past any release, so scripts/manager/ refuses to publish a team's pack.
-export const MIN_SPOKEN_TEAM = "9999.0.0";
+export const MIN_SPOKEN_TEAM = "3.10.1";
 
 // The folders the manager channel carries, each once: a bundle's folders, else the pack's own.
 export function managerFolders(packs = loadPacks()) {
