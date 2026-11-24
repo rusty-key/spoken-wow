@@ -25,9 +25,9 @@ describe('contributor argument checks', () => {
 
   it('any language code is accepted, since the site decides which ones the account administers', () => {
     expect(contributorLang('deDE')).toBe('deDE')
-    expect(contributorLang('itIT')).toBe('itIT')
+    expect(contributorLang('xxXX')).toBe('xxXX')
     expect(() => contributorLang('../deDE')).toThrow('Invalid language')
-    expect(() => contributorLang('itit')).toThrow('Invalid language')
+    expect(() => contributorLang('xxxx')).toThrow('Invalid language')
     expect(() => contributorLang(7)).toThrow('Invalid language')
   })
 

@@ -33,7 +33,7 @@ export function contributorStore(v: unknown): StoreId {
   return v
 }
 
-// Only the shape: which languages the account may release is the site's answer (requireAdmin), and teams add new ones.
+// Only the shape: the site decides which languages the account may release, and teams add new ones.
 export function contributorLang(v: unknown): string {
   if (typeof v !== 'string' || !LANG_CODE.test(v)) throw new Error('Invalid language')
   return v
