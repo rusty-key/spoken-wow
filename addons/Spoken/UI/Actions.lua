@@ -76,6 +76,40 @@ function Actions.TintWithRings(ring)
     TintRing(ring)
 end
 
+local PRESSED_SHADE = 0.7
+
+-- Held, the glyph (and Skip's bar) sinks a pixel and darkens. Its own colour is given back after,
+-- so a tint another look gave it survives. A button hidden while held never hears the release.
+local function Sinks(button)
+    local saved = {}
+    local function Parts() return { button.glyph, button.bar } end
+    local function Press(down)
+        if (button.pressed or false) == down then return end
+        button.pressed = down
+        local offset = down and 1 or -1
+        if button.glyph.AdjustPointsOffset then button.glyph:AdjustPointsOffset(offset, -offset) end
+        for _, texture in ipairs(Parts()) do
+            if down then
+                local r, g, b, a = 1, 1, 1, nil
+                if texture.GetVertexColor then
+                    local cr, cg, cb, ca = texture:GetVertexColor()
+                    if cr then r, g, b, a = cr, cg, cb, ca end
+                end
+                saved[texture] = { r, g, b, a }
+                texture:SetVertexColor(r * PRESSED_SHADE, g * PRESSED_SHADE, b * PRESSED_SHADE, a)
+            elseif saved[texture] then
+                texture:SetVertexColor(unpack(saved[texture]))
+                saved[texture] = nil
+            end
+        end
+    end
+    button:HookScript("OnMouseDown", function(self, mouse)
+        if mouse == "LeftButton" and self:IsEnabled() then Press(true) end
+    end)
+    button:HookScript("OnMouseUp", function() Press(false) end)
+    button:HookScript("OnHide", function() Press(false) end)
+end
+
 --- Dress `button` as the player's round buttons are -- the windows' pause, the subtitle's
 --- controls: the ring round its edge, `icon` inside it, brighter under the pointer. Sized by the
 --- button, so a corner icon and a subtitle control are the same button at different sizes. With
@@ -96,6 +130,7 @@ function Actions.RoundIcon(button, icon, own)
     button:HookScript("OnEnter", function() if button:IsEnabled() then glyph:SetAlpha(1) end end)
     button:HookScript("OnLeave", function() if button:IsEnabled() then glyph:SetAlpha(GLYPH_ALPHA) end end)
     button.ring, button.glyph = ring, glyph
+    Sinks(button)
     if Ellesmere and not own then Ellesmere:When(function(skin) Actions.Square(skin, button) end) end
     return button
 end
