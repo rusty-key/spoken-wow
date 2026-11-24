@@ -66,3 +66,12 @@ test("Korean's particle escape takes the form that follows the word before it", 
   assert.equal(speakQuestTokens("용사단|1은;는; 용사단|1으로;로; 간다.", "koKR"), "용사단은 용사단으로 간다.");
   assert.equal(speakQuestTokens("기사들의 길|1으로;로; 간다.", "koKR"), "기사들의 길로 간다.");
 });
+
+test("a Korean particle glued to a token takes the form that follows the word", () => {
+  // Written for a name ending in a consonant; 모험가 and 여행자 end in a vowel.
+  assert.equal(speakQuestTokens("$N이 돌아왔군.", "koKR"), "모험가가 돌아왔군.");
+  assert.equal(speakQuestTokens("$r을 환영하오. $c과 함께, $N으로서.", "koKR"), "여행자를 환영하오. 모험가와 함께, 모험가로서.");
+  assert.equal(speakQuestTokens("$N를 믿는다.", "koKR"), "모험가를 믿는다.");
+  // Not a particle where Hangul runs on: 입니다, 님, 에게 stay as written.
+  assert.equal(speakQuestTokens("$N입니다. $C님, $c에게.", "koKR"), "모험가입니다. 모험가님, 모험가에게.");
+});

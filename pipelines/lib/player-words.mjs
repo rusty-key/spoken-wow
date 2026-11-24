@@ -350,6 +350,7 @@ function speak(text, lang, playerGender, byToken) {
 
   const side = playerGender === "f" ? "$2" : "$1";
   let spoken = text.replace(DOUBLED, "$").replace(GENDER, side).replace(SWAPPED, side);
+  if (lang === "koKR") spoken = spoken.replace(GLUED_PARTICLE, gluedParticleEscape);
   spoken = spoken.replace(DECLINED, (whole, n, token, at, all) => {
     const word = words.cases?.[n]?.[token.toUpperCase() === "R" ? "race" : "name"];
     return word ? cased(word, at, all, token) : whole;
@@ -389,6 +390,24 @@ function particleAfter(code, afterConsonant, afterVowel) {
   const final = batchim(code);
   if (!final) return afterVowel;
   return final === RIEUL && afterConsonant.startsWith("으로") ? afterVowel : afterConsonant;
+}
+
+// koKR's translators also glue a particle straight onto a token, in the form a name ending in a
+// consonant would take ("$N이", "$c을"). The word the token becomes may end in a vowel, which
+// takes the other form ("모험가가"), so a glued particle is chosen as the escape's would be.
+// Both forms of each, longest first, and only where the particle ends the word: "$N이다" is no 이.
+const PARTICLE_PAIRS = [
+  ["이라고", "라고"], ["이라면", "라면"], ["이라도", "라도"], ["이라는", "라는"], ["으로서", "로서"],
+  ["으로써", "로써"], ["이여", "여"], ["이라", "라"], ["이야", "야"], ["이나", "나"], ["이랑", "랑"],
+  ["이며", "며"], ["이란", "란"], ["으로", "로"], ["이", "가"], ["을", "를"], ["은", "는"], ["과", "와"], ["아", "야"],
+];
+const PAIR_OF = new Map(PARTICLE_PAIRS.flatMap((pair) => pair.map((form) => [form, pair])));
+const PARTICLE_FORMS = [...PAIR_OF.keys()].sort((a, b) => b.length - a.length).join("|");
+const GLUED_PARTICLE = new RegExp(String.raw`(\$[NnCcRr])(${PARTICLE_FORMS})(?!\p{sc=Hangul})`, "gu");
+
+function gluedParticleEscape(_, token, particle) {
+  const [afterConsonant, afterVowel] = PAIR_OF.get(particle);
+  return `${token}|1${afterConsonant};${afterVowel};`;
 }
 
 function speakParticles(text) {

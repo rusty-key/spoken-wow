@@ -587,6 +587,8 @@ unvoiceable. So does a line holding any other escape the client resolves as it p
 koKR's particle escape, `$c|1이여;여;`, takes its first form after a syllable ending in a
 consonant and its second after a vowel, as the client does, judged on the word the token became
 (`모험가여`); `(으)로` takes `로` after ㄹ.
+A particle glued straight onto a token (`$N이`, `$c을`, written for a name ending in a consonant)
+is chosen the same way, so `$N이` reads `모험가가`.
 Contributions triage shows any token or client escape still left after this, a bare `<` or `>`, and a gap
 before `.` or `,` or a mid-sentence double space where a gender branch came through empty,
 above the row's text, so a line that would never be voiced is seen before it is accepted.
