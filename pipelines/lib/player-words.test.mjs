@@ -55,3 +55,14 @@ test("a line break and a colour are spoken as the client prints them, in any lan
   // A `|c` with no colour, as q:4542:accept writes it, is no colour: it stays for the gate.
   assert.equal(speakQuestTokens("extraña.|n|c|n", "esMX"), "extraña.\n|c\n");
 });
+
+test("Korean's particle escape takes the form that follows the word before it", () => {
+  // The speaker's words end in a vowel: 모험가, 여행자.
+  assert.equal(speakQuestTokens("빛이 함께하기를, $c|1이여;여;.", "koKR"), "빛이 함께하기를, 모험가여.");
+  assert.equal(speakQuestTokens("상급 $c|1을;를; 만나보십시오.", "koKR"), "상급 모험가를 만나보십시오.");
+  assert.equal(speakQuestTokens("$r|1이;가; 왔다.", "koKR"), "여행자가 왔다.");
+  // A word ending in a consonant takes the first form; one ending in ㄹ takes 로 for (으)로.
+  assert.equal(speakQuestTokens("전사|1은;는; 전사|1으로;로; 남는다.", "koKR"), "전사는 전사로 남는다.");
+  assert.equal(speakQuestTokens("용사단|1은;는; 용사단|1으로;로; 간다.", "koKR"), "용사단은 용사단으로 간다.");
+  assert.equal(speakQuestTokens("기사들의 길|1으로;로; 간다.", "koKR"), "기사들의 길로 간다.");
+});
