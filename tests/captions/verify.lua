@@ -643,21 +643,17 @@ cfg.SubtitleScale=1; T:RefreshConfig()
 frameCfg.LockFrame=true; E.PlayerFrame:RefreshConfig(); Play(.25)
 local lockedWidth=S.controls:GetWidth()
 S.mover:Fire('OnDragStart'); cursor[2]=100; S.mover:Fire('OnDragStop'); cursor[2]=0
-Check(not S.mover:IsEnabled() and S.mover:GetAlpha()<1 and E.Snap.Active()==nil
-    and math.abs(S.frame:GetTop()-500)<.001,'Lock Position disables the grabber and prevents movement')
+Check(not S.mover:IsShown() and math.abs(S.previous:GetLeft()-S.controls:GetLeft())<.001 and E.Snap.Active()==nil
+    and math.abs(S.frame:GetTop()-500)<.001,'Lock Position removes the grabber and prevents movement')
 S.pause:Fire('OnClick')
 Check(Q:IsPaused(),'the Stop button still works while position is locked')
 S.pause:Fire('OnClick')
 Check(not Q:IsPaused(),'Replay still works while position is locked')
 frameCfg.LockFrame=false; E.PlayerFrame:RefreshConfig(); Play(.25)
-Check(S.mover:IsEnabled() and S.mover:GetAlpha()==1 and S.controls:GetWidth()==lockedWidth,
-    'unlocking restores the grabber without shifting playback buttons')
-local addLine, hint = GameTooltip.AddLine
-GameTooltip.AddLine = function(_, text) hint = text end
+Check(S.mover:IsShown() and S.previous:GetLeft()>S.mover:GetLeft() and S.controls:GetWidth()>lockedWidth,
+    'unlocking puts the grabber back at the front of the row')
 S.mover:Fire('OnEnter')
-Check(GameTooltip:GetText()==E.L.SUBTITLE_MOVE and hint==E.L.QUEUE_DRAG_HINT,
-    'the grabber identifies movement and explains how to drag')
-GameTooltip.AddLine = addLine
+Check(GameTooltip:GetText()==E.L.SUBTITLE_MOVE,'the grabber says to drag it')
 S.mover:Fire('OnLeave')
 S.mover:Fire('OnDragStart')
 Check(E.Snap.Active()==S.frame,'the grabber drags while unlocked')
@@ -725,7 +721,7 @@ Check(S.frame:IsShown() and S.title:GetText()=='Sample subtitle' and Typed()==E.
 local beforePreview=S.frame:GetTop()
 MouseIsOver=function(frame) return frame==S.frame end
 Play(.2)
-Check(S.controls:IsShown() and S.mover:IsEnabled() and not S.pause:IsShown()
+Check(S.controls:IsShown() and S.mover:IsShown() and not S.pause:IsShown()
     and not S.previous:IsShown() and not S.skip:IsShown() and not S.reportButton:IsShown()
     and S.controls:GetWidth()==S.mover:GetWidth(),'the preview reveals just its grabber')
 S.mover:Fire('OnDragStart'); cursor[2]=50; E.Snap.Move(); S.mover:Fire('OnDragStop'); cursor[2]=0

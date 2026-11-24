@@ -63,8 +63,8 @@ All of it is in `addons/Spoken/UI/`, one copy for every module.
 - **Show Progress Bar**: a progress line under the words, for the subtitles and every window. Off by default.
 - **Dragging** a window or the subtitles draws it to the screen's edges and middle, and the DialogueUI
   window to its resting place too, with a gold guide line where it holds. Holding Shift drags it free.
-- **Lock Position**: the windows and the subtitles cannot be dragged or resized, including through
-  the subtitle grabber; their playback buttons still work. Locked windows pass clicks through,
+- **Lock Position**: the windows and the subtitles cannot be dragged or resized, and the subtitle
+  grabber goes; their playback buttons still work. Locked windows pass clicks through,
   and the subtitle display always passes mouse input through. **Reset Positions**, under Fix a
   Problem, forgets the places saved for the Small, Large and DialogueUI windows and the subtitles.
 - **Ctrl and the mouse wheel** over the Small Window, the DialogueUI window or the subtitle controls step
@@ -139,8 +139,8 @@ and Stop All behave as they do in the windows.
   under it.
 - Drag the grabber to move the subtitle and controls together. The controls stay visible during
   the drag and remain within the screen. The position is saved, with snapping to the screen's
-  edges and middle and a gold guide line where it holds; Shift drags it free. Lock Position dims
-  and disables the grabber without moving the other buttons. Preview shows just the grabber.
+  edges and middle and a gold guide line where it holds; Shift drags it free. Lock Position, or an
+  addon hosting the subtitle, removes the grabber. Preview shows just the grabber.
 - It shows once the voice has begun, or while the line is stopped or held back, so that it can
   say why nothing is being read.
 

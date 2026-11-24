@@ -905,14 +905,22 @@ function Subtitle:Corner(clip)
         button:Hide()
         self.report = nil
     end
-    local row = { self.mover }
-    -- Preview can be positioned without exposing playback actions for an unrelated queue.
+    self:LayOutControls()
+end
+
+--- The grabber only while the subtitle can move, the playback buttons, then Report if the line
+--- has it. Preview can be positioned without exposing playback actions for an unrelated queue.
+function Subtitle:LayOutControls()
+    local row = {}
+    local movable = not Locked()
+    self.mover:SetShown(movable)
+    if movable then row[1] = self.mover end
     local playback = not self.sample
     for _, control in ipairs({ self.previous, self.pause, self.skip, self.eject }) do
         control:SetShown(playback)
         if playback then row[#row + 1] = control end
     end
-    if action then row[#row + 1] = button end
+    if self.report then row[#row + 1] = self.report end
     Actions.LayOutRow(self.controls, row, CONTROL_GAP)
     self:Fit()
 end
@@ -939,16 +947,9 @@ function Subtitle:BuildControls()
     end)
     mover:SetScript("OnDragStop", function() self:StopMoving() end)
     mover:HookScript("OnEnter", function()
-        if not Locked() then SetCursor([[Interface\Cursor\UI-Cursor-Move]]) end
-        local hint = L.QUEUE_DRAG_HINT
-        if Addon.playerHost then
-            hint = L.SUBTITLE_MOVE_HOSTED
-        elseif Addon:IsFrameLocked() then
-            hint = format(L.SUBTITLE_MOVE_LOCKED_FMT, L.OPT_LOCK_FRAME)
-        end
+        SetCursor([[Interface\Cursor\UI-Cursor-Move]])
         GameTooltip:SetOwner(mover, "ANCHOR_TOP")
         GameTooltip:SetText(L.SUBTITLE_MOVE)
-        GameTooltip:AddLine(hint, 1, 1, 1, true)
         GameTooltip:Show()
     end)
     mover:HookScript("OnLeave", function() SetCursor(nil) end)
@@ -1008,13 +1009,9 @@ end
 function Subtitle:UpdateControls()
     Actions.SetPlayGlyph(self.pause, Actions.HeadState())
     Actions.SetPausable({ self.pause, self.previous, self.skip, self.eject })
-    local locked = Locked()
-    self.mover:SetAlpha(locked and .4 or 1)
-    if locked then
-        self.mover:Disable()
+    if self.mover:IsShown() == Locked() then
         self:StopMoving()
-    else
-        self.mover:Enable()
+        self:LayOutControls()
     end
 end
 
