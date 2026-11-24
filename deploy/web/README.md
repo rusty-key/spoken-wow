@@ -147,7 +147,7 @@ for it (STORAGE.md, "Connecting Cloudflare"). It stays hidden without a valid `S
 too.
 
 Before `SPOKEN_ARCHIVE_STORE` becomes `dual`, install **`oggenc`** beside ffmpeg
-(`apt install vorbis-tools`): with the bucket in use every quests take is encoded to its
+(`apt install vorbis-tools`): with the bucket in use every take is encoded to its
 pack's Ogg when it is committed (`apps/web/src/lib/takes/encode.ts`). Without it the take
 still commits, but a Manager release stops and names the takes that have no Ogg.
 

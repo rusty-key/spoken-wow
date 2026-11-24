@@ -1,8 +1,9 @@
 /**
  * A take's clip as its pack ships it, encoded at commit so a release need not encode it again.
  *
- * The recipe must match scripts/quests/package-audio.sh's ogg-q0-44k, so a clip encoded here
- * and one encoded by the build are the same file. Best effort: a zip's build encodes whatever
+ * Every section's packs ship it. The recipe must match scripts/quests/package-audio.sh's
+ * ogg-q0-44k and scripts/lib/ogg.mjs, so a clip encoded here and one encoded by a build are the
+ * same file. Best effort: a zip's build encodes whatever
  * scripts/audio/fetch-encodings.mjs does not find, and a Manager release stops on it.
  */
 import "server-only";
@@ -24,12 +25,7 @@ import { asTeam } from "@/lib/teams/acting";
 
 import { withLocalCopy } from "./bytes";
 
-const QUESTS_PROFILE = "ogg-q0-44k";
-
-/** Null where a pack ships the take's own bytes. */
-function profileFor(source: Source): string | null {
-  return source === "quests" ? QUESTS_PROFILE : null;
-}
+const PROFILE = "ogg-q0-44k";
 
 /** A stuck encoder would otherwise hold its take's lock, or a release press, forever. */
 const ENCODE_TIMEOUT_MS = 60_000;
@@ -205,10 +201,8 @@ export async function encodeForPack(
   master: string,
   take?: EncodedTake,
 ): Promise<Encoding | null> {
-  const profile = profileFor(source);
-  if (!profile) return null;
   try {
-    const done = await recorded(source, sha256, profile);
+    const done = await recorded(source, sha256, PROFILE);
     if (done) return done;
   } catch (error) {
     await failed(source, sha256, take, error);
@@ -216,7 +210,7 @@ export async function encodeForPack(
   }
   for (let attempt = 1; ; attempt++) {
     try {
-      return await encodeAndRecord(source, sha256, profile, master, take?.lang);
+      return await encodeAndRecord(source, sha256, PROFILE, master, take?.lang);
     } catch (error) {
       if (attempt >= 2) {
         await failed(source, sha256, take, error);
@@ -252,8 +246,6 @@ async function encodeFromArchive(source: Source, sha256: string, take?: EncodedT
  * failed in the past day last, so a take that will never encode does not spend every press's time.
  */
 export async function encodeMissingForPack(source: Source, lang: Lang, team: TeamId, budgetMs = 30_000): Promise<void> {
-  const profile = profileFor(source);
-  if (!profile) return;
   const until = Date.now() + budgetMs;
   const missing = await queryIn<{ sha256: string; file: string; version: number; lineId: string | null }>(
     ALL_TEAMS,
@@ -272,7 +264,7 @@ export async function encodeMissingForPack(source: Source, lang: Lang, team: Tea
                          and a."subject" = live."file" and a."detail"->>'version' = live."version"::text),
               "createdAt" desc
      limit 500`,
-    [source, lang, profile, FAILED, team],
+    [source, lang, PROFILE, FAILED, team],
   );
   for (const { sha256, ...take } of missing) {
     const left = until - Date.now();
@@ -289,10 +281,8 @@ export async function encodeMissingForPack(source: Source, lang: Lang, team: Tea
 
 /** For a take put back live, which may be older than encoding at commit. Never throws. */
 export async function encodeArchivedForPack(source: Source, sha256: string, take?: EncodedTake): Promise<void> {
-  const profile = profileFor(source);
-  if (!profile) return;
   try {
-    if (await recorded(source, sha256, profile)) return;
+    if (await recorded(source, sha256, PROFILE)) return;
   } catch (error) {
     await failed(source, sha256, take, error);
     return;

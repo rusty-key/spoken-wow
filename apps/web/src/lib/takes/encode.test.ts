@@ -72,9 +72,22 @@ describe.skipIf(!tools)("encodeForPack", () => {
     }
   });
 
-  it("does nothing for a section whose packs ship the take itself", async () => {
-    const data = Buffer.from("not audio");
-    expect(await encodeForPack("places", sha256Of(data), clip("not-audio.mp3", data))).toBeNull();
+  it.each(["places", "readables", "bosses"] as const)("encodes a %s take too, whose pack ships Ogg as well", async (source) => {
+    const bucket = memoryBlobs();
+    const restore = useArchiveForTests(bucket, "dual");
+    const master = tone();
+    const sha = sha256Of(fs.readFileSync(master));
+    try {
+      await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
+      const done = await encodeForPack(source, sha, master);
+      expect(done).not.toBeNull();
+      expect(bucket.objects.get(`encodings/${done!.encodedSha256}`)?.data.subarray(0, 4).toString()).toBe("OggS");
+      const { rows } = await db().query(`select "source" from "take_encoding" where "sha256" = $1`, [sha]);
+      expect(rows).toEqual([{ source }]);
+    } finally {
+      restore();
+      await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
+    }
   });
 
   it("encodes a take put back live from the archive, once", async () => {
