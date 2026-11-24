@@ -25,7 +25,7 @@ export function isNameKind(value: unknown): value is NameKind {
 export type NameVersion = {
   version: number;
   isCurrent: boolean;
-  origin: "extracted" | "edited" | "contributed" | "community";
+  origin: "extracted" | "edited" | "contributed" | "community" | "observed";
   name: string;
   editedBy: string | null;
   note: string | null;
@@ -79,38 +79,8 @@ export async function saveName(args: {
       if (!english[0]) throw new NameMissing(`${args.kind} ${args.entityId} has no English name`);
     }
 
-    const { rows: currentRows } = await client.query<Row>(
-      `select "version", "isCurrent", "origin", "name", "editedBy", "note", "createdAt"
-         from "entity_name"
-        where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "isCurrent" for update`,
-      [args.kind, args.entityId, args.lang],
-    );
-    const current = currentRows[0];
-    if (
-      current &&
-      args.expectedVersion !== undefined &&
-      args.expectedVersion !== null &&
-      args.expectedVersion !== current.version
-    ) {
-      throw new NameConflict(`this name moved to v${current.version} while you were editing it`);
-    }
-    if (current && current.name === name) {
-      return { ...current, createdAt: current.createdAt.toISOString(), wrote: false };
-    }
-
-    await client.query(
-      `update "entity_name" set "isCurrent" = false
-        where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "isCurrent"`,
-      [args.kind, args.entityId, args.lang],
-    );
-    const { rows } = await client.query<Row>(
-      `insert into "entity_name"
-         ("kind", "entityId", "lang", "version", "isCurrent", "origin", "name", "editedBy", "note")
-       select $1, $2, $3, coalesce(max("version"), 0) + 1, true, 'edited', $4, $5, $6
-         from "entity_name" where "kind" = $1 and "entityId" = $2 and "lang" = $3
-       returning "version", "isCurrent", "origin", "name", "editedBy", "note", "createdAt"`,
-      [args.kind, args.entityId, args.lang, name, args.editedBy, args.note?.trim() || null],
-    );
+    const { version, previous, wrote } = await writeName(client, { ...args, name, origin: "edited" });
+    if (!wrote) return { ...version, wrote: false };
     await recordActivity(
       {
         team,
@@ -119,16 +89,72 @@ export async function saveName(args: {
         actorId: args.editedBy,
         subject: `${args.kind}:${args.entityId}`,
         detail: {
-          version: rows[0].version,
+          version: version.version,
           name,
-          note: rows[0].note,
-          ...auditDetail(args.audit, current?.version ?? null),
+          note: version.note,
+          ...auditDetail(args.audit, previous?.version ?? null),
         },
       },
       client,
     );
-    return { ...rows[0], createdAt: rows[0].createdAt.toISOString(), wrote: true };
+    return { ...version, wrote: true };
   });
+}
+
+/**
+ * Make `name` the current one inside the caller's transaction, unless it already is. Every
+ * writer of a new version goes through here, so two at once take turns on the same lock.
+ */
+export async function writeName(
+  client: PoolClient,
+  args: {
+    kind: NameKind;
+    entityId: string;
+    lang: Lang;
+    name: string;
+    origin: "edited" | "observed";
+    editedBy: string;
+    note?: string | null;
+    expectedVersion?: number | null;
+  },
+): Promise<{ version: NameVersion; previous: NameVersion | null; wrote: boolean }> {
+  // A name with no current version has no row to lock, and two writers would both take the
+  // next version.
+  await client.query(`select pg_advisory_xact_lock(hashtext($1))`, [
+    `entity_name:${args.kind}:${args.entityId}:${args.lang}`,
+  ]);
+  const { rows: currentRows } = await client.query<Row>(
+    `select "version", "isCurrent", "origin", "name", "editedBy", "note", "createdAt"
+       from "entity_name"
+      where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "isCurrent" for update`,
+    [args.kind, args.entityId, args.lang],
+  );
+  const current = currentRows[0];
+  const previous = current ? { ...current, createdAt: current.createdAt.toISOString() } : null;
+  if (
+    previous &&
+    args.expectedVersion !== undefined &&
+    args.expectedVersion !== null &&
+    args.expectedVersion !== previous.version
+  ) {
+    throw new NameConflict(`this name moved to v${previous.version} while you were editing it`);
+  }
+  if (previous && previous.name === args.name) return { version: previous, previous, wrote: false };
+
+  await client.query(
+    `update "entity_name" set "isCurrent" = false
+      where "kind" = $1 and "entityId" = $2 and "lang" = $3 and "isCurrent"`,
+    [args.kind, args.entityId, args.lang],
+  );
+  const { rows } = await client.query<Row>(
+    `insert into "entity_name"
+       ("kind", "entityId", "lang", "version", "isCurrent", "origin", "name", "editedBy", "note")
+     select $1, $2, $3, coalesce(max("version"), 0) + 1, true, $4, $5, $6, $7
+       from "entity_name" where "kind" = $1 and "entityId" = $2 and "lang" = $3
+     returning "version", "isCurrent", "origin", "name", "editedBy", "note", "createdAt"`,
+    [args.kind, args.entityId, args.lang, args.origin, args.name, args.editedBy, args.note?.trim() || null],
+  );
+  return { version: { ...rows[0], createdAt: rows[0].createdAt.toISOString() }, previous, wrote: true };
 }
 
 function refuseEnglish(lang: Lang): void {

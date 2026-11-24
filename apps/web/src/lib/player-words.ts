@@ -21,12 +21,24 @@ export const speakPlayerTokens = words.speakPlayerTokens as (
   playerGender?: "m" | "f" | null,
 ) => string;
 
+export const speakQuestTokens = words.speakQuestTokens as typeof speakPlayerTokens;
+
 /** Words as stored, trimmed, or null where any is missing or unspeakable. */
 export const validPlayerWords = words.validPlayerWords as (value: unknown) => PlayerWords | null;
 
 export const PLAYER_WORD_LIMIT = words.WORD_LIMIT as number;
 
-/** Whether `lang`'s words are code, which a row cannot change. */
+/** Whether Spoken has default words for `lang`, which a row's words replace. */
 export const hasBuiltinPlayerWords = words.hasBuiltinPlayerWords as (lang: string) => boolean;
+
+export const hasRegisteredPlayerWords = words.hasRegisteredPlayerWords as (lang: string) => boolean;
+
+export const DECLENSION = words.DECLENSION as RegExp;
+
+export const samePlayerWords = words.samePlayerWords as (a: unknown, b: unknown) => boolean;
+
+export const isBuiltinPlayerWords = words.isBuiltinPlayerWords as (lang: string, value: unknown) => boolean;
+
+export const builtinPlayerWordsOf = words.builtinPlayerWordsOf as (lang: string) => PlayerWords | null;
 
 export const playerWordsOf = words.playerWordsOf as (lang: string) => PlayerWords | null;

@@ -4,11 +4,20 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **With Read After Accepting on, a quest reads once you accept or hand it in.** It replaces Read
+  When Window Closes. *([anon1231823](https://github.com/anon1231823))*
 - **Subtitles always pass mouse input through.** Move them with the grabber in their hover controls;
   Lock Position disables movement. *([Praxeomatic](https://github.com/Praxeomatic))*
 - **Subtitle dragging stops when you release the mouse.** The move button now has four-way arrows
   and clearer instructions. *([Praxeomatic](https://github.com/Praxeomatic))*
+
+## 3.12.1 — 2026-11-22
+
 - **Queue counts pulse without an error when a line is added while Spoken is stopped.** *([anon1231823](https://github.com/anon1231823))*
+- **Collecting lines also notes each speaker's name as your game shows it,** so translators can
+  show quest givers by the names your game uses. *([rusty-key](https://github.com/rusty-key))*
+- **Quest givers in the quest log carry your language's names,** as its translators set them, once
+  your language's voice pack is updated. *([rusty-key](https://github.com/rusty-key))*
 
 ## 3.12.0 — 2026-11-22
 

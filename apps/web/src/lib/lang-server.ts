@@ -39,14 +39,16 @@ export async function worksHere(lang: Lang): Promise<boolean> {
 }
 
 /**
- * The language Backstage's words are read in: the reader's saved setting, else the `[lang]`
- * segment. Only the words follow it; the front page never asks, and `lang` stays the page's
- * language for the lines, teams and packs it shows. Cached: the layout, page and metadata all ask.
+ * The language Backstage's words are read in: a signed-in reader's saved setting, English if they
+ * never chose, and the `[lang]` segment for a signed-out visitor. A translator opens pages in the
+ * language they maintain, and must not have the interface follow it. Only the words follow this;
+ * the front page never asks, and `lang` stays the page's language for the lines, teams and packs
+ * it shows. Cached: the layout, page and metadata all ask.
  */
-export const readingLang = cache(async (fallback: Lang): Promise<Lang> => {
+export const readingLang = cache(async (pageLang: Lang): Promise<Lang> => {
   const session = await currentSession();
-  if (!session) return fallback;
-  return (await uiLangOf(session.user.id)) ?? fallback;
+  if (!session) return pageLang;
+  return (await uiLangOf(session.user.id)) ?? BASE_LANG;
 });
 
 /** Cached per render: the layout and the page under it both ask, of the same language. */

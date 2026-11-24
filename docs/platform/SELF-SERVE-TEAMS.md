@@ -140,8 +140,8 @@ A row also carries what code knows of a built-in language and a team's would oth
 and optionally a Craftsman's Writ's `$2oa` (`pipelines/lib/player-words.mjs`), and `bytesPerCharacter`, its width for fish.audio's list price
 (`apps/web/src/lib/generation/calibration.ts`). A language with no words voices no line holding a
 token: the text gate refuses it. Its text maintainers set them on `/<lang>/player-words`
-(`PUT /api/languages/player-words?lang=`, `text`); a built-in language's words are code, and its
-row's are never read. They reach the registry with the rest of the row, and a pack build run by hand
+(`PUT /api/languages/player-words?lang=`, `text`). A built-in language has default words in code;
+its row's words, once saved, replace them, and clearing the row returns to them. They reach the registry with the rest of the row, and a pack build run by hand
 registers them from the table (`PLAYER_WORDS_SQL` in `pipelines/lib/player-words.mjs`).
 
 **Built in are the ten languages a game client runs in, and no others.** Italian, Vietnamese and

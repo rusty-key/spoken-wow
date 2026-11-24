@@ -43,7 +43,7 @@ jobs:
               - scripts/lib/changelog.mjs
               - scripts/spoken/check-changelog.sh
               - docs/manager/CHANGELOG.md
-              - manager/package.json
+              - apps/manager/package.json
               - scripts/manager/check-changelog.sh
             quests:
               - .github/workflows/ci.yaml
@@ -88,7 +88,7 @@ jobs:
               - docs/support/**
               # The FAQ check reads the addons' and the Manager's English strings and commands.
               - addons/**/*.lua
-              - manager/src/renderer/src/strings.en.ts
+              - apps/manager/src/renderer/src/strings.en.ts
               - package.json
               - pnpm-lock.yaml
               - pnpm-workspace.yaml
@@ -115,7 +115,7 @@ jobs:
       - run: python3 pipelines/places/tools/lua-syntax-check.py
       # The changelog's rules: credits under Unreleased, and the .toc's version has a section.
       - run: ./scripts/spoken/check-changelog.sh
-      # The same rules for Spoken Manager's, against manager/package.json.
+      # The same rules for Spoken Manager's, against apps/manager/package.json.
       - run: ./scripts/manager/check-changelog.sh
 
   quests-python:

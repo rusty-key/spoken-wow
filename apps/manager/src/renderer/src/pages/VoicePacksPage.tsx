@@ -1,18 +1,19 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { SECTIONS, type Product, type ProductStatus } from '@shared/types'
 import { isChannelRelease } from '@shared/channel'
-import { BASE_LANGUAGE, LANGUAGES, languageName } from '@shared/products'
+import { BASE_LANGUAGE, LANGUAGES } from '@shared/products'
 import { jobBusy, latestOf, releasesFor, statusOf } from '../catalog'
 import { RailTop } from '../components/Brand'
 import { NoGame } from '../components/EmptyGames'
 import { PackRow } from '../components/PackRow'
 import { formatBytes, formatDate } from '../format'
-import { jobKey, useGame, useStore } from '../store'
+import { jobKey, useGame, useLanguageName, useStore } from '../store'
 import { S } from '../strings'
 import { ALL_AUTHORS, authorsOf, chosenAuthor, groupByAuthor, installAllHasWork, installAllPlan, type Author, type InstallAllPlan } from '../voices'
 
 export function VoicePacksPage(): ReactNode {
   const { state, actions } = useStore()
+  const languageName = useLanguageName()
   const game = useGame()
   const [confirmAll, setConfirm] = useState(false)
   // The team picked in Install All's question, when the language has several and none official.
@@ -64,7 +65,7 @@ export function VoicePacksPage(): ReactNode {
   const todo = plan.kind === 'install' ? plan.products : []
   const anything = installAllHasWork(plan, releasedInLang, authors, needed)
   const totalBytes = todo.reduce((sum, p) => sum + (latestOf(state, game.id, p.id)?.assetSize ?? 0), 0)
-  const lang = languages.find((l) => l.code === chosen)?.name ?? languageName(chosen)
+  const lang = languageName(chosen)
   const installAll = (): void => {
     setConfirmAll(false)
     void (async () => {

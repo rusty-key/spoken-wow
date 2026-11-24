@@ -134,27 +134,29 @@ function Gather:SetTidied()
     Store().Tidied = true
 end
 
---- Keep one NPC's sighting envelope under `npc` ("creature:3429"), with the zones it names, so
---- the next sighting adds to them without reading the envelope back. Beside the lines rather than
+--- Keep one NPC's sighting envelope under `npc` ("creature:3429"), with its zones and name, so
+--- the next sighting compares with them without reading the envelope back. Beside the lines rather than
 --- among them, so sightings never push a line out of CAP; the upload finds every envelope in the
 --- file wherever it sits. Does nothing unless the player opted in.
 ---@return boolean stored
-function Gather:See(npc, zones, envelope)
+---@param name string|nil
+function Gather:See(npc, zones, envelope, name)
     if not (self:IsEnabled() and Valid(npc, envelope) and type(zones) == "table") then
         return false
     end
-    Keep(Store().Seen, self.SEEN_CAP, { key = npc, zones = zones, envelope = envelope })
+    Keep(Store().Seen, self.SEEN_CAP, { key = npc, zones = zones, envelope = envelope, name = name })
     return true
 end
 
---- The envelope kept for `npc`, and the zones it names.
+--- The envelope kept for `npc`, the zones it names and the name it carries.
 ---@return string|nil envelope
 ---@return table|nil zones
+---@return string|nil name
 function Gather:GetSeen(npc)
     local seen = Store().Seen
     local at = IndexOf(npc, seen)
     if at then
-        return seen[at].envelope, seen[at].zones
+        return seen[at].envelope, seen[at].zones, seen[at].name
     end
 end
 

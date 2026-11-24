@@ -118,16 +118,55 @@ do
     local envelope = Gather:GetSeen("creature:12345")
     H.WriteCapturedFixture(here, "seen-npc", envelope)
     Expect("a gossip window keeps where its NPC was met", seen("creature:12345"), "1411")
-    Expect("...as a seen envelope naming the NPC by kind and id",
-        envelope and envelope:match("^!SPOKEN1 seen\naddon=SpokenQuests/9%.9%.9\nbuild=[^\n]+\nnpc=creature:12345\n") ~= nil, true)
-    Expect("...with no text and no name", envelope and (envelope:find("text<<", 1, true) or envelope:find("Linnea", 1, true)), nil)
+    Expect("...as a seen envelope naming the NPC by kind and id, in the client's locale",
+        envelope and envelope:match("^!SPOKEN1 seen\naddon=SpokenQuests/9%.9%.9\nbuild=[^\n]+\nlocale=enUS\nnpc=creature:12345\n") ~= nil, true)
+    Expect("...with the name the client shows", envelope and envelope:match("\nname=Deathguard Linnea\n") ~= nil, true)
+    Expect("...and no text", envelope and envelope:find("text<<", 1, true), nil)
 
     world.playerMapID = 1413
     VoiceOver.Contribute:HasGap()
     Expect("met in another zone, both are kept", seen("creature:12345"), "1411,1413")
     VoiceOver.Contribute:HasGap()
     Expect("...each once", seen("creature:12345"), "1411,1413")
+    local unchanged = Gather:GetSeen("creature:12345")
+    VoiceOver.Contribute:HasGap()
+    Expect("the same zone and name keep the envelope as it was", Gather:GetSeen("creature:12345"), unchanged)
+
+    world.npcName = "Deathguard Linnea the Renamed"
+    VoiceOver.Contribute:HasGap()
+    local renamed = Gather:GetSeen("creature:12345")
+    Expect("a name the client shows differently is kept again", renamed and renamed:match("\nname=([^\n]+)\n"), "Deathguard Linnea the Renamed")
+    Expect("...with the zones it had", seen("creature:12345"), "1411,1413")
+    world.npcName = "Deathguard Linnea"
+    VoiceOver.Contribute:HasGap()
+
+    local unitName = _G.UnitName
+    _G.UnitName = function(unit) return unit == "player" and "Tester" or nil end
+    VoiceOver.Contribute:HasGap()
+    local unread = Gather:GetSeen("creature:12345")
+    Expect("a window that cannot read the name keeps the one it had", unread and unread:match("\nname=([^\n]+)\n"), "Deathguard Linnea")
+
+    _G.UnitName = function(unit)
+        if unit == "questnpc" then return "Deathguard Linnea" end
+        if unit == "npc" then return "Someone Beside Her" end
+        return unit == "player" and "Tester" or nil
+    end
+    VoiceOver.Contribute:HasGap()
+    local paired = Gather:GetSeen("creature:12345")
+    Expect("the name is read from the unit the id is", paired and paired:match("\nname=([^\n]+)\n"), "Deathguard Linnea")
+
+    _G.UnitName = function(unit) return unit == "player" and "Tester" or nil end
+    world.npcGUID = "Creature-0-0-0-0-12349-0"
+    VoiceOver.Contribute:HasGap()
+    _G.UnitName = unitName
+    local nameless = Gather:GetSeen("creature:12349")
+    Expect("an NPC the client gives no name is still kept, without one", nameless and nameless:find("\nname=", 1, true), nil)
+    Expect("...where it was met", seen("creature:12349"), "1413")
     Gather:Clear()
+    world.npcGUID = "Creature-0-0-0-0-12345-0"
+    VoiceOver.Contribute:HasGap()
+    Gather:Clear()
+    world.playerMapID = 1413
     VoiceOver.Contribute:HasGap()
     Expect("cleared, the next window keeps it again", seen("creature:12345"), "1413")
 

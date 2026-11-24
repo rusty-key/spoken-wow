@@ -47,7 +47,7 @@ function uiText() {
     ...readdirSync(join(ROOT, "addons")).flatMap((addon) => [
       `addons/${addon}/Strings.lua`, `addons/${addon}/Locale/enUS.lua`,
     ]),
-    "manager/src/renderer/src/strings.en.ts",
+    "apps/manager/src/renderer/src/strings.en.ts",
   ];
   const text = [];
   for (const file of files) {

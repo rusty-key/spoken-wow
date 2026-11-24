@@ -1,12 +1,12 @@
 {
   "name": "spoken-manager",
   "productName": "Spoken Manager",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Installs and updates Spoken and its voice packs.",
   "private": true,
   "main": "./out/main/index.js",
   "author": "Spoken",
-  "homepage": "https://github.com/rusty-key/spoken-wow/tree/master/manager",
+  "homepage": "https://github.com/rusty-key/spoken-wow/tree/master/apps/manager",
   "desktopName": "spoken-manager",
   "license": "MIT",
   "scripts": {

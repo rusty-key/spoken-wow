@@ -12,5 +12,6 @@
 export function decideImport(current, incoming) {
   if (!current) return { action: "promote" };
   if (current.text === incoming.text) return { action: "skip" };
-  return { action: current.origin === "edited" ? "record" : "promote" };
+  // A name a translator kept from a player's client ('observed') is newer than any dump.
+  return { action: current.origin === "edited" || current.origin === "observed" ? "record" : "promote" };
 }
