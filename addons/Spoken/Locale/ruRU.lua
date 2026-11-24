@@ -10,6 +10,7 @@ if not Interface:In("ruRU") then
 	return
 end
 
+L.DEVELOPER_TOOLTIP = "Разработчик Spoken"
 L.PLAY = "Слушать"
 L.TRANSCRIPT = "Текст"
 L.OPT_SHOW_NARRATOR = "Показывать рассказчика"

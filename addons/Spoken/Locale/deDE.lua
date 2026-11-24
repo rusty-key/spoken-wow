@@ -10,6 +10,7 @@ if not Interface:In("deDE") then
 	return
 end
 
+L.DEVELOPER_TOOLTIP = "Spoken-Entwickler"
 L.PLAY = "Abspielen"
 L.TRANSCRIPT = "Text"
 L.OPT_SHOW_NARRATOR = "Erzähler anzeigen"

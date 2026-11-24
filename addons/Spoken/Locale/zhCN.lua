@@ -10,6 +10,7 @@ if not Interface:In("zhCN") then
 	return
 end
 
+L.DEVELOPER_TOOLTIP = "Spoken 开发者"
 L.PLAY = "播放"
 L.TRANSCRIPT = "文字"
 L.OPT_SHOW_NARRATOR = "显示旁白"

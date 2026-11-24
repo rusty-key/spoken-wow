@@ -3,6 +3,7 @@ setfenv(1, SpokenEnv)
 -- Interface strings, keyed for the locale overlays in Locale/.
 -- English is the fallback: a locale file assigns only the keys it translates.
 L = {
+    DEVELOPER_TOOLTIP = "Spoken Developer",
     PLAY = "Play",
     TRANSCRIPT = "Words",
     OPT_SHOW_NARRATOR = "Show Narrator",

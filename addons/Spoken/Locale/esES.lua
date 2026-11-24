@@ -11,6 +11,7 @@ if not Interface:In("esES", "esMX") then
 	return
 end
 
+L.DEVELOPER_TOOLTIP = "Desarrollador de Spoken"
 L.PLAY = "Reproducir"
 L.TRANSCRIPT = "Texto"
 L.OPT_SHOW_NARRATOR = "Mostrar narrador"

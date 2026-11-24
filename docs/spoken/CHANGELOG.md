@@ -29,6 +29,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   Missing Lines keeps it. *([svengabr](https://github.com/svengabr))*
 - **Subtitles no longer block clicks or the mouse wheel.** Move them with the arrow button that
   appears under them on hover. *([Praxeomatic](https://github.com/Praxeomatic))*
+- **Spoken developers have Spoken's icon and a localized “Spoken Developer” label in their player tooltip.**
+  *([anon1231823](https://github.com/anon1231823))*
 
 ## 3.12.1 — 2026-11-22
 
