@@ -21,20 +21,26 @@ local PACK_FORMAT = 1
 
 local ICON_CROP = { 0.08, 0.92, 0.08, 0.92 }
 
-local TYPE_ICONS = {
+local TYPE_ICONS = {}
+for kind, icon in pairs({
 	book = "INV_Misc_Book_09", journal = "INV_Misc_Book_11", letter = "INV_Letter_15", note = "INV_Misc_Note_01",
 	scroll = "INV_Scroll_03", tablet = "INV_Misc_StoneTablet_11", plaque = "INV_Misc_Note_06",
 	grave = "INV_Misc_Bone_HumanSkull_01", exhibit = "INV_Misc_Statue_01", picture = "INV_Misc_Map_01",
 	other = "INV_Misc_QuestionMark",
-}
+}) do TYPE_ICONS[kind] = [[Interface\Icons\]] .. icon end
 
--- Item metadata can be absent while browsing, so the page and queued clip share the type fallback.
+local function BookType(book)
+	local places = _G.SpokenReadablesPlaces and SpokenReadablesPlaces.books
+	local place = book and places and places[book]
+	return place and place.type
+end
+
+-- The Compendium's header and the player's picture both come from here, so they cannot disagree.
 -- A readable missing from the Places data is listed as "other", so it plays as one too.
 function SpokenReadables:ReadableIcon(kind, bookID)
-	local icon, crop
-	if bookID then icon, crop = self:ItemIcon(bookID) end
+	local icon, crop = self:ItemIcon(bookID)
 	if icon then return icon, crop end
-	return [[Interface\Icons\]] .. (TYPE_ICONS[kind] or TYPE_ICONS.other), ICON_CROP
+	return TYPE_ICONS[kind] or TYPE_ICONS.other, ICON_CROP
 end
 
 local MATERIALS = {
@@ -60,9 +66,7 @@ end
 --- What `pageId`'s readable is written on by its kind, or nil for paper.
 function SpokenReadables:KindMaterial(pageId)
 	local place = pageId and self:Data() and self:Data().pages[pageId]
-	local places = _G.SpokenReadablesPlaces and SpokenReadablesPlaces.books
-	local entry = place and places and places[place.book]
-	return entry and KIND_MATERIAL[entry.type] or nil
+	return place and KIND_MATERIAL[BookType(place.book)] or nil
 end
 
 --- Item-text events identify the open readable even when DialogueUI hides the game's frame.
@@ -79,9 +83,7 @@ function SpokenReadables:PagePicture(pageId)
 		end
 	end
 	local bookID = pageId and self:PlaceOf(pageId)
-	local places = _G.SpokenReadablesPlaces and SpokenReadablesPlaces.books
-	local entry = bookID and places and places[bookID]
-	local icon, crop = self:ReadableIcon(entry and entry.type, bookID)
+	local icon, crop = self:ReadableIcon(BookType(bookID), bookID)
 	return { kind = "texture", texture = icon, texCoord = crop }
 end
 
@@ -112,9 +114,7 @@ SpokenReadables.TYPE_NAMES = {
 
 --- What `book` is (a book, a letter, a gravestone...), as the Compendium sorts it.
 function SpokenReadables:KindOf(book)
-	local places = _G.SpokenReadablesPlaces and SpokenReadablesPlaces.books
-	local place = places and places[book]
-	return L[(self.TYPE_NAMES[place and place.type] or self.TYPE_NAMES.other).one]
+	return L[(self.TYPE_NAMES[BookType(book)] or self.TYPE_NAMES.other).one]
 end
 
 --- Whether a book is one line in the queue (Read Book as One Line), rather than a line per page.
