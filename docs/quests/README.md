@@ -505,6 +505,17 @@ source filter narrows to it. In the addon, **Read Quest Progress Text** (`Audio.
 on by default, under Read Automatically) lets a player stop the progress page reading itself;
 its Play button and `/spq read` still play it.
 
+**Read Quest Lines Once per Account** is an opt-in checkbox under Read Automatically on
+the Spoken Quests settings page. When enabled, an offer, a progress line and a reward
+each play automatically only until that part of the quest has been heard on the account.
+They are independent: hearing an offer does not prevent hearing its reward. Only
+recordings that actually start playing are remembered; queued and dropped recordings do
+not count. They are remembered with the option off too, so turning it on skips what the
+account has already heard. The account-wide history uses quest ID and part, not filenames or voice
+language. Manual playback remains available. The switch and history live in
+`SpokenQuestsSettings.global` regardless of profile. Older playbacks cannot be
+reconstructed, so the history begins when this feature is installed.
+
 **The level filter is for spending a limited budget on low-level quests first.** `?minLevel=` and
 `?maxLevel=` bound the quest's level, both inclusive, and a batch started from the page uses them
 too. The level lives in `quest_level`, loaded from an extract by a one-off script. A line with no

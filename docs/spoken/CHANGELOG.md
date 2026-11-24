@@ -7,6 +7,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **Move profiles between characters and installations with Export Profile and Import Profile**
   in Spoken's Profiles settings.
   *([anon1231823](https://github.com/anon1231823))*
+- **Places can share visited and heard history across characters.** Enable Share Across Characters under Places, Reading History. *([rogeriosmorais](https://github.com/rogeriosmorais))*
+- **Quest narration can skip lines heard on another character.** Enable Read Quest Lines Once per Account under Quests; manual playback stays available. *([rogeriosmorais](https://github.com/rogeriosmorais))*
 - **A progress page left in under half a second is read before its reward page,** whether an
   auto turn-in addon such as Questie or your own click moved on. *([rusty-key](https://github.com/rusty-key))*
 - **New players' world map lights the area under the pointer only once they turn it on** with
