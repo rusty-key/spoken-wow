@@ -89,7 +89,7 @@ Spoken's queue is stopped, so nothing new plays until you carry on. Press **Repl
 
 ## How do I hear a line again after it finished?
 
-**Replay** only works on a line that is still in the queue, such as one you stopped. To hear the line that just played, press **Previous Line** on the player, type `/sp previous`, or bind a key to it. To hear an older quest, place, book or boss story again, open Azeroth's Compendium (`/sp compendium`) and play it from its page.
+**Replay** only works on a line that is still in the queue, such as one you stopped. To hear the line that just played, press **Skip Backward** on the player, type `/sp previous`, or bind a key to it. To hear an older quest, place, book or boss story again, open Azeroth's Compendium (`/sp compendium`) and play it from its page.
 
 ## An NPC or quest is silent
 
@@ -117,7 +117,7 @@ Spoken plays through the game's **Master Volume** by default; **Volume Follows**
 
 ## Can Spoken go quiet when I'm in Discord voice chat?
 
-No: the game gives addons no way to see a Discord voice channel. Stop it yourself with the **Stop or Replay** or **Eject** keys (in the Spoken category of Key Bindings), `/sp stopall`, or the minimap button. To stop a part reading at all, turn it off under **What Spoken Reads**. **Read in Battlegrounds**, under While Spoken Reads, keeps Spoken quiet in battlegrounds and arenas.
+No: the game gives addons no way to see a Discord voice channel. Stop it yourself with the **Stop or Replay** or **Stop All** keys (in the Spoken category of Key Bindings), `/sp stopall`, or the minimap button. To stop a part reading at all, turn it off under **What Spoken Reads**. **Read in Battlegrounds**, under While Spoken Reads, keeps Spoken quiet in battlegrounds and arenas.
 
 ## How do I mute Spoken without turning it off?
 
