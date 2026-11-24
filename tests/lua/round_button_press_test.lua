@@ -17,14 +17,9 @@ local function Fire(button, script, ...)
     for _, fn in ipairs(button.hooks[script] or {}) do fn(button, ...) end
 end
 
--- Where the glyph has been moved to and the shade it was last given.
 local function Watched(texture)
     texture.dx, texture.dy = 0, 0
     function texture:AdjustPointsOffset(x, y) self.dx, self.dy = self.dx + x, self.dy + y end
-    function texture:GetVertexColor()
-        local c = self.vertexColor or { 1, 1, 1 }
-        return c[1], c[2], c[3], c[4]
-    end
     return texture
 end
 
