@@ -10,6 +10,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 - **Read After Accepting no longer shows an explanatory tooltip.** *([anon1231823](https://github.com/anon1231823))*
 - **With Read After Accepting on, a quest reads once you accept or hand it in.** It replaces Read
   When Window Closes. *([anon1231823](https://github.com/anon1231823))*
+- **Spoken plays the new, smaller Places, Readables and Bosses sound packs,** and the ones you
+  already have. *([rusty-key](https://github.com/rusty-key))*
 
 ## 3.12.1 — 2026-11-22
 

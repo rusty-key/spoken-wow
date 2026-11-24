@@ -268,9 +268,10 @@ function SpokenReadables:ClipFor(pageId, bookPresentation)
 				end
 				local look = bookPresentation
 					or { portrait = self:PagePicture(pageId), material = self:PageMaterial(pageId) }
+				-- A pack built before packs shipped Ogg names no format, and its clips are mp3.
 				return {
 					key = "b:" .. pageId,
-					path = [[Interface\AddOns\]] .. pack.addon .. [[\Sounds\]] .. entry.file .. ".mp3",
+					path = [[Interface\AddOns\]] .. pack.addon .. [[\Sounds\]] .. entry.file .. (pack.format == "ogg" and ".ogg" or ".mp3"),
 					-- 0 means the pack recorded no duration -- an imported take rather than one
 					-- this project cut. The player falls back to its own timer; a wrong number
 					-- here would reset the Play button mid-sentence.
