@@ -137,7 +137,7 @@ describe("acceptCorrection", () => {
         where "lineId" = $1 and "lang" = 'enUS' and "isCurrent"`,
       [lineId],
     );
-    expect(rows[0]).toMatchObject({ text: "Greetings, Adventurer.", origin: "edited", note: correctionNote(id) });
+    expect(rows[0]).toMatchObject({ text: "Greetings, $N.", origin: "edited", note: correctionNote(id) });
 
     const { rows: overrides } = await asSystem.query(`select 1 from "line_override" where "file" = $1`, [file]);
     expect(overrides).toEqual([]);

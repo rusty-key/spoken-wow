@@ -308,6 +308,11 @@ local function Widget(kind, name)
     function w:SetDesaturated(v) self.desaturated = v and true or false end
     function w:IsDesaturated() return self.desaturated or false end
     function w:SetVertexColor(r, g, b, a) self.vertexColor = { r, g, b, a } end
+    -- White until tinted, as the client reports a texture nobody has coloured.
+    function w:GetVertexColor()
+        local c = self.vertexColor or {}
+        return c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1
+    end
     function w:CreateTexture(n, layer) local t = Widget("Texture", n); t.parent = self; t.layer = layer; return t end
     -- A mask, as the client hands one back: the small window rounds a portrait with it.
     function w:CreateMaskTexture(n) local t = Widget("MaskTexture", n); t.parent = self; return t end

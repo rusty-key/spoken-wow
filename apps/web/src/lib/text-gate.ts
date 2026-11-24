@@ -14,14 +14,15 @@
  *
  * `$` starts a template token the game expands and we do not - `$2113w` is a war-effort tally,
  * `$Gmale:female;` a branch - and a model asked to read one says "dollar twenty-one thirteen
- * w". A bare `<` or `>` is a bracket nobody can speak.
+ * w". A bare `<` or `>` is a bracket nobody can speak. A client escape left in the text,
+ * `|3-6(Друид)` or `|1이;가;`, would be read out as written.
  *
  * No node imports: the override dialog checks a draft before sending it, and the server checks
  * the copy that counts.
  */
 
 import { BASE_LANG, type Lang } from "./lang";
-import { speakPlayerTokens } from "./player-words";
+import { CLIENT_ESCAPE, speakQuestTokens } from "./player-words";
 import { isModelVoice } from "./voices/voices";
 
 /** Kept as a string, character for character, so the two files can be diffed by eye. */
@@ -46,7 +47,7 @@ export function withoutDirections(text: string, spaceBefore = false): string {
 
 export function hasInvalidChars(text: string): boolean {
   const spoken = withoutDirections(text);
-  return [...INVALID_CHARS].some((c) => spoken.includes(c));
+  return [...INVALID_CHARS].some((c) => spoken.includes(c)) || CLIENT_ESCAPE.test(spoken);
 }
 
 /**
@@ -81,7 +82,7 @@ export function unvoicedReason(line: GatedLine, effectiveText: string): Unvoiced
   if (line.voice !== undefined && isModelVoice(line.voice)) return "no-voice";
   // Judged on what would be sent: a translation's $N is spoken as its language's word
   // (player-words.ts), so it is not what stops the line.
-  const spoken = speakPlayerTokens(effectiveText, line.lang ?? BASE_LANG, line.playerGender ?? null);
+  const spoken = speakQuestTokens(effectiveText, line.lang ?? BASE_LANG, line.playerGender ?? null);
   return hasInvalidChars(spoken) ? "invalid-chars" : null;
 }
 
@@ -96,5 +97,5 @@ export function skipReasonFor(
   lang: Lang = BASE_LANG,
   playerGender: "m" | "f" | null = null,
 ): "invalid-chars" | null {
-  return hasInvalidChars(speakPlayerTokens(text, lang, playerGender)) ? "invalid-chars" : null;
+  return hasInvalidChars(speakQuestTokens(text, lang, playerGender)) ? "invalid-chars" : null;
 }

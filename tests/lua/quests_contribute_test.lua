@@ -118,16 +118,55 @@ do
     local envelope = Gather:GetSeen("creature:12345")
     H.WriteCapturedFixture(here, "seen-npc", envelope)
     Expect("a gossip window keeps where its NPC was met", seen("creature:12345"), "1411")
-    Expect("...as a seen envelope naming the NPC by kind and id",
-        envelope and envelope:match("^!SPOKEN1 seen\naddon=SpokenQuests/9%.9%.9\nbuild=[^\n]+\nnpc=creature:12345\n") ~= nil, true)
-    Expect("...with no text and no name", envelope and (envelope:find("text<<", 1, true) or envelope:find("Linnea", 1, true)), nil)
+    Expect("...as a seen envelope naming the NPC by kind and id, in the client's locale",
+        envelope and envelope:match("^!SPOKEN1 seen\naddon=SpokenQuests/9%.9%.9\nbuild=[^\n]+\nlocale=enUS\nnpc=creature:12345\n") ~= nil, true)
+    Expect("...with the name the client shows", envelope and envelope:match("\nname=Deathguard Linnea\n") ~= nil, true)
+    Expect("...and no text", envelope and envelope:find("text<<", 1, true), nil)
 
     world.playerMapID = 1413
     VoiceOver.Contribute:HasGap()
     Expect("met in another zone, both are kept", seen("creature:12345"), "1411,1413")
     VoiceOver.Contribute:HasGap()
     Expect("...each once", seen("creature:12345"), "1411,1413")
+    local unchanged = Gather:GetSeen("creature:12345")
+    VoiceOver.Contribute:HasGap()
+    Expect("the same zone and name keep the envelope as it was", Gather:GetSeen("creature:12345"), unchanged)
+
+    world.npcName = "Deathguard Linnea the Renamed"
+    VoiceOver.Contribute:HasGap()
+    local renamed = Gather:GetSeen("creature:12345")
+    Expect("a name the client shows differently is kept again", renamed and renamed:match("\nname=([^\n]+)\n"), "Deathguard Linnea the Renamed")
+    Expect("...with the zones it had", seen("creature:12345"), "1411,1413")
+    world.npcName = "Deathguard Linnea"
+    VoiceOver.Contribute:HasGap()
+
+    local unitName = _G.UnitName
+    _G.UnitName = function(unit) return unit == "player" and "Tester" or nil end
+    VoiceOver.Contribute:HasGap()
+    local unread = Gather:GetSeen("creature:12345")
+    Expect("a window that cannot read the name keeps the one it had", unread and unread:match("\nname=([^\n]+)\n"), "Deathguard Linnea")
+
+    _G.UnitName = function(unit)
+        if unit == "questnpc" then return "Deathguard Linnea" end
+        if unit == "npc" then return "Someone Beside Her" end
+        return unit == "player" and "Tester" or nil
+    end
+    VoiceOver.Contribute:HasGap()
+    local paired = Gather:GetSeen("creature:12345")
+    Expect("the name is read from the unit the id is", paired and paired:match("\nname=([^\n]+)\n"), "Deathguard Linnea")
+
+    _G.UnitName = function(unit) return unit == "player" and "Tester" or nil end
+    world.npcGUID = "Creature-0-0-0-0-12349-0"
+    VoiceOver.Contribute:HasGap()
+    _G.UnitName = unitName
+    local nameless = Gather:GetSeen("creature:12349")
+    Expect("an NPC the client gives no name is still kept, without one", nameless and nameless:find("\nname=", 1, true), nil)
+    Expect("...where it was met", seen("creature:12349"), "1413")
     Gather:Clear()
+    world.npcGUID = "Creature-0-0-0-0-12345-0"
+    VoiceOver.Contribute:HasGap()
+    Gather:Clear()
+    world.playerMapID = 1413
     VoiceOver.Contribute:HasGap()
     Expect("cleared, the next window keeps it again", seen("creature:12345"), "1413")
 
@@ -359,6 +398,36 @@ Expect("the button appears on gossip too", button:IsShown(), true)
 Expect("...in the gossip frame's top right corner", button.anchor and button.anchor.relativeTo == _G.GossipFrame, true)
 button:GetScript("OnEnter")(button)
 Expect("...saying the line is missing", GameTooltip.text, "Spoken Quests doesn't have this line")
+
+---------------------------------------------------------------- a quest giver's greeting
+-- An NPC with several quests opens the quest frame's greeting panel, not the gossip frame.
+-- Its words are gossip all the same: a greeting no pack has offers the button there, and one a
+-- pack has offers none.
+stub.HidePanels()
+world.greetingText = "Dark times, Tester. Stay on the road."
+stub.ShowPanel("QuestFrameGreetingPanel")
+stub.FireEvent("QUEST_GREETING")
+Expect("the button appears on a quest giver's greeting", button:IsShown(), true)
+Expect("...in the quest frame's corner", button.anchor and button.anchor.relativeTo == _G.QuestFrame, true)
+GameTooltip.text = nil
+button:GetScript("OnEnter")(button)
+Expect("...saying the line is missing", GameTooltip.text, "Spoken Quests doesn't have this line")
+local greeting = VoiceOver.Contribute:Capture()
+Expect("the greeting is sent with its npc", greeting ~= nil and greeting:match("\nnpc=12345 ") ~= nil, true)
+Expect("...and its words", greeting ~= nil and greeting:match("\nDark times, Tester%. Stay on the road%.\n") ~= nil, true)
+Expect("...and no quest", greeting ~= nil and greeting:match("\nquest=") == nil, true)
+
+do
+    local pack = VoiceOver.DataModules:GetModule("TestPack")
+    local HASH = string.rep("c", 32)
+    pack.SoundLengthLookupByFileName[HASH] = 2
+    pack.GossipLookupByNPCID = { [12345] = { ["Dark times, $n. Stay on the road."] = HASH } }
+    stub.FireEvent("QUEST_GREETING")
+    Expect("a greeting a pack has offers no button", button:IsShown(), false)
+    pack.GossipLookupByNPCID = nil
+    pack.SoundLengthLookupByFileName[HASH] = nil
+end
+world.greetingText = nil
 
 ---------------------------------------------------------------- the closing gossip frame
 -- CloseGossip fires GOSSIP_CLOSED, which refreshes the button, and on a real client the

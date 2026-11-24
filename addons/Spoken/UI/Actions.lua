@@ -76,6 +76,36 @@ function Actions.TintWithRings(ring)
     TintRing(ring)
 end
 
+local PRESSED_SHADE = 0.7
+
+-- Held, the glyph (and Skip's bar) sinks a pixel and darkens. Its own colour is given back after,
+-- so a tint another look gave it survives. A button hidden while held never hears the release.
+local function Sinks(button)
+    local pressed, saved = false, {}
+    local function Press(down)
+        if pressed == down then return end
+        pressed = down
+        local offset = down and 1 or -1
+        button.glyph:AdjustPointsOffset(offset, -offset)
+        if not down then
+            for texture, colour in pairs(saved) do texture:SetVertexColor(unpack(colour)) end
+            saved = {}
+            return
+        end
+        -- Skip's bar is added after this runs, so it is looked up at the press.
+        for _, texture in ipairs({ button.glyph, button.bar }) do
+            local r, g, b, a = texture:GetVertexColor()
+            saved[texture] = { r, g, b, a }
+            texture:SetVertexColor(r * PRESSED_SHADE, g * PRESSED_SHADE, b * PRESSED_SHADE, a)
+        end
+    end
+    button:HookScript("OnMouseDown", function(self, mouse)
+        if mouse == "LeftButton" and self:IsEnabled() then Press(true) end
+    end)
+    button:HookScript("OnMouseUp", function() Press(false) end)
+    button:HookScript("OnHide", function() Press(false) end)
+end
+
 --- Dress `button` as the player's round buttons are -- the windows' pause, the subtitle's
 --- controls: the ring round its edge, `icon` inside it, brighter under the pointer. Sized by the
 --- button, so a corner icon and a subtitle control are the same button at different sizes. With
@@ -96,6 +126,7 @@ function Actions.RoundIcon(button, icon, own)
     button:HookScript("OnEnter", function() if button:IsEnabled() then glyph:SetAlpha(1) end end)
     button:HookScript("OnLeave", function() if button:IsEnabled() then glyph:SetAlpha(GLYPH_ALPHA) end end)
     button.ring, button.glyph = ring, glyph
+    Sinks(button)
     if Ellesmere and not own then Ellesmere:When(function(skin) Actions.Square(skin, button) end) end
     return button
 end

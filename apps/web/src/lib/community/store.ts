@@ -58,7 +58,7 @@ export type Pack = {
   lastRejected: Submission | null;
 };
 
-/** One pack as the Manager's registry lists it (manager/src/main/community.ts). */
+/** One pack as the Manager's registry lists it (apps/manager/src/main/community.ts). */
 export type ManagerEntry = {
   id: string;
   title: string;

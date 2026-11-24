@@ -23,9 +23,9 @@ describe("readingLang", () => {
     expect(await readingLang("deDE")).toBe("zhCN");
   });
 
-  it("reads the page's language for a reader who never chose", async () => {
+  it("reads English for a reader who never chose, whatever the page's language", async () => {
     session.current = { user: { id: "u1" } };
-    expect(await readingLang("deDE")).toBe("deDE");
+    expect(await readingLang("deDE")).toBe("enUS");
   });
 
   it("reads the page's language for a signed-out visitor", async () => {

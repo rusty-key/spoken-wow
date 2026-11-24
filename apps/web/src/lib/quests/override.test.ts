@@ -23,9 +23,10 @@ describe("validateOverride", () => {
 });
 
 describe("validateRewrite", () => {
-  it("accepts a $g branch, the route's to split, but nothing else of the token's kind", () => {
+  it("accepts a $g branch, the route's to split, and the reader's tokens, but nothing else of the token's kind", () => {
     expect(() => validateRewrite({ ...VALID, text: "Well met, $glad:lass;." }, "enUS")).not.toThrow();
-    expect(() => validateRewrite({ ...VALID, text: "Well met, $glad:lass;, $N." }, "enUS")).toThrow(/unvoiceable/);
+    expect(() => validateRewrite({ ...VALID, text: "Well met, $glad:lass;, $N." }, "enUS")).not.toThrow();
+    expect(() => validateRewrite({ ...VALID, text: "Well met, $glad:lass;, $2113w." }, "enUS")).toThrow(/unvoiceable/);
   });
 
   it("accepts either bracketed span, which the narrator and the NPC now voice", () => {

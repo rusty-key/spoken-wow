@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { CommunityPack, Section } from '@shared/types'
-import { LANGUAGES, languageName } from '@shared/products'
+import { LANGUAGES } from '@shared/products'
 import { api } from '../api'
 import { statusOf } from '../catalog'
 import { RailTop } from '../components/Brand'
@@ -8,7 +8,7 @@ import { NoGame } from '../components/EmptyGames'
 import { IconAlert } from '../components/Icons'
 import { PackRow } from '../components/PackRow'
 import { formatBytes } from '../format'
-import { useGame, useStore } from '../store'
+import { useGame, useLanguageName, useStore } from '../store'
 import { COMMUNITY_README_URL, S } from '../strings'
 
 const SECTIONS: Section[] = ['quests', 'places', 'readables']
@@ -35,6 +35,7 @@ const open = (url: string): void => void api().openExternal(url).catch(() => und
 
 export function CommunityPage(): ReactNode {
   const { state, actions } = useStore()
+  const languageName = useLanguageName()
   const game = useGame()
   const { community } = state
   const [lang, setLang] = useState('')
@@ -212,6 +213,7 @@ export function CommunityPage(): ReactNode {
 
 function CommunityRow({ pack, gameId }: { pack: CommunityPack; gameId: string }): ReactNode {
   const { state } = useStore()
+  const languageName = useLanguageName()
   const game = state.games.find((g) => g.id === gameId)
   const status = statusOf(state, gameId, `community/${pack.id}`)
   const present = !!status && status.state !== 'not-installed'
