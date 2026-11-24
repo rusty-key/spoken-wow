@@ -47,6 +47,11 @@ describe("textHints", () => {
     ]);
   });
 
+  it("names any other client escape left in, which the voice would read out", () => {
+    expect(textHints("빛이 함께하기를, $c|1이여;여;.", "koKR")).toEqual(["client escape |1이여;여;. — won't be voiced"]);
+    expect(textHints("y tendrás mi gratitud eterna.|n", "esMX")).toEqual(["client escape |n — won't be voiced"]);
+  });
+
   it("flags the gap a gender branch resolved to nothing leaves", () => {
     // q:92703:complete.
     expect(textHints("…danken kann, . Ich habe gefunden.", "deDE")).toEqual([

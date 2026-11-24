@@ -74,6 +74,13 @@ const WORDS = {
 /** The client's declension escape, `|3-6(`, whose case has no word when it reaches the gate. */
 export const DECLENSION = /\|3-\d+\(/;
 
+/**
+ * Any escape the client resolves as it prints a line: a declension, Korean's particle `|1이;가;`,
+ * French's `|2`, ruRU's plural `|4пару:пары:пар;`, a line break `|n`, a colour `|cff…|r`. One
+ * left in is read out as written. `||` is the client's own literal pipe.
+ */
+export const CLIENT_ESCAPE = /(?<!\|)\|[\dA-Za-z]/;
+
 // The words in each language's row, by code, built-ins included. On globalThis because the site
 // loads this module once per bundle layer.
 const registeredKey = Symbol.for("spoken.playerWords");

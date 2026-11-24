@@ -20,6 +20,14 @@ describe("hasInvalidChars", () => {
     expect(hasInvalidChars("What < is this")).toBe(true);
   });
 
+  it("catches every client escape, which the voice would read out as written", () => {
+    // q:303:complete, q:2418:complete, q:94240:accept, and a koKR particle.
+    for (const text of ["chasse-|nresse", "rencontré |2 voyageur", "1 |4пару:пары:пар;", "모험가|1이여;여;", "|cff00ff00Vert|r"]) {
+      expect(hasInvalidChars(text)).toBe(true);
+    }
+    expect(hasInvalidChars("A || B")).toBe(false);
+  });
+
   it("passes ordinary text, punctuation and apostrophe names alike", () => {
     expect(hasInvalidChars("I hate those nasty timber wolves!")).toBe(false);
     expect(hasInvalidChars("Kel'Thuzad -- the lich -- waits.")).toBe(false);

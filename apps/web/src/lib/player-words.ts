@@ -35,6 +35,8 @@ export const hasRegisteredPlayerWords = words.hasRegisteredPlayerWords as (lang:
 
 export const DECLENSION = words.DECLENSION as RegExp;
 
+export const CLIENT_ESCAPE = words.CLIENT_ESCAPE as RegExp;
+
 export const samePlayerWords = words.samePlayerWords as (a: unknown, b: unknown) => boolean;
 
 export const isBuiltinPlayerWords = words.isBuiltinPlayerWords as (lang: string, value: unknown) => boolean;
