@@ -255,7 +255,7 @@ function Subtitle:Build()
     -- The strata Addon:ApplyHost restores when the host lets go.
     frame.spokenBaseStrata = "LOW"
     frame:SetClampedToScreen(true)
-    -- The captions never take gameplay input; only the hover controls do.
+    -- A subtitle mid-screen would swallow clicks on the world and the camera's right-drag.
     frame:EnableMouse(false)
     frame:EnableMouseWheel(false)
     frame:SetScript("OnUpdate", function(_, elapsed) self:Tick(elapsed) end)
@@ -631,9 +631,14 @@ function Subtitle:Fit()
         self.shadowSize = { w = self.shadowWant.w, h = self.shadowWant.h }
         self.shadow:SetSize(self.shadowSize.w, self.shadowSize.h)
     end
-    -- The grabber must stay on-screen, including while the shadow shrinks between pages.
-    self.frame:SetSize(math.max(widest + PAD * 2, self.controls:GetWidth()),
-        math.max(self.shadowWant.h, self.shadowSize.h) + CONTROL_OFFSET + CONTROL_SIZE)
+    self.frame:SetWidth(math.max(widest + PAD * 2, self.controls:GetWidth()))
+    self:FitHeight()
+end
+
+--- Tall enough for the words and the controls under them, so the clamp keeps the grabber on the
+--- screen, the shadow's larger size while it eases between pages included.
+function Subtitle:FitHeight()
+    self.frame:SetHeight(math.max(self.shadowWant.h, self.shadowSize.h) + CONTROL_OFFSET + CONTROL_SIZE)
 end
 
 --- Where the page's `n`th word starts and ends among the rows' characters (the rows drop the
@@ -902,9 +907,10 @@ function Subtitle:Corner(clip)
     end
     local row = { self.mover }
     -- Preview can be positioned without exposing playback actions for an unrelated queue.
+    local playback = not self.sample
     for _, control in ipairs({ self.pause, self.previous, self.skip }) do
-        control:SetShown(not self.sample)
-        if not self.sample then row[#row + 1] = control end
+        control:SetShown(playback)
+        if playback then row[#row + 1] = control end
     end
     if action then row[#row + 1] = button end
     Actions.LayOutRow(self.controls, row, CONTROL_GAP)
@@ -921,12 +927,10 @@ function Subtitle:BuildControls()
     controls:Hide()
     self.controls, self.controlsAlpha = controls, 0
     controls:SetScript("OnMouseWheel", function(_, delta) self:Wheel(delta) end)
-    controls:EnableMouseWheel(false)
 
     local mover = Actions.RoundButton(controls, 16)
     mover:SetPoint("LEFT", controls, "LEFT", 0, 0)
-    mover.glyph:SetTexture([[Interface\AddOns\Spoken\Textures\GlyphMove]])
-    mover.glyph:SetTexCoord(0, 93 / 128, 0, 93 / 128)
+    Actions.Glyph(mover.glyph, "move")
     mover:RegisterForDrag("LeftButton")
     mover:SetScript("OnDragStart", function()
         if Locked() then return end
@@ -934,10 +938,6 @@ function Subtitle:BuildControls()
         Snap.Start(frame, { locked = Locked, place = function(left, top, width) self:Drop(left, top, width) end })
     end)
     mover:SetScript("OnDragStop", function() self:StopMoving() end)
-    -- Quick clicks can release without starting a full drag.
-    mover:HookScript("OnMouseUp", function(_, button)
-        if button == "LeftButton" then self:StopMoving() end
-    end)
     mover:HookScript("OnEnter", function()
         if not Locked() then SetCursor([[Interface\Cursor\UI-Cursor-Move]]) end
         local hint = L.SUBTITLE_MOVE_HINT
@@ -1027,8 +1027,8 @@ function Subtitle:TakeWheel()
     Actions.TakeWheel(self.controls, Locked() or not self.frame:IsShown())
 end
 
--- Keep the controls visible during a drag, even if the cursor leaves the subtitles.
--- Once faded out, hide them so invisible buttons cannot intercept clicks.
+-- Shown through a drag, which can outrun the pointer; hidden once faded, so unseen buttons
+-- take no clicks.
 function Subtitle:FadeControls(elapsed)
     local controls = self.controls
     local over = Snap.Active() == self.frame or Actions.PointerOver(self.frame) or Actions.PointerOver(controls)
@@ -1191,7 +1191,7 @@ function Subtitle:Animate(elapsed)
             size.w, size.h = want.w, want.h
         end
         self.shadow:SetSize(size.w, size.h)
-        self.frame:SetHeight(math.max(want.h, size.h) + CONTROL_OFFSET + CONTROL_SIZE)
+        self:FitHeight()
     end
 
 end

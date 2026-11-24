@@ -624,8 +624,8 @@ Check(math.abs(S.frame:GetTop()-500)<.001 and math.abs(S.frame:GetCenter()-centr
     and E.Addon:Layout().Subtitle.top==500 and math.abs(E.Addon:Layout().Subtitle.x-100)<.001,
     'a dragged subtitle stays where it was dropped')
 S.mover:Fire('OnDragStart')
-S.mover:Fire('OnMouseUp','LeftButton')
-Check(E.Snap.Active()==nil,'mouse-up releases the grabber without a drag-stop event')
+IsMouseButtonDown=function() return false end; E.Snap.Move(); IsMouseButtonDown=nil
+Check(E.Snap.Active()==nil,'releasing the button ends the drag without a drag-stop event')
 S.mover:Fire('OnDragStart'); cursor[2]=5000; E.Snap.Move(); S.mover:Fire('OnDragStop'); cursor[2]=0
 Check(math.abs(S.frame:GetTop()-UIParent:GetHeight())<.001,'it cannot be dragged off the top of the screen')
 shift=false
@@ -660,8 +660,9 @@ Check(GameTooltip:GetText()==E.L.SUBTITLE_MOVE and hint==E.L.SUBTITLE_MOVE_HINT,
 GameTooltip.AddLine = addLine
 S.mover:Fire('OnLeave')
 S.mover:Fire('OnDragStart')
+Check(E.Snap.Active()==S.frame,'the grabber drags while unlocked')
 frameCfg.LockFrame=true; E.PlayerFrame:RefreshConfig()
-if E.Snap.Active() then E.Snap.Move() end
+E.Snap.Move()
 Play(.25)
 Check(E.Snap.Active()==nil and math.abs(S.frame:GetTop()-500)<.001,'locking during a drag stops it in place')
 frameCfg.LockFrame=false; E.PlayerFrame:RefreshConfig()

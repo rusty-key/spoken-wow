@@ -167,10 +167,11 @@ end
 
 -- A line's button shows one of four glyphs: Play for a line a click starts, Stop while it
 -- speaks, Replay once it is stopped and still at the head, and a plus for "queue" and "queued",
--- a line that waits or would wait behind another. Play is the portrait atlas's cell; the others
--- are drawn in its gold, each in a 93-wide cell of a 128 canvas.
+-- a line that waits or would wait behind another; the subtitle's move button has four arrows.
+-- Play is the portrait atlas's cell; the others are drawn in its gold, each in a 93-wide cell of
+-- a 128 canvas.
 local GLYPHS = { stop = ART .. "GlyphStop", replay = ART .. "GlyphReplay", queue = ART .. "GlyphQueue",
-    queued = ART .. "GlyphQueue" }
+    queued = ART .. "GlyphQueue", move = ART .. "GlyphMove" }
 local CELL = 93 / 128
 local PLAY_LEFT, PLAY_RIGHT = 0, 93 / PORTRAIT_ATLAS_SIZE
 local PLAY_TOP, PLAY_BOTTOM = 419 / PORTRAIT_ATLAS_SIZE, 1
