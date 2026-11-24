@@ -2,7 +2,7 @@
 
 Spoken Launcher until 0.1.2, when it became Spoken Manager.
 
-## Unreleased
+## 0.2.3 — 2026-11-24
 
 - **Maintainers of a team's own language can release from the Release page,** which now
   shows the language's name on its tab. *([rusty-key](https://github.com/rusty-key))*
