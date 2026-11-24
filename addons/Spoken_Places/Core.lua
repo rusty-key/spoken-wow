@@ -116,13 +116,11 @@ local function MergeDefaults()
 		SpokenPlacesSettings.discoveredOnlyDefaultOn = true
 		SpokenPlacesSettings.loreDiscoveredOnly = true
 	end
-	-- Every profile stored the old default highlight, 0.35, where it reads as a player's choice:
-	-- turned off once behind this marker. Any other value was chosen and is kept.
+	-- Every profile stored the old default highlight, where it reads as a player's choice: turned
+	-- off once behind this marker. A highlight set after that is kept.
 	if not SpokenPlacesSettings.highlightDefaultOff then
 		SpokenPlacesSettings.highlightDefaultOff = true
-		if SpokenPlacesSettings.highlightOpacity == 0.35 then
-			SpokenPlacesSettings.highlightOpacity = 0
-		end
+		SpokenPlacesSettings.highlightOpacity = 0
 	end
 
 	SpokenPlaces.db = SpokenPlacesSettings

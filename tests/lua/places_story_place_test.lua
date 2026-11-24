@@ -89,14 +89,10 @@ Expect("the map highlight is off in a fresh profile", Z:Get("highlightOpacity"),
 Z:Set("highlightOpacity", 0.35)
 SpokenPlacesSettings.highlightDefaultOff = nil
 Z:OnSettingsBound()
-Expect("the old default highlight is turned off once", Z:Get("highlightOpacity"), 0)
+Expect("a highlight stored before it was off by default is turned off once", Z:Get("highlightOpacity"), 0)
 Z:Set("highlightOpacity", 0.35)
 Z:OnSettingsBound()
 Expect("...and a highlight chosen after that is kept", Z:Get("highlightOpacity"), 0.35)
-Z:Set("highlightOpacity", 0.6)
-SpokenPlacesSettings.highlightDefaultOff = nil
-Z:OnSettingsBound()
-Expect("...as is one set to anything but the old default", Z:Get("highlightOpacity"), 0.6)
 Z:Set("highlightOpacity", 0)
 -- The rest is about the unfiltered list: the row is a place this character has not found.
 Spoken:StopAll()
