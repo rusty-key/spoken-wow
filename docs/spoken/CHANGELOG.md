@@ -4,6 +4,9 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Automatic turn-in reads the progress line when you pick a reward.** With Questie's or
+  another addon's auto turn-in, the progress line was skipped whenever the reward page waited for
+  your choice. *([rusty-key](https://github.com/rusty-key))*
 - **New players' world map lights the area under the pointer only once they turn it on** with
   Area Highlight in Spoken Places' settings. *([rusty-key](https://github.com/rusty-key))*
 - **The player has a Stop All button,** which stops narration and clears the queue. Skip Line

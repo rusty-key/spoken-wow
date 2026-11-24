@@ -1004,6 +1004,21 @@ function Addon:OnInitialize()
             Debug:Record("auto-watcher-dispatch", format("Automatically reading %s quest %s", event,
                 tostring(questID)))
             local visibleEvent = GetVisibleQuestEvent()
+            -- An addon that completes the quest from QUEST_PROGRESS shows the progress page for
+            -- less than the 0.4 s above, so the watcher never read it. Reading the reward page
+            -- would mark it passed over (MarkQuestSnapshotRead); read it first, from its event.
+            -- Its window is still open, so closing it stops the line as it stops the reward's.
+            -- Read After Accepting never reads the progress page of a quest handed in.
+            if visibleEvent == "QUEST_COMPLETE" and not self.db.profile.Audio.ReadAfterAccept then
+                PruneQuestSnapshots()
+                for _, snapshot in ipairs(questSnapshots) do
+                    if snapshot.event == "QUEST_PROGRESS" and snapshot.questID == questID
+                        and not snapshot.dispatched then
+                        snapshot.inOpenWindow = true
+                        ReplaySnapshot(snapshot, "the reward page replaced it before it could stabilize")
+                    end
+                end
+            end
             if visibleEvent then
                 self:InvokeQuestHandler(visibleEvent, "automatic GetQuestID timer", false)
             else
@@ -1440,7 +1455,7 @@ local function QueueRead(soundData, manual)
         end
         return
     end
-    if questSnapshotInUse then
+    if questSnapshotInUse and not questSnapshotInUse.inOpenWindow then
         -- Its window closed before it started, so no later close is its own.
         soundData.addedCallback = nil
     end

@@ -495,9 +495,10 @@ world.questID = 0
 stub.ShowPanel(nil)
 stub.FireEvent("QUEST_FINISHED")
 stub.Advance(0.2)
-ExpectCurrent("an unturned-in quest keeps completion audio during the turn-in grace period", "104-complete")
+-- The progress page was on screen too briefly for the watcher, so it is read before the reward.
+ExpectCurrent("an unturned-in quest keeps its audio during the turn-in grace period", "104-progress")
 stub.Advance(0.6)
-ExpectCurrent("closing an unturned-in quest stops its completion audio", "")
+ExpectCurrent("closing an unturned-in quest stops its progress and completion audio", "")
 
 StartScenario()
 world.questID = full
@@ -635,6 +636,51 @@ stub.Advance(0.1)
 stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.Advance(5)
 Expect("auto turn-in reads progress then complete",
+    string.format("%d-progress, %d-complete", full, full))
+
+-- Auto turn-in where the reward page waits for the player to pick a reward (Questie, #1099): the
+-- progress page is on screen 0.24 s, too short for the watcher, which reads the reward page first.
+local function AutoTurnInPickingReward()
+    StartScenario()
+    world.questID = full
+    stub.ShowPanel("QuestFrameProgressPanel")
+    stub.FireEvent("QUEST_PROGRESS")
+    stub.Advance(0.24)
+    stub.FireEvent("QUEST_FINISHED")
+    stub.ShowPanel("QuestFrameRewardPanel")
+    stub.FireEvent("QUEST_COMPLETE")
+    stub.Advance(3)
+    world.questID = 0
+    stub.ShowPanel(nil)
+    stub.FireEvent("QUEST_FINISHED")
+    stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+    stub.Advance(5)
+end
+AutoTurnInPickingReward()
+Expect("auto turn-in with a reward to pick reads progress then complete",
+    string.format("%d-progress, %d-complete", full, full))
+
+VO.Addon.db.profile.Audio.ProgressText = false
+AutoTurnInPickingReward()
+VO.Addon.db.profile.Audio.ProgressText = true
+Expect("...and with Read Quest Progress Text off, complete alone", string.format("%d-complete", full))
+
+-- A progress page the watcher read in the open window is not read again before the reward page.
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+stub.Advance(1)
+stub.FireEvent("QUEST_FINISHED")
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(3)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
+stub.Advance(5)
+Expect("a progress page read in the window is read once",
     string.format("%d-progress, %d-complete", full, full))
 
 -- A turn-in after a page that names no quest reads nothing either.
