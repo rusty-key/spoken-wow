@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { useUiText } from "@/components/UiTextProvider";
+
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -17,6 +19,7 @@ type Row = { code: Lang; name: string; enabled: boolean };
  * anybody else is shown it. English is what a bare address means and cannot be switched off.
  */
 export default function LanguageTable({ initial }: { initial: Row[] }) {
+  const t = useUiText().adminTables;
   const [rows, setRows] = useState(initial);
   // One change at a time: each answer is the whole list, so an older one landing after a newer
   // one would put back the list from before it, dropping a language just added.
@@ -100,13 +103,13 @@ export default function LanguageTable({ initial }: { initial: Row[] }) {
         </label>
       ))}
       <form onSubmit={add} className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium">Add a language</span>
-        <Input className="w-24" placeholder="Code (jaJP)" aria-label="Code" value={form.code} onChange={(e) => setCode(e.target.value)} />
-        <Input className="w-36" placeholder="English name" aria-label="English name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <Input className="w-36" placeholder="Native name" aria-label="Native name" value={form.native} onChange={(e) => setForm({ ...form, native: e.target.value })} />
-        <Input className="w-24" placeholder="BCP 47" aria-label="BCP 47 tag" value={form.bcp47} onChange={(e) => { setTouched((t) => ({ ...t, bcp47: true })); setForm({ ...form, bcp47: e.target.value }); }} />
-        <Input className="w-20" placeholder="Provider" aria-label="Provider code" value={form.provider} onChange={(e) => { setTouched((t) => ({ ...t, provider: true })); setForm({ ...form, provider: e.target.value }); }} />
-        <Button type="submit" size="sm" disabled={busy}>Add</Button>
+        <span className="text-sm font-medium">{t.languages.add}</span>
+        <Input className="w-24" placeholder={t.languages.code} aria-label={t.languages.codeLabel} value={form.code} onChange={(e) => setCode(e.target.value)} />
+        <Input className="w-36" placeholder={t.languages.englishName} aria-label={t.languages.englishName} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        <Input className="w-36" placeholder={t.languages.nativeName} aria-label={t.languages.nativeName} value={form.native} onChange={(e) => setForm({ ...form, native: e.target.value })} />
+        <Input className="w-24" placeholder={t.languages.bcp47} aria-label={t.languages.bcp47Label} value={form.bcp47} onChange={(e) => { setTouched((t) => ({ ...t, bcp47: true })); setForm({ ...form, bcp47: e.target.value }); }} />
+        <Input className="w-20" placeholder={t.languages.provider} aria-label={t.languages.providerLabel} value={form.provider} onChange={(e) => { setTouched((t) => ({ ...t, provider: true })); setForm({ ...form, provider: e.target.value }); }} />
+        <Button type="submit" size="sm" disabled={busy}>{t.languages.addButton}</Button>
       </form>
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
     </div>

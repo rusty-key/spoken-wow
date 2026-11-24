@@ -4,6 +4,8 @@ import { ChevronDown, Loader2, Pause, Play, Trash2, Upload } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 import { when } from "@/components/TakeSelector";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -45,6 +47,7 @@ export default function ActorTakeCell({
   /** Something was uploaded or removed: the row's live recording has moved. */
   onChanged: () => void;
 }) {
+  const t = useUiText().catalogue.takes;
   const lang = useLang();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -77,21 +80,21 @@ export default function ActorTakeCell({
           <>
             <PlayButton
               url={recordingAudioUrl(lang, source, file, recording.version)}
-              title={`Play ${recording.credit}'s recording`}
-              label={`Play the voice actor's recording of ${stem}`}
+              title={fill(t.playActor, { name: recording.credit })}
+              label={fill(t.playActorOf, { stem })}
               onFailed={setError}
             />
             <RecordingHistory source={source} file={file} live={recording} onChanged={onChanged} />
           </>
         ) : (
-          <span className="text-muted-foreground/60">none</span>
+          <span className="text-muted-foreground/60">{t.none}</span>
         )}
         <Button
           variant="ghost"
           size="icon-xs"
           disabled={busy}
-          title={`Upload a recording (mp3 or Ogg Vorbis), or drop one here. Name it ${stem}.ogg for the bulk drop.`}
-          aria-label={`Upload a recording of ${stem}`}
+          title={fill(t.upload, { stem })}
+          aria-label={fill(t.uploadOf, { stem })}
           onClick={() => input.current?.click()}
         >
           {busy ? <Loader2 className="animate-spin" /> : <Upload />}
@@ -156,6 +159,8 @@ function RecordingHistory({
   live: LiveRecording;
   onChanged: () => void;
 }) {
+  const t = useUiText().catalogue.takes;
+  const words = useUiText().catalogue.dialogs;
   const lang = useLang();
   // Read here, the one place it matters: one's own recordings are one's to remove, and an
   // admin's are everyone's.
@@ -208,7 +213,7 @@ function RecordingHistory({
         <button
           type="button"
           title={`v${live.version} is live; ${Math.round(live.durationSec * 10) / 10}s ${live.format}`}
-          aria-label="Every recording of this line"
+          aria-label={t.every}
           className={cn(
             "text-muted-foreground hover:text-foreground flex cursor-pointer items-center gap-0.5 rounded-sm font-mono",
             "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
@@ -219,14 +224,14 @@ function RecordingHistory({
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-96">
-        <div className="mb-2 text-sm font-medium">Recordings</div>
+        <div className="mb-2 text-sm font-medium">{t.recordings}</div>
         {error && (
           <p role="alert" className="text-destructive mb-2 text-xs">
             {error}
           </p>
         )}
         {list === null ? (
-          <p className="text-muted-foreground text-xs">Loading…</p>
+          <p className="text-muted-foreground text-xs">{words.loading}</p>
         ) : (
           <ul className="max-h-80 space-y-1.5 overflow-y-auto">
             {list.map((recording) => {
@@ -242,15 +247,15 @@ function RecordingHistory({
                 >
                   <PlayButton
                     url={recordingAudioUrl(lang, source, file, recording.version)}
-                    title="Play this recording"
+                    title={t.playRecording}
                     onFailed={setError}
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-1.5">
                       <span className={cn("font-mono", removed && "line-through")}>v{recording.version}</span>
                       <span className="text-muted-foreground">{recording.format}</span>
-                      {recording.version === live.version && <span className="text-emerald-400">live</span>}
-                      {removed && <span className="text-muted-foreground">removed</span>}
+                      {recording.version === live.version && <span className="text-emerald-400">{words.live}</span>}
+                      {removed && <span className="text-muted-foreground">{t.removed}</span>}
                     </div>
                     <div className="text-muted-foreground truncate">
                       {when(recording.createdAt)} · {recording.credit}
@@ -265,8 +270,8 @@ function RecordingHistory({
                       onClick={() => void remove(recording.version)}
                       title={
                         recording.version === live.version
-                          ? "Remove it; the recording before it, if any, ships instead"
-                          : "Remove it from the history"
+                          ? t.removeLive
+                          : t.removeHistory
                       }
                     >
                       {busy === recording.version ? <Loader2 className="animate-spin" /> : <Trash2 />}

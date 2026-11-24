@@ -15,6 +15,7 @@ import { useMemo } from "react";
 
 import { MANAGER_URL } from "@/components/landing/links";
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
 import { useGameContext } from "@/components/reports/useGameContext";
 import { useLocalDates } from "@/components/useLocalDates";
 import { packDownloads, packFor, partOf, type Pack, type PackPart } from "@/lib/packs";
@@ -38,6 +39,7 @@ export default function ListenFirst({
   /** The section's releases in this page's language, newest first. */
   releases?: PackRelease[];
 }) {
+  const t = useUiText();
   const lang = useLang();
   const format = useLocalDates();
   const raw = useGameContext(source !== undefined);
@@ -70,7 +72,7 @@ export default function ListenFirst({
             {news?.latest ? <Downloads pack={pack} part={part} /> : null}
           </>
         ) : (
-          <p>This line may have changed since your pack. Play the current version below before reporting.</p>
+          <p>{t.reports.mayHaveChanged}</p>
         )}
       </div>
     </aside>
@@ -82,10 +84,11 @@ export default function ListenFirst({
  * quests pack split on CurseForge, only the part the line plays from, where the addon said which.
  */
 function Downloads({ pack, part }: { pack: Pack | undefined; part: PackPart | undefined }) {
+  const t = useUiText();
   const links = [{ label: "Spoken Manager", href: MANAGER_URL }, ...(pack ? packDownloads(pack, part) : [])];
   return (
     <p className="flex flex-wrap gap-x-3 gap-y-1">
-      <span>Update with:</span>
+      <span>{t.reports.updateWith}</span>
       {links.map((link) => (
         <a
           key={link.href}

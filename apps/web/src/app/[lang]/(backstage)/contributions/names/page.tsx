@@ -11,19 +11,14 @@ import { pendingCounts } from "@/lib/contributions/pending";
 import { viewerOf } from "@/lib/grants/store";
 import { isStatus, type ContributionStatus } from "@/lib/contributions/contributions";
 import { localeHref } from "@/lib/lang";
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
 import { countObservedNames, hasObservedNames, listObservedNames } from "@/lib/names/observed";
 import { can } from "@/lib/permissions";
+import { uiText } from "@/lib/ui-text";
 
 export const metadata: Metadata = { title: "Names · Contributions · Spoken" };
 
 export const dynamic = "force-dynamic";
-
-const STATUS_TABS: { value: ContributionStatus; label: string }[] = [
-  { value: "new", label: "To review" },
-  { value: "accepted", label: "Kept" },
-  { value: "rejected", label: "Dropped" },
-];
 
 export default async function Page({
   params,
@@ -38,6 +33,13 @@ export default async function Page({
   if (!session || !can(await viewerOf(session), "text", lang)) notFound();
   if (!hasObservedNames(lang)) notFound();
 
+  const t = (await uiText(await readingLang(lang))).contributions.names;
+  const statusTabs: { value: ContributionStatus; label: string }[] = [
+    { value: "new", label: t.toReview },
+    { value: "accepted", label: t.kept },
+    { value: "rejected", label: t.dropped },
+  ];
+
   const { status: rawStatus } = await searchParams;
   const status: ContributionStatus = isStatus(rawStatus) ? rawStatus : "new";
   const [rows, others, pending] = await Promise.all([
@@ -50,17 +52,17 @@ export default async function Page({
   return (
     <BackstagePage
       width="wide"
-      title="Review"
-      description="Names players' games show for an NPC, where the addon shows another. Keep the name their game shows, and the quest log and tracker show it after the next export."
+      title={t.title}
+      description={t.lede}
     >
       <div className="mb-6">
         <ContributionsTabs lang={lang} section="names" pending={pending} names={waiting} />
       </div>
       <div className="mb-5">
         <Tabs
-          label="Status"
+          label={t.status}
           active={status}
-          tabs={STATUS_TABS.map((tab) => ({
+          tabs={statusTabs.map((tab) => ({
             value: tab.value,
             label: tab.label,
             href: localeHref(lang, `/contributions/names?status=${tab.value}`),

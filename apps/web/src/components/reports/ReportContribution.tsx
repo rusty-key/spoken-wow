@@ -14,6 +14,8 @@
 import Link from "@/components/LocaleLink";
 import { useEffect, useState } from "react";
 
+import { useUiText } from "@/components/UiTextProvider";
+
 import { Marked } from "@/components/CorrectionTable";
 import { LiteButton } from "@/components/LiteControls";
 import { wordDiff } from "@/lib/contributions/compare";
@@ -30,6 +32,7 @@ export default function ReportContribution({
   report: Report;
   onFixed: (report: Report) => void;
 }) {
+  const t = useUiText();
   const [answer, setAnswer] = useState<Answer | { error: string } | null>(null);
   /** The wording a correction is set against, where one other than the closest was picked. */
   const [picked, setPicked] = useState<number | null>(null);
@@ -44,7 +47,7 @@ export default function ReportContribution({
     };
   }, [report.id]);
 
-  if (!answer) return <p className="text-muted-foreground mt-2">Comparing with the corpus…</p>;
+  if (!answer) return <p className="text-muted-foreground mt-2">{t.reports.comparing}</p>;
   if ("error" in answer) return <p className="text-muted-foreground mt-2">{answer.error}</p>;
 
   async function accept(how: CorrectionAccept) {
@@ -81,7 +84,7 @@ export default function ReportContribution({
       {diff && state.kind === "changed" ? (
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
-            <p className="text-muted-foreground text-xs">Line speaks</p>
+            <p className="text-muted-foreground text-xs">{t.reports.lineSpeaks}</p>
             {state.wordings.length > 1 ? (
               <ul className="space-y-2">
                 {state.wordings.map((line, index) => (
@@ -109,7 +112,7 @@ export default function ReportContribution({
             )}
           </div>
           <div>
-            <p className="text-muted-foreground text-xs">Player saw</p>
+            <p className="text-muted-foreground text-xs">{t.reports.playerSaw}</p>
             <Marked parts={diff.after} tone="added" />
           </div>
         </div>

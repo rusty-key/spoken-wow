@@ -7,6 +7,7 @@
 import { useState } from "react";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
 import { LiteButton } from "@/components/LiteControls";
 import { dropOverride, saveOverride } from "@/lib/quests/override-client";
 
@@ -22,6 +23,7 @@ export default function OverrideDrift({
   text: string;
   onAnswered: () => void;
 }) {
+  const t = useUiText().catalogue.drift;
   const lang = useLang();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,17 +38,17 @@ export default function OverrideDrift({
       return;
     }
     const body = (await response?.json().catch(() => null)) as { error?: string } | null;
-    setError(body?.error ?? "That didn't go through -- try again.");
+    setError(body?.error ?? t.failed);
   }
 
   return (
     <span className="mt-1 flex flex-wrap items-center gap-1 text-xs text-amber-300">
-      original changed since your override
+      {t.changed}
       <LiteButton disabled={busy} onClick={() => void answer(() => saveOverride(lang, file, lineId, text))}>
-        Keep
+        {t.keep}
       </LiteButton>
       <LiteButton disabled={busy} onClick={() => void answer(() => dropOverride(lang, file))}>
-        Drop
+        {t.drop}
       </LiteButton>
       {error ? <span className="text-destructive">{error}</span> : null}
     </span>

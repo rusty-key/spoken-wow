@@ -15,15 +15,17 @@ import {
   type ActiveFilter,
   type Option,
 } from "@/components/catalogue/CatalogueSearch";
-import { CLIENT_FILTER_LABELS, CLIENT_FILTER_OPTIONS } from "@/components/ClientSelect";
+import { CLIENT_FILTER_OPTIONS } from "@/components/ClientSelect";
 import LevelBound from "@/components/LevelBound";
+import { useUiText } from "@/components/UiTextProvider";
 import { DEFAULT_CLIENT_FILTER, type ClientFilter } from "@/lib/contributions/client";
 import { BROADCAST_OPTIONS, type BroadcastStatus } from "@/lib/broadcast/status";
 import type { MadeByFacets } from "@/lib/takes/made-by";
 import type { Facets } from "@/lib/facets";
-import { AUDIO_STATE_LABELS, type StateCounts } from "@/lib/audio-state";
+import type { StateCounts } from "@/lib/audio-state";
 import { RECORDED_OPTIONS, type Recorded } from "@/lib/recordings/live";
-import { NPC_TYPE_LABELS, NPC_TYPES, SOURCE_LABELS, SOURCES, type Source } from "@/lib/line-fields";
+import { NPC_TYPES, SOURCES, type Source } from "@/lib/line-fields";
+import { fill } from "@/lib/site-text/format";
 import type { Filter, LineFilters } from "@/lib/search";
 
 type Props = {
@@ -47,25 +49,8 @@ type Props = {
 const plain = (values: readonly string[]): Option[] =>
   values.map((value) => ({ value, label: capital(value) }));
 
-const SOURCE_OPTIONS: Option[] = SOURCES.map((value) => ({ value, label: SOURCE_LABELS[value] }));
-
-const NPC_TYPE_OPTIONS: Option[] = NPC_TYPES.map((value) => ({ value, label: NPC_TYPE_LABELS[value] }));
-
-const SCOPE_OPTIONS: Option[] = [
-  { value: "any", label: "Anywhere" },
-  { value: "npc", label: "NPC" },
-  { value: "quest", label: "Quest" },
-  { value: "text", label: "Line text" },
-];
-
-const PLAYER_OPTIONS: Option[] = [
-  { value: "m", label: "Male player" },
-  { value: "f", label: "Female player" },
-];
-
-const CLIENT_OPTIONS: Option[] = CLIENT_FILTER_OPTIONS.filter((value) => value !== DEFAULT_CLIENT_FILTER).map(
-  (value) => ({ value, label: CLIENT_FILTER_LABELS[value] }),
-);
+const optionsOf = <K extends string>(keys: readonly K[], labels: Record<K, string>): Option[] =>
+  keys.map((value) => ({ value, label: labels[value] }));
 
 const labelOf = (options: readonly Option[], value: string) =>
   options.find((option) => option.value === value)?.label ?? value;
@@ -76,6 +61,37 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
   { query, filters, facets, onQuery, onFilters, onClearAll, canTriage, madeBy, recordable, counts },
   ref,
 ) {
+  const text = useUiText();
+  const s = text.catalogue.search;
+  const f = s.fields;
+  const v = s.values;
+  const l = s.labels;
+  const facetsText = text.catalogue.facets;
+
+  const sourceOptions = optionsOf(SOURCES, facetsText.source);
+  const npcTypeOptions = optionsOf(NPC_TYPES, facetsText.npcType);
+  const scopeOptions: Option[] = [
+    { value: "any", label: s.scopes.any },
+    { value: "npc", label: s.scopes.npc },
+    { value: "quest", label: s.scopes.quest },
+    { value: "text", label: s.scopes.text },
+  ];
+  const playerOptions: Option[] = [
+    { value: "m", label: v.malePlayer },
+    { value: "f", label: v.femalePlayer },
+  ];
+  const clientOptions: Option[] = CLIENT_FILTER_OPTIONS.filter((value) => value !== DEFAULT_CLIENT_FILTER).map(
+    (value) => ({ value, label: facetsText.client[value] }),
+  );
+  const broadcastOptions = BROADCAST_OPTIONS.map((option) => ({
+    value: option.value,
+    label: facetsText.broadcast[option.value],
+  }));
+  const recordedOptions = RECORDED_OPTIONS.map((option) => ({
+    value: option.value,
+    label: facetsText.recorded[option.value],
+  }));
+
   /** The flavors reachable under a race and gender, or all of them under neither. */
   const flavorsUnder = useCallback(
     (race: string | undefined, gender: string | undefined) => {
@@ -109,7 +125,7 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
     ? [
         {
           key: "reported",
-          label: "Reported",
+          label: f.reports,
           tone: "reported" as const,
           pressed: filters.reports === "open",
           onPress: () => onFilters({ reports: filters.reports === "open" ? undefined : "open" }),
@@ -125,45 +141,45 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
   const add = (key: string, label: string, value: string | undefined, clear: Partial<LineFilters>) => {
     if (value) active.push({ key, label, value, onRemove: () => onFilters(clear) });
   };
-  add("state", "Audio", filters.state && AUDIO_STATE_LABELS[filters.state], { state: undefined });
-  add("reports", "Reported", filters.reports === "open" ? "open reports" : undefined, { reports: undefined });
-  add("source", "Line", filters.source?.map((value) => SOURCE_LABELS[value]).join(", "), { source: undefined });
-  add("npcType", "Spoken by", filters.npcType && NPC_TYPE_LABELS[filters.npcType], { npcType: undefined });
-  add("zone", "Zone", filters.zone === undefined ? undefined : labelOf(zoneOptions, String(filters.zone)), { zone: undefined });
+  add("state", f.state, filters.state ? facetsText.audioLower[filters.state] : undefined, { state: undefined });
+  add("reports", f.reports, filters.reports === "open" ? v.open : undefined, { reports: undefined });
+  add("source", f.source, filters.source?.map((value) => facetsText.source[value]).join(", "), { source: undefined });
+  add("npcType", f.npcType, filters.npcType ? facetsText.npcType[filters.npcType] : undefined, { npcType: undefined });
+  add("zone", f.zone, filters.zone === undefined ? undefined : labelOf(zoneOptions, String(filters.zone)), { zone: undefined });
   if (filters.minLevel !== undefined || filters.maxLevel !== undefined) {
-    add("level", "Level", `${filters.minLevel ?? "…"}–${filters.maxLevel ?? "…"}`, { minLevel: undefined, maxLevel: undefined });
+    add("level", f.level, `${filters.minLevel ?? "…"}–${filters.maxLevel ?? "…"}`, { minLevel: undefined, maxLevel: undefined });
   }
-  add("broadcast", "Broadcast id", filters.broadcast && labelOf(BROADCAST_OPTIONS, filters.broadcast), { broadcast: undefined });
-  add("client", "Game", filters.client && filters.client !== DEFAULT_CLIENT_FILTER ? CLIENT_FILTER_LABELS[filters.client] : undefined, { client: undefined });
-  add("race", "Race", filters.race && capital(filters.race), { race: undefined, flavor: keptFlavor({ race: undefined }) });
-  add("gender", "Gender", filters.gender && capital(filters.gender), { gender: undefined, flavor: keptFlavor({ gender: undefined }) });
-  add("flavor", "Character", filters.flavor && capital(filters.flavor), { flavor: undefined });
-  add("voice", "Voice", filters.voice && capital(filters.voice), { voice: undefined });
-  add("playerGender", "Player", filters.playerGender && labelOf(PLAYER_OPTIONS, filters.playerGender), { playerGender: undefined });
-  add("model", "Model", filters.model, { model: undefined });
-  add("author", "Made by", filters.author && labelOf(authors, filters.author), { author: undefined });
-  add("recorded", "Voice actor", filters.recorded && labelOf(RECORDED_OPTIONS, filters.recorded), { recorded: undefined });
+  add("broadcast", f.broadcast, filters.broadcast ? labelOf(broadcastOptions, filters.broadcast) : undefined, { broadcast: undefined });
+  add("client", f.client, filters.client && filters.client !== DEFAULT_CLIENT_FILTER ? facetsText.client[filters.client] : undefined, { client: undefined });
+  add("race", f.race, filters.race && capital(filters.race), { race: undefined, flavor: keptFlavor({ race: undefined }) });
+  add("gender", f.gender, filters.gender && capital(filters.gender), { gender: undefined, flavor: keptFlavor({ gender: undefined }) });
+  add("flavor", f.flavor, filters.flavor && capital(filters.flavor), { flavor: undefined });
+  add("voice", f.voice, filters.voice && capital(filters.voice), { voice: undefined });
+  add("playerGender", f.playerGender, filters.playerGender ? labelOf(playerOptions, filters.playerGender) : undefined, { playerGender: undefined });
+  add("model", f.model, filters.model, { model: undefined });
+  add("author", f.author, filters.author && labelOf(authors, filters.author), { author: undefined });
+  add("recorded", f.recorded, filters.recorded ? labelOf(recordedOptions, filters.recorded) : undefined, { recorded: undefined });
   if (filters.generatedAfter || filters.generatedBefore) {
-    add("generated", "Made", `${filters.generatedAfter ?? "…"} to ${filters.generatedBefore ?? "today"}`, {
+    add("generated", f.generated, fill(v.between, { from: filters.generatedAfter ?? "…", to: filters.generatedBefore ?? v.today }), {
       generatedAfter: undefined,
       generatedBefore: undefined,
     });
   }
-  add("overridden", "Rewritten", filters.overridden ? "yes" : undefined, { overridden: undefined });
-  add("dirty", "Pronunciation", filters.dirty ? "moved" : undefined, { dirty: undefined });
-  add("narration", "Narration", filters.narration ? "yes" : undefined, { narration: undefined });
-  add("ignored", "Ignored", filters.ignored ? "only ignored" : undefined, { ignored: undefined });
+  add("overridden", f.overridden, filters.overridden ? v.yes : undefined, { overridden: undefined });
+  add("dirty", f.dirty, filters.dirty ? v.moved : undefined, { dirty: undefined });
+  add("narration", f.narration, filters.narration ? v.yes : undefined, { narration: undefined });
+  add("ignored", f.ignored, filters.ignored ? v.onlyIgnored : undefined, { ignored: undefined });
 
   return (
     <CatalogueSearch
       inputRef={ref}
       query={query}
-      placeholder="NPC, quest or what the line says"
+      placeholder={s.placeholder}
       onQueryChange={onQuery}
       scope={
         <ScopeSelect
           value={filters.filter ?? "any"}
-          options={SCOPE_OPTIONS}
+          options={scopeOptions}
           onChange={(value) => onFilters({ filter: value as Filter })}
         />
       }
@@ -174,91 +190,91 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
       onClearAll={onClearAll}
       groups={
         <>
-          <FilterGroup title="The line" description="What kind of line, and where it is.">
+          <FilterGroup title={s.groups.line} description={s.groups.lineHint}>
             <FilterChecks
-              options={SOURCE_OPTIONS}
+              options={sourceOptions}
               values={filters.source}
               onChange={(source) => onFilters({ source: source as Source[] | undefined })}
             />
             <FilterSegments
-              label="Spoken by"
-              any="Anyone"
+              label={f.npcType}
+              any={v.anyone}
               value={filters.npcType}
-              options={NPC_TYPE_OPTIONS}
+              options={npcTypeOptions}
               onChange={(npcType) => onFilters({ npcType: npcType as LineFilters["npcType"] })}
             />
             {zoneOptions.length > 0 && (
               <FilterSelect
-                label="Zone"
+                label={f.zone}
                 value={filters.zone === undefined ? undefined : String(filters.zone)}
                 options={zoneOptions}
                 onChange={(zone) => onFilters({ zone: zone ? Number(zone) : undefined })}
               />
             )}
-            <FilterField label="Quest level">
+            <FilterField label={l.questLevel}>
               <div className="cat-two">
-                <LevelBound label="minimum quest level" placeholder="from" value={filters.minLevel} onChange={(minLevel) => onFilters({ minLevel })} />
-                <LevelBound label="maximum quest level" placeholder="to" value={filters.maxLevel} onChange={(maxLevel) => onFilters({ maxLevel })} />
+                <LevelBound label={l.minLevel} placeholder={l.from} value={filters.minLevel} onChange={(minLevel) => onFilters({ minLevel })} />
+                <LevelBound label={l.maxLevel} placeholder={l.to} value={filters.maxLevel} onChange={(maxLevel) => onFilters({ maxLevel })} />
               </div>
             </FilterField>
             {/* Only gossip has ids, so any pick here narrows to gossip too. */}
             <FilterSelect
-              label="Broadcast id"
+              label={f.broadcast}
               value={filters.broadcast}
-              options={BROADCAST_OPTIONS}
+              options={broadcastOptions}
               onChange={(broadcast) => onFilters({ broadcast: broadcast as BroadcastStatus | undefined })}
             />
           </FilterGroup>
 
-          <FilterGroup title="The speaker" description="Who the voice belongs to.">
-            <FilterSelect label="Race" value={filters.race} options={plain(facets.races)} onChange={(race) => onFilters({ race, flavor: keptFlavor({ race }) })} />
+          <FilterGroup title={s.groups.speaker} description={s.groups.speakerHint}>
+            <FilterSelect label={f.race} value={filters.race} options={plain(facets.races)} onChange={(race) => onFilters({ race, flavor: keptFlavor({ race }) })} />
             {genderOptions.length <= 3 ? (
-              <FilterSegments label="Gender" value={filters.gender} options={genderOptions} onChange={(gender) => onFilters({ gender, flavor: keptFlavor({ gender }) })} />
+              <FilterSegments label={f.gender} value={filters.gender} options={genderOptions} onChange={(gender) => onFilters({ gender, flavor: keptFlavor({ gender }) })} />
             ) : (
-              <FilterSelect label="Gender" value={filters.gender} options={genderOptions} onChange={(gender) => onFilters({ gender, flavor: keptFlavor({ gender }) })} />
+              <FilterSelect label={f.gender} value={filters.gender} options={genderOptions} onChange={(gender) => onFilters({ gender, flavor: keptFlavor({ gender }) })} />
             )}
-            <FilterSelect label="Character (gruff, zany …)" value={filters.flavor} options={plain(flavorOptions)} onChange={(flavor) => onFilters({ flavor })} />
-            <FilterSelect label="Voice" value={filters.voice} options={plain(facets.voices)} onChange={(voice) => onFilters({ voice })} />
+            <FilterSelect label={l.character} value={filters.flavor} options={plain(flavorOptions)} onChange={(flavor) => onFilters({ flavor })} />
+            <FilterSelect label={f.voice} value={filters.voice} options={plain(facets.voices)} onChange={(voice) => onFilters({ voice })} />
             <FilterSegments
-              label="Player version"
-              any="Both"
+              label={l.playerVersion}
+              any={v.both}
               value={filters.playerGender}
-              options={PLAYER_OPTIONS}
+              options={playerOptions}
               onChange={(playerGender) => onFilters({ playerGender: playerGender as LineFilters["playerGender"] })}
             />
           </FilterGroup>
 
-          <FilterGroup title="The take" description="How the audio was made.">
+          <FilterGroup title={s.groups.take} description={s.groups.takeHint}>
             {madeBy && (
               <>
-                <FilterSelect label="Model" value={filters.model} options={madeBy.models.map((value) => ({ value, label: value }))} onChange={(model) => onFilters({ model })} />
-                <FilterSelect label="Made by" any="Anyone" value={filters.author} options={authors} onChange={(author) => onFilters({ author })} />
+                <FilterSelect label={f.model} value={filters.model} options={madeBy.models.map((value) => ({ value, label: value }))} onChange={(model) => onFilters({ model })} />
+                <FilterSelect label={f.author} any={v.anyone} value={filters.author} options={authors} onChange={(author) => onFilters({ author })} />
               </>
             )}
             {recordable && (
               <FilterSelect
-                label="Voice actor"
+                label={f.recorded}
                 value={filters.recorded}
-                options={RECORDED_OPTIONS}
+                options={recordedOptions}
                 onChange={(recorded) => onFilters({ recorded: recorded as Recorded | undefined })}
               />
             )}
             {/* A file the app has never written has no date, and counts as made long ago. */}
-            <FilterDates label="Made between" after={filters.generatedAfter} before={filters.generatedBefore} onChange={onFilters} />
+            <FilterDates label={l.madeBetween} after={filters.generatedAfter} before={filters.generatedBefore} onChange={onFilters} />
           </FilterGroup>
 
-          <FilterGroup title="Marked lines" description="Lines someone changed or flagged.">
-            <FilterToggle label="Rewritten by the team" checked={filters.overridden ?? false} onChange={(overridden) => onFilters({ overridden })} />
+          <FilterGroup title={s.groups.marked} description={s.groups.markedHint}>
+            <FilterToggle label={l.rewrittenByTeam} checked={filters.overridden ?? false} onChange={(overridden) => onFilters({ overridden })} />
             {/* Not a narrower "outdated": a lexicon edit moves no text, so the two find different faults. */}
-            <FilterToggle label="Pronunciation moved" checked={filters.dirty ?? false} onChange={(dirty) => onFilters({ dirty })} />
-            <FilterToggle label="Has narration" checked={filters.narration ?? false} onChange={(narration) => onFilters({ narration })} />
+            <FilterToggle label={l.pronunciationMoved} checked={filters.dirty ?? false} onChange={(dirty) => onFilters({ dirty })} />
+            <FilterToggle label={l.hasNarration} checked={filters.narration ?? false} onChange={(narration) => onFilters({ narration })} />
             {/* Shows only the ignored lines: mixing nobody-will-voice-these back in is not a view anyone asked for. */}
-            <FilterToggle label="Only ignored lines" checked={filters.ignored ?? false} onChange={(ignored) => onFilters({ ignored })} />
+            <FilterToggle label={l.onlyIgnored} checked={filters.ignored ?? false} onChange={(ignored) => onFilters({ ignored })} />
             <FilterSelect
-              label="Game"
-              any={CLIENT_FILTER_LABELS[DEFAULT_CLIENT_FILTER]}
+              label={f.client}
+              any={facetsText.client[DEFAULT_CLIENT_FILTER]}
               value={filters.client && filters.client !== DEFAULT_CLIENT_FILTER ? filters.client : undefined}
-              options={CLIENT_OPTIONS}
+              options={clientOptions}
               onChange={(client) => onFilters({ client: (client ?? DEFAULT_CLIENT_FILTER) as ClientFilter })}
             />
           </FilterGroup>

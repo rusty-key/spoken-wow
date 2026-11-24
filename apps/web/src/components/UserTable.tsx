@@ -6,6 +6,7 @@ import GrantCell from "@/components/GrantCell";
 import Cell from "@/components/Cell";
 import Pagination from "@/components/Pagination";
 import SortHeader from "@/components/SortHeader";
+import { useUiText } from "@/components/UiTextProvider";
 import { usePendingPush } from "@/components/usePendingPush";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ export default function UserTable({
   sort,
   page,
 }: Props) {
+  const t = useUiText().adminTables;
   const { pending, push } = usePendingPush();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -182,21 +184,21 @@ export default function UserTable({
         <thead>
           <tr className="text-muted-foreground border-b text-left text-xs">
             <SortHeader column="name" sort={sort} onSort={onSort}>
-              Name
+              {t.users.name}
             </SortHeader>
             <SortHeader column="email" sort={sort} onSort={onSort}>
-              Email
+              {t.users.email}
             </SortHeader>
-            <th className="py-2 pr-3 font-normal">Role</th>
+            <th className="py-2 pr-3 font-normal">{t.users.role}</th>
             <SortHeader column="languages" sort={sort} onSort={onSort}>
-              Languages
+              {t.users.languages}
             </SortHeader>
-            <th className="py-2 pr-3 font-normal">Key</th>
+            <th className="py-2 pr-3 font-normal">{t.users.key}</th>
             <SortHeader column="joined" sort={sort} onSort={onSort}>
-              Joined
+              {t.users.joined}
             </SortHeader>
             <th className="py-2 font-normal">
-              <span className="sr-only">Delete</span>
+              <span className="sr-only">{t.users.delete}</span>
             </th>
           </tr>
         </thead>
@@ -204,7 +206,7 @@ export default function UserTable({
           {users.length === 0 && (
             <tr>
               <Cell colSpan={7} className="text-muted-foreground">
-                {q ? "Nobody matches that." : "Nobody has registered yet."}
+                {q ? t.users.nobodyMatches : t.users.nobodyYet}
               </Cell>
             </tr>
           )}
@@ -222,7 +224,7 @@ export default function UserTable({
               </Cell>
               <Cell fit="control">
                 {isAdmin(user.role) ? (
-                  <span className="text-muted-foreground text-xs">every language, as admin</span>
+                  <span className="text-muted-foreground text-xs">{t.users.everyLanguage}</span>
                 ) : (
                   <GrantCell
                     grants={grantsOf.get(user.id) ?? NONE}
@@ -235,7 +237,7 @@ export default function UserTable({
               <Cell fit="control" className="whitespace-nowrap">
                 {keyed.has(user.id) ? (
                   <span className="flex items-center gap-2">
-                    <span aria-label="key set">✓</span>
+                    <span aria-label={t.users.keySet}>✓</span>
                     <Button
                       type="button"
                       variant="ghost"
@@ -243,7 +245,7 @@ export default function UserTable({
                       disabled={pendingId === user.id}
                       onClick={() => clearKey(user.id)}
                     >
-                      Clear
+                      {t.users.clear}
                     </Button>
                   </span>
                 ) : (

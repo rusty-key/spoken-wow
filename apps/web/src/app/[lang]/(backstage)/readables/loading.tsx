@@ -6,7 +6,7 @@ export default function PageLoading() {
   return (
     <main className="pt-6 pb-36">
       <Contained>
-        <Loading label="Loading pages…" />
+        <Loading what="pages" />
       </Contained>
     </main>
   );

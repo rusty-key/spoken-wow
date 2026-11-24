@@ -1,6 +1,7 @@
 "use client";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
 import { BASE_LANG, withLang } from "@/lib/lang";
 import { useState } from "react";
 
@@ -14,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { ResultLine } from "@/lib/search";
+import { fill } from "@/lib/site-text/format";
 
 type Props = {
   /** The line being ignored, or null when the dialog is closed. */
@@ -33,6 +35,8 @@ type Props = {
  * cannot be reviewed, only inherited.
  */
 export default function IgnoreDialog({ line, onSaved, onCancel }: Props) {
+  const words = useUiText().catalogue.dialogs;
+  const t = words.ignore;
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,12 +93,11 @@ export default function IgnoreDialog({ line, onSaved, onCancel }: Props) {
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Never voice this line?</DialogTitle>
+          <DialogTitle>{t.title}</DialogTitle>
           <DialogDescription>
-            It disappears from searches unless &ldquo;ignored only&rdquo; is ticked, cannot be
-            regenerated, and stops being carried into the addon&rsquo;s lookup tables. Existing
-            audio is left where it is; run <code>make pull-ignores</code> to carry the decision
-            out to the CLI and the rsync targets.
+            {t.bodyBefore}
+            <code>make pull-ignores</code>
+            {t.bodyAfter}
           </DialogDescription>
         </DialogHeader>
 
@@ -106,7 +109,7 @@ export default function IgnoreDialog({ line, onSaved, onCancel }: Props) {
             {line.override ?? line.text}
           </p>
           <label htmlFor="ignore-reason" className="text-muted-foreground text-xs">
-            Why, in a sentence
+            {t.reason}
           </label>
           <input
             id="ignore-reason"
@@ -114,7 +117,7 @@ export default function IgnoreDialog({ line, onSaved, onCancel }: Props) {
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             maxLength={300}
-            placeholder="war-effort tally: the number comes from a live server counter"
+            placeholder={t.reasonPlaceholder}
             className="border-input bg-transparent focus-visible:ring-ring/50 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-[3px] focus-visible:outline-none"
           />
         </div>
@@ -130,17 +133,17 @@ export default function IgnoreDialog({ line, onSaved, onCancel }: Props) {
               action rather than two. */}
           {line.ignored ? (
             <Button variant="ghost" disabled={busy} onClick={() => send("DELETE")}>
-              Stop ignoring
+              {t.stopIgnoring}
             </Button>
           ) : (
             <span />
           )}
           <span className="flex gap-2">
             <Button variant="ghost" disabled={busy} onClick={onCancel}>
-              Cancel
+              {words.cancel}
             </Button>
             <Button disabled={busy || !reason.trim()} onClick={() => send("PUT")}>
-              {line.ignored ? "Save reason" : "Ignore this line"}
+              {line.ignored ? t.saveReason : t.ignoreThis}
             </Button>
           </span>
         </DialogFooter>

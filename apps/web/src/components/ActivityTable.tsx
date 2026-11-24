@@ -14,6 +14,7 @@ import AudioPlayer from "@/components/AudioPlayer";
 import DateChip from "@/components/DateChip";
 import FilterChip from "@/components/FilterChip";
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
 import { Refreshing } from "@/components/Loading";
 import Link from "@/components/LocaleLink";
 import { Badge } from "@/components/ui/badge";
@@ -27,8 +28,10 @@ import { isProvider, PROVIDER_NAME } from "@/lib/generation/providers";
 import { localeHref, withLang } from "@/lib/lang";
 import { explorerHref, lexiconHref } from "@/lib/links";
 import { capabilityLabel, isCapability } from "@/lib/permissions";
-import { plural } from "@/lib/plural";
 import { SOURCE_LABELS } from "@/lib/reports/reports";
+import { plural } from "@/lib/plural";
+import { fill as fillFrom } from "@/lib/site-text/format";
+import type { UiText } from "@/lib/ui-text/en";
 import { SOURCES, type Source } from "@/lib/sections";
 import { cn } from "@/lib/utils";
 
@@ -40,19 +43,6 @@ type Filter = {
   to?: string;
 };
 
-const CATEGORY_LABELS: Record<Category, string> = {
-  audio: "Audio",
-  text: "Text & pronunciation",
-  voices: "Voices",
-  admin: "Admin",
-};
-
-const CATEGORY_OPTIONS = CATEGORIES.map((category) => ({
-  value: category,
-  label: CATEGORY_LABELS[category],
-}));
-
-const SOURCE_OPTIONS = SOURCES.map((source) => ({ value: source, label: SOURCE_LABELS[source] }));
 
 /** One take the transport bar can be pointed at. */
 type Take = { source: Source; file: string; version: number };
@@ -84,9 +74,9 @@ function bodyWords(d: Record<string, unknown>): string {
 }
 
 /** An NPC an activity names, by name or else by kind and id. */
-function speakerName(d: Record<string, unknown>): string {
+function speakerName(d: Record<string, unknown>, anNpc: string): string {
   const id = num(d.npcId);
-  return str(d.npcName) ?? (id === null ? "an NPC" : `${str(d.npcType) ?? "NPC"} ${id}`);
+  return str(d.npcName) ?? (id === null ? anNpc : `${str(d.npcType) ?? "NPC"} ${id}`);
 }
 
 /** "a → b", or whichever half is known: rows backfilled from older tables carry neither. */
@@ -98,290 +88,426 @@ function change(before: string | null, after: string | null): string | null {
 /**
  * What one row says happened, in words, plus the text it quotes. The quoted part is kept
  * apart so the row can clamp it without clamping the verb.
+ *
+ * Every sentence comes from the dictionary, so a kind the log writes reads in the reader's
+ * own language. Where English branched inside a sentence, the branches are separate keys:
+ * a sentence cut into pieces does not translate.
  */
-export function describe(row: ActivityRow): { what: string; quote: string | null } {
+export function describe(row: ActivityRow, t: UiText["activity"]["events"]): { what: string; quote: string | null } {
   const d = row.detail;
-  const version = num(d.version);
+  // A count or version the log did not carry reads as "?": a 0 would state something false.
+  const version = num(d.version) ?? "?";
+  const fill = fillFrom;
   switch (row.kind) {
     case "take.generated": {
       const cost =
         num(d.costUsd) !== null
           ? usd(num(d.costUsd)!)
           : num(d.credits) !== null
-            ? `${num(d.credits)!.toLocaleString()} credits`
+            ? fill(t.credits, { n: num(d.credits)!.toLocaleString() })
             : null;
-      const provider = isProvider(d.provider) ? ` with ${PROVIDER_NAME[d.provider]}` : "";
-      return { what: `generated take v${version}${provider}`, quote: cost };
+      const provider = isProvider(d.provider) ? fill(t.takeGeneratedProvider, { provider: PROVIDER_NAME[d.provider] }) : "";
+      return { what: fill(t.takeGenerated, { version, provider }), quote: cost };
     }
     case "take.restored":
       return {
-        what: num(d.from) ? `restored take v${version} over v${num(d.from)}` : `restored take v${version}`,
+        what: num(d.from)
+          ? fill(t.takeRestoredOver, { version, from: num(d.from)! })
+          : fill(t.takeRestored, { version }),
         quote: null,
       };
     case "take.encode_failed":
-      return { what: `could not encode take v${version} for its pack`, quote: str(d.error) };
+      return { what: fill(t.takeEncodeFailed, { version }), quote: str(d.error) };
     case "recording.uploaded":
-      return { what: `recorded v${version}`, quote: null };
+      return { what: fill(t.recordingUploaded, { version }), quote: null };
     case "recording.removed":
-      return { what: `removed recording v${version}`, quote: null };
+      return { what: fill(t.recordingRemoved, { version }), quote: null };
     case "take.acked":
-      return { what: "marked the audio fine after a pronunciation change", quote: row.lineId ? null : row.subject };
-    case "marks.cleared":
+      return { what: t.takeAcked, quote: row.lineId ? null : row.subject };
+    case "marks.cleared": {
+      return { what: counted(num(d.count), t.marksClearedOne, t.marksClearedMany), quote: null };
+    }
+    case "batch.queued": {
       return {
-        what: `marked ${plural(num(d.count), "file")} fine after a pronunciation change`,
-        quote: null,
-      };
-    case "batch.queued":
-      return {
-        what: `queued ${plural(num(d.count), "line")} for regeneration`,
+        what: counted(num(d.count), t.batchQueuedOne, t.batchQueuedMany),
         quote: str(d.label),
       };
-    case "batch.stopped":
+    }
+    case "batch.stopped": {
+      const cancelled = num(d.cancelled);
       return {
-        what: num(d.cancelled) ? `stopped a batch, cancelling ${plural(num(d.cancelled), "line")}` : "stopped a batch",
+        what:
+          !cancelled
+            ? t.batchStopped
+            : cancelled === 1
+              ? t.batchStoppedCancellingOne
+              : fill(t.batchStoppedCancellingMany, { n: cancelled }),
         quote: str(d.reason) ?? str(d.label),
       };
-    case "queue.stopped":
+    }
+    case "queue.stopped": {
+      const cancelled = num(d.cancelled);
       return {
-        what: `stopped ${plural(num(d.batches), "batch", "batches")}, cancelling ${plural(num(d.cancelled), "line")}`,
+        what: fill(cancelled === 1 ? t.queueStoppedOne : t.queueStoppedMany, {
+          m: counted(num(d.batches), t.oneBatch, t.manyBatches),
+          n: cancelled ?? "?",
+        }),
         quote: str(d.reason),
       };
+    }
     case "queue.paused":
-      return { what: "paused the regeneration queue", quote: null };
+      return { what: t.queuePaused, quote: null };
     case "queue.resumed":
-      return { what: "resumed the regeneration queue", quote: null };
+      return { what: t.queueResumed, quote: null };
     case "text.edited":
       if (num(d.contribution)) {
-        return { what: `took a correction from the game (contribution #${num(d.contribution)})`, quote: str(d.text) };
+        return { what: fill(t.tookCorrection, { id: num(d.contribution)! }), quote: str(d.text) };
       }
-      return { what: version ? `edited the text (v${version})` : "edited the text", quote: str(d.text) };
+      return {
+        what: version ? fill(t.textEditedVersion, { version }) : t.textEdited,
+        quote: str(d.text),
+      };
     case "text.restored":
-      return { what: `restored text v${version}`, quote: null };
+      return { what: fill(t.textRestored, { version }), quote: null };
     case "text.retired":
-      return { what: `took back text v${version}`, quote: null };
+      return { what: fill(t.textRetired, { version }), quote: null };
     case "text.player_words":
-      return { what: d.after ? "changed the words said for the player" : "removed the words said for the player", quote: str(d.after) };
+      return {
+        what: d.after ? t.playerWordsChanged : t.playerWordsRemoved,
+        quote: str(d.after),
+      };
     case "name.edited":
-      return { what: "renamed", quote: str(d.name) };
+      return { what: t.nameEdited, quote: str(d.name) };
     case "name.restored":
-      return { what: `restored name v${version}`, quote: null };
+      return { what: fill(t.nameRestored, { version }), quote: null };
     case "name.retired":
-      return { what: `took back name v${version}`, quote: null };
+      return { what: fill(t.nameRetired, { version }), quote: null };
     case "name.observed":
-      return { what: "kept the name the game shows", quote: str(d.name) };
+      return { what: t.nameObserved, quote: str(d.name) };
     case "lexicon.added":
-      return { what: `added a pronunciation for “${row.subject}”`, quote: str(d.after) };
+      return { what: fill(t.lexiconAdded, { subject: row.subject ?? "" }), quote: str(d.after) };
     case "lexicon.edited":
       return {
-        what: `changed how “${row.subject}” is pronounced`,
+        what: fill(t.lexiconEdited, { subject: row.subject ?? "" }),
         quote: change(str(d.before), str(d.after)),
       };
     case "lexicon.removed":
-      return { what: `removed the pronunciation of “${row.subject}”`, quote: str(d.before) };
+      return { what: fill(t.lexiconRemoved, { subject: row.subject ?? "" }), quote: str(d.before) };
     case "override.set":
       if (num(d.contribution)) {
-        return { what: `took a correction from the game (contribution #${num(d.contribution)})`, quote: str(d.text) };
+        return { what: fill(t.tookCorrection, { id: num(d.contribution)! }), quote: str(d.text) };
       }
-      return { what: "overrode the text", quote: str(d.text) };
+      return { what: t.overrideSet, quote: str(d.text) };
     case "override.cleared":
-      return { what: "cleared the text override", quote: str(d.before) };
+      return { what: t.overrideCleared, quote: str(d.before) };
     case "ignore.set":
-      return {
-        what: row.lang === null ? "ignored a line in every language" : "ignored a line",
-        quote: str(d.reason),
-      };
+      return { what: row.lang === null ? t.ignoreSetEvery : t.ignoreSet, quote: str(d.reason) };
     case "ignore.cleared":
-      return { what: "stopped ignoring a line", quote: null };
+      return { what: t.ignoreCleared, quote: null };
     case "setting.changed":
-      return { what: `changed the ${str(d.setting) === "raceTags" ? "race tags" : "generation settings"}`, quote: null };
+      return {
+        what: str(d.setting) === "raceTags" ? t.settingRaceTags : t.settingGeneration,
+        quote: null,
+      };
     case "voice.cloned":
       return {
-        what: `cloned the voice “${row.subject}”${num(d.sampleCount) ? ` from ${num(d.sampleCount)} samples` : ""}`,
+        what: num(d.sampleCount)
+          ? fill(t.voiceClonedSamples, { subject: row.subject ?? "", n: num(d.sampleCount)! })
+          : fill(t.voiceCloned, { subject: row.subject ?? "" }),
         quote: null,
       };
     case "voice.adopted":
       return {
-        what: `set the voice “${row.subject}”${str(d.from) ? ` to “${str(d.from)}” from their account` : " from their account"}`,
+        what: str(d.from)
+          ? fill(t.voiceAdoptedFrom, { subject: row.subject ?? "", from: str(d.from)! })
+          : fill(t.voiceAdopted, { subject: row.subject ?? "" }),
         quote: null,
       };
     case "reference.set":
-      return { what: `set the fish.audio reference for “${row.subject}”`, quote: str(d.transcript) };
+      return { what: fill(t.referenceSet, { subject: row.subject ?? "" }), quote: str(d.transcript) };
     case "reference.edited":
-      return { what: `edited the reference transcript for “${row.subject}”`, quote: str(d.transcript) };
+      return { what: fill(t.referenceEdited, { subject: row.subject ?? "" }), quote: str(d.transcript) };
     case "reference.deleted":
-      return { what: `deleted the fish.audio reference for “${row.subject}”`, quote: null };
+      return { what: fill(t.referenceDeleted, { subject: row.subject ?? "" }), quote: null };
     case "reference.pinned":
-      return { what: `pinned “${row.subject}” to fish.audio`, quote: null };
+      return { what: fill(t.referencePinned, { subject: row.subject ?? "" }), quote: null };
     case "reference.unpinned":
-      return { what: `unpinned “${row.subject}” from fish.audio`, quote: null };
+      return { what: fill(t.referenceUnpinned, { subject: row.subject ?? "" }), quote: null };
     case "sample.added":
     case "sample.deleted":
     case "sample.imported":
     case "sample.merged": {
       const files = Array.isArray(d.files) ? (d.files as string[]) : [];
       const verb = row.kind.split(".")[1];
-      const count = files.length === 1 ? "a sample" : `${files.length} samples`;
-      return {
-        what: `${verb === "added" ? "uploaded" : verb} ${count} for “${row.subject}”`,
-        quote: files.join(", ") || null,
-      };
+      const one = files.length === 1;
+      const subject = row.subject ?? "";
+      const key =
+        verb === "added"
+          ? one
+            ? t.sampleAddedOne
+            : t.sampleAddedMany
+          : verb === "deleted"
+            ? one
+              ? t.sampleDeletedOne
+              : t.sampleDeletedMany
+            : verb === "imported"
+              ? one
+                ? t.sampleImportedOne
+                : t.sampleImportedMany
+              : one
+                ? t.sampleMergedOne
+                : t.sampleMergedMany;
+      return { what: fill(key, { subject, n: files.length }), quote: files.join(", ") || null };
     }
     case "npc.split":
       return d.race
-        ? { what: `gave ${str(d.npcName) ?? row.subject} another body`, quote: bodyWords(d) }
-        : { what: `split ${str(d.npcName) ?? row.subject} into a man and a woman`, quote: null };
+        ? { what: fill(t.npcSplitBody, { name: str(d.npcName) ?? row.subject ?? "" }), quote: bodyWords(d) }
+        : { what: fill(t.npcSplit, { name: str(d.npcName) ?? row.subject ?? "" }), quote: null };
     case "npc.unsplit":
       return d.race
-        ? { what: `took a body from ${str(d.npcName) ?? row.subject}`, quote: bodyWords(d) }
-        : { what: `gave ${str(d.npcName) ?? row.subject} one voice again`, quote: null };
+        ? { what: fill(t.npcUnsplitBody, { name: str(d.npcName) ?? row.subject ?? "" }), quote: bodyWords(d) }
+        : { what: fill(t.npcUnsplit, { name: str(d.npcName) ?? row.subject ?? "" }), quote: null };
     case "npc.speaker_added":
-      return { what: `made ${speakerName(d)} a speaker of ${row.subject}`, quote: null };
+      return {
+        what: fill(t.npcSpeakerAdded, { speaker: speakerName(d, t.anNode), subject: row.subject ?? "" }),
+        quote: null,
+      };
     case "npc.speaker_removed":
-      return { what: `took ${speakerName(d)} off ${row.subject}`, quote: null };
+      return {
+        what: fill(t.npcSpeakerRemoved, { speaker: speakerName(d, t.anNode), subject: row.subject ?? "" }),
+        quote: null,
+      };
     case "npc.speaker_replaced":
       return {
-        what: `put ${speakerName(d)} in place of ${speakerName((d.from ?? {}) as Record<string, unknown>)} on ${row.subject}`,
+        what: fill(t.npcSpeakerReplaced, {
+          speaker: speakerName(d, t.anNode),
+          from: speakerName((d.from ?? {}) as Record<string, unknown>, t.anNode),
+          subject: row.subject ?? "",
+        }),
         quote: null,
       };
     case "npc.direction":
       return d.direction
-        ? { what: `set ${str(d.npcName) ?? row.subject}'s direction`, quote: str(d.direction) }
-        : { what: `cleared ${str(d.npcName) ?? row.subject}'s direction`, quote: null };
-    case "npc.resolved":
+        ? { what: fill(t.npcDirectionSet, { name: str(d.npcName) ?? row.subject ?? "" }), quote: str(d.direction) }
+        : { what: fill(t.npcDirectionCleared, { name: str(d.npcName) ?? row.subject ?? "" }), quote: null };
+    case "npc.resolved": {
+      const name = str(d.npcName) ?? row.subject ?? "";
       return {
-        what: `set who ${str(d.npcName) ?? row.subject} is${num(d.sex) === 3 ? " as a woman" : num(d.sex) === 2 ? " as a man" : ""}`,
+        what:
+          num(d.sex) === 3
+            ? fill(t.npcResolvedWoman, { name })
+            : num(d.sex) === 2
+              ? fill(t.npcResolvedMan, { name })
+              : fill(t.npcResolved, { name }),
         quote: [str(d.race), str(d.gender), str(d.flavor)].filter(Boolean).join(" · ") || null,
       };
+    }
     case "type.changed":
       return {
-        what: `${str(d.action)?.replace("-", " ") ?? "changed"} ${row.subject}`,
+        what: fill(t.typeChanged, {
+          action: str(d.action)?.replace("-", " ") ?? t.typeChangedDefaultAction,
+          subject: row.subject ?? "",
+        }),
         quote: [str(d.gender), str(d.flavor), str(d.voice)].filter(Boolean).join(" · ") || null,
       };
     case "grant.added":
-      return { what: `gave ${row.subjectName ?? "someone"} ${grantName(d.capability)}`, quote: null };
+      return {
+        what: fill(t.grantAdded, {
+          name: row.subjectName ?? t.someone,
+          capability: grantName(d.capability) ?? "",
+        }),
+        quote: null,
+      };
     case "grant.removed":
-      return { what: `took ${grantName(d.capability)} from ${row.subjectName ?? "someone"}`, quote: null };
+      return {
+        what: fill(t.grantRemoved, {
+          capability: grantName(d.capability) ?? "",
+          name: row.subjectName ?? t.someone,
+        }),
+        quote: null,
+      };
     case "invite.sent":
       return {
-        what: `invited ${str(d.email) ?? "someone"} as ${grantNames(d.capabilities)}`,
+        what: fill(t.inviteSent, {
+          email: str(d.email) ?? t.someone,
+          capabilities: grantNames(d.capabilities),
+        }),
         quote: null,
       };
     case "invite.resent":
-      return { what: `sent the invite to ${str(d.email) ?? "someone"} again`, quote: null };
+      return { what: fill(t.inviteResent, { email: str(d.email) ?? t.someone }), quote: null };
     case "invite.accepted":
-      return {
-        what: `accepted the invite as ${grantNames(d.capabilities)}`,
-        quote: null,
-      };
+      return { what: fill(t.inviteAccepted, { capabilities: grantNames(d.capabilities) }), quote: null };
     case "invite.revoked":
-      return { what: `revoked the invite to ${str(d.email) ?? "someone"}`, quote: null };
+      return { what: fill(t.inviteRevoked, { email: str(d.email) ?? t.someone }), quote: null };
     case "language.toggled":
-      return { what: d.enabled ? "switched the language on" : "switched the language off", quote: null };
+      return { what: d.enabled ? t.languageOn : t.languageOff, quote: null };
     case "language.added":
-      return { what: `added the language ${str(d.name) ?? ""}`.trim(), quote: null };
+      return { what: fill(t.languageAdded, { name: str(d.name) ?? "" }).trim(), quote: null };
     case "team.created":
-      return { what: `created the team ${str(d.slug) ?? ""}`.trim(), quote: null };
+      return { what: fill(t.teamCreated, { slug: str(d.slug) ?? "" }).trim(), quote: null };
     case "team.deleted": {
       const members = Array.isArray(d.members) ? d.members : [];
-      const left = members.length ? `, removing ${plural(members.length, "membership")}` : "";
-      return { what: `deleted the team ${str(d.slug) ?? "?"}${left}`, quote: null };
+      const slug = str(d.slug) ?? t.unknown;
+      return {
+        what: members.length
+          ? fill(members.length === 1 ? t.teamDeletedMembersOne : t.teamDeletedMembersMany, {
+              slug,
+              n: members.length,
+            })
+          : fill(t.teamDeleted, { slug }),
+        quote: null,
+      };
     }
     case "team.renamed":
-      return { what: "renamed the team", quote: str(d.name) };
+      return { what: t.teamRenamed, quote: str(d.name) };
     case "team.own_storage":
       return {
-        // The event names no language, so the team is named here.
         what: d.ownStorage
-          ? `required ${row.subject ?? "the team"} to keep its new audio in its own bucket`
-          : `let ${row.subject ?? "the team"} use Spoken's archive`,
+          ? fill(t.teamOwnStorage, { team: row.subject ?? "" })
+          : fill(t.teamSiteStorage, { team: row.subject ?? "" }),
         quote: null,
       };
     case "team.official":
       return {
         what: d.official
-          ? `made ${row.subject ?? "the team"} official`
-          : `made ${row.subject ?? "the team"} unofficial: its releases wait for review`,
+          ? fill(t.teamOfficial, { team: row.subject ?? "" })
+          : fill(t.teamUnofficial, { team: row.subject ?? "" }),
         quote: null,
       };
     case "team.language_moved":
-      return { what: `handed the language from ${str(d.from) ?? "?"} to ${str(d.to) ?? "?"}`, quote: null };
+      return {
+        what: fill(t.teamLanguageMoved, { from: str(d.from) ?? t.unknown, to: str(d.to) ?? t.unknown }),
+        quote: null,
+      };
     case "team.second_in_language":
       return {
-        what: `added the team ${str(d.slug) ?? "?"} beside ${str(d.beside) ?? "?"}${d.settings === "copy" ? ", starting from its voices and settings" : ""}`,
+        what: fill(d.settings === "copy" ? t.teamSecondInLanguageCopy : t.teamSecondInLanguage, {
+          slug: str(d.slug) ?? t.unknown,
+          beside: str(d.beside) ?? t.unknown,
+        }),
         quote: null,
       };
     case "team.joined_language":
       return {
-        what: `added the team ${str(d.slug) ?? "?"} to the language${str(d.from) ? `, starting from ${str(d.from)}'s voices and settings` : ""}`,
+        what: str(d.from)
+          ? fill(t.teamJoinedLanguageFrom, { slug: str(d.slug) ?? t.unknown, from: str(d.from)! })
+          : fill(t.teamJoinedLanguage, { slug: str(d.slug) ?? t.unknown }),
         quote: null,
       };
     case "release.started":
-      return { what: `pressed Release for ${str(d.section) ?? "a section"}`, quote: null };
-    case "release.finished":
       return {
-        what: `release of ${str(d.section) ?? "a section"} ${
-          d.state === "failed"
-            ? "failed"
-            : d.state === "unchanged"
-              ? "found nothing to release"
-              : d.state === "awaiting_review"
-                ? "is waiting for a site owner's review"
-                : "finished"
-        }`,
+        what: fill(t.releaseStarted, { section: str(d.section) ?? t.aSection }),
+        quote: null,
+      };
+    case "release.finished": {
+      const section = str(d.section) ?? t.aSection;
+      const key =
+        d.state === "failed"
+          ? t.releaseFailed
+          : d.state === "unchanged"
+            ? t.releaseUnchanged
+            : d.state === "awaiting_review"
+              ? t.releaseAwaiting
+              : t.releaseFinished;
+      return { what: fill(key, { section }), quote: str(d.version) };
+    }
+    case "release.approved":
+      return {
+        what: fill(t.releaseApproved, { section: str(d.section) ?? t.aSection }),
         quote: str(d.version),
       };
-    case "release.approved":
-      return { what: `approved the team's release of ${str(d.section) ?? "a section"}`, quote: str(d.version) };
     case "release.rejected":
-      return { what: `did not approve the team's release of ${str(d.section) ?? "a section"} ${str(d.version) ?? ""}`.trim(), quote: str(d.reason) };
+      return {
+        what: join(fill(t.releaseRejected, { section: str(d.section) ?? t.aSection }), str(d.version)),
+        quote: str(d.reason),
+      };
     case "release.delisted":
-      return { what: `delisted the team's ${str(d.section) ?? "a section"} pack`, quote: null };
+      return {
+        what: fill(t.releaseDelisted, { section: str(d.section) ?? t.aSection }),
+        quote: null,
+      };
     case "pack.submitted":
-      return { what: `submitted the community pack ${row.subject} ${str(d.version) ?? ""}`.trim(), quote: null };
+      return { what: join(fill(t.packSubmitted, { pack: row.subject ?? "" }), str(d.version)), quote: null };
     case "pack.approved":
-      return { what: `approved the community pack ${row.subject} ${str(d.version) ?? ""}`.trim(), quote: null };
+      return { what: join(fill(t.packApproved, { pack: row.subject ?? "" }), str(d.version)), quote: null };
     case "pack.rejected":
-      return { what: `turned down the community pack ${row.subject} ${str(d.version) ?? ""}`.trim(), quote: str(d.reason) };
+      return {
+        what: join(fill(t.packRejected, { pack: row.subject ?? "" }), str(d.version)),
+        quote: str(d.reason),
+      };
     case "pack.withdrawn":
-      return { what: `withdrew the community pack ${row.subject} ${str(d.version) ?? ""}`.trim(), quote: null };
+      return { what: join(fill(t.packWithdrawn, { pack: row.subject ?? "" }), str(d.version)), quote: null };
     case "pack.listed":
-      return { what: `listed the community pack ${row.subject}`, quote: null };
+      return { what: fill(t.packListed, { pack: row.subject ?? "" }), quote: null };
     case "pack.unlisted":
-      return { what: `unlisted the community pack ${row.subject}`, quote: null };
+      return { what: fill(t.packUnlisted, { pack: row.subject ?? "" }), quote: null };
     case "pack.owner":
       return {
-        what: d.ownerId ? `handed the community pack ${row.subject} to another owner` : `left the community pack ${row.subject} with no owner`,
+        what: d.ownerId
+          ? fill(t.packOwnerHanded, { pack: row.subject ?? "" })
+          : fill(t.packOwnerLeft, { pack: row.subject ?? "" }),
         quote: null,
       };
     case "request.made":
-      return { what: `asked for a team in ${str(d.lang) ?? "a language"}`, quote: str(d.teamName) };
+      return {
+        what: fill(t.requestMade, { lang: str(d.lang) ?? t.aLanguage }),
+        quote: str(d.teamName),
+      };
     case "request.withdrawn":
-      return { what: `withdrew a request for a team in ${str(d.lang) ?? "a language"}`, quote: null };
+      return { what: fill(t.requestWithdrawn, { lang: str(d.lang) ?? t.aLanguage }), quote: null };
     case "request.approved":
-      return { what: `approved a request for a team in ${str(d.lang) ?? "a language"}`, quote: str(d.slug) };
+      return {
+        what: fill(t.requestApproved, { lang: str(d.lang) ?? t.aLanguage }),
+        quote: str(d.slug),
+      };
     case "request.rejected":
-      return { what: `turned down a request for a team in ${str(d.lang) ?? "a language"}`, quote: str(d.reason) };
+      return {
+        what: fill(t.requestRejected, { lang: str(d.lang) ?? t.aLanguage }),
+        quote: str(d.reason),
+      };
     case "contribution.resolved":
       return {
-        what: `${str(d.status) ?? "resolved"} a ${d.correction ? "correction from the game" : "contribution"}`,
+        what: fill(
+          d.correction ? t.contributionResolvedCorrection : t.contributionResolved,
+          { status: str(d.status) ?? t.resolved },
+        ).trim(),
         quote: str(d.key),
       };
     case "contribution.edited":
-      return { what: `changed a contribution's ${str(d.field) ?? "details"}`, quote: null };
+      return {
+        what: fill(t.contributionEdited, { field: str(d.field) ?? t.details }),
+        quote: null,
+      };
     case "report.resolved":
-      return { what: `marked a report ${str(d.status) ?? "resolved"}`, quote: str(d.category) };
+      return {
+        what: fill(t.reportResolved, { status: str(d.status) ?? t.resolved }),
+        quote: str(d.category),
+      };
     case "report.passed":
-      return { what: `passed a report to ${d.to === "text" ? "text maintainers" : "the team"}`, quote: null };
+      return { what: d.to === "text" ? t.reportPassedText : t.reportPassedTeam, quote: null };
     case "user.role_changed":
-      return { what: `made ${row.subjectName ?? "a removed user"} ${str(d.role) ?? "?"}`, quote: null };
+      return {
+        what: fill(t.userRole, {
+          name: row.subjectName ?? t.aRemovedUser,
+          role: str(d.role) ?? t.unknown,
+        }),
+        quote: null,
+      };
     case "user.banned":
-      return { what: `banned ${row.subjectName ?? "a removed user"}`, quote: str(d.banReason) };
+      return {
+        what: fill(t.userBanned, { name: row.subjectName ?? t.aRemovedUser }),
+        quote: str(d.banReason),
+      };
     case "user.unbanned":
-      return { what: `unbanned ${row.subjectName ?? "a removed user"}`, quote: null };
+      return { what: fill(t.userUnbanned, { name: row.subjectName ?? t.aRemovedUser }), quote: null };
     case "user.removed":
-      return { what: "removed a user", quote: null };
+      return { what: t.userRemoved, quote: null };
     case "user.impersonated":
-      return { what: `signed in as ${row.subjectName ?? "a removed user"}`, quote: null };
+      return {
+        what: fill(t.userImpersonated, { name: row.subjectName ?? t.aRemovedUser }),
+        quote: null,
+      };
     // A kind this page does not know: one a newer release wrote before a rollback to this
     // one. Shown by its name rather than breaking the page.
     default:
@@ -389,16 +515,34 @@ export function describe(row: ActivityRow): { what: string; quote: string | null
   }
 }
 
+/** Two parts of one sentence, with the second left out when there is none. */
+function join(head: string, tail: string | null): string {
+  return tail ? `${head} ${tail}` : head;
+}
+
 /** Where a row points, if anywhere: the line, the page that manages the thing, or nothing. */
-function target(row: ActivityRow): { href: string; label: string } | null {
+function target(
+  row: ActivityRow,
+  t: UiText["activity"]["events"]["links"],
+): { href: string; label: string } | null {
   if (row.source && row.lineId) return { href: explorerHref(row.source, row.lineId), label: row.lineId };
-  if (categoryOf(row.kind) === "voices") return row.subject ? { href: "/voices", label: row.subject } : null;
-  if (row.kind.startsWith("lexicon.") && row.subject) return { href: lexiconHref(row.subject), label: "Pronunciation" };
-  if (row.kind.startsWith("grant.") || row.kind.startsWith("invite.") || row.kind.startsWith("user.")) return { href: "/admin", label: "Users" };
-  if (row.kind.startsWith("report.")) return { href: "/reports?view=all", label: `report ${row.subject}` };
-  if (row.kind.startsWith("pack.")) return { href: "/admin/packs", label: "Community packs" };
-  if (row.kind.startsWith("request.")) return { href: "/admin/teams", label: "Team requests" };
-  if (row.kind.startsWith("contribution.")) return { href: "/contributions", label: `contribution ${row.subject}` };
+  if (categoryOf(row.kind) === "voices") {
+    return row.subject ? { href: "/voices", label: row.subject } : null;
+  }
+  if (row.kind.startsWith("lexicon.") && row.subject) {
+    return { href: lexiconHref(row.subject), label: t.pronunciation };
+  }
+  if (row.kind.startsWith("grant.") || row.kind.startsWith("invite.") || row.kind.startsWith("user.")) {
+    return { href: "/admin", label: t.users };
+  }
+  if (row.kind.startsWith("report.")) {
+    return { href: "/reports?view=all", label: fillFrom(t.report, { id: row.subject ?? "" }) };
+  }
+  if (row.kind.startsWith("pack.")) return { href: "/admin/packs", label: t.packs };
+  if (row.kind.startsWith("request.")) return { href: "/admin/teams", label: t.requests };
+  if (row.kind.startsWith("contribution.")) {
+    return { href: "/contributions", label: fillFrom(t.contribution, { id: row.subject ?? "" }) };
+  }
   return null;
 }
 
@@ -410,12 +554,16 @@ const FOLD_OF = new Map(
  * The rows a row opens onto, if it folds any (FOLDS). For a batch, `count` is what the
  * server counted for the page's day range.
  */
-function groupOf(row: ActivityRow): { kind: Group; id: string; count: number; noun: readonly [string, string] } | null {
+function groupOf(row: ActivityRow): { kind: Group; id: string; count: number } | null {
   const fold = FOLD_OF.get(row.kind);
   const id = fold && str(row.detail[fold.key]);
   if (!fold || !id) return null;
   const count = fold.count === null ? row.takes : num(row.detail[fold.count]);
-  return { kind: fold.kind, id, count: count ?? 0, noun: fold.noun };
+  return { kind: fold.kind, id, count: count ?? 0 };
+}
+
+function counted(count: number | null, one: string, many: string): string {
+  return count === 1 ? one : fillFrom(many, { n: count ?? "?" });
 }
 
 /** The takes a row lets you hear: the new one, and for a restore the one it replaced. */
@@ -434,12 +582,13 @@ function takesOf(row: ActivityRow): Take[] {
 
 /** A play button for one take, sized for a row or for a batch's list. */
 function PlayTake({ take, onPlay, compact }: { take: Take; onPlay: (take: Take) => void; compact?: boolean }) {
+  const t = useUiText().activity;
   return (
     <Button
       size="sm"
       variant="ghost"
       className={compact ? "ml-auto h-6 px-2" : "h-7 px-2"}
-      title={`Play v${take.version}`}
+      title={fillFrom(t.playVersion, { version: take.version })}
       onClick={() => onPlay(take)}
     >
       <Play className={compact ? "size-3" : "size-3.5"} /> v{take.version}
@@ -462,6 +611,10 @@ export default function ActivityTable({
   filter: Filter;
   actors: { id: string; name: string }[];
 }) {
+  const text = useUiText();
+  const t = text.activity;
+  const categoryOptions = CATEGORIES.map((category) => ({ value: category, label: t.categories[category] }));
+  const sourceOptions = SOURCES.map((source) => ({ value: source, label: t.sections[source] }));
   const date = useLocalDates();
   const lang = useLang();
   const { pending, push } = usePendingPush();
@@ -537,30 +690,30 @@ export default function ActivityTable({
     <>
       <nav className="mb-4 flex flex-wrap items-center gap-2">
         <FilterChip
-          label="what"
+          label={t.what}
           value={filter.category}
-          options={CATEGORY_OPTIONS}
+          options={categoryOptions}
           onChange={(value) => go({ category: value })}
         />
         <FilterChip
-          label="who"
+          label={t.who}
           value={filter.actorId}
           options={actors.map((actor) => ({ value: actor.id, label: actor.name }))}
           onChange={(value) => go({ actorId: value })}
         />
         <FilterChip
-          label="section"
+          label={t.section}
           value={filter.source}
-          options={SOURCE_OPTIONS}
+          options={sourceOptions}
           onChange={(value) => go({ source: value })}
         />
-        <DateChip label="from" value={filter.from} onChange={(value) => go({ from: value })} />
-        <DateChip label="to" value={filter.to} onChange={(value) => go({ to: value })} />
+        <DateChip label={t.from} value={filter.from} onChange={(value) => go({ from: value })} />
+        <DateChip label={t.to} value={filter.to} onChange={(value) => go({ to: value })} />
         {pending && <Refreshing />}
       </nav>
 
       {rows.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Nothing happened here yet.</p>
+        <p className="text-muted-foreground text-sm">{t.nothingYet}</p>
       ) : (
         <table
           aria-busy={pending}
@@ -587,8 +740,8 @@ export default function ActivityTable({
                 );
               }
 
-              const { what, quote } = describe(row);
-              const link = target(row);
+              const { what, quote } = describe(row, t.events);
+              const link = target(row, t.events.links);
               const takes = takesOf(row);
               const group = groupOf(row);
               const expanded = group !== null && open === row.id;
@@ -599,13 +752,13 @@ export default function ActivityTable({
                     {date(row.at, TIME)}
                   </td>
                   <td className="w-40 max-w-[10rem] truncate pr-3 font-medium">
-                    {row.actorName ?? <span className="text-muted-foreground font-normal">system</span>}
+                    {row.actorName ?? <span className="text-muted-foreground font-normal">{t.system}</span>}
                   </td>
                   <td className="pr-3">
                     <div className="flex flex-wrap items-center gap-x-2">
                       {row.lang === null && (
                         <Badge variant="outline" className="py-0 leading-5">
-                          all languages
+                          {t.allLanguages}
                         </Badge>
                       )}
                       <span>{what}</span>
@@ -638,7 +791,7 @@ export default function ActivityTable({
                         onClick={() => void toggleGroup(row)}
                       >
                         {expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-                        {plural(group.count, ...group.noun)}
+                        {plural(group.count, t.nouns.one[group.kind], t.nouns.many[group.kind])}
                       </Button>
                     )}
                   </td>
@@ -652,9 +805,9 @@ export default function ActivityTable({
                     <td />
                     <td colSpan={3} className="border-b pb-2">
                       {inner === undefined ? (
-                        <p className="text-muted-foreground py-2 text-xs">Loading {group.noun[1]}…</p>
+                        <p className="text-muted-foreground py-2 text-xs">{fillFrom(t.loadingGroup, { what: t.nouns.many[group.kind] })}</p>
                       ) : inner === "failed" ? (
-                        <p className="text-destructive py-2 text-xs">Could not load these {group.noun[1]}.</p>
+                        <p className="text-destructive py-2 text-xs">{fillFrom(t.groupFailed, { what: t.nouns.many[group.kind] })}</p>
                       ) : (
                         <ul className="max-h-80 overflow-y-auto text-xs">
                           {inner.map((take) => (
@@ -662,11 +815,11 @@ export default function ActivityTable({
                               <span className="text-muted-foreground w-12 tabular-nums">{date(take.at, TIME)}</span>
                               {take.kind === "batch.stopped" ? (
                                 <span className="truncate">
-                                  {str(take.detail.label) ?? "a batch"}
+                                  {str(take.detail.label) ?? t.aBatch}
                                   {num(take.detail.cancelled) !== null && (
                                     <span className="text-muted-foreground">
                                       {" "}
-                                      · {plural(num(take.detail.cancelled), "line")} cancelled
+                                      · {fillFrom(t.cancelled, { n: plural(num(take.detail.cancelled), t.nouns.lineOne, t.nouns.lineMany) })}
                                     </span>
                                   )}
                                 </span>
@@ -701,12 +854,12 @@ export default function ActivityTable({
         <div className="flex items-center justify-center gap-3 py-4">
           {paged && (
             <Button size="sm" variant="secondary" onClick={newest}>
-              Newest
+              {t.newest}
             </Button>
           )}
           {next && (
             <Button size="sm" variant="secondary" onClick={older}>
-              Older
+              {t.older}
             </Button>
           )}
         </div>

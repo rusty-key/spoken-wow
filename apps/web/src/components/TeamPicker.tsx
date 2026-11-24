@@ -5,8 +5,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createContext, useContext, useId, useState } from "react";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
 import { useSession } from "@/lib/auth-client";
 import { isAdmin } from "@/lib/permissions";
+import { fill } from "@/lib/site-text/format";
 import { pickedHref } from "@/lib/teams/view";
 import type { TeamChoice, ViewedTeam } from "@/lib/teams/viewing";
 import { cn } from "@/lib/utils";
@@ -43,6 +45,7 @@ export default function TeamPicker({
   className?: string;
 }) {
   const id = useId();
+  const t = useUiText().catalogue.team;
   const lang = useLang();
   const router = useRouter();
   const pathname = usePathname();
@@ -55,12 +58,12 @@ export default function TeamPicker({
   const homeTeam = teams.find((team) => team.slug === home && team.slug !== viewed.slug);
   const note = !viewed.own && (
     <p className="text-muted-foreground">
-      {`You are listening to ${viewed.name}. Their takes play; their work is theirs.`}
+      {fill(t.listening, { name: viewed.name })}
       {homeTeam && (
         <>
           {" "}
           <Link href={pickedHref(pathname, params, homeTeam.slug, home)} scroll={false} className="underline">
-            {`Back to ${homeTeam.name}`}
+            {fill(t.back, { name: homeTeam.name })}
           </Link>
         </>
       )}
@@ -82,7 +85,7 @@ export default function TeamPicker({
     }).catch(() => null);
     const body = (await response?.json().catch(() => ({}))) as { home?: string | null; error?: string } | undefined;
     if (!response?.ok) {
-      setError(body?.error ?? "Could not switch teams.");
+      setError(body?.error ?? t.failed);
       return;
     }
     // Moved on while the save was in flight: the new page takes the saved team, and pushing the
