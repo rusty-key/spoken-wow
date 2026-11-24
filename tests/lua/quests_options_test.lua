@@ -340,6 +340,20 @@ do
     _G.CampaignQuestObjectiveTracker = nil
 end
 
+---------------------------------------------------------------- Kaliel's Tracker
+do
+    -- Kaliel's Tracker brings the tracker modules under its own names.
+    _G.KT_QuestObjectiveTracker = {}
+    local _, Panel = Boot()
+    Panel.panel.layout:Refresh()
+    local box
+    for _, child in ipairs(Panel.panel.content.children) do
+        if type(child.text) == "table" and child.text.text == "Tracker" then box = child end
+    end
+    Expect("Kaliel's Tracker alone shows the Tracker setting", box and box:IsShown(), true)
+    _G.KT_QuestObjectiveTracker = nil
+end
+
 ---------------------------------------------------------------- the classic quest log's Play button
 do
     -- Era has the classic Quest Log frame, without the modern objective tracker globals.
