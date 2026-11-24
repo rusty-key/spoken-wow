@@ -4,6 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **New players' world map lights the area under the pointer only once they turn it on** with
+  Area Highlight in Spoken Places' settings. *([rusty-key](https://github.com/rusty-key))*
 - **The player has a Stop All button,** which stops narration and clears the queue. Skip Line
   is now Next Line, and greys out with no line waiting. *([anon1231823](https://github.com/anon1231823))*
 - **Readables played from the Compendium show the same icon as their Compendium page.** One with
