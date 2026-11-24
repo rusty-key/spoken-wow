@@ -314,8 +314,8 @@ do
     env.print = print_
     local help = table.concat(said, "\n")
     Expect("/sp help names each command by its setting", help:find("/sp style subtitles | small | large | dialogueui | voice: "
-        .. L.OPT_PLAYER_STYLE, 1, true) ~= nil and help:find("/sp previous: " .. L.BIND_PREVIOUS, 1, true) ~= nil
-        and help:find("/sp stopall: " .. L.BIND_STOP, 1, true) ~= nil, true)
+        .. L.OPT_PLAYER_STYLE, 1, true) ~= nil and help:find("/sp previous: " .. L.BIND_SKIP_BACKWARD, 1, true) ~= nil
+        and help:find("/sp stopall: " .. L.BIND_EJECT, 1, true) ~= nil, true)
     SlashCmdList.SPOKEN("style small")
     Expect("/sp style takes the styles' names", env.Addon:PlayerStyle(), "minimal")
     SlashCmdList.SPOKEN("player subtitle")
@@ -781,7 +781,7 @@ function _G.GetBindingText(key) return key end
 local ctrl = false
 function _G.IsControlKeyDown() return ctrl end
 Options:UpdateRows()
-local play = Row(home, L.BIND_PLAYPAUSE)
+local play = Row(home, L.BIND_STOP_REPLAY)
 Expect("a key not set says so", play.message, L.OPT_KEY_NONE)
 Expect("...and its field takes no keys until clicked: one with a key script gets them all",
     play.scripts.OnKeyDown, nil)

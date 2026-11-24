@@ -6,6 +6,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 - **New players' world map lights the area under the pointer only once they turn it on** with
   Area Highlight in Spoken Places' settings. *([rusty-key](https://github.com/rusty-key))*
+- **The player has a Stop All button,** which stops narration and clears the queue. Skip Line
+  is now Next Line, and greys out with no line waiting. *([anon1231823](https://github.com/anon1231823))*
 - **Readables played from the Compendium show the same icon as their Compendium page.** One with
   no item, gravestones and tablets included, shows its kind's icon. *([anon1231823](https://github.com/anon1231823))*
 - **Round buttons sink and darken while you hold them,** so Play, Stop, Skip and Report answer
@@ -18,6 +20,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   already have. *([rusty-key](https://github.com/rusty-key))*
 - **A quest giver's greeting offers Contribute when Spoken has no voice for it,** and Collect
   Missing Lines keeps it. *([svengabr](https://github.com/svengabr))*
+- **Subtitles no longer block clicks or the mouse wheel.** Move them with the arrow button that
+  appears under them on hover. *([Praxeomatic](https://github.com/Praxeomatic))*
 
 ## 3.12.1 — 2026-11-22
 

@@ -10,22 +10,24 @@ Minimap = { entries = {} }
 
 local ICON = [[Interface\AddOns\Spoken\Textures\MinimapButton]]
 local ldbObject, menuFrame, minimapButton
+local ENTRY_ALIASES = { Previous = "SkipBackward", Skip = "SkipForward", Stop = "Eject" }
 
 -- The player's own entries: the same playback rows as the Small Window's menu, then the
 -- Compendium and the settings. `words` is the key of the entry's string, read as the menu is built:
 -- an interface pack's strings arrive after this file loads (Interface.lua).
 local PLAYER_ENTRIES = {
-    { id = "PlayPause", words = "STOP_REPLAY",  order = 1, onClick = function() SoundQueue:TogglePauseQueue() end },
-    { id = "Skip",      words = "MIN_SKIP",     order = 2, onClick = function() SoundQueue:Skip() end },
-    { id = "Stop",      words = "MIN_STOP_ALL", order = 3, onClick = function() SoundQueue:RemoveAllSoundsFromQueue() end },
+    { id = "PlayPause", words = "BIND_STOP_REPLAY", order = 1, onClick = function() SoundQueue:TogglePauseQueue() end },
+    { id = "SkipBackward", words = "BIND_SKIP_BACKWARD", order = 2, onClick = function() SoundQueue:Previous() end },
+    { id = "SkipForward",  words = "BIND_SKIP_FORWARD",  order = 3, onClick = function() SoundQueue:Skip() end },
+    { id = "Eject",        words = "BIND_EJECT",          order = 4, onClick = function() SoundQueue:RemoveAllSoundsFromQueue() end },
     -- Azeroth's Compendium, whichever parts have a tab in it (UI/Compendium.lua in each).
-    { id = "Compendium", words = "OPT_COMPENDIUM_OPEN", order = 4,
+    { id = "Compendium", words = "OPT_COMPENDIUM_OPEN", order = 5,
         visible = function()
             local compendium = _G.SpokenCompendium
             return compendium ~= nil and compendium.Available ~= nil and compendium:Available()
         end,
         onClick = function() _G.SpokenCompendium:Toggle() end },
-    { id = "Settings",  words = "SETTINGS",     order = 5, onClick = function() Options:Open() end },
+    { id = "Settings",  words = "SETTINGS",     order = 6, onClick = function() Options:Open() end },
 }
 
 --- entry = { id, text, icon, order, onClick(button), tooltip(GameTooltip), visible() }
@@ -67,6 +69,12 @@ end
 function Minimap:FindEntry(id)
     for _, entry in ipairs(self:BuildMenu()) do
         if entry.id == id then return entry end
+    end
+    local alias = ENTRY_ALIASES[id]
+    if alias then
+        for _, entry in ipairs(self:BuildMenu()) do
+            if entry.id == alias then return entry end
+        end
     end
 end
 
