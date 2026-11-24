@@ -71,6 +71,19 @@ B:SetupSource()
 dofile(READABLES .. "Data/Books.lua")
 dofile(READABLES .. "Data/Places.lua")
 local L = B.L
+
+-- Compendium ordering must keep numeric and minted IDs comparable when titles collide.
+local MIXED_BOOK = "n00000000-0000-4000-8000-000000000001"
+SpokenReadablesData.pages[990010] = { book = 990010, number = 1, text = "Words of a mixed title." }
+SpokenReadablesData.pages["n00000000-0000-4000-8000-000000000002"] = {
+    book = MIXED_BOOK, number = 1, text = "Different words of a mixed title."
+}
+SpokenReadablesData.books[990010] = { title = "Mixed ID Title", pages = { 990010 } }
+SpokenReadablesData.books[MIXED_BOOK] = {
+    title = "Mixed ID Title", pages = { "n00000000-0000-4000-8000-000000000002" }
+}
+SpokenReadablesPlaces.books[990010] = { kind = "carried", type = "note" }
+SpokenReadablesPlaces.books[MIXED_BOOK] = { kind = "carried", type = "note" }
 -- One readable whose event the data does not name, as an older export left every one.
 SpokenReadablesPlaces.books[2878].event = true
 

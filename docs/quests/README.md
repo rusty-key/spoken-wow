@@ -2040,6 +2040,16 @@ pages of the quest the watcher read are marked read; another quest's pages still
 own event. A page shown again keeps its mark. A replay bypasses DialogueUI's wait for its window
 and reads the record, whatever else is open, and no window's close stops it.
 
+The watcher reads a page only after it has stayed on screen 0.4 s. An addon that completes the
+quest from `QUEST_PROGRESS` (Questie) shows the progress page for about a quarter of a second, and
+when the reward page then waits for the player to pick a reward, the watcher reads that page
+first. Before it does, it reads the quest's progress page from its record, if nothing has read
+it, so the progress line plays and then the reward's, as when `QUEST_TURNED_IN` replays both.
+That window is still open, so its close stops the progress line as it stops the reward's. A
+player who clicks Continue within 0.4 s hears the progress line too: the client does not say
+whether an addon or the player clicked. Read Quest Progress Text off, or Read After Accepting on,
+reads the reward page alone.
+
 `tests/lua/quest_overlay_test.lua` covers the other thing the quest UI owes a player: the play
 button beside each quest in the quest log. There are two quest logs to draw it in. The old one
 is a named frame with numbered title rows (`QuestLogTitle1`…), redrawn through `QuestLog_Update`

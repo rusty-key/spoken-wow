@@ -866,9 +866,11 @@ function Addon:OnInitialize()
     --- unread, the last is the one the player was left with. The others are passed over, and
     --- stay for their own accept or turn-in. An offer recorded after its quest's own pages
     --- carries the globals of the quest just handed in, so it is not read.
-    local function ReplaySnapshot(snapshot, source)
+    --- `inOpenWindow`: the page's window is still open, so its close still stops the line.
+    local function ReplaySnapshot(snapshot, source, inOpenWindow)
         local state = self.autoQuestState
         snapshot.dispatched = true
+        snapshot.inOpenWindow = inOpenWindow
         local key = PageKey(snapshot.event, snapshot.questID, snapshot.title)
         if HandledRecently(state, key) then
             return
@@ -881,8 +883,9 @@ function Addon:OnInitialize()
 
     -- Index of the newest unread page of each event, refilled on every close-time replay.
     local newest = {}
+    local PROGRESS_ONLY = { QUEST_PROGRESS = true }
 
-    local function ReplayQuestSnapshots(source, questID, events)
+    local function ReplayQuestSnapshots(source, questID, events, inOpenWindow)
         PruneQuestSnapshots()
         -- The watcher calls this ten times a second whenever no quest is open.
         if #questSnapshots == 0 then
@@ -891,7 +894,7 @@ function Addon:OnInitialize()
         if questID then
             for _, snapshot in ipairs(questSnapshots) do
                 if not snapshot.dispatched and events[snapshot.event] and snapshot.questID == questID then
-                    ReplaySnapshot(snapshot, source)
+                    ReplaySnapshot(snapshot, source, inOpenWindow)
                 end
             end
             return
@@ -1004,6 +1007,12 @@ function Addon:OnInitialize()
             Debug:Record("auto-watcher-dispatch", format("Automatically reading %s quest %s", event,
                 tostring(questID)))
             local visibleEvent = GetVisibleQuestEvent()
+            -- An auto turn-in shows the progress page for less than the 0.4 s above: read it
+            -- before the reward page marks it passed over. Read After Accepting never reads it.
+            if visibleEvent == "QUEST_COMPLETE" and not self.db.profile.Audio.ReadAfterAccept then
+                ReplayQuestSnapshots("the reward page replaced it before it could stabilize", questID,
+                    PROGRESS_ONLY, true)
+            end
             if visibleEvent then
                 self:InvokeQuestHandler(visibleEvent, "automatic GetQuestID timer", false)
             else
@@ -1440,7 +1449,7 @@ local function QueueRead(soundData, manual)
         end
         return
     end
-    if questSnapshotInUse then
+    if questSnapshotInUse and not questSnapshotInUse.inOpenWindow then
         -- Its window closed before it started, so no later close is its own.
         soundData.addedCallback = nil
     end
