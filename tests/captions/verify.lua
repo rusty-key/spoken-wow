@@ -655,7 +655,7 @@ Check(S.mover:IsEnabled() and S.mover:GetAlpha()==1 and S.controls:GetWidth()==l
 local addLine, hint = GameTooltip.AddLine
 GameTooltip.AddLine = function(_, text) hint = text end
 S.mover:Fire('OnEnter')
-Check(GameTooltip:GetText()==E.L.SUBTITLE_MOVE and hint==E.L.SUBTITLE_MOVE_HINT,
+Check(GameTooltip:GetText()==E.L.SUBTITLE_MOVE and hint==E.L.QUEUE_DRAG_HINT,
     'the grabber identifies movement and explains how to drag')
 GameTooltip.AddLine = addLine
 S.mover:Fire('OnLeave')

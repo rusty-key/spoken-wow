@@ -940,7 +940,7 @@ function Subtitle:BuildControls()
     mover:SetScript("OnDragStop", function() self:StopMoving() end)
     mover:HookScript("OnEnter", function()
         if not Locked() then SetCursor([[Interface\Cursor\UI-Cursor-Move]]) end
-        local hint = L.SUBTITLE_MOVE_HINT
+        local hint = L.QUEUE_DRAG_HINT
         if Addon.playerHost then
             hint = L.SUBTITLE_MOVE_HOSTED
         elseif Addon:IsFrameLocked() then
