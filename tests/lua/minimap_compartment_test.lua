@@ -102,7 +102,7 @@ for _, entry in ipairs(stub.nativeMenuEntries) do
         or (entry.kind == "title" and "[" .. entry.text .. "]" or entry.text))
 end
 Expect("...with the same grouped entries", table.concat(nativeShown, "|"),
-    "Stop or Replay|Skip Backward|Skip Forward|Eject|Settings|---|[Quests]|Quest settings")
+    "Stop or Replay|Skip Backward|Skip Forward|Stop All|Settings|---|[Quests]|Quest settings")
 local tooltip = _G.GameTooltip
 tooltip:SetText("stale")
 tooltip:Show()

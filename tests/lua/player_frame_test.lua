@@ -503,7 +503,7 @@ local menu = env.Minimap:BuildMenu()
 local labels = {}
 for _, entry in ipairs(menu) do table.insert(labels, entry.text) end
 Expect("the menu is the player's entries then each source's in order", table.concat(labels, "|"),
-    "Stop or Replay|Skip Backward|Skip Forward|Eject|Settings|Quest settings|Open lore window")
+    "Stop or Replay|Skip Backward|Skip Forward|Stop All|Settings|Quest settings|Open lore window")
 local ids = {}
 for _, entry in ipairs(menu) do table.insert(ids, entry.id) end
 Expect("the player's menu IDs use standard media terms", table.concat(ids, "|"),
@@ -537,7 +537,7 @@ end
 -- A rule before each addon's heading. Without one the headings are the only thing
 -- separating the groups, and a heading reads as a row of the group above it.
 Expect("...listing the player's entries, then each source's under its name, ruled apart",
-    table.concat(shown, "|"), "Stop or Replay|Skip Backward|Skip Forward|Eject|Settings|---|[Quests]|Quest settings")
+    table.concat(shown, "|"), "Stop or Replay|Skip Backward|Skip Forward|Stop All|Settings|---|[Quests]|Quest settings")
 Expect("...anchored to the button", stub.openDropDown.dropdownAnchor, mmButton)
 
 -- The menu opens under the cursor, which is still on the button, so the button's tooltip
@@ -1199,18 +1199,8 @@ do
     F = env.PlayerFrame
     local eject = F.eject
     Expect("the player has an eject button after Skip", F.buttons[4], eject)
-    Expect("eject reuses Skip's arrow asset", eject.glyph:GetTexture(), F.skip.glyph:GetTexture())
-    Expect("...the same atlas cell turned upward", table.concat(eject.glyph.texCoord, ","),
-        table.concat({ 93 / 512, 419 / 512, 0, 419 / 512, 93 / 512, 1, 0, 1 }, ","))
-    Expect("...with a horizontal bar below the arrow", eject.bar:GetWidth() > eject.bar:GetHeight()
-        and eject.bar.anchor.point == "TOP" and eject.bar.anchor.relativeTo == eject.glyph
-        and eject.bar.anchor.relativePoint == "BOTTOM", true)
-    Expect("eject rounds its arrow and bar at the rendered scale",
-        eject.glyph.roundLayoutToNearestPixel == true and eject.bar.roundLayoutToNearestPixel == true, true)
-    for _, button in ipairs({ F.previous, F.skip }) do
-        Expect("Previous and Skip keep their original rendering",
-            button.glyph.roundLayoutToNearestPixel == nil and button.bar.roundLayoutToNearestPixel == nil, true)
-    end
+    Expect("eject draws its own glyph", eject.glyph:GetTexture(), [[Interface\AddOns\Spoken\Textures\GlyphEject]])
+    Expect("...with no separate bar", eject.bar, nil)
     eject.scripts.OnEnter(eject)
     Expect("eject explains the Eject action", GameTooltip.lines[1], env.L.BIND_EJECT)
     for _, style in ipairs({ "classic", "minimal", "subtitle" }) do

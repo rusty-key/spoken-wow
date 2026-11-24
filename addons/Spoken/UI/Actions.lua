@@ -168,9 +168,9 @@ end
 -- A line's button shows one of four glyphs: Play for a line a click starts, Stop while it
 -- speaks, Replay once it is stopped and still at the head, and a plus for "queue" and "queued",
 -- a line that waits or would wait behind another. Play is the portrait atlas's cell; the others
--- are drawn in its gold, each in a 93-wide cell of a 128 canvas.
+-- are drawn in its gold, each in a 93-wide cell of a 128 canvas, as is Stop All's eject mark.
 local GLYPHS = { stop = ART .. "GlyphStop", replay = ART .. "GlyphReplay", queue = ART .. "GlyphQueue",
-    queued = ART .. "GlyphQueue" }
+    queued = ART .. "GlyphQueue", eject = ART .. "GlyphEject" }
 local CELL = 93 / 128
 local PLAY_LEFT, PLAY_RIGHT = 0, 93 / PORTRAIT_ATLAS_SIZE
 local PLAY_TOP, PLAY_BOTTOM = 419 / PORTRAIT_ATLAS_SIZE, 1
@@ -222,31 +222,26 @@ function Actions.Previous()
     return previous
 end
 
-local function StepButton(parent, name, direction)
-    local back, eject = direction == "previous", direction == "eject"
+local function Tip(button, tip)
+    button:SetScript("OnEnter", function()
+        button.glyph:SetAlpha(1)
+        GameTooltip:SetOwner(button, "ANCHOR_TOP")
+        GameTooltip:SetText(tip)
+        GameTooltip:Show()
+    end)
+end
+
+--- Skip, or with `back` Previous: the play glyph against a bar, mirrored to point back.
+local function StepButton(parent, name, back)
     local step = Actions.RoundButton(parent, 10, name, true)
     Actions.Glyph(step.glyph, "play")
     if back then step.glyph:SetTexCoord(PLAY_RIGHT, PLAY_LEFT, PLAY_TOP, PLAY_BOTTOM) end
-    if eject then
-        step.glyph:SetTexCoord(PLAY_RIGHT, PLAY_TOP, PLAY_LEFT, PLAY_TOP,
-            PLAY_RIGHT, PLAY_BOTTOM, PLAY_LEFT, PLAY_BOTTOM)
-    end
     step.glyph:ClearAllPoints()
-    step.glyph:SetPoint("CENTER", eject and 0 or (back and 2 or -2), eject and 2 or 0)
+    step.glyph:SetPoint("CENTER", back and 2 or -2, 0)
     step.bar = step:CreateTexture(nil, "ARTWORK")
-    local width, height = eject and 9 or 2, eject and 2 or 9
-    if eject and step.bar.SetRoundLayoutToNearestPixel then
-        -- The player applies its scale after building these textures; round at layout time.
-        step.glyph:SetRoundLayoutToNearestPixel(true)
-        step.bar:SetRoundLayoutToNearestPixel(true)
-        step.bar:SetSize(width, height)
-    else
-        local P = SpokenLayout and SpokenLayout.Pixels
-        step.bar:SetSize(P and P(step, width) or width, P and P(step, height) or height)
-    end
-    if eject then
-        step.bar:SetPoint("TOP", step.glyph, "BOTTOM", 0, 0)
-    elseif back then
+    local P = SpokenLayout and SpokenLayout.Pixels
+    step.bar:SetSize(P and P(step, 2) or 2, P and P(step, 9) or 9)
+    if back then
         step.bar:SetPoint("RIGHT", step.glyph, "LEFT", 0, 0)
     else
         step.bar:SetPoint("LEFT", step.glyph, "RIGHT", 0, 0)
@@ -254,13 +249,7 @@ local function StepButton(parent, name, direction)
     if step.bar.SetColorTexture then step.bar:SetColorTexture(1, 0.82, 0, 0.85) end
     -- Squared once the bar exists, so EllesmereUI keeps it with the glyph.
     if Ellesmere then Ellesmere:When(function(skin) Actions.Square(skin, step) end) end
-    local tip = eject and L.BIND_EJECT or (back and L.BIND_SKIP_BACKWARD or L.BIND_SKIP_FORWARD)
-    step:SetScript("OnEnter", function()
-        step.glyph:SetAlpha(1)
-        GameTooltip:SetOwner(step, "ANCHOR_TOP")
-        GameTooltip:SetText(tip)
-        GameTooltip:Show()
-    end)
+    Tip(step, back and L.BIND_SKIP_BACKWARD or L.BIND_SKIP_FORWARD)
     return step
 end
 
@@ -276,7 +265,7 @@ function Actions.SkipButton(parent, name)
 end
 
 function Actions.PreviousButton(parent, name)
-    local previous = StepButton(parent, name, "previous")
+    local previous = StepButton(parent, name, true)
     previous.canAct = function() return SoundQueue:CanPrevious() end
     previous:SetScript("OnClick", function()
         local replayed = Actions.Previous()
@@ -288,8 +277,13 @@ function Actions.PreviousButton(parent, name)
     return previous
 end
 
+--- Stop All, sized with the step buttons beside it. Its own picture: Play turned upward over
+--- a bar read as a blob at 10 px.
 function Actions.EjectButton(parent, name)
-    local eject = StepButton(parent, name, "eject")
+    local eject = Actions.RoundButton(parent, 10, name, true)
+    Actions.Glyph(eject.glyph, "eject")
+    if Ellesmere then Ellesmere:When(function(skin) Actions.Square(skin, eject) end) end
+    Tip(eject, L.BIND_EJECT)
     eject.canAct = function() return SoundQueue:GetQueueSize() > 0 end
     eject:SetScript("OnClick", function() SoundQueue:RemoveAllSoundsFromQueue() end)
     return eject

@@ -165,8 +165,8 @@ local later = env.Actions.SkipButton(UIParent)
 Expect("...and a Skip button made after login keeps its bar too",
     table.concat(Dressed(eui, "Button", later).kept, ","), "glyph,bar")
 local eject = env.Actions.EjectButton(UIParent)
-Expect("...and Eject keeps its arrow and bar when squared", eject.squared
-    and table.concat(Dressed(eui, "Button", eject).kept, ","), "glyph,bar")
+Expect("...and Eject keeps its glyph when squared", eject.squared
+    and table.concat(Dressed(eui, "Button", eject).kept, ","), "glyph")
 Expect("...its portrait flat: no gold ring, no art behind it, cut round in a 1 px edge",
     tostring(M.portrait.squared) .. " " .. M.ring:GetAlpha() .. " " .. M.portrait.background:GetAlpha() .. " "
     .. tostring(M.portrait.round) .. " " .. tostring(M.viewport.squareMask), "true 0 0 true false")
