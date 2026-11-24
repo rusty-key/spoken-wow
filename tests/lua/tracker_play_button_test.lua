@@ -12,23 +12,34 @@ _G.QuestObjectiveTracker = {
     blockTemplate = "QuestObjectiveTrackerBlockTemplate",
     usedBlocks = {},
 }
+-- Kaliel's Tracker copies the tracker's modules under its own names and hides the client's.
+_G.KT_QuestObjectiveTracker = {
+    AddBlock = function() end,
+    blockTemplate = "KT_QuestObjectiveTrackerBlockTemplate",
+    usedBlocks = {},
+}
+_G.KT_CampaignQuestObjectiveTracker = { AddBlock = function() end, usedBlocks = {} }
 
 local VO = stub.LoadQuestsOverlay(here .. "/../../addons/Spoken_Quests/", here .. "/../../addons/Spoken/")
 local Expect, Failures = H.Expecter(print)
 local CreateFrame = _G.CreateFrame
 
-local function PlayOf(block)
+-- The Play button `draw` makes on `block`.
+local function PlayMade(block, draw)
     local made = {}
     _G.CreateFrame = function(...)
         local frame = CreateFrame(...)
         made[#made + 1] = frame
         return frame
     end
-    QuestObjectiveTracker:AddBlock(block)
+    draw()
     _G.CreateFrame = CreateFrame
     for _, frame in ipairs(made) do
         if frame.GetParent and frame:GetParent() == block then return frame end
     end
+end
+local function PlayOf(block, module)
+    return PlayMade(block, function() (module or QuestObjectiveTracker):AddBlock(block) end)
 end
 
 VO.Addon:OnInitialize()
@@ -110,6 +121,15 @@ Expect("...without touching the block or the item", Changed(lateWatched), "")
 lateItem:Hide()
 VO.QuestOverlayUI.UpdateTrackerButtons()
 Expect("a hidden item leaves Play in the corner", latePlay.anchor.relativeTo, lateBlock)
+
+local ktBlock = Block()
+Expect("Kaliel's Tracker's quests get Play", PlayOf(ktBlock, KT_QuestObjectiveTracker) ~= nil, true)
+Expect("...and its campaign quests", PlayOf(Block(), KT_CampaignQuestObjectiveTracker) ~= nil, true)
+
+local ktDrawn = Block()
+KT_QuestObjectiveTracker.usedBlocks = { [KT_QuestObjectiveTracker.blockTemplate] = { ktDrawn } }
+local ktDrawnPlay = PlayMade(ktDrawn, VO.QuestOverlayUI.UpdateTrackerButtons)
+Expect("a sweep gives Play to a block Kaliel's Tracker drew before Spoken loaded", ktDrawnPlay ~= nil, true)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll tracker Play button tests passed")

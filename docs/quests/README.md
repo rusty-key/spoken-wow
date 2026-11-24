@@ -2129,13 +2129,15 @@ Contribute buttons) and Tracker (`TrackerPlayButton`). Trackers come in two shap
 `Compatibility.lua` has an adapter for each, registered with `RegisterTrackerUpdater`.
 `QuestOverlayUI.UpdateTrackerButtons` sweeps them all at login, when a pack loads, when Quests is
 switched and when the setting changes, and a profile change redraws the quest log and the trackers.
-Forever's tracker pools its blocks (`QuestObjectiveTracker`, `CampaignQuestObjectiveTracker`), and
+Forever's tracker pools its blocks (`QuestObjectiveTracker`, `CampaignQuestObjectiveTracker`, and
+Kaliel's Tracker's copies of them, `KT_QuestObjectiveTracker` and `KT_CampaignQuestObjectiveTracker`), and
 each block keeps one square button under the quest's item button, or under its find-group button
 when it has no item, or at the block's top right when it has neither. Classic Era's tracker writes each title
 into a font string named `QuestWatchLineN`. After `QuestWatch_Update`, the adapter matches each
 watched quest's title text to a shown line and puts the round button left of it, so a title some
 other addon rewrites gets no button. A failing adapter is logged and never raises inside the
-tracker's own update. `tests/lua/quest_tracker_adapters_test.lua` covers the Era adapter.
+tracker's own update. `tests/lua/quest_tracker_adapters_test.lua` covers the Era adapter, `tests/lua/tracker_play_button_test.lua`
+the Forever one.
 
 The web suite runs against a **real Postgres**, because the invariants it protects — archive
 the current take before anything overwrites it, never hand the same file to two jobs — live in

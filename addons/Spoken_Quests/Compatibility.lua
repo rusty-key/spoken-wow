@@ -522,7 +522,9 @@ end
 -- Play on the objective tracker's quests. The tracker pools its blocks, so a block keeps one button
 -- and rebinds it to the quest it shows.
 do
-    local MODULES = { "QuestObjectiveTracker", "CampaignQuestObjectiveTracker" }
+    -- Kaliel's Tracker copies the client's modules under a KT_ prefix and hides the client's tracker.
+    local MODULES = { "QuestObjectiveTracker", "CampaignQuestObjectiveTracker",
+        "KT_QuestObjectiveTracker", "KT_CampaignQuestObjectiveTracker" }
     -- The quest log's tracking checkbox, as it draws on this client (what its Play button matches).
     local BOX, SIZE = "QuestLog-icon-ticksquare", 14
     local buttons, hooked = {}, {}

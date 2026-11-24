@@ -96,6 +96,7 @@ function SettingsPanel:Setup()
     end
     local function HasObjectiveTracker()
         return _G.QuestObjectiveTracker ~= nil or _G.CampaignQuestObjectiveTracker ~= nil
+            or _G.KT_QuestObjectiveTracker ~= nil or _G.KT_CampaignQuestObjectiveTracker ~= nil
             or QuestWatch_Update ~= nil
     end
     layout:Section(L.OPT_SECTION_TRACKER)
