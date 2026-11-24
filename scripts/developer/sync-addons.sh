@@ -94,8 +94,8 @@ stop_watch() {
 	mutagen sync terminate --label-selector "$LABEL" </dev/null >/dev/null 2>&1 || true
 }
 
-# One line per session in trouble. A worktree deleted on the server shows as its root becoming
-# non-existent, which Mutagen holds as a conflict rather than empty the client's copy.
+# A worktree deleted on the server shows as its root becoming non-existent, which Mutagen holds
+# as a conflict rather than empty the client's copy.
 problems() {
 	{ mutagen sync list -l --label-selector "$LABEL" </dev/null 2>&1 || true; } | awk '
 		/^Name: / { name = $2 }
@@ -105,8 +105,7 @@ problems() {
 		END { for (n in conflicts) if (!(n in gone)) print n ": conflicts, see mutagen sync list -l " n }'
 }
 
-# Lists the files Mutagen writes into the client, as it writes them, until Ctrl-C. Mutagen
-# stages a file and moves it into place, so its change time is when it landed.
+# Mutagen stages a file and moves it into place, so its change time is when it landed.
 follow() {
 	local addons_dir=$1
 	shift
@@ -214,18 +213,16 @@ main() {
 		echo "Left alone: $other, $kind"
 	done
 
-	if [ "$watch" = yes ]; then
-		local slug
-		for name in "${names[@]}"; do
-			slug=$(tr '[:upper:]' '[:lower:]' <<<"$name" | tr _ -)
-			mutagen sync create --name "spoken-$slug" --label "$LABEL" \
-				--mode one-way-replica --ignore-vcs --ignore "/$MARK" \
-				"$(source_of "$worktree/addons/$name")" "$addons_dir/$name" </dev/null >/dev/null
-		done
-		echo "/reload in game, or restart the client if it has not seen an addon before."
-		follow "$addons_dir" "${names[@]}"
-	fi
 	echo "/reload in game, or restart the client if it has not seen an addon before."
+	[ "$watch" = yes ] || return 0
+	local slug
+	for name in "${names[@]}"; do
+		slug=$(tr '[:upper:]' '[:lower:]' <<<"$name" | tr _ -)
+		mutagen sync create --name "spoken-$slug" --label "$LABEL" \
+			--mode one-way-replica --ignore-vcs --ignore "/$MARK" \
+			"$(source_of "$worktree/addons/$name")" "$addons_dir/$name" </dev/null >/dev/null
+	done
+	follow "$addons_dir" "${names[@]}"
 }
 
 main "$@"
