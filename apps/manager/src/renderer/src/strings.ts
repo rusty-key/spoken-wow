@@ -4,7 +4,14 @@ import type { Snapshot } from '@shared/types'
 import { bcp47Of, type UiLanguage } from '@shared/types'
 import { currentLanguage, setLocale } from './locale'
 import { S_EN } from './strings.en'
+import { S_DE } from './strings.de'
+import { S_ES } from './strings.es'
+import { S_FR } from './strings.fr'
+import { S_KO } from './strings.ko'
+import { S_PT } from './strings.pt'
+import { S_RU } from './strings.ru'
 import { S_ZH } from './strings.zh'
+import { S_ZH_TW } from './strings.zh-tw'
 
 export type Platform = Snapshot['platform']
 
@@ -15,7 +22,17 @@ export const COMMUNITY_README_URL = 'https://github.com/rusty-key/spoken-wow/blo
 /** The shape every language file must have: whatever English has, a translation has too. */
 export type Dict = typeof S_EN
 
-const DICTS: Record<UiLanguage, Dict> = { enUS: S_EN, zhCN: S_ZH }
+const DICTS: Record<UiLanguage, Dict> = {
+  enUS: S_EN,
+  deDE: S_DE,
+  esES: S_ES,
+  frFR: S_FR,
+  koKR: S_KO,
+  ptBR: S_PT,
+  ruRU: S_RU,
+  zhCN: S_ZH,
+  zhTW: S_ZH_TW
+}
 
 /** Every word the window shows. Never read `Object.keys(S)`: it is a live view, not a snapshot. */
 export const S: Dict = { ...S_EN }

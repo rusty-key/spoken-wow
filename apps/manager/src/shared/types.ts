@@ -219,8 +219,15 @@ export interface ProductStatus {
  * game's codes (`zhCN`) and would silently use the system language, hence `bcp47`.
  */
 export const UI_LANGUAGES = [
-  { code: 'enUS', bcp47: 'en-US' },
-  { code: 'zhCN', bcp47: 'zh-CN' }
+  { code: 'enUS', bcp47: 'en-US', name: 'English' },
+  { code: 'deDE', bcp47: 'de-DE', name: 'Deutsch' },
+  { code: 'esES', bcp47: 'es-ES', name: 'Español' },
+  { code: 'frFR', bcp47: 'fr-FR', name: 'Français' },
+  { code: 'koKR', bcp47: 'ko-KR', name: '한국어' },
+  { code: 'ptBR', bcp47: 'pt-BR', name: 'Português' },
+  { code: 'ruRU', bcp47: 'ru-RU', name: 'Русский' },
+  { code: 'zhCN', bcp47: 'zh-CN', name: '简体中文' },
+  { code: 'zhTW', bcp47: 'zh-TW', name: '繁體中文' }
 ] as const
 
 export type UiLanguage = (typeof UI_LANGUAGES)[number]['code']

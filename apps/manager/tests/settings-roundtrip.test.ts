@@ -5,6 +5,7 @@ describe('the window language setting', () => {
   it('round-trips through sanitizeSettings, so a restart keeps it', () => {
     expect(sanitizeSettings({ uiLanguage: 'zhCN' }).uiLanguage).toBe('zhCN')
     expect(sanitizeSettings({ uiLanguage: 'enUS' }).uiLanguage).toBe('enUS')
+    expect(sanitizeSettings({ uiLanguage: 'ruRU' }).uiLanguage).toBe('ruRU')
     // An unknown language falls back to the default rather than emptying the window.
     expect(sanitizeSettings({ uiLanguage: 'xxXX' }).uiLanguage).toBe('enUS')
   })
