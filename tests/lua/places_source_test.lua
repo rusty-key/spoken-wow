@@ -273,7 +273,7 @@ env, Z = Boot()
 local labels = {}
 for _, entry in ipairs(env.Minimap:BuildMenu()) do table.insert(labels, entry.text) end
 Expect("the Places addon adds its settings entry to the one button, and not the Compendium's",
-    table.concat(labels, "|"), "Stop or Replay|Skip Backward|Skip Forward|Stop All|Settings|Places Settings")
+    table.concat(labels, "|"), "Stop or Replay|Previous Line|Next Line|Stop All|Settings|Places Settings")
 -- The Compendium is Spoken's own entry, there once a part has a tab in it, and opens the window.
 dofile(here .. "/../../addons/Spoken/UI/Compendium.lua")
 local opened = 0
@@ -282,14 +282,14 @@ SpokenCompendium:Register("places", { label = "Places", order = 1, build = funct
 labels = {}
 for _, entry in ipairs(env.Minimap:BuildMenu()) do table.insert(labels, entry.text) end
 Expect("...which is Spoken's, before Settings, once a part has a tab", table.concat(labels, "|"),
-    "Stop or Replay|Skip Backward|Skip Forward|Stop All|Open Azeroth's Compendium|Settings|Places Settings")
+    "Stop or Replay|Previous Line|Next Line|Stop All|Open Azeroth's Compendium|Settings|Places Settings")
 env.Minimap:FindEntry("Compendium").onClick()
 Expect("...and opens the window through the tab", opened, 1)
 SpokenCompendium.tabs.places.enabled = function() return false end
 labels = {}
 for _, entry in ipairs(env.Minimap:BuildMenu()) do table.insert(labels, entry.text) end
 Expect("...and is gone while no tab's part is on", table.concat(labels, "|"),
-    "Stop or Replay|Skip Backward|Skip Forward|Stop All|Settings|Places Settings")
+    "Stop or Replay|Previous Line|Next Line|Stop All|Settings|Places Settings")
 SpokenCompendium = nil
 Expect("...and registers no button of its own", stub.ldbObjects.SpokenPlaces, nil)
 

@@ -484,7 +484,7 @@ VO, env, Spoken = Boot()
 local labels = {}
 for _, entry in ipairs(env.Minimap:BuildMenu()) do table.insert(labels, entry.text) end
 Expect("the quests addon adds its entries to the one button", table.concat(labels, "|"),
-    "Stop or Replay|Skip Backward|Skip Forward|Stop All|Settings|Quests Settings|Gossip Settings")
+    "Stop or Replay|Previous Line|Next Line|Stop All|Settings|Quests Settings|Gossip Settings")
 Expect("...and registers no button of its own", stub.ldbObjects.SpokenQuests, nil)
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

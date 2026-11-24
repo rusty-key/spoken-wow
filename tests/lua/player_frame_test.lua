@@ -503,7 +503,7 @@ local menu = env.Minimap:BuildMenu()
 local labels = {}
 for _, entry in ipairs(menu) do table.insert(labels, entry.text) end
 Expect("the menu is the player's entries then each source's in order", table.concat(labels, "|"),
-    "Stop or Replay|Skip Backward|Skip Forward|Stop All|Settings|Quest settings|Open lore window")
+    "Stop or Replay|Previous Line|Next Line|Stop All|Settings|Quest settings|Open lore window")
 local ids = {}
 for _, entry in ipairs(menu) do table.insert(ids, entry.id) end
 Expect("the player's menu IDs use standard media terms", table.concat(ids, "|"),
@@ -537,7 +537,7 @@ end
 -- A rule before each addon's heading. Without one the headings are the only thing
 -- separating the groups, and a heading reads as a row of the group above it.
 Expect("...listing the player's entries, then each source's under its name, ruled apart",
-    table.concat(shown, "|"), "Stop or Replay|Skip Backward|Skip Forward|Stop All|Settings|---|[Quests]|Quest settings")
+    table.concat(shown, "|"), "Stop or Replay|Previous Line|Next Line|Stop All|Settings|---|[Quests]|Quest settings")
 Expect("...anchored to the button", stub.openDropDown.dropdownAnchor, mmButton)
 
 -- The menu opens under the cursor, which is still on the button, so the button's tooltip
@@ -1211,12 +1211,12 @@ do
         quests:Enqueue(H.Clip({ present = { transcript = "A single narrated quest line." } }))
         stub.Advance(0.1)
         if style == "subtitle" then
-            Expect("subtitle puts Stop after Skip Backward", view.pause.anchor.relativeTo, view.previous)
-            Expect("subtitle puts Skip Forward after Stop", view.skip.anchor.relativeTo, view.pause)
+            Expect("subtitle puts Stop after Previous Line", view.pause.anchor.relativeTo, view.previous)
+            Expect("subtitle puts Next Line after Stop", view.skip.anchor.relativeTo, view.pause)
         end
         env.Actions.SetPausable(controls)
-        Expect(style .. " disables Skip Forward without a next line", view.skip:IsEnabled(), false)
-        Expect(style .. " greys Skip Forward without a next line", view.skip:GetAlpha(), .4)
+        Expect(style .. " disables Next Line without a next line", view.skip:IsEnabled(), false)
+        Expect(style .. " greys Next Line without a next line", view.skip:GetAlpha(), .4)
         Expect(style .. " keeps Eject enabled for the current line", view.eject:IsEnabled(), true)
         view.eject:Click()
         Expect(style .. " Eject ends the only queued line", Spoken:GetQueueSize(), 0)

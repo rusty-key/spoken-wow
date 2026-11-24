@@ -89,7 +89,7 @@ Spoken's queue is stopped, so nothing new plays until you carry on. Press **Repl
 
 ## How do I hear a line again after it finished?
 
-**Replay** only works on a line that is still in the queue, such as one you stopped. To hear the line that just played, press **Skip Backward** on the player, type `/sp previous`, or bind a key to it. To hear an older quest, place, book or boss story again, open Azeroth's Compendium (`/sp compendium`) and play it from its page.
+**Replay** only works on a line that is still in the queue, such as one you stopped. To hear the line that just played, press **Previous Line** on the player, type `/sp previous`, or bind a key to it. To hear an older quest, place, book or boss story again, open Azeroth's Compendium (`/sp compendium`) and play it from its page.
 
 ## An NPC or quest is silent
 
