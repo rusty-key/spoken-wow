@@ -11,7 +11,7 @@ import { PLAYER_WORD_LIMIT } from "@/lib/player-words";
 import { send } from "@/lib/send";
 
 type Reader = "m" | "f";
-type Field = "name" | "race" | "nameGenitive" | "classPlural";
+type Field = "name" | "race" | "nameGenitive" | "classPlural" | "raceWeak";
 type Declined = Required<DeclinedForms[string]>;
 /** One case number for both readers, so a case cannot be given to one and forgotten for the other. */
 type CaseRow = { n: string } & Record<Reader, Declined>;
@@ -22,6 +22,7 @@ const FIELDS: { key: Field; label: string; hint: string; required: boolean }[] =
   { key: "race", label: "Race ($R)", hint: "traveler", required: true },
   { key: "nameGenitive", label: "Name with a glued s ($Ns)", hint: "Optional: German's Abenteurers", required: false },
   { key: "classPlural", label: "Class plural ($cs)", hint: "Optional: French's aventuriers", required: false },
+  { key: "raceWeak", label: "Race after der ($R)", hint: "Optional: German's Reisende", required: false },
 ];
 
 const DECLINED: { key: keyof Declined; label: string }[] = [
@@ -40,6 +41,7 @@ function draftFields(forms: PlayerForms | undefined): Record<Field, string> {
     race: forms?.race ?? "",
     nameGenitive: forms?.nameGenitive ?? "",
     classPlural: forms?.classPlural ?? "",
+    raceWeak: forms?.raceWeak ?? "",
   };
 }
 

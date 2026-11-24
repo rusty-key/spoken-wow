@@ -597,6 +597,9 @@ one, few and many; one and many where it has two forms). One with no number befo
 In frFR and itIT, the word before a token elides when the token's word starts with a vowel:
 `le $c` reads `l'aventurier`, `du $c` `de l'aventurier`, `ce $c` `cet aventurier`, and itIT's
 `una $c` `un'avventuriera`. An `h` counts as a consonant.
+deDE's `$R` is an adjective used as a noun, so it declines: `ein $R` reads `Reisender`, `der $R`
+`Reisende`, and `dem`, `einen`, `dieses $R` (or `einer $R` on the female variant) `Reisenden`, with
+up to two adjectives between. The weak form is "Race after der" on `/<lang>/player-words`.
 Contributions triage shows any token or client escape still left after this, a bare `<` or `>`, and a gap
 before `.` or `,` or a mid-sentence double space where a gender branch came through empty,
 above the row's text, so a line that would never be voiced is seen before it is accepted.

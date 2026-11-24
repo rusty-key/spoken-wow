@@ -38,6 +38,9 @@
  * `nameGenitive` is what a $N or $C with a glued "s" says, in a language whose templates write
  * one; the feminine German genitive takes no s. `classPlural` is what a $C with a glued "s" says
  * where that s is a plural, as frFR's "$cs" is: the game prints the class with the s on.
+ * `raceWeak` is German's race word after a definite article, where an adjective used as a noun
+ * declines weak ("der Reisende", not "der Reisender"); with an `n` on, it is every case but the
+ * nominative ("dem Reisenden", "einer Reisenden").
  *
  * The feminine form is what a line's female variant says: where the English line branches on
  * $G, the translation is imported twice, `playerGender` "m" and "f", and the addon plays the
@@ -52,8 +55,8 @@ const WORDS = {
     quantity: "an order of",
   },
   deDE: {
-    m: { name: "Abenteurer", race: "Reisender", nameGenitive: "Abenteurers" },
-    f: { name: "Abenteurerin", race: "Reisende", nameGenitive: "Abenteurerin" },
+    m: { name: "Abenteurer", race: "Reisender", nameGenitive: "Abenteurers", raceWeak: "Reisende" },
+    f: { name: "Abenteurerin", race: "Reisende", nameGenitive: "Abenteurerin", raceWeak: "Reisende" },
   },
   esES: { m: { name: "aventurero", race: "viajero" }, f: { name: "aventurera", race: "viajera" } },
   esMX: { m: { name: "aventurero", race: "viajero" }, f: { name: "aventurera", race: "viajera" } },
@@ -159,7 +162,7 @@ export function registerPlayerWordRows(rows) {
 
 export const WORD_LIMIT = 40;
 const REQUIRED = ["name", "race"];
-const OPTIONAL = ["nameGenitive", "classPlural"];
+const OPTIONAL = ["nameGenitive", "classPlural", "raceWeak"];
 const CASE = /^[1-9]$/;
 
 function validWord(value) {
@@ -396,6 +399,7 @@ function speak(text, lang, playerGender, byToken) {
   let spoken = text.replace(DOUBLED, "$").replace(GENDER, side).replace(SWAPPED, side);
   if (lang === "koKR") spoken = spoken.replace(GLUED_PARTICLE, gluedParticleEscape);
   spoken = elide(spoken, lang, words);
+  if (lang === "deDE") spoken = declineGermanRace(spoken, words, playerGender === "f" ? "f" : "m", cased);
   spoken = spoken.replace(DECLINED, (whole, n, token, at, all) => {
     const word = words.cases?.[n]?.[wordKey(token)];
     return word ? cased(word, at, all, token) : whole;
@@ -448,6 +452,33 @@ const ELIDED = Object.fromEntries(
     new RegExp(String.raw`(?<![\p{L}'’])(${Object.keys(table).join("|")})\s+(?=${tokenSource("NnCcRr")})`, "giu"),
   ]),
 );
+
+// The German determiners after which $R's adjective-noun declines weak, by the reader's gender:
+// the nominative after a definite one ("der Reisende") and every other case after any ("einem
+// Reisenden", "der Reisenden" for a woman). "ein", "eine" and "die" leave the word as it is.
+const WEAK_NOMINATIVE = { m: ["der", "dieser", "jener", "jeder", "welcher"], f: [] };
+const ARTICLE_STEMS = ["ein", "kein", "mein", "dein", "sein", "ihr", "unser", "eur", "dies", "jen", "jed", "welch"];
+const OBLIQUE = {
+  m: ["dem", "den", "des", ...ARTICLE_STEMS.flatMap((stem) => [`${stem}em`, `${stem}en`, `${stem}es`])],
+  f: ["der", ...ARTICLE_STEMS.map((stem) => `${stem}er`)],
+};
+// Up to two adjectives may stand between ("dem tapferen jungen $R"); they end in -e or -en.
+const GERMAN_RACE = new RegExp(
+  String.raw`(?<!\p{L})(\p{L}+)((?:\s+\p{Ll}+e[n]?){0,2}\s+)${UNDECLINED}\$[Rr](?!${GLUED})`,
+  "gu",
+);
+
+function declineGermanRace(text, words, reader, cased) {
+  const weak = words.raceWeak;
+  if (!weak) return text;
+  return text.replace(GERMAN_RACE, (whole, determiner, between, at, all) => {
+    const before = determiner.toLowerCase();
+    const word = OBLIQUE[reader].includes(before) ? `${weak}n` : WEAK_NOMINATIVE[reader].includes(before) ? weak : null;
+    if (!word) return whole;
+    const tokenAt = at + determiner.length + between.length;
+    return `${determiner}${between}${cased(word, tokenAt, all, "R")}`;
+  });
+}
 
 function elide(text, lang, words) {
   const table = ELISIONS[lang];

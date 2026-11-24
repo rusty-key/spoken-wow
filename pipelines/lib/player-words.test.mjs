@@ -121,3 +121,16 @@ test("a French or Italian word before a token elides before a vowel", () => {
     registerPlayerWordRows([]);
   }
 });
+
+test("German's race word declines weak after an article", () => {
+  assert.equal(speakQuestTokens("Ihr seid ein $R. Der $R kam zu dem $R.", "deDE"), "Ihr seid ein Reisender. Der Reisende kam zu dem Reisenden.");
+  assert.equal(speakQuestTokens("Hilfe für einen tapferen jungen $R und dieses $R.", "deDE"), "Hilfe für einen tapferen jungen Reisenden und dieses Reisenden.");
+  assert.equal(speakQuestTokens("Die $R gab es einer $R.", "deDE", "f"), "Die Reisende gab es einer Reisenden.");
+  // Without the word, nothing changes: a team's German words may have none.
+  registerPlayerWordRows([["deDE", '{"m": {"name": "Held", "race": "Wanderer"}, "f": {"name": "Heldin", "race": "Wanderin"}}']]);
+  try {
+    assert.equal(speakQuestTokens("Der $R kam.", "deDE"), "Der Wanderer kam.");
+  } finally {
+    registerPlayerWordRows([]);
+  }
+});
