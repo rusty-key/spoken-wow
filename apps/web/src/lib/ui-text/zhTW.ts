@@ -1245,6 +1245,8 @@ const zhTW: Dictionary = {
     addAsWording: "保留我們的文字，並把玩家的作為這一刻的另一種措辭",
     addBeside: "保留我們的文字，把玩家的放在旁邊：作為另一種措辭，或按玩家性別各一段",
     showMore: "再顯示 {n} 筆，共 {m} 筆",
+    acceptWithout: "不帶 {tokens} 採納",
+    acceptWithoutHow: "遊戲在那裡顯示自己的詞（例如 NPC 的名字），而我們的台詞裡是 {tokens}",
   },
   contribute: {
     title: "投稿",

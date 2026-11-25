@@ -1253,6 +1253,8 @@ const ptBR: Dictionary = {
     addAsWording: "Manter o nosso texto e adicionar o do jogador como outra redação deste momento",
     addBeside: "Manter o nosso texto e colocar o do jogador ao lado: como outra redação, ou uma para cada gênero de jogador",
     showMore: "Mostrar mais {n} de {m}",
+    acceptWithout: "Aceitar sem {tokens}",
+    acceptWithoutHow: "Nossa fala tem {tokens} onde o jogo mostra palavras próprias, como o nome de um NPC",
   },
   contribute: {
     title: "Contribuir",

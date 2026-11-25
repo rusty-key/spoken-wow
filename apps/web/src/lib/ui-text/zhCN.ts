@@ -1207,6 +1207,8 @@ const zhCN: Dictionary = {
     addAsWording: "保留我们的文本，并把玩家的作为这一时刻的另一种措辞",
     addBeside: "保留我们的文本，把玩家的放在旁边：作为另一种措辞，或按玩家性别各一段",
     showMore: "再显示 {n} 条，共 {m} 条",
+    acceptWithout: "不带 {tokens} 采纳",
+    acceptWithoutHow: "游戏在那里显示自己的词（例如 NPC 的名字），而我们的台词里是 {tokens}",
   },
   contribute: {
     title: "投稿",

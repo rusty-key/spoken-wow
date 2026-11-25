@@ -1253,6 +1253,8 @@ const frFR: Dictionary = {
     addBeside:
       "Garder notre texte et placer celui du joueur à côté : comme une autre formulation, ou une par genre de joueur",
     showMore: "Afficher {n} de plus sur {m}",
+    acceptWithout: "Accepter sans {tokens}",
+    acceptWithoutHow: "Notre réplique contient {tokens} là où le jeu affiche ses propres mots, comme le nom d'un PNJ",
   },
   contribute: {
     title: "Contribuer",

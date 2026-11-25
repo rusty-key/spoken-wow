@@ -1252,6 +1252,8 @@ const koKR: Dictionary = {
     addAsWording: "우리 텍스트를 유지하고 플레이어의 텍스트를 이 장면의 또 다른 표현으로 추가",
     addBeside: "우리 텍스트를 유지하고 플레이어의 텍스트를 옆에 추가: 또 다른 표현으로, 또는 플레이어 성별마다 하나씩",
     showMore: "{m}개 중 {n}개 더 보기",
+    acceptWithout: "{tokens} 없이 수락",
+    acceptWithoutHow: "게임이 자체 단어를 표시하는 자리에 우리 대사에는 {tokens}이(가) 있습니다. NPC 이름 같은 경우입니다",
   },
   contribute: {
     title: "기여",
