@@ -365,6 +365,11 @@ local controls = setmetatable({}, { __mode = "k" })
 local function Current(button)
     Actions.SetPausable({ button })
     if button.stops then Actions.SetPlayGlyph(button, Actions.HeadState()) end
+    if button.pauses then
+        Actions.SetPauseGlyph(button)
+        -- On a line kept whole Pause would only do what Stop does.
+        button:SetShown(SoundQueue:Resumes(SoundQueue:GetCurrentSound()))
+    end
 end
 Callbacks:Register("AUDIO_CHANGED", function()
     for button in pairs(controls) do Current(button) end
@@ -380,18 +385,24 @@ local CONTROLS = {
         button.canAct = function() return Speaking() and SoundQueue:CanBePaused() end
         return button
     end,
+    pause = function(parent)
+        local button = Actions.PauseButton(parent, function() return SoundQueue:GetCurrentSound() ~= nil end)
+        button.pauses = true
+        return button
+    end,
 }
 
 --- Public. One of Spoken's round buttons, as its own windows have them, for a window of your own:
---- "previous" (back a line), "stop" (Stop, or Replay once stopped), "skip" (the next line) or
---- "stopall" (stop and clear every line). It acts when clicked, names itself in its tooltip and
---- greys out while it can do nothing; Spoken keeps all of that current. Anchor it yourself.
+--- "previous" (back a line), "pause" (Pause, or Resume from the sentence once paused), "stop" (Stop,
+--- or Replay once stopped), "skip" (the next line) or "stopall" (stop and clear every line). It acts
+--- when clicked, names itself in its tooltip and greys out while it can do nothing; Spoken keeps all
+--- of that current. "pause" shows only on a line its pack keeps as sentences. Anchor it yourself.
 ---@param parent table a frame
 ---@param kind string
 ---@return table button
 function Spoken:CreateControl(parent, kind)
     Require(type(parent) == "table" and CONTROLS[kind] ~= nil,
-        "CreateControl needs a parent frame and \"previous\", \"stop\", \"skip\" or \"stopall\"")
+        "CreateControl needs a parent frame and \"previous\", \"pause\", \"stop\", \"skip\" or \"stopall\"")
     local button = CONTROLS[kind](parent)
     controls[button] = true
     button:HookScript("OnShow", Current)

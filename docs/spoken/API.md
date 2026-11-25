@@ -249,7 +249,7 @@ These give your window the parts Spoken's own windows have, drawn and kept curre
 | Call | |
 |---|---|
 | `Spoken:ShowCaptions(parent, width)` | Spoken's captions of the line shown, in `parent` from its top left, `width` wide: the player's Word Size, Rows at Once, Highlight Words and Type Words Out, scrolling as the line is read. Returns the height they take, 0 where the line shows no words. Call it on each `Update` and size your window to it. |
-| `Spoken:CreateControl(parent, kind)` | One of Spoken's round buttons: `"previous"`, `"stop"` (Stop, then Replay), `"skip"` or `"stopall"`. It acts when clicked, has its tooltip, and greys out while it can do nothing. Anchor it yourself. Raises for another `kind`. |
+| `Spoken:CreateControl(parent, kind)` | One of Spoken's round buttons: `"previous"`, `"pause"` (Pause, then Resume from the sentence; shown only on a line its pack keeps as sentences), `"stop"` (Stop, then Replay), `"skip"` or `"stopall"`. It acts when clicked, has its tooltip, and greys out while it can do nothing. Anchor it yourself. Raises for another `kind`. |
 | `Spoken:CreatePortrait(parent, size)` | Spoken's round portrait. `portrait:SetClip(clip)` shows the line's speaker with the line's badge on the ring, and draws the face again once the game has it. `portrait:SetRingColor(r, g, b)` tints the ring; no colour gives Spoken's back. |
 | `Spoken:CreateActions(parent)` | A row for the line's own buttons: Report, and whatever the module that queued the line adds, minus those the player hid. `row:SetClip(clip)` fills it and sizes the row to them. |
 

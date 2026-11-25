@@ -168,6 +168,8 @@ do
     local stop, skip, back = Spoken:CreateControl(window, "stop"), Spoken:CreateControl(window, "skip"),
         Spoken:CreateControl(window, "previous")
     Expect("a control for a kind Spoken has not raises", not pcall(Spoken.CreateControl, Spoken, window, "teleport"), true)
+    local pause = Spoken:CreateControl(window, "pause")
+    Expect("Pause hides on a line kept whole", pause:IsShown(), false)
     Expect("Stop reads Stop while a line speaks, and Skip can go on to the line waiting",
         stop.state .. " " .. skip:GetAlpha(), "stop 1")
     Spoken:Pause()
@@ -178,6 +180,12 @@ do
         "0.4 1")
     stop:GetScript("OnClick")(stop)
     Expect("Stop stops when clicked", Spoken:IsPaused(), true)
+    Spoken:Resume()
+    quests:Enqueue(H.Clip({ key = "kept", pieces = "2 2 2", present = { transcript = "Kept as sentences. Two of them." } }))
+    Spoken:Skip()
+    Expect("...shows on one kept as sentences", pause:IsShown(), true)
+    pause:GetScript("OnClick")(pause)
+    Expect("...and pauses it there when clicked", env.SoundQueue:HaltedBy(), "pause")
     Spoken:Resume()
     local height = Spoken:ShowCaptions(window, 300)
     Expect("the captions go in the window, as tall as the player's rows", tostring(env.Transcript.frame:GetParent() == window)
