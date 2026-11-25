@@ -314,10 +314,12 @@ describe("the times fish.audio streams", () => {
       sse([
         { audio: "a" },
         { audio: "b", seq: 1, offset: 1, segments: [{ text: "Go.", start: 0, end: 0.2 }] },
-        { audio: "c", seq: 0, segments: [{ text: "Take", start: 0.1, end: 0.3 }] },
+        // A late snapshot of chunk 0's timing, with no audio of its own.
+        { audio: "", seq: 0, segments: [{ text: "Take", start: 0.1, end: 0.3 }] },
       ]),
     );
     expect(read.timing?.words?.map((word) => word.word)).toEqual(["Take", "Go."]);
+    expect(String(read.audio)).toBe("ab");
   });
 
   it("leaves out speaker tags and bracketed directions, which nothing shows", () => {
@@ -414,13 +416,19 @@ describe("the times fish.audio streams", () => {
 
   it("is an error when no audio came", () => {
     expect(readTimedStream("")).toEqual({ error: "fish.audio's stream held no audio" });
-    expect(readTimedStream(`data: ${JSON.stringify({ message: "queued" })}\n\n`)).toEqual({
-      error: "fish.audio's stream held no audio",
+  });
+
+  it("names fish.audio's message when an error came as plain data and no audio did", () => {
+    expect(readTimedStream(`data: ${JSON.stringify({ status: 500, message: "model overloaded" })}\n\n`)).toEqual({
+      error: "fish.audio's stream held no audio: model overloaded",
     });
   });
 
-  it("reads events split by CRLF, as SSE allows", () => {
-    const read = timed(sse([{ audio: "a" }, { audio: "b" }]).replace(/\n/g, "\r\n"));
+  it.each([
+    ["CRLF", "\r\n"],
+    ["CR", "\r"],
+  ])("reads events split by %s, as SSE allows", (_name, ending) => {
+    const read = timed(sse([{ audio: "a" }, { audio: "b" }]).replace(/\n/g, ending));
     expect(String(read.audio)).toBe("ab");
   });
 
