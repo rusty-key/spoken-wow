@@ -37,6 +37,11 @@ export function storeFormInput(store: StoreId, form: { token: string; removeToke
   return { store, ...sentToken, projects: Object.fromEntries(Object.entries(form.projects).map(([k, v]) => [k, v.trim()])), gameVersions: form.versions.trim() }
 }
 
+/** Only the one id: a token, game versions or other ids left out stay as saved. */
+export function projectIdInput(folder: string, id: string): StoreInput {
+  return { store: 'curseforge', projects: { [folder]: id.trim() } }
+}
+
 export function rowHint(state: ReleaseRow['state'], store: StoreId): string {
   return state === 'unchecked' ? S.contributor.hintUnchecked(storeName(store)) : S.contributor.hint[state]
 }

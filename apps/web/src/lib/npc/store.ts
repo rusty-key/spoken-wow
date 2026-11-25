@@ -9,6 +9,7 @@
 import { db } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
 import { saveName } from "@/lib/names/store";
+import { queryAs, readAs } from "@/lib/teams/store";
 
 // Defined in npc.ts, which is free of node imports -- see its own docstring for why that
 // split exists (ContributionTable.tsx, a client component, needs PROVENANCES as a value, and
@@ -143,12 +144,62 @@ export async function setDirection(kind: NpcRowKind, npcId: number, direction: s
   ]);
 }
 
-/** Every NPC's direction, keyed by resolutionKey. */
+type DirectionRow = { npcKind: NpcRowKind; npcId: number; direction: string };
+
+function byNpc(rows: DirectionRow[]): Map<string, string> {
+  return new Map(rows.map((row) => [resolutionKey(row.npcKind, row.npcId), row.direction]));
+}
+
+/** Every NPC's global direction, keyed by resolutionKey. */
 export async function listDirections(): Promise<Map<string, string>> {
-  const { rows } = await db().query<{ npcKind: NpcRowKind; npcId: number; direction: string }>(
+  const { rows } = await db().query<DirectionRow>(
     `select "npcKind", "npcId", "direction" from "npc" where "direction" is not null`,
   );
-  return new Map(rows.map((row) => [resolutionKey(row.npcKind, row.npcId), row.direction]));
+  return byNpc(rows);
+}
+
+/** The reading team's own directions in `lang`, keyed by resolutionKey. */
+export async function listLanguageDirections(lang: Lang): Promise<Map<string, string>> {
+  return byNpc(
+    await readAs<DirectionRow>(
+      lang,
+      `select "npcKind", "npcId", "direction" from "npc_direction_locale" where "lang" = $1`,
+      [lang],
+    ),
+  );
+}
+
+/** Each NPC's direction as `lang` voices it: the language's own, else the global one. */
+export async function directionsIn(lang: Lang): Promise<Map<string, string>> {
+  if (lang === BASE_LANG) return listDirections();
+  const [global, own] = await Promise.all([listDirections(), listLanguageDirections(lang)]);
+  return new Map([...global, ...own]);
+}
+
+/** The acting team's direction for an NPC in `lang`; null clears it back to the global one. */
+export async function setLanguageDirection(
+  kind: NpcRowKind,
+  npcId: number,
+  lang: Lang,
+  direction: string | null,
+  updatedBy: string,
+): Promise<void> {
+  if (direction === null) {
+    await queryAs(
+      lang,
+      `delete from "npc_direction_locale" where "lang" = $1 and "npcKind" = $2 and "npcId" = $3`,
+      [lang, kind, npcId],
+    );
+    return;
+  }
+  await queryAs(
+    lang,
+    `insert into "npc_direction_locale" ("lang", "npcKind", "npcId", "direction", "updatedBy")
+     values ($1, $2, $3, $4, $5)
+     on conflict ("teamId", "lang", "npcKind", "npcId") do update
+        set "direction" = excluded."direction", "updatedAt" = now(), "updatedBy" = excluded."updatedBy"`,
+    [lang, kind, npcId, direction, updatedBy],
+  );
 }
 
 /**

@@ -16,7 +16,7 @@ import { EN, type UiText } from "@/lib/ui-text/en";
 /** A team's setup beside its voices, which the voices' line names. */
 const SETUP: readonly DeletedTable[] = [
   "voice_assignment", "voice_sample", "fish_reference", "generation_setting_locale", "generation_setting",
-  "lexicon_change", "pronunciation_lexicon_locale", "pronunciation_lexicon",
+  "npc_direction_locale", "lexicon_change", "pronunciation_lexicon_locale", "pronunciation_lexicon",
 ];
 
 type Words = UiText["teams"];

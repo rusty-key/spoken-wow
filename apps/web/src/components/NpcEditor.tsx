@@ -38,6 +38,10 @@ function key(npcKind: NpcRowKind | null, npcId: number): string {
   return `${npcKind}:${npcId}`;
 }
 
+function directionKey(npcKey: string, inLanguage: boolean): string {
+  return `${inLanguage ? "lang" : "global"}:${npcKey}`;
+}
+
 // ContributionTable's own words for the same five, so a speaker reads the same on both tabs.
 const provenanceOptions = (words: UiText["npc"]): ChipOption[] =>
   PROVENANCES.map((option) => ({ value: option, label: words.provenance[option] }));
@@ -136,10 +140,12 @@ type Answer = SpeakerAnswer & { npcName?: string };
 /** An NPC's name with a moderator's Edit, which saves over whatever named it. */
 function NameCell({
   name,
+  readOnly,
   busy,
   onSave,
 }: {
   name: string | null;
+  readOnly: boolean;
   busy: boolean;
   onSave: (name: string) => void;
 }) {
@@ -150,9 +156,11 @@ function NameCell({
     return (
       <div className={ROW_LINE}>
         <span>{name ?? <span className="text-muted-foreground">{t.dashboard.unnamed}</span>}</span>
-        <LiteButton className={ROW_BUTTON} onClick={() => setDraft(name ?? "")}>
-          {words.edit}
-        </LiteButton>
+        {readOnly ? null : (
+          <LiteButton className={ROW_BUTTON} onClick={() => setDraft(name ?? "")}>
+            {words.edit}
+          </LiteButton>
+        )}
       </div>
     );
   }
@@ -197,31 +205,33 @@ function lookups(npcId: number, client: ClientFilter, words: UiText["npc"]): { l
 
 const SEX_WORDS: Record<number, string> = { 2: "man", 3: "woman" };
 
-/** The NPC's own direction, typed bare; the route stores it bracketed. */
+/** An NPC's direction, typed bare; the route stores it bracketed. Without `onSave`, only shown. */
 function DirectionCell({
   direction,
   busy,
+  label,
+  title,
   onSave,
 }: {
   direction: string | null;
   busy: boolean;
+  label: string;
+  title: string;
   /** Resolves to the server's reason when the save was refused, null when it went through. */
-  onSave: (direction: string) => Promise<string | null>;
+  onSave?: (direction: string) => Promise<string | null>;
 }) {
   const t = useUiText();
   const words = t.npc;
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const bare = direction ? bareDirection(direction) : "";
+  const shown = bare ? <span>[{bare}]</span> : null;
+  if (!onSave) return shown;
   if (draft === null) {
     return (
       <div className={ROW_LINE}>
-        {bare ? <span>[{bare}]</span> : null}
-        <LiteButton
-          className={ROW_BUTTON}
-          onClick={() => setDraft(bare)}
-          title={words.directionAdd}
-        >
+        {shown}
+        <LiteButton className={ROW_BUTTON} onClick={() => setDraft(bare)} title={title}>
           {bare ? words.edit : words.add}
         </LiteButton>
       </div>
@@ -245,7 +255,7 @@ function DirectionCell({
     >
       <div className={ROW_LINE}>
         <input
-          aria-label={words.directionLabel}
+          aria-label={label}
           autoFocus
           maxLength={200}
           placeholder={words.directionPlaceholder}
@@ -305,12 +315,14 @@ function BodyCells({
   roster: Roster;
   edits: ReturnType<typeof useRosterEdits>;
   busy: boolean;
-  onPost: (body: Record<string, unknown>) => void;
+  /** Absent when read-only. */
+  onPost?: (body: Record<string, unknown>) => void;
 }) {
-  if (npc.npcKind !== "creature" || !npc.race || sexOf(npc.gender) === null) return null;
   const words = useUiText().npc;
-  const add = <AddBody roster={roster} busy={busy} onAdd={(race, sex) => onPost({ action: "add", race, sex })} />;
-  if (!bodies.length) {
+  if (npc.npcKind !== "creature" || !npc.race || sexOf(npc.gender) === null) return null;
+  if (!bodies.length && !onPost) return null;
+  const add = onPost ? <AddBody roster={roster} busy={busy} onAdd={(race, sex) => onPost({ action: "add", race, sex })} /> : null;
+  if (!bodies.length && onPost) {
     return (
       <div className="mt-1 space-y-1">
         <LiteButton className={ROW_BUTTON} disabled={busy} onClick={() => onPost({ action: "split" })}
@@ -331,22 +343,26 @@ function BodyCells({
             npc={summaryFromBody(npc, answer, roster)}
             roster={roster}
             edits={edits}
-            readOnly={false}
+            readOnly={!onPost}
             busy={busy}
             lockType
-            onSave={(next) => onPost({ race: answer.race, sex: answer.sex, flavor: next.flavor ?? answer.flavor, doubtful: next.doubtful ?? false })}
+            onSave={(next) => onPost?.({ race: answer.race, sex: answer.sex, flavor: next.flavor ?? answer.flavor, doubtful: next.doubtful ?? false })}
           />
-          <LiteButton className={ROW_BUTTON} disabled={busy} onClick={() => onPost({ action: "remove", race: answer.race, sex: answer.sex })}
-            title={words.removeBodyTitle}>
-            {words.remove}
-          </LiteButton>
+          {onPost ? (
+            <LiteButton className={ROW_BUTTON} disabled={busy} onClick={() => onPost({ action: "remove", race: answer.race, sex: answer.sex })}
+              title={words.removeBodyTitle}>
+              {words.remove}
+            </LiteButton>
+          ) : null}
         </div>
       ))}
       {add}
-      <LiteButton className={ROW_BUTTON} disabled={busy} onClick={() => onPost({ action: "unsplit" })}
-        title={words.unsplitTitle}>
-        {words.unsplit}
-      </LiteButton>
+      {onPost ? (
+        <LiteButton className={ROW_BUTTON} disabled={busy} onClick={() => onPost({ action: "unsplit" })}
+          title={words.unsplitTitle}>
+          {words.unsplit}
+        </LiteButton>
+      ) : null}
     </div>
   );
 }
@@ -354,14 +370,25 @@ function BodyCells({
 export default function NpcEditor({
   initial,
   roster: rosterData,
+  readOnly,
+  ownDirections,
 }: {
   /**
    * Each with the client family whose guess filed it, null for one only the extract names, its
-   * bodies where it is split by body, and its own direction.
+   * bodies where it is split by body, its global direction and the page language's own.
    */
-  initial: (NpcSummary & { client: ClientFamily | null; bodies: NpcBodyAnswer[]; direction: string | null })[];
+  initial: (NpcSummary & {
+    client: ClientFamily | null;
+    bodies: NpcBodyAnswer[];
+    direction: string | null;
+    languageDirection: string | null;
+  })[];
   /** The roster, for SpeakerCell's pickers, and grown by their "New" entries. */
   roster: RosterData;
+  /** No controls but the language's own directions: who an NPC is is the admin's to answer. */
+  readOnly: boolean;
+  /** Whether to show and set the page language's own directions. */
+  ownDirections: boolean;
 }) {
   const lang = useLang();
   const t = useUiText();
@@ -412,12 +439,25 @@ export default function NpcEditor({
     () => new Map(initial.filter((row) => row.bodies.length).map((row) => [key(row.npcKind, row.npcId), row.bodies])),
     [initial],
   );
-  /** Each direction this session saved, over the server's, keyed by NPC. */
+  /** Each direction this session saved, over the server's, keyed by directionKey. */
   const [savedDirections, setSavedDirections] = useState<Record<string, string | null>>({});
   const initialDirections = useMemo(
-    () => new Map(initial.map((row) => [key(row.npcKind, row.npcId), row.direction])),
+    () =>
+      new Map(
+        initial.flatMap((row) => {
+          const k = key(row.npcKind, row.npcId);
+          return [
+            [directionKey(k, false), row.direction],
+            [directionKey(k, true), row.languageDirection],
+          ] as const;
+        }),
+      ),
     [initial],
   );
+  const directionOf = (k: string, inLanguage: boolean) => {
+    const dk = directionKey(k, inLanguage);
+    return dk in savedDirections ? savedDirections[dk] : (initialDirections.get(dk) ?? null);
+  };
   const [busy, setBusy] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   /** Rows ticked for the bulk saves, keyed by NPC. */
@@ -460,20 +500,24 @@ export default function NpcEditor({
     [post],
   );
 
-  const postDirection = useCallback(async (npc: NpcSummary, direction: string): Promise<string | null> => {
-    const k = key(npc.npcKind, npc.npcId);
-    setBusy(k);
-    const response = await fetch("/api/npcs/direction", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ direction, npcKind: npc.npcKind, npcId: npc.npcId }),
-    }).catch(() => null);
-    setBusy(null);
-    const saved = (await response?.json().catch(() => null)) as { direction?: string | null; error?: string } | null;
-    if (!response?.ok) return saved?.error ?? words.failed;
-    setSavedDirections((current) => ({ ...current, [k]: saved?.direction ?? null }));
-    return null;
-  }, [words.failed]);
+  const postDirection = useCallback(
+    async (npc: NpcSummary, direction: string, inLanguage: boolean): Promise<string | null> => {
+      const k = key(npc.npcKind, npc.npcId);
+      setBusy(k);
+      const url = inLanguage ? `/api/npcs/language-direction?lang=${lang}` : "/api/npcs/direction";
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ direction, npcKind: npc.npcKind, npcId: npc.npcId }),
+      }).catch(() => null);
+      setBusy(null);
+      const saved = (await response?.json().catch(() => null)) as { direction?: string | null; error?: string } | null;
+      if (!response?.ok) return saved?.error ?? words.failed;
+      setSavedDirections((current) => ({ ...current, [directionKey(k, inLanguage)]: saved?.direction ?? null }));
+      return null;
+    },
+    [lang, words.failed],
+  );
 
   const postBody = useCallback(async (npc: NpcSummary, body: Record<string, unknown>) => {
     const k = key(npc.npcKind, npc.npcId);
@@ -601,7 +645,7 @@ export default function NpcEditor({
         />
       </div>
 
-      {rows.length > 0 ? (
+      {rows.length > 0 && !readOnly ? (
         <div className="mb-3 flex min-h-8 flex-wrap items-center gap-2 text-xs">
           {bulk ? (
             <span className="text-muted-foreground">
@@ -655,16 +699,18 @@ export default function NpcEditor({
         <table className="w-fit border-separate border-spacing-0 text-sm">
           <thead className="text-muted-foreground text-left text-xs">
             <tr>
-              <th className="border-b py-2 pr-2 align-middle font-normal">
-                <Checkbox
-                  aria-label={words.selectAll}
-                  checked={allTicked ? true : selectedRows.length > 0 ? "indeterminate" : false}
-                  disabled={bulk !== null}
-                  onCheckedChange={(on) =>
-                    setSelected(on === true ? new Set(shown.map((npc) => key(npc.npcKind, npc.npcId))) : new Set())
-                  }
-                />
-              </th>
+              {readOnly ? null : (
+                <th className="border-b py-2 pr-2 align-middle font-normal">
+                  <Checkbox
+                    aria-label={words.selectAll}
+                    checked={allTicked ? true : selectedRows.length > 0 ? "indeterminate" : false}
+                    disabled={bulk !== null}
+                    onCheckedChange={(on) =>
+                      setSelected(on === true ? new Set(shown.map((npc) => key(npc.npcKind, npc.npcId))) : new Set())
+                    }
+                  />
+                </th>
+              )}
               <SortHeader column="id" sort={sort} onSort={(column) => setParam("sort", sortParam(nextSort(sort, column)))}>
                 {words.columnId}
               </SortHeader>
@@ -673,6 +719,9 @@ export default function NpcEditor({
               </SortHeader>
               <th className="border-b py-2 pr-3 font-normal">{words.columnSpeaker}</th>
               <th className="border-b py-2 pr-3 font-normal">{words.columnDirection}</th>
+              {ownDirections ? (
+                <th className="border-b py-2 pr-3 font-normal">{fill(words.columnLanguageDirection, { lang })}</th>
+              ) : null}
               <th className="border-b py-2 font-normal" />
             </tr>
           </thead>
@@ -681,14 +730,16 @@ export default function NpcEditor({
               const k = key(npc.npcKind, npc.npcId);
               return (
                 <tr key={k} className="align-middle [&>td]:border-b [&>td]:py-1.5 [&>td]:leading-5">
-                  <td className="pr-2">
-                    <Checkbox
-                      aria-label={fill(words.selectFor, { id: npc.npcId })}
-                      checked={selected.has(k)}
-                      disabled={bulk !== null}
-                      onCheckedChange={(on) => toggle(k, on === true)}
-                    />
-                  </td>
+                  {readOnly ? null : (
+                    <td className="pr-2">
+                      <Checkbox
+                        aria-label={fill(words.selectFor, { id: npc.npcId })}
+                        checked={selected.has(k)}
+                        disabled={bulk !== null}
+                        onCheckedChange={(on) => toggle(k, on === true)}
+                      />
+                    </td>
+                  )}
                   <td className="pr-3 text-xs whitespace-nowrap">
                     <span className="font-mono">{npc.npcId}</span>
                     {npc.npcKind === "gameobject" ? (
@@ -708,6 +759,7 @@ export default function NpcEditor({
                     <NameCell
                       key={npc.npcName ?? ""}
                       name={npc.npcName}
+                      readOnly={readOnly}
                       busy={busy === k || bulk !== null}
                       onSave={(npcName) => void save(npc, { npcName })}
                     />
@@ -719,7 +771,7 @@ export default function NpcEditor({
                       npc={npc}
                       roster={roster}
                       edits={edits}
-                      readOnly={false}
+                      readOnly={readOnly}
                       busy={busy === k || bulk !== null}
                       onSave={(answer) => void save(npc, answer)}
                     />
@@ -729,7 +781,7 @@ export default function NpcEditor({
                       roster={roster}
                       edits={edits}
                       busy={busy === k || bulk !== null}
-                      onPost={(body) => void postBody(npc, body)}
+                      onPost={readOnly ? undefined : (body) => void postBody(npc, body)}
                     />
                     {failed === k ? (
                       <p className="text-destructive mt-1">{words.failed}</p>
@@ -737,11 +789,24 @@ export default function NpcEditor({
                   </td>
                   <td className="pr-3 text-xs">
                     <DirectionCell
-                      direction={k in savedDirections ? savedDirections[k] : (initialDirections.get(k) ?? null)}
+                      direction={directionOf(k, false)}
                       busy={busy === k || bulk !== null}
-                      onSave={(direction) => postDirection(npc, direction)}
+                      label={words.directionLabel}
+                      title={words.directionAdd}
+                      onSave={readOnly ? undefined : (direction) => postDirection(npc, direction, false)}
                     />
                   </td>
+                  {ownDirections ? (
+                    <td className="pr-3 text-xs">
+                      <DirectionCell
+                        direction={directionOf(k, true)}
+                        busy={busy === k || bulk !== null}
+                        label={fill(words.languageDirectionLabel, { lang })}
+                        title={fill(words.languageDirectionTitle, { lang })}
+                        onSave={(direction) => postDirection(npc, direction, true)}
+                      />
+                    </td>
+                  ) : null}
                   <td className="text-right whitespace-nowrap">
                     {lookups(npc.npcId, client, words).map(({ label, path, where }) => (
                       <a

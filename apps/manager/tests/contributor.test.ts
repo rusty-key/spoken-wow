@@ -9,6 +9,8 @@ import { PlainError } from '../src/main/errors'
 import { languageFolders } from '../src/shared/products'
 import { savePackState } from '../src/main/packs-state'
 import { ManagerService } from '../src/main/service'
+import { storeInput } from '../src/main/ipc'
+import { projectIdInput } from '../src/renderer/src/contributor'
 import { channelFixture, channelKeys, serveChannel, type ChannelFixture, type ChannelKeys } from './channel-helpers'
 import { makeGame, tmpDir, write, type TestServer } from './helpers'
 
@@ -555,6 +557,16 @@ describe('saveStore', () => {
     expect(view.config.hasCfToken).toBe(false)
     expect(view.config.gameVersions).toBe('1.15.9')
     expect(h.calls.some((c) => c.url.includes('curseforge.com'))).toBe(false)
+  })
+
+  it('a project id saved from the Release page keeps the token, the game versions and the other ids', async () => {
+    const h = await signedIn()
+    h.store.setToken('curseforge', CF_TOKEN)
+    await h.svc.contributor.saveStore({ store: 'curseforge', projects: { [PLACES]: '5' }, gameVersions: '1.15.9' })
+    const quests = languageFolders('deDE').find((f) => f !== PLACES)!
+    const view = await h.svc.contributor.saveStore(storeInput(projectIdInput(quests, ' 6 ')))
+    expect(h.store.token('curseforge')).toBe(CF_TOKEN)
+    expect(view.config).toMatchObject({ hasCfToken: true, gameVersions: '1.15.9', projects: { [PLACES]: '5', [quests]: '6' } })
   })
 
   it('removes a revoked GitHub token even with the repository edited', async () => {

@@ -14,7 +14,7 @@ afterAll(closeDb);
 
 const TABLES = [
   "take", "recording", "take_ack", "voice", "voice_assignment", "voice_clone", "voice_sample",
-  "fish_reference", "generation_setting", "generation_setting_locale", "pronunciation_lexicon",
+  "fish_reference", "generation_setting", "generation_setting_locale", "npc_direction_locale", "pronunciation_lexicon",
   "pronunciation_lexicon_locale", "lexicon_change", "line_override", "line_ignore", "line_flag",
   "line_issue", "line_issue_line", "report", "regeneration_batch", "regeneration_job",
   "regeneration_pause", "queue_dismissal", "activity",
