@@ -232,6 +232,7 @@ function ProjectIdForm({ folder, disabled, onSaved }: { folder: string; disabled
       onSaved()
     } catch (e) {
       setError(errorText(e))
+    } finally {
       setSaving(false)
     }
   }
@@ -243,7 +244,18 @@ function ProjectIdForm({ folder, disabled, onSaved }: { folder: string; disabled
         void save()
       }}
     >
-      <input className="input" inputMode="numeric" spellCheck={false} aria-label={`${S.contributor.projectIds} ${folder}`} value={id} onChange={(e) => setId(e.target.value)} />
+      <input
+        className="input"
+        inputMode="numeric"
+        spellCheck={false}
+        aria-label={`${S.contributor.projectIds} ${folder}`}
+        disabled={saving}
+        value={id}
+        onChange={(e) => {
+          setId(e.target.value)
+          setError('')
+        }}
+      />
       <button type="submit" className="btn btn-sm" disabled={disabled || saving || id.trim() === ''}>
         {saving ? `${S.contributor.saving}…` : S.contributor.save}
       </button>
