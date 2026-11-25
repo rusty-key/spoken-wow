@@ -243,10 +243,16 @@ the player turned the narrator off for its part, or DialogueUI's dialog covers t
 the player previews your style with nothing playing, it is told a sample line. If `Update` raises,
 the line still plays and the error goes to the debug log.
 
-What a window usually needs, all Public:
+Two calls give your window what Spoken's own have, drawn and kept current by Spoken:
 
-- **The words as they are read:** `GetCaption()`, every frame. It names the word being spoken and
-  how far the reading is, and says whether the player wants words highlighted or typed out.
+| Call | |
+|---|---|
+| `Spoken:ShowCaptions(parent, width)` | Spoken's captions of the line shown, in `parent` from its top left, `width` wide: the player's Word Size, Rows at Once, Highlight Words and Type Words Out, scrolling as the line is read. Returns the height they take, 0 where the line shows no words. Call it on each `Update` and size your window to it. |
+| `Spoken:CreateControl(parent, kind)` | One of Spoken's round buttons: `"previous"`, `"stop"` (Stop, then Replay), `"skip"` or `"stopall"`. It acts when clicked, has its tooltip, and greys out while it can do nothing. Anchor it yourself. Raises for another `kind`. |
+
+The rest of what a window usually needs, all Public:
+
+- **The reading position:** `GetCaption()`, every frame, for a progress bar of your own (`progress`).
 - **Who and what:** the clip's `present.header`, `present.label` and `present.portrait.creatureID`.
 - **Status:** `IsPaused()`, `GetWaitingCount()`, `GetHeldReason(clip)`, and `AUDIO_CHANGED` to
   redraw them.

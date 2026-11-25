@@ -118,5 +118,30 @@ quests:Enqueue(Line("q6"))
 Expect("Public status for a narrator of its own", Spoken:GetWaitingCount() .. " " .. tostring(Spoken:GetHeldReason(Spoken:GetNowPlaying()))
     .. " " .. tostring(Spoken:GetHeldReason(nil)) .. " " .. tostring(Spoken:CanPrevious()), "1 nil nil true")
 
+---------------------------------------------------------------- Spoken's buttons and captions in a window of its own
+do
+    env.Addon:SetPlayerStyle("scroll")
+    P:RefreshConfig()
+    local window = CreateFrame("Frame", nil, UIParent)
+    local stop, skip, back = Spoken:CreateControl(window, "stop"), Spoken:CreateControl(window, "skip"),
+        Spoken:CreateControl(window, "previous")
+    Expect("a control for a kind Spoken has not raises", not pcall(Spoken.CreateControl, Spoken, window, "teleport"), true)
+    Expect("Stop reads Stop while a line speaks, and Skip can go on to the line waiting",
+        stop.state .. " " .. skip:GetAlpha(), "stop 1")
+    Spoken:Pause()
+    Expect("...Replay once stopped, kept current by Spoken", stop.state, "replay")
+    Spoken:Resume()
+    Spoken:Skip()
+    Expect("...and Skip greys out with no line waiting, while Back has the line skipped", skip:GetAlpha() .. " " .. back:GetAlpha(),
+        "0.4 1")
+    stop:GetScript("OnClick")(stop)
+    Expect("Stop stops when clicked", Spoken:IsPaused(), true)
+    Spoken:Resume()
+    local height = Spoken:ShowCaptions(window, 300)
+    Expect("the captions go in the window, as tall as the player's rows", tostring(env.Transcript.frame:GetParent() == window)
+        .. " " .. tostring(height > 0) .. " " .. env.Transcript.frame:GetWidth(), "true true 300")
+    Expect("ShowCaptions needs a frame and a width", not pcall(Spoken.ShowCaptions, Spoken, window), true)
+end
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll narrator tests passed")

@@ -340,9 +340,8 @@ local OWN_STYLES = { subtitle = true, minimal = true, classic = true, dialogueui
 --- Public. Offer a narrator style of your own: a card among Spoken's narrator styles, titled
 --- `info.title` over `info.description`, with `info.picture` (a texture) where you give one. While
 --- it is the style, Spoken shows none of its own windows and calls `info.Update(clip)` whenever the
---- line to show changes: the clip to show, or nil to show nothing. Draw it yourself, reading the
---- rest from the Public API: GetCaption for the words as they are read, GetNowPlaying, IsPaused,
---- GetWaitingCount, and Pause, Resume, Skip, Previous and StopAll for controls.
+--- line to show changes: the clip to show, or nil to show nothing. Draw it yourself: ShowCaptions
+--- puts Spoken's captions in it and CreateControl its buttons; the rest is on the Public API.
 --- `info.settings(layout)`, optional, adds a section of rows to Spoken's page, shown while it is
 --- the style. Register while your addon loads, so the card is there when the page is built. `id`
 --- taken twice replaces the first.
@@ -358,6 +357,59 @@ function Spoken:RegisterNarrator(id, info)
     if Narrators.byId[id] then Developer:Log("api", "narrator %q registered again; the new one replaces it", id) end
     Narrators:Register(id, { title = info.title, description = info.description, picture = info.picture,
         Update = info.Update, settings = info.settings })
+end
+
+-- The controls handed out, kept current as the queue changes: weak, so a dropped one is let go.
+local controls = setmetatable({}, { __mode = "k" })
+local function Current(button)
+    Actions.SetPausable({ button })
+    if button.stops then Actions.SetPlayGlyph(button, Actions.HeadState()) end
+end
+Callbacks:Register("AUDIO_CHANGED", function()
+    for button in pairs(controls) do Current(button) end
+end)
+local CONTROLS = {
+    previous = Actions.PreviousButton,
+    skip = Actions.SkipButton,
+    stopall = Actions.EjectButton,
+    stop = function(parent)
+        local button = Actions.StopButton(parent)
+        button.stops = true
+        button.canAct = function() return SoundQueue:GetCurrentSound() ~= nil and SoundQueue:CanBePaused() end
+        return button
+    end,
+}
+
+--- Public. One of Spoken's round buttons, as its own windows have them, for a window of your own:
+--- "previous" (back a line), "stop" (Stop, or Replay once stopped), "skip" (the next line) or
+--- "stopall" (stop and clear every line). It acts when clicked, names itself in its tooltip and
+--- greys out while it can do nothing; Spoken keeps all of that current. Anchor it yourself.
+---@param parent table a frame
+---@param kind string
+---@return table button
+function Spoken:CreateControl(parent, kind)
+    Require(type(parent) == "table" and CONTROLS[kind] ~= nil,
+        "CreateControl needs a parent frame and \"previous\", \"stop\", \"skip\" or \"stopall\"")
+    local button = CONTROLS[kind](parent)
+    controls[button] = true
+    button:HookScript("OnShow", Current)
+    Current(button)
+    return button
+end
+
+--- Public. Spoken's captions of the line shown, in `parent`: from its top left, `width` wide, with the
+--- player's Word Size, Rows at Once, Highlight Words and Type Words Out, scrolling as they are read.
+--- Returns the height they take, 0 where the line shows no words; call it again on each Update to
+--- size your window to them.
+---@param parent table a frame
+---@param width number
+---@return number height
+function Spoken:ShowCaptions(parent, width)
+    Require(type(parent) == "table" and type(width) == "number", "ShowCaptions needs a parent frame and a width")
+    if not Transcript.frame then return 0 end
+    local height = Transcript:HeightForClip(PlayerFrame:Current())
+    Transcript:Dock(parent, parent, "TOPLEFT", 0, 0, width, height)
+    return height
 end
 
 --- Public. Ask the player once, ever, whether to switch to the narrator style `id`, which this addon
