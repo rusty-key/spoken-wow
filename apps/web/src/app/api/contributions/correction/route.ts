@@ -9,7 +9,8 @@
  * moment (acceptAsWording). Otherwise `lineId` and `variant`, where given, name the wording the
  * correction fixes; without them it is the closest one. `split`, "m" or "f", keeps both
  * instead, the player's text for that player gender and ours for the other. `text`, where given,
- * is the moderator's edit of the player's text, saved on the row before it is accepted.
+ * is the moderator's edit of the player's text, saved on the row before it is accepted. `drops`
+ * are the player tokens a refusal named (`dropped`) and the moderator says our line has wrongly.
  */
 import { acceptAsWording, acceptCorrection, editCorrectionText } from "@/lib/contributions/correction";
 import { isReaderGender } from "@/lib/contributions/gender";
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
     variant?: unknown;
     split?: unknown;
     text?: unknown;
+    drops?: unknown;
   };
 
   const id = Number(body.id);
@@ -55,17 +57,19 @@ export async function POST(request: Request) {
     typeof body.lineId === "string" && Number.isInteger(body.variant)
       ? { lineId: body.lineId, variant: body.variant as number }
       : undefined;
+  const split = isReaderGender(body.split) ? body.split : undefined;
+  const drops = Array.isArray(body.drops) ? body.drops.filter((token) => typeof token === "string") : [];
   const outcome =
     body.as === "wording"
       ? await acceptAsWording(id, session.user.id)
-      : await acceptCorrection(id, session.user.id, pick, undefined, isReaderGender(body.split) ? body.split : undefined);
+      : await acceptCorrection(id, session.user.id, pick, undefined, split, drops);
   if (!outcome.ok) {
     // A refused accept leaves the row as it was, the edit with it.
     if (previous !== null) await rewriteWaitingTexts([{ id, text: previous }]);
     if (outcome.reason === "not-found") {
       return Response.json({ error: "unknown contribution" }, { status: 404 });
     }
-    return Response.json({ error: outcome.message, kind: outcome.reason }, { status: 409 });
+    return Response.json({ error: outcome.message, kind: outcome.reason, dropped: outcome.dropped }, { status: 409 });
   }
   return Response.json({ contribution: outcome.contribution });
 }
