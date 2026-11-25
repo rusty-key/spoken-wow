@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { langName, type Lang } from "@/lib/lang";
 import { fill } from "@/lib/site-text/format";
-import { accessLabel, type ApiToken, type TokenAccess } from "@/lib/tokens/types";
+import { needsLang as langNeeded, scopeLabels, type ApiToken, type TokenAccess } from "@/lib/tokens/types";
 
 import { useApiTokens } from "./useApiTokens";
 
@@ -43,7 +43,7 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
   const [created, setCreated] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const chosen = langs.find((entry) => entry.lang === lang) ?? langs[0];
-  const needsLang = access !== "none" || generate;
+  const needsLang = langNeeded({ access, generate });
 
   function chooseLang(code: Lang) {
     const next = langs.find((entry) => entry.lang === code) ?? langs[0];
@@ -178,9 +178,9 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
               <span className="font-medium">{token.label}</span>
               <span className="text-muted-foreground font-mono">…{token.hint}</span>
               {token.lang && <span>{langName(token.lang)}</span>}
-              {(token.lang || token.access !== "none") && <span>{accessLabel(token)}</span>}
-              {token.generate && <span>{words.generate}</span>}
-              {token.packs && <span>{t.profile.tokens.packs}</span>}
+              {scopeLabels(token, { generate: words.generate, packs: t.profile.tokens.packs }).map((scope) => (
+                <span key={scope}>{scope}</span>
+              ))}
               <span className="text-muted-foreground">{fill(words.expiresOn, { when: token.expiresAt.slice(0, 10) })}</span>
               <span className="text-muted-foreground">
                 {token.lastUsedAt ? fill(words.lastUsedOn, { when: token.lastUsedAt.slice(0, 10) }) : words.neverUsed}

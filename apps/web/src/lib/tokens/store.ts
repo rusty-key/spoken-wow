@@ -86,7 +86,6 @@ export async function findLiveToken(raw: string): Promise<(ApiToken & { role: st
 
 const BEARER = /^Bearer\s+(\S+)$/;
 
-/** The live token in the request's Authorization header, as findLiveToken gives it. */
 export async function bearerToken(request: Request): Promise<(ApiToken & { role: string | null }) | null> {
   const raw = request.headers.get("authorization")?.match(BEARER)?.[1];
   return raw ? findLiveToken(raw) : null;

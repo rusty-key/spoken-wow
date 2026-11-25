@@ -3,7 +3,7 @@
 import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import { langName } from "@/lib/lang";
-import { accessLabel, type ApiToken } from "@/lib/tokens/types";
+import { scopeLabels, type ApiToken } from "@/lib/tokens/types";
 
 import { useApiTokens } from "./useApiTokens";
 
@@ -43,13 +43,7 @@ export default function ApiTokenTable({ initial }: { initial: (ApiToken & { user
                 <td>{token.label}</td>
                 <td>{token.lang ? langName(token.lang) : ""}</td>
                 <td>
-                  {[
-                    token.lang || token.access !== "none" ? accessLabel(token) : null,
-                    token.generate ? words.generate : null,
-                    token.packs ? t.profile.tokens.packs : null,
-                  ]
-                    .filter(Boolean)
-                    .join(", ")}
+                  {scopeLabels(token, { generate: words.generate, packs: t.profile.tokens.packs }).join(", ")}
                 </td>
                 <td>{token.expiresAt.slice(0, 10)}</td>
                 <td>{token.lastUsedAt?.slice(0, 10) ?? words.neverUsed}</td>

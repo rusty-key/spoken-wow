@@ -14,6 +14,7 @@ import zipfile
 
 import pytest
 
+from test_build_module import CORPUS, _store
 from tts_cli.build import build_module
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -28,17 +29,6 @@ spec.loader.exec_module(speed_pack)
 
 needs_luajit = pytest.mark.skipif(shutil.which("luajit") is None, reason="needs luajit")
 
-CORPUS = {
-    "lines": [
-        {"lineId": "q:5:accept", "source": "accept", "questId": 5,
-         "questTitle": "Growling Gut", "npcId": 288, "npcName": "Jitters",
-         "npcType": "creature", "fileName": "5-accept",
-         "originalText": "Find my pack.", "generatable": True},
-        {"lineId": "g:abc123", "source": "gossip", "questId": None, "questTitle": None,
-         "npcId": 68, "npcName": "Stormwind City Guard", "npcType": "creature",
-         "fileName": "abc123", "originalText": "Move along.", "generatable": True},
-    ],
-}
 TIMES = {"quests/5-accept": "0 .5 1.25", "gossip/abc123": "0 .3"}
 
 
@@ -57,24 +47,21 @@ class CopyEncoder:
 
 
 def quests_pack(tmp_path, folder, **options):
-    store = tmp_path / "store"
-    for rel in ("quests/5-accept.ogg", "gossip/abc123.ogg"):
-        (store / rel).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(os.path.join(FIXTURES, "tone.ogg"), store / rel)
-    (store / "word-times.json").write_text(json.dumps(TIMES))
-    report = build_module(CORPUS, str(store), str(tmp_path / "dist"), folder, version="2.5.0", **options)
+    store = _store(tmp_path, "quests/5-accept.ogg", "gossip/abc123.ogg")
+    (tmp_path / "store" / "word-times.json").write_text(json.dumps(TIMES))
+    report = build_module(CORPUS, store, str(tmp_path / "dist"), folder, version="2.5.0", **options)
     return report["moduleDir"]
 
 
 def speed_up(tmp_path, source_dir, speed=2.0, pack_id="maker-quests-enus-x200", encoder=None):
     [source] = speed_pack.read_sources(str(source_dir), None)
     plan = speed_pack.inspect(source)
-    plan.speed, plan.pack_id, plan.folder = speed, pack_id, f"SpokenCommunity_{pack_id}"
+    plan.speed, plan.pack_id = speed, pack_id
     encoder = encoder or CopyEncoder()
     cache = speed_pack.Cache(tmp_path / "cache", pack_id, speed, encoder.settings())
     clips = speed_pack.encode_all(plan, cache, encoder, 2, lambda _: None)
     zip_path = speed_pack.build(plan, "2.5.0", "Maker", clips, tmp_path / "out")
-    cache.prune()
+    cache.prune(clips)
     target = tmp_path / "unzipped"
     shutil.rmtree(target, ignore_errors=True)
     with zipfile.ZipFile(zip_path) as archive:

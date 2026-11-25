@@ -7,6 +7,7 @@ import { knownLang } from "@/lib/languages/catalogue";
 import { currentSession } from "@/lib/session";
 import { backedScopes } from "@/lib/text-api/guard";
 import { createToken, isTokenAccess, listTokens } from "@/lib/tokens/store";
+import { needsLang } from "@/lib/tokens/types";
 
 export const dynamic = "force-dynamic";
 
@@ -39,10 +40,9 @@ export async function POST(request: Request) {
   const generate = body.generate === true;
   const packs = body.packs === true;
   if (body.access === "none" && !generate && !packs) return invalid("a token must read, write, generate or submit packs");
-  // Any member may submit a pack, so a packs-only token needs no language and no grant.
-  const needsLang = body.access !== "none" || generate;
-  const lang = needsLang ? await knownLang(body.lang) : null;
-  if (needsLang && !lang) return invalid("lang must be a language");
+  const langed = needsLang({ access: body.access, generate });
+  const lang = langed ? await knownLang(body.lang) : null;
+  if (langed && !lang) return invalid("lang must be a language");
 
   const label = typeof body.label === "string" ? body.label.trim() : "";
   if (!label || label.length > MAX_LABEL) return invalid(`label is required, at most ${MAX_LABEL} characters`);

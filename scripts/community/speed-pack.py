@@ -109,20 +109,17 @@ def lua_tokens(source: str) -> Iterator[Token]:
                 j += 1
             yield Token("string", i, j + 1, source[i:j + 1])
             i = j + 1
-        elif LONG_OPEN.match(source, i):
-            opened = LONG_OPEN.match(source, i)
+        elif opened := LONG_OPEN.match(source, i):
             close = source.find("]" + opened.group(1) + "]", opened.end())
             if close < 0:
                 raise Refusal("unfinished long string in Lua")
             end = close + len(opened.group(1)) + 2
             yield Token("string", i, end, source[i:end])
             i = end
-        elif NUMBER.match(source, i) and (ch.isdigit() or (ch == "." and i + 1 < n and source[i + 1].isdigit())):
-            m = NUMBER.match(source, i)
+        elif (ch.isdigit() or (ch == "." and i + 1 < n and source[i + 1].isdigit())) and (m := NUMBER.match(source, i)):
             yield Token("number", i, m.end(), m.group())
             i = m.end()
-        elif NAME.match(source, i):
-            m = NAME.match(source, i)
+        elif m := NAME.match(source, i):
             yield Token("name", i, m.end(), m.group())
             i = m.end()
         else:
@@ -141,9 +138,14 @@ def lua_quote(text: str) -> str:
     return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
+LUA_KEYWORDS = {"and", "break", "do", "else", "elseif", "end", "false", "for", "function", "goto",
+                "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true",
+                "until", "while"}
+
+
 def lua_global(name: str) -> str:
-    """Bare where it is an identifier, as the quests generator writes it."""
-    return name if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) else f"_G[{lua_quote(name)}]"
+    """Bare where it is an identifier, as the quests generator (tts_cli/lua.py) writes it."""
+    return name if NAME.fullmatch(name) and name not in LUA_KEYWORDS else f"_G[{lua_quote(name)}]"
 
 
 def splice(source: str, edits: List[Tuple[int, int, str]]) -> str:
@@ -179,14 +181,28 @@ def scale_times(packed: str, speed: float) -> str:
     return pack_times(times)
 
 
-def scale_values(source: str, speed: float, lengths: Callable[[List[Token], int], bool],
-                 times: Callable[[List[Token], int], bool]) -> Tuple[str, int]:
+Picker = Callable[[List[Token], int, Optional[str]], bool]
+
+
+def scale_values(source: str, speed: float, lengths: Optional[Picker] = None,
+                 times: Optional[Picker] = None) -> Tuple[str, int]:
     tokens = list(lua_tokens(source))
     edits = []
+    # Each open table's name, tracked forward: scanning back per value is quadratic over the
+    # quests tables, which hold one row per clip.
+    tables: List[Optional[str]] = []
     for i, token in enumerate(tokens):
-        if token.kind == "number" and lengths(tokens, i):
+        if token.kind == "symbol" and token.text == "{":
+            tables.append(tokens[i - 2].text if i >= 2 and tokens[i - 1].text == "=" else None)
+            continue
+        if token.kind == "symbol" and token.text == "}":
+            if tables:
+                tables.pop()
+            continue
+        table = tables[-1] if tables else None
+        if token.kind == "number" and lengths and lengths(tokens, i, table):
             edits.append((token.start, token.end, format_length(float(token.text) / speed)))
-        elif token.kind == "string" and times(tokens, i):
+        elif token.kind == "string" and times and times(tokens, i, table):
             value = lua_string_value(token)
             if value is None:
                 raise Refusal(f"word times written in a form this script does not read: {token.text[:40]}")
@@ -200,33 +216,18 @@ def after(tokens: List[Token], i: int, *expected: str) -> bool:
     return [t.text for t in tokens[i - len(expected):i]] == list(expected)
 
 
-def field_value(name: str) -> Callable[[List[Token], int], bool]:
+def field_value(name: str) -> Picker:
     """A value written `name = <value>` in a row, as Data/Sounds.lua writes `len` and `times`."""
-    return lambda tokens, i: after(tokens, i, name, "=")
+    return lambda tokens, i, table: after(tokens, i, name, "=")
 
 
-def table_value(table: str) -> Callable[[List[Token], int], bool]:
-    """A value of `<module>.<table> = { ["key"] = <value>, ... }`, as the quests tables are."""
-    def pick(tokens: List[Token], i: int) -> bool:
+def table_value(name: str) -> Picker:
+    """A value of `<module>.<name> = { ["key"] = <value>, ... }`, as the quests tables are."""
+    def pick(tokens: List[Token], i: int, table: Optional[str]) -> bool:
         keyed = after(tokens, i, "]", "=") or (
             i >= 3 and tokens[i - 1].text == "=" and tokens[i - 2].kind == "name" and tokens[i - 3].text in "{,")
-        if not keyed:
-            return False
-        depth = 0
-        for j in range(i - 1, -1, -1):
-            text = tokens[j].text
-            if tokens[j].kind == "symbol" and text == "}":
-                depth += 1
-            elif tokens[j].kind == "symbol" and text == "{":
-                if depth == 0:
-                    return j >= 2 and tokens[j - 1].text == "=" and tokens[j - 2].text == table
-                depth -= 1
-        return False
+        return keyed and table == name
     return pick
-
-
-def never(tokens: List[Token], i: int) -> bool:
-    return False
 
 
 def rename_module(source: str, old: str, new: str, module_file: bool) -> str:
@@ -252,7 +253,7 @@ def rename_module(source: str, old: str, new: str, module_file: bool) -> str:
     if not module_file:
         return renamed
     # A pack whose folder was an identifier defined it bare: `Old = {}`. Give it the local.
-    bare = re.compile(rf"^module = \{{\}}$", re.MULTILINE)
+    bare = re.compile(r"^module = \{\}$", re.MULTILINE)
     if bare.search(renamed):
         renamed = bare.sub(f"local module = {{}}\n{lua_global(new)} = module", renamed, count=1)
     else:
@@ -288,9 +289,12 @@ class Plan:
     team_name: Optional[str]
     toc: str
     pack_id: str = ""
-    folder: str = ""
     speed: float = 1.0
     audio: List[str] = field(default_factory=list)
+
+    @property
+    def folder(self) -> str:
+        return f"SpokenCommunity_{self.pack_id}"
 
 
 def read_sources(arg: str, addons: Optional[str]) -> List[Source]:
@@ -305,8 +309,8 @@ def read_sources(arg: str, addons: Optional[str]) -> List[Source]:
                 files[item.relative_to(root).as_posix()] = (lambda p=item: p.read_bytes())
         return [Source(root.name, files, str(root))]
     if path.is_file() and zipfile.is_zipfile(path):
+        local = threading.local()
         archive = zipfile.ZipFile(path)
-        lock = threading.Lock()
         by_folder: Dict[str, Dict[str, Callable[[], bytes]]] = {}
         for info in archive.infolist():
             if info.is_dir():
@@ -316,8 +320,10 @@ def read_sources(arg: str, addons: Optional[str]) -> List[Source]:
                 raise Refusal(f"{path.name}: unsafe path {info.filename!r}")
 
             def reader(name=info.filename) -> bytes:
-                with lock:
-                    return archive.read(name)
+                # ZipFile reads are not thread-safe; one handle each lets the workers inflate at once.
+                if not hasattr(local, "archive"):
+                    local.archive = zipfile.ZipFile(path)
+                return local.archive.read(name)
             by_folder.setdefault(parts[0], {})["/".join(parts[1:])] = reader
         return [Source(folder, files, f"{path.name}:{folder}") for folder, files in sorted(by_folder.items())]
     if addons and not path.exists():
@@ -383,9 +389,10 @@ def default_pack_id(prefix: str, folder: str, speed: float) -> str:
     return "-".join(parts)
 
 
-def team_of(plan: Plan, speed: float) -> Tuple[str, str]:
+def team_of(plan: Plan) -> Tuple[str, str]:
     """A voice of its own for each speed. A team's pack keeps its team in the new voice, so two
     teams' faster packs stay two voices."""
+    speed = plan.speed
     slug = f"{plan.team}-{speed_tag(speed)}" if plan.team else f"speed-{speed_tag(speed)}"
     name = f"{plan.team_name or plan.team} {speed_label(speed)}" if plan.team else speed_label(speed)
     if not TEAM_SLUG.match(slug):
@@ -394,7 +401,7 @@ def team_of(plan: Plan, speed: float) -> Tuple[str, str]:
 
 
 def rewrite_toc(plan: Plan, version: str, author: Optional[str]) -> str:
-    team, team_name = team_of(plan, plan.speed)
+    team, team_name = team_of(plan)
     toc = plan.toc.replace(f"\\AddOns\\{plan.source.folder}\\", f"\\AddOns\\{plan.folder}\\")
     replace = {
         "Title": f"{toc_value(toc, 'Title') or plan.source.folder} ({speed_label(plan.speed)})",
@@ -426,9 +433,9 @@ def rewrite_lua(plan: Plan, rel: str, source: str) -> Tuple[str, int]:
     if plan.section == "quests":
         name = PurePosixPath(rel).name
         if name == "sound_length_table.lua":
-            source, scaled = scale_values(source, speed, table_value("SoundLengthLookupByFileName"), never)
+            source, scaled = scale_values(source, speed, lengths=table_value("SoundLengthLookupByFileName"))
         elif name == "word_times_table.lua":
-            source, scaled = scale_values(source, speed, never, table_value("WordTimesByFileName"))
+            source, scaled = scale_values(source, speed, times=table_value("WordTimesByFileName"))
         source = rename_module(source, plan.source.folder, plan.folder, module_file=(rel == "Module.lua"))
     elif rel == "Data/Sounds.lua":
         source, scaled = scale_values(source, speed, field_value("len"), field_value("times"))
@@ -466,7 +473,6 @@ def atempo(speed: float) -> str:
 
 
 def vorbis_rate(data: bytes) -> Optional[int]:
-    """The sample rate in an Ogg Vorbis identification header."""
     at = data.find(b"\x01vorbis", 0, 4096)
     if at < 0 or len(data) < at + 16:
         return None
@@ -535,42 +541,40 @@ class Cache:
                 if old.is_file():
                     old.unlink()
             marker.write_text(wanted)
-        self.used: set = set()
 
     def path(self, digest: str, extension: str) -> Path:
         return self.dir / f"{digest}{extension}"
 
-    def prune(self) -> None:
+    def prune(self, used: Dict[str, Path]) -> None:
         """Drops what this build did not use: clips the source no longer has."""
+        keep = {clip.name for clip in used.values()}
         for entry in self.dir.iterdir():
-            if entry.is_file() and entry.name != "settings.json" and entry.name not in self.used:
+            if entry.is_file() and entry.name != "settings.json" and entry.name not in keep:
                 entry.unlink()
 
 
-def default_cache_root() -> Path:
+def user_dir(windows: str, windows_default: str, xdg: str, xdg_default: str) -> Path:
     if os.name == "nt":
-        base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
-    else:
-        base = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-    return base / "spoken" / "speed-packs"
+        return Path(os.environ.get(windows, Path.home() / windows_default)) / "spoken"
+    return Path(os.environ.get(xdg, Path.home() / xdg_default)) / "spoken"
+
+
+def default_cache_root() -> Path:
+    return user_dir("LOCALAPPDATA", "AppData/Local", "XDG_CACHE_HOME", ".cache") / "speed-packs"
 
 
 def encode_all(plan: Plan, cache: Cache, encoder: Encoder, jobs: int,
                progress: Callable[[str], None]) -> Dict[str, Path]:
     total, done, reused = len(plan.audio), 0, 0
     results: Dict[str, Path] = {}
-    lock = threading.Lock()
 
-    def one(rel: str) -> bool:
+    def one(rel: str) -> Tuple[str, Path, bool]:
         data = plan.source.read(rel)
         extension = Path(rel).suffix.lower()
         digest = hashlib.sha256(data).hexdigest()
         target = cache.path(digest, extension)
-        with lock:
-            cache.used.add(target.name)
-            results[rel] = target
         if target.exists():
-            return True
+            return rel, target, True
         rate = vorbis_rate(data) if extension == ".ogg" else None
         part = target.with_name(target.name + f".{threading.get_ident()}.part")
         src = target.with_name(target.name + f".{threading.get_ident()}.src{extension}")
@@ -583,13 +587,14 @@ def encode_all(plan: Plan, cache: Cache, encoder: Encoder, jobs: int,
             for leftover in (src, part):
                 if leftover.exists():
                     leftover.unlink()
-        return False
+        return rel, target, False
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs) as pool:
         futures = [pool.submit(one, rel) for rel in plan.audio]
         try:
             for future in concurrent.futures.as_completed(futures):
-                cached = future.result()
+                rel, target, cached = future.result()
+                results[rel] = target
                 done += 1
                 reused += cached
                 if done % 50 == 0 or done == total:
@@ -628,13 +633,12 @@ def build(plan: Plan, version: str, author: Optional[str], clips: Dict[str, Path
     target = out / f"{plan.folder}.zip"
     part = target.with_name(target.name + ".part")
     with zipfile.ZipFile(part, "w") as archive:
-        entries = [(rel, data, zipfile.ZIP_DEFLATED) for rel, data in files.items()]
-        entries += [(rel, None, zipfile.ZIP_STORED) for rel in plan.audio]
-        for rel, data, method in sorted(entries, key=lambda e: e[0]):
+        for rel in sorted([*files, *plan.audio]):
             info = zipfile.ZipInfo(f"{plan.folder}/{rel}", ZIP_TIME)
-            info.compress_type = method
+            # Clips are already compressed.
+            info.compress_type = zipfile.ZIP_DEFLATED if rel in files else zipfile.ZIP_STORED
             info.external_attr = 0o644 << 16
-            archive.writestr(info, data if data is not None else clips[rel].read_bytes())
+            archive.writestr(info, files[rel] if rel in files else clips[rel].read_bytes())
     os.replace(part, target)
     return target
 
@@ -731,7 +735,7 @@ def upload(repo: str, tag: str, title: str, notes: str, zip_path: Path) -> str:
 
 def describe(plan: Plan) -> Tuple[str, str]:
     language = LANGUAGE_NAMES.get(plan.language, plan.language)
-    voice = f"{language} · {team_of(plan, plan.speed)[1]}"
+    voice = f"{language} · {team_of(plan)[1]}"
     title = f"{plan.title} at {speed_label(plan.speed)}"[:80]
     description = (f"Every clip of {plan.source.folder} {plan.version} at {speed_label(plan.speed)}, its captions "
                    f"timed to match. Install it beside the original pack and put {voice} first under "
@@ -742,11 +746,7 @@ def describe(plan: Plan) -> Tuple[str, str]:
 # --- Setup -----------------------------------------------------------------------------------
 
 def config_path() -> Path:
-    if os.name == "nt":
-        base = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
-    else:
-        base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
-    return base / "spoken" / "speed-pack.json"
+    return user_dir("APPDATA", "AppData/Roaming", "XDG_CONFIG_HOME", ".config") / "speed-pack.json"
 
 
 def load_config() -> dict:
@@ -824,13 +824,20 @@ def parse_speed(text: str) -> float:
 
 def main(argv: Optional[List[str]] = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
-    if argv[:1] == ["setup"]:
-        try:
+    try:
+        if argv[:1] == ["setup"]:
             setup()
-        except Refusal as refusal:
-            print(f"error: {refusal}", file=sys.stderr)
-            return 1
-        return 0
+            return 0
+        return run_all(parse_args(argv))
+    except Refusal as refusal:
+        print(f"error: {refusal}", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        print("\nStopped. Clips encoded so far stay in the cache.", file=sys.stderr)
+        return 130
+
+
+def parse_args(argv: List[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="speed-pack.py", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("sources", nargs="+", metavar="PACK",
@@ -841,16 +848,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--id", dest="pack_id", help="the pack id, for a single source")
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 2, help="clips encoded at once")
     parser.add_argument("--cache", type=Path, default=None, help=f"the clip cache ({default_cache_root()})")
-    args = parser.parse_args(argv)
-
-    try:
-        return run_all(args)
-    except Refusal as refusal:
-        print(f"error: {refusal}", file=sys.stderr)
-        return 1
-    except KeyboardInterrupt:
-        print("\nStopped. Clips encoded so far stay in the cache.", file=sys.stderr)
-        return 130
+    return parser.parse_args(argv)
 
 
 def run_all(args: argparse.Namespace) -> int:
@@ -871,8 +869,7 @@ def run_all(args: argparse.Namespace) -> int:
         if not PACK_ID.match(plan.pack_id) or len(plan.pack_id) > MAX_PACK_ID:
             raise Refusal(f"pack id {plan.pack_id!r} breaks the site's rule (lower-case letters, digits, "
                           f"single hyphens, at most {MAX_PACK_ID}). Pass --id.")
-        plan.folder = f"SpokenCommunity_{plan.pack_id}"
-        team_of(plan, args.speed)
+        team_of(plan)
         if publish and plan.section not in LISTABLE:
             raise Refusal(f"{source.origin}: the Spoken Manager does not list {plan.section} packs yet. "
                           "Build it with --build-only.")
@@ -894,7 +891,7 @@ def run_all(args: argparse.Namespace) -> int:
         cache = Cache(cache_root, plan.pack_id, plan.speed, encoder.settings())
         clips = encode_all(plan, cache, encoder, max(1, args.jobs), print)
         zip_path = build(plan, version, config.get("author"), clips, args.out)
-        cache.prune()
+        cache.prune(clips)
         checksum, size = sha256_of(zip_path), zip_path.stat().st_size
         print(f"  built {zip_path} ({size / 1024 ** 2:.1f} MB), version {version}")
         if not publish:
