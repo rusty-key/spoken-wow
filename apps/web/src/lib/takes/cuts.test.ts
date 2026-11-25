@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { CUTS, chooseCuts, chooseTimedCuts, parseSilences, sentenceStarts, WORD_LEAD, type CutSettings } from "./cuts";
+import {
+  CUTS,
+  chooseCuts,
+  chooseTimedCuts,
+  parseSilences,
+  sentenceStarts,
+  snapToPauses,
+  WORD_LEAD,
+  type CutSettings,
+} from "./cuts";
 
 // Scott White's cases from the pack converter of PR #942 (pipelines/quests/tests/test_pieces.py).
 const PLAIN: CutSettings = { ...CUTS, minPause: 0, maxPiece: 0, fallbackPause: 0 };
@@ -107,5 +116,30 @@ describe("parseSilences", () => {
 
   it("clamps a pause at the very start to zero", () => {
     expect(parseSilences("silence_start: -0.01\nsilence_end: 0.5 | silence_duration: 0.51\n")).toEqual([[0, 0.5]]);
+  });
+});
+
+describe("snapToPauses", () => {
+  it("keeps a cut already in a pause", () => {
+    expect(snapToPauses([3.3], [[3.0, 3.6]], 10)).toEqual([3.3]);
+  });
+
+  it("keeps a cut in a pause off its edges", () => {
+    expect(snapToPauses([3.0], [[3.0, 3.6]], 10)).toEqual([3.06]);
+  });
+
+  it("moves a cut that fell in sound into the nearest pause", () => {
+    // As 95472-complete: the times put the next word at 3.36 s, its pause runs 3.16 to 3.51 s.
+    expect(snapToPauses([3.11], [[1.0, 1.2], [3.16, 3.51]], 10)).toEqual([3.22]);
+    expect(snapToPauses([9.86], [[9.4, 9.5], [10.05, 10.26]], 14)).toEqual([10.11]);
+  });
+
+  it("drops a cut with no pause within reach, so no word is cut", () => {
+    expect(snapToPauses([5], [[4.5, 4.6], [5.4, 5.6]], 10)).toEqual([]);
+  });
+
+  it("drops a moved cut that leaves a piece too short", () => {
+    // Moved back to 1.93 s, the first piece would be under the 2 s a piece must last.
+    expect(snapToPauses([2.2, 4.4], [[1.85, 1.96], [4.3, 4.5]], 10)).toEqual([4.4]);
   });
 });

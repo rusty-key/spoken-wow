@@ -168,6 +168,55 @@ export function chooseTimedCuts(
   return choose(firsts, spares, duration, s);
 }
 
+/**
+ * How far a timed cut may move to reach a pause. Word times run up to about 0.2 s off where a
+ * narrator's stage direction meets the NPC's words, which the site joins from separate requests:
+ * on 400 English quest takes every cut that fell in sound had a pause within 0.19 s.
+ */
+export const SNAP_REACH = 0.3;
+/** The shortest quiet a timed cut can sit in: between two sentences, never inside a word. */
+export const SNAP_PAUSE = 0.05;
+/**
+ * How far inside a pause a cut goes, so it does not sit on a word's first or last sound: at 0.03 s
+ * seven of those 400 takes' cuts still caught a breath of the next word, at 0.06 s none did.
+ */
+const SNAP_EDGE = 0.06;
+
+/**
+ * `cuts` moved into the nearest of `silences` within SNAP_REACH, and dropped where none is, so no
+ * join falls inside a word. A cut already in a pause stays, kept off its edges. A cut that would then
+ * leave a piece shorter than the settings allow is dropped too.
+ */
+export function snapToPauses(
+  cuts: readonly number[],
+  silences: readonly [number, number][],
+  duration: number,
+  s: CutSettings = CUTS,
+): number[] {
+  const placed: number[] = [];
+  for (const at of cuts) {
+    let best: { distance: number; to: number } | null = null;
+    for (const [start, end] of silences) {
+      const middle = (start + end) / 2;
+      const low = Math.min(start + SNAP_EDGE, middle);
+      const high = Math.max(end - SNAP_EDGE, middle);
+      const distance = at < start ? start - at : at > end ? at - end : 0;
+      const to = Math.min(Math.max(at, low), high);
+      if (distance <= SNAP_REACH && (!best || distance < best.distance)) best = { distance, to };
+    }
+    if (best) placed.push(round3(best.to));
+  }
+  const kept: number[] = [];
+  let last = 0;
+  for (const at of [...new Set(placed)].sort((a, b) => a - b)) {
+    if (at - last >= s.minPiece && duration - at >= s.minTail) {
+      kept.push(at);
+      last = at;
+    }
+  }
+  return kept;
+}
+
 /** silencedetect's start and end lines, paired; a pause still open at the end is dropped. */
 export function parseSilences(ffmpegLog: string): [number, number][] {
   const starts = [...ffmpegLog.matchAll(/silence_start: (-?[\d.]+)/g)].map((m) => Number(m[1]));

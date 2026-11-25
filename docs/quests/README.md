@@ -233,7 +233,9 @@ empty table, and its captions are estimated.
 
 Sentence pieces, so a paused line resumes from its sentence, are cut by the site when a take is
 committed (`apps/web/src/lib/takes/pieces.ts`): at the take's word times where they fit its shown
-words, else at its measured pauses. Each piece is encoded as the whole clip is, and `take_pieces`
+words, each cut then moved into the nearest pause the audio has (or dropped where none is within
+0.3 s), else at its measured pauses. A take from before `shownText` is timed against its line's
+current text. Each piece is encoded as the whole clip is, and `take_pieces`
 records them, or `whole` where no cut was found. `apps/web/scripts/cut-pieces.mts` cuts the live
 takes committed before that. A Manager build with `SPOKEN_PIECES=1` ships a cut line as a folder of
 pointers, `quests/5-accept/01.ogg`, `02.ogg`, ..., and their lengths in `audio/pieces.json`, which

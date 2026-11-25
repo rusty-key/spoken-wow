@@ -25,11 +25,12 @@ import { putArchived } from "@/lib/blobs/keep";
 import { blobBytes } from "@/lib/blobs/where";
 import { ALL_TEAMS, query, queryIn, type TeamId } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
+import { speakQuestTokens } from "@/lib/player-words";
 import type { Source } from "@/lib/sections";
 import { asTeam } from "@/lib/teams/acting";
 
 import { withLocalCopy } from "./bytes";
-import { CUTS, NOISE_DB, chooseCuts, chooseTimedCuts, parseSilences } from "./cuts";
+import { CUTS, NOISE_DB, SNAP_PAUSE, chooseCuts, chooseTimedCuts, parseSilences, snapToPauses } from "./cuts";
 import { ENCODERS, PROFILE, encodeOggFrom, oggDurationSec, type Encoders } from "./encode";
 
 const run = promisify(execFile);
@@ -70,9 +71,8 @@ export function wavDurationSec(bytes: Buffer): number {
   throw new Error("a WAV with no data");
 }
 
-/** The pauses in `wav` as [start, end] seconds, down to the shortest a cut may use. */
-async function measurePauses(wav: string, tools: Encoders): Promise<[number, number][]> {
-  const shortest = Math.min(CUTS.minPause, CUTS.fallbackPause || CUTS.minPause);
+/** The pauses in `wav` as [start, end] seconds, `shortest` long or longer. */
+async function measurePauses(wav: string, tools: Encoders, shortest: number): Promise<[number, number][]> {
   // silencedetect reports at info level: a quieter log level would hide it.
   const { stderr } = await run(
     tools.ffmpeg,
@@ -100,9 +100,12 @@ export async function cutPieces(
     const duration = wavDurationSec(await fs.readFile(wav));
     let method: Method = "times";
     let cuts = words.shownText && words.wordTimes ? chooseTimedCuts(words.shownText, words.wordTimes, duration) : null;
-    if (cuts === null) {
+    if (cuts?.length) {
+      // Word times can be a little off, so each cut is checked against the audio itself.
+      cuts = snapToPauses(cuts, await measurePauses(wav, tools, SNAP_PAUSE), duration);
+    } else if (cuts === null) {
       method = "pauses";
-      cuts = chooseCuts(await measurePauses(wav, tools), duration);
+      cuts = chooseCuts(await measurePauses(wav, tools, Math.min(CUTS.minPause, CUTS.fallbackPause || CUTS.minPause)), duration);
     }
     if (cuts.length === 0) return { method: "whole", oggs: [] };
     const bounds = [0, ...cuts, duration];
@@ -205,6 +208,30 @@ export async function cutArchivedForPack(source: Source, sha256: string, take: C
 }
 
 /**
+ * The words a quests take with no shownText most likely shows: its line's current text, its tokens as
+ * the voice says them, as a pack build ships for it (scripts/audio/relevant.mjs). A line edited
+ * since the take was voiced has another word count than its times, and is measured instead.
+ */
+async function currentQuestText(lang: Lang, files: string[]): Promise<Map<string, string>> {
+  if (files.length === 0) return new Map();
+  const rows = await queryIn<{ stem: string; text: string; playerGender: "m" | "f" | null }>(
+    ALL_TEAMS,
+    `select case split_part("lineId", ':', 1) when 'q' then 'quests' when 'g' then 'gossip' when 'f' then 'followup' end
+              || '/' || "fileName" as "stem", "text", "playerGender"
+       from "quest_line"
+      where "lang" = $1 and "isCurrent" and "fileName" = any($2::text[])
+      order by "lineId", "variant"`,
+    [lang, files.map((file) => path.basename(file).replace(/\.mp3$/, ""))],
+  );
+  const texts = new Map<string, string>();
+  for (const { stem, text, playerGender } of rows) {
+    const file = `${stem}.mp3`;
+    if (!texts.has(file)) texts.set(file, speakQuestTokens(text, lang, playerGender));
+  }
+  return texts;
+}
+
+/**
  * Every live take of `team`'s in a language with no pieces recorded, cut, newest first, at most
  * 500 and for at most `budgetMs`. A take whose cut fails stays without a row, so its hash is added
  * to `failed` and a call given the same set passes over it: a caller that goes on while a call cut
@@ -236,6 +263,10 @@ export async function cutMissingForPack(
       limit 500`,
     [source, lang, PROFILE, team, [...failed]],
   );
+  if (source === "quests") {
+    const texts = await currentQuestText(lang, missing.filter((take) => !take.shownText).map((take) => take.file));
+    for (const take of missing) take.shownText ??= texts.get(take.file) ?? null;
+  }
   const counts = { cut: 0, tried: 0 };
   for (const { sha256, ...take } of missing) {
     if (Date.now() >= until) break;

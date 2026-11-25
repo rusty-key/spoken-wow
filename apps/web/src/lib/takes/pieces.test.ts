@@ -72,6 +72,17 @@ describe.skipIf(!tools)("cutPieces", () => {
     for (const ogg of oggs) expect(ogg.subarray(0, 4).toString()).toBe("OggS");
   });
 
+  it("moves a cut its word times put in a word into the pause beside it", async () => {
+    // The times put "Four" and "Seven" 0.25 s early, so the cuts would fall in the tone before
+    // each pause, at 2.85 and 6.45 s; the pauses start at 3 and 6.6 s.
+    const early = [0, 1, 2, 3.1, 4.1, 5.1, 6.7, 7.7, 8.7];
+    const { method, oggs } = await cutPieces(sentences(), { shownText: SAID, wordTimes: early });
+    expect(method).toBe("times");
+    const { oggDurationSec } = await import("./encode");
+    expect(oggDurationSec(oggs[0])).toBeGreaterThanOrEqual(3.02);
+    expect(oggDurationSec(oggs[0]) + oggDurationSec(oggs[1])).toBeGreaterThanOrEqual(6.62);
+  });
+
   it("measures the pauses of a take without them", async () => {
     const { method, oggs } = await cutPieces(sentences(), {});
     expect(method).toBe("pauses");
@@ -187,6 +198,33 @@ describe.skipIf(!tools)("cutting at commit, and the backfill", () => {
       await db().query(`delete from "take_pieces" where "sha256" = $1`, [sha]);
       await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
       await asSystem.query(`delete from "take" where "file" = $1`, [file]);
+    }
+  });
+
+  it("times an older take with no shown text by its line's current text", async () => {
+    const restore = useArchiveForTests(memoryBlobs(), "r2");
+    const master = fs.readFileSync(sentences());
+    const sha = sha256Of(master);
+    const stem = `${Math.random().toString(16).slice(2)}-accept`;
+    const file = `quests/${stem}.mp3`;
+    try {
+      await asSystem.query(
+        `insert into "quest_line" ("lineId", "lang", "version", "isCurrent", "origin", "source", "fileName", "text", "originalText")
+         values ($1, 'enUS', 1, true, 'extracted', 'quest', $2, $3, $3)`,
+        [`q:${stem}:accept`, stem, SAID],
+      );
+      await commitTake("quests", file, master, { lineId: `q:${stem}:accept`, wordTimes: SAID_TIMES });
+      await db().query(`delete from "take_pieces" where "sha256" = $1`, [sha]);
+
+      await cutMissingForPack("quests", "enUS", await english(), 60_000);
+      const { rows } = await db().query(`select "method" from "take_pieces" where "sha256" = $1`, [sha]);
+      expect(rows).toEqual([{ method: "times" }]);
+    } finally {
+      restore();
+      await db().query(`delete from "take_pieces" where "sha256" = $1`, [sha]);
+      await db().query(`delete from "take_encoding" where "sha256" = $1`, [sha]);
+      await asSystem.query(`delete from "take" where "file" = $1`, [file]);
+      await asSystem.query(`delete from "quest_line" where "fileName" = $1`, [stem]);
     }
   });
 
