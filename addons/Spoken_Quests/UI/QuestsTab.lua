@@ -1055,8 +1055,8 @@ local function Voiced(id, moment)
 end
 
 -- The hand-in tells how a quest ends: it shows once the quest is completed, or with Unlock
--- Unstarted Quests on, where the player chose to see everything. `now` asks the game rather than
--- the tab's last refresh, for a quest asked of with the window shut.
+-- Unstarted Quests on, where the player chose to see everything. `now` asks the game: with the
+-- window shut, the tab's last refresh may predate the hand-in.
 local function Shows(id, moment, now)
     return moment ~= "complete" or (now and CompletedNow or Completed)(id) or Unlocked()
 end
@@ -1124,9 +1124,8 @@ local PLAY = {
 
 local STORY_ORIGIN = "Spoken:PlayStory"
 
--- A quest's story for another addon (Spoken:PlayStory("quest", questID)): what shift-click on its
--- row queues, the first part shown that a pack voices. A key for every part a pack voices, so
--- IsPlayingStory and StopStory know the quest's other parts too.
+-- Every part a pack voices, not only the one PlayStory picks, so IsPlayingStory and StopStory also
+-- find a part started from the quest's page.
 local function StoryKeys(id)
     local keys = {}
     for _, moment in ipairs(MOMENTS) do
@@ -1136,7 +1135,7 @@ local function StoryKeys(id)
     return keys
 end
 
--- The part whose clip key is `key`, where the quest's page shows its words and that part with them.
+-- Only a part the quest's page would show, as shift-click on its row plays.
 local function StoryClip(id, key)
     if not QuestsTab:Has(id) then return nil end
     for _, moment in ipairs(MOMENTS) do
