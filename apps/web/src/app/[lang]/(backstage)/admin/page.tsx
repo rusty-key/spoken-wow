@@ -14,6 +14,8 @@ import { isLang, langName } from "@/lib/lang";
 import { languageStates, textByTeam } from "@/lib/languages/store";
 import { isAdmin, langsWhere } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
+import { readingLang } from "@/lib/lang-server";
+import { uiText } from "@/lib/ui-text";
 import { listAllTokens } from "@/lib/tokens/store";
 import { userSortOf } from "@/lib/users/sort";
 import { listUsers } from "@/lib/users/store";
@@ -35,8 +37,10 @@ const PAGE_SIZE = 25;
  * only what to draw. A 404 for everyone else: a member has no business learning it exists.
  */
 export default async function Page({
+  params: route,
   searchParams,
 }: {
+  params: Promise<{ lang: string }>;
   searchParams: Promise<{ lang?: string; page?: string; q?: string; sort?: string; dir?: string }>;
 }) {
   const session = await currentSession();
@@ -45,6 +49,7 @@ export default async function Page({
   if (!session || !viewer || administered.length === 0) notFound();
 
   const global = isAdmin(viewer.role);
+  const t = (await uiText(await readingLang((await route).lang))).admin;
   const params = await searchParams;
   // The `[lang]` segment is the site's language; the team shown comes from `?lang=`.
   const asked = isLang(params.lang) ? administered.find((code) => code === params.lang) : undefined;
@@ -133,7 +138,7 @@ export default async function Page({
         />
       </Wide>
       <Contained>
-        <h2 className="mt-10 text-lg font-semibold">Languages</h2>
+        <h2 className="mt-10 text-lg font-semibold">{t.languagesHeading}</h2>
         <p className="text-muted-foreground mt-1 mb-4 text-sm">
           A language switched on appears in everyone&apos;s header. One that is off can still
           be opened by an admin at its address, to prepare it before anybody else sees it.

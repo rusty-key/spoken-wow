@@ -48,7 +48,13 @@ export const EN = {
     youAdminister: "You administer",
     otherTeams: "Other teams (no access)",
     tabsLabel: "Admin",
-    tabs: {
+    storageLede:
+      "Where your team's audio is kept. Connect your own S3-compatible bucket (R2, S3, B2, Wasabi, GCS, MinIO) and send new takes there instead of Spoken's archive.",
+    teamReleasesLede:
+      "A release of a team that is not official builds and uploads its packs, then waits here. Nothing reaches the Spoken Manager until you approve it, and each new version waits for you again.",
+    teamsLede:
+      "A team keeps its own takes, voices and settings in each language it voices, and the people who regenerate them. A language's teams are equal.",
+    languagesHeading: "Languages",    tabs: {
       dashboard: "Dashboard",
       team: "Team",
       users: "Users",
@@ -2127,6 +2133,7 @@ export const EN = {
     takeSavedPlayAbove: "New take saved. Play it above.",
     lede:
       "What players filed from inside the game. A report is a claim, not a verdict: read it, listen to the line, and if it is right, queue the file for regeneration the usual way. Nothing here starts a job on its own.",
+    sortTable: "All reports as a table",
     sortOne: "Sort one at a time",
     sortTitle: "Sort reports",
     sortLede: "One line at a time: listen, fix or dismiss, next.",
@@ -2297,6 +2304,8 @@ export const EN = {
     keepAll: "Keep all",
     dropAll: "Drop all",
     gameData: "Game data",
+    gameDataLede:
+      "Resolve NPCs from what a game client knows about them: the appearance its server sends, which names the model and the voice set the NPC speaks with.",
     toReview: "To review",
     accepted: "Accepted",
     rejected: "Rejected",

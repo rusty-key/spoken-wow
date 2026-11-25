@@ -10,15 +10,18 @@ import { allLangs } from "@/lib/lang";
 import { isAdmin } from "@/lib/permissions";
 import { liveTeamPacks, waitingReviews } from "@/lib/releases/review";
 import { currentSession } from "@/lib/session";
+import { readingLang } from "@/lib/lang-server";
+import { uiText } from "@/lib/ui-text";
 
 export const metadata: Metadata = { title: "Team releases · Spoken" };
 
 export const dynamic = "force-dynamic";
 
 /** Site owners only, across every language: the versions teams that are not official released. */
-export default async function Page() {
+export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const session = await currentSession();
   if (!session || !isAdmin(session.user.role)) notFound();
+  const t = (await uiText(await readingLang((await params).lang))).admin;
 
   const [waiting, live] = await Promise.all([waitingReviews(), liveTeamPacks()]);
 
@@ -30,7 +33,7 @@ export default async function Page() {
         global
         tab="team-releases"
         pendingReleases={waiting.length}
-        description="A release of a team that is not official builds and uploads its packs, then waits here. Nothing reaches the Spoken Manager until you approve it, and each new version waits for you again."
+        description={t.teamReleasesLede}
       />
       {/* One Toaster for both lists, so their messages stack in one place. */}
       <Toaster>
