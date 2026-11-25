@@ -125,7 +125,7 @@ describe("generate tokens", () => {
     viewer.grants = [TEXT, REGEN];
     const none = await post({ ...VALID(), access: "none" });
     expect(none.status).toBe(400);
-    expect(await none.json()).toEqual({ error: "a token must read, write or generate" });
+    expect(await none.json()).toEqual({ error: "a token must read, write, generate or submit packs" });
     expect((await post({ ...VALID(), access: "none", generate: "yes" })).status).toBe(400);
   });
 
@@ -134,6 +134,38 @@ describe("generate tokens", () => {
     const response = await post({ ...VALID(), access: "write", generate: true });
     expect(response.status).toBe(200);
     expect(((await response.json()) as { row: { generate: boolean } }).row.generate).toBe(true);
+  });
+});
+
+describe("packs tokens", () => {
+  const PACKS = () => ({ access: "none", packs: true, label: "packs script", expiresAt: FUTURE() });
+
+  it("lets a member with no grant make one, with no language", async () => {
+    viewer.grants = [];
+    const response = await post(PACKS());
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { row: unknown }).row).toMatchObject({
+      lang: null,
+      access: "none",
+      generate: false,
+      packs: true,
+    });
+  });
+
+  it("drops a language a packs-only token has no use for", async () => {
+    viewer.grants = [];
+    const response = await post({ ...PACKS(), lang: "deDE" });
+    expect(((await response.json()) as { row: { lang: unknown } }).row.lang).toBeNull();
+  });
+
+  it("still checks the grant behind text access asked for beside packs", async () => {
+    viewer.grants = [];
+    expect((await post({ ...PACKS(), access: "read", lang: "deDE" })).status).toBe(403);
+    expect((await post({ ...PACKS(), access: "read" })).status).toBe(400);
+  });
+
+  it("400 for a packs that is not a boolean", async () => {
+    expect((await post({ ...PACKS(), packs: "yes" })).status).toBe(400);
   });
 });
 

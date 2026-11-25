@@ -2134,6 +2134,9 @@ const deDE: Dictionary = {
   profile: {
     tokens: {
       copied: "Kopier dieses Token jetzt. Es wird nicht wieder angezeigt.",
+      packs: "Community-Pakete",
+      packsAbout:
+        "Ein Token für Community-Pakete braucht keine Sprache. Ein Skript kann damit unter /api/v1/packs deine Pakete auflisten, anlegen und aktualisieren, wie du es unter Meine Pakete tust.",
       create: "Token erstellen",
       generateOnMyKey: "Audio über meinen Schlüssel erzeugen",
       lastUsed: "Zuletzt verwendet",

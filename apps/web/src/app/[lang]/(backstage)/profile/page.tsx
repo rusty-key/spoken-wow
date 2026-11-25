@@ -47,7 +47,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   // The status, never the key. Sent to a client component as props, so this is the shape
   // that decides what the browser can possibly learn.
   const [tokens, status, fishStatus, uiLang] = await Promise.all([
-    tokenLangs.length ? listTokens(session.user.id) : [],
+    listTokens(session.user.id),
     spends ? apiKeyStatus(session.user.id) : null,
     spends ? apiKeyStatus(session.user.id, "fish") : null,
     uiLangOf(session.user.id),
@@ -100,7 +100,8 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
             {t.needsRegenerateAfter}
           </p>
         )}
-        {tokenLangs.length > 0 && <ApiTokenSection langs={tokenLangs} initial={tokens} />}
+        {/* Shown to every member: any of them may submit a community pack with a token. */}
+        <ApiTokenSection langs={tokenLangs} initial={tokens} />
       </Contained>
     </main>
   );

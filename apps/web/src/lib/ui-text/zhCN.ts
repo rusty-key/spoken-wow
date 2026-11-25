@@ -2082,6 +2082,9 @@ const zhCN: Dictionary = {
   profile: {
     tokens: {
       copied: "请现在复制这个令牌，之后不会再显示。",
+      packs: "社区语音包",
+      packsAbout:
+        "社区语音包令牌不需要语言。脚本可以用它在 /api/v1/packs 列出、创建和更新你的语音包，就像在“我的语音包”中操作一样。",
       create: "创建令牌",
       generateOnMyKey: "用我的密钥生成音频",
       lastUsed: "最后使用",

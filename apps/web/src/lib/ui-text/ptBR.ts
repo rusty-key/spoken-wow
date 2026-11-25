@@ -2131,6 +2131,9 @@ const ptBR: Dictionary = {
   profile: {
     tokens: {
       copied: "Copie este token agora. Ele não será mostrado de novo.",
+      packs: "Pacotes da comunidade",
+      packsAbout:
+        "Um token de pacotes da comunidade não precisa de idioma. Com ele, um script pode listar, criar e atualizar seus pacotes em /api/v1/packs, como você faz em Meus pacotes.",
       create: "Criar token",
       generateOnMyKey: "Gerar áudio na minha chave",
       lastUsed: "Usado por último",
