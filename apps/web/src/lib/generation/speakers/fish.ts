@@ -123,8 +123,7 @@ export function fishSpeaker(options: FishOptions & { settings: FishSettings }): 
         leadInSec: null,
         credits: null,
         costUsd: fishCost(settings.model, speech.bytes),
-        // fish.audio's /v1/tts returns audio only; its timed endpoint streams.
-        words: null,
+        words: speech.timing?.words ?? null,
         made: {
           modelId: settings.model,
           settings: { temperature: settings.temperature, top_p: settings.topP, speed: settings.speed },

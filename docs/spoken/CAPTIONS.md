@@ -118,11 +118,12 @@ release, because the module has to know the entry.
 The words are for display only. Matching a game string to a line keeps reading the modules' own
 tables, and `clip.text` stays the window's string.
 
-A recording the site made with ElevenLabs after word times were kept carries them in its sound
+A recording the site made with ElevenLabs after word times were kept, or with fish.audio after
+it began timing words, carries them in its sound
 pack: one start per word of the text the take was cut from (`take."wordTimes"`), packed into one
 string per clip, which `clip.present.timings` takes as it is and the captions unpack when the clip plays. Quests, gossip, places and
 readables pass them as `clip.present.timings`, but only where the captions show the recording's own
-words. A take without them, a fish.audio take, and captions in another language are estimated from word length, punctuation and the total duration. Two neighboring
+words. A take without them and captions in another language are estimated from word length, punctuation and the total duration. Two neighboring
 words are highlighted to give the estimate some room, in the windows; the subtitles
 light one word. At the end of a page, the previous word stays highlighted instead of
 advancing the page early.

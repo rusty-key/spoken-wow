@@ -7,6 +7,7 @@ import {
   fishText,
   paragraphs,
   PARAGRAPH_PAUSE_SEC,
+  readTimedStream,
   type FishSpeechRequest,
 } from "./fish-tts";
 
@@ -40,8 +41,36 @@ function stub(response: Response) {
   return { calls, fetchImpl };
 }
 
+type Segment = { text: string; start: number; end: number };
+type StreamEvent = {
+  audio: string;
+  seq?: number;
+  offset?: number;
+  segments?: Segment[] | null;
+  duration?: number;
+};
+
+/** fish.audio's with-timestamp answer: one SSE `message` per audio chunk. */
+function sse(events: StreamEvent[]): string {
+  return events
+    .map(({ audio, seq = 0, offset = 0, segments = null, duration = 1 }) => {
+      const payload = {
+        audio_base64: Buffer.from(audio).toString("base64"),
+        content: "",
+        alignment: segments ? { segments, audio_duration: duration } : null,
+        chunk_seq: seq,
+        chunk_audio_offset_sec: offset,
+      };
+      return `event: message\ndata: ${JSON.stringify(payload)}\n\n`;
+    })
+    .join("");
+}
+
+const stream = (events: StreamEvent[]) =>
+  new Response(sse(events), { status: 200, headers: { "content-type": "text/event-stream" } });
+
 const audio = () =>
-  new Response("ID3fish-mp3", { status: 200, headers: { "content-type": "audio/mpeg" } });
+  stream([{ audio: "ID3fish-mp3", segments: [{ text: "Hiccup", start: 0.1, end: 0.4 }] }]);
 
 describe("the text fish.audio is sent", () => {
   it("is bare for one speaker", () => {
@@ -83,12 +112,12 @@ describe("the payload", () => {
 });
 
 describe("a request", () => {
-  it("is msgpack to /v1/tts, with the key as a bearer and the model as a header", async () => {
+  it("is msgpack to the timed endpoint, with the key as a bearer and the model as a header", async () => {
     const { calls, fetchImpl } = stub(audio());
     const result = await fishSpeech(SOLO, { ...OPTIONS, fetchImpl });
 
     expect(result.ok).toBe(true);
-    expect(calls[0].url).toBe("https://stub.invalid/v1/tts");
+    expect(calls[0].url).toBe("https://stub.invalid/v1/tts/stream/with-timestamp");
     const headers = calls[0].init.headers as Record<string, string>;
     expect(headers.Authorization).toBe("Bearer fish-key");
     expect(headers["Content-Type"]).toBe("application/msgpack");
@@ -144,7 +173,7 @@ describe("a failure", () => {
     expect(result.ok || [result.failure.kind, result.failure.fatal]).toEqual([kind, fatal]);
   });
 
-  it("includes a 200 that is not audio, which would otherwise be archived as silence", async () => {
+  it("includes a 200 that is not an event stream, which would otherwise be archived as silence", async () => {
     const result = await fishSpeech(SOLO, {
       ...OPTIONS,
       fetchImpl: stub(Response.json({ message: "queued" })).fetchImpl,
@@ -152,8 +181,8 @@ describe("a failure", () => {
     expect(result.ok || result.failure.kind).toBe("upstream");
   });
 
-  it("includes an empty body", async () => {
-    const empty = new Response("", { status: 200, headers: { "content-type": "audio/mpeg" } });
+  it("includes a stream with no audio in it", async () => {
+    const empty = new Response("", { status: 200, headers: { "content-type": "text/event-stream" } });
     const result = await fishSpeech(SOLO, { ...OPTIONS, fetchImpl: stub(empty).fetchImpl });
     expect(result.ok || result.failure.kind).toBe("upstream");
   });
@@ -204,7 +233,7 @@ describe("a line of several paragraphs", () => {
     const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
       const body = decode(init.body as Uint8Array) as { text: string };
       calls.push(body.text);
-      return new Response(`mp3:${body.text}`, { status: 200, headers: { "content-type": "audio/mpeg" } });
+      return stream([{ audio: `mp3:${body.text}` }]);
     }) as unknown as typeof globalThis.fetch;
     const stitch = vi.fn(async (parts: Buffer[], pause: number) =>
       Buffer.from(`${parts.map(String).join("|")}@${pause}`),
@@ -242,5 +271,204 @@ describe("a line of several paragraphs", () => {
     });
     const result = await fishSpeech(BROKEN, { ...OPTIONS, fetchImpl, stitch });
     expect(result.ok || result.failure).toMatchObject({ kind: "upstream", message: expect.stringContaining("ffmpeg") });
+  });
+});
+
+function timed(raw: string) {
+  const read = readTimedStream(raw);
+  if ("error" in read) throw new Error(read.error);
+  return read;
+}
+
+describe("the times fish.audio streams", () => {
+  it("joins every chunk's audio in order", () => {
+    const read = timed(sse([{ audio: "ID3a" }, { audio: "b" }, { audio: "c", seq: 1 }]));
+    expect(String(read.audio)).toBe("ID3abc");
+  });
+
+  it("keeps each chunk's latest alignment, moved by the chunk's offset", () => {
+    const read = timed(
+      sse([
+        { audio: "a", segments: [{ text: "Take", start: 0.06, end: 0.3 }] },
+        {
+          audio: "b",
+          segments: [
+            { text: "Take", start: 0.05, end: 0.3 },
+            { text: "this.", start: 0.3, end: 0.6 },
+          ],
+          duration: 0.7,
+        },
+        { audio: "c", seq: 1, offset: 0.7, segments: [{ text: "Go.", start: 0.1, end: 0.4 }], duration: 0.5 },
+      ]),
+    );
+    expect(read.timing?.words).toEqual([
+      { word: "Take", start: 0.05 },
+      { word: "this.", start: 0.3 },
+      { word: "Go.", start: expect.closeTo(0.8) },
+    ]);
+    expect(read.timing?.durationSec).toBeCloseTo(1.2);
+  });
+
+  it("orders words by chunk, though a chunk's alignment may arrive after the next chunk's", () => {
+    const read = timed(
+      sse([
+        { audio: "a" },
+        { audio: "b", seq: 1, offset: 1, segments: [{ text: "Go.", start: 0, end: 0.2 }] },
+        // A late snapshot of chunk 0's timing, with no audio of its own.
+        { audio: "", seq: 0, segments: [{ text: "Take", start: 0.1, end: 0.3 }] },
+      ]),
+    );
+    expect(read.timing?.words?.map((word) => word.word)).toEqual(["Take", "Go."]);
+    expect(String(read.audio)).toBe("ab");
+  });
+
+  it("leaves out speaker tags and bracketed directions, which nothing shows", () => {
+    const read = timed(
+      sse([
+        {
+          audio: "a",
+          segments: [
+            { text: "<|speaker:0|>Take", start: 0, end: 0.2 },
+            { text: "this.", start: 0.2, end: 0.4 },
+            { text: "[sighs]", start: 0.4, end: 0.6 },
+            { text: "<|speaker:1|>", start: 0.6, end: 0.6 },
+            { text: "He", start: 0.7, end: 0.8 },
+          ],
+        },
+      ]),
+    );
+    expect(read.timing?.words?.map((word) => word.word)).toEqual(["Take", "this.", "He"]);
+  });
+
+  it("keeps no times when any chunk never got its alignment", () => {
+    // Times for half the line would light the right words and then stop, or shift every
+    // word after the gap.
+    const read = timed(
+      sse([
+        { audio: "a", segments: [{ text: "Take", start: 0, end: 0.2 }] },
+        { audio: "b", seq: 1, offset: 1 },
+      ]),
+    );
+    expect(read.timing).toBeNull();
+    expect(String(read.audio)).toBe("ab");
+  });
+
+  it("reads a phoneme span split across segments as the one word it replaced", () => {
+    const read = timed(
+      sse([
+        {
+          audio: "a",
+          segments: [
+            { text: "Ask", start: 0, end: 0.2 },
+            { text: "<|phoneme_start|>TH", start: 0.3, end: 0.4 },
+            { text: "R", start: 0.4, end: 0.5 },
+            { text: "AO1", start: 0.5, end: 0.6 },
+            { text: "L<|phoneme_end|>.", start: 0.6, end: 0.8 },
+          ],
+        },
+      ]),
+    );
+    expect(read.timing?.words).toEqual([
+      { word: "Ask", start: 0 },
+      { word: "THRAO1L.", start: 0.3 },
+    ]);
+  });
+
+  it("drops a direction split across segments", () => {
+    const read = timed(
+      sse([
+        {
+          audio: "a",
+          segments: [
+            { text: "[in", start: 0, end: 0.1 },
+            { text: "a", start: 0.1, end: 0.2 },
+            { text: "gruff", start: 0.2, end: 0.3 },
+            { text: "voice]", start: 0.3, end: 0.4 },
+            { text: "Begone.", start: 0.5, end: 0.9 },
+          ],
+        },
+      ]),
+    );
+    expect(read.timing?.words).toEqual([{ word: "Begone.", start: 0.5 }]);
+  });
+
+  it("splits a segment that joins two turns at a speaker tag", () => {
+    const read = timed(
+      sse([{ audio: "a", segments: [{ text: "this.<|speaker:1|>He", start: 0.4, end: 0.9 }] }]),
+    );
+    expect(read.timing?.words?.map((word) => word.word)).toEqual(["this.", "He"]);
+  });
+
+  it("skips events that are not audio chunks, so a billed take is kept", () => {
+    const raw =
+      ": keep-alive\n\n" +
+      sse([{ audio: "a" }]) +
+      `data: ${JSON.stringify({ status: "progress" })}\n\n` +
+      "event: done\ndata: [DONE]\n\n";
+    const read = timed(raw);
+    expect(String(read.audio)).toBe("a");
+  });
+
+  it("names fish.audio's error, not the audio before it", () => {
+    const raw = sse([{ audio: "a" }]) + `event: error\ndata: ${JSON.stringify({ message: "model overloaded" })}\n\n`;
+    expect(readTimedStream(raw)).toEqual({ error: "fish.audio's stream reported an error: model overloaded" });
+  });
+
+  it("is an error when no audio came", () => {
+    expect(readTimedStream("")).toEqual({ error: "fish.audio's stream held no audio" });
+  });
+
+  it("names fish.audio's message when an error came as plain data and no audio did", () => {
+    expect(readTimedStream(`data: ${JSON.stringify({ status: 500, message: "model overloaded" })}\n\n`)).toEqual({
+      error: "fish.audio's stream held no audio: model overloaded",
+    });
+  });
+
+  it.each([
+    ["CRLF", "\r\n"],
+    ["CR", "\r"],
+  ])("reads events split by %s, as SSE allows", (_name, ending) => {
+    const read = timed(sse([{ audio: "a" }, { audio: "b" }]).replace(/\n/g, ending));
+    expect(String(read.audio)).toBe("ab");
+  });
+
+  it("reaches the speaker's take as the line's word starts", async () => {
+    const result = await fishSpeech(SOLO, { ...OPTIONS, fetchImpl: stub(audio()).fetchImpl });
+    expect(result.ok && result.timing?.words).toEqual([{ word: "Hiccup", start: 0.1 }]);
+  });
+
+  const TWO_PARAGRAPHS: FishSpeechRequest = {
+    turns: [{ text: "Take this.\nGo.", speaker: 0 }],
+    references: [NPC],
+    settings: SETTINGS,
+  };
+
+  /** TWO_PARAGRAPHS, each request answered with the next of `answers`, joined as they are. */
+  const speakParagraphs = (answers: Response[]) =>
+    fishSpeech(TWO_PARAGRAPHS, {
+      ...OPTIONS,
+      fetchImpl: vi.fn(async () => answers.shift()!) as unknown as typeof globalThis.fetch,
+      stitch: async (parts: Buffer[]) => Buffer.concat(parts),
+    });
+
+  it("moves each paragraph's times past the paragraphs and pauses before it", async () => {
+    const answers = [
+      stream([{ audio: "a", segments: [{ text: "Take", start: 0.06, end: 0.3 }, { text: "this.", start: 0.3, end: 0.8 }], duration: 1.5 }]),
+      stream([{ audio: "b", segments: [{ text: "Go.", start: 0.06, end: 0.4 }], duration: 0.5 }]),
+    ];
+    const result = await speakParagraphs(answers);
+
+    expect(result.ok && result.timing?.words).toEqual([
+      { word: "Take", start: 0.06 },
+      { word: "this.", start: 0.3 },
+      { word: "Go.", start: expect.closeTo(1.5 + PARAGRAPH_PAUSE_SEC + 0.06) },
+    ]);
+  });
+
+  it("keeps no times for a line any paragraph of which has none", async () => {
+    const answers = [audio(), stream([{ audio: "b" }])];
+    const result = await speakParagraphs(answers);
+
+    expect(result.ok && result.timing).toBeNull();
   });
 });
