@@ -214,13 +214,13 @@ export default function SortQueue({
 
   async function resolve(current: ReportGroup, status: Exclude<Status, "open">): Promise<string | null> {
     const failed = await failedToSet(current.reports, status);
-    return failed ? `${failed} of ${current.reports.length} didn't save. Try again.` : null;
+    return failed ? fill(t.reports.didntSave, { failed, total: current.reports.length }) : null;
   }
 
   async function skip(current: ReportGroup): Promise<string | null> {
     // A line answered earlier is reopened first: only open reports can be skipped, and a
     // skipped line is one still waiting for somebody.
-    if (answer && (await failedToSet(current.reports, "open"))) return "Couldn't reopen the reports. Try again.";
+    if (answer && (await failedToSet(current.reports, "open"))) return t.reports.reopenFailed;
     const response = await fetch(withLang(lang, "/api/reports/skip"), {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -238,7 +238,7 @@ export default function SortQueue({
     const result = await regenerateLine(source, lineId, lang);
     setBusy(null);
     setRegenerating(null);
-    if ("error" in result) return setError(`Regenerate failed: ${result.error}`);
+    if ("error" in result) return setError(fill(t.reports.regenerateFailed, { error: result.error }));
 
     setVersions((current) => ({ ...current, [lineId]: result.version }));
     setNotice({ lineId, text: t.reports.takeSaved });
@@ -301,7 +301,7 @@ export default function SortQueue({
       title={t.reports.goBack}
     >
       <Undo2 />
-      Previous
+      {t.reports.previous}
       <Hint>[P]</Hint>
     </Button>
   );
@@ -311,12 +311,12 @@ export default function SortQueue({
       <main className="mx-auto flex max-w-xl flex-col items-center px-4 pt-16 pb-24 text-center">
         <p className="text-2xl font-semibold">{t.reports.allSorted}</p>
         <p className="text-muted-foreground mt-2 text-sm">
-          No open {SOURCE_LABELS[source].toLowerCase()} reports left in your queue.
+          {t.reports.allSortedLede}
         </p>
         <div className="mt-6 flex items-center gap-4 text-sm">
           {index > 0 ? previousButton : null}
           <Link href="/reports/sort" className="underline underline-offset-2">
-            Back to sections
+            {t.reports.backToSections}
           </Link>
         </div>
       </main>
@@ -430,7 +430,7 @@ export default function SortQueue({
             onFixed={() => {
               // The accept rewrote a line's text, not its take: it is voiced again only on Regenerate.
               // Which line is the server's choice, so the notice and the reload are the card's.
-              setNotice({ lineId: null, text: "Text updated from the report. Regenerate to voice it." });
+              setNotice({ lineId: null, text: t.reports.textUpdated });
               for (const id of ids) void load(id);
             }}
           />
@@ -613,9 +613,9 @@ function LineCard({
         <p className="text-muted-foreground text-sm">{t.reports.lookingUp}</p>
       ) : looked === "error" ? (
         <p className="text-sm">
-          Couldn&apos;t load the line.{" "}
+          {t.reports.couldntLoadLine}{" "}
           <button type="button" className="underline underline-offset-2" onClick={onRetry}>
-            Retry
+            {t.reports.retry}
           </button>
         </p>
       ) : line === null || detail === null ? (

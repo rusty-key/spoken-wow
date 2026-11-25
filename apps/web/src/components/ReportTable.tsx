@@ -281,7 +281,7 @@ export default function ReportTable({
             {report.target}
           </Link>
         ) : (
-          <span className="text-muted-foreground">about the project</span>
+          <span className="text-muted-foreground">{t.reports.aboutProject}</span>
         )}
       </td>
     );
@@ -515,7 +515,7 @@ export default function ReportTable({
                 sort={{ column: "filed", direction: filters.dir }}
                 onSort={() => go({ dir: filters.dir === "desc" ? "asc" : "desc" })}
               >
-                Filed
+                {t.reports.filedColumn}
               </SortHeader>
               <th className="border-b py-2 pr-3 font-normal">{t.reports.what}</th>
               <th className="border-b py-2 font-normal" />

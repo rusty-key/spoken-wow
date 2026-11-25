@@ -59,6 +59,7 @@ export default function ReportsBadge({ source, lineId, count, canTriage }: Props
   // the chip down without re-running the search the row came from.
   const t = useUiText().catalogue.reports;
   const words = useUiText().catalogue.dialogs;
+  const reopen = useUiText().reports.reopen;
   const plural = (n: number) => fill(n === 1 ? t.one : t.many, { n });
   const openCount = reports ? reports.filter((report) => report.status === "open").length : count;
 
@@ -183,7 +184,7 @@ export default function ReportsBadge({ source, lineId, count, canTriage }: Props
                       disabled={busy === report.id}
                       onClick={() => void resolve(report.id, "open")}
                     >
-                      Reopen
+                      {reopen}
                     </Button>
                   )}
                 </div>

@@ -1113,7 +1113,7 @@ const ReviewRow = memo(function ReviewRow({
                 canAnswerNpc ? (
                   <NpcConflict npc={npc} busy={npcBusy} onPick={(option) => void onPickConflict(row.id, npc, option)} />
                 ) : (
-                  <span className="bs-who-sub">NPC unclear</span>
+                  <span className="bs-who-sub">{t.contributions.npcUnclear}</span>
                 )
               ) : (
                 <SpeakerCell
@@ -1181,7 +1181,7 @@ const ReviewRow = memo(function ReviewRow({
             {sent ? (
               <TokenText text={sent} removed={current === "new" && !editedText ? check.fix?.removed : undefined} added={current === "new" && !editedText ? check.fix?.added : undefined} />
             ) : (
-              <span className="text-muted-foreground">(no text sent)</span>
+              <span className="text-muted-foreground">{t.contributions.noTextSent}</span>
             )}
           </p>
         )}
@@ -1504,7 +1504,7 @@ function MatchCell({
             className="h-7 w-10 rounded border bg-transparent px-1.5 text-xs"
           />
           <LiteButton type="submit" variant="outline" className="h-7 px-2 text-xs" disabled={busy || !valid}>
-            Match
+            {t.contributions.matchBook}
           </LiteButton>
           {book.match.kind !== "new-book" ? (
             <LiteButton
@@ -1514,12 +1514,12 @@ function MatchCell({
               title={t.contributions.newBook}
               onClick={() => onSave({ newBook: true })}
             >
-              New book
+              {t.contributions.newBookShort}
             </LiteButton>
           ) : null}
           {moderated ? (
             <LiteButton variant="ghost" className="h-7 px-1.5 text-xs" disabled={busy} onClick={() => onSave(null)}>
-              Clear
+              {t.contributions.clearPick}
             </LiteButton>
           ) : null}
         </form>

@@ -71,9 +71,9 @@ const OK_FILTERS: OkFilter[] = ["all", "yes", "no"];
  * links rather than pages that arrive blank and have to be retyped into.
  */
 const SECTIONS = [
-  { letter: "Q", what: "quest lines", href: (q: string) => questsHref({ q, filter: "text" }) },
-  { letter: "Z", what: "zone lore", href: (q: string) => placesHref({ q, field: "text" }) },
-  { letter: "B", what: "book pages", href: (q: string) => readablesHref({ q, field: "text" }) },
+  { letter: "Q", what: "questLines", href: (q: string) => questsHref({ q, filter: "text" }) },
+  { letter: "Z", what: "zoneLore", href: (q: string) => placesHref({ q, field: "text" }) },
+  { letter: "B", what: "bookPages", href: (q: string) => readablesHref({ q, field: "text" }) },
 ] as const;
 
 // Starts as a respelling, not IPA. Anyone who can write IPA can switch in one click, and
@@ -578,15 +578,11 @@ function Editor({
             setRemoved(null);
           }}
         >
-          Discard
+          {t.discard}
         </Button>
       </div>
 
-      <p className="text-muted-foreground text-xs">
-        Saving uploads a new dictionary and every line generated afterwards uses it. Audio
-        already in the store is untouched: its version row records the dictionary it was made
-        with, so a line generated before a fix stays playable and identifiable as stale.
-      </p>
+      <p className="text-muted-foreground text-xs">{t.savingLede}</p>
     </div>
   );
 }
@@ -734,21 +730,21 @@ function Tombstone({
   onUndo: () => void;
   onDismiss: () => void;
 }) {
+  const t = useUiText().lexicon;
   return (
     <div
       role="status"
       className="bg-destructive/5 text-muted-foreground flex h-10 items-center gap-3 px-3 text-sm"
     >
       <span className="truncate">
-        Removed <span className="text-foreground font-medium line-through">{entry.grapheme || "a new entry"}</span>
-        {" — gone once you save."}
+        {fill(t.removed, { name: entry.grapheme || t.newEntryName })}
       </span>
       <div className="ml-auto flex shrink-0 items-center gap-1">
         <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={onUndo}>
-          <Undo2 className="size-3" aria-hidden /> Undo
+          <Undo2 className="size-3" aria-hidden /> {t.undo}
         </Button>
         <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onDismiss}>
-          Dismiss
+          {t.dismiss}
         </Button>
       </div>
     </div>
@@ -794,6 +790,7 @@ function Row({
   const t = useUiText().lexicon;
   const playable = Boolean(entry.grapheme.trim() && (entry.ipa ?? entry.alias ?? "").trim());
   const ipa = formKind(entry) === "ipa";
+  const removeLabel = fill(t.removeFor, { name: entry.grapheme || t.thisEntry });
 
   return (
     <div
@@ -905,8 +902,8 @@ function Row({
             size="icon"
             variant="ghost"
             className="text-destructive size-6"
-            title={`Remove ${entry.grapheme || "this entry"}`}
-            aria-label={`Remove ${entry.grapheme || "this entry"}`}
+            title={removeLabel}
+            aria-label={removeLabel}
             onClick={onRemove}
           >
             <Trash2 className="size-3" aria-hidden />
@@ -944,7 +941,7 @@ function Row({
               <span className="text-[10px] leading-none font-semibold">{letter}</span>
             </>
           );
-          const label = `Find ${what} that say ${entry.grapheme}`;
+          const label = fill(t.findThatSay, { what: t[what], name: entry.grapheme });
 
           return entry.grapheme.trim() ? (
             <Button
@@ -1025,12 +1022,12 @@ function Row({
  * given a respelling. Said per row, because the page is otherwise entirely about ElevenLabs.
  */
 function FishBadge({ use }: { use: FishUse }) {
-  const text = { phoneme: "fish: phoneme", respelling: "fish: respelling", unused: "fish: not used" }[use];
+  const t = useUiText().lexicon;
+  const text = { phoneme: t.fishPhoneme, respelling: t.fishRespelling, unused: t.fishUnused }[use];
   const title = {
-    phoneme: "fish.audio speaks this from the IPA, converted to ARPAbet.",
-    respelling: "fish.audio speaks this respelling as written.",
-    unused:
-      "fish.audio cannot use this entry: it reads no IPA outside English, and this IPA does not convert. Give it a respelling for fish.audio to use.",
+    phoneme: t.fishPhonemeTitle,
+    respelling: t.fishRespellingTitle,
+    unused: t.fishUnusedTitle,
   }[use];
   return (
     <span

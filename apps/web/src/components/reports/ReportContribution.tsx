@@ -15,6 +15,7 @@ import Link from "@/components/LocaleLink";
 import { useEffect, useState } from "react";
 
 import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 
 import { Marked } from "@/components/CorrectionTable";
 import { LiteButton } from "@/components/LiteControls";
@@ -78,7 +79,7 @@ export default function ReportContribution({
           : state.kind === "changed"
             ? t.asCorrection
             : t.nothingToContribute}
-        {stored ? ` Stored as contribution #${stored.id}, ${stored.status}.` : null}
+        {stored ? ` ${fill(t.storedAs, { id: stored.id, status: stored.status })}` : null}
       </p>
 
       {diff && state.kind === "changed" ? (
@@ -140,7 +141,7 @@ export default function ReportContribution({
                 }
                 onClick={() => void accept(wording ? { pick: { lineId: wording.lineId, variant: wording.variant } } : {})}
               >
-                Accept
+                {t.accept}
               </LiteButton>
               {wording && report.source === "quests" ? (
                 <LiteButton
@@ -149,7 +150,7 @@ export default function ReportContribution({
                   title={t.keepCorpusAdd}
                   onClick={() => void accept({ as: "wording" })}
                 >
-                  Accept as new line
+                  {t.acceptAsNewLine}
                 </LiteButton>
               ) : null}
             </>

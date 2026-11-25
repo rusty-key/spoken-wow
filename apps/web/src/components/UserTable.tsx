@@ -7,6 +7,7 @@ import Cell from "@/components/Cell";
 import Pagination from "@/components/Pagination";
 import SortHeader from "@/components/SortHeader";
 import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 import { usePendingPush } from "@/components/usePendingPush";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -95,7 +96,7 @@ export default function UserTable({
     const answer = await send();
     setPendingId(null);
     if (!answer.grants) {
-      setError(answer.error ?? "That did not work.");
+      setError(answer.error ?? t.users.genericFailed);
       return false;
     }
     // The route answers with every grant the viewer may see, which is this table's.
@@ -116,7 +117,7 @@ export default function UserTable({
     const { error } = await authClient.admin.setRole({ userId, role });
 
     if (error) {
-      setError(error.message ?? "Could not change that role.");
+      setError(error.message ?? t.users.roleFailed);
     } else {
       setUsers((current) => current.map((user) => (user.id === userId ? { ...user, role } : user)));
     }
@@ -134,7 +135,7 @@ export default function UserTable({
     const { error } = await authClient.admin.removeUser({ userId });
 
     if (error) {
-      setError(error.message ?? "Could not delete that user.");
+      setError(error.message ?? t.users.deleteFailed);
     } else {
       setUsers((current) => current.filter((user) => user.id !== userId));
       setGrants((current) => current.filter((grant) => grant.userId !== userId));
@@ -158,7 +159,7 @@ export default function UserTable({
     });
 
     if (!response.ok) {
-      setError("Could not clear that key.");
+      setError(t.users.clearFailed);
     } else {
       setKeyed((current) => {
         const next = new Set(current);
@@ -278,6 +279,8 @@ export default function UserTable({
  */
 function DeleteUser({ user, busy, onDelete }: { user: UserRow; busy: boolean; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
+  const t = useUiText().adminTables.users;
+  const name = user.name || user.email;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -286,20 +289,17 @@ function DeleteUser({ user, busy, onDelete }: { user: UserRow; busy: boolean; on
           variant="ghost"
           size="sm"
           disabled={busy}
-          aria-label={`Delete ${user.email}`}
+          aria-label={fill(t.deleteFor, { email: user.email })}
           className="text-destructive hover:text-destructive"
         >
-          Delete
+          {t.delete}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 text-sm">
-        <p>
-          Delete <span className="font-medium">{user.name || user.email}</span> for good? Their
-          grants and keys go with the account; what they made stays, without their name.
-        </p>
+        <p>{fill(t.deleteTitle, { name })}</p>
         <div className="mt-3 flex justify-end gap-2">
           <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
-            Keep
+            {t.keep}
           </Button>
           <Button
             type="button"
@@ -311,7 +311,7 @@ function DeleteUser({ user, busy, onDelete }: { user: UserRow; busy: boolean; on
               onDelete();
             }}
           >
-            Delete
+            {t.delete}
           </Button>
         </div>
       </PopoverContent>
