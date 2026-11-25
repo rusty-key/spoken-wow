@@ -117,11 +117,11 @@ export type ContributionRow = Pick<
 export type WaitingSummary = { kind: WaitingKind; title: string; fix: string; count: number; oldest: string; example: string | null }[];
 
 /** The To review groups, in the order the page lists them (page.tsx sorts the queue the same way). */
-const GROUPS: { verdict: Verdict; tone: PanelTone; title: string; description: string }[] = [
-  { verdict: "clean", tone: "good", title: "Looks right", description: "In the page's language, complete, same placeholders as the English line. Skim and keep." },
-  { verdict: "fix", tone: "fix", title: "Needs a small fix", description: "Good text, but something got spelled out for the player who sent it, or a token won't be voiced. Check the fix, then keep it." },
-  { verdict: "look", tone: "info", title: "Needs a look", description: "No English line was found to compare it with. Read it, then keep it or drop it." },
-  { verdict: "drop", tone: "drop", title: "Probably drop", description: "Cut off, not translated, or a placeholder that can't be repaired. A good copy comes back with the next player who sees the line." },
+const GROUPS: { verdict: Verdict; tone: PanelTone }[] = [
+  { verdict: "clean", tone: "good" },
+  { verdict: "fix", tone: "fix" },
+  { verdict: "look", tone: "info" },
+  { verdict: "drop", tone: "drop" },
 ];
 
 const GROUP_ICONS: Record<Verdict, ReactNode> = {
@@ -133,11 +133,11 @@ const GROUP_ICONS: Record<Verdict, ReactNode> = {
 
 /** The orders the database can sort by (query.ts SORT_COLUMNS), as one choice each. */
 const SORT_OPTIONS = [
-  { value: "count:desc", label: "Most sent first" },
-  { value: "filed:desc", label: "Newest first" },
-  { value: "filed:asc", label: "Oldest first" },
-  { value: "count:asc", label: "Fewest sent first" },
-];
+  { value: "count:desc", key: "mostSent" },
+  { value: "filed:desc", key: "newest" },
+  { value: "filed:asc", key: "oldest" },
+  { value: "count:asc", key: "fewestSent" },
+] as const;
 
 /** What a resolve may carry beside the status: the reviewer's edit on an accept, a reason on a reject. */
 type ResolveExtra = { text?: string; reason?: string };
@@ -147,18 +147,16 @@ export type BookChoice = { bookId: string; title: string; pages: number };
 
 /** The datalist the match form's book field offers, rendered once for the whole table. */
 const READABLES_LIST = "contribution-readables";
-const NEW_BOOK = "New book";
-
 /**
  * What the book field may say -> the book it names, or null for a new book. A title more than
  * one book has carries its book's id.
  */
 type BookLabels = ReadonlyMap<string, BookChoice | null>;
 
-function bookLabels(books: readonly BookChoice[]): BookLabels {
-  const titles = new Map<string, number>([[NEW_BOOK, 1]]);
+function bookLabels(books: readonly BookChoice[], newBook: string): BookLabels {
+  const titles = new Map<string, number>([[newBook, 1]]);
   for (const book of books) titles.set(book.title, (titles.get(book.title) ?? 0) + 1);
-  const labels = new Map<string, BookChoice | null>([[NEW_BOOK, null]]);
+  const labels = new Map<string, BookChoice | null>([[newBook, null]]);
   for (const book of books) labels.set(titles.get(book.title)! > 1 ? `${book.title} · #${book.bookId}` : book.title, book);
   return labels;
 }
@@ -166,10 +164,10 @@ function bookLabels(books: readonly BookChoice[]): BookLabels {
 /** What a moderator says a readables row is, as api/contributions/page takes it; null clears it. */
 type MatchAnswer = { lineId: string } | { bookId: string; pageNumber: number } | { newBook: true } | null;
 
-const STATUS_LABELS: Record<ContributionStatus, string> = {
-  new: "New",
-  accepted: "Accepted",
-  rejected: "Rejected",
+const STATUS_KEYS: Record<ContributionStatus, "statusNew" | "statusAccepted" | "statusRejected"> = {
+  new: "statusNew",
+  accepted: "statusAccepted",
+  rejected: "statusRejected",
 };
 
 
@@ -243,7 +241,10 @@ export default function ContributionTable({
   const t = useUiText();
   const lang = useLang();
   const roster = useMemo(() => new Roster(rosterData), [rosterData]);
-  const labels = useMemo(() => bookLabels(books), [books]);
+  const labels = useMemo(
+    () => bookLabels(books, t.contributions.newBookChoice),
+    [books, t.contributions.newBookChoice],
+  );
 
   /**
    * What this session resolved, overlaid on the server's rows -- the same shape ReportTable
@@ -330,7 +331,7 @@ export default function ContributionTable({
       const ok = await recordKind(contributionId, option.npcKind as NpcKind);
       setNpcBusy(null);
       if (!ok) {
-        setRefusals(withRefusal(contributionId));
+        setRefusals(withRefusal(contributionId, t.contributions.failed));
         return;
       }
       setNpcOverrides((current) => ({
@@ -373,7 +374,7 @@ export default function ContributionTable({
         | { resolution?: NpcResolution | null; error?: unknown }
         | null;
       if (!response?.ok) {
-        setRefusals(withRefusal(contributionId, body?.error));
+        setRefusals(withRefusal(contributionId, t.contributions.failed, body?.error));
         return;
       }
       setRefusals(withoutRefusal(contributionId));
@@ -403,7 +404,7 @@ export default function ContributionTable({
 
       const body = (await response?.json().catch(() => null)) as { error?: unknown } | null;
       if (!response?.ok) {
-        setRefusals(withRefusal(contributionId, body?.error));
+        setRefusals(withRefusal(contributionId, t.contributions.failed, body?.error));
         return;
       }
       setRefusals(withoutRefusal(contributionId));
@@ -435,7 +436,7 @@ export default function ContributionTable({
       // The route already gives a plain-words reason for needs-speaker and one-way (accept.ts);
       // anything else (bad status, unknown row) degrades the same way this always has.
       const body = await response?.json().catch(() => null);
-      setRefusals(withRefusal(id, body?.error));
+      setRefusals(withRefusal(id, t.contributions.failed, body?.error));
       return false;
     }
     landed(id, next);
@@ -502,9 +503,12 @@ export default function ContributionTable({
             // The bulk reason replaces one this session gave the row before.
             setReasons(({ [id]: _old, ...rest }) => (reason && next === "rejected" ? { ...rest, [id]: reason } : rest));
           } else {
-            const message = typeof (result ? result.error : body?.error) === "string" ? String(result ? result.error : body?.error) : "That didn't go through -- try again.";
+            const message =
+              typeof (result ? result.error : body?.error) === "string"
+                ? String(result ? result.error : body?.error)
+                : t.contributions.failed;
             refused.push({ id, message });
-            setRefusals(withRefusal(id, message));
+            setRefusals(withRefusal(id, t.contributions.failed, message));
           }
         }
         setBulk({ next, done: Math.min(start + chunk.length, ids.length), total: ids.length });
@@ -513,7 +517,13 @@ export default function ContributionTable({
       // Rows that left this view leave gaps on this page; the server fills them from the next.
       router.refresh();
       setBulkOutcome({
-        summary: `${STATUS_LABELS[next]}: ${ids.length - refused.length} of ${ids.length}${refused.length > 0 ? `, ${refused.length} refused:` : "."}`,
+        summary:
+          fill(t.contributions.bulkSummary, {
+            status: t.contributions[STATUS_KEYS[next]],
+            kept: ids.length - refused.length,
+            all: ids.length,
+          }) +
+          (refused.length > 0 ? fill(t.contributions.bulkRefused, { n: refused.length }) : "."),
         refused,
       });
     },
@@ -647,7 +657,7 @@ export default function ContributionTable({
             >
               {SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value} className="bg-popover">
-                  {option.label}
+                  {t.contributions.sorts[option.key]}
                 </option>
               ))}
             </select>
@@ -656,7 +666,11 @@ export default function ContributionTable({
         {pending && <Refreshing />}
         {bulk ? (
           <span className="text-muted-foreground text-sm">
-            {STATUS_LABELS[bulk.next]}: {bulk.done} of {bulk.total}…
+            {fill(t.contributions.bulkProgress, {
+              status: t.contributions[STATUS_KEYS[bulk.next]],
+              done: bulk.done,
+              total: bulk.total,
+            })}
           </span>
         ) : bulkOutcome ? (
           <span className="text-muted-foreground text-sm">{bulkOutcome.summary}</span>
@@ -746,8 +760,8 @@ export default function ContributionTable({
           <Panel
             tone="good"
             icon={<CheckIcon />}
-            title={status === "new" ? "Nothing left to review" : "Nothing here"}
-            description={status === "new" ? "New lines arrive whenever players send them." : "Lines you decide show up here."}
+            title={status === "new" ? t.contributions.nothingLeft : t.contributions.nothingHere}
+            description={status === "new" ? t.contributions.newLinesArrive : t.contributions.linesYouDecide}
           />
         ) : status === "new" && bucket === "ready" ? (
           GROUPS.map((group) => {
@@ -758,7 +772,9 @@ export default function ContributionTable({
                 keepConfirmed ? (
                   <>
                     <span className="text-sm">
-                      Keep all {keepConfirmed.length}{pages > 1 ? " on every page" : ""}? A kept line can&apos;t be reopened once it is written.
+                      {fill(t.contributions.keepAllCount, { n: keepConfirmed.length })}
+                      {pages > 1 ? t.contributions.keepAllEvery : ""}
+                      {t.contributions.keepAllWarning}
                     </span>
                     <button
                       type="button"
@@ -769,39 +785,43 @@ export default function ContributionTable({
                         void resolveMany(keepConfirmed, "accepted");
                       }}
                     >
-                      Keep {keepConfirmed.length}
+                      {fill(t.contributions.keepCount, { n: keepConfirmed.length })}
                     </button>
                     <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmAll(null)}>
-                      Cancel
+                      {t.contributions.cancel}
                     </button>
                   </>
                 ) : (
                   <button type="button" className="bs-btn bs-btn-primary" disabled={bulk !== null} onClick={() => setConfirmAll(cleanToKeep)}>
-                    Keep all {cleanToKeep.length}
+                    {fill(t.contributions.keepAllCount, { n: cleanToKeep.length })}
                   </button>
                 )
               ) : group.verdict === "drop" && dropToReject.length > 1 ? (
                 dropConfirmed ? (
                   <>
-                    <span className="text-sm">Drop all {dropConfirmed.length}{pages > 1 ? " on every page" : ""}?</span>
+                    <span className="text-sm">
+                      {fill(t.contributions.dropAllCount, { n: dropConfirmed.length })}
+                      {pages > 1 ? t.contributions.keepAllEvery : ""}
+                      {t.contributions.dropAllWarning}
+                    </span>
                     <button
                       type="button"
                       className="bs-btn bs-btn-danger"
                       disabled={bulk !== null || dropConfirmed.length === 0}
                       onClick={() => {
                         setConfirmDrop(null);
-                        void resolveMany(dropConfirmed, "rejected", "Failed the review checks");
+                        void resolveMany(dropConfirmed, "rejected", t.contributions.failedChecks);
                       }}
                     >
-                      Drop {dropConfirmed.length}
+                      {fill(t.contributions.dropCount, { n: dropConfirmed.length })}
                     </button>
                     <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmDrop(null)}>
-                      Cancel
+                      {t.contributions.cancel}
                     </button>
                   </>
                 ) : (
                   <button type="button" className="bs-btn bs-btn-danger" disabled={bulk !== null} onClick={() => setConfirmDrop(dropToReject)}>
-                    Drop all {dropToReject.length}
+                    {fill(t.contributions.dropAllCount, { n: dropToReject.length })}
                   </button>
                 )
               ) : null;
@@ -811,9 +831,9 @@ export default function ContributionTable({
                 id={`group-${group.verdict}`}
                 tone={group.tone}
                 icon={GROUP_ICONS[group.verdict]}
-                title={group.title}
+                title={t.contributions.groups[group.verdict].title}
                 count={members.length}
-                description={group.description}
+                description={t.contributions.groups[group.verdict].description}
                 action={action}
               >
                 {members.map((row) => renderRow(row))}
@@ -824,7 +844,13 @@ export default function ContributionTable({
           <Panel
             tone={status === "rejected" ? "drop" : status === "accepted" ? "good" : "neutral"}
             icon={status === "rejected" ? <XIcon /> : status === "accepted" ? <CheckIcon /> : <ClockIcon />}
-            title={status === "rejected" ? "Rejected" : status === "accepted" ? "Accepted" : "Lines waiting on an admin"}
+            title={
+              status === "rejected"
+                ? t.contributions.statusRejected
+                : status === "accepted"
+                  ? t.contributions.statusAccepted
+                  : t.contributions.linesWaitingOnAdmin
+            }
             count={matching.length}
           >
             {rows.map((row) => renderRow(row))}
@@ -835,7 +861,11 @@ export default function ContributionTable({
       <datalist id={READABLES_LIST}>
         {[...labels].map(([label, choice]) => (
           <option key={label} value={label}>
-            {choice ? (choice.pages === 1 ? "1 page" : `${choice.pages} pages`) : null}
+            {choice
+              ? choice.pages === 1
+                ? t.contributions.onePage
+                : fill(t.contributions.pagesCount, { n: choice.pages })
+              : null}
           </option>
         ))}
       </datalist>
@@ -942,17 +972,21 @@ const ReviewRow = memo(function ReviewRow({
 }) {
   const when = useLocalDates();
   // A written page is one-way (accept.ts), so its match is no longer the moderator's to move.
+  const t = useUiText();
   const pageWritten = current === "accepted" && (row.hasLine || lineCreated);
   const book = row.book;
   // An ambiguous row needs a page picked, and a known one is already in the corpus.
   const acceptHold =
-    book?.match.kind === "ambiguous" ? "Pick the page first" : book?.match.kind === "known" ? "Already in the corpus" : null;
+    book?.match.kind === "ambiguous"
+      ? t.contributions.pickPageFirst
+      : book?.match.kind === "known"
+        ? t.contributions.alreadyInCorpus
+        : null;
   const { check } = row;
   const sent = editedText ?? row.text ?? "";
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [dropping, setDropping] = useState(false);
-  const t = useUiText();
   const [showNote, setShowNote] = useState(false);
   const hold = busy || locked;
   const keepable = current !== "accepted" && bucket === "ready" && acceptHold === null;
@@ -977,16 +1011,22 @@ const ReviewRow = memo(function ReviewRow({
   if (editing) {
     actions = (
       <>
-        {button("Keep my version", "bs-btn-primary", () => {
-          void onResolve(row.id, "accepted", { text: draft }).then((ok) => ok && setEditing(false));
-        }, !keepable || !draft.trim(), acceptHold ?? undefined)}
-        {button("Cancel", "bs-btn-text", () => setEditing(false))}
+        {button(
+          t.contributions.keepMyVersion,
+          "bs-btn-primary",
+          () => {
+            void onResolve(row.id, "accepted", { text: draft }).then((ok) => ok && setEditing(false));
+          },
+          !keepable || !draft.trim(),
+          acceptHold ?? undefined,
+        )}
+        {button(t.contributions.cancel, "bs-btn-text", () => setEditing(false))}
       </>
     );
   } else if (current === "new") {
     const keep = (label: string, className: string, extra?: ResolveExtra) =>
-      button(label, className, () => void onResolve(row.id, "accepted", extra), !keepable, acceptHold ?? (bucket !== "ready" ? "Waits on an admin" : undefined));
-    const dropAsked = button("Drop…", "bs-btn-text", () => {
+      button(label, className, () => void onResolve(row.id, "accepted", extra), !keepable, acceptHold ?? (bucket !== "ready" ? t.contributions.waitsOnAdmin : undefined));
+    const dropAsked = button(t.contributions.dropEllipsis, "bs-btn-text", () => {
       setDropping((open) => !open);
       setEditing(false);
     });
@@ -995,19 +1035,31 @@ const ReviewRow = memo(function ReviewRow({
         dropAsked
       ) : check.verdict === "fix" ? (
         <>
-          {check.fix ? keep("Keep with fix", "bs-btn-primary", { text: check.fix.text }) : button("Edit text", "bs-btn-primary", startEdit)}
-          {check.fix ? button("Edit text", "bs-btn-text", startEdit) : keep("Keep as sent", "bs-btn-text")}
+          {check.fix
+            ? keep(t.contributions.keepWithFix, "bs-btn-primary", { text: check.fix.text })
+            : button(t.contributions.editText, "bs-btn-primary", startEdit)}
+          {check.fix
+            ? button(t.contributions.editText, "bs-btn-text", startEdit)
+            : keep(t.contributions.keepAsSent, "bs-btn-text")}
           {dropAsked}
         </>
       ) : check.verdict === "drop" ? (
         <>
-          {button("Drop", "bs-btn-danger", () => void drop(check.findings.find((finding) => finding.tone === "drop")?.message ?? "Failed the review checks"))}
-          {button("Edit text and keep", "bs-btn-text", startEdit, !keepable)}
+          {button(
+            t.contributions.drop,
+            "bs-btn-danger",
+            () =>
+              void drop(
+                check.findings.find((finding) => finding.tone === "drop")?.message ??
+                  t.contributions.failedChecks,
+              ),
+          )}
+          {button(t.contributions.editTextAndKeep, "bs-btn-text", startEdit, !keepable)}
         </>
       ) : (
         <>
-          {keep("Keep", "")}
-          {button("Edit text", "bs-btn-text", startEdit, !keepable)}
+          {keep(t.contributions.keep, "")}
+          {button(t.contributions.editText, "bs-btn-text", startEdit, !keepable)}
           {dropAsked}
         </>
       );
@@ -1016,12 +1068,18 @@ const ReviewRow = memo(function ReviewRow({
       <>
         {current === "accepted" && (row.source === "quests" || book) && !(row.hasLine || lineCreated)
           ? // Accepted before lines were written on accept, or reopened since: the same POST again.
-            button("Add to explorer", "bs-btn-primary", () => void onResolve(row.id, "accepted"), acceptHold !== null, acceptHold ?? undefined)
+            button(
+              t.contributions.addToExplorer,
+              "bs-btn-primary",
+              () => void onResolve(row.id, "accepted"),
+              acceptHold !== null,
+              acceptHold ?? undefined,
+            )
           : null}
         {current === "accepted"
-          ? button("Drop…", "bs-btn-text", () => setDropping((open) => !open))
+          ? button(t.contributions.dropEllipsis, "bs-btn-text", () => setDropping((open) => !open))
           : null}
-        {button("Reopen", "bs-btn-text", () => void onResolve(row.id, "new"))}
+        {button(t.contributions.reopen, "bs-btn-text", () => void onResolve(row.id, "new"))}
       </>
     );
   }
@@ -1099,12 +1157,16 @@ const ReviewRow = memo(function ReviewRow({
             <TokenText text={row.english} />
           </p>
         ) : (
-          <p className="bs-text text-muted-foreground">{row.locale.startsWith("en") ? "This is the English line." : "No English line found."}</p>
+          <p className="bs-text text-muted-foreground">{row.locale.startsWith("en") ? t.contributions.englishLine : t.contributions.noEnglishLine}</p>
         )}
       </div>
 
       <div className="min-w-0">
-        <p className="bs-label">{current === "new" && check.fix && !editing ? "Sent, with the fix" : editedText ? "Kept as edited" : "Sent"}</p>
+        <p className="bs-label">{current === "new" && check.fix && !editing
+                ? t.contributions.sentWithFix
+                : editedText
+                  ? t.contributions.keptAsEdited
+                  : t.contributions.sentWord}</p>
         {editing ? (
           <textarea
             className="bs-textarea"
@@ -1134,7 +1196,11 @@ const ReviewRow = memo(function ReviewRow({
           ) : current === "rejected" ? (
             <li className="bs-finding bs-finding-drop">
               <XIcon className="size-3.5" aria-hidden />
-              <span>{reason ? `Rejected: ${reason}` : "Rejected, no reason given."}</span>
+              <span>
+                {reason
+                  ? fill(t.contributions.rejectedWith, { reason })
+                  : t.contributions.rejectedNoReasonGiven}
+              </span>
             </li>
           ) : check.findings.length === 0 ? (
             <li className="bs-finding bs-finding-ok">
@@ -1154,7 +1220,7 @@ const ReviewRow = memo(function ReviewRow({
 
       <div className="bs-actions">
         {actions}
-        {moved ? <p className="bs-refusal text-muted-foreground">{bucket === "ready" ? "Ready to review now" : "Waits on an admin now"}</p> : null}
+        {moved ? <p className="bs-refusal text-muted-foreground">{bucket === "ready" ? t.contributions.readyNow : t.contributions.waitsNow}</p> : null}
         {refusal ? <p className="bs-refusal">{refusal}</p> : null}
       </div>
 
@@ -1165,12 +1231,12 @@ const ReviewRow = memo(function ReviewRow({
         </span>
         {row.pack ? <span title={t.contributions.heardInHint}>{fill(t.contributions.heardIn, { pack: row.pack })}</span> : null}
         <span className="inline-flex items-center gap-1">
-          Sent by <SendersButton id={row.id} count={row.count} />
+          {t.contributions.sentBy} <SendersButton id={row.id} count={row.count} />
         </span>
-        <span>Filed {when(row.createdAt)}</span>
+        <span>{fill(t.contributions.filed, { when: when(row.createdAt) })}</span>
         {row.body ? (
           <button type="button" aria-expanded={showNote} onClick={() => setShowNote((open) => !open)}>
-            {showNote ? "Hide the player's note" : "Player left a note"}
+            {showNote ? t.contributions.hideNote : t.contributions.playerNote}
           </button>
         ) : null}
         {found !== undefined ? <span>{t.contributions.alreadyHaveText}</span> : null}
@@ -1222,15 +1288,16 @@ function Pager({
   total: number;
   onGo: (page: number) => void;
 }) {
+  const t = useUiText();
   if (pages <= 1) return null;
   return (
     <span className="text-muted-foreground ml-auto flex items-center gap-1">
       <LiteButton variant="ghost" className="h-6 px-2 text-xs" disabled={page <= 1} onClick={() => onGo(page - 1)}>
-        ← Prev
+        {t.contributions.prev}
       </LiteButton>
-      Page {page} of {pages} · {total} rows
+      {fill(t.contributions.pageOfRows, { page, pages, rows: total })}
       <LiteButton variant="ghost" className="h-6 px-2 text-xs" disabled={page >= pages} onClick={() => onGo(page + 1)}>
-        Next →
+        {t.contributions.nextArrow}
       </LiteButton>
     </span>
   );
@@ -1239,8 +1306,12 @@ function Pager({
 type Refusals = Record<number, string>;
 
 /** A row's refusal, in the route's own words where it gave some. A setRefusals updater. */
-function withRefusal(id: number, error?: unknown): (current: Refusals) => Refusals {
-  const message = typeof error === "string" ? error : "That didn't go through -- try again.";
+function withRefusal(
+  id: number,
+  fallback: string,
+  error?: unknown,
+): (current: Refusals) => Refusals {
+  const message = typeof error === "string" ? error : fallback;
   return (current) => ({ ...current, [id]: message });
 }
 
@@ -1397,7 +1468,7 @@ function MatchCell({
                   disabled={busy}
                   onClick={() => onSave(candidate.answer)}
                 >
-                  This one
+                  {t.contributions.thisOne}
                 </LiteButton>
               )}
             </li>
@@ -1471,13 +1542,18 @@ function NpcConflict({
   busy: boolean;
   onPick: (option: NpcConflictOption) => void;
 }) {
+  const t = useUiText();
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-destructive">Conflicting answers for #{npc.npcId} -- which is it?</p>
+      <p className="text-destructive">
+        {fill(t.contributions.conflictingAnswers, { id: npc.npcId })}
+      </p>
       {npc.conflict.map((option) => (
         <div key={option.npcKind} className="flex items-center gap-2">
           <span>
-            {option.npcKind}: {[option.race, option.gender, option.flavor].filter(Boolean).join("-") || "no race"}
+            {option.npcKind}:{" "}
+            {[option.race, option.gender, option.flavor].filter(Boolean).join("-") ||
+              t.contributions.noRace}
           </span>
           <ProvenanceBadge provenance={option.provenance} />
           <LiteButton
@@ -1486,7 +1562,7 @@ function NpcConflict({
             disabled={busy}
             onClick={() => onPick(option)}
           >
-            This one
+            {t.contributions.thisOne}
           </LiteButton>
         </div>
       ))}

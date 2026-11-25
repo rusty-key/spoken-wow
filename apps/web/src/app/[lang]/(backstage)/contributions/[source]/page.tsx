@@ -1,4 +1,5 @@
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
+import { uiText } from "@/lib/ui-text";
 import { viewerOf } from "@/lib/grants/store";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
@@ -283,17 +284,19 @@ export default async function Page({
   // accepting a contribution writes that language's text.
   const viewer = await viewerOf(session);
   if (!session || !can(viewer, "text", lang)) notFound();
+  const t = (await uiText(await readingLang(lang))).contributions;
 
   // Every envelope is in the language of the client that wrote it, and no client runs in this
   // one: the queue is empty by construction, not because nobody has sent anything yet.
   if (!isClientLang(lang)) {
     return (
       <BackstagePage
-        title="Review"
+        title={t.review}
         description={
           <>
-            Lines come from players&apos; game clients, and no client runs in {langName(lang)}. Its text is
-            written on each line&apos;s own page.
+            {t.noClientBefore}
+            {langName(lang)}
+            {t.noClientAfter}
           </>
         }
       >
@@ -465,8 +468,8 @@ export default async function Page({
   return (
     <BackstagePage
       width="wide"
-      title="Review"
-      description="Lines players' game clients sent. Compare each with the original, then keep it or drop it. Kept lines are voiced in a later voicing run."
+      title={t.review}
+      description={t.linesLede}
     >
       <div className="mb-6">
         <ContributionsTabs lang={lang} section={source} pending={pending} names={names} />
@@ -512,12 +515,10 @@ export default async function Page({
                 id="changes"
                 tone="info"
                 icon={<ChangesIcon />}
-                title="Changes to lines we already have"
+                title={t.changesTitle}
                 count={corrections.length}
                 description={
-                  source === "readables"
-                    ? "A player's client showed different words than ours. Replace ours if theirs fixes a mistake; drop it if ours is right."
-                    : "A player's client showed different words than ours. Replace ours if theirs fixes a mistake; keep both if it is just another way to say it."
+                  source === "readables" ? t.changesReadables : t.changesQuest
                 }
               >
                 <div>
