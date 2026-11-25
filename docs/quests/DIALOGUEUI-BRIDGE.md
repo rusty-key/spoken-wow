@@ -182,6 +182,13 @@ even with its text-to-speech off. Obeying it would cut every line short at the a
 whether closing the dialog stops the line is left to Spoken Quests' own **Stop When Window
 Closes**.
 
+That stop comes with the game's `QUEST_FINISHED` or `GOSSIP_CLOSED`, which DialogueUI sends only
+once its window has hidden when the player closes it (Escape, X), and after which an offer or a
+turn-in still waits out the accept grace with Stop Narration When Accepting off. The DialogueUI
+narrator would show the line in between. So the quests and gossip sources answer
+`endsWithWindow` (`Addon:EndsWithWindow`), and the narrator neither takes such a line over from
+the closing window nor shows it until it is gone, or until an accept lets it play on.
+
 **Auto Play.** DialogueUI's autoplay calls the provider's Play after asking it for its delay,
 which a click on its button never does. That call is always ignored: Spoken Quests' own
 **Read Automatically** reads the line or not, so the two never both start it.

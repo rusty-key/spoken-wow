@@ -26,6 +26,7 @@ SourceMethods.__index = SourceMethods
 ---@field onQueueEmpty? fun()
 ---@field packs? fun():string[] -- the voice packs this source found installed, by name
 ---@field onScreen? fun(clip):boolean -- its page is in a window the game has open now
+---@field endsWithWindow? fun(clip):boolean -- the window that showed it stops it as it closes
 
 ---@param key string
 ---@param info SpokenSourceInfo
@@ -52,6 +53,7 @@ function Sources:Register(key, info)
         onQueueEmpty = info.onQueueEmpty,
         packs = info.packs,
         onScreen = info.onScreen,
+        endsWithWindow = info.endsWithWindow,
         -- A part's settings kept in AceDB profiles: a function returning its AceDB object, so
         -- Spoken's own Profiles section switches it with the player's (Options:ProfileDBs).
         profiles = info.profiles,

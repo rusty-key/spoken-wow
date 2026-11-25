@@ -933,6 +933,55 @@ stub.FireEvent("QUEST_FINISHED")
 ExpectPageLine("...nor the offer's once its window has closed", pageLine, false)
 StartScenario()
 
+-- Addon:EndsWithWindow answers ahead of time what QUEST_FINISHED and its accept grace then do, so
+-- the DialogueUI narrator can keep out of the way. It must agree with them in every setting.
+for _, stopOnClose in ipairs({ true, false }) do
+    for _, stopOnAccept in ipairs({ true, false }) do
+        for _, page in ipairs({ { "QuestFrameDetailPanel", "QUEST_DETAIL", "QUEST_ACCEPTED" },
+            { "QuestFrameRewardPanel", "QUEST_COMPLETE", "QUEST_TURNED_IN" } }) do
+            for _, done in ipairs({ false, true }) do
+                local audio = VO.Addon.db.profile.Audio
+                audio.StopAudioOnDisengage, audio.StopOnAccept = stopOnClose, stopOnAccept
+                StartScenario()
+                world.questID = full
+                stub.ShowPanel(page[1])
+                stub.FireEvent(page[2])
+                stub.Advance(0.6)
+                local line = Spoken:GetCurrent()
+                local answers = { VO.Addon:EndsWithWindow(line) }
+                world.questID = 0
+                stub.ShowPanel(nil)
+                stub.FireEvent("QUEST_FINISHED")
+                table.insert(answers, VO.Addon:EndsWithWindow(line))
+                if done then
+                    stub.FireEvent(page[3], full, 0, 0)
+                    -- Accepted, the answer changes: asked from here on, it must say what happens.
+                    answers = { VO.Addon:EndsWithWindow(line) }
+                end
+                stub.Advance(0.6)
+                local stopped = line ~= nil and Spoken:GetCurrent() ~= line
+                local scenario = string.format("EndsWithWindow agrees with closing: %s%s, Stop When Window Closes %s, "
+                    .. "Stop Narration When Accepting %s", page[2], done and " then " .. page[3] or "",
+                    tostring(stopOnClose), tostring(stopOnAccept))
+                local agree, said = line ~= nil, {}
+                for i, answer in ipairs(answers) do
+                    agree = agree and answer == stopped
+                    said[i] = tostring(answer)
+                end
+                if agree then
+                    print("ok   " .. scenario)
+                else
+                    failures = failures + 1
+                    print(string.format("FAIL %s\n     line: %s, stopped: %s, answered: %s", scenario,
+                        tostring(line and line.fileName), tostring(stopped), table.concat(said, ", ")))
+                end
+            end
+        end
+    end
+end
+VO.Addon.db.profile.Audio.StopAudioOnDisengage, VO.Addon.db.profile.Audio.StopOnAccept = false, true
+StartScenario()
+
 if failures > 0 then
     print(string.format("\n%d scenario(s) failed", failures))
     os.exit(1)

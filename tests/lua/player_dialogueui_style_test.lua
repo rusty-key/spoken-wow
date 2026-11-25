@@ -1112,6 +1112,22 @@ Expect("DialogueUI hiding its window from ShowUI hides it at once", tostring(DUI
 Skin.dialogWatches[DUI].scripts.OnHide(Skin.dialogWatches[DUI])
 Spoken:StopAll()
 for _ = 1, 40 do Skin:Tick(0.05) end
+-- Hidden from ShowUI the conversation goes on, so a line that would stop with the window does not:
+-- the narrator shows it rather than wait for a close that never comes.
+quests.endsWithWindow = function() return true end
+OpenDialog()
+quests:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "The Hunt Begins", portrait = { kind = "none" } } }))
+DUI.onShowUI = function(frame)
+    frame:Hide()
+    Skin.dialogWatches[DUI].scripts.OnHide(Skin.dialogWatches[DUI])
+end
+DUI:ShowUI("GOSSIP_SHOW")
+DUI.onShowUI = nil
+Expect("a line DialogueUI hid from ShowUI is not held for a close", Skin:HeldByWindow(Spoken:GetCurrent()), false)
+Expect("...and the narrator shows it", Skin.wanted, true)
+quests.endsWithWindow = nil
+Spoken:StopAll()
+for _ = 1, 40 do Skin:Tick(0.05) end
 
 ---------------------------------------------------------------- books and stones
 local BOOK = "Interface/AddOns/DialogueUI/Art/Book/TextureKit-"

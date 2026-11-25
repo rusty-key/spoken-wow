@@ -384,12 +384,13 @@ function Skin:Initialize()
 end
 
 --- DialogueUI's own window open over this one, which then stays hidden: the dialog shows the line.
---- Not while this one sits on the dialog (Show Spoken Over DialogueUI).
+--- Not while this one sits on the dialog (Show Spoken Over DialogueUI). Closed, it still covers a
+--- line its module is about to stop.
 function Skin:Covered()
     for _, dialog in ipairs(self.dialogs or {}) do
         if dialog:IsShown() and self.frame:GetParent() ~= dialog then return true end
     end
-    return false
+    return self:HeldByWindow(PlayerFrame:Current())
 end
 
 function Skin:StartDrag()
