@@ -1920,9 +1920,7 @@ end
 
 -- Put the cursor on `button` when `frame` next has the controller.
 local function Target(frame, button)
-	if button and SmartNavigation and SmartNavigation.SetTargetButtonForFrame and not CombatRestricted() then
-		SmartNavigation:SetTargetButtonForFrame(frame, button)
-	end
+	if SpokenLayout and SpokenLayout.Target then SpokenLayout.Target(frame, button) end
 end
 
 local function AfterCombat()
@@ -2350,7 +2348,7 @@ do
 	--- Says whether it did: false where the game's menu is to open instead.
 	function Pad.OpenFilter(list)
 		local manager = Manager()
-		if not (GamepadUI() and manager and manager.HandlePopupShown) or CombatRestricted() or not list.filterEntries then
+		if not (GamepadUI() and manager and manager.HandlePopupShown) or not list.filterEntries then
 			return false
 		end
 		local frame = filterPad or BuildFilterPad()

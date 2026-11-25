@@ -445,6 +445,15 @@ Expect("...not the game's menu", #presses, 0)
 filter:GetScript("OnMouseDown")(filter, "LeftButton")
 Run(pad, "OnHide")
 Expect("...and a second click closes it", pad:IsShown(), false)
+-- In combat the manager refuses addons, but the game's menu still joins it.
+restricted, calls = true, {}
+filter:GetScript("OnMouseDown")(filter, "LeftButton")
+Expect("in combat a click still opens the controller's own filter", pad:IsShown(), true)
+Expect("...not the game's menu", #presses, 0)
+Expect("...leaving the manager alone", Called("popup shown filter"), false)
+pad:Hide()
+Run(pad, "OnHide")
+restricted = false
 Close()
 
 ---------------------------------------------------------------- faces
