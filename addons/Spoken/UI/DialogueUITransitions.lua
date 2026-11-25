@@ -554,6 +554,23 @@ function Skin:OwnedEarlier(dialog)
     return lines ~= nil and clip ~= nil and lines[clip] == true
 end
 
+--- Whether `clip` is about to show in a DialogueUI dialog not open yet: queued under JUST_BEFORE
+--- ago for a page the game has open (its source's onScreen), by a module that dialog shows. The game
+--- opens a book before DialogueUI's book view shows it, and this window, faded in meanwhile,
+--- would flash until the view covers it.
+function Skin:AwaitsDialog(clip)
+    local at = clip and self.queuedAt and self.queuedAt[clip]
+    local source = clip and clip.source
+    if not (at and source and source.onScreen) or GetTime() - at >= JUST_BEFORE then return false end
+    local ok, open = pcall(source.onScreen, clip)
+    if not (ok and open) then return false end
+    for _, dialog in ipairs(self.dialogs) do
+        local from = DIALOG_SOURCES[self.dialogNames[dialog] or ""]
+        if from and from[source.key] and not dialog:IsShown() then return true end
+    end
+    return false
+end
+
 --- The first line waiting behind the one playing that `dialog` queued.
 function Skin:QueuedBy(dialog)
     local lines = self.sessions and self.sessions[dialog]

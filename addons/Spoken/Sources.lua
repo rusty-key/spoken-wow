@@ -25,6 +25,7 @@ SourceMethods.__index = SourceMethods
 ---@field onQueueEnter? fun()
 ---@field onQueueEmpty? fun()
 ---@field packs? fun():string[] -- the voice packs this source found installed, by name
+---@field onScreen? fun(clip):boolean -- its page is in a window the game has open now
 
 ---@param key string
 ---@param info SpokenSourceInfo
@@ -50,6 +51,9 @@ function Sources:Register(key, info)
         onQueueEnter = info.onQueueEnter,
         onQueueEmpty = info.onQueueEmpty,
         packs = info.packs,
+        -- Asked by the DialogueUI narrator of a line the game has just opened a window for, which
+        -- DialogueUI may show a moment later: the narrator waits for it rather than flash first.
+        onScreen = info.onScreen,
         -- A part's settings kept in AceDB profiles: a function returning its AceDB object, so
         -- Spoken's own Profiles section switches it with the player's (Options:ProfileDBs).
         profiles = info.profiles,

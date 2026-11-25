@@ -1201,6 +1201,59 @@ if bookWatch then
     Spoken:StopAll()
 end
 
+---------------------------------------------------------------- a book read before its view opens
+-- The game opens a book and the page starts reading at once; DialogueUI's book view shows it about
+-- 0.18 s later, the first time after a reload (logged in game). Played from elsewhere, a page
+-- shows in this window as soon as it is still.
+if bookWatch then
+    local open
+    readables.onScreen = function(clip) return clip == open end
+    -- The book's art loaded, as the game has it by now: the window is still within STILL of
+    -- showing a page, so nothing but the wait keeps it from fading in.
+    local viewport = Skin.viewport
+    local art = { Skin.picture, Skin.badge, viewport and viewport.activeFrame, viewport and viewport.texture }
+    for _, texture in pairs(art) do texture.IsObjectLoaded = function() return true end end
+    local function Shows(seconds)
+        local seen = false
+        for _ = 1, math.floor(seconds / 0.02 + 0.5) do
+            stub.Advance(0.02)
+            Skin:Tick(0.02)
+            seen = seen or (Skin.frame:IsShown() and (Skin.level or 0) > 0)
+        end
+        return seen
+    end
+    Spoken:StopAll()
+    Skin:SetVisible(false, true)
+    stub.Advance(2)
+    open = Page("Stone")
+    readables:Enqueue(open)
+    local early = Shows(0.18)
+    BookView:Show()
+    bookWatch.scripts.OnShow(bookWatch)
+    Expect("a book's page read as the game opens it waits for the book view", early, false)
+    Expect("...which covers it", Shows(0.5), false)
+    BookView:Hide()
+    Skin:CloseStep(1)
+    bookWatch.scripts.OnHide(bookWatch)
+    Spoken:StopAll()
+    Skin:SetVisible(false, true)
+    stub.Advance(2)
+    open = Page("Stone")
+    readables:Enqueue(open)
+    Expect("...with the book view off, it shows once the wait is over", Shows(0.3), false)
+    Expect("...not much later", Shows(0.6), true)
+    Spoken:StopAll()
+    Skin:SetVisible(false, true)
+    stub.Advance(2)
+    open = nil
+    readables:Enqueue(Page("Stone"))
+    Expect("a page played from elsewhere shows at once", Shows(0.3), true)
+    Spoken:StopAll()
+    Skin:SetVisible(false, true)
+    readables.onScreen = nil
+    for _, texture in pairs(art) do texture.IsObjectLoaded = nil end
+end
+
 ---------------------------------------------------------------- a dialog's line joining the queue
 -- A quest's line playing on, and a gravestone read meanwhile: closing the stone does not hand
 -- this window its place; this window comes back as it is, and the stone's page goes behind it.

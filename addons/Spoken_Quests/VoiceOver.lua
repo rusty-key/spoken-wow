@@ -1402,6 +1402,12 @@ local function GossipSoundDataAdded(soundData)
     currentGossipSoundData = soundData
 end
 
+--- Whether `soundData` is the line of the quest or gossip page open now, read as it opened; not
+--- one played from the quest log or the Compendium.
+function Addon:IsPageLine(soundData)
+    return soundData ~= nil and (soundData == currentQuestSoundData or soundData == currentGossipSoundData)
+end
+
 local function QuestSoundDataAdded(soundData)
     -- Save current quest sound data for dialog/frame sync option
     currentQuestSoundData = soundData
