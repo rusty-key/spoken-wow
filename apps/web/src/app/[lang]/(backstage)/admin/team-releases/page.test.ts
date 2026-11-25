@@ -10,8 +10,7 @@ vi.mock("@/lib/session", () => ({
   currentSession: async () => (who.role === null ? null : { user: { id: "u1", role: who.role } }),
 }));
 
-// The page's words are read for the reader's interface language, which is a row on the
-// account: absent here, so it answers English as it does for a reader who never chose.
+// No interface language on the account, so the page reads English.
 vi.mock("@/lib/users/ui-language", () => ({ uiLangOf: async () => null }));
 
 const review = vi.hoisted(() => ({ waitingReviews: vi.fn(), liveTeamPacks: vi.fn() }));

@@ -60,7 +60,7 @@ export type ExplorerSection<L extends ExplorerLine = ExplorerLine, F extends Exp
    * name column says so and the edit dialog is headed by the chip.
    */
   ownLine?(line: L): boolean;
-  /** What that line is called in the name column: "Zone line", "Instance line". */
+  /** What that line is called in the name column: "zone line", "instance line". */
   ownLineText: string;
   /**
    * The entity_name row the line's name is written to in the page's language, as /api/names

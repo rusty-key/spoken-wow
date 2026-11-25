@@ -50,11 +50,7 @@ type Props = {
 const plain = (values: readonly string[]): Option[] =>
   values.map((value) => ({ value, label: capital(value) }));
 
-/**
- * Roster values are lower-case identifiers; the dictionary names them and the URL keeps the value.
- * A value the roster gained after the dictionary was written falls back to being capitalised,
- * which is worse than a translation and much better than an empty option.
- */
+/** A value the roster gained after the dictionary was written falls back to being capitalised. */
 const named = (values: readonly string[], names: Record<string, string>): Option[] =>
   values.map((value) => ({ value, label: names[value] ?? capital(value) }));
 

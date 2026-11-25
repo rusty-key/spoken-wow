@@ -19,7 +19,6 @@ function n(value: number): string {
   return value.toLocaleString();
 }
 
-/** Each reason a matched line is not a job of its own, and the word the dialog gives it. */
 const SKIP_REASONS: BatchSkip[] = ["no-voice", "untranslated", "invalid-chars", "shared-file"];
 
 const SKIP_WORDS = {

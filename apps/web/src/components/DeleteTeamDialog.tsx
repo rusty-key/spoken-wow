@@ -35,7 +35,6 @@ const OTHER: readonly [DeletedTable, keyof Words["nouns"]][] = [
   ["activity", "activityEntry"],
 ];
 
-/** "1 line", "2 lines", in the reader's language. */
 function count(n: number, noun: Noun, w: Words): string {
   return fill(w.count, { n, noun: n === 1 ? noun.one : noun.many });
 }

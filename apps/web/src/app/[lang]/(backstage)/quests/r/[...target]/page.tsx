@@ -27,7 +27,6 @@ import { Contained } from "@/components/Width";
 import { uiText } from "@/lib/ui-text";
 import { cn } from "@/lib/utils";
 
-/** The heading and its lede, which a player arriving from the game reads first. */
 async function words(lang: string) {
   return (await uiText(await readingLang(lang))).reports.landing;
 }
