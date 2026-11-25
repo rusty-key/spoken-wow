@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
 import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -175,4 +176,19 @@ test("a release's lookup lists its own team's live take of a page, and a build o
 
 test("the pack says its clips are Ogg, which Spoken_Readables plays by that extension", () => {
   assert.match(packLua("enUS", [{ pageId: 15, file: "15", durationSec: 2.5 }]), /^\tformat = "ogg",$/m);
+});
+
+// test_speed_pack.py rewrites this fixture as a speed pack does, so a generator change it cannot
+// read fails there. Regenerate it with UPDATE_FIXTURES=1.
+test("the fixture the speed-pack tests read is what the generator writes", async () => {
+  const lua = packLua("enUS", [
+    { pageId: 15, file: "15", durationSec: 2.5, text: "Three crates.", wordTimes: [0, 0.75, 1.5] },
+    { pageId: 261, file: "261", durationSec: 30.5, text: "The Hillsbrad Town Registry." },
+  ]);
+  const fixture = new URL("../../../../tests/fixtures/readables/Sounds.lua", import.meta.url);
+  if (process.env.UPDATE_FIXTURES) {
+    await mkdir(new URL(".", fixture), { recursive: true });
+    await writeFile(fixture, lua);
+  }
+  assert.equal(await readFile(fixture, "utf8"), lua);
 });

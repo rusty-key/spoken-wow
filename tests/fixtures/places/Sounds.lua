@@ -12,7 +12,7 @@ local pack = {
 	version = 1,
 	format = "ogg",
 	zones = {
-		[1411] = { file = "1411\\zone", len = 81.9, text = "Durotar." },
+		[1411] = { file = "1411\\zone", len = 81.9, times = "0 1.25 2.5", text = "Durotar." },
 	},
 	subzones = {
 		[1411] = {
