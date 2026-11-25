@@ -2,7 +2,7 @@
 
 Spoken Launcher until 0.1.2, when it became Spoken Manager.
 
-## Unreleased
+## 0.2.5 — 2026-11-25
 
 - **Enter a missing CurseForge project id right on the Release page,** beside the pack that
   needs it. *([rusty-key](https://github.com/rusty-key))*
