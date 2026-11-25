@@ -15,7 +15,8 @@ page.
 modules (Spoken Quests, Places, Readables, Bosses and Developer) use to reach the player. They
 ship and version with Spoken and may change in any release. Some are documented in a section's
 own README because that module uses them, which does not make them a contract. If your addon
-needs one, open an issue and ask for it to be made Public instead of calling it.
+needs one, [ask for it to be made Public](https://github.com/rusty-key/spoken-wow/issues/new?template=api-request.yml)
+instead of calling it. The same form asks for a function or event the API lacks.
 
 ### The promise
 

@@ -102,6 +102,14 @@ while a line plays; other sounds turned down (music 30%, ambience 40%, effects 6
 lines collected for contributing; the minimap button shown, unlocked and in the AddOns menu;
 no keys bound.
 
+## For addon authors
+
+Other addons can play Spoken's stories, follow its queue, mark the words being read and log to its
+debug log through the `Spoken` global. [docs/spoken/API.md](docs/spoken/API.md) is the reference:
+what is frozen, how to detect features, and every function and event.
+[Ask for a function or event](https://github.com/rusty-key/spoken-wow/issues/new?template=api-request.yml)
+the API lacks.
+
 ## Layout
 
 ```

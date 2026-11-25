@@ -17,8 +17,9 @@ test("the real labeler config yields quoted and bare label names, and no glob or
   assert.ok(names.includes("Release & CI"));
   assert.ok(names.includes("Manager"));
   assert.ok(names.includes("documentation"));
+  assert.ok(names.includes("API"));
   assert.ok(!names.includes("changed-files"));
-  assert.equal(names.length, 10);
+  assert.equal(names.length, 11);
 });
 
 test("a path or source label alone leaves an item waiting; anything else means it was triaged", () => {

@@ -1,0 +1,25 @@
+name: API request
+description: Ask for a function, event or field on Spoken's API for other addons.
+labels: ["API"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For authors of other addons. The API is documented in [docs/spoken/API.md](https://github.com/rusty-key/spoken-wow/blob/master/docs/spoken/API.md). A bug in an existing Public function is welcome here too.
+  - type: input
+    id: addon
+    attributes:
+      label: Your addon
+      description: Its name and where to find it.
+  - type: textarea
+    id: need
+    attributes:
+      label: What your addon needs to do
+      description: The player-facing feature, not the function you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would call
+      description: A signature, event or field, if you have one in mind. Name any Module function you use today instead.
