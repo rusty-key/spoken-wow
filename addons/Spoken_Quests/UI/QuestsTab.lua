@@ -229,10 +229,18 @@ local function ReadCompleted()
     end
 end
 
+-- Whether this character has completed `id`, asked now: what the tab last read may be from before
+-- the quest was handed in.
+local function CompletedNow(id)
+    local ask = (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted) or IsQuestFlaggedCompleted
+    if ask then return ask(id) and true or false end
+    local done = GetQuestsCompleted and GetQuestsCompleted()
+    return type(done) == "table" and done[id] and true or false
+end
+
 local function Completed(id)
     if completed then return completed[id] == true end
-    local ask = (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted) or IsQuestFlaggedCompleted
-    return ask ~= nil and ask(id) and true or false
+    return CompletedNow(id)
 end
 
 -- The quests in this character's quest log, read again on each refresh.
@@ -1047,9 +1055,10 @@ local function Voiced(id, moment)
 end
 
 -- The hand-in tells how a quest ends: it shows once the quest is completed, or with Unlock
--- Unstarted Quests on, where the player chose to see everything.
-local function Shows(id, moment)
-    return moment ~= "complete" or Completed(id) or Unlocked()
+-- Unstarted Quests on, where the player chose to see everything. `now` asks the game rather than
+-- the tab's last refresh, for a quest asked of with the window shut.
+local function Shows(id, moment, now)
+    return moment ~= "complete" or (now and CompletedNow or Completed)(id) or Unlocked()
 end
 
 -- Reads stored text only, so a row can ask it on every render.
@@ -1113,24 +1122,13 @@ local PLAY = {
     end,
 }
 
--- Whether this character has completed `id`, asked now: what the tab last read may be from before
--- the quest was handed in.
-local function CompletedNow(id)
-    local ask = (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted) or IsQuestFlaggedCompleted
-    if ask then return ask(id) and true or false end
-    local done = GetQuestsCompleted and GetQuestsCompleted()
-    return type(done) == "table" and done[id] and true or false
-end
+local STORY_ORIGIN = "Spoken:PlayStory"
 
 -- A quest's story for another addon (Spoken:PlayStory("quest", questID)): what shift-click on its
 -- row queues, the first part shown that a pack voices. A key for every part a pack voices, so
 -- IsPlayingStory and StopStory know the quest's other parts too.
-local STORY_ORIGIN = "Spoken:PlayStory"
-
 local function StoryKeys(id)
     local keys = {}
-    -- Another addon passes whatever it has, and the client's C functions throw on a wrong type.
-    if type(id) ~= "number" then return keys end
     for _, moment in ipairs(MOMENTS) do
         local soundData = SoundData(id, moment, STORY_ORIGIN)
         if VO.DataModules:PrepareSound(soundData) then table.insert(keys, soundData.fileName) end
@@ -1139,11 +1137,10 @@ local function StoryKeys(id)
 end
 
 -- The part whose clip key is `key`, where the quest's page shows its words and that part with them.
--- Asked with the window shut too, so the hand-in is not read from the tab's last refresh.
 local function StoryClip(id, key)
     if not QuestsTab:Has(id) then return nil end
     for _, moment in ipairs(MOMENTS) do
-        if moment ~= "complete" or Unlocked() or CompletedNow(id) then
+        if Shows(id, moment, true) then
             local soundData = SoundData(id, moment, STORY_ORIGIN)
             if VO.DataModules:PrepareSound(soundData) and soundData.fileName == key then
                 return VO.Player:Prepare(soundData)

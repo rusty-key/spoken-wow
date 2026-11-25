@@ -1021,7 +1021,8 @@ end
 
 -- The teller of `kind` and the clip keys of its story `id`, or nil.
 local function Story(kind, id)
-    local teller = id ~= nil and storyTellers[kind]
+    -- Another addon passes whatever it has, and a teller's game calls throw on a wrong type.
+    local teller = type(id) == "number" and storyTellers[kind]
     if teller then return teller, teller.Keys(id) end
 end
 
