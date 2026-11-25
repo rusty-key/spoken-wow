@@ -262,38 +262,38 @@ type TimedStream = { audio: Buffer; timing: FishTiming | null };
  */
 export function readTimedStream(raw: string): TimedStream | { error: string } {
   const audio: Buffer[] = [];
-  const chunks = new Map<number, TimedEvent>();
+  const chunks = new Map<number, Omit<TimedEvent, "audio_base64">>();
   // The first payload that was not audio: when no audio comes, it is likely fish.audio's error.
-  let other: string | null = null;
-  for (const block of raw.split(/(?:\r\n|\r|\n){2}/)) {
-    const lines = block.split(/\r\n|\r|\n/);
+  let other = "";
+  const said = (payload: string) => fishMessage(payload).slice(0, 200);
+  for (const block of raw.replace(/\r\n?/g, "\n").split("\n\n")) {
+    const lines = block.split("\n");
     const field = (name: string) =>
       lines
         .filter((line) => line.startsWith(`${name}:`))
         .map((line) => line.slice(name.length + 1).replace(/^ /, ""));
     const data = field("data").join("\n");
     if (field("event")[0] === "error") {
-      return { error: `fish.audio's stream reported an error: ${fishMessage(data).slice(0, 200) || "no message"}` };
+      return { error: `fish.audio's stream reported an error: ${said(data) || "no message"}` };
     }
     if (!data) continue;
-    let event: TimedEvent;
+    let event: TimedEvent | null = null;
     try {
       event = JSON.parse(data);
     } catch {
-      other ??= data;
-      continue;
+      // Not JSON: still worth quoting if no audio comes.
     }
     if (typeof event?.audio_base64 !== "string" || typeof event.chunk_seq !== "number") {
-      other ??= data;
+      other ||= data;
       continue;
     }
-    audio.push(Buffer.from(event.audio_base64, "base64"));
-    if (event.alignment || !chunks.has(event.chunk_seq)) chunks.set(event.chunk_seq, event);
+    const { audio_base64, ...chunk } = event;
+    audio.push(Buffer.from(audio_base64, "base64"));
+    if (chunk.alignment || !chunks.has(chunk.chunk_seq)) chunks.set(chunk.chunk_seq, chunk);
   }
   const joined = Buffer.concat(audio);
   if (joined.byteLength === 0) {
-    const said = other === null ? "" : `: ${fishMessage(other).slice(0, 200)}`;
-    return { error: `fish.audio's stream held no audio${said}` };
+    return { error: `fish.audio's stream held no audio${other ? `: ${said(other)}` : ""}` };
   }
 
   const ordered = [...chunks.values()].sort((a, b) => a.chunk_seq - b.chunk_seq);
