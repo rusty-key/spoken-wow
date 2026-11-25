@@ -1,3 +1,4 @@
+import { fill } from "@/lib/site-text/format";
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
@@ -162,7 +163,23 @@ describe("isOlder", () => {
 describe("contextFacts", () => {
   it("names the addon, the client, the NPC and the quest", () => {
     const context = contextFrom(fixture("quests-observed.txt"), "quests")!;
-    expect(contextFacts(context)).toEqual([
+    // The labels are the reader's words now; this test is about which facts are picked.
+    const w = {
+      addon: "Addon",
+      client: "Client",
+      language: "Language",
+      pack: "Pack",
+      npc: "NPC",
+      quest: "Quest",
+      book: "Book",
+      place: "Place",
+      seen: "Seen",
+      hearing: "{locale}, hearing {pack}",
+      page: "{book}, page {number}",
+      noPack: "none installed",
+      sex: { "2": "male", "3": "female" },
+    };
+    expect(contextFacts(context, w, fill)).toEqual([
       { label: "Addon", value: "SpokenQuests 2.0.4" },
       { label: "Client", value: "1.60.1/69913" },
       { label: "Language", value: "enUS" },
