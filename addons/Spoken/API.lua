@@ -456,27 +456,24 @@ end
 ---@field race? string  the body's race: "nightelf", "scourge"
 
 --- Public. Who speaks `clip`, as far as Spoken knows: each field nil where it does not. The body
---- and race come from the voice packs, or from the speaker's model where Spoken read it. With
---- `read`, Spoken reads the model of a speaker the game has on screen that it has no body for, at
---- most once per speaker, and fires SPEAKER_CHANGED with the clip once it knows more. Nil for
---- anything but a clip. A copy, yours to keep.
+--- and race come from the voice packs, or from the speaker's model once Spoken has read it for its
+--- own needs; SPEAKER_CHANGED fires with the clip then, and may fire more than once for one line.
+--- Nil for anything but a clip. A copy, yours to keep.
 ---@param clip SpokenClip
----@param read? boolean
 ---@return SpokenSpeaker?
-function Spoken:GetSpeaker(clip, read)
+function Spoken:GetSpeaker(clip)
     if type(clip) ~= "table" then return nil end
     local source = clip.source
     local known = {}
     if source and type(source.speaker) == "function" then
-        local ok, answer = pcall(source.speaker, clip, read and true or false)
+        local ok, answer = pcall(source.speaker, clip)
         if ok and type(answer) == "table" then known = answer end
     end
     local portrait = clip.present and clip.present.portrait
-    local speaker = {
+    return {
         creatureID = known.creatureID or (portrait and portrait.creatureID),
         guid = known.guid, sex = known.sex, body = known.body, race = known.race,
     }
-    return speaker
 end
 
 --- Public. Spoken's captions of the line shown, in `parent`: from its top left, `width` wide, with the

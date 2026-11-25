@@ -476,7 +476,7 @@ function Player:Setup()
         testBeforeQueue = true,
         -- Its settings follow the profile chosen in Spoken's own settings.
         profiles = function() return Addon.db end,
-        speaker = function(clip, read) return DataModules:Speaker(clip, read) end,
+        speaker = function(clip) return DataModules:Speaker(clip) end,
         -- Printed after Spoken's own by its Show Diagnostics.
         diagnostics = function() Options:PrintDiagnostics() end,
         onScreen = OnPage,
@@ -500,7 +500,7 @@ function Player:Setup()
         onScreen = OnPage,
         endsWithWindow = EndsWithWindow,
         profiles = function() return Addon.db end,
-        speaker = function(clip, read) return DataModules:Speaker(clip, read) end,
+        speaker = function(clip) return DataModules:Speaker(clip) end,
         -- The voice packs that hold gossip.
         packs = function()
             local names = {}
@@ -526,7 +526,7 @@ function Player:Setup()
         noNarrator = true,
         testBeforeQueue = true,
         profiles = function() return Addon.db end,
-        speaker = function(clip, read) return DataModules:Speaker(clip, read) end,
+        speaker = function(clip) return DataModules:Speaker(clip) end,
         packs = function()
             local names = {}
             for _, module in DataModules:GetPresentModules() do table.insert(names, module.Title) end

@@ -1064,34 +1064,27 @@ function DataModules:IsSplit(id)
 end
 
 local SEX_NAMES = { [2] = "male", [3] = "female" }
--- The speakers whose model Speaker asked to read: once each, since a second ask of one still
--- loading counts towards giving it up, and an ask for another settles the one in flight.
-local speakerReads = {}
 
 --- Who speaks a line, for Spoken:GetSpeaker: the creature, the sex it is drawn as, and its body,
---- from its model or, for a creature the packs voice as one body only, that body. With `read`, the
---- model of a speaker on screen with no body is read, once, and SPEAKER_CHANGED fires once it is in.
+--- from its model where it was read or, for a creature the packs voice as one body only, that
+--- body. No model is read for this: each read is a hidden 3D scene, and the probe reads one NPC at
+--- a time, so a read asked from outside would cancel the ones the voice files need.
 ---@param soundData SoundData
----@param read boolean
 ---@return table|nil
-function DataModules:Speaker(soundData, read)
+function DataModules:Speaker(soundData)
     local id, sex, body = CreatureBody(soundData)
     if not id then return nil end
     if not body then
         local bodies = FirstIn("NPCBodiesByNPCID", id)
         local only = bodies and next(bodies)
-        if only and next(bodies, only) == nil then body = only end
-    end
-    local guid = soundData.unitGUID
-    if not body and read and not speakerReads[guid] then
-        local unit = Utils:UnitForGUID(guid)
-        if unit then
-            speakerReads[guid] = true
-            NPCModel:Prime(guid, unit)
+        -- The one body it is voiced as, unless it is drawn as another sex: a creature can be drawn
+        -- as a body its voice is not (IsOtherBody).
+        if only and next(bodies, only) == nil and (not sex or only:match("%-(%a+)$") == SEX_NAMES[sex]) then
+            body = only
         end
     end
     -- Bodies are named "race-sex" ("nightelf-female") by the pack builder.
-    return { creatureID = id, guid = guid, sex = SEX_NAMES[sex], body = body,
+    return { creatureID = id, guid = soundData.unitGUID, sex = SEX_NAMES[sex], body = body,
         race = body and body:match("^(%a+)%-") or nil }
 end
 

@@ -257,12 +257,11 @@ The rest of what a window usually needs, all Public:
 
 - **The reading position:** `GetCaption()`, every frame, for a progress bar of your own (`progress`).
 - **Who and what:** the clip's `present.header` and `present.label`.
-- **Who speaks:** `Spoken:GetSpeaker(clip, read)` returns `{ creatureID, guid, sex, body, race }`,
-  each nil where Spoken does not know it: `sex` is `"male"` or `"female"`, `body` the voice packs'
-  name for it (`"nightelf-female"`), `race` its first part (`"nightelf"`, `"scourge"`). With `read`,
-  Spoken reads the model of a speaker on screen it has no body for, once per speaker, and fires
-  `SPEAKER_CHANGED (clip)` when it knows more. Reading a model draws a hidden 3D scene, so pass
-  `read` only when you use the body.
+- **Who speaks:** `Spoken:GetSpeaker(clip)` returns `{ creatureID, guid, sex, body, race }`, each
+  nil where Spoken does not know it: `sex` is `"male"` or `"female"`, `body` the voice packs' name
+  for it (`"nightelf-female"`), `race` its first part (`"nightelf"`, `"scourge"`). A body comes
+  from the packs or from a model Spoken read for its own needs; `SPEAKER_CHANGED (clip)` fires
+  when one arrives for a queued line, possibly more than once.
 - **Status:** `IsPaused()`, `GetWaitingCount()`, `GetHeldReason(clip)`, and `AUDIO_CHANGED` to
   redraw them.
 - **Controls:** `Pause()`, `Resume()`, `Skip()`, `Previous()` with `CanPrevious()`, `StopAll()`.
