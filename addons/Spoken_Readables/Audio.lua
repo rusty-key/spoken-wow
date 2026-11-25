@@ -61,7 +61,11 @@ local KIND_MATERIAL = { grave = "Stone", tablet = "Stone", plaque = "Bronze", ex
 -- tell: they are the same on every page, and the next page is built while another is open.
 function SpokenReadables:IsOpen(pageId)
 	local open = self.lastPage
-	return open ~= nil and (pageId == nil or pageId == open or self:PlaceOf(pageId) == self:PlaceOf(open))
+	if open == nil then return false end
+	if pageId == nil or pageId == open then return true end
+	-- Two pages nothing places are not one book.
+	local book = self:PlaceOf(open)
+	return book ~= nil and self:PlaceOf(pageId) == book
 end
 
 --- What `pageId`'s readable is written on by its kind, or nil for paper.

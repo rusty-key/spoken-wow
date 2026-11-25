@@ -908,6 +908,31 @@ world.title = "Test Quest"
 testPack.QuestIDLookup = nil
 Expect("an offer recorded under quest ID 0 is read by its accept event", "107-accept")
 
+-- The DialogueUI narrator waits for the open page's line, which DialogueUI's window may show a
+-- moment later, and for nothing played from the quest log.
+local function ExpectPageLine(scenario, line, expected)
+    local actual = VO.Addon:IsPageLine(line)
+    if actual == expected then
+        print("ok   " .. scenario)
+    else
+        failures = failures + 1
+        print(string.format("FAIL %s\n     expected: %s\n     actual:   %s", scenario, tostring(expected), tostring(actual)))
+    end
+end
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameDetailPanel")
+stub.FireEvent("QUEST_DETAIL")
+stub.Advance(0.6)
+local pageLine = Spoken:GetCurrent()
+ExpectPageLine("the open offer's line is the page's", pageLine, true)
+ExpectPageLine("...a line played from the quest log is not", { fileName = "104-accept" }, false)
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+ExpectPageLine("...nor the offer's once its window has closed", pageLine, false)
+StartScenario()
+
 if failures > 0 then
     print(string.format("\n%d scenario(s) failed", failures))
     os.exit(1)

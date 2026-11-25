@@ -1212,7 +1212,9 @@ if bookWatch then
     -- showing a page, so nothing but the wait keeps it from fading in.
     local viewport = Skin.viewport
     local art = { Skin.picture, Skin.badge, viewport and viewport.activeFrame, viewport and viewport.texture }
-    for _, texture in pairs(art) do texture.IsObjectLoaded = function() return true end end
+    for _, texture in pairs(art) do
+        if type(texture) == "table" then texture.IsObjectLoaded = function() return true end end
+    end
     local function Shows(seconds)
         local seen = false
         for _ = 1, math.floor(seconds / 0.02 + 0.5) do
@@ -1251,7 +1253,9 @@ if bookWatch then
     Spoken:StopAll()
     Skin:SetVisible(false, true)
     readables.onScreen = nil
-    for _, texture in pairs(art) do texture.IsObjectLoaded = nil end
+    for _, texture in pairs(art) do
+        if type(texture) == "table" then texture.IsObjectLoaded = nil end
+    end
 end
 
 ---------------------------------------------------------------- a dialog's line joining the queue
