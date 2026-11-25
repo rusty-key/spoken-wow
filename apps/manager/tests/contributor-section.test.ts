@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { ContributorConfig, ContributorView, JobProgress, ReleaseRow } from '../src/shared/types'
 import { isAllowedExternalUrl } from '../src/main/external'
 import { ContributorStore } from '../src/main/contributor-store'
-import { liveRunText, publishJobFor, releasableCount, releaseAvailable, resultLines, rowHint, rowUploadLabel, runPercent, skipReasonText, storeFormInput } from '../src/renderer/src/contributor'
+import { liveRunText, projectIdInput, publishJobFor, releasableCount, releaseAvailable, resultLines, rowHint, rowUploadLabel, runPercent, skipReasonText, storeFormInput } from '../src/renderer/src/contributor'
 import { S } from '../src/renderer/src/strings'
 import { tmpDir } from './helpers'
 
@@ -78,6 +78,19 @@ describe('publishJobFor', () => {
       'g2|publish/github': job('g2', 'publish/github', 'publish', 'installing')
     }
     expect(publishJobFor(jobs, 'github')?.phase).toBe('installing')
+  })
+})
+
+describe('projectIdInput', () => {
+  it('saves one pack\'s id and keeps every other saved id, the token and the game versions', () => {
+    const box = { available: () => true, seal: (s: string) => s, open: (s: string) => s }
+    const store = new ContributorStore(tmpDir(), box)
+    store.saveConfig({ projects: { SpokenQuestsAudioHorde_koKR: '111' }, gameVersions: '1.15.7' })
+    const input = projectIdInput('SpokenQuestsAudioAlliance_koKR', ' 222 ')
+    expect(input).toEqual({ store: 'curseforge', projects: { SpokenQuestsAudioAlliance_koKR: '222' } })
+    const config = store.saveConfig(input)
+    expect(config.projects).toEqual({ SpokenQuestsAudioHorde_koKR: '111', SpokenQuestsAudioAlliance_koKR: '222' })
+    expect(config.gameVersions).toBe('1.15.7')
   })
 })
 

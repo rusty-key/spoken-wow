@@ -351,7 +351,7 @@ export const S_EN = {
       'not-installed': 'Not installed in the selected game.',
       'update-first': 'Update it in the Manager. If the channel could not be read, refresh this list. A folder the channel does not carry stays here.',
       linked: 'A link to a development folder. These are never published.',
-      'no-project': 'Add this pack\'s project id under Stores.'
+      'no-project': 'Enter this pack\'s CurseForge project id, or add it later under Stores.'
     }
   }
 }

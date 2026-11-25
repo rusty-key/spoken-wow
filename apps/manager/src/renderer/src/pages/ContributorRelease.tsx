@@ -5,7 +5,7 @@ import { api, errorText } from '../api'
 import { jobBusy } from '../catalog'
 import { IconExternal, IconRefresh } from '../components/Icons'
 import { ProgressTrack } from '../components/JobBar'
-import { STORES, canZip, liveRunText, publishJobFor, releasableCount, resultLines, rowHint, rowUploadLabel, runPercent, skipReasonText, storeName } from '../contributor'
+import { STORES, canZip, liveRunText, projectIdInput, publishJobFor, releasableCount, resultLines, rowHint, rowUploadLabel, runPercent, skipReasonText, storeName } from '../contributor'
 import { formatBytes, formatSpeed } from '../format'
 import { jobKey, useGame, useLanguageName, useStore } from '../store'
 import { S } from '../strings'
@@ -102,7 +102,7 @@ function StoreRelease({ store, gameId, lang, view, onDismiss }: { store: StoreId
       ) : (
         <ul className="list card contrib-rows">
           {rows.map((r) => (
-            <RowItem key={r.folder} row={r} store={store} storeBusy={busy} gameId={gameId} lang={lang} onUpload={() => void publish(r.folder)} />
+            <RowItem key={r.folder} row={r} store={store} storeBusy={busy} gameId={gameId} lang={lang} onUpload={() => void publish(r.folder)} onProjectSaved={() => setRefresh((n) => n + 1)} />
           ))}
         </ul>
       )}
@@ -150,7 +150,7 @@ function RunLine({ job, onDismiss }: { job: JobProgress; onDismiss: () => void }
   )
 }
 
-function RowItem({ row, store, storeBusy, gameId, lang, onUpload }: { row: ReleaseRow; store: StoreId; storeBusy: boolean; gameId: string; lang: string; onUpload: () => void }): ReactNode {
+function RowItem({ row, store, storeBusy, gameId, lang, onUpload, onProjectSaved }: { row: ReleaseRow; store: StoreId; storeBusy: boolean; gameId: string; lang: string; onUpload: () => void; onProjectSaved: () => void }): ReactNode {
   const uploadLabel = rowUploadLabel(row)
   const { state } = useStore()
   const [zipping, setZipping] = useState(false)
@@ -196,6 +196,7 @@ function RowItem({ row, store, storeBusy, gameId, lang, onUpload }: { row: Relea
         )}
       </div>
       <span className="muted contrib-hint">{rowHint(row.state, store)}</span>
+      {store === 'curseforge' && row.state === 'no-project' && <ProjectIdForm folder={row.folder} disabled={storeBusy} onSaved={onProjectSaved} />}
       {shownZip && (
         <div className="contrib-zip" role="status">
           <span className="contrib-hint">{S.contributor.zipReady(shownZip.name, formatBytes(shownZip.bytes))}</span>
@@ -215,6 +216,43 @@ function RowItem({ row, store, storeBusy, gameId, lang, onUpload }: { row: Relea
         </p>
       )}
     </li>
+  )
+}
+
+function ProjectIdForm({ folder, disabled, onSaved }: { folder: string; disabled: boolean; onSaved: () => void }): ReactNode {
+  const { actions } = useStore()
+  const [id, setId] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const save = async (): Promise<void> => {
+    setSaving(true)
+    setError('')
+    try {
+      actions.applyContributor(await api().contributorSaveStore(projectIdInput(folder, id)))
+      onSaved()
+    } catch (e) {
+      setError(errorText(e))
+      setSaving(false)
+    }
+  }
+  return (
+    <form
+      className="contrib-project"
+      onSubmit={(e) => {
+        e.preventDefault()
+        void save()
+      }}
+    >
+      <input className="input" inputMode="numeric" spellCheck={false} aria-label={`${S.contributor.projectIds} ${folder}`} value={id} onChange={(e) => setId(e.target.value)} />
+      <button type="submit" className="btn btn-sm" disabled={disabled || saving || id.trim() === ''}>
+        {saving ? `${S.contributor.saving}…` : S.contributor.save}
+      </button>
+      {error && (
+        <p className="text-error contrib-hint" role="alert">
+          {error}
+        </p>
+      )}
+    </form>
   )
 }
 

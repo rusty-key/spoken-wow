@@ -344,7 +344,7 @@ export const S_ZH: Dict = {
       'not-installed': '未安装在所选的游戏中。',
       'update-first': '请在管理器中更新。如果无法读取该通道，请刷新此列表。通道里没有的文件夹会留在此处。',
       linked: '指向开发文件夹的链接。此类内容从不发布。',
-      'no-project': '在“商店”中为此语音包添加项目 id。'
+      'no-project': '输入此语音包的 CurseForge 项目 id，或稍后在“商店”中添加。'
     }
   }
 }
