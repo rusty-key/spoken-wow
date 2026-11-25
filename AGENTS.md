@@ -187,33 +187,20 @@ Enough:
 
 ## PR descriptions
 
-A PR description is prose for the reviewer and for whoever finds the branch in a year. Aim for
-about 200 words. The title states the outcome.
+Follow Google's [Writing good CL descriptions](https://google.github.io/eng-practices/review/developer/cl-descriptions.html):
+say what changes and why, and let the diff show how. Write for a player or maintainer, not for
+the code.
 
-Include:
+- Title: one short imperative sentence saying what changes ("Time words in fish.audio takes").
+- Body: under 120 words, in this order:
+  1. What changes and why, in plain words. Name code only where the reviewer must look at it.
+  2. Risk: the one place to look, or what was not checked (for example, "not tried in game").
+  3. `## How to test`: numbered steps on the site or in game. For a bug fix: where to go, what
+     to do, what went wrong before and what happens now.
+- Leave out how it works, test counts, file lists, history (review rounds, earlier versions,
+  stacking), and tool attribution such as "Generated with Claude Code". Commit trailers stay.
 
-- Why the change exists and what limits it, followable with no prior context.
-- How it works, only where the diff doesn't show it. Say where the risk sits so the reviewer
-  looks there.
-- For a bug fix, where the fault starts and why the change is made there.
-- Deliberate omissions, and why.
-- Verification as facts only: what ran, what passed, what was not checked (for example, "not
-  looked at in-game").
-- A "How to test" section that lets the reviewer check the change themselves. For a bug fix, the
-  steps to reproduce it in game: where to go, what to click, what went wrong before and what
-  happens now. For a new feature, screenshots, or instructions for finding and trying it.
-
-Leave out:
-
-- Per-change or per-file lists. The files tab has them.
-- History: review rounds, fix-ups, what an earlier version got wrong, dropped designs.
-- Why it is a separate PR ("stacked on #X", "part 2 of 4", what it unblocks). The base branch
-  and labels carry ordering.
-- Tool attribution such as "Generated with Claude Code" and session links. Commit trailers
-  stay.
-
-Write plain words in active voice and short sentences. No em dashes, no filler, no bold labels
-that restate the line. Keep identifiers, flags and issue numbers exact.
+Write short sentences in active voice. No em dashes, no filler.
 
 ## Comments
 
