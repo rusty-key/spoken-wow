@@ -55,7 +55,7 @@ A player with an older Spoken then sees your addon without the feature rather th
 | `feature` | |
 |---|---|
 | `"story:<kind>"` | A kind of story whose module is installed and has registered: `"story:instance"`, `"story:boss"`, `"story:quest"`. |
-| `"stories"`, `"captions"`, `"callbacks"`, `"log"`, `"text-packs"`, `"interface-packs"` | The sections of this page. |
+| `"stories"`, `"captions"`, `"callbacks"`, `"log"`, `"looks"`, `"text-packs"`, `"interface-packs"` | The sections of this page. |
 
 and false for anything else, a name it does not know included. `"log"` means the log calls
 exist; `HasLog()` says whether the log does, with Spoken Developer installed. A name, once listed, is never
@@ -183,6 +183,7 @@ Spoken's own clip tables; read them, never change them. These fields are Public:
 | `present.header` | Who or where: an NPC's name, a place, a book's title. May be nil. |
 | `present.label` | What: a quest's title, a subzone, a page. May be nil. |
 | `present.transcript` | The words read. May be nil. |
+| `present.portrait.creatureID` | The creature speaking, where the line has one. May be nil. |
 | `story` | `{ kind, id }` as on the caption. |
 
 Every other field belongs to the module that queued the clip.
@@ -220,6 +221,56 @@ Spoken fires other events for its modules (`SOURCE_REGISTERED`, `CONTRIBUTE_SETT
 `REPORT_SETTINGS_CHANGED`, `VOICE_PACKS_LOADED`, `COMPENDIUM_FONT_CHANGED`,
 `DEVELOPER_REGISTERED`, `DEVELOPER_SETTINGS_ADDED`). They are Module tier: listed in `API.lua`,
 not frozen.
+
+## Looks
+
+Art of your own for Spoken's Small Window and Large Window: a border, a background, a wash over
+it, the portrait's ring. You describe it and Spoken draws it, so a look keeps working when Spoken
+redesigns its windows.
+
+| Call | |
+|---|---|
+| `Spoken:RegisterLook(id, info)` | Adds the look to the Theme row of each window in `info.windows` (`"small"`, `"large"`). `info.name` is what the row shows. `info.Look(clip, window)` returns how a line looks; `info.settings(layout)`, optional, adds a section of rows to Spoken's page, shown while the look is chosen. Raises for a wrong argument. Registering `id` again replaces it. |
+| `Spoken:SuggestLook(id)` | Asks the player, once ever, whether to use the look. Spoken asks only while one of its windows shows lines and the look isn't chosen yet, at login if you call it before then. Whatever they answer, it never asks again. |
+| `Spoken:RefreshLook()` | Asks `Look` again for the line shown: call it when what you decide by has changed, such as a speaker's model loading or one of your settings. |
+
+While your look is chosen for a window, Spoken calls `Look(clip, window)` for every line that
+window shows. Return a table of what to draw, every field optional, or nil to keep Spoken's own
+art for that line (Parchment, or the Large Window's own). If `Look` raises, or returns something
+Spoken can't draw, the line keeps Spoken's art and the error goes to the debug log.
+
+```lua
+{
+    background = [[Interface\AddOns\MyLook\Paper]], -- behind the words; the Small Window's dark rock without one
+    tint = { .1, .05, .02, .7 },                     -- r, g, b, a washed over the background
+    ring = { .9, .7, .4 },                           -- r, g, b for the portrait's ring
+    border = {                                       -- drawn in place of Spoken's edge
+        horizontal = [[...\Edge]],                   -- top and bottom, tiled
+        vertical = [[...\EdgeV]],                    -- left and right, tiled
+        corner = [[...\Join]],                       -- the top left corner; the others mirror it
+        size = 14,                                   -- thickness
+        horizontalRepeat = 8,                        -- one repeat of `horizontal` is this many `size`s long
+        verticalRepeat = 4,                          -- the same for `vertical`
+    },
+}
+```
+
+Each side tiles from its middle out to the corners, mirrored, so a pattern meets itself in the
+middle and ends whole at each corner. Spoken draws looks in its own look, not EllesmereUI's, and
+not in the subtitles or the DialogueUI window.
+
+`settings(layout)` gets the page's layout. These of its methods are part of the contract; build
+your rows with them only:
+
+| Method | |
+|---|---|
+| `layout:Section(title)` | Starts your section. Call it first. |
+| `layout:Checkbox(label, tooltip, read, write, apply)` | `read()` gives the value, `write(value)` stores it, then `apply()` runs. |
+| `layout:Slider(label, min, max, step, read, write, apply)` | The same, for a number. |
+| `layout:Dropdown(label, tooltip, values, read, write, apply, describe)` | One of `values`, a list or a function returning one; `describe(value)` names each. |
+
+If the player removes your addon, the window goes back to Spoken's own look. Their choice is kept
+and comes back with the addon.
 
 ## Text packs and interface packs
 

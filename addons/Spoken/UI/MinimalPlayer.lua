@@ -92,7 +92,14 @@ function MinimalPlayer:Initialize(original)
     self.paper = self.panel:CreateTexture(nil, "BACKGROUND")
     self.paper:SetPoint("TOPLEFT", 7, -7)
     self.paper:SetPoint("BOTTOMRIGHT", -7, 7)
-    self.panel:SetScript("OnSizeChanged", function() self:TileRock() end)
+    self.tint = self.panel:CreateTexture(nil, "BACKGROUND", nil, 1)
+    self.tint:SetAllPoints(self.paper)
+    self.tint:Hide()
+    self.trim = Looks.Trim(self.panel)
+    self.panel:SetScript("OnSizeChanged", function()
+        self:TileRock()
+        Looks.PaintTrim(self.trim, self.look and self.look.border)
+    end)
 
     local content = CreateFrame("Frame", nil, frame)
     self.content, frame.container = content, content
@@ -336,20 +343,45 @@ function MinimalPlayer:TileRock()
     self.paper:SetTexCoord(0, math.max(0, width - 14) / 256, 0, math.max(0, height - 14) / 256)
 end
 
+--- The look chosen for the window as it draws the line it shows, then the window dressed in it.
+--- Not in EllesmereUI's look, which has its own.
+function MinimalPlayer:ApplyLook()
+    self.look = self.panel.spokenEllesmere ~= true and Looks:For(self.clip, "small") or nil
+    self:Dress()
+end
+
 --- Paints the panel's background, and the text in colours that read on it.
 function MinimalPlayer:Dress()
     -- EllesmereUI's shell is dark whichever background is chosen; a shell that failed left Spoken's.
     local shell = self.panel.spokenEllesmere == true
-    local dark = Config().MinimalBackground == "dark" or shell
+    local drawn = self.look
+    -- A registered look's own background, else the rock; with no look for this line, Spoken's own
+    -- Theme, Parchment where the Theme chosen is a look.
+    local background = drawn and (drawn.background or "dark") or Looks:Chosen("small")
+    if not drawn and background ~= "dark" then background = "parchment" end
+    local dark = background ~= "parchment" or shell
     local look = shell and LOOKS.ellesmere or dark and LOOKS.dark or LOOKS.parchment
     local paper = self.paper
-    self.dark = dark
-    if dark then
+    self.dark = background == "dark" or shell
+    if self.dark then
         paper:SetTexture(ART .. "MinimalBackground", "REPEAT", "REPEAT")
         self:TileRock()
-    else
+    elseif background == "parchment" then
         paper:SetTexture(PARCHMENT)
         paper:SetTexCoord(0, 1, 0, 1)
+    else
+        paper:SetTexture(background)
+        paper:SetTexCoord(0, 1, 0, 1)
+    end
+    local tint = drawn and drawn.tint
+    self.tint:SetShown(tint ~= nil)
+    if tint then self.tint:SetColorTexture(tint[1], tint[2], tint[3], tint[4]) end
+    Looks.PaintTrim(self.trim, drawn and drawn.border)
+    if not shell then
+        local bronze = Actions.Bronze() or { 1, 1, 1 }
+        -- A look's border stands in Spoken's; under its ring colour, so do the portrait's.
+        self.panel:SetBackdropBorderColor(bronze[1], bronze[2], bronze[3], drawn and drawn.border and 0 or 1)
+        Looks.TintRing(self.ring, drawn)
     end
     local function Ink(text, color)
         text:SetTextColor(color[1], color[2], color[3])
@@ -461,7 +493,6 @@ function MinimalPlayer:RefreshConfig(original)
     local bronze = Actions.Bronze()
     local r, g, b = 1, 1, 1
     if bronze then r, g, b = bronze[1], bronze[2], bronze[3] end
-    if self.panel.spokenEllesmere ~= true then self.panel:SetBackdropBorderColor(r, g, b) end
     Actions.TintProgress(self.progress, r, g, b)
     local edge = bronze or MENU_EDGE
     -- EllesmereUI's panel in its look: the stock border stays faded.
@@ -480,7 +511,7 @@ function MinimalPlayer:RefreshConfig(original)
             self.portrait.chrome:SetFrameLevel(level + 9)
         end)
     end
-    self:Dress()
+    self:ApplyLook()
     if Addon:IsFrameLocked() then frame:StopMovingOrSizing(); self.sizing = false end
     -- Locked, clicks on the window pass through to the game, as the subtitle's do; the header
     -- still opens the menu.
@@ -512,6 +543,7 @@ function MinimalPlayer:Update()
         self.menu:Hide()
         self:HideTooltip()
         self.clip, self.seconds = clip, 0
+        self:ApplyLook()
     end
     self:SetVisible(true)
     self.name:SetText(Actions.Speaker(clip))
@@ -537,6 +569,6 @@ end
 function MinimalPlayer:Describe()
     return format("minimal=%s visible=%s portrait=%s background=%s progress=%.1fs",
         tostring(self:IsEnabled()), tostring(self.frame and self.frame:IsShown()),
-        tostring(self.viewport and self.viewport.active), tostring(Config().MinimalBackground),
+        tostring(self.viewport and self.viewport.active), tostring(Looks:Chosen("small")),
         self.seconds or 0)
 end

@@ -118,6 +118,11 @@ function PlayerFrame:InitDisplay()
 
     self.frame.background = self.frame:CreateTexture(nil, "BACKGROUND")
     self.frame.background:SetAllPoints()
+    -- A look's wash over the box, behind the words only: not under the portrait.
+    self.frame.lookTint = self.frame:CreateTexture(nil, "BACKGROUND", nil, 1)
+    self.frame.lookTint:Hide()
+    self.frame.trim = Looks.Trim(self.frame)
+    self.frame:HookScript("OnSizeChanged", function() Looks.PaintTrim(self.frame.trim, self.look and self.look.border) end)
 
     self.frame.container = CreateFrame("Frame", nil, self.frame)
 
@@ -282,6 +287,32 @@ function PlayerFrame:ApplyArt()
     self.art = art
 end
 
+--- The look chosen for the Large Window, as it draws `clip`, over the art ApplyArt drew. Not in
+--- EllesmereUI's look, which has its own.
+function PlayerFrame:ApplyLook(clip)
+    local frame = self.frame
+    local look = frame.spokenEllesmere ~= true and Looks:For(clip, "large") or nil
+    self.look = look
+    if look and look.background then
+        frame.background:SetTexture(look.background)
+        frame.background:SetTexCoord(0, 1, 0, 1)
+    elseif self.lookDrawn then
+        self:ApplyArt()
+    end
+    self.lookDrawn = look ~= nil
+    local tint = frame.lookTint
+    tint:SetShown(look ~= nil and look.tint ~= nil)
+    if look and look.tint then
+        tint:ClearAllPoints()
+        tint:SetPoint("TOPLEFT", frame, "TOPLEFT", (FrameConfig().HidePortrait and BARE_LEFT or NAME_X) - 8, -8)
+        tint:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, 8)
+        tint:SetColorTexture(look.tint[1], look.tint[2], look.tint[3], look.tint[4])
+    end
+    Looks.PaintTrim(frame.trim, look and look.border)
+    local ring = look and look.ring or { 1, 1, 1 }
+    frame.portrait.border.texture:SetVertexColor(ring[1], ring[2], ring[3])
+end
+
 function PlayerFrame:RefreshConfig()
     -- Bronze Border tints every round button, whichever way lines are shown.
     Actions.RefreshRings()
@@ -308,6 +339,7 @@ function PlayerFrame:RefreshConfig()
     end
     self:ApplyArt()
     Ellesmere:Dress(self.frame)
+    self:ApplyLook(self.shown)
     -- Only once the shell is on, and a failure here said in chat: the window's scale, strata and
     -- host below must still be set.
     if self.frame.spokenEllesmere == true then
@@ -510,6 +542,7 @@ function PlayerFrame:Update()
         self.fader:Set(false)
         return
     end
+    if head ~= self.shown then self:ApplyLook(head) end
     self.shown = head
     self.fader:Set(true)
 

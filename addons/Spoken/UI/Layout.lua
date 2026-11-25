@@ -320,6 +320,8 @@ function Layout:AddRow(height, control, regions, place)
     else
         AddItem(self, row)
     end
+    -- A Keep shown only `when` shows each row filled in at it only then.
+    if self.filling and self.filling.when then row.conditions = { self.filling.when } end
     control.layoutRow = row
     self.dirty = true
     return row
@@ -660,9 +662,9 @@ end
 
 --- A place on the page for sections added later, by another addon after the page was built:
 --- Fill puts them there, in the order they come, inside the group this stands in.
-function Layout:Keep()
+function Layout:Keep(when)
     self:Columns(nil)
-    local keep = { kind = "keep", group = self.group, x = self.x }
+    local keep = { kind = "keep", group = self.group, x = self.x, when = when }
     table.insert(self.items, keep)
     self.current = nil
     return keep

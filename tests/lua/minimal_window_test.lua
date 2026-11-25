@@ -183,7 +183,7 @@ main:Refresh()
 -- Theme, the row the DialogueUI window's Theme shares its name with: the first of the two.
 local row = Row(L.OPT_DUI_THEME)
 Expect("Theme is on Spoken's page with the small window chosen", row ~= nil and row:IsShown(), true)
-Expect("...offering Parchment and Dark", row and row.layoutValues and table.concat(row.layoutValues, ","), "parchment,dark")
+Expect("...offering Parchment and Dark", row and row.layoutValues and table.concat(row.layoutValues(), ","), "parchment,dark")
 pcall(function() row.layoutChoose("dark") end)
 Expect("...choosing Dark there draws the rock", tostring(frame.MinimalBackground) .. " " .. tostring(M.paper.texture),
     [[dark Interface\AddOns\Spoken\Textures\MinimalBackground]])

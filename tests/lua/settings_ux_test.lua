@@ -279,7 +279,7 @@ do
     -- One Theme row per window that has a choice.
     local themes = 0
     for _, entry in ipairs(home.entries) do if entry.label == L.OPT_DUI_THEME then themes = themes + 1 end end
-    Expect("one Theme row for the Small Window and one for DialogueUI's, no Background row", themes, 2)
+    Expect("one Theme row each for the Small Window, the Large Window and DialogueUI's, no Background row", themes, 3)
     Expect("Profiles has an Export Profile button", Row(home, L.OPT_PROFILE_EXPORT) ~= nil, true)
     Expect("Profiles has an Import Profile button", Row(home, L.OPT_PROFILE_IMPORT) ~= nil, true)
 end

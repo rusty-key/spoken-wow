@@ -176,7 +176,7 @@ end
 ---@field source table               Public: `source.key` ("quests", "places", ...) and `source.title` only.
 ---@field length? number             Public. Seconds.
 ---@field textOnly? boolean          Public. No recording: shown in the narrator for `length`.
----@field present? SpokenClipPresent Public: `header`, `label` and `transcript` only.
+---@field present? SpokenClipPresent Public: `header`, `label`, `transcript` and `portrait.creatureID` only.
 ---@field story? SpokenStoryTag      Public. The story PlayStory was asked for when it played this line.
 ---@field path? string
 ---@field text? string
@@ -329,6 +329,62 @@ end
 
 function Spoken:OpenSettings()
     Options:Open()
+end
+
+--------------------------------------------------------------------------------
+-- Looks: another addon's art for the Small and the Large Window
+--------------------------------------------------------------------------------
+
+---@class SpokenLookBorder
+---@field horizontal string  the top and bottom edge's texture, tiled
+---@field vertical string    the left and right edge's texture, tiled
+---@field corner string      the top left corner's texture; the others are it mirrored
+---@field size? number       how thick the border is; 14
+---@field horizontalRepeat? number how many `size`s one repeat of `horizontal` is long; 8
+---@field verticalRepeat? number   the same for `vertical`; 4
+
+---@class SpokenLook
+---@field background? string   a texture across the window behind the words; the Small Window's rock without one
+---@field tint? number[]       { r, g, b, a } washed over the background, behind the words
+---@field border? SpokenLookBorder drawn in place of Spoken's own edge
+---@field ring? number[]       { r, g, b } the portrait's ring
+
+local LOOK_WINDOWS = { small = true, large = true }
+
+--- Public. Offer a look for Spoken's windows: one more choice in the Theme row of the windows it
+--- names. While it is the look chosen, Spoken asks `info.Look(clip, window)` for every line it shows
+--- there and draws the SpokenLook it returns; nil keeps Spoken's own art for that line.
+--- `info.settings(layout)`, optional, adds a section of rows to Spoken's page, shown under the
+--- window's Theme while the look is chosen. `id` taken twice replaces the first.
+---@param id string
+---@param info { name: string, windows: string[], Look: fun(clip: SpokenClip, window: string): SpokenLook?, settings?: fun(layout: table) }
+function Spoken:RegisterLook(id, info)
+    Require(type(id) == "string" and type(info) == "table" and type(info.name) == "string"
+        and type(info.Look) == "function" and type(info.windows) == "table"
+        and (info.settings == nil or type(info.settings) == "function"),
+        "RegisterLook needs an id and a look with name, windows and Look")
+    local windows = {}
+    for _, window in ipairs(info.windows) do
+        Require(LOOK_WINDOWS[window], "RegisterLook's windows are \"small\" and \"large\"")
+        windows[window] = true
+    end
+    Require(next(windows) ~= nil, "RegisterLook needs at least one window")
+    if Looks.byId[id] then Developer:Log("api", "look %q registered again; the new one replaces it", id) end
+    Looks:Register(id, { name = info.name, windows = windows, Look = info.Look, settings = info.settings })
+end
+
+--- Public. Ask the player once, ever, whether to use the look `id`, which this addon registered.
+--- Spoken asks when its window is the one showing lines and the look is not already chosen, at
+--- login or now if that has passed; it never asks again, whatever the answer.
+---@param id string
+function Spoken:SuggestLook(id)
+    if type(id) == "string" then Looks:Suggest(id) end
+end
+
+--- Public. Ask the chosen look again how the line shown looks, for when what it decides by has
+--- changed: a speaker's model has loaded, or one of its settings.
+function Spoken:RefreshLook()
+    Looks:Refresh()
 end
 
 --- Re-read the speaking clip's presentation -- after a setting changed an action's
@@ -1182,7 +1238,7 @@ end
 
 -- Features a caller may ask Supports about. A name is added with the feature and never removed.
 local FEATURES = {
-    stories = true, captions = true, callbacks = true, log = true,
+    stories = true, captions = true, callbacks = true, log = true, looks = true,
     ["text-packs"] = true, ["interface-packs"] = true,
 }
 

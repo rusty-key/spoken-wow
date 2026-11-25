@@ -32,6 +32,8 @@ Defaults = {
             BronzeTint = true,
             -- The small window's background: "parchment" or "dark" (the rock).
             MinimalBackground = "parchment",
+            -- The Large Window's look: "default", Spoken's own, or a look an addon registered.
+            ClassicLook = "default",
             -- Per action id, for the ones an addon declared optional. Absent means shown.
             HiddenActions = {},
             DialogueUI = {
@@ -616,6 +618,7 @@ function Addon:Enable()
     Minimap:Setup()
     Options:Setup()
     RegisterSlashCommand()
+    Looks:Suggest()
 end
 
 -- Said the first time a line waits behind a stop with nothing on screen to show it: with voice

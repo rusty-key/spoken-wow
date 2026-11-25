@@ -768,13 +768,21 @@ local function Build()
 
     -- How the window and the subtitles look.
     layout:Section(L.OPT_LOOK_TITLE)
-    -- Parchment or Dark, for each window that has a choice: the Small Window's own, and the
-    -- DialogueUI window's, which can also follow DialogueUI's. None in EllesmereUI's look, which
-    -- has its own.
-    Only(layout:Dropdown(L.OPT_DUI_THEME, nil, { "parchment", "dark" },
-        function() return cfg().MinimalBackground end, function(v) cfg().MinimalBackground = v end, refresh,
-        function(v) return v == "dark" and L.OPT_DUI_THEME_DARK or L.OPT_DUI_THEME_PARCHMENT end),
-        function() return Small() and not Ellesmere:On() end)
+    -- The Small Window's Theme, its own and the looks addons registered for it; the Large Window's,
+    -- only once an addon registered one; the DialogueUI window's, which can also follow DialogueUI's.
+    -- None in EllesmereUI's look, which has its own.
+    local function Window()
+        if Ellesmere:On() then return nil end
+        if Small() then return "small" end
+        if Style() == "classic" then return "large" end
+        return nil
+    end
+    for _, window in ipairs({ "small", "large" }) do
+        Only(layout:Dropdown(L.OPT_DUI_THEME, nil, function() return Looks:Values(window) end,
+            function() return Looks:Chosen(window) end, function(v) Looks:Choose(window, v) end, refresh,
+            function(v) return Looks:Name(v) end),
+            function() return Window() == window and #Looks:Values(window) > 1 end)
+    end
     DialogueUIOptions:ThemeRow(layout, function(row) return Only(row, DUI) end, refresh)
     local shadow = layout:Slider(L.TRANSCRIPT_SHADOW, 0, 1, 0.05,
         function() return transcript().SubtitleShadow end,
@@ -810,6 +818,9 @@ local function Build()
         layout:Checkbox(L.OPT_BRONZE_TINT, nil,
             function() return cfg().BronzeTint end, function(v) cfg().BronzeTint = v end, refresh)
     end
+
+    -- The chosen look's own rows, as its addon hands them in.
+    Looks:Place(layout, Window)
 
     -- How the words of a line show, past whether they show at all and how big.
     layout:Section(L.OPT_TEXT_TITLE)
