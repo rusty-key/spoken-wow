@@ -12,10 +12,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { flavorOptionsFor, noVoice } from "@/lib/contributions/speaker";
+import { flavorOptionsFor } from "@/lib/contributions/speaker";
 import { withLang } from "@/lib/lang";
+import { fill } from "@/lib/site-text/format";
 import { NPC_ROW_KINDS, type NpcRowKind } from "@/lib/npc/npc";
 import type { ResultLine } from "@/lib/search";
+import { useUiText } from "@/components/UiTextProvider";
 import { Roster, type RosterData } from "@/lib/voices/roster";
 
 type Props = {
@@ -67,6 +69,7 @@ function Choice({
  */
 export default function AddSpeakerDialog({ line, replace = false, onSaved, onCancel }: Props) {
   const lang = useLang();
+  const words = useUiText().npc;
   const [npcType, setNpcType] = useState<NpcRowKind>("creature");
   const [npcId, setNpcId] = useState("");
   const [found, setFound] = useState<Found | null>(null);
@@ -101,7 +104,7 @@ export default function AddSpeakerDialog({ line, replace = false, onSaved, onCan
     const response = await fetch(withLang(lang, url), init);
     const body = (await response.json().catch(() => ({}))) as T & { error?: string };
     if (response.ok) return body;
-    setError(body.error ?? `request failed (${response.status})`);
+    setError(body.error ?? fill(words.requestFailed, { status: response.status }));
     return null;
   }
 
@@ -115,7 +118,7 @@ export default function AddSpeakerDialog({ line, replace = false, onSaved, onCan
 
   async function lookUp() {
     if (!/^\d+$/.test(npcId.trim())) {
-      setError("An NPC id is a number");
+      setError(words.idIsNumber);
       return;
     }
     setBusy(true);
@@ -158,11 +161,9 @@ export default function AddSpeakerDialog({ line, replace = false, onSaved, onCan
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
       <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{replace ? "Replace the speaker" : "Add a speaker"}</DialogTitle>
+          <DialogTitle>{replace ? words.replaceTitle : words.addTitle}</DialogTitle>
           <DialogDescription>
-            {replace
-              ? `The NPC who really says this line, in place of ${line.npcName}. The line is spoken in the new NPC’s voice and shows as missing until it is generated again; the addon plays the old audio until then. ${line.npcName} stays off the line across imports.`
-              : "Another NPC who says this line. It is spoken in that NPC’s own voice: one whose voice differs gets a line of its own here, with no audio until it is generated. Kept across imports until the game data lists the NPC too."}
+            {replace ? fill(words.replaceLede, { name: line.npcName }) : words.addLede}
           </DialogDescription>
         </DialogHeader>
 
@@ -182,7 +183,7 @@ export default function AddSpeakerDialog({ line, replace = false, onSaved, onCan
             }}
           >
             <select
-              aria-label="Kind"
+              aria-label={words.kind}
               value={npcType}
               onChange={(event) => {
                 setNpcType(event.target.value as NpcRowKind);
@@ -197,7 +198,7 @@ export default function AddSpeakerDialog({ line, replace = false, onSaved, onCan
               ))}
             </select>
             <input
-              aria-label="Id"
+              aria-label={words.idLabel}
               autoFocus
               inputMode="numeric"
               value={npcId}
@@ -205,18 +206,18 @@ export default function AddSpeakerDialog({ line, replace = false, onSaved, onCan
                 setNpcId(event.target.value);
                 setFound(null);
               }}
-              placeholder="id"
+              placeholder={words.idPlaceholder}
               className={`${FIELD} w-32`}
             />
             <Button type="submit" variant="outline" disabled={busy || !npcId.trim()}>
-              Look up
+              {words.lookUp}
             </Button>
           </form>
 
           {found && answered && (
             <p className="text-sm">
               {found.npc?.npcName ?? `${npcType} ${npcId}`}{" "}
-              <span className="text-muted-foreground">speaks as {found.npc?.voice}</span>
+              <span className="text-muted-foreground">{fill(words.speaksAs, { voice: found.npc?.voice ?? "" })}</span>
             </p>
           )}
 
@@ -224,20 +225,20 @@ export default function AddSpeakerDialog({ line, replace = false, onSaved, onCan
             <div className="grid gap-2">
               <p className="text-muted-foreground text-xs">
                 {found.npc?.race
-                  ? `${noVoice(found.npc)}: answer who this NPC is.`
+                  ? fill(words.answerWho, { voice: fill(words.noVoiceYet, { type: [found.npc.race, found.npc.gender, found.npc.flavor].filter(Boolean).join("-") }) })
                   : "Nobody has said who this NPC is yet. The answer holds for every line it speaks."}
               </p>
               <input
-                aria-label="Name"
+                aria-label={words.columnName}
                 value={npcName}
                 onChange={(event) => setNpcName(event.target.value)}
                 maxLength={200}
-                placeholder="Name, as the game shows it"
+                placeholder={words.namePlaceholder}
                 className={FIELD}
               />
               <div className="flex gap-2">
                 <Choice
-                  label="Type"
+                  label={words.type}
                   value={race}
                   options={roster.races}
                   onChange={(value) => {
@@ -248,7 +249,7 @@ export default function AddSpeakerDialog({ line, replace = false, onSaved, onCan
                 />
                 {genders.length > 0 && (
                   <Choice
-                    label="Gender"
+                    label={words.genderPlaceholder}
                     value={gender}
                     options={genders}
                     onChange={(value) => {
@@ -257,7 +258,7 @@ export default function AddSpeakerDialog({ line, replace = false, onSaved, onCan
                     }}
                   />
                 )}
-                {flavors.length > 0 && <Choice label="Flavor" value={flavor} options={flavors} onChange={setFlavor} />}
+                {flavors.length > 0 && <Choice label={words.flavorPlaceholder} value={flavor} options={flavors} onChange={setFlavor} />}
               </div>
             </div>
           )}
@@ -271,10 +272,10 @@ export default function AddSpeakerDialog({ line, replace = false, onSaved, onCan
 
         <DialogFooter>
           <Button variant="ghost" disabled={busy} onClick={onCancel}>
-            Cancel
+            {words.cancel}
           </Button>
           <Button disabled={busy || !found || (!answered && !answerReady)} onClick={() => void add()}>
-            {replace ? "Replace speaker" : "Add speaker"}
+            {replace ? words.replaceSpeaker : words.addSpeaker}
           </Button>
         </DialogFooter>
       </DialogContent>

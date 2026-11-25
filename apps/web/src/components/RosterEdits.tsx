@@ -11,6 +11,8 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useLang } from "@/components/LangProvider";
 import { LiteButton, LiteCheckbox, ROW_BUTTON } from "@/components/LiteControls";
 import { Input } from "@/components/ui/input";
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 import { Roster, type Gender, type RosterData } from "@/lib/voices/roster";
 import type { NeedsChoice } from "@/lib/voices/types-store";
 import { GENDERS } from "@/lib/voices/voices";
@@ -31,6 +33,8 @@ export type RosterEdits = {
 
 export function useRosterEdits(initial: RosterData): RosterEdits {
   const lang = useLang();
+  const t = useUiText();
+  const words = t.voices.roster;
   const [data, setData] = useState(initial);
   const roster = useMemo(() => new Roster(data), [data]);
   const [busy, setBusy] = useState(false);
@@ -61,7 +65,7 @@ export function useRosterEdits(initial: RosterData): RosterEdits {
       return false;
     }
     if (!response?.ok || !answer?.roster) {
-      setError({ at, message: answer?.error ?? "Not saved" });
+      setError({ at, message: answer?.error ?? words.notSaved });
       return false;
     }
     setData(answer.roster);
@@ -74,25 +78,29 @@ export function useRosterEdits(initial: RosterData): RosterEdits {
       const { choice, body, done } = pending;
       return (
         <div className="flex flex-wrap items-center gap-1 py-1 text-xs text-amber-600 dark:text-amber-400">
-          {choice.voice} reads {plural(choice.npcs, "NPC")} and {plural(choice.lines, "line")}.
+          {fill(words.reads, {
+            voice: choice.voice,
+            npcs: choice.npcs === 1 ? t.voices.slots.npcOne : fill(t.voices.slots.npcMany, { n: choice.npcs }),
+            lines: choice.lines === 1 ? t.voices.slots.lineOne : fill(t.voices.slots.lineMany, { n: choice.lines }),
+          })}
           <LiteButton
             className={ROW_BUTTON}
             disabled={busy}
             onClick={() => void send(at, { ...body, existing: "map" }, done)}
-            title={`${choice.into} takes ${choice.voice} over, its takes too, and the NPCs move to ${choice.into}`}
+            title={fill(words.takesOver, { voice: choice.voice, race: choice.into })}
           >
-            Map to {choice.into}
+            {fill(words.mapTo, { voice: choice.into })}
           </LiteButton>
           <LiteButton
             className={ROW_BUTTON}
             disabled={busy}
             onClick={() => void send(at, { ...body, existing: "discard" }, done)}
-            title={`${choice.into} gets a new voice; ${choice.voice} and its takes stay on file unused, and the NPCs wait for an answer`}
+            title={fill(words.newVoice, { race: choice.into, voice: choice.voice })}
           >
-            Throw away
+            {words.discard}
           </LiteButton>
           <LiteButton className={ROW_BUTTON} onClick={() => setPending(null)}>
-            Cancel
+            {words.cancel}
           </LiteButton>
         </div>
       );
@@ -114,6 +122,8 @@ export function NewTypeForm({
   /** With the genders it was made with: the roster this render holds does not have it yet. */
   onMade: (key: string, genders: Gender[]) => void;
 }) {
+  const t = useUiText();
+  const words = t.voices.roster;
   const [key, setKey] = useState("");
   const [genders, setGenders] = useState<Gender[]>([]);
   return (
@@ -134,7 +144,7 @@ export function NewTypeForm({
           autoFocus
           value={key}
           onChange={(e) => setKey(e.target.value)}
-          placeholder="type, e.g. treant"
+          placeholder={words.typePlaceholder}
           className="h-7 text-xs"
         />
         <div className="flex items-center gap-3">
@@ -152,10 +162,10 @@ export function NewTypeForm({
             </label>
           ))}
           <LiteButton type="submit" className={`${ROW_BUTTON} ml-auto`} disabled={edits.busy || !key.trim()}>
-            Add
+            {words.add}
           </LiteButton>
         </div>
-        <p className="text-muted-foreground text-xs">No gender ticked: a type without one, like a treant.</p>
+        <p className="text-muted-foreground text-xs">{words.noGender}</p>
       </form>
       {edits.refusal(at)}
     </div>
@@ -175,10 +185,11 @@ export function NewGenderForm({
   onMade: (gender: Gender) => void;
 }) {
   const missing = GENDERS.filter((g) => !edits.roster.gendersOf(race).includes(g));
+  const words = useUiText().voices.roster;
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-1 text-xs">
-        <span className="text-muted-foreground mr-1">{race} gets</span>
+        <span className="text-muted-foreground mr-1">{fill(words.gets, { race })}</span>
         {missing.map((gender) => (
           <LiteButton
             key={gender}
@@ -212,6 +223,7 @@ export function NewFlavorForm({
   onMade: (flavor: string) => void;
 }) {
   const [flavor, setFlavor] = useState("");
+  const words = useUiText().voices.roster;
   return (
     <div className="flex flex-col gap-2">
       <form
@@ -229,18 +241,14 @@ export function NewFlavorForm({
           autoFocus
           value={flavor}
           onChange={(e) => setFlavor(e.target.value)}
-          placeholder={`flavor of ${[race, gender].filter(Boolean).join(" ")}`}
+          placeholder={fill(words.flavorOf, { race: [race, gender].filter(Boolean).join(" ") })}
           className="h-7 text-xs"
         />
         <LiteButton type="submit" className={ROW_BUTTON} disabled={edits.busy || !flavor.trim()}>
-          Add
+          {words.add}
         </LiteButton>
       </form>
       {edits.refusal(at)}
     </div>
   );
-}
-
-function plural(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }

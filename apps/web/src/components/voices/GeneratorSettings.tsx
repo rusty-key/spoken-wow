@@ -5,7 +5,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useUiText } from "@/components/UiTextProvider";
 import { SEED_STRATEGIES, type SeedStrategy, type VoiceSettings } from "@/lib/generation/config";
+import { fill } from "@/lib/site-text/format";
 import type { Preference } from "@/lib/generation/preference";
 
 /** The models a collaborator may pick. Mirrors FISH_MODELS in lib/voices/fish.ts, which is server-side. */
@@ -17,28 +19,16 @@ export type ElevenLabsModelOption = { id: string; name: string };
 // Type-only: erased from the bundle, so the form and the server cannot drift apart on shape.
 export type Settings = Pick<Preference, "elevenlabs" | "fish">;
 
-const SEED_LABELS: Record<SeedStrategy, string> = {
-  npc: "Per NPC — every line an NPC speaks draws the same way",
-  none: "None — each line is an independent draw",
-};
+const seedLabels = (words: ReturnType<typeof useUiText>["voices"]["settings"]): Record<SeedStrategy, string> => ({
+  npc: words.perNpc,
+  none: words.independent,
+});
 
 /** The three 0-1 voice settings, as the admin form described them before they moved here. */
-const SLIDERS: { key: "stability" | "similarity_boost" | "style"; label: string; hint: string }[] = [
-  {
-    key: "stability",
-    label: "Stability",
-    hint: "Low varies the delivery between takes; high flattens it. 0.5 is the API's own default.",
-  },
-  {
-    key: "similarity_boost",
-    label: "Similarity",
-    hint: "How hard the model tries to match the clone, including any noise in the source clips.",
-  },
-  {
-    key: "style",
-    label: "Style",
-    hint: "Exaggerates the source's delivery. Costs latency, and above ~0.5 tends to drift.",
-  },
+const sliders = (words: ReturnType<typeof useUiText>["voices"]["settings"]) => [
+  { key: "stability" as const, label: words.stability, hint: words.stabilityHint },
+  { key: "similarity_boost" as const, label: words.similarity, hint: words.similarityHint },
+  { key: "style" as const, label: words.style, hint: words.styleHint },
 ];
 
 /**
@@ -93,12 +83,13 @@ function Footer({
   error: string | null;
   onSave: () => void;
 }) {
+  const words = useUiText().voices.settings;
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Button type="button" size="sm" disabled={busy || !changed} onClick={onSave}>
-        {busy ? "Saving…" : "Save settings"}
+        {busy ? words.saving : words.save}
       </Button>
-      <span className="text-muted-foreground text-xs">Applies to all your languages.</span>
+      <span className="text-muted-foreground text-xs">{words.appliesToAll}</span>
       {error && (
         <span role="alert" className="text-destructive text-xs">
           {error}
@@ -121,6 +112,7 @@ export function ElevenLabsSettingsForm({
   modelsNote: string | null;
   onSave: (next: Settings["elevenlabs"]) => Promise<void>;
 }) {
+  const words = useUiText().voices.settings;
   const { draft, setDraft, busy, error, changed, submit } = useDraft(saved, onSave);
   const setVoice = (change: Partial<VoiceSettings>) =>
     setDraft((current) => ({ ...current, voiceSettings: { ...current.voiceSettings, ...change } }));
@@ -136,7 +128,7 @@ export function ElevenLabsSettingsForm({
   return (
     <div className="space-y-3">
       <div className="grid max-w-md grid-cols-[8rem_1fr] items-center gap-x-3 gap-y-2 text-sm">
-        <Label htmlFor="eleven-model">Model</Label>
+        <Label htmlFor="eleven-model">{words.model}</Label>
         <select
           id="eleven-model"
           value={draft.modelId}
@@ -150,7 +142,7 @@ export function ElevenLabsSettingsForm({
           ))}
         </select>
 
-        {SLIDERS.map(({ key, label, hint }) => (
+        {sliders(words).map(({ key, label, hint }) => (
           <div key={key} className="contents">
             <Label htmlFor={`eleven-${key}`} title={hint}>
               {label}
@@ -169,7 +161,7 @@ export function ElevenLabsSettingsForm({
           </div>
         ))}
 
-        <Label htmlFor="eleven-boost">Speaker boost</Label>
+        <Label htmlFor="eleven-boost">{words.speakerBoost}</Label>
         <input
           id="eleven-boost"
           type="checkbox"
@@ -178,7 +170,7 @@ export function ElevenLabsSettingsForm({
           className="size-4 justify-self-start"
         />
 
-        <Label htmlFor="eleven-seed">Seed</Label>
+        <Label htmlFor="eleven-seed">{words.seed}</Label>
         <select
           id="eleven-seed"
           value={draft.seedStrategy}
@@ -187,7 +179,7 @@ export function ElevenLabsSettingsForm({
         >
           {SEED_STRATEGIES.map((strategy) => (
             <option key={strategy} value={strategy}>
-              {SEED_LABELS[strategy]}
+              {seedLabels(words)[strategy]}
             </option>
           ))}
         </select>
@@ -207,6 +199,7 @@ export function FishSettingsForm({
   models: FishModelOption[];
   onSave: (next: Settings["fish"]) => Promise<void>;
 }) {
+  const words = useUiText().voices.settings;
   const { draft, setDraft, busy, error, changed, submit } = useDraft(saved, onSave);
   const number = (key: "temperature" | "topP" | "speed", min: number, max: number, label: string) => (
     <div className="contents">
@@ -227,7 +220,7 @@ export function FishSettingsForm({
   return (
     <div className="space-y-3">
       <div className="grid max-w-md grid-cols-[8rem_1fr] items-center gap-x-3 gap-y-2 text-sm">
-        <Label htmlFor="fish-model">Model</Label>
+        <Label htmlFor="fish-model">{words.model}</Label>
         <select
           id="fish-model"
           value={draft.model}
@@ -236,19 +229,17 @@ export function FishSettingsForm({
         >
           {models.map((model) => (
             <option key={model.id} value={model.id}>
-              {model.label} — {model.price}
+              {fill(words.modelOption, { label: model.label, price: model.price })}
             </option>
           ))}
         </select>
-        {number("temperature", 0, 1, "Temperature")}
-        {number("topP", 0, 1, "Top P")}
-        {number("speed", 0.5, 2, "Speed")}
+        {number("temperature", 0, 1, words.temperature)}
+        {number("topP", 0, 1, words.topPLabel)}
+        {number("speed", 0.5, 2, words.speed)}
       </div>
       <p className="text-muted-foreground text-xs">
-        Temperature and Top P trade consistency for expressiveness; fish.audio&apos;s defaults are
-        0.7 for both.{" "}
-        {models.find((model) => model.id === draft.model)?.preview &&
-          "Preview models may change or disappear without notice, and have no published price."}
+        {words.temperatureNote}{" "}
+        {models.find((model) => model.id === draft.model)?.preview && words.previewWarning}
       </p>
       <Footer busy={busy} changed={changed} error={error} onSave={submit} />
     </div>

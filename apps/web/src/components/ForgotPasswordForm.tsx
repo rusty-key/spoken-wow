@@ -4,16 +4,17 @@ import { useState } from "react";
 
 import { useLang } from "@/components/LangProvider";
 import Link from "@/components/LocaleLink";
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { requestPasswordReset } from "@/lib/auth-client";
 import { localeHref } from "@/lib/lang";
-
-const FAILED = "Something went wrong. Try again.";
+import { fill } from "@/lib/site-text/format";
 
 export default function ForgotPasswordForm() {
   const lang = useLang();
+  const t = useUiText().auth;
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -28,27 +29,27 @@ export default function ForgotPasswordForm() {
         email,
         redirectTo: localeHref(lang, "/reset-password"),
       });
-      if (error) setError(error.message || FAILED);
+      if (error) setError(error.message || t.failed);
       else setSent(true);
     } catch {
       // A dropped connection throws instead of returning an error.
-      setError(FAILED);
+      setError(t.failed);
     }
     setPending(false);
   }
 
   return (
     <>
-      <h1 className="text-xl font-semibold">Reset your password</h1>
+      <h1 className="text-xl font-semibold">{t.resetTitle}</h1>
 
       {sent ? (
         <p role="status" className="mt-6 max-w-sm text-sm">
-          If {email} has an account, a reset link is on its way. It expires in one hour.
+          {fill(t.resetSent, { email })}
         </p>
       ) : (
         <form onSubmit={onSubmit} className="mt-6 flex max-w-sm flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t.email}</Label>
             <Input
               id="email"
               type="email"
@@ -66,14 +67,14 @@ export default function ForgotPasswordForm() {
           )}
 
           <Button type="submit" disabled={pending} className="self-start">
-            {pending ? "Working…" : "Send reset link"}
+            {pending ? t.working : t.sendReset}
           </Button>
         </form>
       )}
 
       <p className="text-muted-foreground mt-4 text-sm">
         <Link href="/login" className="text-foreground underline underline-offset-4">
-          Back to sign in
+          {t.backToSignIn}
         </Link>
       </p>
     </>

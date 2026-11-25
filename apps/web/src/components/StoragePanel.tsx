@@ -5,35 +5,30 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DAY_TIME, useLocalDates } from "@/components/useLocalDates";
+import { useUiText } from "@/components/UiTextProvider";
 import { langName, type Lang } from "@/lib/lang";
+import { fill } from "@/lib/site-text/format";
 import type { BackendView, Provider } from "@/lib/storage/backends";
 import type { CloudflareAccount } from "@/lib/storage/cloudflare";
 import type { MoveView } from "@/lib/storage/moves";
 import type { ProbeResult } from "@/lib/storage/probe";
 import type { StorageView } from "@/lib/storage/view";
+import type { UiText } from "@/lib/ui-text/en";
 import { cn } from "@/lib/utils";
 
-const HEALTH: Record<BackendView["health"], { text: string; tone: string }> = {
-  unchecked: { text: "Not tested", tone: "border-border text-muted-foreground" },
-  ok: { text: "Working", tone: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" },
-  failing: { text: "Failing", tone: "border-destructive/40 bg-destructive/10 text-destructive" },
+const TONE: Record<BackendView["health"], string> = {
+  unchecked: "border-border text-muted-foreground",
+  ok: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
+  failing: "border-destructive/40 bg-destructive/10 text-destructive",
 };
 
 type Answer = { backend?: BackendView; test?: ProbeResult | null; move?: MoveView; needsKey?: boolean; why?: string; error?: string };
 
 const POLL_MS = 10_000;
 
-const MOVE_STATE: Record<MoveView["state"], string> = {
-  queued: "Waiting to start",
-  running: "Moving",
-  done: "Done",
-  failed: "Stopped on an error",
-  cancelled: "Stopped",
-};
-
-async function call(url: string, init: RequestInit): Promise<Answer> {
+async function call(url: string, init: RequestInit, words: UiText["storage"]): Promise<Answer> {
   const res = await fetch(url, { ...init, headers: { "content-type": "application/json" } }).catch(() => null);
-  if (!res) return { error: "No answer from the site: reload to see whether it took effect before trying again." };
+  if (!res) return { error: words.noAnswer };
   if (res.status === 204) return {};
   const answer = (await res.json().catch(() => ({ error: `HTTP ${res.status}` }))) as Answer;
   // A refusal may still carry the bucket and a test's steps, which say why.
@@ -53,6 +48,8 @@ export default function StoragePanel({
   initial: StorageView;
   cloudflare: CloudflareReturn;
 }) {
+  const t = useUiText();
+  const words = t.storage;
   const [view, setView] = useState(initial);
   const [tests, setTests] = useState<Record<string, ProbeResult>>({});
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +72,7 @@ export default function StoragePanel({
 
   const move = async (from: string | null, to: string | null) => {
     setError(null);
-    const answer = await call(`/api/storage/moves?lang=${lang}`, { method: "POST", body: JSON.stringify({ from, to }) });
+    const answer = await call(`/api/storage/moves?lang=${lang}`, { method: "POST", body: JSON.stringify({ from, to }) }, words);
     if (answer.error) return setError(answer.error);
     // Shown at once, and the polling that follows it starts, even if the refresh is slow.
     if (answer.move) setView((current) => ({ ...current, moves: [answer.move!, ...current.moves] }));
@@ -83,13 +80,17 @@ export default function StoragePanel({
   };
 
   const stopMove = async (id: string) => {
-    const answer = await call(`/api/storage/moves/${id}?lang=${lang}`, { method: "DELETE" });
+    const answer = await call(`/api/storage/moves/${id}?lang=${lang}`, { method: "DELETE" }, words);
     if (answer.error) return setError(answer.error);
     await refresh();
   };
 
   const nameOf = (id: string | null, label: string | null) =>
-    id ? (view.backends.find((b) => b.id === id)?.label ?? label ?? "a removed bucket") : label ? `${label} (removed)` : "Spoken's archive";
+    id
+      ? (view.backends.find((b) => b.id === id)?.label ?? label ?? words.removedBucket)
+      : label
+        ? fill(words.removedLabel, { label })
+        : words.spokenArchive;
 
   const replace = (backend: BackendView) =>
     setView((current) => {
@@ -103,7 +104,7 @@ export default function StoragePanel({
   const act = async (id: string, init: RequestInit, label: string): Promise<boolean> => {
     setBusy({ id, action: label });
     setError(null);
-    const answer = await call(`/api/storage/${id}?lang=${lang}`, init);
+    const answer = await call(`/api/storage/${id}?lang=${lang}`, init, words);
     setBusy(null);
     if (answer.test) setTests((current) => ({ ...current, [id]: answer.test! }));
     else if (label === "test" || label === "rekey") {
@@ -128,34 +129,38 @@ export default function StoragePanel({
     <div className="flex flex-col gap-6">
       <section className="bg-card rounded-lg border p-4 text-sm">
         <p>
-          New takes, recordings and clone clips of {view.team.name} ({view.team.langs.map(langName).join(", ")}) go to{" "}
+          {fill(words.destinationBefore, {
+            team: view.team.name,
+            langs: view.team.langs.map(langName).join(", "),
+          })}
           <span className="font-medium">
-            {writing ? `${writing.label} (${writing.bucket})` : view.ownStorage ? "nowhere yet" : "Spoken's archive"}
+            {writing
+              ? fill(words.destinationNamed, { label: writing.label, bucket: writing.bucket })
+              : view.ownStorage
+                ? words.nowhere
+                : words.spokenArchive}
           </span>
-          .
+          {words.destinationAfter}
         </p>
         {view.ownStorage && !writing && (
           <p className="text-destructive mt-2">
-            Your team keeps its audio only in its own bucket. Until one is connected, tested and switched on, nothing
-            can be generated, recorded or uploaded.
+            {words.emptyWarning}
           </p>
         )}
         <p className="text-muted-foreground mt-2">
-          Your bucket is yours: Spoken never deletes your audio from it (only its own test object under probe/), and
-          what you delete there is gone, so that line reads as unvoiced. We recommend versioning or an object lock, and a key that can read and write but not delete. What
-          is already in Spoken&apos;s archive stays there.
+          {words.archiveNote}
         </p>
         {!view.archiveIsBucket && (
-          <p className="text-destructive mt-2">This site still keeps its archive on disk, so a team bucket cannot be switched on yet.</p>
+          <p className="text-destructive mt-2">{words.diskArchive}</p>
         )}
-        {!view.canSeal && <p className="text-destructive mt-2">SPOKEN_STORAGE_KEY is not set on this site, so no bucket can be saved.</p>}
+        {!view.canSeal && <p className="text-destructive mt-2">{words.noKeySite}</p>}
       </section>
 
       {error && <p className="text-destructive text-sm">{error}</p>}
 
       {view.moves.length > 0 && (
         <section className="bg-card flex flex-col gap-2 rounded-lg border p-4 text-sm">
-          <h2 className="font-medium">Moves</h2>
+          <h2 className="font-medium">{words.moves}</h2>
           {view.moves.map((m) => (
             <MoveLine key={m.id} move={m} from={nameOf(m.fromBackendId, m.fromLabel)} to={nameOf(m.toBackendId, m.toLabel)} onStop={() => void stopMove(m.id)} />
           ))}
@@ -234,34 +239,35 @@ function BackendCard({
   others: BackendView[];
 }) {
   const date = useLocalDates();
+  const words = useUiText().storage;
   const [rekeying, setRekeying] = useState(false);
   const [key, setKey] = useState({ accessKeyId: "", secretAccessKey: "" });
-  const health = HEALTH[backend.health];
+  const health = { text: words.health[backend.health], tone: TONE[backend.health] };
   const retired = backend.retiredAt !== null;
   return (
     <article className={cn("bg-card flex flex-col gap-3 rounded-lg border p-4 text-sm", backend.writing && "border-primary/40")}>
       <header className="flex flex-wrap items-center gap-2">
         <h2 className="font-medium">{backend.label}</h2>
         <span className={cn("rounded-full border px-2 py-0.5 text-xs", health.tone)}>{health.text}</span>
-        {backend.writing && <span className="border-primary/35 bg-primary/10 text-primary-ink rounded-full border px-2 py-0.5 text-xs">New objects go here</span>}
-        {retired && <span className="text-muted-foreground rounded-full border px-2 py-0.5 text-xs">Retired</span>}
+        {backend.writing && <span className="border-primary/35 bg-primary/10 text-primary-ink rounded-full border px-2 py-0.5 text-xs">{words.newObjectsHere}</span>}
+        {retired && <span className="text-muted-foreground rounded-full border px-2 py-0.5 text-xs">{words.retired}</span>}
       </header>
       <dl className="text-muted-foreground grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
-        <dt>Bucket</dt>
+        <dt>{words.bucket}</dt>
         <dd className="font-mono text-xs">{backend.endpoint}/{backend.bucket}</dd>
-        <dt>Public address</dt>
-        <dd className="font-mono text-xs">{backend.publicUrl ?? "none: signed addresses"}</dd>
-        <dt>Key</dt>
+        <dt>{words.publicAddress}</dt>
+        <dd className="font-mono text-xs">{backend.publicUrl ?? words.signedOnly}</dd>
+        <dt>{words.key}</dt>
         <dd className="font-mono text-xs">{backend.accessKeyId}</dd>
-        <dt>Holds</dt>
+        <dt>{words.holds}</dt>
         <dd>
-          {backend.objects.toLocaleString()} objects
-          {backend.pending > 0 && `, ${backend.pending.toLocaleString()} waiting to be written`}
-          {backend.missing > 0 && <span className="text-destructive">, {backend.missing.toLocaleString()} missing</span>}
+          {fill(words.objects, { n: backend.objects.toLocaleString() })}
+          {backend.pending > 0 && fill(words.waitingToWrite, { n: backend.pending.toLocaleString() })}
+          {backend.missing > 0 && <span className="text-destructive">{fill(words.missing, { n: backend.missing.toLocaleString() })}</span>}
         </dd>
         {backend.checkedAt && (
           <>
-            <dt>Tested</dt>
+            <dt>{words.tested}</dt>
             <dd>{date(backend.checkedAt, DAY_TIME)}</dd>
           </>
         )}
@@ -276,61 +282,61 @@ function BackendCard({
             </li>
           ))}
           {test.ok && !test.conditionalPut && (
-            <li className="text-muted-foreground">This bucket replaces objects on a second write, so Spoken looks before it writes.</li>
+            <li className="text-muted-foreground">{words.replaceNote}</li>
           )}
         </ul>
       )}
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => onAction("test")}>
-          {busy === "test" ? "Testing…" : "Test"}
+          {busy === "test" ? words.testing : words.test}
         </Button>
         {!retired && !backend.writing && (
           <Button size="sm" disabled={busy !== null || !canWrite || backend.health !== "ok"} onClick={() => onAction("write")}>
-            Send new objects here
+            {words.sendHere}
           </Button>
         )}
         {backend.writing && !ownStorage && (
           <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => onAction("stop")}>
-            Send new objects to Spoken&apos;s archive
+            {words.sendToArchive}
           </Button>
         )}
         {!rekeying && (
           <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => setRekeying(true)}>
-            Change key
+            {words.changeKey}
           </Button>
         )}
         {!retired && (
           <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => onAction("retire")}>
-            Retire
+            {words.retire}
           </Button>
         )}
         {!retired && backend.health === "ok" && (
-          <Button size="sm" variant="outline" disabled={busy !== null || moving || !canWrite} onClick={onMoveIn} title="Copies what Spoken's archive holds for this team. Spoken keeps its copy.">
-            Copy Spoken&apos;s archive here
+          <Button size="sm" variant="outline" disabled={busy !== null || moving || !canWrite} onClick={onMoveIn} title={words.copyArchiveHint}>
+            {words.copyArchive}
           </Button>
         )}
         {backend.objects > 0 && others.length > 0 && (
           <select
-            aria-label={`Move ${backend.label}'s objects into another bucket`}
+            aria-label={fill(words.moveObjectsFor, { label: backend.label })}
             className="bg-background h-8 rounded-md border px-2 text-sm"
             disabled={busy !== null || moving || !canWrite}
             value=""
             onChange={(event) => event.target.value && onMoveTo(event.target.value)}
           >
-            <option value="">Move objects into…</option>
+            <option value="">{words.moveObjects}</option>
             {others.map((other) => (
               <option key={other.id} value={other.id}>{other.label}</option>
             ))}
           </select>
         )}
         {backend.objects > 0 && !ownStorage && (
-          <Button size="sm" variant="outline" disabled={busy !== null || moving || !canWrite} onClick={onMoveOut} title="Copies this bucket's objects into Spoken's archive and reads them from there. Nothing is deleted here.">
-            Bring objects back to Spoken&apos;s archive
+          <Button size="sm" variant="outline" disabled={busy !== null || moving || !canWrite} onClick={onMoveOut} title={words.bringBackHint}>
+            {words.bringBack}
           </Button>
         )}
         {backend.objects + backend.pending === 0 && (
           <Button size="sm" variant="ghost" disabled={busy !== null} onClick={onRemove}>
-            Remove
+            {words.remove}
           </Button>
         )}
       </div>
@@ -347,10 +353,10 @@ function BackendCard({
             });
           }}
         >
-          <Input className="w-56" placeholder="Access key id" aria-label="Access key id" value={key.accessKeyId} onChange={(e) => setKey({ ...key, accessKeyId: e.target.value })} />
-          <Input className="w-72" type="password" autoComplete="off" placeholder="Secret access key" aria-label="Secret access key" value={key.secretAccessKey} onChange={(e) => setKey({ ...key, secretAccessKey: e.target.value })} />
-          <Button size="sm" type="submit" disabled={!key.accessKeyId.trim() || !key.secretAccessKey}>Save and test</Button>
-          <Button size="sm" type="button" variant="ghost" onClick={() => setRekeying(false)}>Cancel</Button>
+          <Input className="w-56" placeholder={words.accessKeyId} aria-label={words.accessKeyId} value={key.accessKeyId} onChange={(e) => setKey({ ...key, accessKeyId: e.target.value })} />
+          <Input className="w-72" type="password" autoComplete="off" placeholder={words.secretAccessKey} aria-label={words.secretAccessKey} value={key.secretAccessKey} onChange={(e) => setKey({ ...key, secretAccessKey: e.target.value })} />
+          <Button size="sm" type="submit" disabled={!key.accessKeyId.trim() || !key.secretAccessKey}>{words.saveAndTest}</Button>
+          <Button size="sm" type="button" variant="ghost" onClick={() => setRekeying(false)}>{words.cancel}</Button>
         </form>
       )}
     </article>
@@ -358,20 +364,21 @@ function BackendCard({
 }
 
 function MoveLine({ move, from, to, onStop }: { move: MoveView; from: string; to: string; onStop: () => void }) {
+  const words = useUiText().storage;
   const done = move.copied + move.already + move.missing;
   const active = move.state === "queued" || move.state === "running";
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span>
-        {from} → {to}: {MOVE_STATE[move.state]}
+        {fill(words.moveLine, { from, to, state: words.moveState[move.state] })}
         {/* The total is counted when the move starts; objects kept since can take it past that. */}
-        {move.total !== null && ` · ${done.toLocaleString()} of ${Math.max(done, move.total).toLocaleString()}`}
-        {move.missing > 0 && <span className="text-destructive"> · {move.missing.toLocaleString()} missing at the source</span>}
+        {move.total !== null && fill(words.moveProgress, { done: done.toLocaleString(), total: Math.max(done, move.total).toLocaleString() })}
+        {move.missing > 0 && <span className="text-destructive">{fill(words.moveMissing, { n: move.missing.toLocaleString() })}</span>}
       </span>
       {move.lastError && <span className="text-destructive">{move.lastError}</span>}
       {active && (
         <Button size="sm" variant="ghost" onClick={onStop}>
-          Stop
+          {words.stop}
         </Button>
       )}
     </div>
@@ -391,6 +398,7 @@ function CloudflareSetup({
   /** Told while a request runs, so the card around it holds still: a remount could send it twice. */
   onBusy: (busy: boolean) => void;
 }) {
+  const words = useUiText().storage;
   /** The grant waiting in the cookie: the accounts it reaches, and whether it may make the key. */
   const [grant, setGrant] = useState<{ accounts: CloudflareAccount[]; mintsKeys: boolean } | null>(null);
   const [accountId, setAccountId] = useState("");
@@ -424,8 +432,8 @@ function CloudflareSetup({
       const answer = (await res?.json().catch(() => null)) as
         | { accounts?: CloudflareAccount[]; bucket?: string; mintsKeys?: boolean; error?: string }
         | null;
-      if (!res?.ok || !answer?.accounts) return setError(answer?.error ?? "Cloudflare's accounts could not be read: connect again.");
-      if (answer.accounts.length === 0) return setError("The grant reaches no Cloudflare account: connect again and pick one.");
+      if (!res?.ok || !answer?.accounts) return setError(answer?.error ?? words.accountsUnreadable);
+      if (answer.accounts.length === 0) return setError(words.noAccount);
       setGrant({ accounts: answer.accounts, mintsKeys: answer.mintsKeys === true });
       setAccountId(answer.accounts[0].id);
       setBucket(answer.bucket ?? "");
@@ -437,11 +445,11 @@ function CloudflareSetup({
     setWorking(true);
     setError(null);
     const body = { accountId, bucket: bucket.trim(), ...(needsKey ? { accessKeyId: key.accessKeyId.trim(), secretAccessKey: key.secretAccessKey.trim() } : {}) };
-    const answer = await call(url, { method: "POST", body: JSON.stringify(body) });
+    const answer = await call(url, { method: "POST", body: JSON.stringify(body) }, words);
     setWorking(false);
     if (answer.error) return setError(answer.error);
     if (answer.needsKey) {
-      if (answer.why) setError(`Spoken could not make the key (${answer.why}), so make it yourself below.`);
+      if (answer.why) setError(fill(words.keyRefused, { why: answer.why }));
       return setNeedsKey(true);
     }
     reset();
@@ -457,7 +465,7 @@ function CloudflareSetup({
   const cancel = async () => {
     setWorking(true);
     setError(null);
-    const answer = await call(url, { method: "DELETE" });
+    const answer = await call(url, { method: "DELETE" }, words);
     setWorking(false);
     // The form stays while the grant may still be waiting.
     if (answer.error) return setError(answer.error);
@@ -468,13 +476,13 @@ function CloudflareSetup({
     return (
       <div className="flex flex-col gap-3">
         <ul className="text-muted-foreground flex list-disc flex-col gap-1 pl-5">
-          <li>Spoken creates the bucket in your Cloudflare account.</li>
-          <li>It keeps only a key to that bucket, nothing else.</li>
-          <li>Creating API tokens is optional: skip it, and you make the key yourself.</li>
+          <li>{words.cloudflareMakesBucket}</li>
+          <li>{words.cloudflareKeepsKey}</li>
+          <li>{words.cloudflareOptionalTokens}</li>
         </ul>
         <div>
           <Button asChild size="sm">
-            <a href={`/api/storage/cloudflare/start?lang=${lang}`}>Connect Cloudflare</a>
+            <a href={`/api/storage/cloudflare/start?lang=${lang}`}>{words.connectCloudflareButton}</a>
           </Button>
         </div>
         {error && <p className="text-destructive">{error}</p>}
@@ -489,7 +497,7 @@ function CloudflareSetup({
       <fieldset disabled={working} className="contents">
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1">
-            <span className="text-muted-foreground">Account</span>
+            <span className="text-muted-foreground">{words.account}</span>
             <select className="bg-background h-9 rounded-md border px-2" value={accountId} disabled={needsKey} onChange={(e) => setAccountId(e.target.value)}>
               {accounts.map((account) => (
                 <option key={account.id} value={account.id}>{account.name}</option>
@@ -497,50 +505,63 @@ function CloudflareSetup({
             </select>
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-muted-foreground">Bucket</span>
-            <Input aria-label="Bucket" value={bucket} disabled={needsKey} onChange={(e) => setBucket(e.target.value)} />
+            <span className="text-muted-foreground">{words.bucket}</span>
+            <Input aria-label={words.bucket} value={bucket} disabled={needsKey} onChange={(e) => setBucket(e.target.value)} />
           </label>
         </div>
         {needsKey ? (
           <>
-            <p>The bucket {bucket} is ready. Now make its key on Cloudflare and paste it here:</p>
+            <p>{fill(words.bucketReady, { bucket })}</p>
             <ol className="text-muted-foreground flex list-decimal flex-col gap-1 pl-5">
               <li>
-                Open{" "}
+                {words.step1Before}
                 <a className="text-primary-ink underline" href={`https://dash.cloudflare.com/${accountId}/r2/api-tokens`} target="_blank" rel="noreferrer">
                   R2 API tokens
-                </a>{" "}
-                and choose <span className="text-foreground">Create Account API token</span>.
+                </a>
+                {words.step1Middle}
+                <span className="text-foreground">{words.step1Action}</span>
+                {words.step1After}
               </li>
-              <li>Permissions: <span className="text-foreground">Object Read &amp; Write</span>.</li>
               <li>
-                Specify bucket: <span className="text-foreground">Apply to specific buckets only</span>, then{" "}
-                <span className="text-foreground font-mono">{bucket}</span>.
+                {words.step2Before}
+                <span className="text-foreground">{words.step2Value}</span>
+                {words.step2After}
               </li>
-              <li>TTL: <span className="text-foreground">Forever</span>. Create the token.</li>
               <li>
-                Copy the <span className="text-foreground">Access Key ID</span> and the{" "}
-                <span className="text-foreground">Secret Access Key</span> (the S3 ones, not the token value). Cloudflare
-                shows the secret only once.
+                {words.step3Before}
+                <span className="text-foreground">{words.step3Value}</span>
+                {words.step3Middle}
+                <span className="text-foreground font-mono">{bucket}</span>
+                {words.step3After}
+              </li>
+              <li>
+                {words.step4Before}
+                <span className="text-foreground">{words.step4Value}</span>
+                {words.step4After}
+              </li>
+              <li>
+                {words.step5Before}
+                <span className="text-foreground">{words.step5AccessKey}</span>
+                {words.step5Middle}
+                <span className="text-foreground">{words.step5Secret}</span>
+                {words.step5After}
               </li>
             </ol>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Input placeholder="Access key id" aria-label="Access key id" value={key.accessKeyId} onChange={(e) => setKey({ ...key, accessKeyId: e.target.value })} />
-              <Input type="password" autoComplete="off" placeholder="Secret access key" aria-label="Secret access key" value={key.secretAccessKey} onChange={(e) => setKey({ ...key, secretAccessKey: e.target.value })} />
+              <Input placeholder={words.accessKeyId} aria-label={words.accessKeyId} value={key.accessKeyId} onChange={(e) => setKey({ ...key, accessKeyId: e.target.value })} />
+              <Input type="password" autoComplete="off" placeholder={words.secretAccessKey} aria-label={words.secretAccessKey} value={key.secretAccessKey} onChange={(e) => setKey({ ...key, secretAccessKey: e.target.value })} />
             </div>
           </>
         ) : (
           <p className="text-muted-foreground">
-            {mintsKeys
-              ? "Spoken creates the bucket unless the account already has one by that name, and a key that reads and writes objects in it alone. Then it tests the bucket and gives up the access you granted."
-              : "Spoken creates this bucket, or uses it if it already exists. Then you make its key on Cloudflare and paste it here."}
+            {mintsKeys ? words.mintsKeysNote : words.handKeyNote}
           </p>
         )}
         <div className="flex gap-2">
           <Button type="submit" size="sm" disabled={!ready}>
-            {working ? "Working…" : needsKey ? "Save and test" : mintsKeys ? "Create and test" : "Create bucket"}
+            {working ? words.working : needsKey ? words.saveAndTest : mintsKeys ? words.createAndTest : words.createBucket}
           </Button>
-          <Button type="button" size="sm" variant="ghost" onClick={() => void cancel()}>Cancel</Button>
+          <Button type="button" size="sm" variant="ghost" onClick={() => void cancel()}>{words.cancel}</Button>
         </div>
       </fieldset>
       {error && <p className="text-destructive">{error}</p>}
@@ -564,6 +585,7 @@ function NewBackend({
   cloudflare: CloudflareReturn | null;
   onConnected: (backend: BackendView, test: ProbeResult | null) => void;
 }) {
+  const words = useUiText().storage;
   const [provider, setProvider] = useState<Provider>("r2");
   const [byHand, setByHand] = useState(false);
   /** A Cloudflare setup is running: switching provider or mode now would unmount it mid-request. */
@@ -585,18 +607,18 @@ function NewBackend({
     const answer = await call(`/api/storage?lang=${lang}`, {
       method: "POST",
       body: JSON.stringify({ ...form, provider, endpoint: form.endpoint || preset.endpoint, region: form.region || preset.region }),
-    });
+    }, words);
     setSaving(false);
-    if (answer.error || !answer.backend) return setError(answer.error ?? "not saved");
+    if (answer.error || !answer.backend) return setError(answer.error ?? words.notSaved);
     setForm(EMPTY);
     await onSaved(answer.backend);
   };
 
   return (
     <section className="bg-card flex flex-col gap-3 rounded-lg border p-4 text-sm">
-      <h2 className="font-medium">Connect a bucket</h2>
+      <h2 className="font-medium">{words.connect}</h2>
       <label className="flex flex-col gap-1">
-        <span className="text-muted-foreground">Provider</span>
+        <span className="text-muted-foreground">{words.provider}</span>
         <select
           className="bg-background h-9 w-72 rounded-md border px-2"
           value={provider}
@@ -609,12 +631,12 @@ function NewBackend({
         </select>
       </label>
       {provider === "r2" && cloudflare && (
-        <div className="flex flex-wrap gap-2" role="group" aria-label="How to connect R2">
+        <div className="flex flex-wrap gap-2" role="group" aria-label={words.howToConnectR2}>
           <Button type="button" size="sm" variant={byHand ? "outline" : "secondary"} aria-pressed={!byHand} disabled={settingUp} onClick={() => setByHand(false)}>
-            Connect with Cloudflare
+            {words.connectCloudflare}
           </Button>
           <Button type="button" size="sm" variant={byHand ? "secondary" : "outline"} aria-pressed={byHand} disabled={settingUp} onClick={() => setByHand(true)}>
-            Enter details by hand
+            {words.detailsByHand}
           </Button>
         </div>
       )}
@@ -625,23 +647,21 @@ function NewBackend({
           {/* Held while saving: the form clears when the save returns, and would take edits with it. */}
           <fieldset disabled={saving} className="contents">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Input placeholder={`Endpoint: ${preset.endpoint}`} aria-label="Endpoint" {...field("endpoint")} />
-              <Input placeholder={preset.region ? `Region: ${preset.region}` : "Region, e.g. eu-central-1"} aria-label="Region" {...field("region")} />
-              <Input placeholder="Bucket" aria-label="Bucket" {...field("bucket")} />
-              <Input placeholder="Public address (optional), e.g. https://audio.example.org/" aria-label="Public address" {...field("publicUrl")} />
-              <Input placeholder="Access key id" aria-label="Access key id" {...field("accessKeyId")} />
-              <Input type="password" autoComplete="off" placeholder="Secret access key" aria-label="Secret access key" {...field("secretAccessKey")} />
-              <Input placeholder="Name (optional)" aria-label="Name" {...field("label")} />
+              <Input placeholder={fill(words.endpointPlaceholder, { endpoint: preset.endpoint })} aria-label={words.endpoint} {...field("endpoint")} />
+              <Input placeholder={preset.region ? fill(words.regionPlaceholder, { region: preset.region }) : words.regionExample} aria-label={words.region} {...field("region")} />
+              <Input placeholder={words.bucket} aria-label={words.bucket} {...field("bucket")} />
+              <Input placeholder={words.publicUrlPlaceholder} aria-label={words.publicAddress} {...field("publicUrl")} />
+              <Input placeholder={words.accessKeyId} aria-label={words.accessKeyId} {...field("accessKeyId")} />
+              <Input type="password" autoComplete="off" placeholder={words.secretAccessKey} aria-label={words.secretAccessKey} {...field("secretAccessKey")} />
+              <Input placeholder={words.nameOptional} aria-label={words.name} {...field("label")} />
             </div>
             <p className="text-muted-foreground">
-              The key needs to read and write objects (GetObject and PutObject; on Amazon S3 also ListBucket, without
-              which a missing object answers 403 rather than 404). Without a public address the site hands listeners signed
-              addresses that expire. Saving tests the bucket; nothing goes to it until you switch it on.
+              {words.keyNote}
             </p>
           </fieldset>
           {error && <p className="text-destructive">{error}</p>}
           <div>
-            <Button type="submit" size="sm" disabled={saving}>{saving ? "Saving…" : "Save and test"}</Button>
+            <Button type="submit" size="sm" disabled={saving}>{saving ? words.saving : words.saveAndTest}</Button>
           </div>
         </form>
       )}

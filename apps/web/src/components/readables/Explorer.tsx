@@ -429,7 +429,7 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
     if (!queued) {
       // No reason offered because none was given: the route refused for a cause this
       // response does not carry, and inventing one would be a guess dressed as an answer.
-      setQueueNote("Could not queue the batch.");
+      setQueueNote(t.catalogue.queueFailed);
     } else if ("error" in queued) {
       // The key dialog only for a missing key; a refusal about the team's storage is a note.
       if (queued.noKey) setKeyRequired(queued.error);
@@ -549,10 +549,10 @@ export function Explorer({ books, teams, viewed, home }: { books: BookFacet[] } 
         {filters.line && (
           <div className="text-muted-foreground mt-3 flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs">
             <span>
-              Showing one line: <span className="font-mono">{filters.line}</span>
+              {t.catalogue.showingOne} <span className="font-mono">{filters.line}</span>
             </span>
             <Button size="sm" variant="ghost" onClick={() => updateFilters({ line: undefined })}>
-              Show everything
+              {t.catalogue.showEverything}
             </Button>
           </div>
         )}

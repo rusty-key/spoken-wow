@@ -19,16 +19,19 @@ import SpeakerCell, { type SpeakerAnswer } from "@/components/SpeakerCell";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { useUiText } from "@/components/UiTextProvider";
 import Pagination from "@/components/Pagination";
 import ClientSelect from "@/components/ClientSelect";
 import { clientFilterOf, DEFAULT_CLIENT_FILTER, matchesClient, type ClientFamily, type ClientFilter } from "@/lib/contributions/client";
 import { flavorOptionsFor, summaryFromResolution, summaryFromBody } from "@/lib/contributions/speaker";
 import { bareDirection } from "@/lib/generation/narration";
+import { fill } from "@/lib/site-text/format";
 import type { Roster, RosterData } from "@/lib/voices/roster";
 import type { NpcSummary } from "@/lib/contributions/triage";
 import { localeHref } from "@/lib/lang";
 import { isProvenance, PROVENANCES, sexOf, type NpcRowKind, type Provenance, type Sex } from "@/lib/npc/npc";
 import type { NpcResolution, NpcBodyAnswer } from "@/lib/npc/store";
+import type { UiText } from "@/lib/ui-text/en";
 import { wowheadEntityUrl } from "@/lib/wowhead";
 
 function key(npcKind: NpcRowKind | null, npcId: number): string {
@@ -36,18 +39,8 @@ function key(npcKind: NpcRowKind | null, npcId: number): string {
 }
 
 // ContributionTable's own words for the same five, so a speaker reads the same on both tabs.
-const PROVENANCE_LABELS: Record<Provenance, string> = {
-  corpus: "Corpus",
-  display: "Game data",
-  client: "Guessed",
-  moderator: "Moderated",
-  none: "Unknown",
-};
-
-const SPEAKER_CHIP_OPTIONS: ChipOption[] = PROVENANCES.map((option) => ({
-  value: option,
-  label: PROVENANCE_LABELS[option],
-}));
+const provenanceOptions = (words: UiText["npc"]): ChipOption[] =>
+  PROVENANCES.map((option) => ({ value: option, label: words.provenance[option] }));
 
 const PAGE_SIZE = 100;
 
@@ -89,10 +82,10 @@ function isProgress(value: unknown): value is Progress {
   return (PROGRESSES as readonly unknown[]).includes(value);
 }
 
-const PROGRESS_CHIP_OPTIONS: ChipOption[] = [
-  { value: "unfinished", label: "Unfinished" },
-  { value: "doubtful", label: "Doubtful" },
-  { value: "finished", label: "Finished" },
+const PROGRESS_CHIP_OPTIONS = (words: UiText["npc"]): ChipOption[] => [
+  { value: "unfinished", label: words.progress.unfinished },
+  { value: "doubtful", label: words.progress.doubtful },
+  { value: "finished", label: words.progress.finished },
 ];
 
 /**
@@ -150,13 +143,15 @@ function NameCell({
   busy: boolean;
   onSave: (name: string) => void;
 }) {
+  const t = useUiText();
+  const words = t.npc;
   const [draft, setDraft] = useState<string | null>(null);
   if (draft === null) {
     return (
       <div className={ROW_LINE}>
-        <span>{name ?? <span className="text-muted-foreground">unnamed</span>}</span>
+        <span>{name ?? <span className="text-muted-foreground">{t.dashboard.unnamed}</span>}</span>
         <LiteButton className={ROW_BUTTON} onClick={() => setDraft(name ?? "")}>
-          Edit
+          {words.edit}
         </LiteButton>
       </div>
     );
@@ -172,7 +167,7 @@ function NameCell({
       }}
     >
       <input
-        aria-label="NPC name"
+        aria-label={words.nameLabel}
         autoFocus
         maxLength={200}
         value={draft}
@@ -181,7 +176,7 @@ function NameCell({
         className="border-input bg-background h-7 w-44 rounded-md border px-2"
       />
       <LiteButton type="submit" className={ROW_BUTTON} disabled={busy || !trimmed}>
-        Save
+        {words.save}
       </LiteButton>
     </form>
   );
@@ -191,12 +186,12 @@ function NameCell({
  * Where an NPC's lines can be looked up: the explorer and the contributions. The contributions
  * link carries this page's client filter, since the two pages read it the same way.
  */
-function lookups(npcId: number, client: ClientFilter): { label: string; path: string; where: string }[] {
+function lookups(npcId: number, client: ClientFilter, words: UiText["npc"]): { label: string; path: string; where: string }[] {
   const search = `q=${npcId}&filter=npc`;
   const contributed = client === DEFAULT_CLIENT_FILTER ? search : `${search}&client=${client}`;
   return [
-    { label: "Q", path: `/quests?${search}`, where: "the quests explorer" },
-    { label: "CQ", path: `/contributions/quests?${contributed}`, where: "quest contributions" },
+    { label: "Q", path: `/quests?${search}`, where: words.questsExplorer },
+    { label: "CQ", path: `/contributions/quests?${contributed}`, where: words.questContributions },
   ];
 }
 
@@ -213,6 +208,8 @@ function DirectionCell({
   /** Resolves to the server's reason when the save was refused, null when it went through. */
   onSave: (direction: string) => Promise<string | null>;
 }) {
+  const t = useUiText();
+  const words = t.npc;
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const bare = direction ? bareDirection(direction) : "";
@@ -223,9 +220,9 @@ function DirectionCell({
         <LiteButton
           className={ROW_BUTTON}
           onClick={() => setDraft(bare)}
-          title="A direction sent in front of every line only this NPC speaks, after its voice's"
+          title={words.directionAdd}
         >
-          {bare ? "Edit" : "Add"}
+          {bare ? words.edit : words.add}
         </LiteButton>
       </div>
     );
@@ -248,17 +245,17 @@ function DirectionCell({
     >
       <div className={ROW_LINE}>
         <input
-          aria-label="NPC direction"
+          aria-label={words.directionLabel}
           autoFocus
           maxLength={200}
-          placeholder="pirate accent"
+          placeholder={words.directionPlaceholder}
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => event.key === "Escape" && close()}
           className="border-input bg-background h-7 w-44 rounded-md border px-2"
         />
         <LiteButton type="submit" className={ROW_BUTTON} disabled={busy}>
-          {trimmed || !bare ? "Save" : "Clear"}
+          {trimmed || !bare ? words.directionSave : words.directionClear}
         </LiteButton>
       </div>
       {error ? <p className="text-destructive mt-1">{error}</p> : null}
@@ -267,28 +264,29 @@ function DirectionCell({
 }
 
 /** "As a gnome woman": what a body row is labelled with. */
-function bodyLabel(answer: NpcBodyAnswer): string {
-  return `As a ${answer.race} ${SEX_WORDS[answer.sex]}`;
+function bodyLabel(answer: NpcBodyAnswer, words: UiText["npc"]): string {
+  return fill(words.asBody, { race: answer.race, sex: answer.sex === 2 ? words.man : words.woman });
 }
 
 /** A body the admin is adding: a type and a sex, then Add. */
 function AddBody({ roster, busy, onAdd }: { roster: Roster; busy: boolean; onAdd: (race: string, sex: Sex) => void }) {
+  const words = useUiText().npc;
   const [race, setRace] = useState("");
   const [sex, setSex] = useState<Sex>(2);
   const races = roster.races.filter((type) => !roster.isGenderless(type));
   return (
     <form className={ROW_LINE} onSubmit={(event) => { event.preventDefault(); if (race) onAdd(race, sex); }}>
-      <select aria-label="Body type" value={race} onChange={(event) => setRace(event.target.value)}
+      <select aria-label={words.bodyType} value={race} onChange={(event) => setRace(event.target.value)}
         className="border-input bg-background h-7 rounded-md border px-1">
-        <option value="">Add a body…</option>
+        <option value="">{words.addBody}</option>
         {races.map((type) => <option key={type} value={type}>{type}</option>)}
       </select>
-      <select aria-label="Body sex" value={sex} onChange={(event) => setSex(Number(event.target.value) as Sex)}
+      <select aria-label={words.bodySex} value={sex} onChange={(event) => setSex(Number(event.target.value) as Sex)}
         className="border-input bg-background h-7 rounded-md border px-1">
-        <option value={2}>man</option>
-        <option value={3}>woman</option>
+        <option value={2}>{words.man}</option>
+        <option value={3}>{words.woman}</option>
       </select>
-      <LiteButton type="submit" className={ROW_BUTTON} disabled={busy || !race}>Add</LiteButton>
+      <LiteButton type="submit" className={ROW_BUTTON} disabled={busy || !race}>{words.add}</LiteButton>
     </form>
   );
 }
@@ -310,13 +308,14 @@ function BodyCells({
   onPost: (body: Record<string, unknown>) => void;
 }) {
   if (npc.npcKind !== "creature" || !npc.race || sexOf(npc.gender) === null) return null;
+  const words = useUiText().npc;
   const add = <AddBody roster={roster} busy={busy} onAdd={(race, sex) => onPost({ action: "add", race, sex })} />;
   if (!bodies.length) {
     return (
       <div className="mt-1 space-y-1">
         <LiteButton className={ROW_BUTTON} disabled={busy} onClick={() => onPost({ action: "split" })}
-          title="Voice every line this NPC speaks once as a man and once as a woman">
-          Split by sex
+          title={words.splitTitle}>
+          {words.split}
         </LiteButton>
         {add}
       </div>
@@ -326,7 +325,7 @@ function BodyCells({
     <div className="mt-1 space-y-1 border-l pl-2">
       {bodies.map((answer) => (
         <div key={`${answer.race}:${answer.sex}`} className={ROW_LINE}>
-          <span className="text-muted-foreground w-36 shrink-0">{bodyLabel(answer)}</span>
+          <span className="text-muted-foreground w-36 shrink-0">{bodyLabel(answer, words)}</span>
           <SpeakerCell
             key={`${answer.provenance}:${answer.flavor}:${answer.doubtful}`}
             npc={summaryFromBody(npc, answer, roster)}
@@ -338,15 +337,15 @@ function BodyCells({
             onSave={(next) => onPost({ race: answer.race, sex: answer.sex, flavor: next.flavor ?? answer.flavor, doubtful: next.doubtful ?? false })}
           />
           <LiteButton className={ROW_BUTTON} disabled={busy} onClick={() => onPost({ action: "remove", race: answer.race, sex: answer.sex })}
-            title="Stop voicing this body on its own">
-            Remove
+            title={words.removeBodyTitle}>
+            {words.remove}
           </LiteButton>
         </div>
       ))}
       {add}
       <LiteButton className={ROW_BUTTON} disabled={busy} onClick={() => onPost({ action: "unsplit" })}
-        title="Voice every line this NPC speaks in its one answer again">
-        Unsplit
+        title={words.unsplitTitle}>
+        {words.unsplit}
       </LiteButton>
     </div>
   );
@@ -365,6 +364,10 @@ export default function NpcEditor({
   roster: RosterData;
 }) {
   const lang = useLang();
+  const t = useUiText();
+  const words = t.npc;
+  const speakerChips = useMemo(() => provenanceOptions(words), [words]);
+  const progressChips = useMemo(() => PROGRESS_CHIP_OPTIONS(words), [words]);
   const edits = useRosterEdits(rosterData);
   const { roster } = edits;
   const pathname = usePathname();
@@ -467,10 +470,10 @@ export default function NpcEditor({
     }).catch(() => null);
     setBusy(null);
     const saved = (await response?.json().catch(() => null)) as { direction?: string | null; error?: string } | null;
-    if (!response?.ok) return saved?.error ?? "That didn't go through -- try again.";
+    if (!response?.ok) return saved?.error ?? words.failed;
     setSavedDirections((current) => ({ ...current, [k]: saved?.direction ?? null }));
     return null;
-  }, []);
+  }, [words.failed]);
 
   const postBody = useCallback(async (npc: NpcSummary, body: Record<string, unknown>) => {
     const k = key(npc.npcKind, npc.npcId);
@@ -509,12 +512,12 @@ export default function NpcEditor({
       // The failed rows stay ticked, so pressing the same button again is the whole retry.
       setSelected(new Set(refused));
       setBulkOutcome(
-        `Saved ${npcs.length - refused.length} of ${npcs.length}` +
-          (doubtful ? " as doubtful" : "") +
-          (refused.length > 0 ? ` -- ${refused.length} failed and left selected.` : "."),
+        fill(words.savedOf, { saved: npcs.length - refused.length, all: npcs.length }) +
+          (doubtful ? words.asDoubtful : "") +
+          (refused.length > 0 ? fill(words.failedLeft, { n: refused.length }) : "."),
       );
     },
-    [post],
+    [post, words],
   );
 
   // Not rebuilt when only `busy` or `failed` changes.
@@ -570,27 +573,27 @@ export default function NpcEditor({
       <div className="mb-4 flex items-center gap-3">
         <Input
           type="search"
-          placeholder="Filter by id or name"
+          placeholder={words.searchPlaceholder}
           value={query}
           onChange={(event) => setParam("q", event.target.value)}
           className="h-8 max-w-xs text-sm"
         />
         <FilterChip
-          label="speaker"
+          label={words.speaker}
           value={provenance}
-          options={SPEAKER_CHIP_OPTIONS}
+          options={speakerChips}
           onChange={(next) => setParam("speaker", next)}
         />
         <FilterChip
-          label="progress"
+          label={words.progressLabel}
           value={progress}
-          options={PROGRESS_CHIP_OPTIONS}
+          options={progressChips}
           onChange={(next) => setParam("progress", next)}
         />
-        <FilterChip label="type" value={type} options={typeOptions} onChange={(next) => setParam("type", next)} />
-        <FilterChip label="voice" value={voice} options={voiceOptions} onChange={(next) => setParam("voice", next)} />
+        <FilterChip label={words.type} value={type} options={typeOptions} onChange={(next) => setParam("type", next)} />
+        <FilterChip label={words.voice} value={voice} options={voiceOptions} onChange={(next) => setParam("voice", next)} />
         <span className="text-muted-foreground text-xs">
-          {rows.length} of {initial.length}
+          {fill(words.shownOf, { n: rows.length, all: initial.length })}
         </span>
         <ClientSelect
           value={client}
@@ -602,20 +605,23 @@ export default function NpcEditor({
         <div className="mb-3 flex min-h-8 flex-wrap items-center gap-2 text-xs">
           {bulk ? (
             <span className="text-muted-foreground">
-              Saving{bulk.doubtful ? " as doubtful" : ""}: {bulk.done} of {bulk.total}…
+              {fill(bulk.doubtful ? words.savingDoubtful : words.saving, {
+                done: bulk.done,
+                total: bulk.total,
+              })}
             </span>
           ) : (
             <>
               {selectedRows.length > 0 ? (
                 <>
-                  <span className="text-muted-foreground">{selectedRows.length} selected</span>
+                  <span className="text-muted-foreground">{fill(words.selected, { n: selectedRows.length })}</span>
                   <Button
                     size="sm"
                     variant="outline"
                     disabled={savable.length === 0}
                     onClick={() => void saveMany(savable, false)}
                   >
-                    Save ({savable.length})
+                    {fill(words.saveCount, { n: savable.length })}
                   </Button>
                   <Button
                     size="sm"
@@ -623,19 +629,19 @@ export default function NpcEditor({
                     disabled={savable.length === 0}
                     onClick={() => void saveMany(savable, true)}
                   >
-                    Save as doubtful ({savable.length})
+                    {fill(words.saveDoubtfulCount, { n: savable.length })}
                   </Button>
                   {savable.length < selectedRows.length ? (
                     <span className="text-muted-foreground">
-                      {selectedRows.length - savable.length} without a race and gender skipped
+                      {fill(words.skipped, { n: selectedRows.length - savable.length })}
                     </span>
                   ) : null}
                   <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
-                    Clear
+                    {words.clear}
                   </Button>
                 </>
               ) : (
-                <span className="text-muted-foreground">Tick rows to save their answers in bulk.</span>
+                <span className="text-muted-foreground">{words.tickRows}</span>
               )}
               {bulkOutcome ? <span className="text-muted-foreground ml-2">{bulkOutcome}</span> : null}
             </>
@@ -644,14 +650,14 @@ export default function NpcEditor({
       ) : null}
 
       {rows.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Nothing here.</p>
+        <p className="text-muted-foreground text-sm">{words.nothing}</p>
       ) : (
         <table className="w-fit border-separate border-spacing-0 text-sm">
           <thead className="text-muted-foreground text-left text-xs">
             <tr>
               <th className="border-b py-2 pr-2 align-middle font-normal">
                 <Checkbox
-                  aria-label="Select every NPC shown"
+                  aria-label={words.selectAll}
                   checked={allTicked ? true : selectedRows.length > 0 ? "indeterminate" : false}
                   disabled={bulk !== null}
                   onCheckedChange={(on) =>
@@ -660,13 +666,13 @@ export default function NpcEditor({
                 />
               </th>
               <SortHeader column="id" sort={sort} onSort={(column) => setParam("sort", sortParam(nextSort(sort, column)))}>
-                ID
+                {words.columnId}
               </SortHeader>
               <SortHeader column="name" sort={sort} onSort={(column) => setParam("sort", sortParam(nextSort(sort, column)))}>
-                Name
+                {words.columnName}
               </SortHeader>
-              <th className="border-b py-2 pr-3 font-normal">Type / gender / flavor</th>
-              <th className="border-b py-2 pr-3 font-normal">Direction</th>
+              <th className="border-b py-2 pr-3 font-normal">{words.columnSpeaker}</th>
+              <th className="border-b py-2 pr-3 font-normal">{words.columnDirection}</th>
               <th className="border-b py-2 font-normal" />
             </tr>
           </thead>
@@ -677,7 +683,7 @@ export default function NpcEditor({
                 <tr key={k} className="align-middle [&>td]:border-b [&>td]:py-1.5 [&>td]:leading-5">
                   <td className="pr-2">
                     <Checkbox
-                      aria-label={`Select NPC ${npc.npcId}`}
+                      aria-label={fill(words.selectFor, { id: npc.npcId })}
                       checked={selected.has(k)}
                       disabled={bulk !== null}
                       onCheckedChange={(on) => toggle(k, on === true)}
@@ -686,13 +692,13 @@ export default function NpcEditor({
                   <td className="pr-3 text-xs whitespace-nowrap">
                     <span className="font-mono">{npc.npcId}</span>
                     {npc.npcKind === "gameobject" ? (
-                      <span className="text-muted-foreground"> · object</span>
+                      <span className="text-muted-foreground">{words.object}</span>
                     ) : null}{" "}
                     <a
                       href={wowheadEntityUrl(npc.npcKind ?? "creature", npc.npcId)}
                       target="_blank"
                       rel="noreferrer"
-                      title="Wowhead Forever"
+                      title={words.wowhead}
                       className="text-muted-foreground hover:underline"
                     >
                       wh↗
@@ -726,7 +732,7 @@ export default function NpcEditor({
                       onPost={(body) => void postBody(npc, body)}
                     />
                     {failed === k ? (
-                      <p className="text-destructive mt-1">That didn&apos;t go through -- try again.</p>
+                      <p className="text-destructive mt-1">{words.failed}</p>
                     ) : null}
                   </td>
                   <td className="pr-3 text-xs">
@@ -737,12 +743,12 @@ export default function NpcEditor({
                     />
                   </td>
                   <td className="text-right whitespace-nowrap">
-                    {lookups(npc.npcId, client).map(({ label, path, where }) => (
+                    {lookups(npc.npcId, client, words).map(({ label, path, where }) => (
                       <a
                         key={label}
                         href={localeHref(lang, path)}
-                        title={`Find this NPC's lines in ${where}`}
-                        aria-label={`Find ${npc.npcName ?? npc.npcId} in ${where}`}
+                        title={fill(words.findLines, { where })}
+                        aria-label={fill(words.findIn, { name: npc.npcName ?? npc.npcId, where })}
                         className="text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5 p-1 text-xs"
                       >
                         <SearchIcon className="size-3.5" />

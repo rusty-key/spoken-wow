@@ -7,19 +7,19 @@ import { CAPABILITY_COLOURS } from "@/components/GrantCell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Toaster, useToast } from "@/components/ui/toast";
+import { useUiText } from "@/components/UiTextProvider";
 import { giveGrants, resendInvite, revokeInvite, sendGrants, takeGrant } from "@/lib/grants/client";
 import type { GrantRow } from "@/lib/grants/store";
 import type { InviteRow } from "@/lib/invites/store";
 import { langName, type Lang } from "@/lib/lang";
 import {
   canGrant,
-  capabilityHint,
-  capabilityLabel,
   isAdmin,
   removesOwnAdmin,
   type Capability,
   type Viewer,
 } from "@/lib/permissions";
+import { fill } from "@/lib/site-text/format";
 import { cn } from "@/lib/utils";
 
 /** Lightest to heaviest, so admin closes the row as the one that covers the rest. */
@@ -65,6 +65,9 @@ function peopleOf(known: readonly Person[], grants: readonly GrantRow[]): Person
  * undo has a row to land on and the rows below do not jump under the pointer.
  */
 function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textByTeam, currentUserId }: Props) {
+  const t = useUiText();
+  const words = t.teams;
+  const label = (capability: Capability) => t.dashboard.capabilities[capability];
   const toast = useToast();
   const [grants, setGrants] = useState(initial);
   const [people, setPeople] = useState(() => peopleOf([], initial));
@@ -101,17 +104,17 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
 
   /** Why a cell cannot be changed here, or null when it can. The server holds the same rules. */
   function lockOf(person: Person, capability: Capability): string | null {
-    if (!canGrant(viewer, capability, lang, textByTeam)) return "Only a site admin appoints a text maintainer";
-    if (implied(person.id, capability)) return "Included in their admin";
+    if (!canGrant(viewer, capability, lang, textByTeam)) return words.lockTextByAdmin;
+    if (implied(person.id, capability)) return words.lockImplied;
     if (removesOwnAdmin(viewer, currentUserId, person.id, capability)) {
-      return "You cannot remove your own admin; another admin can";
+      return words.lockOwnAdmin;
     }
     return null;
   }
 
   /** Why it did not save, or null when it did. */
   function adopt(answer: Awaited<ReturnType<typeof takeGrant>>): string | null {
-    if (!answer.grants) return answer.error ?? "That did not save.";
+    if (!answer.grants) return answer.error ?? words.saveFailed;
     // The route answers with every language the viewer administers; this table is one of them.
     const next = answer.grants.filter((grant) => grant.lang === lang);
     setGrants(next);
@@ -135,15 +138,21 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
     setError(null);
     const failed = await (on ? give(person, [capability]) : take(person, capability));
     setBusy(null);
-    const label = capabilityLabel(capability);
+    const capabilityWord = label(capability);
     if (failed) {
-      toast({ tone: "error", title: `Could not change ${label} for ${displayName(person)}`, detail: failed });
+      toast({
+        tone: "error",
+        title: fill(words.couldNotChange, { capability: capabilityWord, person: displayName(person) }),
+        detail: failed,
+      });
       return;
     }
     if (!undoable) return;
     toast({
       tone: "info",
-      title: on ? `Gave ${displayName(person)} ${label}` : `Took ${label} from ${displayName(person)}`,
+      title: on
+        ? fill(words.gave, { person: displayName(person), capability: capabilityWord })
+        : fill(words.took, { capability: capabilityWord, person: displayName(person) }),
       undo: () => void set(person, capability, !on, false),
     });
   }
@@ -168,8 +177,12 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
     setEmail("");
     toast({
       tone: "info",
-      title: `${answer.invited ? "Invited" : "Added"} ${address} to ${langName(lang)}`,
-      detail: `With ${capabilities.map(capabilityLabel).join(", ")}.`,
+      title: fill(words.addedTo, {
+        action: answer.invited ? words.invited : words.added,
+        email: address,
+        lang: langName(lang),
+      }),
+      detail: fill(words.withCapabilities, { capabilities: capabilities.map(label).join(", ") }),
     });
   }
 
@@ -184,23 +197,27 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
     setBusy(null);
     toast(
       failed
-        ? { tone: "error", title: `Could not change the invite to ${invite.email}`, detail: failed }
-        : { tone: "info", title: `${done} ${invite.email}` },
+        ? {
+            tone: "error",
+            title: fill(words.couldNotChangeInvite, { email: invite.email }),
+            detail: failed,
+          }
+        : { tone: "info", title: fill(done, { email: invite.email }) },
     );
   }
 
   return (
     <div>
-      <form onSubmit={add} aria-label={`Add someone to ${langName(lang)}`} className="mb-5 flex flex-wrap items-end gap-x-3 gap-y-2">
+      <form onSubmit={add} aria-label={fill(words.addSomeoneTo, { name: langName(lang) })} className="mb-5 flex flex-wrap items-end gap-x-3 gap-y-2">
         <div>
           <label htmlFor="team-add" className="mb-1.5 block text-xs font-medium">
-            Add someone to {langName(lang)}
+            {fill(words.addSomeoneTo, { name: langName(lang) })}
           </label>
           <Input
             id="team-add"
             type="email"
             required
-            placeholder="their email"
+            placeholder={words.theirEmail}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             aria-describedby={error ? "team-add-error" : "team-add-hint"}
@@ -209,7 +226,7 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
           />
         </div>
         <fieldset className="flex flex-wrap gap-x-3 gap-y-1 pb-2">
-          <legend className="sr-only">As</legend>
+          <legend className="sr-only">{words.as}</legend>
           {offered.map((capability) => (
             <label key={capability} className="inline-flex items-center gap-1.5 text-sm">
               <input
@@ -221,13 +238,13 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
                   )
                 }
               />
-              {capabilityLabel(capability)}
+              {label(capability)}
             </label>
           ))}
         </fieldset>
         <Button type="submit" disabled={busy === "new" || !email.trim() || chosen.length === 0}>
           <Plus className="size-4" aria-hidden />
-          Add
+          {words.add}
         </Button>
         {error ? (
           <p id="team-add-error" role="alert" className="text-destructive pb-2 text-sm">
@@ -235,7 +252,7 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
           </p>
         ) : (
           <p id="team-add-hint" className="text-muted-foreground pb-2 text-sm">
-            Somebody without an account gets an email invite.
+            {words.inviteHint}
           </p>
         )}
       </form>
@@ -243,7 +260,7 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
       {invites.length > 0 && (
         <section className="mb-5" aria-labelledby="pending-invites">
           <h2 id="pending-invites" className="mb-2 text-sm font-semibold">
-            Pending invites
+            {words.pendingInvites}
           </h2>
           <ul className="bg-card divide-y rounded-lg border text-sm">
             {invites.map((invite) => {
@@ -251,10 +268,15 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
               return (
                 <li key={invite.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
                   <span className="font-semibold">{invite.email}</span>
-                  <span>{invite.capabilities.map(capabilityLabel).join(", ")}</span>
+                  <span>{invite.capabilities.map(label).join(", ")}</span>
                   <span className="text-muted-foreground text-xs">
-                    invited by {invite.invitedByName ?? "someone"}, sent {invite.sentAt.slice(0, 10)},{" "}
-                    {invite.expired ? "expired" : `expires ${invite.expiresAt.slice(0, 10)}`}
+                    {fill(words.invitedBy, {
+                      name: invite.invitedByName ?? t.activity.events.someone,
+                      sent: invite.sentAt.slice(0, 10),
+                      expiry: invite.expired
+                        ? words.expired
+                        : fill(words.expires, { when: invite.expiresAt.slice(0, 10) }),
+                    })}
                   </span>
                   <span className="ml-auto flex gap-2">
                     <Button
@@ -262,18 +284,18 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
                       variant="outline"
                       size="sm"
                       disabled={!allowed || busy !== null}
-                      onClick={() => void manage(invite, resendInvite, "Sent again to")}
+                      onClick={() => void manage(invite, resendInvite, words.sentAgain)}
                     >
-                      Resend
+                      {words.resend}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       disabled={!allowed || busy !== null}
-                      onClick={() => void manage(invite, revokeInvite, "Revoked the invite to")}
+                      onClick={() => void manage(invite, revokeInvite, words.revokedInvite)}
                     >
-                      Revoke
+                      {words.revoke}
                     </Button>
                   </span>
                 </li>
@@ -288,7 +310,7 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
           <thead>
             <tr className="bg-muted/40 border-b">
               <th scope="col" className="py-3 pl-4 text-left text-xs font-medium">
-                Person
+                {words.person}
               </th>
               {COLUMNS.map((capability) => (
                 <th key={capability} scope="col" className="w-24 px-1 pt-3 pb-2.5 align-bottom text-xs font-medium">
@@ -301,7 +323,7 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
             {people.length === 0 && (
               <tr>
                 <td colSpan={COLUMNS.length + 1} className="text-muted-foreground px-4 py-6">
-                  Nobody works on {langName(lang)} yet. Add somebody by their email above.
+                  {fill(words.nobodyWorks, { lang: langName(lang) })}
                 </td>
               </tr>
             )}
@@ -311,7 +333,7 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
                   <span className="font-semibold">{displayName(person)}</span>
                   {person.id === currentUserId && (
                     <span className="border-primary/35 text-primary-ink ml-2 rounded-full border px-1.5 text-[11px] font-medium">
-                      you
+                      {words.you}
                     </span>
                   )}
                   <span className="text-muted-foreground block text-xs">
@@ -331,7 +353,10 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
                       // Every save answers with the whole listing, so a second tick before the
                       // first answered could be overwritten on screen by the slower reply.
                       frozen={busy !== null}
-                      label={`${capabilityLabel(capability)} for ${displayName(person)}`}
+                      label={fill(words.capabilityFor, {
+                        capability: label(capability),
+                        person: displayName(person),
+                      })}
                       onToggle={() => void set(person, capability, !holds(person.id, capability), true)}
                     />
                   </td>
@@ -343,17 +368,16 @@ function Matrix({ lang, grants: initial, invites: initialInvites, viewer, textBy
       </div>
       <p className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs">
         <span className="inline-flex items-center gap-1.5">
-          <Lock className="size-3.5" aria-hidden /> can&apos;t be changed here
+          <Lock className="size-3.5" aria-hidden /> {words.legendLocked}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <Check className="size-3.5 opacity-55" aria-hidden /> comes with their admin
+          <Check className="size-3.5 opacity-55" aria-hidden /> {words.legendImplied}
         </span>
-        <span>Point at a column for what it allows. A tick saves at once, and you can undo it.</span>
+        <span>{words.legendHint}</span>
       </p>
       {!global && (
         <p className="text-muted-foreground mt-8 max-w-[65ch] rounded-lg border border-dashed p-4 text-sm">
-          Only people working on {langName(lang)} are listed. If somebody here also helps another
-          language, that team&apos;s admins look after their access there.
+          {fill(words.onlyPeopleOn, { lang: langName(lang) })}
         </p>
       )}
     </div>
@@ -365,6 +389,7 @@ function displayName(person: Person): string {
 }
 
 function ColumnHeading({ capability }: { capability: Capability }) {
+  const t = useUiText();
   const hint = `tip-${capability}`;
   return (
     <span className="group relative inline-flex flex-col items-center gap-1.5">
@@ -374,14 +399,14 @@ function ColumnHeading({ capability }: { capability: Capability }) {
       />
       {/* Focusable so the meaning reaches somebody who cannot point at it. */}
       <span tabIndex={0} aria-describedby={hint} className="cursor-help rounded">
-        {capabilityLabel(capability)}
+        {t.dashboard.capabilities[capability]}
       </span>
       <span
         id={hint}
         role="tooltip"
         className="bg-popover text-popover-foreground pointer-events-none absolute top-full z-10 mt-2 hidden w-56 rounded-md border px-2.5 py-2 text-left text-xs leading-relaxed font-normal shadow-lg group-focus-within:block group-hover:block"
       >
-        {capabilityHint(capability)}
+        {t.teams.capabilityHints[capability]}
       </span>
     </span>
   );

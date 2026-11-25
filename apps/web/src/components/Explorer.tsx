@@ -478,7 +478,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
       );
       if (!response?.ok) {
         const body = (await response?.json().catch(() => ({}))) as { error?: string } | undefined;
-        setQueueNote(body?.error ?? "Could not take the speaker off.");
+        setQueueNote(body?.error ?? t.speakerFailed);
         return;
       }
       void refreshRows((row) => row.lineId === line.lineId || row.audioPath === line.audioPath);
@@ -747,7 +747,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
     if (!result) {
       // No reason offered because none was given: the route refused for a cause this
       // response does not carry, and inventing one would be a guess dressed as an answer.
-      setQueueNote("Could not queue the batch.");
+      setQueueNote(t.queueFailed);
     } else if ("error" in result) {
       setQueueNote(result.error);
     } else if (result.skipped > 0) {

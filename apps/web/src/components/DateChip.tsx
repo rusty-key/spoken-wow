@@ -5,7 +5,9 @@ import { XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useUiText } from "@/components/UiTextProvider";
 import { cn } from "@/lib/utils";
+import { fill } from "@/lib/site-text/format";
 
 /** "YYYY-MM-DD" in local time, which is what the filter reads and what a calendar means. */
 function toDay(date: Date): string {
@@ -41,6 +43,7 @@ export default function DateChip({
   value: string | undefined;
   onChange: (value: string | undefined) => void;
 }) {
+  const words = useUiText().common;
   const active = value !== undefined;
   const selected = fromDay(value);
 
@@ -75,7 +78,7 @@ export default function DateChip({
       {active && (
         <button
           type="button"
-          aria-label={`Clear ${label} filter`}
+          aria-label={fill(words.clearFilter, { label })}
           onClick={() => onChange(undefined)}
           className="border-primary bg-primary text-primary-foreground/70 hover:bg-primary/90 hover:text-primary-foreground focus-visible:ring-ring/50 flex h-8 items-center rounded-r-lg border border-l-0 pr-2 pl-1 transition-colors outline-none focus-visible:ring-3"
         >

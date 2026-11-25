@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import LocaleLink from "@/components/LocaleLink";
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth-client";
 import { langName, localeHref, type Lang } from "@/lib/lang";
+import { fill } from "@/lib/site-text/format";
 
 type Props = {
   /** The invite this page shows; the accept route refuses when the link's invite is another. */
@@ -22,11 +24,12 @@ type Props = {
 
 /** What the person who accepted sees, on the page and after pressing Accept. */
 export function InviteJoined({ lang, className }: { lang: Lang; className?: string }) {
+  const words = useUiText().invite;
   return (
     <p className={className}>
-      You&apos;re in. You can now work on {langName(lang)}.{" "}
+      {fill(words.joined, { lang: langName(lang) })}{" "}
       <Link href={localeHref(lang, "/")} className="underline underline-offset-4">
-        Go to {langName(lang)}
+        {fill(words.goTo, { lang: langName(lang) })}
       </Link>
     </p>
   );
@@ -38,6 +41,8 @@ export function InviteJoined({ lang, className }: { lang: Lang; className?: stri
  */
 export default function InviteAccept({ id, email, lang, signedInAs, isInvitee }: Props) {
   const router = useRouter();
+  const text = useUiText();
+  const words = text.invite;
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +63,7 @@ export default function InviteAccept({ id, email, lang, signedInAs, isInvitee }:
       router.refresh();
       return;
     }
-    setError(data?.error ?? "Could not reach the server.");
+    setError(data?.error ?? text.packs.unreachable);
   }
 
   async function leave() {
@@ -72,10 +77,10 @@ export default function InviteAccept({ id, email, lang, signedInAs, isInvitee }:
     return (
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <Button asChild>
-          <LocaleLink href="/register">Register with {email}</LocaleLink>
+          <LocaleLink href="/register">{fill(words.registerWith, { email })}</LocaleLink>
         </Button>
         <LocaleLink href="/login" className="text-sm underline underline-offset-4">
-          I already have an account
+          {words.alreadyHave}
         </LocaleLink>
       </div>
     );
@@ -85,10 +90,10 @@ export default function InviteAccept({ id, email, lang, signedInAs, isInvitee }:
     return (
       <div className="mt-6">
         <p>
-          This invite is for {email}. You are signed in as {signedInAs}.
+          {fill(words.forSomeone, { email, signedInAs })}
         </p>
         <Button className="mt-3" variant="outline" onClick={() => void leave()}>
-          Sign out
+          {words.signOut}
         </Button>
       </div>
     );
@@ -97,7 +102,7 @@ export default function InviteAccept({ id, email, lang, signedInAs, isInvitee }:
   return (
     <div className="mt-6">
       <Button onClick={() => void accept()} disabled={pending}>
-        {pending ? "Working…" : "Accept"}
+        {pending ? text.auth.working : words.accept}
       </Button>
       {error && (
         <p role="alert" className="text-destructive mt-3 text-sm">

@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useUiText } from "@/components/UiTextProvider";
 import { withLang } from "@/lib/lang";
+import { fill } from "@/lib/site-text/format";
 import { displayName } from "@/lib/voices/names";
 import {
   DEFAULT_REFERENCE_SECONDS as DEFAULT_SECONDS,
@@ -51,6 +53,8 @@ export default function FishReference({
   onChange,
 }: Props) {
   const lang = useLang();
+  const t = useUiText();
+  const words = t.voices.reference;
   const [reference, setReference] = useState(initial);
   const [chosen, setChosen] = useState(initial?.sample ?? "");
   // Worked out each render, because the clips above can be added or deleted while this panel
@@ -92,10 +96,10 @@ export default function FishReference({
   // The server's own check, then the one only the browser can make: whether the clip is long
   // enough to hold the window at all.
   const why = !sample
-    ? "Add a clip first."
+    ? words.addClipFirst
     : (rejectWindow(startSec, endSec) ??
       (duration !== null && endSec > duration + 0.05
-        ? `That clip is only ${duration.toFixed(1)} s long.`
+        ? fill(words.tooShort, { seconds: duration.toFixed(1) })
         : null));
 
   async function send(kind: "cut" | "transcript" | "pin" | "delete", init: RequestInit) {
@@ -109,7 +113,7 @@ export default function FishReference({
       // A failure may be a proxy's page rather than the route's JSON: its status is the message. A
       // success that does not parse throws, and the panel keeps what it showed.
       const body = (await (response.ok ? response.json() : response.json().catch(() => ({})))) as { reference?: ReferenceView | null; error?: string };
-      if (!response.ok) throw new Error(body.error ?? `failed (${response.status})`);
+      if (!response.ok) throw new Error(body.error ?? fill(words.requestFailed, { status: response.status }));
       const next = body.reference ?? null;
       setReference(next);
       setTranscript(next?.transcript ?? "");
@@ -138,7 +142,7 @@ export default function FishReference({
       // A failure may be a proxy's page rather than the route's JSON: its status is the message. A
       // success that does not parse throws, and the panel keeps what it showed.
       const body = (await (response.ok ? response.json() : response.json().catch(() => ({})))) as { samples?: Sample[]; error?: string };
-      if (!response.ok) throw new Error(body.error ?? `import failed (${response.status})`);
+      if (!response.ok) throw new Error(body.error ?? fill(words.importFailed, { status: response.status }));
       onSamples(body.samples ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -149,11 +153,9 @@ export default function FishReference({
 
   return (
     <section className="text-sm">
-      <h3 className="mb-1 font-medium">fish.audio reference</h3>
+      <h3 className="mb-1 font-medium">{words.title}</h3>
       <p className="text-muted-foreground mb-3 text-xs">
-        fish.audio speaks this voice from {MIN_SECONDS}-{MAX_SECONDS} seconds of one clip and a
-        transcript of it, sent with every line. Nothing is cloned into an account, so one
-        reference works for everybody. Cutting one transcribes it on your fish.audio key.
+        {fill(words.lede, { min: MIN_SECONDS, max: MAX_SECONDS })}
       </p>
 
       {error && (
@@ -170,27 +172,26 @@ export default function FishReference({
               size="sm"
               variant="outline"
               disabled={busy !== null}
-              title={`Import the seed clips for ${voice}, merged into one take`}
+              title={fill(words.importSeed, { voice })}
               onClick={importSeedClips}
             >
               {busy === "import" ? <Loader2 className="animate-spin" /> : <Download />}
-              Import seed clips
+              {t.voices.samples.importSeedShort}
             </Button>
             <span className="text-muted-foreground text-xs">
-              No clips yet; import the seed clips to cut a reference from.
+              {words.none}
             </span>
           </div>
         ) : (
           <p className="text-muted-foreground text-xs">
-            No clips yet, and no seed clips for this voice. Upload some on the ElevenLabs tab to
-            cut a reference from.
+            {words.noClipsNoSeed}
           </p>
         )
       ) : (
         <div className="flex flex-wrap items-end gap-3">
           <div className="grid gap-1">
             <Label htmlFor={`${voice}-reference-clip`} className="text-xs">
-              Clip
+              {words.clip}
             </Label>
             <select
               id={`${voice}-reference-clip`}
@@ -207,7 +208,7 @@ export default function FishReference({
           </div>
           <div className="grid gap-1">
             <Label htmlFor={`${voice}-reference-start`} className="text-xs">
-              From (s)
+              {words.from}
             </Label>
             <Input
               id={`${voice}-reference-start`}
@@ -221,7 +222,7 @@ export default function FishReference({
           </div>
           <div className="grid gap-1">
             <Label htmlFor={`${voice}-reference-length`} className="text-xs">
-              Length (s)
+              {words.length}
             </Label>
             <Input
               id={`${voice}-reference-length`}
@@ -244,7 +245,7 @@ export default function FishReference({
             }
           >
             {busy === "cut" ? <Loader2 className="animate-spin" /> : <Scissors />}
-            {reference ? "Re-cut" : "Cut reference"}
+            {reference ? words.reCut : words.cut}
           </Button>
           {why && <span className="text-muted-foreground text-xs">{why}</span>}
         </div>
@@ -260,7 +261,7 @@ export default function FishReference({
             className="h-8 w-full max-w-md"
           />
           <Label htmlFor={`${voice}-reference-text`} className="text-xs">
-            Transcript — must match the clip exactly
+            {words.transcript}
           </Label>
           <textarea
             id={`${voice}-reference-text`}
@@ -280,7 +281,7 @@ export default function FishReference({
               }
             >
               {busy === "transcript" && <Loader2 className="animate-spin" />}
-              Save transcript
+              {words.saveTranscript}
             </Button>
             <Button
               type="button"
@@ -290,7 +291,7 @@ export default function FishReference({
               onClick={() => send("delete", { method: "DELETE" })}
             >
               {busy === "delete" ? <Loader2 className="animate-spin" /> : <Trash2 />}
-              Remove
+              {words.remove}
             </Button>
           </div>
           <div className="flex items-start gap-2">
@@ -303,11 +304,9 @@ export default function FishReference({
               }
             />
             <Label htmlFor={`${voice}-reference-pinned`} className="grid gap-0.5 text-xs font-normal">
-              <span className="font-medium">Always speak this voice with fish.audio</span>
+              <span className="font-medium">{words.alwaysUse}</span>
               <span className="text-muted-foreground">
-                Its lines go to fish.audio even for somebody generating with ElevenLabs, on their
-                own fish.audio key and settings. A narrated line goes with it, so the narrator needs
-                a reference too.
+                {words.pinNote}
               </span>
             </Label>
           </div>

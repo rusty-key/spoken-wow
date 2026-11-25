@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 
+import { useUiText } from "@/components/UiTextProvider";
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type Senders = { senders: { name: string; count: number }[]; anonymous: number };
 
 /** A contribution's count, opening who sent it. Fetched on open: most counts are never pressed. */
 export default function SendersButton({ id, count }: { id: number; count: number }) {
+  const words = useUiText().common;
   const [senders, setSenders] = useState<Senders | null>(null);
   const [error, setError] = useState(false);
 
@@ -30,7 +33,7 @@ export default function SendersButton({ id, count }: { id: number; count: number
       <PopoverTrigger asChild>
         <button
           type="button"
-          title="Who sent it"
+          title={words.whoSent}
           className="hover:bg-muted cursor-pointer rounded px-1 underline decoration-dotted underline-offset-2"
         >
           {count}
@@ -42,9 +45,9 @@ export default function SendersButton({ id, count }: { id: number; count: number
         onClick={(event) => event.stopPropagation()}
       >
         {error ? (
-          <p className="text-destructive">Couldn&apos;t load who sent it.</p>
+          <p className="text-destructive">{words.couldNotLoadSenders}</p>
         ) : senders === null ? (
-          <p className="text-muted-foreground">Loading…</p>
+          <p className="text-muted-foreground">{words.loading}</p>
         ) : (
           <ul className="flex flex-col gap-1">
             {senders.senders.map((sender, index) => (
@@ -55,7 +58,7 @@ export default function SendersButton({ id, count }: { id: number; count: number
             ))}
             {senders.anonymous > 0 ? (
               <li className="text-muted-foreground flex justify-between gap-2">
-                <span>Anonymous</span>
+                <span>{words.anonymous}</span>
                 <span>×{senders.anonymous}</span>
               </li>
             ) : null}

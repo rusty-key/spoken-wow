@@ -6,6 +6,7 @@ import { useState } from "react";
 import NewLanguageFields, { type NewLanguage } from "@/components/NewLanguageFields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useUiText } from "@/components/UiTextProvider";
 import { send } from "@/lib/send";
 
 const NEW = "__new__";
@@ -13,6 +14,7 @@ const NEW = "__new__";
 type Props = { languages: { code: string; name: string }[] };
 
 export default function TeamRequestForm({ languages }: Props) {
+  const t = useUiText().teams;
   const router = useRouter();
   const [choice, setChoice] = useState("");
   const [fresh, setFresh] = useState<NewLanguage>({ code: "", name: "", native: "" });
@@ -23,7 +25,7 @@ export default function TeamRequestForm({ languages }: Props) {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!choice) return setError("Choose a language.");
+    if (!choice) return setError(t.chooseLanguageFirst);
     setBusy(true);
     setError(null);
     const isNew = choice === NEW;
@@ -44,33 +46,33 @@ export default function TeamRequestForm({ languages }: Props) {
 
   return (
     <form onSubmit={submit} className="flex max-w-md flex-col gap-3">
-      <h2 className="text-lg font-semibold">Request a team</h2>
+      <h2 className="text-lg font-semibold">{t.requestTitle}</h2>
       <select
-        aria-label="Language"
+        aria-label={t.language}
         className="border-input bg-background h-9 rounded-md border px-2 text-sm"
         value={choice}
         onChange={(event) => setChoice(event.target.value)}
       >
-        <option value="">Choose a language…</option>
+        <option value="">{t.chooseLanguage}</option>
         {languages.map((language) => (
           <option key={language.code} value={language.code}>
             {language.name} ({language.code})
           </option>
         ))}
-        <option value={NEW}>New language…</option>
+        <option value={NEW}>{t.newLanguageOption}</option>
       </select>
       {choice === NEW && <NewLanguageFields value={fresh} onChange={setFresh} />}
       <Input
-        aria-label="Team name"
-        placeholder="Team name"
+        aria-label={t.teamName}
+        placeholder={t.teamName}
         required
         maxLength={60}
         value={teamName}
         onChange={(event) => setTeamName(event.target.value)}
       />
       <textarea
-        aria-label="Note"
-        placeholder="Anything the site admins should know (optional)"
+        aria-label={t.note}
+        placeholder={t.notePlaceholder}
         maxLength={1000}
         className="border-input bg-background min-h-20 rounded-md border px-3 py-2 text-sm"
         value={note}
@@ -82,7 +84,7 @@ export default function TeamRequestForm({ languages }: Props) {
         </p>
       )}
       <Button type="submit" disabled={busy} className="self-start">
-        Send request
+        {t.sendRequest}
       </Button>
     </form>
   );

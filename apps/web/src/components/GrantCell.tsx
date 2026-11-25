@@ -6,9 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useUiText } from "@/components/UiTextProvider";
 import type { GrantRow } from "@/lib/grants/store";
 import { allLangs, isLang, langName, type Lang } from "@/lib/lang";
-import { CAPABILITIES, capabilityLabel, type Capability } from "@/lib/permissions";
+import { CAPABILITIES, type Capability } from "@/lib/permissions";
+import { fill } from "@/lib/site-text/format";
 import { cn } from "@/lib/utils";
 
 /**
@@ -40,6 +42,9 @@ export default function GrantCell({
   onGrant: (lang: Lang, capabilities: Capability[]) => Promise<boolean>;
   onRevoke: (lang: Lang, capability: Capability) => void;
 }) {
+  const t = useUiText();
+  const words = t.teams;
+  const label = (capability: Capability) => t.dashboard.capabilities[capability];
   // Which popover is open: "new" for any language, or the language whose "+" was clicked.
   const [open, setOpen] = useState<"new" | Lang | null>(null);
   const byLang = new Map<Lang, Capability[]>();
@@ -58,11 +63,11 @@ export default function GrantCell({
           <span className="text-muted-foreground min-w-24 text-xs">{langName(lang)}</span>
           {capabilities.map((capability) => (
             <Badge key={capability} variant="outline" className={cn(CAPABILITY_COLOURS[capability], "pr-0.5")}>
-              {capabilityLabel(capability)}
+              {label(capability)}
               <button
                 type="button"
                 disabled={busy}
-                aria-label={`Remove ${capabilityLabel(capability)} in ${langName(lang)}`}
+                aria-label={fill(words.removeIn, { capability: label(capability), name: langName(lang) })}
                 className="rounded-full px-1 opacity-60 hover:opacity-100 disabled:opacity-30"
                 onClick={() => onRevoke(lang, capability)}
               >
@@ -79,7 +84,7 @@ export default function GrantCell({
                   variant="ghost"
                   size="icon-xs"
                   disabled={busy}
-                  aria-label={`Grant more in ${langName(lang)}`}
+                  aria-label={fill(words.grantMoreIn, { name: langName(lang) })}
                 >
                   +
                 </Button>
@@ -106,7 +111,7 @@ export default function GrantCell({
           trigger={
             // Pulled left by its own padding, so its text lines up with the language names.
             <Button variant="ghost" size="xs" disabled={busy} className="-ml-2">
-              + Grant
+              + {words.grant}
             </Button>
           }
         >
@@ -166,6 +171,8 @@ function GrantPicker({
   busy: boolean;
   onPick: (lang: Lang, capabilities: Capability[]) => void;
 }) {
+  const t = useUiText();
+  const words = t.teams;
   const langs = allLangs().filter((code) => offer(code).length > 0);
   const [lang, setLang] = useState(fixed ?? langs[0]);
   const [picked, setPicked] = useState<ReadonlySet<Capability>>(new Set());
@@ -195,7 +202,7 @@ function GrantPicker({
             setPicked(new Set());
           }}
         >
-          <SelectTrigger className="w-40" aria-label="Language">
+          <SelectTrigger className="w-40" aria-label={words.language}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -207,7 +214,7 @@ function GrantPicker({
           </SelectContent>
         </Select>
       )}
-      <div role="group" aria-label="Capabilities" className="flex flex-wrap gap-1">
+      <div role="group" aria-label={words.capabilities} className="flex flex-wrap gap-1">
         {offered.map((cap) => (
           <Button
             key={cap}
@@ -218,12 +225,12 @@ function GrantPicker({
             className={cn(picked.has(cap) ? CAPABILITY_COLOURS[cap] : "text-muted-foreground")}
             onClick={() => toggle(cap)}
           >
-            {capabilityLabel(cap)}
+            {t.dashboard.capabilities[cap]}
           </Button>
         ))}
       </div>
       <Button type="submit" size="sm" disabled={busy || !lang || picked.size === 0}>
-        {fixed ? `Grant in ${langName(fixed)}` : "Grant"}
+        {fixed ? fill(words.grantIn, { name: langName(fixed) }) : words.grant}
       </Button>
     </form>
   );

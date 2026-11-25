@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
+
 import type { ContributionStatus } from "@/lib/contributions/contributions";
 import type { Bucket } from "@/lib/contributions/query";
 import { cn } from "@/lib/utils";
@@ -60,25 +63,27 @@ function tabsOf<T extends string>(tabs: [T, string][], hrefFor: (value: T) => st
 
 /** Tabs rather than a filter: every row is in exactly one, and only the new ones are worked. */
 export default function StatusTabs({ active, hrefFor, onGo }: Props<ContributionStatus>) {
+  const words = useUiText().contributions;
   const tabs = tabsOf<ContributionStatus>(
     [
-      ["new", "New"],
-      ["accepted", "Accepted"],
-      ["rejected", "Rejected"],
+      ["new", words.statusNew],
+      ["accepted", words.statusAccepted],
+      ["rejected", words.statusRejected],
     ],
     hrefFor,
   );
-  return <LinkTabs label="Status" tabs={tabs} active={active} onGo={onGo} />;
+  return <LinkTabs label={words.status} tabs={tabs} active={active} onGo={onGo} />;
 }
 
 /** The New tab split by whether each row can be accepted as it stands. */
 export function BucketTabs({ active, hrefFor, onGo, counts }: Props<Bucket> & { counts: Record<Bucket, number> }) {
+  const words = useUiText().contributions;
   const tabs = tabsOf<Bucket>(
     [
-      ["ready", `Ready (${counts.ready})`],
-      ["blocked", `Needs a speaker (${counts.blocked})`],
+      ["ready", fill(words.readyCount, { n: counts.ready })],
+      ["blocked", fill(words.blockedCount, { n: counts.blocked })],
     ],
     hrefFor,
   );
-  return <LinkTabs label="Bucket" tabs={tabs} active={active} onGo={onGo} />;
+  return <LinkTabs label={words.bucket} tabs={tabs} active={active} onGo={onGo} />;
 }

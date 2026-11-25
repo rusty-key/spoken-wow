@@ -11,6 +11,7 @@ import { useState, type ReactNode } from "react";
 import { LiteButton, ROW_BUTTON } from "@/components/LiteControls";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useUiText } from "@/components/UiTextProvider";
 import { cn } from "@/lib/utils";
 
 export type NewOption = {
@@ -46,6 +47,7 @@ export default function SearchSelect({
   className?: string;
   onChange: (value: string | null) => void;
 }) {
+  const words = useUiText().common;
   const [open, setOpen] = useState(false);
   const [making, setMaking] = useState(false);
   const toggle = (next: boolean) => {
@@ -76,9 +78,9 @@ export default function SearchSelect({
           create.form(() => toggle(false))
         ) : (
           <Command>
-            <CommandInput placeholder="Search" className="h-8 text-xs" />
+            <CommandInput placeholder={words.search} className="h-8 text-xs" />
             <CommandList>
-              <CommandEmpty className="py-3 text-center text-xs">Nothing matches.</CommandEmpty>
+              <CommandEmpty className="py-3 text-center text-xs">{words.nothingMatches}</CommandEmpty>
               {create ? (
                 <CommandGroup>
                   {/* Kept through any search: one that finds nothing is when it is wanted. */}

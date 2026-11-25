@@ -161,7 +161,7 @@ export default function VoicesTabs(props: Props) {
         body: JSON.stringify({ provider: tab }),
       });
       const body = (await response.json().catch(() => ({}))) as { error?: string };
-      if (!response.ok) throw new Error(body.error ?? `could not activate (${response.status})`);
+      if (!response.ok) throw new Error(body.error ?? fill(t.settings.couldNotActivate, { status: response.status }));
       setActive(tab);
     } catch (error) {
       setActivateError(error instanceof Error ? error.message : String(error));
@@ -191,7 +191,7 @@ export default function VoicesTabs(props: Props) {
   return (
     <>
       <div className="vo-tabbar">
-        <div role="tablist" aria-label="Generator" className="bs-tabs">
+        <div role="tablist" aria-label={t.generator} className="bs-tabs">
           {PROVIDERS.map((provider) => (
             <button
               key={provider}
@@ -235,7 +235,7 @@ export default function VoicesTabs(props: Props) {
           {active === tab ? (
             <span className="vo-pill">
               <Check aria-hidden />
-              Active in {langName(lang)}
+              {fill(t.activeIn, { n: langName(lang) })}
             </span>
           ) : (
             <button
@@ -245,12 +245,12 @@ export default function VoicesTabs(props: Props) {
               onClick={activate}
             >
               {activating && <Loader2 className="animate-spin" />}
-              Activate for {langName(lang)}
+              {fill(t.activateFor, { lang: langName(lang) })}
             </button>
           )}
           {!hasKey && (
             <span className="vo-note">
-              Needs a {PROVIDER_NAME[tab]} key —{" "}
+              {fill(t.needsKeyBefore, { provider: PROVIDER_NAME[tab] })}
               <Link href={KEY_ANCHOR[tab]} className="vo-link">
                 {t.addKeyOnProfile}
               </Link>
@@ -261,12 +261,12 @@ export default function VoicesTabs(props: Props) {
             <b>{model}</b>
             {tab === "elevenlabs" ? (
               <>
-                <i>·</i>Stability {decimal(voice.stability)}
-                <i>·</i>Similarity {decimal(voice.similarity_boost)}
-                <i>·</i>Style {decimal(voice.style)}
+                <i>·</i>{t.settings.stability} {decimal(voice.stability)}
+                <i>·</i>{t.settings.similarity} {decimal(voice.similarity_boost)}
+                <i>·</i>{t.settings.style} {decimal(voice.style)}
                 {voice.use_speaker_boost && (
                   <>
-                    <i>·</i>Speaker boost
+                    <i>·</i>{t.settings.speakerBoost}
                   </>
                 )}
                 <i>·</i>
@@ -274,9 +274,9 @@ export default function VoicesTabs(props: Props) {
               </>
             ) : (
               <>
-                <i>·</i>Temperature {decimal(settings.fish.temperature)}
-                <i>·</i>Top P {decimal(settings.fish.topP)}
-                <i>·</i>Speed {decimal(settings.fish.speed)}
+                <i>·</i>{t.settings.temperature} {decimal(settings.fish.temperature)}
+                <i>·</i>{t.settings.topPLabel} {decimal(settings.fish.topP)}
+                <i>·</i>{t.settings.speed} {decimal(settings.fish.speed)}
               </>
             )}
           </span>
@@ -296,7 +296,7 @@ export default function VoicesTabs(props: Props) {
               onClick={() => setShowSettings(!showSettings)}
             >
               <SlidersHorizontal />
-              Settings
+              {t.settings.settingsTitle}
             </button>
             {tab === "elevenlabs" && props.keys.elevenlabs && present !== null && (
               <button type="button" className="bs-btn vo-outline vo-sm" onClick={() => setPopulating(true)}>
@@ -314,7 +314,7 @@ export default function VoicesTabs(props: Props) {
         )}
         {tab === "elevenlabs" && props.keys.elevenlabs && account?.error && (
           <p role="alert" className="vo-alert">
-            Could not read your ElevenLabs account: {account.error}
+            {fill(t.settings.couldNotReadAccount, { error: account.error })}
           </p>
         )}
 
