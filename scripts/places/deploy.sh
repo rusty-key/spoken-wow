@@ -79,8 +79,8 @@ case "$mode" in
     # otherwise indistinguishable from a broken lookup.
     sounds="$REPO/addons/SpokenPlacesAudio/Sounds"
     if [[ -d "$sounds" ]]; then
-      count="$(find "$sounds" -name '*.mp3' | wc -l | tr -d ' ')"
-      echo "voicelines      $count mp3 in $sounds"
+      count="$(find "$sounds" -name '*.ogg' | wc -l | tr -d ' ')"
+      echo "voicelines      $count ogg in $sounds"
     fi
     exit 0
     ;;

@@ -64,9 +64,9 @@ mkdir -p "$archive"
 # only the rest need the droplet.
 if [ -n "${SPOKEN_ARCHIVE_URL:-}" ]; then
   node "$root/scripts/audio/fetch-blobs.mjs" "$archive" <"$list"
-  # Quests takes also bring the Ogg the site encoded at commit, into package-audio.sh's cache.
-  if [ "$section" = quests ] && [ "$what" = takes ]; then
-    node "$root/scripts/audio/fetch-encodings.mjs" --lang="$lang"
+  # Takes also bring the Ogg the site encoded at commit, into the build's cache.
+  if [ "$what" = takes ]; then
+    node "$root/scripts/audio/fetch-encodings.mjs" --lang="$lang" "$section"
   fi
 fi
 grep -v '^blobs/' "$list" >"$files" || true

@@ -117,7 +117,7 @@ acted: pull-recorded package-acted ## Pull the recordings and build the voice-ac
 package: ## Zip the addon into dist/ (for a release)
 	@./scripts/readables/package.sh
 
-# STORED, NOT DEFLATED. The payload is mp3, which is already compressed: deflate spends
+# STORED, NOT DEFLATED. The payload is Ogg, which is already compressed: deflate spends
 # minutes on 450 MB to save well under a percent. -0 makes this a container rather than a
 # compressor, which is all it needs to be.
 #
@@ -145,8 +145,8 @@ package-audio: check-synced sounds lookup
 	 rsync -a --exclude '.[!.]*' addons/SpokenReadablesAudio/ dist/SpokenReadablesAudio/ && \
 	 touch dist/SpokenReadablesAudio/SpokenReadablesAudio.toc || exit 1; \
 	 printf '%s\n' "built dist/SpokenReadablesAudio-$$version.zip"; \
-	 printf '  %s mp3, %s\n' \
-	   "$$(unzip -Z1 "$$zip_path" | grep -c '\.mp3$$')" \
+	 printf '  %s ogg, %s\n' \
+	   "$$(unzip -Z1 "$$zip_path" | grep -c '\.ogg$$')" \
 	   "$$(du -h "$$zip_path" | cut -f1)"; \
 	 shasum -a 256 "$$zip_path"
 endif

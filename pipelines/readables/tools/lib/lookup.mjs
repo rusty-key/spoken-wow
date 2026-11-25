@@ -92,6 +92,8 @@ export function packLua(lang, clips, entries = null) {
     "",
     "local pack = {",
     "\tversion = 1,",
+    // A Spoken from before packs shipped Ogg plays mp3; MIN_SPOKEN (scripts/lib/packs.mjs) keeps it off this pack.
+    '\tformat = "ogg",',
     "\taddon = ADDON_NAME,",
     '\tquality = "high",',
     "\tbitrate = 128,",

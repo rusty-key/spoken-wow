@@ -26,13 +26,13 @@ const notes = [];
 function problem(text) { problems.push(text); }
 function note(text) { notes.push(text); }
 
-async function mp3sOnDisk(dir, prefix = "") {
+async function clipsOnDisk(dir, prefix = "") {
   if (!existsSync(dir)) return [];
   const found = [];
   for (const item of await readdir(dir, { withFileTypes: true })) {
     const rel = prefix ? `${prefix}/${item.name}` : item.name;
-    if (item.isDirectory()) found.push(...(await mp3sOnDisk(join(dir, item.name), rel)));
-    else if (item.name.endsWith(".mp3")) found.push(rel.replace(/\.mp3$/, ""));
+    if (item.isDirectory()) found.push(...(await clipsOnDisk(join(dir, item.name), rel)));
+    else if (item.name.endsWith(".ogg")) found.push(rel.replace(/\.ogg$/, ""));
   }
   return found;
 }
@@ -64,7 +64,7 @@ async function main() {
   }
 
   //-- manifest vs disk ------------------------------------------------------
-  const onDisk = new Set(await mp3sOnDisk(soundsDir()));
+  const onDisk = new Set(await clipsOnDisk(soundsDir()));
   const manifestFiles = new Set(Object.values(manifest).map((r) => r.file));
   // What the lookup lists and the pack ships: a take whose place has no words is left out.
   const shippedFiles = new Set(
@@ -76,15 +76,15 @@ async function main() {
       note(`${id}: live, but the lore has no words for it; left out of the pack`);
       continue;
     }
-    if (!onDisk.has(record.file)) problem(`${id}: manifest says ${record.file}.mp3, which is not on disk`);
+    if (!onDisk.has(record.file)) problem(`${id}: manifest says ${record.file}.ogg, which is not on disk`);
   }
   // A manifest export with no database writes nothing, and an empty lookup then agrees with it.
   if (onDisk.size > 0 && manifestFiles.size === 0) {
     problem(`${onDisk.size} clips on disk and an empty manifest: the pack would play nothing. Was DATABASE_URL set for its lookup?`);
   }
   for (const file of onDisk) {
-    if (!manifestFiles.has(file)) note(`${file}.mp3 is on disk with no manifest entry (orphan)`);
-    else if (!shippedFiles.has(file)) problem(`${file}.mp3 is on disk but no place with words plays it`);
+    if (!manifestFiles.has(file)) note(`${file}.ogg is on disk with no manifest entry (orphan)`);
+    else if (!shippedFiles.has(file)) problem(`${file}.ogg is on disk but no place with words plays it`);
   }
 
   //-- lookup table vs disk --------------------------------------------------
@@ -96,7 +96,7 @@ async function main() {
       m[1].replace(/\\\\/g, "/").replace(/\\/g, "/"),
     );
     for (const file of referenced) {
-      if (!onDisk.has(file)) problem(`lookup table points at ${file}.mp3, which is not on disk (plays silence)`);
+      if (!onDisk.has(file)) problem(`lookup table points at ${file}.ogg, which is not on disk (plays silence)`);
     }
     const missingFromLookup = [...shippedFiles].filter((f) => !referenced.includes(f));
     if (missingFromLookup.length) {

@@ -419,7 +419,7 @@ Highlight Words lights the word being read.
 
 ```bash
 CLIENT=forever make readables-deploy   # symlink Spoken_Readables and SpokenReadablesAudio into Forever (_forever_)
-make readables-status                  # what is installed where, and how many mp3s exist
+make readables-status                  # what is installed where, and how many clips exist
 ```
 
 `scripts/readables/deploy.sh` links only those two folders and defaults to Classic Era, so pass

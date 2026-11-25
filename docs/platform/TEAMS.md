@@ -346,10 +346,9 @@ carry its slug (*A language's teams*).
 
 Every section publishes from the droplet, whose copy of the signing key sits in
 `shared/release.env`, as PLAN.md decided.
-Only quests ship Ogg Vorbis
-(`scripts/quests/package-audio.sh`, via `oggenc`). Places, readables and bosses ship the take's own
-MP3: readables and bosses pack the files as they are, and Places copies them for its full tier and
-transcodes only its 64 kbps tier, to MP3 as well.
+Every section ships Ogg Vorbis (`ogg-q0-44k`): the site encodes each take when it is committed
+(`apps/web/src/lib/takes/encode.ts`), a release points at those Oggs, and a build from the archive
+encodes the same way (`scripts/quests/package-audio.sh`, `scripts/lib/ogg.mjs`).
 
 ### Team releases
 

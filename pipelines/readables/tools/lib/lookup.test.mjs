@@ -172,3 +172,7 @@ test("a release's lookup lists its own team's live take of a page, and a build o
     seed?.cleanup();
   }
 });
+
+test("the pack says its clips are Ogg, which Spoken_Readables plays by that extension", () => {
+  assert.match(packLua("enUS", [{ pageId: 15, file: "15", durationSec: 2.5 }]), /^\tformat = "ogg",$/m);
+});

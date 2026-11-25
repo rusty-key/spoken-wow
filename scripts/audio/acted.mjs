@@ -22,17 +22,15 @@
 // missing.
 //
 // THE AUDIO IS RE-ENCODED TO WHAT EACH PLAYER PLAYS. Uploads are kept as they came, mp3 or
-// Ogg Vorbis. A quests module resolves every sound with one extension (GetSoundPath), and
-// ships Ogg, so an mp3 is encoded with the generated packs' own recipe (ogg-q0-44k:
-// ffmpeg decodes, oggenc -q 0) and an Ogg goes in as uploaded. Places and readables play
-// `.mp3` by name, so there it is the other way round.
+// Ogg Vorbis. Every pack plays one extension, Ogg, so an mp3 is encoded with the generated
+// packs' own recipe (scripts/lib/ogg.mjs) and an Ogg goes in as uploaded.
 //
 // Lengths are the database's -- ffprobe measured each upload when it was kept -- since a
 // re-encode moves a clip's length by a frame at most.
 //
 // Credits: every actor whose recording is live, in the TOC (Author, X-Spoken-Actors) and in
 // the overlay itself, where `/spz audio` lists them.
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { copyFile, mkdir } from "node:fs/promises";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { availableParallelism, tmpdir } from "node:os";
@@ -43,6 +41,8 @@ import { BASE_LOCALE, CODES } from "../../pipelines/lib/locales.mjs";
 import { scriptTeam } from "../../pipelines/lib/release-team.mjs";
 import { luaString } from "../../pipelines/places/tools/lib/wiki.mjs";
 import { archiveOf, sourceOf } from "../lib/archives.mjs";
+import { eachParallel } from "../lib/download.mjs";
+import { encodeOgg } from "../lib/ogg.mjs";
 import { actedFolder, audioFamily, englishFolder } from "../lib/packs.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -69,7 +69,7 @@ export function recordedDir(section, lang, file) {
 /** Where a clip sits inside the pack's folder, and with which extension. */
 export function packPath(section, file) {
   if (section === "quests") return posix.join("generated", "sounds", file.replace(/\.mp3$/, ".ogg"));
-  return posix.join("Sounds", `${file}.mp3`);
+  return posix.join("Sounds", `${file}.ogg`);
 }
 
 /** Everybody credited, once each, in the order they first recorded something here. */
@@ -112,6 +112,7 @@ export function placesLua(lang, clips, credits) {
     "",
     "local overlay = {",
     "\tversion = 1,",
+    '\tformat = "ogg",',
     `\tlanguage = ${luaString(lang)},`,
     `\tcredits = ${luaCredits(credits)},`,
     "\tzones = {",
@@ -152,6 +153,7 @@ export function readablesLua(lang, clips, credits) {
     "",
     "local overlay = {",
     "\tversion = 1,",
+    '\tformat = "ogg",',
     "\taddon = ADDON_NAME,",
     `\tlanguage = ${luaString(lang)},`,
     `\tcredits = ${luaCredits(credits)},`,
@@ -298,44 +300,13 @@ function live(section, lang, slug) {
     });
 }
 
-/** A child process, resolving when it exits cleanly. */
-function run(child, what) {
-  return new Promise((done, fail) => {
-    child.on("error", fail);
-    child.on("close", (code) => (code === 0 ? done() : fail(new Error(`${what} exited ${code}`))));
-  });
-}
-
-/**
- * One clip into the pack, with the generated packs' own recipes: places' VBR mono mp3
- * (scripts/places/package-audio.sh) and quests' ogg-q0-44k (scripts/quests/package-audio.sh),
- * so an overlay sits at the bitrate of the pack under it.
- */
-async function encode(section, clip, from, to) {
-  await mkdir(dirname(to), { recursive: true });
-  const wanted = section === "quests" ? "ogg" : "mp3";
-  if (clip.format === wanted) return copyFile(from, to);
-  if (wanted === "mp3") {
-    const ffmpeg = spawn("ffmpeg", ["-nostdin", "-loglevel", "error", "-i", from, "-codec:a", "libmp3lame", "-q:a", "6", "-ac", "1", "-y", to], { stdio: "inherit" });
-    return run(ffmpeg, `ffmpeg on ${from}`);
+/** One clip into the pack: an Ogg as it was uploaded, anything else encoded the generated packs' way. */
+async function encode(clip, from, to) {
+  if (clip.format === "ogg") {
+    await mkdir(dirname(to), { recursive: true });
+    return copyFile(from, to);
   }
-  const ffmpeg = spawn("ffmpeg", ["-nostdin", "-loglevel", "error", "-i", from, "-ac", "1", "-map_metadata", "-1", "-bitexact", "-f", "wav", "-"], {
-    stdio: ["ignore", "pipe", "inherit"],
-  });
-  const oggenc = spawn("oggenc", ["-Q", "-q", "0", "-o", to, "-"], { stdio: ["pipe", "inherit", "inherit"] });
-  // Piped here rather than handed over as oggenc's stdin: a stream given as another child's
-  // stdio is not a handle Node waits on, and the build exited with every encode unfinished.
-  ffmpeg.stdout.pipe(oggenc.stdin);
-  await Promise.all([run(ffmpeg, `ffmpeg on ${from}`), run(oggenc, `oggenc for ${to}`)]);
-}
-
-/** Every clip encoded, as many at once as there are cores: each encoder is one thread. */
-async function encodeAll(section, jobs) {
-  const queue = [...jobs];
-  const worker = async () => {
-    for (let job = queue.shift(); job; job = queue.shift()) await encode(section, ...job);
-  };
-  await Promise.all(Array.from({ length: availableParallelism() }, worker));
+  return encodeOgg(from, to);
 }
 
 async function main(args) {
@@ -370,13 +341,15 @@ async function main(args) {
   const staging = mkdtempSync(join(tmpdir(), "acted-"));
   const out = join(staging, folder);
   try {
-    await encodeAll(
-      section,
+    // oggenc is single-threaded, so one per core.
+    await eachParallel(
       clips.map((clip) => [
         clip,
         join(archiveOf(section), clip.archived),
         join(out, packPath(section, clip.file)),
       ]),
+      (job) => encode(...job),
+      availableParallelism(),
     );
 
     const files =
