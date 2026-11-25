@@ -401,6 +401,7 @@ VO, Spoken = Boot({ { folder = "NewPack", module = FollowupPack(LOOKUP,
     { [SPEAKER] = { ["Hail."] = GOSSIP_HASH } }) } })
 VO.DataModules:GetModule("NewPack").WordTimesByFileName = { [STEM] = "0 .8" }
 VO.DataModules:GetModule("NewPack").TextByFileName = { [STEM] = "Pack words." }
+VO.DataModules:GetModule("NewPack").SoundPiecesByFileName = { [STEM] = "1.4 1.6" }
 Reset()
 stub.FireEvent("QUEST_TURNED_IN", 300, 0, 0)
 Say("Thanks, Tester!", SPEAKER_GUID)
@@ -411,6 +412,9 @@ Expect("...the clip's text staying what was said", queued[1] and queued[1].text,
 Expect("...from the pack's follow-up folder", queued[1] and queued[1].path,
     [[Interface\AddOns\NewPack\]] .. FOLLOWUP_DIR .. STEM .. ".ogg")
 Expect("...with the pack's length for it", queued[1] and queued[1].length, 3)
+Expect("...and its sentence pieces", queued[1] and queued[1].pieces and table.concat(queued[1].pieces, " "), "1.4 1.6")
+Expect("...played from the first", world.played[#world.played],
+    [[Interface\AddOns\NewPack\]] .. FOLLOWUP_DIR .. STEM .. [[\01.ogg]])
 Say("Well done. He is a fine dwarf paladin.", SPEAKER_GUID)
 Expect("a line the lookup names but the pack has no audio for is silent", Keys(), STEM)
 Expect("...and recorded as having no recording", VO.Debug.runtime.stage, "followup-no-recording")

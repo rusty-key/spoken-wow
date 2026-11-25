@@ -79,6 +79,52 @@ Expect("an English recording on a German client plays", Spoken:GetCurrent() and 
 Expect("...untimed, the window's words being German", Spoken:GetCurrent() and Spoken:GetCurrent().present.timings, nil)
 stub.SetLocale("enUS")
 
+---------------------------------------------------------------- lines kept as sentence pieces
+-- The player reads a clip's pieces into a list once it has it.
+local function Pieces(clip)
+    local pieces = clip and clip.pieces
+    return type(pieces) == "table" and table.concat(pieces, " ") or tostring(pieces)
+end
+VO, env, Spoken = Boot()
+VO.DataModules:GetModule("TestPack").SoundPiecesByFileName = { ["101-accept"] = "1.2 0.8" }
+world.questID = 101
+stub.ShowPanel("QuestFrameDetailPanel")
+VO.Addon:QUEST_DETAIL()
+Expect("a line the pack keeps as sentence pieces is queued with them", Pieces(Spoken:GetCurrent()), "1.2 0.8")
+Expect("...and plays from its first piece", world.played[#world.played], [[Interface\AddOns\TestPack\101-accept\01.ogg]])
+Spoken:StopAll()
+world.questID = 102
+VO.Addon:QUEST_DETAIL()
+Expect("a line the same pack keeps whole has none", Pieces(Spoken:GetCurrent()), "nil")
+Expect("...and plays as one file", world.played[#world.played], [[Interface\AddOns\TestPack\102-accept.ogg]])
+Spoken:StopAll()
+
+-- A line recorded for each sex of player is two files; each has its own pieces.
+lookup["f-103-accept"], lookup["m-103-accept"] = 2, 2
+VO, env, Spoken = Boot()
+VO.DataModules:GetModule("TestPack").SoundPiecesByFileName = { ["f-103-accept"] = "1.1 0.9", ["m-103-accept"] = "0.7 1.3" }
+world.unitSex = 3
+world.questID = 103
+stub.ShowPanel("QuestFrameDetailPanel")
+VO.Addon:QUEST_DETAIL()
+Expect("a female player's line has the female recording's pieces",
+    tostring(Spoken:GetCurrent() and Spoken:GetCurrent().fileName) .. " " .. Pieces(Spoken:GetCurrent()), "f-103-accept 1.1 0.9")
+Expect("...and plays them", world.played[#world.played], [[Interface\AddOns\TestPack\f-103-accept\01.ogg]])
+Spoken:StopAll()
+world.unitSex = nil
+lookup["f-103-accept"], lookup["m-103-accept"] = nil, nil
+
+-- Unlike word times, pieces are the recording's own: they stay under a client in another language.
+stub.SetLocale("deDE")
+VO, env, Spoken = Boot()
+VO.DataModules:GetModule("TestPack").SoundPiecesByFileName = { ["101-accept"] = "1.2 0.8" }
+world.questID = 101
+stub.ShowPanel("QuestFrameDetailPanel")
+VO.Addon:QUEST_DETAIL()
+Expect("an English line on a German client keeps its pieces", Pieces(Spoken:GetCurrent()), "1.2 0.8")
+Spoken:StopAll()
+stub.SetLocale("enUS")
+
 ---------------------------------------------------------------- a quest from an object or an item
 -- A wanted poster's line shows a posted notice, never a captured face (the game paints an object
 -- black). A quest from an item shows the item's icon.

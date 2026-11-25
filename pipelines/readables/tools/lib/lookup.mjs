@@ -21,6 +21,7 @@ import { dirname, join } from "node:path";
 import pg from "pg";
 
 import { isClientLocale } from "../../../lib/locales.mjs";
+import { onDiskAsPieces, readPieceLengths } from "../../../lib/pieces.mjs";
 import { releaseTeamSql } from "../../../lib/release-team.mjs";
 import { packTimes } from "../../../lib/word-times.mjs";
 import { canBeHad, compareIds, indexLua, luaId, luaTableId, pageIndex, quote } from "./lua.mjs";
@@ -81,7 +82,7 @@ export function localeEntries(pages, names) {
  * Data/Sounds.lua for a pack.
  *
  * @param lang the language the clips are recorded in
- * @param clips `{ pageId, file, durationSec, wordTimes, text, shownText }`, in page order
+ * @param clips `{ pageId, file, durationSec, wordTimes, text, shownText, pieces? }`, in page order
  * @param entries a language's localeEntries, or null for a language with no index
  */
 export function packLua(lang, clips, entries = null) {
@@ -110,7 +111,9 @@ export function packLua(lang, clips, entries = null) {
     const text = words ? `, text = ${quote(words)}` : "";
     // Absent for a take with no times: the captions then estimate.
     const times = row.wordTimes ? `, times = ${quote(packTimes(row.wordTimes))}` : "";
-    lines.push(`\t\t[${luaId(row.pageId)}] = { file = ${quote(row.file)}, len = ${len}${text}${times} },`);
+    // Where the release shipped it as sentence pieces (pipelines/lib/pieces.mjs).
+    const pieces = row.pieces ? `, pieces = ${quote(row.pieces)}` : "";
+    lines.push(`\t\t[${luaId(row.pageId)}] = { file = ${quote(row.file)}, len = ${len}${text}${times}${pieces} },`);
   }
   lines.push("\t},");
 
@@ -237,6 +240,10 @@ export async function buildLookup({ lang = LANG, out = lookupPath(lang) } = {}) 
     }
 
     await mkdir(dirname(out), { recursive: true });
+    // A page the release shipped as sentence pieces (scripts/audio/sounds.mjs), its folder beside the table's.
+    const sounds = join(dirname(dirname(out)), "Sounds");
+    const lengths = readPieceLengths("readables", lang);
+    for (const row of rows) if (lengths[row.file] && onDiskAsPieces(sounds, row.file)) row.pieces = lengths[row.file];
     await writeFile(out, packLua(lang, rows, entries));
 
     return { clips: rows.length, pages: entries ? entries.known.length + entries.extra.length : null, path: out };

@@ -35,8 +35,8 @@ tables=("$@")
 : "${LOCAL_DB:?LOCAL_DB is not set}"
 
 # Keyed on `source` and synced per section, unlike the corpus tables, which are copied whole.
-# take_encoding is each take's clip as its pack ships it.
-shared=(take recording take_encoding)
+# take_encoding is each take's clip as its pack ships it, take_pieces the same cut into sentences.
+shared=(take recording take_encoding take_pieces)
 # The staged tables with a per-team "teamId", remapped to this database's teams after the copy,
 # before the foreign-key pass would blank line_ignore's, which is nullable.
 teamed=(take recording take_ack line_ignore)

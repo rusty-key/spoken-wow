@@ -10,8 +10,8 @@
 import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { readdir } from "node:fs/promises";
 
+import { clipsOnDisk } from "../../../lib/pieces.mjs";
 import { loadEnvFile } from "../lib/env.mjs";
 import { readLines, shipped } from "../lib/loredata.mjs";
 import { assignFiles, lineId } from "./naming.mjs";
@@ -25,17 +25,6 @@ const notes = [];
 
 function problem(text) { problems.push(text); }
 function note(text) { notes.push(text); }
-
-async function clipsOnDisk(dir, prefix = "") {
-  if (!existsSync(dir)) return [];
-  const found = [];
-  for (const item of await readdir(dir, { withFileTypes: true })) {
-    const rel = prefix ? `${prefix}/${item.name}` : item.name;
-    if (item.isDirectory()) found.push(...(await clipsOnDisk(join(dir, item.name), rel)));
-    else if (item.name.endsWith(".ogg")) found.push(rel.replace(/\.ogg$/, ""));
-  }
-  return found;
-}
 
 async function main() {
   const entries = await readLines();

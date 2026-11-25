@@ -12,10 +12,11 @@
 // with and plays it, as places does, so a stale take is reported here and does not fail.
 
 import { existsSync } from "node:fs";
-import { readdir, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { clipsOnDisk } from "../../../lib/pieces.mjs";
 import { loadEnvFile } from "../lib/env.mjs";
 import { textHash } from "../voice/naming.mjs";
 import { loadPronunciation, toSpokenText } from "../voice/normalise.mjs";
@@ -102,17 +103,6 @@ export function checkPack({ lookup, onDisk, takes, hashes }) {
  */
 export function refuseEmpty(lookup, lang) {
   if (lookup.length === 0) throw new Error(`${lang} has no live boss takes, so there is no pack to build`);
-}
-
-async function clipsOnDisk(dir, prefix = "") {
-  if (!existsSync(dir)) return [];
-  const found = [];
-  for (const item of await readdir(dir, { withFileTypes: true })) {
-    const rel = prefix ? `${prefix}/${item.name}` : item.name;
-    if (item.isDirectory()) found.push(...(await clipsOnDisk(join(dir, item.name), rel)));
-    else if (item.name.endsWith(".ogg")) found.push(rel.replace(/\.ogg$/, ""));
-  }
-  return found;
 }
 
 async function main() {

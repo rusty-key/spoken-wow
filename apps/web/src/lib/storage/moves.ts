@@ -78,6 +78,9 @@ function objectsQuery(team: TeamId, from: string | null, cursor: string | null):
             select 'encodings', e."encodedSha256" from "take_encoding" e
               join "take" t on t."sha256" = e."sha256" and t."source" = e."source" where t."teamId" = $1
             union
+            select 'encodings', unnest(p."encodedSha256s") from "take_pieces" p
+              join "take" t on t."sha256" = p."sha256" and t."source" = p."source" where t."teamId" = $1
+            union
             select 'recordings', "sha256" from "recording" where "teamId" = $1 and "sha256" is not null
             union
             select 'references', "sha256" from "fish_reference" where "teamId" = $1 and "sha256" is not null

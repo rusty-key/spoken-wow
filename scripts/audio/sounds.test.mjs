@@ -14,6 +14,7 @@ import { promisify } from "node:util";
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 
+import { readPieceLengths, writePieceLengths } from "../../pipelines/lib/pieces.mjs";
 import { seedDatabase } from "../../pipelines/lib/test-db.mjs";
 
 const SOUNDS = join(dirname(fileURLToPath(import.meta.url)), "sounds.mjs");
@@ -196,6 +197,89 @@ test("a release whose takes are in a team's own bucket needs a site's archive ro
     archive.close();
     sql(`delete from "archive_object" where "backendId" = ${lit(backend)}`);
     sql(`delete from "storage_backend" where "id" = ${lit(backend)}`);
+    removeBuild("readables");
+  }
+});
+
+test("with SPOKEN_PIECES, a release ships a quests line cut into pieces as a folder of pointers", { skip }, async () => {
+  const { sql, lit } = seed;
+  const encoded = "d".repeat(64);
+  const [first, second] = ["e".repeat(64), "f".repeat(64)];
+  sql(`insert into "take_encoding" ("source", "sha256", "profile", "encodedSha256", "bytes", "durationSec")
+       values ('quests', ${lit(B_SHA)}, 'ogg-q0-44k', ${lit(encoded)}, 10, 9)`);
+  sql(`insert into "take_pieces" ("source", "sha256", "profile", "method", "encodedSha256s", "bytes", "lengthsSec")
+       values ('quests', ${lit(B_SHA)}, 'ogg-q0-44k', 'times', array[${lit(first)}, ${lit(second)}], '{6, 4}', '{5.25, 3.75}')`);
+  const archive = createServer((_request, response) => response.writeHead(200, { "content-length": "10" }).end());
+  await new Promise((resolve) => archive.listen(0, "127.0.0.1", resolve));
+  const out = join(ROOT, "build", "quests", lang, "audio");
+  const build = (pieces) => {
+    const env = {
+      PATH: process.env.PATH, LOCAL_DB: seed.url, SPOKEN_CLIP_POINTERS: "1", SPOKEN_RELEASE_TEAM: b.id,
+      SPOKEN_ARCHIVE_URL: `http://127.0.0.1:${archive.address().port}/`, ...(pieces ? { SPOKEN_PIECES: "1" } : {}),
+    };
+    return promisify(execFile)(process.execPath, [SOUNDS, `--lang=${lang}`, "quests"], { env });
+  };
+  try {
+    await build(false);
+    const [stem] = Object.keys(JSON.parse(readFileSync(join(out, "durations.json"), "utf8")));
+    assert.match(readFileSync(join(out, `${stem}.ogg`), "utf8"), new RegExp(`encodings/${encoded} 10`));
+    assert.throws(() => readFileSync(join(out, "pieces.json")), "no pieces unless asked for");
+
+    await build(true);
+    assert.throws(() => readFileSync(join(out, `${stem}.ogg`)), "the line's file is a folder");
+    assert.match(readFileSync(join(out, stem, "01.ogg"), "utf8"), new RegExp(`encodings/${first} 6`));
+    assert.match(readFileSync(join(out, stem, "02.ogg"), "utf8"), new RegExp(`encodings/${second} 4`));
+    assert.deepEqual(JSON.parse(readFileSync(join(out, "pieces.json"), "utf8")), { [stem]: "5.25 3.75" });
+    assert.deepEqual(JSON.parse(readFileSync(join(out, "durations.json"), "utf8")), { [stem]: 9 });
+  } finally {
+    archive.close();
+    sql(`delete from "take_pieces" where "sha256" = ${lit(B_SHA)}`);
+    sql(`delete from "take_encoding" where "sha256" = ${lit(B_SHA)}`);
+    rmSync(join(ROOT, "build", "quests", lang), { recursive: true, force: true });
+    for (const dir of [join(ROOT, "build", "quests"), join(ROOT, "build")]) {
+      try {
+        rmdirSync(dir);
+      } catch {
+        break;
+      }
+    }
+  }
+});
+
+test("with SPOKEN_PIECES, a readables page cut into pieces ships as a folder, its lengths beside the pack", { skip }, async () => {
+  const { sql, lit } = seed;
+  const [first, second] = ["1".repeat(64), "2".repeat(64)];
+  encoded("readables", B_SHA);
+  sql(`insert into "take_pieces" ("source", "sha256", "profile", "method", "encodedSha256s", "bytes", "lengthsSec")
+       values ('readables', ${lit(B_SHA)}, 'ogg-q0-44k', 'pauses', array[${lit(first)}, ${lit(second)}], '{4, 3}', '{1, 0.4}')`);
+  const archive = createServer((_request, response) => response.writeHead(200, { "content-length": "10" }).end());
+  await new Promise((resolve) => archive.listen(0, "127.0.0.1", resolve));
+  const sounds = join(ROOT, "build", "readables", lang, "Sounds");
+  try {
+    const env = {
+      PATH: process.env.PATH, LOCAL_DB: seed.url, SPOKEN_CLIP_POINTERS: "1", SPOKEN_RELEASE_TEAM: b.id, SPOKEN_PIECES: "1",
+      SPOKEN_ARCHIVE_URL: `http://127.0.0.1:${archive.address().port}/`,
+    };
+    await promisify(execFile)(process.execPath, [SOUNDS, `--lang=${lang}`, "readables"], { env });
+    assert.deepEqual(readdirSync(sounds).sort(), [".from-takes", "b-1"]);
+    assert.equal(readFileSync(join(sounds, "b-1", "01.ogg"), "utf8"), `spoken-clip-pointer encodings/${first} 4\n`);
+    assert.equal(readFileSync(join(sounds, "b-1", "02.ogg"), "utf8"), `spoken-clip-pointer encodings/${second} 3\n`);
+    assert.deepEqual(readPieceLengths("readables", lang), { "b-1": "1 .4" });
+
+    // Without SPOKEN_PIECES the page is one clip again, and the last run's lengths are gone.
+    delete env.SPOKEN_PIECES;
+    await promisify(execFile)(process.execPath, [SOUNDS, `--lang=${lang}`, "readables"], { env });
+    assert.deepEqual(readdirSync(sounds).sort(), [".from-takes", "b-1.ogg"]);
+    assert.deepEqual(readPieceLengths("readables", lang), {});
+  } finally {
+    archive.close();
+    sql(`delete from "take_pieces" where "source" = 'readables' and "sha256" = ${lit(B_SHA)}`);
+    await writePieceLengths("readables", lang, {});
+    try {
+      rmdirSync(join(ROOT, "build", "pieces"));
+    } catch {
+      // Another run's lengths are still there.
+    }
     removeBuild("readables");
   }
 });

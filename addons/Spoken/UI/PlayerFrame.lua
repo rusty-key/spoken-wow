@@ -175,6 +175,10 @@ function PlayerFrame:InitHeader()
     self.controls = CreateFrame("Frame", nil, container)
     self.controls:SetHeight(1)
     self.controls:SetPoint("TOPRIGHT", self.frame, "TOPRIGHT", -CORNER_X, -CORNER_Y)
+    self.pauseButton = Actions.PauseButton(self.controls, function() return self:Current() ~= nil end,
+        function() self:UpdateControls() end)
+    -- Shown by ConfigureActions, for a line kept as pieces.
+    self.pauseButton:Hide()
     self.play = Actions.StopButton(self.controls, function() return self:Current() ~= nil end,
         function() self:UpdateControls() end)
     self.previous = Actions.PreviousButton(self.controls)
@@ -415,7 +419,8 @@ function PlayerFrame:LayoutHeader()
 end
 
 function PlayerFrame:ConfigureActions(clip)
-    self.row = Actions:HeaderControls(self.frame, self.controls, self.buttons, clip)
+    self.row = Actions:HeaderControls(self.frame, self.controls,
+        Actions.WithPause(self.pauseButton, self.buttons, self.play, clip), clip)
     Actions.LayOutRow(self.controls, self.row, ROUND_GAP)
 end
 
@@ -423,10 +428,12 @@ function PlayerFrame:UpdateControls()
     local head = self:Current()
     if not head then return end
     Actions.SetPlayGlyph(self.play, Actions.HeadState())
+    Actions.SetPauseGlyph(self.pauseButton)
     self.tail:SetHeld(SoundQueue:GetHeldReason(head))
     self.tail:SetStopped(SoundQueue:IsPaused())
     self.tail:SetCount(Waiting())
     Actions.SetPausable(self.buttons)
+    Actions.SetPausable({ self.pauseButton })
     self:LayoutHeader()
 end
 

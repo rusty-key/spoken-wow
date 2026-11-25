@@ -542,7 +542,8 @@ local function Walk(frame)
             if child:GetObjectType() == "Button" then
                 local known = false
                 for _, button in ipairs(Skin.row) do known = known or button == child end
-                if not known then table.insert(extra, child) end
+                -- A hidden Pause, on a line kept whole, is no button on it.
+                if not known and child:IsShown() then table.insert(extra, child) end
             end
             Walk(child)
         end
@@ -745,6 +746,28 @@ Skin:Tick(0.5)
 Expect("...shown in full, itself", tostring(Skin.frame:IsFrameBuffer()) .. " " .. Skin.frame:GetAlpha(), "false 1")
 Spoken:StopAll()
 Skin:Tick(1)
+
+---------------------------------------------------------------- Pause, where a line is kept as pieces
+Spoken:StopAll()
+quests:Enqueue(H.Clip({ length = 30, present = { header = "Grull", label = "Whole", portrait = { kind = "none" } } }))
+Skin:Update()
+Expect("a line kept whole: Stop follows Skip Backward in the header's controls, and no Pause",
+    tostring(Skin.row[1] == Skin.previous and Skin.row[2] == Skin.play) .. " " .. tostring(Skin.pauseButton:IsShown()), "true false")
+Spoken:StopAll()
+quests:Enqueue(H.Clip({ length = 30, pieces = "10 10 10",
+    present = { header = "Grull", label = "Kept", portrait = { kind = "none" } } }))
+Skin:Update()
+Expect("a line kept as pieces: Pause just before Stop, then Skip",
+    tostring(Skin.row[2] == Skin.pauseButton) .. " " .. tostring(Skin.row[3] == Skin.play) .. " "
+    .. tostring(Skin.row[4] == Skin.skip) .. " " .. tostring(Skin.pauseButton:IsShown()), "true true true true")
+stub.Advance(12)
+Skin.pauseButton.scripts.OnClick(Skin.pauseButton)
+Expect("...Pause pauses, and the title says Paused", env.SoundQueue:HaltedBy() .. "|" .. Skin.stopped:GetText(),
+    "pause|· (" .. env.L.SUBTITLE_PAUSED .. ")")
+Skin.pauseButton.scripts.OnClick(Skin.pauseButton)
+Expect("...and pressed again, plays on from the sentence it was paused in", tostring(env.SoundQueue:HaltedBy()) .. " "
+    .. tostring(stub.world.played[#stub.world.played]:match("\\(%d%d)%.ogg$")), "nil 02")
+Spoken:StopAll()
 
 ---------------------------------------------------------------- locked
 Skin.frame.SetMouseClickEnabled = function(f, v) f.clicks = v end

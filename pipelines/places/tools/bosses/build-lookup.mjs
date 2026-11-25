@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 import { quote } from "../../../lib/lua-text.mjs";
 import { packTimes } from "../../../lib/word-times.mjs";
 import { loadEnvFile } from "../lib/env.mjs";
+import { onDiskAsPieces, readPieceLengths } from "../../../lib/pieces.mjs";
 import { close, readBosses, readLiveTakes, requireDatabase } from "./store.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -24,7 +25,8 @@ const BASE_LANG = "enUS";
 function fields(entry) {
   const times = entry.times ? `, times = ${quote(packTimes(entry.times))}` : "";
   const text = entry.text ? `, text = ${quote(entry.text)}` : "";
-  return `file = ${quote(entry.file.replace(/\//g, "\\"))}, len = ${entry.len}${times}${text}`;
+  const pieces = entry.pieces ? `, pieces = ${quote(entry.pieces)}` : "";
+  return `file = ${quote(entry.file.replace(/\//g, "\\"))}, len = ${entry.len}${times}${text}${pieces}`;
 }
 
 /** The take rows of live bosses as lookup entries; takes naming no live boss come back in `skipped`. */
@@ -50,7 +52,7 @@ export function buildEntries(takes, bosses) {
   return { entries, skipped };
 }
 
-/** @param entries {{ map: number, key: string, file: string, len: number, times?: number[], text?: string }[]} */
+/** @param entries {{ map: number, key: string, file: string, len: number, times?: number[], text?: string, pieces?: string }[]} */
 export function renderLookup(entries) {
   const byMap = new Map();
   for (const e of entries) {
@@ -117,6 +119,12 @@ export async function buildLookup(lang = BASE_LANG) {
   const [takes, bosses] = await Promise.all([readLiveTakes(lang), readBosses({ includeRetired: true })]);
   const { entries, skipped } = buildEntries(takes, bosses);
   const path = lookupPath(lang);
+  // A line the release shipped as sentence pieces (scripts/audio/sounds.mjs), its folder beside the table's.
+  const sounds = join(dirname(dirname(path)), "Sounds");
+  const lengths = readPieceLengths("bosses", lang);
+  for (const entry of entries) {
+    if (lengths[entry.file] && onDiskAsPieces(sounds, entry.file)) entry.pieces = lengths[entry.file];
+  }
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, renderLookup(entries));
   return { count: entries.length, skipped, path };

@@ -373,6 +373,10 @@ function Skin:Initialize()
     self.progress = Actions.ProgressBar(content)
     self.controls = CreateFrame("Frame", nil, content)
     self.controls:SetHeight(1)
+    self.pauseButton = Actions.PauseButton(self.controls, function() return self:HasClip() end,
+        function() self:UpdateControls() end)
+    -- Shown by ConfigureActions, for a line kept as pieces.
+    self.pauseButton:Hide()
     local play = Actions.StopButton(self.controls, function() return self:HasClip() end,
         function() self:UpdateControls() end)
     self.play, self.previous, self.skip = play, Actions.PreviousButton(self.controls), Actions.SkipButton(self.controls)
@@ -566,7 +570,8 @@ function Skin:ConfigurePortrait()
 end
 
 function Skin:ConfigureActions()
-    self.row = Actions:HeaderControls(self.frame, self.controls, self.buttons, self.clip)
+    self.row = Actions:HeaderControls(self.frame, self.controls,
+        Actions.WithPause(self.pauseButton, self.buttons, self.play, self.clip), self.clip)
     self:LayoutControls()
 end
 
@@ -599,6 +604,7 @@ function Skin:UpdateControls(relayout)
     if not self.clip then return end
     local paused = SoundQueue:IsPaused()
     Actions.SetPlayGlyph(self.play, Actions.HeadState())
+    Actions.SetPauseGlyph(self.pauseButton)
     self.title.text:SetText(Label(self.clip))
     Addon:ClipFont(self.title.text, self.clip)
     -- Why it has not started (the NPC's own greeting first, a fight), as every style says.
@@ -606,6 +612,7 @@ function Skin:UpdateControls(relayout)
     self.tail:SetStopped(paused)
     self:Count(Waiting())
     Actions.SetPausable(self.buttons)
+    Actions.SetPausable({ self.pauseButton })
     if relayout then self:LayoutControls() end
 end
 
@@ -635,7 +642,7 @@ end
 -- What the pointer lights, presses or scrolls in the window: a button pressed or lit changes its
 -- textures, which must not happen while it is one image.
 local function Clickables(self)
-    local list = { self.frame, self.play, self.skip, Transcript.frame }
+    local list = { self.frame, self.pauseButton, self.play, self.skip, Transcript.frame }
     for _, button in ipairs(self.row or {}) do table.insert(list, button) end
     return list
 end

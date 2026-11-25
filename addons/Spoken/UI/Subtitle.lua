@@ -9,6 +9,18 @@ setfenv(1, SpokenEnv)
 -- restart, skip and Stop behave exactly as they do in the windows.
 Subtitle = {}
 
+-- Stop's section is the page of sentences the subtitle shows (Sentences at Once).
+SoundQueue:AddSectionFinder(function(clip, elapsed)
+    if Addon:DisplayStyle() ~= "subtitle" or Subtitle.clip ~= clip or Subtitle.sample or not Subtitle.pages then
+        return nil
+    end
+    local start
+    for _, page in ipairs(Subtitle.pages) do
+        if page.start <= elapsed + 1e-6 then start = page.start end
+    end
+    return start
+end)
+
 -- The widest a line runs, padding included. LoreTeller matched Plumber's talking head.
 local WIDTH = 512
 local PAD, TOP_PAD, TITLE_GAP, BOTTOM_PAD, LINE_GAP = 16, 12, 8, 12, 2
@@ -742,6 +754,25 @@ function Subtitle:Prepare(clip, text)
     end
 end
 
+--- `at`, moved inside the page that holds word `word` of the line: a line resumed there shows
+--- that page at once. The pages' times are estimated by characters and the words' by their own
+--- weights, so the two can disagree near a page's edge.
+function Subtitle:PageTimeFor(clip, word, at)
+    if not word or self.clip ~= clip or not self.pages then return at end
+    local first = 1
+    for index, page in ipairs(self.pages) do
+        local count = #Transcript:Split(page.text)
+        if word < first + count then
+            local following = self.pages[index + 1]
+            if at < page.start then return page.start end
+            if following and at >= following.start then return math.max(page.start, following.start - 0.05) end
+            return at
+        end
+        first = first + count
+    end
+    return at
+end
+
 --- With the clip's own word times, each page turns when the voice reaches its first word. A page
 --- cut inside a word counts that word twice; the totals then disagree and the estimate stays.
 function Subtitle:TimePages(words, duration)
@@ -762,6 +793,13 @@ end
 function Subtitle:Render()
     -- With no window there is no paused portrait to say so; the title says it instead.
     local paused = SoundQueue:IsPaused() and not self.sample
+    if paused then
+        local word = format("(%s)", Actions.HaltWord())
+        if self.pausedLabel:GetText() ~= word then
+            self.pausedLabel:SetText(word)
+            self.shownPaused = nil
+        end
+    end
     if paused ~= self.shownPaused then
         self.shownPaused = paused
         -- With Show Name off the row is there only while stopped, so the words move for it.
@@ -908,17 +946,20 @@ function Subtitle:Corner(clip)
     self:LayOutControls()
 end
 
---- The grabber only while the subtitle can move, the playback buttons, then Report if the line
---- has it. Preview can be positioned without exposing playback actions for an unrelated queue.
+--- The grabber only while the subtitle can move, the playback buttons (Pause only for a line kept
+--- as pieces), then Report if the line has it. Preview can be positioned without exposing playback actions for an unrelated queue.
 function Subtitle:LayOutControls()
     local row = {}
     local movable = not Locked()
     self.mover:SetShown(movable)
     if movable then row[1] = self.mover end
     local playback = not self.sample
-    for _, control in ipairs({ self.previous, self.pause, self.skip, self.eject }) do
-        control:SetShown(playback)
-        if playback then row[#row + 1] = control end
+    local resumes = playback and SoundQueue:Resumes(self.clip)
+    self.pauseButton:SetShown(resumes)
+    for _, control in ipairs({ self.previous, self.pauseButton, self.pause, self.skip, self.eject }) do
+        local shown = playback and (control ~= self.pauseButton or resumes)
+        control:SetShown(shown)
+        if shown then row[#row + 1] = control end
     end
     if self.report then row[#row + 1] = self.report end
     Actions.LayOutRow(self.controls, row, CONTROL_GAP)
@@ -929,7 +970,7 @@ end
 function Subtitle:BuildControls()
     local frame = self.frame
     local controls = CreateFrame("Frame", nil, frame)
-    controls:SetSize(CONTROL_SIZE * 6 + CONTROL_GAP * 5, CONTROL_SIZE)
+    controls:SetSize(CONTROL_SIZE * 7 + CONTROL_GAP * 6, CONTROL_SIZE)
     controls:SetFrameLevel(frame:GetFrameLevel() + 2)
     controls:SetAlpha(0)
     controls:Hide()
@@ -962,6 +1003,9 @@ function Subtitle:BuildControls()
     controls:SetScript("OnHide", HideControls)
     frame:SetScript("OnHide", HideControls)
 
+    -- self.pause is Stop/Replay; Pause/Resume is self.pauseButton, before it. LayOutControls places them.
+    self.pauseButton = Actions.PauseButton(controls, nil, function() self:UpdateControls() end)
+    self.pauseButton:Hide()
     local pause = Actions.StopButton(controls, nil, function() self:UpdateControls() end)
     local previous = Actions.PreviousButton(controls)
     previous:SetPoint("LEFT", mover, "RIGHT", CONTROL_GAP, 0)
@@ -1008,7 +1052,11 @@ end
 
 function Subtitle:UpdateControls()
     Actions.SetPlayGlyph(self.pause, Actions.HeadState())
-    Actions.SetPausable({ self.pause, self.previous, self.skip, self.eject })
+    Actions.SetPauseGlyph(self.pauseButton)
+    Actions.SetPausable({ self.pauseButton, self.pause, self.previous, self.skip, self.eject })
+    if self.pauseButton:IsShown() ~= (not self.sample and SoundQueue:Resumes(self.clip)) then
+        self:LayOutControls()
+    end
     if self.mover:IsShown() == Locked() then
         self:StopMoving()
         self:LayOutControls()

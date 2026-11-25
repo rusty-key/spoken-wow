@@ -33,6 +33,13 @@
 // pack built without its clips on this machine. A pointer names the take's encoding, the Ogg its
 // pack ships. For quests, durations.json carries what the build would otherwise read from the clips.
 //
+// SPOKEN_PIECES=1, with SPOKEN_CLIP_POINTERS, ships a take cut into sentence pieces (take_pieces,
+// apps/web/src/lib/takes/pieces.ts) as a folder of pointers, <stem>/01.ogg, 02.ogg ..., so a paused
+// line resumes from its sentence. Their lengths go in the quests store's pieces.json, and for the
+// other sections beside the pack (pipelines/lib/pieces.mjs), where its lookup reads them. Off by default: the
+// line's file becomes a folder, which every player downloads again and only a Spoken that plays
+// pieces finds, so turning it on is a release decision (raise the section's MIN_SPOKEN with it).
+//
 // SPOKEN_SELECTED_TAKES=<file> writes there, once the folder is made, the takes it holds, as
 // { <take file>: { version, sha256 } }: what a staged release built from, which its review plays
 // (scripts/manager/release.mjs --stage).
@@ -45,6 +52,7 @@ import { fileURLToPath } from "node:url";
 
 import { readLines, shipped } from "../../pipelines/places/tools/lib/loredata.mjs";
 import { assignFiles } from "../../pipelines/places/tools/voice/naming.mjs";
+import { writePieceLengths } from "../../pipelines/lib/pieces.mjs";
 import { packTimes } from "../../pipelines/lib/word-times.mjs";
 import { archiveOf, encodesOf, ENCODING_PROFILE, sourceOf } from "../lib/archives.mjs";
 import { pointerText } from "../lib/clip-pointer.mjs";
@@ -111,6 +119,22 @@ const inTeamBucket = (prefix, sha) =>
   // Landed copies only: a waiting one is read from our quarantine, so its 404 is a loss, not a deletion.
   teamBuckets ? `exists (select 1 from "archive_object" a where a."prefix" = '${prefix}' and a."sha256" = ${sha} and not a."pending")::text` : `'false'`;
 
+// Sentence pieces, where asked for: only pointers carry them.
+const pieces = process.env.SPOKEN_PIECES === "1" && Boolean(process.env.SPOKEN_CLIP_POINTERS);
+// The last run's lengths would otherwise reach a lookup that finds the same folders.
+if (section !== "quests" && !list) await writePieceLengths(section, lang, {});
+if (pieces && psql(`select to_regclass('take_pieces') is not null`)[0] !== "t") {
+  console.error("SPOKEN_PIECES needs take_pieces (migration 0133): this database has none");
+  process.exit(1);
+}
+const piecesColumns = pieces
+  ? `coalesce(array_to_json(p."encodedSha256s")::text, ''), coalesce(array_to_json(p."bytes")::text, ''),
+     coalesce(array_to_json(p."lengthsSec")::text, '')`
+  : `'', '', ''`;
+const piecesJoin = pieces
+  ? `left join "take_pieces" p on p."source" = t."source" and p."sha256" = t."sha256" and p."profile" = :'profile'`
+  : "";
+
 // A quests file carries its extension and the other two do not; the archive directory is the file
 // without it either way.
 const listing = psql(`select t."file", coalesce(t."archiveFile", ''),
@@ -118,10 +142,11 @@ const listing = psql(`select t."file", coalesce(t."archiveFile", ''),
                              coalesce(e."encodedSha256", ''), coalesce(e."bytes"::text, ''), coalesce(e."durationSec"::text, ''),
                              coalesce(to_json(t."shownText")::text, ''),
                              ${inTeamBucket("takes", `t."sha256"`)}, ${inTeamBucket("encodings", `e."encodedSha256"`)},
-                             t."version"
+                             t."version", ${piecesColumns}
                         from "take" t
                         left join "take_encoding" e
                           on e."source" = t."source" and e."sha256" = t."sha256" and e."profile" = :'profile'
+                        ${piecesJoin}
                        where t."source" = :'source' and t."lang" = :'lang' and t."isCurrent"
                          -- the release's team, else the one with plain packs, so a build outside a release reads what it always did
                          and t."teamId" = ${releaseTeamSql(`:'lang'`)}
@@ -130,12 +155,18 @@ const listing = psql(`select t."file", coalesce(t."archiveFile", ''),
 // A live take's archive path: its bucket object, or the take's own directory (its file without
 // the extension) holding the archive file. Blank when the take's clip was never kept.
 const takes = listing.map((row) => {
-  const [file, name, times, sha256, encodedSha256, bytes, durationSec, shownText, teamTake, teamEncoding, version] = row.split("\t");
+  const [file, name, times, sha256, encodedSha256, bytes, durationSec, shownText, teamTake, teamEncoding, version,
+    pieceShas, pieceBytes, pieceLengths] = row.split("\t");
   const stem = file.replace(/\.mp3$/, "");
+  // Two or more: a take recorded "whole" has none, and ships as one file.
+  const split = pieceShas ? JSON.parse(pieceShas) : [];
   return {
     file, stem, sha256, archived: sourceOf("takes", sha256, name ? join(prefix, stem, name) : ""), times,
     encodedSha256, bytes, durationSec, shownText: shownText ? JSON.parse(shownText) : null,
     teamTake: teamTake === "true", teamEncoding: teamEncoding === "true", version: Number(version),
+    pieces: split.length >= 2
+      ? split.map((sha, i) => ({ sha, bytes: JSON.parse(pieceBytes)[i], length: Number(JSON.parse(pieceLengths)[i]) }))
+      : null,
   };
 });
 
@@ -290,15 +321,48 @@ async function writeEncodingPointers(pointed) {
     process.exit(1);
   }
   if (gone.size) console.warn(`  ${gone.size} live takes left out: their team deleted the Ogg from its bucket, e.g. ${[...gone][0]}`);
+  // A team-kept piece its team deleted ships its line whole, as it was before it was cut.
+  const whole = new Set();
+  await eachParallel(pointed.filter((take) => take.pieces && take.teamEncoding && !gone.has(take.file)), async (take) => {
+    for (const { sha } of take.pieces) {
+      const res = await fetchRetrying(`${archiveBase(process.env.SPOKEN_ARCHIVE_URL)}encodings/${sha}`, (u) => fetch(u, { method: "HEAD" }));
+      if (res.status === 404) return void whole.add(take.file);
+      if (!res.ok) unreachable.push(`${take.file}: HTTP ${res.status}`);
+    }
+  });
+  if (unreachable.length) {
+    console.error(`error: ${unreachable.length} team-kept pieces could not be checked, e.g. ${unreachable[0]}`);
+    process.exit(1);
+  }
+  const shipped = pointed.filter((take) => !gone.has(take.file));
+  const cut = shipped.filter((take) => take.pieces && !whole.has(take.file));
   let done = 0;
-  await eachParallel(pointed.filter((take) => !gone.has(take.file)), async ({ stem, encodedSha256, bytes }) => {
-    await writeFile(join(paths.out, `${stem}.ogg`), pointerText(encodedSha256, bytes, "encodings"));
-    if (++done % 5000 === 0) console.log(`  ${done}/${pointed.length - gone.size} pointers`);
+  await eachParallel(shipped, async (take) => {
+    const { stem, encodedSha256, bytes } = take;
+    if (take.pieces && !whole.has(take.file)) {
+      await mkdir(join(paths.out, stem), { recursive: true });
+      for (const [i, piece] of take.pieces.entries()) {
+        const name = `${String(i + 1).padStart(2, "0")}.ogg`;
+        await writeFile(join(paths.out, stem, name), pointerText(piece.sha, piece.bytes, "encodings"));
+      }
+    } else {
+      await writeFile(join(paths.out, `${stem}.ogg`), pointerText(encodedSha256, bytes, "encodings"));
+    }
+    if (++done % 5000 === 0) console.log(`  ${done}/${shipped.length} pointers`);
   });
   // Only the quests build reads no database for its lengths; anywhere else this file would ship.
   if (section === "quests") {
-    const durations = Object.fromEntries(pointed.filter((take) => !gone.has(take.file)).map(({ stem, durationSec }) => [stem, Number(durationSec)]));
+    const durations = Object.fromEntries(shipped.map(({ stem, durationSec }) => [stem, Number(durationSec)]));
     await writeFile(join(paths.out, "durations.json"), `${JSON.stringify(durations)}\n`);
+  }
+  if (pieces && section === "quests") {
+    const lengths = Object.fromEntries(cut.map(({ stem, pieces: split }) => [stem, packTimes(split.map((p) => p.length))]));
+    await writeFile(join(paths.out, "pieces.json"), `${JSON.stringify(lengths)}\n`);
+  } else if (pieces) {
+    await writePieceLengths(section, lang, Object.fromEntries(cut.map(({ stem, pieces: split }) => [stem, split.map((p) => p.length)])));
+  }
+  if (pieces) {
+    console.log(`  ${cut.length} lines as sentence pieces`);
   }
   return gone;
 }

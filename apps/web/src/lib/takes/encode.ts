@@ -43,17 +43,24 @@ function finished(child: ChildProcess, command: string): Promise<void> {
 
 export type Encoders = { ffmpeg: string; oggenc: string };
 
+export const ENCODERS: Encoders = { ffmpeg: "ffmpeg", oggenc: "oggenc" };
+
 /**
  * ffmpeg decodes into oggenc. The pipeline listens on both ends of the pipe: an encoder that is
  * missing or exits early leaves the decoder writing into a closed pipe, and an unheard EPIPE is
  * an uncaught exception that takes the server down. Either failing kills both.
  */
-export async function encodeOgg(master: string, tools: Encoders = { ffmpeg: "ffmpeg", oggenc: "oggenc" }): Promise<Buffer> {
+export async function encodeOgg(master: string, tools: Encoders = ENCODERS): Promise<Buffer> {
+  return encodeOggFrom(["-f", "mp3", "-i", master], tools);
+}
+
+/** encodeOgg's recipe for what ffmpeg reads with `input`, its arguments up to the output's. */
+export async function encodeOggFrom(input: string[], tools: Encoders = ENCODERS): Promise<Buffer> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "spoken-encode-"));
   const out = path.join(dir, "clip.ogg");
   const decoder = spawn(
     tools.ffmpeg,
-    ["-nostdin", "-loglevel", "error", "-f", "mp3", "-i", master, "-ac", "1", "-f", "wav", "-"],
+    ["-nostdin", "-loglevel", "error", ...input, "-ac", "1", "-f", "wav", "-"],
     { stdio: ["ignore", "pipe", "pipe"], timeout: ENCODE_TIMEOUT_MS },
   );
   const encoder = spawn(tools.oggenc, ["-Q", "-q", "0", "-o", out, "-"], {

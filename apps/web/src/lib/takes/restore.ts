@@ -25,7 +25,8 @@ import type { Lang } from "@/lib/lang";
 import type { Source } from "@/lib/sections";
 
 import { encodeArchivedForPack } from "./encode";
-import { setLiveTake, takePath, takeSha256 } from "./store";
+import { cutArchivedForPack } from "./pieces";
+import { setLiveTake, takePath, takeMaster } from "./store";
 
 export async function restoreTake(
   source: Source,
@@ -42,6 +43,9 @@ export async function restoreTake(
   await setLiveTake(source, file, version, lang, by);
   // By its hash rather than by where it is read from: in dual mode a take is read from disk, but
   // its master is in the bucket too, which is all an encoding needs.
-  const sha256 = await takeSha256(source, file, version, lang);
-  if (sha256) await encodeArchivedForPack(source, sha256, { lang, file, version });
+  const take = await takeMaster(source, file, version, lang);
+  if (take) {
+    await encodeArchivedForPack(source, take.sha256, { lang, file, version });
+    await cutArchivedForPack(source, take.sha256, { lang, file, version, shownText: take.shownText, wordTimes: take.wordTimes });
+  }
 }

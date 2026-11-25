@@ -507,7 +507,7 @@ function SpokenPlaces:GetAudioClip(mapID, areaKey)
 		if clip and clip.file then
 			-- A pack built before packs shipped Ogg names no format, and its clips are mp3.
 			return "Interface\\AddOns\\" .. pack.addon .. "\\Sounds\\" .. clip.file .. (pack.format == "ogg" and ".ogg" or ".mp3"),
-				clip.len, pack, clip.file, clip.times, clip.text
+				clip.len, pack, clip.file, clip.times, clip.text, clip.pieces
 		end
 	end
 
@@ -574,7 +574,7 @@ end
 -- s:{mapID}:{key} -- and it is frozen: it is what the player dedups on, what a report
 -- names, and what audio-history is keyed by.
 function SpokenPlaces:NewLoreSound(mapID, areaKey)
-	local path, length, pack, fileName, times, said = self:GetAudioClip(mapID, areaKey)
+	local path, length, pack, fileName, times, said, pieces = self:GetAudioClip(mapID, areaKey)
 	if not path then
 		return nil
 	end
@@ -613,6 +613,7 @@ function SpokenPlaces:NewLoreSound(mapID, areaKey)
 		key = areaKey and ("s:" .. mapID .. ":" .. areaKey) or ("z:" .. mapID),
 		path = path,
 		length = length,
+		pieces = pieces,
 		fileName = fileName,
 		-- The pack it plays from and its voice, which a report names.
 		packFolder = pack.addon,

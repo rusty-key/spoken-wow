@@ -39,3 +39,9 @@ test("the fixture the Lua tests load is what the generator writes", async () => 
   }
   assert.equal(await readFile(fixture, "utf8"), lua);
 });
+
+test("a place shipped as sentence pieces lists their lengths after its own fields", () => {
+  const row = { file: "1411/razor-hill", len: 12.3, times: [0, 0.5], pieces: "5.2 7.1" };
+  assert.equal(fields(row), 'file = "1411\\\\razor-hill", len = 12.3, times = "0 .5", pieces = "5.2 7.1"');
+  assert.equal(fields({ file: "1411/zone", len: 3 }).includes("pieces"), false);
+});
