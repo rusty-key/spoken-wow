@@ -340,8 +340,9 @@ local OWN_STYLES = { subtitle = true, minimal = true, classic = true, dialogueui
 --- Public. Offer a narrator style of your own: a card among Spoken's narrator styles, titled
 --- `info.title` over `info.description`, with `info.picture` (a texture) where you give one. While
 --- it is the style, Spoken shows none of its own windows and calls `info.Update(clip)` whenever the
---- line to show changes: the clip to show, or nil to show nothing. Draw it yourself: ShowCaptions
---- puts Spoken's captions in it and CreateControl its buttons; the rest is on the Public API.
+--- line to show changes: the clip to show, or nil to show nothing. Draw it yourself: ShowCaptions,
+--- CreateControl, CreatePortrait and CreateActions give it Spoken's own parts; the rest is on the
+--- Public API.
 --- `info.settings(layout)`, optional, adds a section of rows to Spoken's page, shown while it is
 --- the style. Register while your addon loads, so the card is there when the page is built. `id`
 --- taken twice replaces the first.
@@ -395,6 +396,56 @@ function Spoken:CreateControl(parent, kind)
     button:HookScript("OnShow", Current)
     Current(button)
     return button
+end
+
+--- Public. Spoken's round portrait, `size` across, for a window of your own: `portrait:SetClip(clip)`
+--- shows the line's speaker as Spoken's windows do (their face, else the line's own picture) with the
+--- line's badge on the ring, and draws the face again once the game has it; nil shows nobody.
+--- `portrait:SetRingColor(r, g, b)` tints the ring; with no colour, the ring is Spoken's again.
+--- Anchor it yourself.
+---@param parent table a frame
+---@param size number
+---@return table portrait
+function Spoken:CreatePortrait(parent, size)
+    Require(type(parent) == "table" and type(size) == "number", "CreatePortrait needs a parent frame and a size")
+    local portrait = Face.Build(parent, size, parent:GetFrameLevel() + 2)
+    function portrait:SetClip(clip)
+        self.clip = clip
+        Face.Show(self, clip)
+    end
+    function portrait:SetRingColor(r, g, b)
+        self.ringColor = r and { r, g, b } or nil
+        if r then self.ring:SetVertexColor(r, g, b) else Actions.RefreshRings() end
+    end
+    -- A face the game had not cached when the line came is drawn once it has; Spoken's own windows
+    -- ask the same while they show.
+    portrait:HookScript("OnUpdate", function(self)
+        if self.clip and StaticPortrait:Resolved() then Face.Show(self, self.clip) end
+    end)
+    return portrait
+end
+
+--- Public. The line's own buttons, as Spoken's windows show them beside its controls: Report, and
+--- whatever the module that queued the line adds, minus those the player hid in Spoken's settings.
+--- `row:SetClip(clip)` puts them in the row, left to right, and sizes the row to them; nil empties
+--- it. Anchor the row yourself.
+---@param parent table a frame
+---@return table row
+function Spoken:CreateActions(parent)
+    Require(type(parent) == "table", "CreateActions needs a parent frame")
+    local row = CreateFrame("Frame", nil, parent)
+    row:SetSize(1, 1)
+    Actions:Build(row)
+    function row:SetClip(clip)
+        Actions:Configure(self, clip)
+        local shown = {}
+        for _, button in ipairs(self.actions.buttons) do
+            -- One anchored to a window's header stands in for a control a window has; here it has none.
+            if button.action.anchor == "header" then button:Hide() else table.insert(shown, button) end
+        end
+        Actions.LayOutRow(self, shown, Actions.ROUND_GAP)
+    end
+    return row
 end
 
 --- Public. Spoken's captions of the line shown, in `parent`: from its top left, `width` wide, with the

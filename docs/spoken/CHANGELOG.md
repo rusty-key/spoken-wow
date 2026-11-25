@@ -8,7 +8,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   `"story:boss"`, and a registration with the wrong arguments now raises at your line.
   *([rusty-key](https://github.com/rusty-key))*
 - For feature addons: `Spoken:RegisterNarrator` adds a narrator style your addon draws itself, with
-  its own card and settings, and Spoken's captions and round buttons to put in it. *([rusty-key](https://github.com/rusty-key))*
+  its own card and settings, and Spoken's captions, portrait and buttons to put in it. *([rusty-key](https://github.com/rusty-key))*
 
 ## 3.13.1 — 2026-11-25
 

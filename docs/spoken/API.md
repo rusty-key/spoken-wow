@@ -243,17 +243,20 @@ the player turned the narrator off for its part, or DialogueUI's dialog covers t
 the player previews your style with nothing playing, it is told a sample line. If `Update` raises,
 the line still plays and the error goes to the debug log.
 
-Two calls give your window what Spoken's own have, drawn and kept current by Spoken:
+These give your window the parts Spoken's own windows have, drawn and kept current by Spoken:
 
 | Call | |
 |---|---|
 | `Spoken:ShowCaptions(parent, width)` | Spoken's captions of the line shown, in `parent` from its top left, `width` wide: the player's Word Size, Rows at Once, Highlight Words and Type Words Out, scrolling as the line is read. Returns the height they take, 0 where the line shows no words. Call it on each `Update` and size your window to it. |
 | `Spoken:CreateControl(parent, kind)` | One of Spoken's round buttons: `"previous"`, `"stop"` (Stop, then Replay), `"skip"` or `"stopall"`. It acts when clicked, has its tooltip, and greys out while it can do nothing. Anchor it yourself. Raises for another `kind`. |
+| `Spoken:CreatePortrait(parent, size)` | Spoken's round portrait. `portrait:SetClip(clip)` shows the line's speaker with the line's badge on the ring, and draws the face again once the game has it. `portrait:SetRingColor(r, g, b)` tints the ring; no colour gives Spoken's back. |
+| `Spoken:CreateActions(parent)` | A row for the line's own buttons: Report, and whatever the module that queued the line adds, minus those the player hid. `row:SetClip(clip)` fills it and sizes the row to them. |
 
 The rest of what a window usually needs, all Public:
 
 - **The reading position:** `GetCaption()`, every frame, for a progress bar of your own (`progress`).
-- **Who and what:** the clip's `present.header`, `present.label` and `present.portrait.creatureID`.
+- **Who and what:** the clip's `present.header` and `present.label`, and `present.portrait.creatureID`
+  for anything of your own about the speaker.
 - **Status:** `IsPaused()`, `GetWaitingCount()`, `GetHeldReason(clip)`, and `AUDIO_CHANGED` to
   redraw them.
 - **Controls:** `Pause()`, `Resume()`, `Skip()`, `Previous()` with `CanPrevious()`, `StopAll()`.

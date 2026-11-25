@@ -141,6 +141,36 @@ do
     Expect("the captions go in the window, as tall as the player's rows", tostring(env.Transcript.frame:GetParent() == window)
         .. " " .. tostring(height > 0) .. " " .. env.Transcript.frame:GetWidth(), "true true 300")
     Expect("ShowCaptions needs a frame and a width", not pcall(Spoken.ShowCaptions, Spoken, window), true)
+
+    local portrait = Spoken:CreatePortrait(window, 84)
+    portrait:SetClip(H.Clip({ present = { bullet = "quest-accept", portrait = { kind = "none" } } }))
+    Expect("the portrait shows the line's badge on its ring, as Spoken's windows do",
+        tostring(portrait.badge:IsShown()) .. " " .. tostring(portrait.badge:GetTexture() == env.Face.BADGES["quest-accept"]), "true true")
+    portrait:SetRingColor(.1, .2, .3)
+    Expect("...its ring in the narrator's colour", table.concat(portrait.ring.vertexColor, " ", 1, 3), "0.1 0.2 0.3")
+    portrait:SetClip(nil)
+    Expect("...and no badge with no line", portrait.badge:IsShown(), false)
+
+    local clicked
+    local report = { id = "report", icon = "Bug", label = "Report", onClick = function(clip) clicked = clip.key end }
+    local row = Spoken:CreateActions(window)
+    local line = H.Clip({ key = "with-report", present = { actions = { report, { id = "stopGossip", anchor = "header",
+        create = function(parent) return CreateFrame("Button", nil, parent) end } } } })
+    row:SetClip(line)
+    local function Shown()
+        local names = {}
+        for _, button in ipairs(row.actions.buttons) do
+            if button:IsShown() then table.insert(names, button.action.id) end
+        end
+        return table.concat(names, ",")
+    end
+    Expect("the line's own buttons go in the row, a header's left out", Shown() .. " " .. tostring(row:GetWidth() > 1), "report true")
+    row.actions.buttons[1]:GetScript("OnClick")(row.actions.buttons[1])
+    Expect("...and act on the line", clicked, "with-report")
+    frame.HiddenActions = { report = true }
+    row:SetClip(line)
+    Expect("...minus those the player hid", Shown(), "")
+    frame.HiddenActions = {}
 end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
