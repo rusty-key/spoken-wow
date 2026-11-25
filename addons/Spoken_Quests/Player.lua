@@ -452,6 +452,10 @@ local function OnPage(clip)
     return Addon:IsPageLine(clip)
 end
 
+local function EndsWithWindow(clip)
+    return Addon:EndsWithWindow(clip)
+end
+
 function Player:Setup()
     if self.source then
         return true
@@ -475,6 +479,7 @@ function Player:Setup()
         -- Printed after Spoken's own by its Show Diagnostics.
         diagnostics = function() Options:PrintDiagnostics() end,
         onScreen = OnPage,
+        endsWithWindow = EndsWithWindow,
         -- What Spoken's settings show on this part's card: which voice packs are installed.
         packs = function()
             local names = {}
@@ -492,6 +497,7 @@ function Player:Setup()
         interClipGap = 0.55,
         testBeforeQueue = true,
         onScreen = OnPage,
+        endsWithWindow = EndsWithWindow,
         profiles = function() return Addon.db end,
         -- The voice packs that hold gossip.
         packs = function()

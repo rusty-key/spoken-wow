@@ -1443,6 +1443,8 @@ function Addon:MarkQuestOfferAccepted(questID)
         self:CancelTimer(offer.closeTimer)
         offer.closeTimer = nil
     end
+    -- The line plays on now, so the narrator may show it.
+    Player:RefreshConfig()
 end
 
 --- QUEST_FINISHED can arrive before QUEST_TURNED_IN, just as it can before QUEST_ACCEPTED. There
@@ -1460,6 +1462,29 @@ function Addon:MarkQuestTurnedIn(questID)
         self:CancelTimer(turnIn.closeTimer)
         turnIn.closeTimer = nil
     end
+    Player:RefreshConfig()
+end
+
+--- Whether closing the window stops `soundData`, at once or after the accept grace, as
+--- QUEST_FINISHED and GOSSIP_CLOSED do. DialogueUI tells the game only after hiding its window, and
+--- the narrator must not show the line in between.
+function Addon:EndsWithWindow(soundData)
+    local audio = self.db.profile.Audio
+    if not audio.StopAudioOnDisengage then
+        return false
+    end
+    local offer = self.openQuestOffer
+    if offer and offer.soundData == soundData then
+        return audio.StopOnAccept or not offer.accepted
+    end
+    for _, record in ipairs(QuestTurnInRecords()) do
+        for _, line in ipairs(record.soundData) do
+            if line == soundData then
+                return audio.StopOnAccept or not record.turnedIn
+            end
+        end
+    end
+    return self:IsPageLine(soundData)
 end
 
 function ResolveQuestID(source, questID, questTitle, targetName, questText, quiet)
@@ -2074,6 +2099,7 @@ function Addon:QUEST_FINISHED()
             if self.openQuestOffer == offer then
                 self.openQuestOffer = nil
             end
+            Player:RefreshConfig()
         end, QUEST_ACCEPT_GRACE)
     end
     local turnIn = self.openQuestTurnIn
@@ -2116,6 +2142,7 @@ function Addon:QUEST_FINISHED()
                         break
                     end
                 end
+                Player:RefreshConfig()
             end, QUEST_ACCEPT_GRACE)
         end
     end
@@ -2149,6 +2176,8 @@ function Addon:QUEST_FINISHED()
     currentQuestSoundData = nil
     currentGossipSoundData = nil
     EndGreetingTextWait()
+    -- A line the close left playing no longer ends with the window: the narrator may show it.
+    Player:RefreshConfig()
 end
 
 function Addon:GOSSIP_CLOSED()
@@ -2157,6 +2186,7 @@ function Addon:GOSSIP_CLOSED()
     end
     currentGossipSoundData = nil
     EndGreetingTextWait()
+    Player:RefreshConfig()
 
     selectedGossipOption = nil
     gossipOptionPicked = nil

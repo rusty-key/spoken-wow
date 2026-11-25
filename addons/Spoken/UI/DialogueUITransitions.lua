@@ -90,6 +90,9 @@ function Skin:WatchDialogs()
     self.queuedAt, self.sessions = setmetatable({}, { __mode = "k" }), {}
     -- The lines its earlier pages queued, while the quest window stays open from page to page.
     self.earlier = {}
+    -- The lines each dialog had as it closed: the narrator keeps off those its module is about to
+    -- stop, so a line queued after the close (read on accepting) still shows.
+    self.closedWith = {}
     for _, name in ipairs({ "DUIQuestFrame", "DUIBookFrame" }) do
         local dialog = _G[name]
         if type(dialog) == "table" and dialog.GetEffectiveScale then
@@ -97,12 +100,20 @@ function Skin:WatchDialogs()
             self.dialogNames = self.dialogNames or {}
             self.dialogNames[dialog] = name
             watch:SetScript("OnHide", function()
+                -- Hidden from ShowUI (a cutscene, gossip another addon handles), the conversation
+                -- goes on and no close event will stop its lines.
+                if self.showingUI == dialog then
+                    self.closedWith[dialog] = nil
+                else
+                    self:KeepClosedWith(dialog)
+                end
                 self.justClosed = { dialog = dialog, at = GetTime() }
                 self:Settle(dialog)
             end)
             -- Opening, it shows the line itself: this one steps aside at once (Skin:Covered).
             watch:SetScript("OnShow", function()
                 self.earlier[dialog] = nil
+                self.closedWith[dialog] = nil
                 self:StartSession(dialog)
                 self:Update()
             end)
@@ -169,6 +180,8 @@ function Skin:Settle(dialog)
     if not (self:IsEnabled() and PlayerFrame:Current()) or frame:GetParent() ~= UIParent then return end
     -- Fading as one image: it finishes, then shows the line as it does any.
     if self:Defer("update") then return end
+    -- Its module stops it once the game says the window closed: nothing to take over.
+    if self:HeldByWindow(PlayerFrame:Current()) then self:Update(); return end
     self:StopTuck()
     self.tuckWaiting = nil
     self:StopLanding()
@@ -388,8 +401,12 @@ local PAPER_FRAMES = { "BackgroundFrame", "Footer" }
 --- Whether `dialog` closing now hands a line on: its own, which this window settles out of, or one
 --- it queued, whose page goes behind this window (Skin:Settle).
 function Skin:FadesOnClose(dialog)
-    return self:IsEnabled() and self.frame ~= nil and self.frame:GetParent() == UIParent
-        and PlayerFrame:Current() ~= nil and (self:Owns(dialog) or self:QueuedBy(dialog) ~= nil)
+    if not (self:IsEnabled() and self.frame ~= nil and self.frame:GetParent() == UIParent) then return false end
+    local clip, queued = PlayerFrame:Current(), self:QueuedBy(dialog)
+    if clip == nil then return false end
+    -- Its own line about to stop, the narrator stays hidden: nothing behind it to hand on either.
+    if self:Owns(dialog) then return not self:EndsWithWindow(clip) end
+    return queued ~= nil and not self:EndsWithWindow(queued)
 end
 
 --- Whether the game still has the player talking to an NPC (gossip or a quest giver), as DialogueUI
@@ -562,12 +579,40 @@ end
 --- DialogueUI dialog not open yet: the game opens a book before DialogueUI's book view shows it.
 function Skin:AwaitsDialog(clip)
     local at = clip and self.queuedAt and self.queuedAt[clip]
-    local source = clip and clip.source
-    if not (at and source and source.onScreen) or GetTime() - at >= JUST_BEFORE then return false end
-    local ok, open = pcall(source.onScreen, clip)
-    if not (ok and open) then return false end
+    if not at or GetTime() - at >= JUST_BEFORE or not self:Ask(clip, "onScreen") then return false end
     for _, dialog in ipairs(self.dialogs) do
         if not dialog:IsShown() and self:Shows(dialog, clip) then return true end
+    end
+    return false
+end
+
+--- `clip`'s source's answer to `question`: false where it has none, or fails.
+function Skin:Ask(clip, question)
+    local ask = clip and clip.source and clip.source[question]
+    if not ask then return false end
+    local ok, answer = pcall(ask, clip)
+    return ok and answer == true
+end
+
+--- Whether `clip`'s module stops it as the window that showed it closes (Stop When Window Closes).
+function Skin:EndsWithWindow(clip)
+    return self:Ask(clip, "endsWithWindow")
+end
+
+--- The lines a dialog had as it closed, so a line queued after (read on accepting) is not one.
+function Skin:KeepClosedWith(dialog)
+    local lines = setmetatable({}, { __mode = "k" })
+    for clip in pairs(self.sessions[dialog] or {}) do lines[clip] = true end
+    for clip in pairs(self.earlier[dialog] or {}) do lines[clip] = true end
+    self.closedWith[dialog] = lines
+end
+
+--- Whether `clip` is a line of a closed dialog that its module is about to stop: the window keeps
+--- out of the way until it has, or has said the line plays on (an offer accepted).
+function Skin:HeldByWindow(clip)
+    if not clip then return false end
+    for dialog, lines in pairs(self.closedWith or {}) do
+        if lines[clip] and not dialog:IsShown() then return self:EndsWithWindow(clip) end
     end
     return false
 end

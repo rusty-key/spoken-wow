@@ -930,6 +930,142 @@ _G.DialogueUI_DB = nil
 
 env.Addon.PlayerStyle = playerStyle
 
+---------------------------------------------------------------- closing with Stop When Window Closes
+-- The order DialogueUI 1.0.7 closes in, as logged in game. Escape and X call HideUI, and
+-- DialogueUI tells the game only once its window has really hidden, so QUEST_FINISHED comes after
+-- the hide. Decline and Accept tell the game first and hide after. With Stop Narration When
+-- Accepting off, an offer's line waits for QUEST_ACCEPTED, which comes after the window is gone.
+do
+    local audio, skin = VO.Addon.db.profile.Audio, env.DialogueUIPlayer
+    _G.DialogueUI_DB = { Theme = 1, FrameSize = 2 }
+    _G.DUIFont_Quest_Paragraph = { GetFont = function() return "Fonts/FRIZQT__.TTF", 14 end }
+    DUI.frameWidth, DUI.frameHeight, DUI.frameOffsetX = 624, 734, 0
+    env.Addon.db.profile.Frame.Style = "dialogueui"
+    env.PlayerFrame:RefreshConfig()
+    local watch = skin.dialogWatches[DUI]
+    local closeEvent
+    -- Not stub.HidePanels: the stub keeps every named frame's shown state there, the narrator's too.
+    local function EndDialog()
+        world.questID = 0
+        for _, name in ipairs({ "QuestFrameDetailPanel", "QuestFrameProgressPanel", "QuestFrameRewardPanel",
+            "QuestFrameGreetingPanel" }) do
+            world.panels[name] = nil
+        end
+        world.gossipText, world.gossipOptions = nil, nil
+    end
+    -- DialogueUI's own OnHide tells the game. The watch is a child, so it hears the hide first.
+    local function Hidden()
+        watch.scripts.OnHide(watch)
+        if closeEvent then
+            local event = closeEvent
+            closeEvent = nil
+            EndDialog()
+            stub.FireEvent(event)
+        end
+    end
+    local function Open(event)
+        Spoken:StopAll()
+        skin:SetVisible(false, true)
+        world.questID = event == "GOSSIP_SHOW" and 0 or 101
+        world.npcGUID = "Creature-0-0-0-0-4321-0"
+        stub.HidePanels()
+        DUI:Show()
+        watch.scripts.OnShow(watch)
+        DUI:SetAlpha(1)
+        DUI.ContentFrame:SetAlpha(1)
+        if event == "GOSSIP_SHOW" then stub.ShowGossip(GREETING) end
+        DUI.handler = event == "GOSSIP_SHOW" and "HandleGossip" or "HandleQuestDetail"
+        DUI[DUI.handler](DUI)
+        -- The game's event, not the handler alone: it opens the offer that QUEST_ACCEPTED settles.
+        stub.FireEvent(event)
+        for _ = 1, 20 do
+            Tick(0.05)
+        end
+        return Spoken:GetCurrent()
+    end
+    -- Runs the frames after a close for `seconds`: whether the narrator showed at any point.
+    local function Watch(seconds)
+        local appeared = false
+        for _ = 1, math.floor(seconds / 0.02 + 0.5) do
+            local wasShown = DUI:IsShown()
+            stub.Advance(0.02)
+            skin:CloseStep(0.02)
+            if wasShown and not DUI:IsShown() then Hidden() end
+            skin:Tick(0.02)
+            appeared = appeared or (skin.frame:IsShown() and (skin.level or 0) > 0)
+        end
+        return appeared
+    end
+    local function Escape(event)
+        closeEvent = event == "GOSSIP_SHOW" and "GOSSIP_CLOSED" or "QUEST_FINISHED"
+        local wasShown = DUI:IsShown()
+        DUI:Hide()
+        if wasShown and not DUI:IsShown() then Hidden() end
+    end
+    local function Decline()
+        EndDialog()
+        stub.FireEvent("QUEST_FINISHED")
+        local wasShown = DUI:IsShown()
+        DUI:Hide()
+        if wasShown and not DUI:IsShown() then Hidden() end
+    end
+
+    -- The quest the tests above left open is closed, so its page reads afresh.
+    world.questID = 0
+    stub.FireEvent("QUEST_FINISHED")
+    stub.Advance(2)
+    audio.StopAudioOnDisengage = true
+    audio.GossipFrequency = VO.Enums.GossipFrequency.Always
+    for _, stopOnAccept in ipairs({ true, false }) do
+        audio.StopOnAccept = stopOnAccept
+        local tag = stopOnAccept and "" or ", Stop Narration When Accepting off"
+        for _, event in ipairs({ "QUEST_DETAIL", "GOSSIP_SHOW" }) do
+            local scenario = "Escape on " .. event .. tag
+            Expect(scenario .. ": the window reads its line", Open(event) ~= nil and skin:Owns(DUI), true)
+            Escape(event)
+            Expect(scenario .. ": the narrator never shows the line", Watch(0.8), false)
+            Expect(scenario .. ": ...which stops", Spoken:GetCurrent(), nil)
+        end
+        Open("QUEST_DETAIL")
+        Decline()
+        Expect("Decline" .. tag .. ": the narrator never shows the line", Watch(0.8), false)
+        Expect("Decline" .. tag .. ": ...which stops", Spoken:GetCurrent(), nil)
+    end
+
+    -- Accepted after the window has gone, the line plays on and the narrator shows it.
+    local line = Open("QUEST_DETAIL")
+    Decline()
+    local early = Watch(0.2)
+    stub.FireEvent("QUEST_ACCEPTED", 101)
+    Expect("Accept, Stop Narration When Accepting off: the narrator waits for the accept", early, false)
+    Expect("...then shows the line", Watch(1.6), true)
+    Expect("...which plays on", Spoken:GetCurrent(), line)
+
+    -- An NPC's gossip still speaking as the window turns to a quest, which closes with it: the
+    -- quest's line stops, the gossip line plays on, and the narrator shows it once the close says so.
+    audio.StopOnAccept = true
+    local gossip = Open("GOSSIP_SHOW")
+    world.questID = 101
+    DUI.handler = "HandleQuestDetail"
+    DUI:HandleQuestDetail()
+    stub.FireEvent("QUEST_DETAIL")
+    VO.Addon:InvokeQuestHandler("QUEST_DETAIL", "test", true)
+    Expect("Escape on a quest after gossip: the gossip line still speaks", Spoken:GetCurrent(), gossip)
+    Escape("QUEST_DETAIL")
+    Watch(0.3)
+    Expect("...plays on after the close", Spoken:GetCurrent(), gossip)
+    Expect("...and the narrator shows it", Watch(1.6), true)
+
+    -- Without Stop When Window Closes the line plays on, so the narrator takes it over at once.
+    audio.StopAudioOnDisengage, audio.StopOnAccept = false, true
+    line = Open("QUEST_DETAIL")
+    Escape("QUEST_DETAIL")
+    Expect("Escape, Stop When Window Closes off: the narrator takes the line over", Watch(0.8), true)
+    Expect("...which plays on", Spoken:GetCurrent(), line)
+    Spoken:StopAll()
+    _G.DialogueUI_DB = nil
+end
+
 if Failures() > 0 then
     print(string.format("\n%d DialogueUI test(s) failed", Failures()))
     os.exit(1)
