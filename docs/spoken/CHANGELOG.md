@@ -4,8 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **With the Gamepad UI on, the minimap button's right-click menu no longer breaks the controller**
-  ("Interface action failed"). *([ArtisanGW](https://github.com/ArtisanGW))*
+- **The minimap button's right-click menu works with the Gamepad UI on,** and the controller keeps
+  working after it closes. *([ArtisanGW](https://github.com/ArtisanGW))*
 
 ## 3.13.0 — 2026-11-25
 
