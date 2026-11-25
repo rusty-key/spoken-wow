@@ -82,3 +82,8 @@ test("a take with no text has no text field", () => {
 test("the pack says its clips are Ogg, which Spoken_Bosses plays by that extension", () => {
   assert.match(renderLookup([{ map: 36, key: "a", file: "36/a", len: 1 }]), /^\tformat = "ogg",$/m);
 });
+
+test("a boss shipped as sentence pieces lists their lengths", () => {
+  const lua = renderLookup([{ map: 36, key: "edwin vancleef", file: "36/edwin-vancleef", len: 41.2, pieces: "20 21.2" }]);
+  assert.ok(lua.includes('file = "36\\\\edwin-vancleef", len = 41.2, pieces = "20 21.2" }'), lua);
+});

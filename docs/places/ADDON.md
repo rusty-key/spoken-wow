@@ -194,6 +194,10 @@ A pack is an addon folder with `Data/Sounds.lua`, which registers itself in
 - An entry may carry `text`, the words its take was voiced from, else the line's current ones.
   `PackLoreText` shows them over the lore where the pack is in the Text Language
   (`docs/spoken/CAPTIONS.md`). The lore tables are not changed. It did not change `PACK_FORMAT` either.
+- An entry may carry `pieces`, the lengths of the sentence pieces its clip is kept as: a folder,
+  `<file>/01.ogg`, `02.ogg`, ..., in place of `<file>.ogg`, so a paused line resumes from its sentence.
+  Places, Readables and Bosses write it the same way (`pipelines/lib/pieces.mjs`), only for a line a
+  release built with `SPOKEN_PIECES=1` shipped as pieces. Optional, so `PACK_FORMAT` stays 1.
 - No clip stands in for a missing one. A quest line used to, and players reported the lore as
   wrong.
 

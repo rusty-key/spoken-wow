@@ -9,7 +9,6 @@
 // zone), and listing it would ship a clip nothing plays.
 
 import { mkdir, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,7 +16,8 @@ import { quote } from "../../../lib/lua-text.mjs";
 import { packTimes } from "../../../lib/word-times.mjs";
 import { loadEnvFile } from "../lib/env.mjs";
 import { readLines, shipped } from "../lib/loredata.mjs";
-import { close as closeStore, loadCurrentLore, loadManifest, packDir, soundsDir } from "./store.mjs";
+import { clipOnDisk, onDiskAsPieces, readPieceLengths } from "../../../lib/pieces.mjs";
+import { close as closeStore, LANG, loadCurrentLore, loadManifest, packDir, soundsDir } from "./store.mjs";
 
 // The manifest stores a POSIX path because that is what the files on disk are.
 // WoW addresses its own files with backslashes, and Audio.lua already builds the
@@ -33,7 +33,8 @@ function luaPath(file) {
 export function fields(row) {
   const times = row.times ? `, times = ${quote(packTimes(row.times))}` : "";
   const text = row.text ? `, text = ${quote(row.text)}` : "";
-  return `file = ${luaPath(row.file)}, len = ${row.len}${times}${text}`;
+  const pieces = row.pieces ? `, pieces = ${quote(row.pieces)}` : "";
+  return `file = ${luaPath(row.file)}, len = ${row.len}${times}${text}${pieces}`;
 }
 
 // With neither text the field is left out, and the addon falls back to its own lore.
@@ -135,6 +136,7 @@ export async function buildLookup() {
   const manifest = await loadManifest();
   const currentLore = await loadCurrentLore();
   const lore = shipped(await readLines());
+  const pieceLengths = readPieceLengths("places", LANG);
 
   const zones = new Map();      // mapID -> row
   const subzones = new Map();   // mapID -> Map(key -> row)
@@ -146,7 +148,7 @@ export async function buildLookup() {
       notShipped++;
       continue;
     }
-    if (!existsSync(join(soundsDir(), `${record.file}.ogg`))) {
+    if (!clipOnDisk(soundsDir(), record.file)) {
       console.warn(`warning: ${id} is in the manifest but ${record.file}.ogg is not on disk`);
       missingFiles++;
       continue;
@@ -155,6 +157,8 @@ export async function buildLookup() {
     const [kind, mapIDText, ...rest] = id.split(":");
     const mapID = Number(mapIDText);
     const row = packRow(record, currentLore.get(id));
+    // Shipped as sentence pieces (scripts/audio/sounds.mjs): their folder is where the clip would be.
+    if (pieceLengths[record.file] && onDiskAsPieces(soundsDir(), record.file)) row.pieces = pieceLengths[record.file];
 
     if (kind === "z") {
       zones.set(mapID, row);

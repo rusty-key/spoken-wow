@@ -239,7 +239,8 @@ current text. Each piece is encoded as the whole clip is, and `take_pieces`
 records them, or `whole` where no cut was found. `apps/web/scripts/cut-pieces.mts` cuts the live
 takes committed before that. A Manager build with `SPOKEN_PIECES=1` ships a cut line as a folder of
 pointers, `quests/5-accept/01.ogg`, `02.ogg`, ..., and their lengths in `audio/pieces.json`, which
-`build` writes into `sound_pieces_table.lua` (`SoundPiecesByFileName`). It is off by default: the
+`build` writes into `sound_pieces_table.lua` (`SoundPiecesByFileName`). Places, Readables and Bosses
+packs ship pieces the same way, their lengths in each entry's `pieces` (`docs/places/ADDON.md`). It is off by default: the
 line's file becomes a folder, so every player downloads it again and only a Spoken that plays pieces
 finds it, and turning it on needs the pack's `MIN_SPOKEN` raised with it. A zip build ships no pieces.
 

@@ -192,3 +192,8 @@ test("the fixture the speed-pack tests read is what the generator writes", async
   }
   assert.equal(await readFile(fixture, "utf8"), lua);
 });
+
+test("a page shipped as sentence pieces lists their lengths", () => {
+  const lua = packLua("enUS", [{ pageId: 7, file: "7", durationSec: 9, wordTimes: null, text: null, shownText: null, pieces: "4 5" }]);
+  assert.ok(lua.includes('[7] = { file = "7", len = 9, pieces = "4 5" },'), lua);
+});

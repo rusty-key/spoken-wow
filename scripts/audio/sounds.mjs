@@ -33,9 +33,10 @@
 // pack built without its clips on this machine. A pointer names the take's encoding, the Ogg its
 // pack ships. For quests, durations.json carries what the build would otherwise read from the clips.
 //
-// SPOKEN_PIECES=1, with SPOKEN_CLIP_POINTERS, ships a quests take cut into sentence pieces
-// (take_pieces, apps/web/src/lib/takes/pieces.ts) as a folder of pointers, <stem>/01.ogg, 02.ogg ...,
-// and their lengths in pieces.json, so a paused line resumes from its sentence. Off by default: the
+// SPOKEN_PIECES=1, with SPOKEN_CLIP_POINTERS, ships a take cut into sentence pieces (take_pieces,
+// apps/web/src/lib/takes/pieces.ts) as a folder of pointers, <stem>/01.ogg, 02.ogg ..., so a paused
+// line resumes from its sentence. Their lengths go in the quests store's pieces.json, and for the
+// other sections beside the pack (pipelines/lib/pieces.mjs), where its lookup reads them. Off by default: the
 // line's file becomes a folder, which every player downloads again and only a Spoken that plays
 // pieces finds, so turning it on is a release decision (raise the section's MIN_SPOKEN with it).
 //
@@ -51,6 +52,7 @@ import { fileURLToPath } from "node:url";
 
 import { readLines, shipped } from "../../pipelines/places/tools/lib/loredata.mjs";
 import { assignFiles } from "../../pipelines/places/tools/voice/naming.mjs";
+import { writePieceLengths } from "../../pipelines/lib/pieces.mjs";
 import { packTimes } from "../../pipelines/lib/word-times.mjs";
 import { archiveOf, encodesOf, ENCODING_PROFILE, sourceOf } from "../lib/archives.mjs";
 import { pointerText } from "../lib/clip-pointer.mjs";
@@ -117,10 +119,12 @@ const inTeamBucket = (prefix, sha) =>
   // Landed copies only: a waiting one is read from our quarantine, so its 404 is a loss, not a deletion.
   teamBuckets ? `exists (select 1 from "archive_object" a where a."prefix" = '${prefix}' and a."sha256" = ${sha} and not a."pending")::text` : `'false'`;
 
-// Sentence pieces, where asked for: only the quests pointers carry them.
-const pieces = process.env.SPOKEN_PIECES === "1" && section === "quests" && Boolean(process.env.SPOKEN_CLIP_POINTERS);
+// Sentence pieces, where asked for: only pointers carry them.
+const pieces = process.env.SPOKEN_PIECES === "1" && Boolean(process.env.SPOKEN_CLIP_POINTERS);
+// The last run's lengths would otherwise reach a lookup that finds the same folders.
+if (section !== "quests" && !list) await writePieceLengths(section, lang, {});
 if (pieces && psql(`select to_regclass('take_pieces') is not null`)[0] !== "t") {
-  console.error("SPOKEN_PIECES needs take_pieces (migration 0132): this database has none");
+  console.error("SPOKEN_PIECES needs take_pieces (migration 0133): this database has none");
   process.exit(1);
 }
 const piecesColumns = pieces
@@ -351,9 +355,13 @@ async function writeEncodingPointers(pointed) {
     const durations = Object.fromEntries(shipped.map(({ stem, durationSec }) => [stem, Number(durationSec)]));
     await writeFile(join(paths.out, "durations.json"), `${JSON.stringify(durations)}\n`);
   }
-  if (pieces) {
+  if (pieces && section === "quests") {
     const lengths = Object.fromEntries(cut.map(({ stem, pieces: split }) => [stem, packTimes(split.map((p) => p.length))]));
     await writeFile(join(paths.out, "pieces.json"), `${JSON.stringify(lengths)}\n`);
+  } else if (pieces) {
+    await writePieceLengths(section, lang, Object.fromEntries(cut.map(({ stem, pieces: split }) => [stem, split.map((p) => p.length)])));
+  }
+  if (pieces) {
     console.log(`  ${cut.length} lines as sentence pieces`);
   }
   return gone;
