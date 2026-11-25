@@ -2535,6 +2535,21 @@ svg.is-spinning {
   margin-top: 4px;
 }
 
+.contrib-project {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 4px;
+}
+
+.contrib-project .input {
+  flex: none;
+  width: 140px;
+  min-width: 0;
+  height: 28px;
+}
+
 .contrib-zip-actions {
   display: flex;
   gap: 12px;

@@ -5,7 +5,7 @@ import { api, errorText } from '../api'
 import { jobBusy } from '../catalog'
 import { IconExternal, IconRefresh } from '../components/Icons'
 import { ProgressTrack } from '../components/JobBar'
-import { STORES, canZip, liveRunText, publishJobFor, releasableCount, resultLines, rowHint, rowUploadLabel, runPercent, skipReasonText, storeName } from '../contributor'
+import { STORES, canZip, liveRunText, projectIdInput, publishJobFor, releasableCount, resultLines, rowHint, rowUploadLabel, runPercent, skipReasonText, storeName } from '../contributor'
 import { formatBytes, formatSpeed } from '../format'
 import { jobKey, useGame, useLanguageName, useStore } from '../store'
 import { S } from '../strings'
@@ -35,6 +35,8 @@ function StoreRelease({ store, gameId, lang, view, onDismiss }: { store: StoreId
   const [starting, setStarting] = useState(false)
   const [refusal, setRefusal] = useState('')
   const lastRun = view.lastRuns[store] ?? null
+  // A saved project id changes the rows, whichever page saved it.
+  const projectsKey = JSON.stringify(view.config.projects)
 
   useEffect(() => {
     let alive = true
@@ -48,7 +50,7 @@ function StoreRelease({ store, gameId, lang, view, onDismiss }: { store: StoreId
       alive = false
     }
     // Every run ends with a new result, a cancelled one too, whose job is already gone.
-  }, [gameId, lang, store, refresh, lastRun?.finishedAt])
+  }, [gameId, lang, store, refresh, lastRun?.finishedAt, projectsKey])
 
   const publish = async (only?: string): Promise<void> => {
     setStarting(true)
@@ -196,6 +198,7 @@ function RowItem({ row, store, storeBusy, gameId, lang, onUpload }: { row: Relea
         )}
       </div>
       <span className="muted contrib-hint">{rowHint(row.state, store)}</span>
+      {row.state === 'no-project' && <ProjectIdForm folder={row.folder} disabled={storeBusy} />}
       {shownZip && (
         <div className="contrib-zip" role="status">
           <span className="contrib-hint">{S.contributor.zipReady(shownZip.name, formatBytes(shownZip.bytes))}</span>
@@ -215,6 +218,54 @@ function RowItem({ row, store, storeBusy, gameId, lang, onUpload }: { row: Relea
         </p>
       )}
     </li>
+  )
+}
+
+function ProjectIdForm({ folder, disabled }: { folder: string; disabled: boolean }): ReactNode {
+  const { actions } = useStore()
+  const [id, setId] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const save = async (): Promise<void> => {
+    setSaving(true)
+    setError('')
+    try {
+      actions.applyContributor(await api().contributorSaveStore(projectIdInput(folder, id)))
+    } catch (e) {
+      setError(errorText(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <form
+      className="contrib-project"
+      onSubmit={(e) => {
+        e.preventDefault()
+        void save()
+      }}
+    >
+      <input
+        className="input"
+        inputMode="numeric"
+        spellCheck={false}
+        aria-label={`${S.contributor.projectIds} ${folder}`}
+        disabled={saving}
+        value={id}
+        onChange={(e) => {
+          setId(e.target.value)
+          setError('')
+        }}
+      />
+      <button type="submit" className="btn btn-sm" disabled={disabled || saving || id.trim() === ''}>
+        {saving ? `${S.contributor.saving}…` : S.contributor.save}
+      </button>
+      {error && (
+        <p className="text-error contrib-hint" role="alert">
+          {error}
+        </p>
+      )}
+    </form>
   )
 }
 
