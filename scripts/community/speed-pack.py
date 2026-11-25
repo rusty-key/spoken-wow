@@ -795,8 +795,7 @@ def setup() -> None:
     prefix = re.sub(r"[^a-z0-9]+", "-", (config.get("prefix") or login or "").lower()).strip("-")
     config["prefix"] = ask("A prefix for your pack ids, so they do not clash with other makers'", prefix or None)
     config["author"] = ask("Author name shown on your packs", config.get("author") or login or None)
-    config["site"] = ask("Site", config.get("site") or SITE)
-    print(f"\nCreate a token on {config['site']}/profile with the Community packs option.")
+    print(f"\nCreate a token on {SITE}/profile with the Community packs option.")
     token = ask("Paste the token (leave empty to keep the saved one)", None, secret=True)
     if token:
         config["token"] = token
@@ -879,7 +878,7 @@ def run_all(args: argparse.Namespace) -> int:
                           "Build it with --build-only.")
         plans.append(plan)
 
-    site = Site(config.get("site", SITE), config["token"]) if publish else None
+    site = Site(SITE, config["token"]) if publish else None
     owned = site.owned() if site else {}
     encoder = Encoder.find()
     cache_root = args.cache or default_cache_root()
