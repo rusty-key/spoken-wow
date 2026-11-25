@@ -1920,9 +1920,7 @@ end
 
 -- Put the cursor on `button` when `frame` next has the controller.
 local function Target(frame, button)
-	if button and SmartNavigation and SmartNavigation.SetTargetButtonForFrame and not CombatRestricted() then
-		SmartNavigation:SetTargetButtonForFrame(frame, button)
-	end
+	if SpokenLayout and SpokenLayout.Target then SpokenLayout.Target(frame, button) end
 end
 
 local function AfterCombat()

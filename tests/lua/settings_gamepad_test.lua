@@ -383,15 +383,19 @@ do
         if was then for _, fn in ipairs(self.hooks.OnHide or {}) do fn(self) end end
     end
     Expect("...which takes the controller's focus as a popup", calls[1] and calls[1][1], "shown")
-    local texts, ticked = {}, {}
-    for _, row in ipairs(own.rows) do
-        if row:IsShown() then
-            table.insert(texts, row.label:GetText())
-            if row.tick:IsShown() then table.insert(ticked, row.label:GetText()) end
+    local function Shown()
+        local texts, ticked = {}, {}
+        for _, row in ipairs(own.rows) do
+            if row:IsShown() then
+                table.insert(texts, row.label:GetText())
+                if row.tick:IsShown() then table.insert(ticked, row.label:GetText()) end
+            end
         end
+        return table.concat(texts, " "), table.concat(ticked, " ")
     end
-    Expect("...listing every choice", table.concat(texts, " "), "a b c")
-    Expect("...the chosen one ticked", table.concat(ticked, " "), "b")
+    local texts, ticked = Shown()
+    Expect("...listing every choice", texts, "a b c")
+    Expect("...the chosen one ticked", ticked, "b")
     own.rows[3].scripts.OnClick(own.rows[3])
     Expect("a choice in it is taken", state.choice, "c")
     Expect("...and closes it", own:IsShown(), false)
@@ -420,11 +424,7 @@ do
     add.scripts.OnClick(add)
     Expect("Add a Voice opens no game menu", #gameMenus, 0)
     Expect("...but Spoken's own", own:IsShown(), true)
-    texts = {}
-    for _, row in ipairs(own.rows) do
-        if row:IsShown() then table.insert(texts, row.label:GetText()) end
-    end
-    Expect("...offering the voices not in the list", table.concat(texts, " "), "two three")
+    Expect("...offering the voices not in the list", (Shown()), "two three")
     own.rows[2].scripts.OnClick(own.rows[2])
     Expect("a voice chosen there is added", table.concat(voices, " "), "one three")
     Expect("...and the menu closes", own:IsShown(), false)

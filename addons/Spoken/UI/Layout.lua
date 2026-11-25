@@ -714,6 +714,14 @@ local function CombatRestricted()
 end
 Layout.CombatRestricted = CombatRestricted
 
+--- Put the controller UI's cursor on `button` when `frame` next has the controller.
+local function Target(frame, button)
+    if button and SmartNavigation and SmartNavigation.SetTargetButtonForFrame and not CombatRestricted() then
+        SmartNavigation:SetTargetButtonForFrame(frame, button)
+    end
+end
+Layout.Target = Target
+
 -- What combat refused, run once it ends. A page is built once, so a row skipped in combat
 -- would keep the game's stops for the session.
 local afterCombat, afterCombatFrame = {}, nil
@@ -1440,8 +1448,7 @@ local function BuildMenu()
     if back then
         back:SetAlpha(0.925)
     else
-        back = frame:CreateTexture(nil, "BACKGROUND")
-        back:SetColorTexture(0, 0, 0, 0.85)
+        back = Flat(frame, "BACKGROUND", 0, 0, 0, 0.85)
     end
     back:SetPoint("TOPLEFT", -MENU_BG, 3)
     back:SetPoint("BOTTOMRIGHT", MENU_BG, -3)
@@ -1455,11 +1462,7 @@ local function BuildMenu()
         return true
     end
     -- The cursor starts on the chosen entry, as in the game's dropdowns.
-    frame.FocusGamepad = function(self)
-        if self.start and SmartNavigation and SmartNavigation.SetTargetButtonForFrame and not CombatRestricted() then
-            SmartNavigation:SetTargetButtonForFrame(self, self.start)
-        end
-    end
+    frame.FocusGamepad = function(self) Target(self, self.start) end
     -- A click anywhere else closes it, as it closes the game's menus. The anchor's own click
     -- toggles it, so that one is left to the anchor.
     frame:HookScript("OnShow", function(self) self:RegisterEvent("GLOBAL_MOUSE_DOWN") end)
@@ -1540,15 +1543,25 @@ function Layout.OpenMenu(anchor, entries, gameMenu)
     frame:ClearAllPoints()
     frame:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -2)
     frame.anchor = anchor
-    -- Shown under UIParent, it would outlive a page closed by a keybind or a loading screen and
-    -- keep the controller there.
-    if not anchor.layoutMenuHooked then
-        anchor.layoutMenuHooked = true
-        anchor:HookScript("OnHide", function(self)
-            if ownMenu.anchor == self then ownMenu:Hide() end
-        end)
-    end
     frame:Show()
+end
+
+-- Shown under UIParent, the menu would outlive a page closed by a keybind or a loading screen and
+-- keep the controller there.
+local function CloseMenuWith(anchor)
+    anchor:HookScript("OnHide", function(self)
+        if ownMenu and ownMenu.anchor == self then ownMenu:Hide() end
+    end)
+end
+
+-- `values` as Layout.OpenMenu's entries, each running `pick(value)`; ticked where `isChosen(value)`.
+local function MenuEntries(values, describe, fontOf, pick, isChosen)
+    local entries = {}
+    for _, value in ipairs(values) do
+        table.insert(entries, { text = describe(value), func = function() pick(value) end,
+            checked = isChosen and function() return isChosen(value) end, font = fontOf and fontOf(value) })
+    end
+    return entries
 end
 
 --- A dropdown: the game's settings dropdown, with steppers either side (SettingsDropdownWithButtons
@@ -1606,16 +1619,13 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe, f
             if control.SetEnabled then control:SetEnabled(on) else dropdown:SetEnabled(on) end
         end
         local function Entries()
-            local entries = {}
-            for _, value in ipairs(Resolve(values)) do
-                table.insert(entries, { text = describe(value), func = function() Choose(value) end,
-                    checked = function() return Chosen(value, read()) end, font = fontOf and fontOf(value) })
-            end
-            return entries
+            return MenuEntries(Resolve(values), describe, fontOf, Choose,
+                function(value) return Chosen(value, read()) end)
         end
         openList = function(gameMenu)
             if dropdown:IsEnabled() then Layout.OpenMenu(dropdown, Entries, gameMenu) end
         end
+        CloseMenuWith(dropdown)
         local down = dropdown:GetScript("OnMouseDown")
         Script(dropdown, "OnMouseDown", function(self, button)
             openList(function() if down then down(self, button) end end)
@@ -1954,14 +1964,8 @@ function Layout:OrderedList(label, tooltip, read, write, choices, describe, font
         end
         ToggleDropDownMenu(1, nil, menu, add, 0, 0)
     end
-    local function Offers()
-        local entries = {}
-        for _, value in ipairs(Offered()) do
-            table.insert(entries, { text = describe(value), func = function() Added(value) end,
-                font = fontOf and fontOf(value) })
-        end
-        return entries
-    end
+    local function Offers() return MenuEntries(Offered(), describe, fontOf, Added) end
+    CloseMenuWith(add)
     Script(add, "OnClick", function() Sound(CLICK); Layout.OpenMenu(add, Offers, OpenGameMenu) end)
 
     local function Sync()
