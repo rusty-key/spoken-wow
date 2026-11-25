@@ -1067,8 +1067,7 @@ local SEX_NAMES = { [2] = "male", [3] = "female" }
 
 --- Who speaks a line, for Spoken:GetSpeaker: the creature, the sex it is drawn as, and its body,
 --- from its model where it was read or, for a creature the packs voice as one body only, that
---- body. No model is read for this: each read is a hidden 3D scene, and the probe reads one NPC at
---- a time, so a read asked from outside would cancel the ones the voice files need.
+--- body. It reads no model: the probe reads one NPC at a time, and the voice files need its reads.
 ---@param soundData SoundData
 ---@return table|nil
 function DataModules:Speaker(soundData)
@@ -1091,7 +1090,7 @@ end
 -- A speaker's model in with a body: Spoken tells whoever asked about its lines still queued.
 table.insert(NPCModel.onLoaded, function(guid)
     if not Utils:GetBodyForGUID(guid) then return end
-    for _, clip in ipairs(Spoken:GetQueue()) do
+    for _, clip in ipairs(Player:Queued()) do
         if clip.unitGUID == guid then SpokenEnv.Callbacks:Fire("SPEAKER_CHANGED", clip) end
     end
 end)

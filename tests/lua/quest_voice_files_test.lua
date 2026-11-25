@@ -202,9 +202,8 @@ do
     Expect("a split one with no model read: no body, and no read started for asking",
         Speaker(fresh) .. " " .. primes, "15906 male nil nil 0")
     VO.NPCModel.Prime = prime
-    local source = Spoken:RegisterSource("speaker-test", { title = "T", addon = "T", order = 99 })
     local queued = H.Clip({ unitGUID = fresh })
-    source:Enqueue(queued)
+    quests:Enqueue(queued)
     local changed
     local handle = Spoken:RegisterCallback("SPEAKER_CHANGED", function(clip) changed = clip end)
     -- The model read Spoken Quests starts for its own needs, as it does for a split creature.
@@ -214,7 +213,7 @@ do
     Spoken:UnregisterCallback(handle)
     Expect("...once Spoken has read it, its body, said for its lines queued", tostring(changed == queued) .. " "
         .. Speaker(fresh), "true 15906 male gnome-male gnome")
-    source:StopAll()
+    quests:StopAll()
 end
 
 -- A pack built before bodies carries only the sex tables: the new addon still hears the sex.
