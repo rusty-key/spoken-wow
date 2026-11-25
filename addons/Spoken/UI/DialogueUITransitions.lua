@@ -501,6 +501,12 @@ end
 -- frame of its own, never part of this window, which may be one image while it fades in
 -- (Skin:Buffer).
 
+function Skin:Shows(dialog, clip)
+    local from = DIALOG_SOURCES[self.dialogNames[dialog] or ""]
+    local key = clip.source and clip.source.key
+    return from ~= nil and key ~= nil and from[key] == true
+end
+
 --- A line joining the queue: when, and with which open dialog.
 function Skin:Queued(clip)
     if type(clip) ~= "table" or not self.queuedAt then return end
@@ -514,9 +520,7 @@ function Skin:Queued(clip)
     local closed = self.justClosed
     if taken or not closed then return end
     self.justClosed = nil
-    local from = DIALOG_SOURCES[self.dialogNames[closed.dialog] or ""]
-    local key = clip.source and clip.source.key
-    if GetTime() - closed.at > JUST_AFTER or closed.dialog:IsShown() or not (from and key and from[key]) then return end
+    if GetTime() - closed.at > JUST_AFTER or closed.dialog:IsShown() or not self:Shows(closed.dialog, clip) then return end
     self.sessions[closed.dialog] = setmetatable({ [clip] = true }, { __mode = "k" })
     self:Settle(closed.dialog)
 end
@@ -554,10 +558,8 @@ function Skin:OwnedEarlier(dialog)
     return lines ~= nil and clip ~= nil and lines[clip] == true
 end
 
---- Whether `clip` is about to show in a DialogueUI dialog not open yet: queued under JUST_BEFORE
---- ago for a page the game has open (its source's onScreen), by a module that dialog shows. The game
---- opens a book before DialogueUI's book view shows it, and this window, faded in meanwhile,
---- would flash until the view covers it.
+--- Whether `clip`, queued under JUST_BEFORE ago for a page the game has open, may still show in a
+--- DialogueUI dialog not open yet: the game opens a book before DialogueUI's book view shows it.
 function Skin:AwaitsDialog(clip)
     local at = clip and self.queuedAt and self.queuedAt[clip]
     local source = clip and clip.source
@@ -565,8 +567,7 @@ function Skin:AwaitsDialog(clip)
     local ok, open = pcall(source.onScreen, clip)
     if not (ok and open) then return false end
     for _, dialog in ipairs(self.dialogs) do
-        local from = DIALOG_SOURCES[self.dialogNames[dialog] or ""]
-        if from and from[source.key] and not dialog:IsShown() then return true end
+        if not dialog:IsShown() and self:Shows(dialog, clip) then return true end
     end
     return false
 end
