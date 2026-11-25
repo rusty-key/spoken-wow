@@ -194,6 +194,41 @@ describe("acceptCorrection", () => {
     }
   });
 
+  it("takes a correction without a token the moderator says the stored line has wrongly, and no other", async () => {
+    const current = `"lineId" = $1 and "lang" = 'deDE' and "isCurrent"`;
+    // As esMX q:197:progress, whose $n stands where the game prints the raptor's name.
+    await asSystem.query(`update "quest_line" set "text" = 'Wie läuft die Jagd auf $n?' where ${current}`, [lineId]);
+    try {
+      const id = await contribution("deDE", "Wie läuft die Jagd auf Tethis?");
+      const refused = await acceptCorrection(id, ACCEPTER);
+      expect(refused).toMatchObject({ ok: false, reason: "malformed", dropped: ["$N"] });
+      expect(await acceptCorrection(id, ACCEPTER, undefined, undefined, undefined, ["$C"])).toMatchObject({
+        ok: false,
+        dropped: ["$N"],
+      });
+
+      // Confirming one token does not cover another the line gained since.
+      await asSystem.query(`update "quest_line" set "text" = 'Wie läuft die Jagd auf $n, $C?' where ${current}`, [lineId]);
+      expect(await acceptCorrection(id, ACCEPTER, undefined, undefined, undefined, ["$N"])).toMatchObject({
+        ok: false,
+        dropped: ["$N", "$C"],
+      });
+      await asSystem.query(`update "quest_line" set "text" = 'Wie läuft die Jagd auf $n?' where ${current}`, [lineId]);
+
+      expect(await acceptCorrection(id, ACCEPTER, undefined, undefined, undefined, ["$N"])).toMatchObject({ ok: true });
+      const { rows } = await asSystem.query(`select "text" from "quest_line" where ${current}`, [lineId]);
+      expect(rows).toEqual([{ text: "Wie läuft die Jagd auf Tethis?" }]);
+
+      const { rows: logged } = await asSystem.query(
+        `select "detail" from "activity" where "kind" = 'contribution.resolved' and "subject" = $1`,
+        [String(id)],
+      );
+      expect(logged[0].detail.dropped).toEqual(["$N"]);
+    } finally {
+      await asSystem.query(`update "quest_line" set "text" = 'Guten Tag, $N.' where ${current}`, [lineId]);
+    }
+  });
+
   it("refuses a $g correction that would drop a token from the side it was not compared with", async () => {
     // Closest to the :f wording, which has no $N; the save would also rewrite :m, which has one.
     const id = await contribution("deDE", "Willkommen, $gHeld:Heldin;.", "accept", twoSidedQuest);

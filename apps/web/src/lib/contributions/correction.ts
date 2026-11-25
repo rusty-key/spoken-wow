@@ -58,7 +58,13 @@ import { writtenFromTemplate } from "./tokens";
 export type CorrectionOutcome =
   | { ok: true; contribution: Contribution }
   | { ok: false; reason: "not-found" }
-  | { ok: false; reason: "not-a-correction" | "malformed" | "needs-speaker"; message: string };
+  | {
+      ok: false;
+      reason: "not-a-correction" | "malformed" | "needs-speaker";
+      message: string;
+      /** The player tokens the line would lose, where that is the refusal: what `drops` may confirm. */
+      dropped?: string[];
+    };
 
 /** One of a quest moment's wordings (known.ts LineState), as the corrections tab names it. */
 export type WordingPick = Pick<CorpusText, "lineId" | "variant">;
@@ -72,6 +78,9 @@ export type WordingPick = Pick<CorpusText, "lineId" | "variant">;
  * `split` keeps both instead, one per player gender: the player's text for `split`, the line's
  * current text for the other, as one `$G` template (compare.ts genderSplit), which splits the
  * moment. Built here from the line as it now stands, so an edit since the page loaded is kept.
+ *
+ * `drops` are the player tokens a moderator who saw the refusal says the line has wrongly. Named
+ * rather than a plain yes, so losing any other token is still refused.
  */
 export async function acceptCorrection(
   id: number,
@@ -79,6 +88,7 @@ export async function acceptCorrection(
   pick?: WordingPick,
   against?: Extract<LineState, { kind: "changed" }>,
   split?: ReaderGender,
+  drops: readonly string[] = [],
 ): Promise<CorrectionOutcome> {
   const { rows } = await db().query<Contribution>(
     `select ${CONTRIBUTION_COLUMNS} from "contribution" where "id" = $1`,
@@ -133,11 +143,12 @@ export async function acceptCorrection(
   }
 
   const dropped = await droppedTokens(contribution.source, lang, target, text);
-  if (dropped.length > 0) {
+  if (dropped.some((token) => !drops.includes(token))) {
     return {
       ok: false,
       reason: "malformed",
-      message: `The correction has fewer ${dropped.join(", ")} than the line it replaces. Put them back in the explorer before accepting it.`,
+      message: `The correction has fewer ${dropped.join(", ")} than the line it replaces. Put them back with Edit text or in the explorer, or accept without them if our line has them wrongly.`,
+      dropped,
     };
   }
 
@@ -171,7 +182,10 @@ export async function acceptCorrection(
     throw error;
   }
 
-  return markAccepted(contribution, lang, userId, split ? { split } : {});
+  return markAccepted(contribution, lang, userId, {
+    ...(split ? { split } : {}),
+    ...(dropped.length > 0 ? { dropped } : {}),
+  });
 }
 
 /**
@@ -288,8 +302,9 @@ type ReadLine = { text: string; playerGender: ReaderGender | null };
 /**
  * The player tokens (`$N`, `$C`, `$R`, `$G`) `text` has fewer of than a line it replaces, on the
  * sides that line's readers take. The client fills each in for its own reader, so a text without
- * them would greet every player as that one. English quest lines store spoken text, not the
- * template: correctEnglish checks those.
+ * them would greet every player as that one. The stored line can be the wrong one, with a token
+ * where the game prints a name of its own, and only a moderator can tell. English quest lines
+ * store spoken text, not the template: correctEnglish checks those.
  */
 async function droppedTokens(source: string, lang: Lang, target: CorpusText, text: string): Promise<string[]> {
   if (source === "quests" && lang === BASE_LANG) return [];

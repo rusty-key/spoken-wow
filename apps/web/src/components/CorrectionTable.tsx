@@ -69,10 +69,17 @@ export type CorrectionRow = {
 /**
  * What an accept sends beside the id: the wording it fixes, and the player gender the player's
  * text is for where it splits that wording instead; or that it is another wording. With the
- * moderator's edit of the player's text where there is one.
+ * moderator's edit of the player's text where there is one, and the player tokens they confirmed
+ * our line has wrongly (`drops`).
  */
-type Accept = ({ lineId: string; variant: number; split?: ReaderGender } | { as: "wording" }) & { text?: string };
+type Accept = ({ lineId: string; variant: number; split?: ReaderGender } | { as: "wording" }) & {
+  text?: string;
+  drops?: string[];
+};
 type Extra = Accept | { reason: string };
+
+/** Why a row's request was refused, and the accept to send again without the player tokens it would lose. */
+type Refusal = { message: string; retry?: { accept: Accept; drops: string[] } };
 
 export type CorrectionSource = "quests" | "readables";
 
@@ -104,7 +111,7 @@ export default function CorrectionTable({
   const [reasonsOf, setReasonsOf] = useState<Record<number, string>>({});
   /** A long backlog renders a page at a time: every row diffs both texts. */
   const [limit, setLimit] = useState(CORRECTIONS_SHOWN);
-  const [refusals, setRefusals] = useState<Record<number, string>>({});
+  const [refusals, setRefusals] = useState<Record<number, Refusal>>({});
   /** The wording each row is set against, where a moderator picked one other than the closest. */
   const [picked, setPicked] = useState<Record<number, number>>({});
   /** Player texts changed on the server since the page loaded: edited, or a class word put back. */
@@ -127,9 +134,15 @@ export default function CorrectionTable({
       return body ?? {};
     }
     const message = typeof body?.error === "string" ? body.error : "That didn't go through -- try again.";
-    setRefusals((current) => ({ ...current, [id]: message }));
+    const drops = Array.isArray(body?.dropped) ? body.dropped : [];
+    const retry = drops.length > 0 ? { accept: payload as Accept, drops } : undefined;
+    setRefusals((current) => ({ ...current, [id]: { message, retry } }));
     return null;
   }, []);
+
+  /** A refusal's retry is for the accept it answered, so a new pick or edit takes it away, its reason kept. */
+  const forgetRetry = (id: number) =>
+    setRefusals((all) => (all[id]?.retry ? { ...all, [id]: { message: all[id].message } } : all));
 
   // Accepting writes the player's text as the picked wording's, or beside them as another
   // (api/contributions/correction); rejecting and reopening are resolve's plain status flips.
@@ -234,6 +247,8 @@ export default function CorrectionTable({
         const keepAsWording = () => void resolve(row.id, "accepted", { as: "wording", ...editOf(row) });
         const splitAs = (theirsFor: ReaderGender) =>
           void resolve(row.id, "accepted", { lineId: wording.lineId, variant: wording.variant, split: theirsFor, ...editOf(row) });
+        const refusal = refusals[row.id];
+        const retry = refusal?.retry;
         return (
           <div key={row.id} id={`contribution-${row.id}`} className="bs-review-row" data-moved={current !== row.status ? "" : undefined}>
             <div className="bs-who">
@@ -264,7 +279,10 @@ export default function CorrectionTable({
                           type="button"
                           title={t.corrections.setAgainst}
                           className="text-muted-foreground hover:text-foreground text-left whitespace-pre-wrap"
-                          onClick={() => setPicked((all) => ({ ...all, [row.id]: index }))}
+                          onClick={() => {
+                            forgetRetry(row.id);
+                            setPicked((all) => ({ ...all, [row.id]: index }));
+                          }}
                         >
                           {line.before}
                         </button>
@@ -287,7 +305,10 @@ export default function CorrectionTable({
                   value={after}
                   aria-label={t.corrections.playerText}
                   rows={Math.max(3, after.split("\n").length + 1)}
-                  onChange={(event) => setDrafts((all) => ({ ...all, [row.id]: event.target.value }))}
+                  onChange={(event) => {
+                    forgetRetry(row.id);
+                    setDrafts((all) => ({ ...all, [row.id]: event.target.value }));
+                  }}
                 />
               ) : (
                 <Marked parts={diff.after} tone="added" />
@@ -358,9 +379,10 @@ export default function CorrectionTable({
                     type="button"
                     className="bs-btn bs-btn-text"
                     disabled={hold}
-                    onClick={() =>
-                      setDrafts(({ [row.id]: open, ...rest }) => (open === undefined ? { ...rest, [row.id]: savedOf(row) } : rest))
-                    }
+                    onClick={() => {
+                      forgetRetry(row.id);
+                      setDrafts(({ [row.id]: open, ...rest }) => (open === undefined ? { ...rest, [row.id]: savedOf(row) } : rest));
+                    }}
                   >
                     {editing ? t.corrections.cancelEdit : t.corrections.editText}
                   </button>
@@ -373,7 +395,21 @@ export default function CorrectionTable({
                   Reopen
                 </button>
               )}
-              {refusals[row.id] ? <p className="bs-refusal">{refusals[row.id]}</p> : null}
+              {refusal ? <p className="bs-refusal">{refusal.message}</p> : null}
+              {retry && current === "new" ? (
+                <button
+                  type="button"
+                  className="bs-btn"
+                  disabled={hold}
+                  title={fill(t.corrections.acceptWithoutHow, { tokens: retry.drops.join(", ") })}
+                  onClick={() =>
+                    // The text as it now stands: typing, or a class word put back, may have changed it since.
+                    void resolve(row.id, "accepted", { ...retry.accept, text: undefined, ...editOf(row), drops: retry.drops })
+                  }
+                >
+                  {fill(t.corrections.acceptWithout, { tokens: retry.drops.join(", ") })}
+                </button>
+              ) : null}
             </div>
 
             <div className="bs-meta">
