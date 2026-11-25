@@ -1,8 +1,9 @@
 """scripts/community/speed-pack.py over packs as the generators write them.
 
 The script rewrites generated Lua it does not own: the quests tables come from build.py here,
-and the places and readables tables are the committed exports in addons/. Building from the
-generators themselves means a change to their output breaks these tests, not players' packs.
+and the places and readables tables are fixtures in tests/fixtures/, which their generators' Node
+tests hold to the generators' output. So a change to that output breaks these tests, not
+players' packs.
 """
 import importlib.util
 import json
@@ -167,9 +168,12 @@ def sounds_rows(path, addon):
 
 @needs_luajit
 @pytest.mark.parametrize("addon,section", [("SpokenPlacesAudio", "places"), ("SpokenReadablesAudio", "readables")])
-def test_every_row_of_a_committed_sounds_table_is_scaled(tmp_path, addon, section):
+def test_every_row_of_a_generated_sounds_table_is_scaled(tmp_path, addon, section):
     source_dir = tmp_path / addon
     shutil.copytree(os.path.join(ROOT, "addons", addon), source_dir)
+    # The pack's lookup is build output; the fixture is what the generator writes.
+    (source_dir / "Data").mkdir(exist_ok=True)
+    shutil.copy(os.path.join(ROOT, "tests", "fixtures", section, "Sounds.lua"), source_dir / "Data" / "Sounds.lua")
     (source_dir / "Sounds").mkdir(exist_ok=True)
     shutil.copy(os.path.join(FIXTURES, "tone.mp3"), source_dir / "Sounds" / "1.mp3")
 

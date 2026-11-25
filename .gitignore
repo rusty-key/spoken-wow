@@ -94,6 +94,11 @@ superpowers/
 # and a trailing slash matches only a real directory, leaving the link to be committed.
 /addons/SpokenPlacesAudio/Sounds
 /addons/SpokenBossesAudio/Sounds
+# English's lookups, written by `make <section>-lookup` before every build, as every other
+# language's are under build/. A committed copy went stale between releases, and nothing reads it.
+/addons/SpokenPlacesAudio/Data/Sounds.lua
+/addons/SpokenBossesAudio/Data/Sounds.lua
+/addons/SpokenReadablesAudio/Data/Sounds.lua
 # Another language's pack, staged by `make <section>-sounds LOCALE=xx` and the lookups and
 # manifests built beside it. Build output, never committed: the pages under publishers/ are
 # what says a language has a pack.
