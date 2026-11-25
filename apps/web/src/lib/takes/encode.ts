@@ -1,8 +1,9 @@
 /**
  * A take's clip as its pack ships it, encoded at commit so a release need not encode it again.
  *
- * The recipe must match scripts/quests/package-audio.sh's ogg-q0-44k, so a clip encoded here
- * and one encoded by the build are the same file. Best effort: a zip's build encodes whatever
+ * Every section's packs ship it. The recipe must match scripts/quests/package-audio.sh's
+ * ogg-q0-44k and scripts/lib/ogg.mjs, so a clip encoded here and one encoded by a build are the
+ * same file. Best effort: a zip's build encodes whatever
  * scripts/audio/fetch-encodings.mjs does not find, and a Manager release stops on it.
  */
 import "server-only";
@@ -24,12 +25,7 @@ import { asTeam } from "@/lib/teams/acting";
 
 import { withLocalCopy } from "./bytes";
 
-const QUESTS_PROFILE = "ogg-q0-44k";
-
-/** Null where a pack ships the take's own bytes. */
-function profileFor(source: Source): string | null {
-  return source === "quests" ? QUESTS_PROFILE : null;
-}
+export const PROFILE = "ogg-q0-44k";
 
 /** A stuck encoder would otherwise hold its take's lock, or a release press, forever. */
 const ENCODE_TIMEOUT_MS = 60_000;
@@ -103,11 +99,11 @@ export type Encoding = { encodedSha256: string; bytes: number; durationSec: numb
  * A row with no length counts as none, and so does a zero length: scripts/audio/sounds.mjs stops
  * a release on either.
  */
-async function recorded(source: Source, sha256: string, profile: string): Promise<Encoding | undefined> {
+async function recorded(source: Source, sha256: string): Promise<Encoding | undefined> {
   const [done] = await query<Encoding>(
     `select "encodedSha256", "bytes", "durationSec"::float8 as "durationSec" from "take_encoding"
       where "source" = $1 and "sha256" = $2 and "profile" = $3 and "durationSec" > 0`,
-    [source, sha256, profile],
+    [source, sha256, PROFILE],
   );
   return done;
 }
@@ -164,7 +160,6 @@ async function failed(source: Source, sha256: string, take: EncodedTake | undefi
 async function encodeAndRecord(
   source: Source,
   sha256: string,
-  profile: string,
   master: string,
   lang: Lang | undefined,
 ): Promise<Encoding> {
@@ -184,9 +179,9 @@ async function encodeAndRecord(
         set "encodedSha256" = excluded."encodedSha256", "bytes" = excluded."bytes", "durationSec" = excluded."durationSec"
       where coalesce("take_encoding"."durationSec", 0) <= 0
      returning "encodedSha256", "bytes", "durationSec"::float8 as "durationSec"`,
-    [source, sha256, profile, encodedSha256, encoded.byteLength, durationSec],
+    [source, sha256, PROFILE, encodedSha256, encoded.byteLength, durationSec],
   );
-  const done = kept ?? (await recorded(source, sha256, profile));
+  const done = kept ?? (await recorded(source, sha256));
   if (!done) throw new Error("its encoding was neither recorded nor found");
   return done;
 }
@@ -205,10 +200,8 @@ export async function encodeForPack(
   master: string,
   take?: EncodedTake,
 ): Promise<Encoding | null> {
-  const profile = profileFor(source);
-  if (!profile) return null;
   try {
-    const done = await recorded(source, sha256, profile);
+    const done = await recorded(source, sha256);
     if (done) return done;
   } catch (error) {
     await failed(source, sha256, take, error);
@@ -216,7 +209,7 @@ export async function encodeForPack(
   }
   for (let attempt = 1; ; attempt++) {
     try {
-      return await encodeAndRecord(source, sha256, profile, master, take?.lang);
+      return await encodeAndRecord(source, sha256, master, take?.lang);
     } catch (error) {
       if (attempt >= 2) {
         await failed(source, sha256, take, error);
@@ -227,16 +220,17 @@ export async function encodeForPack(
   }
 }
 
-/** The master from the archive, encoded. Never throws. */
-async function encodeFromArchive(source: Source, sha256: string, take?: EncodedTake): Promise<void> {
+/** The master from the archive, encoded. Never throws; false when it could not be. */
+async function encodeFromArchive(source: Source, sha256: string, take?: EncodedTake): Promise<boolean> {
   try {
     const master = await blobBytes(blobKey("takes", sha256), take?.lang);
     if (!master) throw new Error("its audio is not in the archive's bucket: regenerate the line");
     // A team's bucket answers for what it holds: the encoding is kept under the master's hash.
     if (sha256Of(master) !== sha256) throw new Error("the archive's copy does not match its hash: regenerate the line");
-    await withLocalCopy(master, "mp3", (file) => encodeForPack(source, sha256, file, take));
+    return (await withLocalCopy(master, "mp3", (file) => encodeForPack(source, sha256, file, take))) !== null;
   } catch (error) {
     await failed(source, sha256, take, error);
+    return false;
   }
 }
 
@@ -250,14 +244,19 @@ async function encodeFromArchive(source: Source, sha256: string, take?: EncodedT
  * `budgetMs` in all, even for one slow encode, which carries on alone and records itself when it
  * finishes. Newest first, since those are the takes the release is about to send, and a take that
  * failed in the past day last, so a take that will never encode does not spend every press's time.
+ * Takes at most 500, and says how many it encoded and how many it tried that had not failed in the
+ * past day: a caller that goes on while those are left reaches every take once.
  */
-export async function encodeMissingForPack(source: Source, lang: Lang, team: TeamId, budgetMs = 30_000): Promise<void> {
-  const profile = profileFor(source);
-  if (!profile) return;
+export async function encodeMissingForPack(
+  source: Source,
+  lang: Lang,
+  team: TeamId,
+  budgetMs = 30_000,
+): Promise<{ encoded: number; fresh: number }> {
   const until = Date.now() + budgetMs;
-  const missing = await queryIn<{ sha256: string; file: string; version: number; lineId: string | null }>(
+  const missing = await queryIn<{ sha256: string; file: string; version: number; lineId: string | null; failedBefore: boolean }>(
     ALL_TEAMS,
-    `select "sha256", "file", "version", "lineId" from (
+    `select "sha256", "file", "version", "lineId", "failedBefore" from (
        select distinct on (t."sha256") t."sha256", t."file", t."version", t."lineId", t."createdAt"
          from "take" t
          left join "take_encoding" e
@@ -267,32 +266,34 @@ export async function encodeMissingForPack(source: Source, lang: Lang, team: Tea
           and coalesce(e."durationSec", 0) <= 0
         order by t."sha256", t."createdAt" desc
      ) live
-     order by exists (select 1 from "activity" a
+     cross join lateral (select exists (select 1 from "activity" a
                        where a."lang" = $2 and a."at" > now() - interval '1 day' and a."kind" = $4
-                         and a."subject" = live."file" and a."detail"->>'version' = live."version"::text),
-              "createdAt" desc
+                         and a."subject" = live."file" and a."detail"->>'version' = live."version"::text) as "failedBefore") f
+     order by "failedBefore", "createdAt" desc
      limit 500`,
-    [source, lang, profile, FAILED, team],
+    [source, lang, PROFILE, FAILED, team],
   );
-  for (const { sha256, ...take } of missing) {
+  const counts = { encoded: 0, fresh: 0 };
+  for (const { sha256, failedBefore, ...take } of missing) {
     const left = until - Date.now();
-    if (left <= 0) return;
+    if (left <= 0) break;
     let timer: NodeJS.Timeout | undefined;
     const outOfTime = new Promise<"late">((resolve) => (timer = setTimeout(() => resolve("late"), left)));
     // As the team: where the language has several, nobody else finds where its take is kept.
     const encoded = asTeam(lang, team, () => encodeFromArchive(source, sha256, { lang, ...take }));
     const result = await Promise.race([encoded, outOfTime]);
     clearTimeout(timer);
-    if (result === "late") return;
+    if (result === "late") break;
+    if (result) counts.encoded++;
+    if (!failedBefore) counts.fresh++;
   }
+  return counts;
 }
 
 /** For a take put back live, which may be older than encoding at commit. Never throws. */
 export async function encodeArchivedForPack(source: Source, sha256: string, take?: EncodedTake): Promise<void> {
-  const profile = profileFor(source);
-  if (!profile) return;
   try {
-    if (await recorded(source, sha256, profile)) return;
+    if (await recorded(source, sha256)) return;
   } catch (error) {
     await failed(source, sha256, take, error);
     return;
