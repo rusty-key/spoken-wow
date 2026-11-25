@@ -286,10 +286,13 @@ export function describe(row: ActivityRow, t: UiText["activity"]["events"]): { w
         }),
         quote: null,
       };
-    case "npc.direction":
+    case "npc.direction": {
+      const name = str(d.npcName) ?? row.subject ?? "";
+      const own = d.inLanguage === true;
       return d.direction
-        ? { what: fill(t.npcDirectionSet, { name: str(d.npcName) ?? row.subject ?? "" }), quote: str(d.direction) }
-        : { what: fill(t.npcDirectionCleared, { name: str(d.npcName) ?? row.subject ?? "" }), quote: null };
+        ? { what: fill(own ? t.npcLanguageDirectionSet : t.npcDirectionSet, { name }), quote: str(d.direction) }
+        : { what: fill(own ? t.npcLanguageDirectionCleared : t.npcDirectionCleared, { name }), quote: null };
+    }
     case "npc.resolved": {
       const name = str(d.npcName) ?? row.subject ?? "";
       return {

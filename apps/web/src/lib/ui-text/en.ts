@@ -718,6 +718,8 @@ export const EN = {
       npcSpeakerReplaced: "put {speaker} in place of {from} on {subject}",
       npcDirectionSet: "set {name}'s direction",
       npcDirectionCleared: "cleared {name}'s direction",
+      npcLanguageDirectionSet: "set {name}'s direction in this language",
+      npcLanguageDirectionCleared: "cleared {name}'s direction in this language",
       npcResolved: "set who {name} is",
       npcResolvedWoman: "set who {name} is as a woman",
       npcResolvedMan: "set who {name} is as a man",

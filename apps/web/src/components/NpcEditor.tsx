@@ -143,10 +143,12 @@ type Answer = SpeakerAnswer & { npcName?: string };
 /** An NPC's name with a moderator's Edit, which saves over whatever named it. */
 function NameCell({
   name,
+  readOnly,
   busy,
   onSave,
 }: {
   name: string | null;
+  readOnly: boolean;
   busy: boolean;
   onSave: (name: string) => void;
 }) {
@@ -155,9 +157,11 @@ function NameCell({
     return (
       <div className={ROW_LINE}>
         <span>{name ?? <span className="text-muted-foreground">unnamed</span>}</span>
-        <LiteButton className={ROW_BUTTON} onClick={() => setDraft(name ?? "")}>
-          Edit
-        </LiteButton>
+        {readOnly ? null : (
+          <LiteButton className={ROW_BUTTON} onClick={() => setDraft(name ?? "")}>
+            Edit
+          </LiteButton>
+        )}
       </div>
     );
   }
@@ -202,29 +206,30 @@ function lookups(npcId: number, client: ClientFilter): { label: string; path: st
 
 const SEX_WORDS: Record<number, string> = { 2: "man", 3: "woman" };
 
-/** The NPC's own direction, typed bare; the route stores it bracketed. */
+/** An NPC's direction, typed bare; the route stores it bracketed. Without `onSave`, only shown. */
 function DirectionCell({
   direction,
   busy,
+  label,
+  title,
   onSave,
 }: {
   direction: string | null;
   busy: boolean;
+  label: string;
+  title: string;
   /** Resolves to the server's reason when the save was refused, null when it went through. */
-  onSave: (direction: string) => Promise<string | null>;
+  onSave?: (direction: string) => Promise<string | null>;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const bare = direction ? bareDirection(direction) : "";
+  if (!onSave) return bare ? <span>[{bare}]</span> : null;
   if (draft === null) {
     return (
       <div className={ROW_LINE}>
         {bare ? <span>[{bare}]</span> : null}
-        <LiteButton
-          className={ROW_BUTTON}
-          onClick={() => setDraft(bare)}
-          title="A direction sent in front of every line only this NPC speaks, after its voice's"
-        >
+        <LiteButton className={ROW_BUTTON} onClick={() => setDraft(bare)} title={title}>
           {bare ? "Edit" : "Add"}
         </LiteButton>
       </div>
@@ -248,7 +253,7 @@ function DirectionCell({
     >
       <div className={ROW_LINE}>
         <input
-          aria-label="NPC direction"
+          aria-label={label}
           autoFocus
           maxLength={200}
           placeholder="pirate accent"
@@ -307,9 +312,23 @@ function BodyCells({
   roster: Roster;
   edits: ReturnType<typeof useRosterEdits>;
   busy: boolean;
-  onPost: (body: Record<string, unknown>) => void;
+  /** Absent for a reader: the bodies are shown and nothing changes them. */
+  onPost?: (body: Record<string, unknown>) => void;
 }) {
   if (npc.npcKind !== "creature" || !npc.race || sexOf(npc.gender) === null) return null;
+  if (!onPost) {
+    if (!bodies.length) return null;
+    return (
+      <div className="mt-1 space-y-1 border-l pl-2">
+        {bodies.map((answer) => (
+          <div key={`${answer.race}:${answer.sex}`} className={ROW_LINE}>
+            <span className="text-muted-foreground w-36 shrink-0">{bodyLabel(answer)}</span>
+            <SpeakerCell npc={summaryFromBody(npc, answer, roster)} roster={roster} edits={edits} readOnly busy={busy} lockType onSave={() => {}} />
+          </div>
+        ))}
+      </div>
+    );
+  }
   const add = <AddBody roster={roster} busy={busy} onAdd={(race, sex) => onPost({ action: "add", race, sex })} />;
   if (!bodies.length) {
     return (
@@ -355,14 +374,25 @@ function BodyCells({
 export default function NpcEditor({
   initial,
   roster: rosterData,
+  readOnly,
+  languageDirections,
 }: {
   /**
    * Each with the client family whose guess filed it, null for one only the extract names, its
-   * bodies where it is split by body, and its own direction.
+   * bodies where it is split by body, its global direction and the page language's own.
    */
-  initial: (NpcSummary & { client: ClientFamily | null; bodies: NpcBodyAnswer[]; direction: string | null })[];
+  initial: (NpcSummary & {
+    client: ClientFamily | null;
+    bodies: NpcBodyAnswer[];
+    direction: string | null;
+    languageDirection: string | null;
+  })[];
   /** The roster, for SpeakerCell's pickers, and grown by their "New" entries. */
   roster: RosterData;
+  /** Everything but the language's own directions shown and not changed: who an NPC is is the admin's. */
+  readOnly: boolean;
+  /** Whether to show and set the page language's own directions. */
+  languageDirections: boolean;
 }) {
   const lang = useLang();
   const edits = useRosterEdits(rosterData);
@@ -415,6 +445,12 @@ export default function NpcEditor({
     () => new Map(initial.map((row) => [key(row.npcKind, row.npcId), row.direction])),
     [initial],
   );
+  /** Each language direction this session saved, over the server's, keyed by NPC. */
+  const [savedLanguageDirections, setSavedLanguageDirections] = useState<Record<string, string | null>>({});
+  const initialLanguageDirections = useMemo(
+    () => new Map(initial.map((row) => [key(row.npcKind, row.npcId), row.languageDirection])),
+    [initial],
+  );
   const [busy, setBusy] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   /** Rows ticked for the bulk saves, keyed by NPC. */
@@ -457,20 +493,25 @@ export default function NpcEditor({
     [post],
   );
 
-  const postDirection = useCallback(async (npc: NpcSummary, direction: string): Promise<string | null> => {
-    const k = key(npc.npcKind, npc.npcId);
-    setBusy(k);
-    const response = await fetch("/api/npcs/direction", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ direction, npcKind: npc.npcKind, npcId: npc.npcId }),
-    }).catch(() => null);
-    setBusy(null);
-    const saved = (await response?.json().catch(() => null)) as { direction?: string | null; error?: string } | null;
-    if (!response?.ok) return saved?.error ?? "That didn't go through -- try again.";
-    setSavedDirections((current) => ({ ...current, [k]: saved?.direction ?? null }));
-    return null;
-  }, []);
+  const postDirection = useCallback(
+    async (npc: NpcSummary, direction: string, inLanguage: boolean): Promise<string | null> => {
+      const k = key(npc.npcKind, npc.npcId);
+      setBusy(k);
+      const url = inLanguage ? `/api/npcs/language-direction?lang=${lang}` : "/api/npcs/direction";
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ direction, npcKind: npc.npcKind, npcId: npc.npcId }),
+      }).catch(() => null);
+      setBusy(null);
+      const saved = (await response?.json().catch(() => null)) as { direction?: string | null; error?: string } | null;
+      if (!response?.ok) return saved?.error ?? "That didn't go through -- try again.";
+      const set = inLanguage ? setSavedLanguageDirections : setSavedDirections;
+      set((current) => ({ ...current, [k]: saved?.direction ?? null }));
+      return null;
+    },
+    [lang],
+  );
 
   const postBody = useCallback(async (npc: NpcSummary, body: Record<string, unknown>) => {
     const k = key(npc.npcKind, npc.npcId);
@@ -598,7 +639,7 @@ export default function NpcEditor({
         />
       </div>
 
-      {rows.length > 0 ? (
+      {rows.length > 0 && !readOnly ? (
         <div className="mb-3 flex min-h-8 flex-wrap items-center gap-2 text-xs">
           {bulk ? (
             <span className="text-muted-foreground">
@@ -649,16 +690,18 @@ export default function NpcEditor({
         <table className="w-fit border-separate border-spacing-0 text-sm">
           <thead className="text-muted-foreground text-left text-xs">
             <tr>
-              <th className="border-b py-2 pr-2 align-middle font-normal">
-                <Checkbox
-                  aria-label="Select every NPC shown"
-                  checked={allTicked ? true : selectedRows.length > 0 ? "indeterminate" : false}
-                  disabled={bulk !== null}
-                  onCheckedChange={(on) =>
-                    setSelected(on === true ? new Set(shown.map((npc) => key(npc.npcKind, npc.npcId))) : new Set())
-                  }
-                />
-              </th>
+              {readOnly ? null : (
+                <th className="border-b py-2 pr-2 align-middle font-normal">
+                  <Checkbox
+                    aria-label="Select every NPC shown"
+                    checked={allTicked ? true : selectedRows.length > 0 ? "indeterminate" : false}
+                    disabled={bulk !== null}
+                    onCheckedChange={(on) =>
+                      setSelected(on === true ? new Set(shown.map((npc) => key(npc.npcKind, npc.npcId))) : new Set())
+                    }
+                  />
+                </th>
+              )}
               <SortHeader column="id" sort={sort} onSort={(column) => setParam("sort", sortParam(nextSort(sort, column)))}>
                 ID
               </SortHeader>
@@ -667,6 +710,7 @@ export default function NpcEditor({
               </SortHeader>
               <th className="border-b py-2 pr-3 font-normal">Type / gender / flavor</th>
               <th className="border-b py-2 pr-3 font-normal">Direction</th>
+              {languageDirections ? <th className="border-b py-2 pr-3 font-normal">{lang} direction</th> : null}
               <th className="border-b py-2 font-normal" />
             </tr>
           </thead>
@@ -675,14 +719,16 @@ export default function NpcEditor({
               const k = key(npc.npcKind, npc.npcId);
               return (
                 <tr key={k} className="align-middle [&>td]:border-b [&>td]:py-1.5 [&>td]:leading-5">
-                  <td className="pr-2">
-                    <Checkbox
-                      aria-label={`Select NPC ${npc.npcId}`}
-                      checked={selected.has(k)}
-                      disabled={bulk !== null}
-                      onCheckedChange={(on) => toggle(k, on === true)}
-                    />
-                  </td>
+                  {readOnly ? null : (
+                    <td className="pr-2">
+                      <Checkbox
+                        aria-label={`Select NPC ${npc.npcId}`}
+                        checked={selected.has(k)}
+                        disabled={bulk !== null}
+                        onCheckedChange={(on) => toggle(k, on === true)}
+                      />
+                    </td>
+                  )}
                   <td className="pr-3 text-xs whitespace-nowrap">
                     <span className="font-mono">{npc.npcId}</span>
                     {npc.npcKind === "gameobject" ? (
@@ -702,6 +748,7 @@ export default function NpcEditor({
                     <NameCell
                       key={npc.npcName ?? ""}
                       name={npc.npcName}
+                      readOnly={readOnly}
                       busy={busy === k || bulk !== null}
                       onSave={(npcName) => void save(npc, { npcName })}
                     />
@@ -713,7 +760,7 @@ export default function NpcEditor({
                       npc={npc}
                       roster={roster}
                       edits={edits}
-                      readOnly={false}
+                      readOnly={readOnly}
                       busy={busy === k || bulk !== null}
                       onSave={(answer) => void save(npc, answer)}
                     />
@@ -723,7 +770,7 @@ export default function NpcEditor({
                       roster={roster}
                       edits={edits}
                       busy={busy === k || bulk !== null}
-                      onPost={(body) => void postBody(npc, body)}
+                      onPost={readOnly ? undefined : (body) => void postBody(npc, body)}
                     />
                     {failed === k ? (
                       <p className="text-destructive mt-1">That didn&apos;t go through -- try again.</p>
@@ -733,9 +780,26 @@ export default function NpcEditor({
                     <DirectionCell
                       direction={k in savedDirections ? savedDirections[k] : (initialDirections.get(k) ?? null)}
                       busy={busy === k || bulk !== null}
-                      onSave={(direction) => postDirection(npc, direction)}
+                      label="NPC direction"
+                      title="A direction sent in front of every line only this NPC speaks, after its voice's"
+                      onSave={readOnly ? undefined : (direction) => postDirection(npc, direction, false)}
                     />
                   </td>
+                  {languageDirections ? (
+                    <td className="pr-3 text-xs">
+                      <DirectionCell
+                        direction={
+                          k in savedLanguageDirections
+                            ? savedLanguageDirections[k]
+                            : (initialLanguageDirections.get(k) ?? null)
+                        }
+                        busy={busy === k || bulk !== null}
+                        label={`NPC direction in ${lang}`}
+                        title={`A direction for ${lang} only, in place of the global one`}
+                        onSave={(direction) => postDirection(npc, direction, true)}
+                      />
+                    </td>
+                  ) : null}
                   <td className="text-right whitespace-nowrap">
                     {lookups(npc.npcId, client).map(({ label, path, where }) => (
                       <a

@@ -697,6 +697,8 @@ const frFR: Dictionary = {
       npcSpeakerReplaced: "a mis {speaker} à la place de {from} sur {subject}",
       npcDirectionSet: "a défini la direction de {name}",
       npcDirectionCleared: "a effacé la direction de {name}",
+      npcLanguageDirectionSet: "a défini la direction de {name} dans cette langue",
+      npcLanguageDirectionCleared: "a effacé la direction de {name} dans cette langue",
       npcResolved: "a défini qui est {name}",
       npcResolvedWoman: "a défini que {name} est une femme",
       npcResolvedMan: "a défini que {name} est un homme",

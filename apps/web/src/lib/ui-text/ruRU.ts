@@ -697,6 +697,8 @@ const ruRU: Dictionary = {
       npcSpeakerReplaced: "поставил {speaker} вместо {from} на {subject}",
       npcDirectionSet: "задал направление для {name}",
       npcDirectionCleared: "сбросил направление для {name}",
+      npcLanguageDirectionSet: "задал направление для {name} в этом языке",
+      npcLanguageDirectionCleared: "сбросил направление для {name} в этом языке",
       npcResolved: "указал, кто такой {name}",
       npcResolvedWoman: "указал, что {name} женщина",
       npcResolvedMan: "указал, что {name} мужчина",

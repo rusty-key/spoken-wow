@@ -697,6 +697,8 @@ const esMX: Dictionary = {
       npcSpeakerReplaced: "puso a {speaker} en lugar de {from} en {subject}",
       npcDirectionSet: "definió la dirección de {name}",
       npcDirectionCleared: "borró la dirección de {name}",
+      npcLanguageDirectionSet: "definió la dirección de {name} en este idioma",
+      npcLanguageDirectionCleared: "borró la dirección de {name} en este idioma",
       npcResolved: "definió quién es {name}",
       npcResolvedWoman: "definió que {name} es una mujer",
       npcResolvedMan: "definió que {name} es un hombre",

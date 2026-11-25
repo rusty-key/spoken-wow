@@ -8,9 +8,11 @@ import { Contained, Wide } from "@/components/Width";
 import { clientOf } from "@/lib/contributions/client";
 import { summaryFromResolution } from "@/lib/contributions/speaker";
 import { localeHref } from "@/lib/lang";
+import { BASE_LANG } from "@/lib/lang";
 import { pageLang } from "@/lib/lang-server";
-import { listResolutions, listBodies, resolutionKey } from "@/lib/npc/store";
-import { isAdmin } from "@/lib/permissions";
+import { viewerOf } from "@/lib/grants/store";
+import { listBodies, listLanguageDirections, listResolutions, resolutionKey } from "@/lib/npc/store";
+import { can, isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { loadRoster } from "@/lib/voices/roster-store";
 
@@ -21,7 +23,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * Every NPC and who it is, and the types an NPC can be with the voice each is read by. An answer
- * here holds in every language, so it is the global admin's alone.
+ * here holds in every language, so it is the global admin's alone. Whoever configures the page's
+ * language reads the NPCs and sets their directions in that language, as they set its race ones.
  */
 export default async function Page({
   params,
@@ -32,30 +35,44 @@ export default async function Page({
 }) {
   const lang = await pageLang(params);
   const session = await currentSession();
-  if (!session || !isAdmin(session.user.role)) notFound();
+  if (!session) notFound();
+  const admin = isAdmin(session.user.role);
+  // English's own direction is the global one, which only the admin sets.
+  const ownDirections = lang !== BASE_LANG && can(await viewerOf(session), "configure", lang);
+  if (!admin && !ownDirections) notFound();
 
-  const tab = (await searchParams).tab === "types" ? "types" : "npcs";
+  const tab = admin && (await searchParams).tab === "types" ? "types" : "npcs";
   const roster = await loadRoster(lang);
-  const [resolutions, bodies] = tab === "types" ? [[], new Map()] : await Promise.all([listResolutions(), listBodies()]);
+  const [resolutions, bodies, languageDirections] =
+    tab === "types"
+      ? [[], new Map(), new Map<string, string>()]
+      : await Promise.all([
+          listResolutions(),
+          listBodies(),
+          ownDirections ? listLanguageDirections(lang) : new Map<string, string>(),
+        ]);
 
   return (
     <main className="pt-6 pb-24">
       <Contained>
         <h1 className="text-xl font-semibold">NPCs</h1>
         <p className="text-muted-foreground mt-1 mb-5 text-sm">
-          Who every NPC is, and which voice reads each type. An answer here voices every line that NPC
-          speaks, in every language; an NPC whose type no voice reads has none until it gets one.
+          {admin
+            ? "Who every NPC is, and which voice reads each type. An answer here voices every line that NPC speaks, in every language; an NPC whose type no voice reads has none until it gets one."
+            : "Who every NPC is, and the direction its lines are performed with. A direction of this language's own replaces the global one in this language only."}
         </p>
       </Contained>
       <Wide>
-        <LinkTabs
-          label="NPCs"
-          active={tab}
-          tabs={[
-            { value: "npcs", label: "NPCs", href: localeHref(lang, "/npcs") },
-            { value: "types", label: "Types", href: localeHref(lang, "/npcs?tab=types") },
-          ]}
-        />
+        {admin ? (
+          <LinkTabs
+            label="NPCs"
+            active={tab}
+            tabs={[
+              { value: "npcs", label: "NPCs", href: localeHref(lang, "/npcs") },
+              { value: "types", label: "Types", href: localeHref(lang, "/npcs?tab=types") },
+            ]}
+          />
+        ) : null}
         {tab === "types" ? (
           <TypesEditor initial={roster.data} />
         ) : (
@@ -66,8 +83,11 @@ export default async function Page({
               client: row.build ? clientOf(row.build).family : null,
               bodies: bodies.get(resolutionKey(row.npcKind, row.npcId)) ?? [],
               direction: row.direction ?? null,
+              languageDirection: languageDirections.get(resolutionKey(row.npcKind, row.npcId)) ?? null,
             }))}
             roster={roster.data}
+            readOnly={!admin}
+            languageDirections={ownDirections}
           />
         )}
       </Wide>

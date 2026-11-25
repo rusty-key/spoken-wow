@@ -820,6 +820,8 @@ const ptBR: Dictionary = {
       npcSpeakerReplaced: "pôs {speaker} no lugar de {from} em {subject}",
       npcDirectionSet: "definiu a direção de {name}",
       npcDirectionCleared: "limpou a direção de {name}",
+      npcLanguageDirectionSet: "definiu a direção de {name} neste idioma",
+      npcLanguageDirectionCleared: "limpou a direção de {name} neste idioma",
       npcResolved: "definiu quem é {name}",
       npcResolvedWoman: "definiu que {name} é mulher",
       npcResolvedMan: "definiu que {name} é homem",
