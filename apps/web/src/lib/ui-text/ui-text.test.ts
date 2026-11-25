@@ -52,6 +52,12 @@ describe("Backstage's dictionaries", () => {
         }
       });
 
+      // The fallback to English hides a dropped key from every other check.
+      it("leaves no English key untranslated", async () => {
+        const mine = new Map(leaves((await import(`./${code}`)).default));
+        expect([...english.keys()].filter((path) => !mine.has(path))).toEqual([]);
+      });
+
       it("translates what English says, not only copies it", async () => {
         const mine = new Map(leaves((await import(`./${code}`)).default));
         const copied = [...mine].filter(([path, text]) => text.length > 40 && text === english.get(path));

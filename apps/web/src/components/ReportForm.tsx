@@ -31,7 +31,8 @@ import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/lib/auth-client";
-import { BODY_MAX, CATEGORIES, CATEGORY_LABELS } from "@/lib/reports/reports";
+import { BODY_MAX, CATEGORIES } from "@/lib/reports/reports";
+import { fill } from "@/lib/site-text/format";
 import type { Source } from "@/lib/sections";
 
 export default function ReportForm({
@@ -47,7 +48,8 @@ export default function ReportForm({
   /** On an /r/ page the game links to, whose address may carry the addon's context. */
   fromGame?: boolean;
 }) {
-  const t = useUiText().reports;
+  const ui = useUiText();
+  const t = ui.reports;
   const lang = useLang();
   // isPending rather than a bare null check: while the session is still loading, showing
   // the fields and then pulling them out from under a half-typed name is worse than a
@@ -97,8 +99,7 @@ export default function ReportForm({
   if (sent) {
     return (
       <p role="status" className="rounded border p-4 text-sm">
-        Thank you — the report was filed. There is no way to look it up again, so keep the
-        address if you want to check back later.
+        {t.formThanks}
       </p>
     );
   }
@@ -107,7 +108,7 @@ export default function ReportForm({
     <form onSubmit={submit} className="flex max-w-xl flex-col gap-4">
       {context ? (
         <details className="rounded border p-3 text-sm">
-          <summary className="cursor-pointer">Sent with this report, from your game</summary>
+          <summary className="cursor-pointer">{t.formContext}</summary>
           <div className="mt-2">
             <ReportContextFacts context={context} />
           </div>
@@ -115,7 +116,7 @@ export default function ReportForm({
       ) : null}
 
       <label className="flex flex-col gap-1 text-sm">
-        What went wrong?
+        {t.formCategory}
         <select
           name="category"
           defaultValue="pronunciation"
@@ -123,14 +124,14 @@ export default function ReportForm({
         >
           {CATEGORIES.map((category) => (
             <option key={category} value={category}>
-              {CATEGORY_LABELS[category]}
+              {ui.dashboard.categories[category]}
             </option>
           ))}
         </select>
       </label>
 
       <label className="flex flex-col gap-1 text-sm">
-        Tell us more
+        {t.formBody}
         <textarea
           name="body"
           required
@@ -142,12 +143,12 @@ export default function ReportForm({
 
       {isPending ? null : session ? (
         <p className="text-muted-foreground text-sm">
-          Filing as {session.user.name || session.user.email}.
+          {fill(t.formFilingAs, { name: session.user.name || session.user.email })}
         </p>
       ) : (
         <>
           <label className="flex flex-col gap-1 text-sm">
-            Your name (optional)
+            {t.formName}
             <input
               name="name"
               maxLength={200}
@@ -156,7 +157,7 @@ export default function ReportForm({
           </label>
 
           <label className="flex flex-col gap-1 text-sm">
-            Email, if you want a reply (optional)
+            {t.formEmail}
             <input
               name="email"
               type="email"
