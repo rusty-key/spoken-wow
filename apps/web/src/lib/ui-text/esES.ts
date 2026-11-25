@@ -1714,9 +1714,9 @@ const esES: Dictionary = {
     notSeededBefore: "La tabla de pronunciación está vacía. La migración",
     ok: "OK",
     onItsOwn: "{name}, por separado",
-    partialAfter: "de las {sent} reglas subidas. El diccionario está en vigor pero incompleto, así que algunos nombres de abajo no se están aplicando.",
-    partialBefore: "ElevenLabs solo conservó",
     pendingAfter: ". La generación sigue aplicando el diccionario anterior, así que las entradas de abajo no son lo que suenan ahora las líneas.",
+    partial:
+      "ElevenLabs solo conservó {kept} de las {sent} reglas subidas. El diccionario está en vigor pero incompleto, así que algunos nombres de abajo no se están aplicando.",
     pendingBefore: "Guardado, pero no subido",
     previewFailed: "No se pudo previsualizar {name}",
     readError: "No se pudo leer tu cuenta de ElevenLabs, así que ninguna vista previa se marca como ya generada:",

@@ -666,8 +666,7 @@ function SyncBanner({
     return (
       <Banner tone="error">
         <span>
-          {t.partialBefore} {saved.rulesKept} of the {saved.rulesSent} rules uploaded.
-          {fill(t.partialAfter, { sent: saved.rulesSent })}
+          {fill(t.partial, { kept: saved.rulesKept, sent: saved.rulesSent })}
         </span>
         <Button size="sm" variant="outline" disabled={busy} onClick={onRetry}>
           {busy ? t.uploadingNow : t.uploadAgain}

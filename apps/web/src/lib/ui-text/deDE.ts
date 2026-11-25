@@ -1717,9 +1717,9 @@ const deDE: Dictionary = {
     notSeededBefore: "Die Lexikontabelle ist leer. Migration",
     ok: "OK",
     onItsOwn: "{name}, allein",
-    partialAfter: "der {sent} hochgeladenen Regeln übernommen. Das Wörterbuch ist in Kraft, aber unvollständig, deshalb werden einige Namen unten nicht angewendet.",
-    partialBefore: "ElevenLabs hat nur",
     pendingAfter: ". Die Erzeugung nutzt noch das vorherige Wörterbuch, die Einträge unten sind also nicht, wie die Zeilen gerade klingen.",
+    partial:
+      "ElevenLabs hat nur {kept} der {sent} hochgeladenen Regeln behalten. Das Wörterbuch ist in Kraft, aber unvollständig, einige Namen unten werden also nicht angewandt.",
     pendingBefore: "Gespeichert, aber nicht hochgeladen",
     previewFailed: "Konnte {name} nicht vorhören",
     readError: "Konnte dein ElevenLabs-Konto nicht lesen, deshalb ist keine Vorschau als schon erzeugt markiert:",

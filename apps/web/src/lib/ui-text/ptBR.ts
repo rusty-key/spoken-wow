@@ -1713,9 +1713,9 @@ const ptBR: Dictionary = {
     notSeededBefore: "A tabela do léxico está vazia. A migração",
     ok: "OK",
     onItsOwn: "{name}, sozinho",
-    partialAfter: "das {sent} regras enviadas. O dicionário está em vigor mas incompleto, então alguns nomes abaixo não estão sendo aplicados.",
-    partialBefore: "O ElevenLabs guardou só",
     pendingAfter: ". A geração ainda aplica o dicionário anterior, então as entradas abaixo não são o que as falas soam agora.",
+    partial:
+      "O ElevenLabs manteve apenas {kept} das {sent} regras enviadas. O dicionário está em vigor mas incompleto, então alguns nomes abaixo não estão sendo aplicados.",
     pendingBefore: "Salvo, mas não enviado",
     previewFailed: "Não foi possível gerar a prévia de {name}",
     readError: "Não foi possível ler a sua conta do ElevenLabs, então nenhuma prévia é marcada como já gerada:",

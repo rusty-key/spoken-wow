@@ -1714,9 +1714,9 @@ const esMX: Dictionary = {
     notSeededBefore: "La tabla del léxico está vacía. La migración",
     ok: "OK",
     onItsOwn: "{name}, solo",
-    partialAfter: "de las {sent} reglas subidas. El diccionario está en vigor pero incompleto, así que algunos nombres de abajo no se están aplicando.",
-    partialBefore: "ElevenLabs solo conservó",
     pendingAfter: ". La generación todavía aplica el diccionario anterior, así que las entradas de abajo no son como suenan ahora las líneas.",
+    partial:
+      "ElevenLabs solo conservó {kept} de las {sent} reglas subidas. El diccionario está vigente pero incompleto, así que algunos nombres de abajo no se están aplicando.",
     pendingBefore: "Guardado, pero sin subir",
     previewFailed: "No se pudo escuchar una vista previa de {name}",
     readError: "No se pudo leer tu cuenta de ElevenLabs, así que ninguna vista previa se marca como ya renderizada:",
