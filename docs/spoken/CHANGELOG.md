@@ -2,6 +2,11 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- **With the Gamepad UI on, the minimap button's right-click menu no longer breaks the controller**
+  ("Interface action failed"). *([ArtisanGW](https://github.com/ArtisanGW))*
+
 ## 3.13.0 — 2026-11-25
 
 - **Kaliel's Tracker shows Play on each quest** on Forever, and Show Play Button > Tracker

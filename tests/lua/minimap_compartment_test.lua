@@ -126,6 +126,28 @@ stub.Advance(0.06)
 Expect("a hidden minimap button still positions the native menu", stub.nativeMenuAnchor and stub.nativeMenuAnchor[2], nativeButton)
 Expect("...while UIParent keeps ownership visible", stub.nativeMenuOwner, _G.UIParent)
 
+---------------------------------------------------------------- with the controller UI, Spoken's own menu
+-- With the controller UI on, Blizzard's menus join its controller focus system, and one
+-- an addon opens taints it ("Interface action failed"). There the button opens Spoken's
+-- own menu instead, even where the native API exists.
+Clean()
+env = stub.LoadSpoken(SPOKEN)
+env.Addon:Enable()
+stub.SetNativeMenuAPI(true)
+_G.InputUtil = { IsGamepadUIEnabled = function() return true end }
+local controllerButton = stub.dbIcons.Spoken.button
+stub.ldbObjects.Spoken.OnClick(controllerButton, "RightButton")
+Expect("with the controller UI, the native menu stays closed", stub.openNativeMenu, nil)
+Expect("...and so does the dropdown", stub.openDropDown, nil)
+Expect("...and Spoken's own menu opens", _G.SpokenMinimapMenu ~= nil and _G.SpokenMinimapMenu:IsShown(), true)
+stub.ldbObjects.Spoken.OnClick(controllerButton, "RightButton")
+Expect("...and a second click closes it", _G.SpokenMinimapMenu:IsShown(), false)
+_G.InputUtil = { IsGamepadUIEnabled = function() return false end }
+stub.ldbObjects.Spoken.OnClick(controllerButton, "RightButton")
+Expect("with the mouse UI, the native menu opens again", stub.openNativeMenu ~= nil, true)
+_G.Menu.GetManager():CloseMenus()
+_G.InputUtil = nil
+
 ---------------------------------------------------------------- ...and nothing where there is no frame
 Clean()
 env = stub.LoadSpoken(SPOKEN)

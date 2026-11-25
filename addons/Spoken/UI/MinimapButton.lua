@@ -133,6 +133,15 @@ local function HasNativeMenuAPI()
         and true or false
 end
 
+--- Whether the controller UI is on. Blizzard's menus then join its controller focus system
+--- (Blizzard_GamepadSharedUtility's FrameControlsManager, on MenuProxy.OnShow), and one an
+--- addon opens taints that system as it opens and closes: the client then blocks
+--- SetPreferredGamepadInteractTarget ("Interface action failed"). Spoken's own menu is used
+--- there instead.
+local function ControllerUIIsOn()
+    return InputUtil and InputUtil.IsGamepadUIEnabled and InputUtil.IsGamepadUIEnabled() and true or false
+end
+
 --- Whether the client has the legacy context-menu API.
 local function HasLegacyMenuAPI()
     return UIDropDownMenu_Initialize and UIDropDownMenu_AddButton and UIDropDownMenu_CreateInfo
@@ -328,13 +337,15 @@ local function ToggleMenu(anchor)
     if iconTooltip then
         iconTooltip:Hide()
     end
-    if HasNativeMenuAPI() then
-        ToggleNativeMenu(anchor)
-        return
-    end
-    if HasLegacyMenuAPI() then
-        ToggleClientMenu(anchor)
-        return
+    if not ControllerUIIsOn() then
+        if HasNativeMenuAPI() then
+            ToggleNativeMenu(anchor)
+            return
+        end
+        if HasLegacyMenuAPI() then
+            ToggleClientMenu(anchor)
+            return
+        end
     end
     if menuFrame and menuFrame:IsShown() then
         HideMenu()
