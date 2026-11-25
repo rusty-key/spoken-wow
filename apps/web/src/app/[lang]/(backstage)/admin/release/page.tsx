@@ -6,7 +6,7 @@ import ReleasePanel from "@/components/ReleasePanel";
 import { Contained } from "@/components/Width";
 import { viewerOf } from "@/lib/grants/store";
 import { langName } from "@/lib/lang";
-import { pageLang, readingLang } from "@/lib/lang-server";
+import { readingLang } from "@/lib/lang-server";
 import { uiText } from "@/lib/ui-text";
 import { fill } from "@/lib/site-text/format";
 import { isAdmin, langsWhere } from "@/lib/permissions";

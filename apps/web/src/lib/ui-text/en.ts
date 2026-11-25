@@ -2649,8 +2649,8 @@ export const EN = {
     theirsFor: "Theirs for {gender} players",
     theirsReadBy: "Theirs read by a {gender} character",
     oursReadBy: "Ours read by {who} characters",
-    readerGenderMark: "· the reader's gender",
-    andWord: "and",
+    readerGenderMark: " · the reader's gender",
+    andWord: " and ",
     sex: { male: "male", female: "female" },
   },
   /** The Contribute page. Its maps are keyed by the parser's field and error names, not by English. */

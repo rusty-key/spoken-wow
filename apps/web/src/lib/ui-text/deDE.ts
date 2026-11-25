@@ -1342,8 +1342,8 @@ const deDE: Dictionary = {
     theirsFor: "Ihre Fassung für Spieler ({gender})",
     theirsReadBy: "Ihre Fassung, gelesen von einem Charakter ({gender})",
     oursReadBy: "Unsere Fassung, gelesen von Charakteren ({who})",
-    readerGenderMark: "· das Geschlecht des Lesers",
-    andWord: "und",
+    readerGenderMark: " · das Geschlecht des Lesers",
+    andWord: " und ",
     sex: { male: "männlich", female: "weiblich" },
   },
   contribute: {

@@ -1290,7 +1290,7 @@ const zhCN: Dictionary = {
     theirsFor: "玩家的版本，给{gender}玩家",
     theirsReadBy: "玩家的文本，由{gender}角色朗读",
     oursReadBy: "我们的文本，由{who}角色朗读",
-    readerGenderMark: "· 读者性别",
+    readerGenderMark: " · 读者性别",
     andWord: "和",
     sex: { male: "男性", female: "女性" },
     acceptWithout: "不带 {tokens} 采纳",

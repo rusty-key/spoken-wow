@@ -1328,7 +1328,7 @@ const zhTW: Dictionary = {
     theirsFor: "玩家的版本，給{gender}玩家",
     theirsReadBy: "玩家的文本，由{gender}角色朗讀",
     oursReadBy: "我們的文本，由{who}角色朗讀",
-    readerGenderMark: "· 讀者性別",
+    readerGenderMark: " · 讀者性別",
     andWord: "和",
     sex: { male: "男性", female: "女性" },
     acceptWithout: "不帶 {tokens} 採納",

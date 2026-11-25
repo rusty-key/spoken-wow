@@ -1338,8 +1338,8 @@ const esES: Dictionary = {
     theirsFor: "La suya para jugadores {gender}",
     theirsReadBy: "La suya, leída por un personaje {gender}",
     oursReadBy: "La nuestra, leída por personajes {who}",
-    readerGenderMark: "· el género del lector",
-    andWord: "y",
+    readerGenderMark: " · el género del lector",
+    andWord: " y ",
     sex: { male: "masculino", female: "femenino" },
   },
   contribute: {
