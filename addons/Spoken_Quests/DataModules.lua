@@ -1063,11 +1063,18 @@ function DataModules:IsSplit(id)
     return (FirstIn("GossipFileLookupByNPCBody", id) or FirstIn("GossipFileLookupByNPCSex", id)) ~= nil
 end
 
+--- The bodies a creature is voiced as, from the first installed pack that lists them, or nil.
+---@param id number
+---@return table<string, boolean>|nil
+function DataModules:BodiesOf(id)
+    return FirstIn("NPCBodiesByNPCID", id)
+end
+
 --- Whether any installed pack lists a creature's bodies, so that its model is worth reading.
 ---@param id number
 ---@return boolean
 function DataModules:HasBodies(id)
-    return FirstIn("NPCBodiesByNPCID", id) ~= nil
+    return self:BodiesOf(id) ~= nil
 end
 
 --- A greeting's table names its speaker's own voice's file, `{hash}-{voice}`: the line's own

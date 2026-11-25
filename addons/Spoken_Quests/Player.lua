@@ -233,6 +233,39 @@ local REPORT = {
 
 local ACTIONS = { REPORT, STOP_GOSSIP }
 
+local SEXES = { [2] = "male", [3] = "female" }
+
+--- Who speaks a line, for Spoken:GetSpeaker: the creature, the sex it is drawn as, and its body
+--- from the packs or its model. With `read`, the model of a speaker on screen with no body is read,
+--- once; Spoken hears when it is in (SpeakerLoaded).
+local function Speaker(clip, read)
+    local guid = clip.unitGUID
+    local id = guid and Utils:GetCreatureIDFromGUID(guid)
+    if not id then return nil end
+    local body = clip.npcBody or Utils:GetBodyForGUID(guid)
+    if not body then
+        -- A creature the packs voice as one body only is that body.
+        local only
+        for each in pairs(DataModules:BodiesOf(id) or {}) do
+            if only then only = nil; break end
+            only = each
+        end
+        body = only
+    end
+    if not body and read then
+        local unit = Utils:UnitForGUID(guid)
+        if unit then NPCModel:Prime(guid, unit) end
+    end
+    return { creatureID = id, guid = guid, sex = SEXES[clip.npcSex or Utils:GetSexForGUID(guid)], body = body }
+end
+
+-- A speaker's model in: Spoken tells whoever asked about its lines still queued.
+table.insert(NPCModel.onLoaded, function(guid)
+    for _, clip in ipairs(Spoken:GetQueue()) do
+        if clip.unitGUID == guid then SpokenEnv.Callbacks:Fire("SPEAKER_CHANGED", clip) end
+    end
+end)
+
 --- Turn a prepared SoundData into a clip, in place.
 function Player:Prepare(soundData)
     local event = soundData.event
@@ -476,6 +509,7 @@ function Player:Setup()
         testBeforeQueue = true,
         -- Its settings follow the profile chosen in Spoken's own settings.
         profiles = function() return Addon.db end,
+        speaker = Speaker,
         -- Printed after Spoken's own by its Show Diagnostics.
         diagnostics = function() Options:PrintDiagnostics() end,
         onScreen = OnPage,
@@ -499,6 +533,7 @@ function Player:Setup()
         onScreen = OnPage,
         endsWithWindow = EndsWithWindow,
         profiles = function() return Addon.db end,
+        speaker = Speaker,
         -- The voice packs that hold gossip.
         packs = function()
             local names = {}
@@ -524,6 +559,7 @@ function Player:Setup()
         noNarrator = true,
         testBeforeQueue = true,
         profiles = function() return Addon.db end,
+        speaker = Speaker,
         packs = function()
             local names = {}
             for _, module in DataModules:GetPresentModules() do table.insert(names, module.Title) end

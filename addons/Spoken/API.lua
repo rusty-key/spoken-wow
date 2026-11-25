@@ -448,6 +448,38 @@ function Spoken:CreateActions(parent)
     return row
 end
 
+---@class SpokenSpeaker
+---@field creatureID? number
+---@field guid? string
+---@field sex? string   "male" | "female"
+---@field body? string  as the voice packs name it: "nightelf-female"
+---@field race? string  the body's race: "nightelf", "scourge"
+
+--- Public. Who speaks `clip`, as far as Spoken knows: each field nil where it does not. The body
+--- and race come from the voice packs, or from the speaker's model where Spoken read it. With
+--- `read`, Spoken reads the model of a speaker the game has on screen that it has no body for, at
+--- most once per speaker, and fires SPEAKER_CHANGED with the clip once it knows more. Nil for
+--- anything but a clip. A copy, yours to keep.
+---@param clip SpokenClip
+---@param read? boolean
+---@return SpokenSpeaker?
+function Spoken:GetSpeaker(clip, read)
+    if type(clip) ~= "table" then return nil end
+    local source = clip.source
+    local known = {}
+    if source and type(source.speaker) == "function" then
+        local ok, answer = pcall(source.speaker, clip, read and true or false)
+        if ok and type(answer) == "table" then known = answer end
+    end
+    local portrait = clip.present and clip.present.portrait
+    local speaker = {
+        creatureID = known.creatureID or (portrait and portrait.creatureID),
+        guid = known.guid, sex = known.sex, body = known.body,
+    }
+    speaker.race = type(speaker.body) == "string" and speaker.body:match("^(%a+)%-") or nil
+    return speaker
+end
+
 --- Public. Spoken's captions of the line shown, in `parent`: from its top left, `width` wide, with the
 --- player's Word Size, Rows at Once, Highlight Words and Type Words Out, scrolling as they are read.
 --- Returns the height they take, 0 where the line shows no words; call it again on each Update to
@@ -1462,6 +1494,7 @@ end
 --   CLIP_DROPPED       (clip, reason)      Spoken took it out unheard: "queue-limit" | "outranked" | "missing" | "refused" | an admit reason
 --   QUEUE_EMPTY        ()
 --   PART_SWITCHED      (key, on)           a part was switched on or off in Spoken's settings
+--   SPEAKER_CHANGED    (clip)              more is known of who speaks it (Spoken:GetSpeaker)
 --
 -- Module events, for Spoken's own modules:
 --   SOURCE_REGISTERED  (source)
