@@ -1111,11 +1111,19 @@ function C.NewList(panel, opts)
 	local inset = NewInset(panel)
 	-- The game's dark marble under the list, at its own colour.
 	-- Forever has the professions list's background; Era keeps the marble.
-	if type(inset.Bg) == "table" and inset.Bg.SetTexture
-		and (IS_ERA or not Atlas(inset.Bg, LIST_BACKGROUND)) then
-		inset.Bg:SetTexture([[Interface\FrameGeneral\UI-Background-Marble]], "REPEAT", "REPEAT")
-		if inset.Bg.SetHorizTile then inset.Bg:SetHorizTile(true); inset.Bg:SetVertTile(true) end
-		if inset.Bg.SetVertexColor then inset.Bg:SetVertexColor(1, 1, 1, 1) end
+	if type(inset.Bg) == "table" and inset.Bg.SetTexture then
+		if not IS_ERA and HasAtlas(LIST_BACKGROUND) and inset.CreateTexture then
+			-- The template's own background tiles, and a tiled atlas draws as one pixel of its sheet:
+			-- a texture of the list's own is not tiled.
+			inset.Bg:SetAlpha(0)
+			local back = inset:CreateTexture(nil, "BACKGROUND", nil, -4)
+			back:SetAllPoints(inset)
+			Atlas(back, LIST_BACKGROUND)
+		else
+			inset.Bg:SetTexture([[Interface\FrameGeneral\UI-Background-Marble]], "REPEAT", "REPEAT")
+			if inset.Bg.SetHorizTile then inset.Bg:SetHorizTile(true); inset.Bg:SetVertTile(true) end
+			if inset.Bg.SetVertexColor then inset.Bg:SetVertexColor(1, 1, 1, 1) end
+		end
 	end
 	inset:SetPoint("TOPLEFT", panel, "TOPLEFT", left, top - 38)
 	-- Down to the window's foot, level with the page beside it.

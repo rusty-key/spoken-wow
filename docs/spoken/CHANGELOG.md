@@ -4,6 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **The Compendium's list background draws again on Forever.** It showed as one flat tan.
+  *([Nucabe](https://github.com/Nucabe))*
 - For feature addons: `Spoken:Supports(feature)` says what this Spoken can do, such as
   `"story:boss"`, and a registration with the wrong arguments now raises at your line.
   *([rusty-key](https://github.com/rusty-key))*
