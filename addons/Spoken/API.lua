@@ -6,9 +6,7 @@ setfenv(1, SpokenEnv)
 -- removed or changed incompatibly, only deprecated behind a shim, and
 -- tests/lua/api_contract_test.lua pins the set.
 --
--- Module: everything else on `Spoken`, here and in the few files that add to it outside this one
--- (Spoken.NotSecret and Spoken.CreatureID in Environment.lua, Spoken.Contribute in Contribute.lua,
--- the contribute and report windows in UI/ContributeBox.lua). It is how Spoken's own modules,
+-- Module: everything else on `Spoken`, wherever it is defined. It is how Spoken's own modules,
 -- which ship and version with it, reach the player, and it may change in any release.
 --
 -- API_VERSION is the frozen major: it moves only if a Public function breaks, which the policy
@@ -1009,7 +1007,7 @@ function Spoken:DressBoxButton(button)
 end
 
 --- Public. End the line at the head, speaking or held, and go on to the next. Returns whether a
---- line was skipped.
+--- line was skipped: false too for a line the client gave no handle to stop, which plays on.
 ---@return boolean
 function Spoken:Skip()
     return SoundQueue:Skip()
@@ -1020,7 +1018,8 @@ function Spoken:Previous()
     return SoundQueue:Previous()
 end
 
---- Public. Stop and clear every line of every source, and unpause.
+--- Public. Stop and clear every line of every source, and unpause. A line speaking that the
+--- client gave no handle to stop stays at the head and plays to its end.
 function Spoken:StopAll()
     SoundQueue:RemoveAllSoundsFromQueue()
 end
@@ -1272,8 +1271,8 @@ end
 --   AUDIO_CHANGED      ()                  coarse; after every change to the queue
 --   CLIP_QUEUED        (clip)
 --   CLIP_STARTED       (clip)
---   CLIP_STOPPED       (clip, finishedPlaying)
---   CLIP_DROPPED       (clip, reason)      "queue-limit" | "outranked" | "missing" | "refused" | an admit reason
+--   CLIP_STOPPED       (clip, finishedPlaying) left the queue by Skip, StopAll or its module, started or not
+--   CLIP_DROPPED       (clip, reason)      Spoken took it out unheard: "queue-limit" | "outranked" | "missing" | "refused" | an admit reason
 --   QUEUE_EMPTY        ()
 --   PART_SWITCHED      (key, on)           a part was switched on or off in Spoken's settings
 --

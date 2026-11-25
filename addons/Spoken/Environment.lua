@@ -4,8 +4,8 @@ Two globals hold Spoken.
     Spoken     the API (API.lua). Its Public tier is frozen; the rest is for Spoken's own modules.
     SpokenEnv  the private environment every implementation file runs in.
 
-A few files that share UI and data with the modules (SpokenCompendium, SpokenTextView,
-SpokenDungeons) run outside it and set globals of their own. None of those is a contract.
+A few files that share UI and data with the modules run outside it and set globals of their
+own. None of those is a contract.
 
 SpokenEnv is a table whose metatable falls back to _G, so inside it every bare global
 resolves against the game as usual, while anything an implementation file assigns to a

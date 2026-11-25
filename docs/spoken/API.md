@@ -138,8 +138,8 @@ the captions time the words.
 | `Spoken:IsPaused()` | `boolean`: whether the player paused. It stays paused across a reload. |
 | `Spoken:Pause()` | `boolean`: false where already paused. The client has no seek, so the line stops and `Resume` replays it from the start. |
 | `Spoken:Resume()` | `boolean`: false where not paused. |
-| `Spoken:Skip()` | `boolean`: ends the line at the head, speaking or held, and goes on. False where nothing was skipped. |
-| `Spoken:StopAll()` | Stops and clears every line of every source, and unpauses. |
+| `Spoken:Skip()` | `boolean`: ends the line at the head, speaking or held, and goes on. False where nothing was skipped, and for a line the client gave no handle to stop, which plays on. |
+| `Spoken:StopAll()` | Stops and clears every line of every source, and unpauses. A line speaking that the client gave no handle to stop stays and plays to its end. |
 
 ### Clips
 
@@ -181,8 +181,8 @@ caught and kept for `/spoken diagnostics`; the other handlers still run.
 | `AUDIO_CHANGED` | none | After any change to the queue: coarse, so redraw from the calls above. |
 | `CLIP_QUEUED` | `clip` | A line joined the queue. |
 | `CLIP_STARTED` | `clip` | A line started speaking. |
-| `CLIP_STOPPED` | `clip, finishedPlaying` | A line that started has ended; `finishedPlaying` is false when it was skipped or stopped. |
-| `CLIP_DROPPED` | `clip, reason` | A queued line left without being heard. `reason` is `"queue-limit"`, `"outranked"`, `"missing"` (the client could not play the file), `"refused"`, or a module's own word. |
+| `CLIP_STOPPED` | `clip, finishedPlaying` | A line left the queue through `Skip`, `StopAll` or its module, started or not. `finishedPlaying` is true only for a line that played to its end. |
+| `CLIP_DROPPED` | `clip, reason` | Spoken took a queued line out itself, unheard. `reason` is `"queue-limit"`, `"outranked"`, `"missing"` (the client could not play the file), `"refused"`, or a module's own word. |
 | `QUEUE_EMPTY` | none | The last line left the queue. |
 | `PART_SWITCHED` | `key, on` | The player switched a part on or off in Spoken's settings. |
 
