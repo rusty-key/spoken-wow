@@ -3,7 +3,7 @@ setfenv(1, SpokenEnv)
 -- Narrator styles other addons register (Spoken:RegisterNarrator): a card of their own among the
 -- narrator styles, and a window the addon draws itself. Spoken tells the one chosen what to show,
 -- through its Update, the way it tells its own windows; everything else it reads from the Public
--- API. Nothing of Spoken's windows is handed out, so they stay Spoken's own to change.
+-- API, which hands out Spoken's parts (captions, controls, portrait) but never its windows.
 Narrators = { byId = {}, order = {}, keeps = {}, pending = {} }
 
 function Narrators:Register(id, info)
@@ -40,7 +40,7 @@ end
 --- Tell the narrator on screen what to show now, and one shown before it, if another, to show nothing.
 function Narrators:Update()
     local id = self:Current()
-    if self.shown and self.shown ~= id and self.byId[self.shown] then Tell(self.shown, nil) end
+    if self.shown and self.shown ~= id then Tell(self.shown, nil) end
     self.shown = id
     if not id then return end
     local clip = PlayerFrame:Current()
@@ -57,7 +57,7 @@ end
 
 function Narrators:SetVisible(visible)
     if visible then return self:RefreshConfig() end
-    if self.shown and self.byId[self.shown] then Tell(self.shown, nil) end
+    if self.shown then Tell(self.shown, nil) end
     self.shown, self.told = nil, nil
 end
 
@@ -83,30 +83,29 @@ end
 --------------------------------------------------------------------------------
 
 --- Ask the player once, ever, whether to switch to the narrator `id`, whatever style they have,
---- unless it is theirs already. Before Spoken has its settings, kept until it does; with no `id`,
---- ask those kept now. Returns whether it asked.
+--- unless it is theirs already. Before Spoken has its settings, kept until it does (AskPending).
 function Narrators:Suggest(id)
-    if id == nil then
-        local pending = self.pending
-        self.pending = {}
-        for _, each in ipairs(pending) do self:Suggest(each) end
-        return false
-    end
     if not Addon.enabled then
         table.insert(self.pending, id)
-        return false
+        return
     end
     local narrator = self.byId[id]
     -- The narrators the player was asked about, whatever they answered: account-wide, as the addon is.
     local global = Addon.db.global
     global.SuggestedNarrators = global.SuggestedNarrators or {}
     local asked = global.SuggestedNarrators
-    if not narrator or asked[id] or Addon:PlayerStyle() == id then return false end
+    if not narrator or asked[id] or Addon:PlayerStyle() == id then return end
     asked[id] = true
     SpokenLayout.Confirm(format(L.NARRATOR_SUGGEST_FMT, narrator.title), L.NARRATOR_USE, L.NARRATOR_KEEP, function()
         Addon:SetPlayerStyle(id)
         PlayerFrame:RefreshConfig()
         Options:UpdateRows()
     end)
-    return true
+end
+
+--- The suggestions made before Spoken had its settings, asked now that it has them.
+function Narrators:AskPending()
+    local pending = self.pending
+    self.pending = {}
+    for _, id in ipairs(pending) do self:Suggest(id) end
 end

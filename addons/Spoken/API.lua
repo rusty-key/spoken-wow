@@ -335,7 +335,6 @@ end
 -- Narrators: narrator styles other addons draw themselves
 --------------------------------------------------------------------------------
 
-local OWN_STYLES = { subtitle = true, minimal = true, classic = true, dialogueui = true, none = true }
 
 --- Public. Offer a narrator style of your own: a card among Spoken's narrator styles, titled
 --- `info.title` over `info.description`, with `info.picture` (a texture) where you give one. While
@@ -354,7 +353,7 @@ function Spoken:RegisterNarrator(id, info)
         and (info.picture == nil or type(info.picture) == "string")
         and (info.settings == nil or type(info.settings) == "function"),
         "RegisterNarrator needs an id and a narrator with title, description and Update")
-    Require(not OWN_STYLES[id], format("%q is one of Spoken's own narrator styles", id))
+    Require(not Options.STYLE_LABELS[id], format("%q is one of Spoken's own narrator styles", id))
     if Narrators.byId[id] then Developer:Log("api", "narrator %q registered again; the new one replaces it", id) end
     Narrators:Register(id, { title = info.title, description = info.description, picture = info.picture,
         Update = info.Update, settings = info.settings })
@@ -374,9 +373,10 @@ local CONTROLS = {
     skip = Actions.SkipButton,
     stopall = Actions.EjectButton,
     stop = function(parent)
-        local button = Actions.StopButton(parent)
+        local function Speaking() return SoundQueue:GetCurrentSound() ~= nil end
+        local button = Actions.StopButton(parent, Speaking)
         button.stops = true
-        button.canAct = function() return SoundQueue:GetCurrentSound() ~= nil and SoundQueue:CanBePaused() end
+        button.canAct = function() return Speaking() and SoundQueue:CanBePaused() end
         return button
     end,
 }
@@ -414,8 +414,7 @@ function Spoken:CreatePortrait(parent, size)
         Face.Show(self, clip)
     end
     function portrait:SetRingColor(r, g, b)
-        self.ringColor = r and { r, g, b } or nil
-        if r then self.ring:SetVertexColor(r, g, b) else Actions.RefreshRings() end
+        if r then self.ring:SetVertexColor(r, g, b) else Actions.TintWithRings(self.ring) end
     end
     -- A face the game had not cached when the line came is drawn once it has; Spoken's own windows
     -- ask the same while they show.

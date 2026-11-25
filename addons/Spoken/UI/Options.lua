@@ -415,8 +415,7 @@ function Options:Styles()
     return styles
 end
 
---- A narrator style's card: its title, its words and its sketch. A registered narrator's are its
---- addon's, with its picture where it gave one.
+--- A narrator style's card. A registered narrator's words and picture are its addon's.
 function Options:StyleCard(style)
     local narrator = Narrators.byId[style]
     if narrator then
@@ -826,7 +825,6 @@ local function Build()
             function() return cfg().BronzeTint end, function(v) cfg().BronzeTint = v end, refresh)
     end
 
-    -- The chosen narrator's own rows, as its addon hands them in.
     Narrators:Place(layout)
 
     -- How the words of a line show, past whether they show at all and how big.

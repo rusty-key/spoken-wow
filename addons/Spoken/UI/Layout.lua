@@ -320,9 +320,9 @@ function Layout:AddRow(height, control, regions, place)
     else
         AddItem(self, row)
     end
-    -- A Keep shown only `when` shows each row filled in at it only then.
-    if self.filling and self.filling.when then row.conditions = { self.filling.when } end
     control.layoutRow = row
+    -- A Keep shown only `when` shows each row filled in at it only then.
+    if self.filling and self.filling.when then self:ShowWhen(control, self.filling.when) end
     self.dirty = true
     return row
 end
