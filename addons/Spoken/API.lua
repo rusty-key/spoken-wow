@@ -332,59 +332,40 @@ function Spoken:OpenSettings()
 end
 
 --------------------------------------------------------------------------------
--- Looks: another addon's art for the Small and the Large Window
+-- Narrators: narrator styles other addons draw themselves
 --------------------------------------------------------------------------------
 
----@class SpokenLookBorder
----@field horizontal string  the top and bottom edge's texture, tiled
----@field vertical string    the left and right edge's texture, tiled
----@field corner string      the top left corner's texture; the others are it mirrored
----@field size? number       how thick the border is; 14
----@field horizontalRepeat? number how many `size`s one repeat of `horizontal` is long; 8
----@field verticalRepeat? number   the same for `vertical`; 4
-
----@class SpokenLook
----@field background? string   a texture across the window behind the words; the Small Window's rock without one
----@field tint? number[]       { r, g, b, a } washed over the background, behind the words
----@field border? SpokenLookBorder drawn in place of Spoken's own edge
----@field ring? number[]       { r, g, b } the portrait's ring
-
-local LOOK_WINDOWS = { small = true, large = true }
 local OWN_STYLES = { subtitle = true, minimal = true, classic = true, dialogueui = true, none = true }
 
 --- Public. Offer a narrator style of your own: a card among Spoken's narrator styles, titled
---- `info.title` over `info.description`, drawn in the Small or the Large Window (`info.window`,
---- "small" or "large"). While it is the style, Spoken asks `info.Look(clip, window)` for every line
---- and draws the SpokenLook it returns; nil keeps the window's own art for that line.
+--- `info.title` over `info.description`, with `info.picture` (a texture) where you give one. While
+--- it is the style, Spoken shows none of its own windows and calls `info.Update(clip)` whenever the
+--- line to show changes: the clip to show, or nil to show nothing. Draw it yourself, reading the
+--- rest from the Public API: GetCaption for the words as they are read, GetNowPlaying, IsPaused,
+--- GetWaitingCount, and Pause, Resume, Skip, Previous and StopAll for controls.
 --- `info.settings(layout)`, optional, adds a section of rows to Spoken's page, shown while it is
 --- the style. Register while your addon loads, so the card is there when the page is built. `id`
 --- taken twice replaces the first.
 ---@param id string
----@param info { title: string, description: string, window: string, Look: fun(clip: SpokenClip, window: string): SpokenLook?, settings?: fun(layout: table) }
-function Spoken:RegisterLook(id, info)
+---@param info { title: string, description: string, picture?: string, Update: fun(clip: SpokenClip?), settings?: fun(layout: table) }
+function Spoken:RegisterNarrator(id, info)
     Require(type(id) == "string" and type(info) == "table" and type(info.title) == "string"
-        and type(info.description) == "string" and type(info.Look) == "function"
+        and type(info.description) == "string" and type(info.Update) == "function"
+        and (info.picture == nil or type(info.picture) == "string")
         and (info.settings == nil or type(info.settings) == "function"),
-        "RegisterLook needs an id and a look with title, description, window and Look")
-    Require(LOOK_WINDOWS[info.window], "RegisterLook's window is \"small\" or \"large\"")
+        "RegisterNarrator needs an id and a narrator with title, description and Update")
     Require(not OWN_STYLES[id], format("%q is one of Spoken's own narrator styles", id))
-    if Looks.byId[id] then Developer:Log("api", "look %q registered again; the new one replaces it", id) end
-    Looks:Register(id, { title = info.title, description = info.description, window = info.window, Look = info.Look,
-        settings = info.settings })
+    if Narrators.byId[id] then Developer:Log("api", "narrator %q registered again; the new one replaces it", id) end
+    Narrators:Register(id, { title = info.title, description = info.description, picture = info.picture,
+        Update = info.Update, settings = info.settings })
 end
 
 --- Public. Ask the player once, ever, whether to switch to the narrator style `id`, which this addon
 --- registered, whatever style they have now; not where it is theirs already. At login, or now if
 --- that has passed; never again, whatever the answer.
 ---@param id string
-function Spoken:SuggestLook(id)
-    if type(id) == "string" then Looks:Suggest(id) end
-end
-
---- Public. Ask the chosen look again how the line shown looks, for when what it decides by has
---- changed: a speaker's model has loaded, or one of its settings.
-function Spoken:RefreshLook()
-    Looks:Refresh()
+function Spoken:SuggestNarrator(id)
+    if type(id) == "string" then Narrators:Suggest(id) end
 end
 
 --- Re-read the speaking clip's presentation -- after a setting changed an action's
@@ -986,6 +967,8 @@ function Spoken:GetNowPlaying()
     return SoundQueue:GetNowPlaying()
 end
 
+--- Public. Whether Previous has a line to go back to.
+---@return boolean
 function Spoken:CanPrevious()
     return SoundQueue:CanPrevious()
 end
@@ -1001,7 +984,8 @@ function Spoken:GetQueueSize()
     return SoundQueue:GetQueueSize()
 end
 
---- Excludes the speaking head.
+--- Public. How many lines wait behind the one at the head.
+---@return integer
 function Spoken:GetWaitingCount()
     return SoundQueue:GetWaitingCount()
 end
@@ -1029,7 +1013,12 @@ function Spoken:PlayState(clip)
     return SoundQueue:PlayState(clip)
 end
 
+--- Public. Why `clip` waits at the head without speaking, in the player's words (in combat, say), or
+--- nil where nothing holds it.
+---@param clip SpokenClip
+---@return string?
 function Spoken:GetHeldReason(clip)
+    if type(clip) ~= "table" then return nil end
     return SoundQueue:GetHeldReason(clip)
 end
 
@@ -1085,7 +1074,9 @@ function Spoken:Skip()
     return SoundQueue:Skip()
 end
 
---- Replay the line before the current one, or the most recent line after the queue drained.
+--- Public. Replay the line before the current one, or the most recent line after the queue drained.
+--- Returns whether there was one.
+---@return boolean
 function Spoken:Previous()
     return SoundQueue:Previous()
 end
@@ -1238,7 +1229,7 @@ end
 
 -- Features a caller may ask Supports about. A name is added with the feature and never removed.
 local FEATURES = {
-    stories = true, captions = true, callbacks = true, log = true, looks = true,
+    stories = true, captions = true, callbacks = true, log = true, narrators = true,
     ["text-packs"] = true, ["interface-packs"] = true,
 }
 

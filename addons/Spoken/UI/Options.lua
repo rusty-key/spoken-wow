@@ -289,9 +289,9 @@ function Options:Preview(style)
     Addon.previewStyle = style
     PlayerFrame:RefreshConfig()
     Transcript:RefreshConfig()
-    style = Looks:WindowStyle(style)
     Subtitle:ShowSample(style == "subtitle")
-    PlayerFrame:ShowSample(style == "minimal" or style == "classic" or style == "dialogueui")
+    PlayerFrame:ShowSample(style == "minimal" or style == "classic" or style == "dialogueui"
+        or Narrators.byId[style] ~= nil)
 end
 
 -- Where Spoken lives outside the game: a row each, its icon and its address to copy, the game being
@@ -349,12 +349,12 @@ end
 --- to it (StyleChosen); off, or when the page that turned it on closes, it all goes.
 function Options:SetPreviewing(on)
     self.previewing = on and true or false
-    self:Preview(on and Addon:StyleChoice() or nil)
+    self:Preview(on and Addon:PlayerStyle() or nil)
 end
 
 --- A style was chosen: in preview mode, it is the one shown now.
 function Options:StyleChosen()
-    if self.previewing then self:Preview(Addon:StyleChoice()) end
+    if self.previewing then self:Preview(Addon:PlayerStyle()) end
 end
 
 --- The one Preview button over the narrator styles, on Spoken's page and in the welcome window,
@@ -410,17 +410,23 @@ end
 function Options:Styles()
     local styles = { "subtitle", "minimal", "classic" }
     if DialogueUITheme and DialogueUITheme:Available() then table.insert(styles, "dialogueui") end
-    for _, look in ipairs(Looks:Styles()) do table.insert(styles, look) end
+    for _, id in ipairs(Narrators.order) do table.insert(styles, id) end
     table.insert(styles, "none")
     return styles
 end
 
---- A narrator style's card: its title, its words and its sketch. A look's are its addon's, over the
---- sketch of the window it is drawn in.
+--- A narrator style's card: its title, its words and its sketch. A registered narrator's are its
+--- addon's, with its picture where it gave one.
 function Options:StyleCard(style)
-    local look = Looks.byId[style]
-    if look then
-        return { value = style, title = look.title, text = look.description, art = SKETCHES[Looks.STYLES[look.window]] }
+    local narrator = Narrators.byId[style]
+    if narrator then
+        local picture = narrator.picture
+        return { value = style, title = narrator.title, text = narrator.description,
+            art = picture and function(art, w, h)
+                local texture = art:CreateTexture(nil, "ARTWORK")
+                texture:SetAllPoints()
+                texture:SetTexture(picture)
+            end }
     end
     return { value = style, title = STYLE_LABELS[style], text = STYLE_TEXTS[style], art = SKETCHES[style] }
 end
@@ -534,7 +540,7 @@ local function Build()
     local tiles = {}
     for _, style in ipairs(Options:Styles()) do table.insert(tiles, Options:StyleCard(style)) end
     Options:PreviewButton(layout)
-    layout:Choices(tiles, function() return Addon:StyleChoice() end, function(v) Addon:SetPlayerStyle(v) end,
+    layout:Choices(tiles, Style, function(v) Addon:SetPlayerStyle(v) end,
         function()
             PlayerFrame:RefreshConfig(); refreshTranscript()
             Options:StyleChosen()
@@ -820,8 +826,8 @@ local function Build()
             function() return cfg().BronzeTint end, function(v) cfg().BronzeTint = v end, refresh)
     end
 
-    -- The chosen look's own rows, as its addon hands them in.
-    Looks:Place(layout)
+    -- The chosen narrator's own rows, as its addon hands them in.
+    Narrators:Place(layout)
 
     -- How the words of a line show, past whether they show at all and how big.
     layout:Section(L.OPT_TEXT_TITLE)

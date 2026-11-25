@@ -171,7 +171,7 @@ function Welcome:Build()
     self.preview = Options:PreviewButton(layout)
     local styles = {}
     for _, style in ipairs(Options:Styles()) do table.insert(styles, Options:StyleCard(style)) end
-    self.styles = layout:Choices(styles, function() return Addon:StyleChoice() end,
+    self.styles = layout:Choices(styles, function() return Addon:PlayerStyle() end,
         function(v) Addon:SetPlayerStyle(v) end,
         function()
             Refresh()

@@ -55,7 +55,7 @@ A player with an older Spoken then sees your addon without the feature rather th
 | `feature` | |
 |---|---|
 | `"story:<kind>"` | A kind of story whose module is installed and has registered: `"story:instance"`, `"story:boss"`, `"story:quest"`. |
-| `"stories"`, `"captions"`, `"callbacks"`, `"log"`, `"looks"`, `"text-packs"`, `"interface-packs"` | The sections of this page. |
+| `"stories"`, `"captions"`, `"callbacks"`, `"log"`, `"narrators"`, `"text-packs"`, `"interface-packs"` | The sections of this page. |
 
 and false for anything else, a name it does not know included. `"log"` means the log calls
 exist; `HasLog()` says whether the log does, with Spoken Developer installed. A name, once listed, is never
@@ -166,6 +166,10 @@ the captions time the words.
 | `Spoken:Pause()` | `boolean`: false where already paused. The client has no seek, so the line stops and `Resume` replays it from the start. |
 | `Spoken:Resume()` | `boolean`: false where not paused. |
 | `Spoken:Skip()` | `boolean`: ends the line at the head, speaking or held, and goes on. False where nothing was skipped, and for a line the client gave no handle to stop, which plays on. |
+| `Spoken:Previous()` | `boolean`: replays the line before the current one, or the last line heard once the queue is empty. False where there is none. |
+| `Spoken:CanPrevious()` | `boolean`: whether `Previous` has a line to go back to. |
+| `Spoken:GetWaitingCount()` | `integer`: lines waiting behind the head. |
+| `Spoken:GetHeldReason(clip)` | Why `clip` waits at the head without speaking, such as combat, in the player's language; nil where nothing holds it. |
 | `Spoken:StopAll()` | Stops and clears every line of every source, and unpauses. A line speaking that the client gave no handle to stop stays and plays to its end. |
 
 ### Clips
@@ -222,43 +226,31 @@ Spoken fires other events for its modules (`SOURCE_REGISTERED`, `CONTRIBUTE_SETT
 `DEVELOPER_REGISTERED`, `DEVELOPER_SETTINGS_ADDED`). They are Module tier: listed in `API.lua`,
 not frozen.
 
-## Looks
+## Narrator styles
 
-A narrator style of your own: a card among Spoken's narrator styles, with your title and
-description, drawn in the Small or the Large Window with art of yours: a border, a background, a
-wash over it, the portrait's ring. You describe the art and Spoken draws it, so a look keeps working
-when Spoken redesigns its windows.
+A narrator style of your own: a card among Spoken's narrator styles, with your title, description
+and picture, and a window your addon draws itself. While it is the style, Spoken shows none of its
+own windows and tells yours which line to show. Everything else you read and do through the calls
+on this page, so your style keeps working however Spoken's own windows change.
 
 | Call | |
 |---|---|
-| `Spoken:RegisterLook(id, info)` | Adds the narrator style. `info.title` and `info.description` are its card's words, in the player's language. `info.window` is `"small"` or `"large"`, the window it is drawn in. `info.Look(clip, window)` returns how a line looks. `info.settings(layout)`, optional, adds a section of rows to Spoken's page, shown while it is the style. Register while your addon loads, so the card is there when the page is built. Raises for a wrong argument, or an `id` that is one of Spoken's own styles. Registering `id` again replaces it. |
-| `Spoken:SuggestLook(id)` | Asks the player, once ever, whether to switch to your style, whatever style they have now. Not if it is already theirs. At login if you call it before then. Whatever they answer, it never asks again. |
-| `Spoken:RefreshLook()` | Asks `Look` again for the line shown: call it when what you decide by has changed, such as a speaker's model loading or one of your settings. |
+| `Spoken:RegisterNarrator(id, info)` | Adds the style. `info.title` and `info.description` are its card's words, in the player's language; `info.picture`, optional, a texture for the card. `info.Update(clip)` is called whenever the line to show changes: the clip, or nil to show nothing. `info.settings(layout)`, optional, adds a section of rows to Spoken's page, shown while it is the style. Register while your addon loads, so the card is there when the page is built. Raises for a wrong argument, or an `id` that is one of Spoken's own styles. Registering `id` again replaces it. |
+| `Spoken:SuggestNarrator(id)` | Asks the player, once ever, whether to switch to your style, whatever style they have now. Not if it is already theirs. At login if you call it before then. Whatever they answer, it never asks again. |
 
-While your style is chosen, Spoken calls `Look(clip, window)` for every line it shows. Return a
-table of what to draw, every field optional, or nil to keep the window's own art for that line
-(the Small Window's Theme, or the Large Window's own). If `Look` raises, or returns something
-Spoken can't draw, the line keeps Spoken's art and the error goes to the debug log.
+`Update` is told a line only when there is one to show: the line at the head of the queue, unless
+the player turned the narrator off for its part, or DialogueUI's dialog covers the screen. While
+the player previews your style with nothing playing, it is told a sample line. If `Update` raises,
+the line still plays and the error goes to the debug log.
 
-```lua
-{
-    background = [[Interface\AddOns\MyLook\Paper]], -- behind the words; the Small Window's dark rock without one
-    tint = { .1, .05, .02, .7 },                     -- r, g, b, a washed over the background
-    ring = { .9, .7, .4 },                           -- r, g, b for the portrait's ring
-    border = {                                       -- drawn in place of Spoken's edge
-        horizontal = [[...\Edge]],                   -- top and bottom, tiled
-        vertical = [[...\EdgeV]],                    -- left and right, tiled
-        corner = [[...\Join]],                       -- the top left corner; the others mirror it
-        size = 14,                                   -- thickness
-        horizontalRepeat = 8,                        -- one repeat of `horizontal` is this many `size`s long
-        verticalRepeat = 4,                          -- the same for `vertical`
-    },
-}
-```
+What a window usually needs, all Public:
 
-Each side tiles from its middle out to the corners, mirrored, so a pattern meets itself in the
-middle and ends whole at each corner. Spoken draws looks in its own look, not EllesmereUI's, and
-not in the subtitles or the DialogueUI window.
+- **The words as they are read:** `GetCaption()`, every frame. It names the word being spoken and
+  how far the reading is, and says whether the player wants words highlighted or typed out.
+- **Who and what:** the clip's `present.header`, `present.label` and `present.portrait.creatureID`.
+- **Status:** `IsPaused()`, `GetWaitingCount()`, `GetHeldReason(clip)`, and `AUDIO_CHANGED` to
+  redraw them.
+- **Controls:** `Pause()`, `Resume()`, `Skip()`, `Previous()` with `CanPrevious()`, `StopAll()`.
 
 `settings(layout)` gets the page's layout. These of its methods are part of the contract; build
 your rows with them only:
@@ -270,7 +262,7 @@ your rows with them only:
 | `layout:Slider(label, min, max, step, read, write, apply)` | The same, for a number. |
 | `layout:Dropdown(label, tooltip, values, read, write, apply, describe)` | One of `values`, a list or a function returning one; `describe(value)` names each. |
 
-If the player removes your addon, Spoken shows the Small Window. Their choice is kept and comes
+If the player removes your addon, Spoken shows its Small Window. Their choice is kept and comes
 back with the addon.
 
 ## Text packs and interface packs

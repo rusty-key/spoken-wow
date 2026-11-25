@@ -30,7 +30,7 @@
     <Include file="UI\Actions.lua"/>
     <Include file="UI\Snap.lua"/>
     <Include file="UI\Face.lua"/>
-    <Include file="UI\Looks.lua"/>
+    <Include file="UI\Narrators.lua"/>
     <Include file="UI\PlayerFrame.lua"/>
     <Include file="UI\MinimalPlayer.lua"/>
     <Include file="UI\Ellesmere.lua"/>
