@@ -6,6 +6,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 - **Kaliel's Tracker shows Play on each quest** on Forever, and Show Play Button > Tracker
   switches it. *([rusty-key](https://github.com/rusty-key))*
+- **A book you open shows straight in DialogueUI's book view,** with no narrator window first.
+  *([rusty-key](https://github.com/rusty-key))*
 - **Move profiles between characters and installations with Export Profile and Import Profile**
   in Spoken's Profiles settings.
   *([anon1231823](https://github.com/anon1231823))*

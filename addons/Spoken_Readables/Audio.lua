@@ -59,8 +59,13 @@ local KIND_MATERIAL = { grave = "Stone", tablet = "Stone", plaque = "Bronze", ex
 
 -- Whether `pageId` is a page of the book open in the world, whose item and material the game can
 -- tell: they are the same on every page, and the next page is built while another is open.
-local function IsOpen(self, pageId)
-	return self.lastPage ~= nil and (pageId == nil or self:PlaceOf(pageId) == self:PlaceOf(self.lastPage))
+function SpokenReadables:IsOpen(pageId)
+	local open = self.lastPage
+	if open == nil then return false end
+	if pageId == nil or pageId == open then return true end
+	-- Two pages nothing places are not one book.
+	local book = self:PlaceOf(open)
+	return book ~= nil and self:PlaceOf(pageId) == book
 end
 
 --- What `pageId`'s readable is written on by its kind, or nil for paper.
@@ -71,7 +76,7 @@ end
 
 --- Item-text events identify the open readable even when DialogueUI hides the game's frame.
 function SpokenReadables:PagePicture(pageId)
-	if IsOpen(self, pageId) then
+	if self:IsOpen(pageId) then
 		local item = ItemTextGetItem and NotSecret(ItemTextGetItem())
 		local icon, crop
 		if Spoken and Spoken.BagItemIcon then icon, crop = Spoken:BagItemIcon(item) end
@@ -90,7 +95,7 @@ end
 --- What `pageId` is written on (ItemTextGetMaterial: Parchment, Stone, Marble...): the game's
 --- word for the page open, else its kind's (KindMaterial), else nil.
 function SpokenReadables:PageMaterial(pageId)
-	if IsOpen(self, pageId) then return ItemTextGetMaterial and NotSecret(ItemTextGetMaterial()) or nil end
+	if self:IsOpen(pageId) then return ItemTextGetMaterial and NotSecret(ItemTextGetMaterial()) or nil end
 	return self:KindMaterial(pageId)
 end
 

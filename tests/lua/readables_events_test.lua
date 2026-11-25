@@ -67,6 +67,8 @@ stub.FireEvent("ITEM_TEXT_READY")
 Expect("opening a book queues it, as one line", #QueuedPages(), 1)
 Expect("...starting at the page on screen", QueuedPages()[1], 261)
 Expect("...its other pages to follow", #Coming(), 2)
+-- The DialogueUI narrator waits for such a page, which DialogueUI's book view shows a moment later.
+Expect("...a page of the book on screen, to the narrator", B.source.onScreen(Spoken:GetQueue()[1]), true)
 
 ---------------------------------------------------------------- turning a page
 stub.ShowPage({ title = "Hillsbrad Town Registry", number = 2, text = REGISTRY_2, hasNext = true })
@@ -82,6 +84,10 @@ stub.ClosePage()
 stub.FireEvent("ITEM_TEXT_CLOSED")
 Expect("closing the book does not stop narration", Reading(), 3)
 Expect("...but forgets the page, because there is no page on screen", B.lastPage, nil)
+Expect("...so its pages are no longer on screen", B.source.onScreen(Spoken:GetQueue()[1]), false)
+B.lastPage = "n-unplaced-1"
+Expect("two pages nothing places are not one book", B:IsOpen("n-unplaced-2"), false)
+B.lastPage = nil
 
 ---------------------------------------------------------------- mail, through the events
 -- Stopped by hand, which closing the frame above no longer does: this section is about what

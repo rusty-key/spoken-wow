@@ -245,6 +245,7 @@ function SpokenReadables:SetupSource()
 		testBeforeQueue = true,
 		-- Printed after Spoken's own by its Show Diagnostics.
 		diagnostics = function() SpokenReadables:ShowStatus() end,
+		onScreen = function(clip) return clip.pageId ~= nil and SpokenReadables:IsOpen(clip.pageId) end,
 		-- What Spoken's settings show on this part's card: which voice packs are installed.
 		packs = function()
 			local names = {}

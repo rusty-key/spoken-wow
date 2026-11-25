@@ -882,7 +882,7 @@ function Skin:Tick(elapsed)
     if preparing then
         preparing.waited = preparing.waited + elapsed
         local still = self:Still()
-        if still or preparing.waited >= PREPARE_MOST then
+        if (still or preparing.waited >= PREPARE_MOST) and not self:AwaitsDialog(PlayerFrame:Current()) then
             self.preparing = nil
             self:StartFade(not still)
         end
