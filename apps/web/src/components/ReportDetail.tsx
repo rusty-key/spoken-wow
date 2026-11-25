@@ -132,7 +132,7 @@ export default function ReportDetail({
               triager may edit - their lines are the corpus itself. */}
           {source === "quests" && !(line as QuestLine).missing?.text ? (
             <Button size="sm" variant="outline" disabled={busy} onClick={() => setEditing(true)}>
-              Rewrite
+              {t.reports.rewrite}
             </Button>
           ) : null}
           {done && !busy ? (
