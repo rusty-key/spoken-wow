@@ -298,10 +298,12 @@ function NarratorOffer:Show(ids)
     -- so Escape closes the one showing.
     self.shown = self.shown + 1
     local frame, _, layout = Shell(self, "SpokenNarratorOffer" .. self.shown, function() end)
-    layout:Intro([[Interface\AddOns\Spoken\icon.tga]], L.NARRATOR_OFFER_TITLE, L.NARRATOR_OFFER_INTRO)
+    layout:Intro([[Interface\AddOns\Spoken\icon.tga]], L.NARRATOR_OFFER_TITLE, NarratorOffer.Intro(ids))
     layout:Section(L.WELCOME_SHOW, true)
     self.preview = Options:PreviewButton(layout)
-    local cards = { Options:StyleCard(Addon:PlayerStyle()) }
+    local keep = Options:StyleCard(Addon:PlayerStyle())
+    keep.title = format(L.NARRATOR_OFFER_KEEP_FMT, keep.title)
+    local cards = { keep }
     for _, id in ipairs(ids) do table.insert(cards, Options:StyleCard(id)) end
     self.styles = layout:Choices(cards, function() return Addon:PlayerStyle() end,
         function(v) Addon:SetPlayerStyle(v) end,
@@ -316,3 +318,26 @@ function NarratorOffer:Show(ids)
 end
 
 function NarratorOffer:Resize() Resize(self) end
+
+-- An addon by the title the AddOns list shows, colour codes taken out; its folder where it has none.
+local function AddonTitle(folder)
+    local _, title = GetAddOnInfo(folder)
+    title = type(title) == "string" and title:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") or ""
+    return title ~= "" and title or folder
+end
+
+--- The window's line naming who offers what: one addon's one style, one addon's several, or several
+--- addons'.
+function NarratorOffer.Intro(ids)
+    local names, seen = {}, {}
+    for _, id in ipairs(ids) do
+        local folder = Narrators.byId[id].addon
+        if not seen[folder] then
+            seen[folder] = true
+            table.insert(names, AddonTitle(folder))
+        end
+    end
+    local list = table.concat(names, ", ")
+    if #names > 1 then return format(L.NARRATOR_OFFER_ADDONS_FMT, list) end
+    return format(#ids > 1 and L.NARRATOR_OFFER_STYLES_FMT or L.NARRATOR_OFFER_STYLE_FMT, list)
+end

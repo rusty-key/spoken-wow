@@ -337,7 +337,8 @@ end
 
 
 --- Public. Offer a narrator style of your own: a card among Spoken's narrator styles, titled
---- `info.title` over `info.description`, with `info.picture` (a texture) where you give one. While
+--- `info.title` over `info.description`, with `info.picture` (a texture) where you give one.
+--- `info.addon` is your addon's folder, whose title names it where Spoken offers the style. While
 --- it is the style, Spoken shows none of its own windows and calls `info.Update(clip)` whenever the
 --- line to show changes: the clip to show, or nil to show nothing. Draw it yourself: ShowCaptions,
 --- CreateControl, CreatePortrait and CreateActions give it Spoken's own parts; the rest is on the
@@ -346,16 +347,16 @@ end
 --- the style. Register while your addon loads, so the card is there when the page is built. `id`
 --- taken twice replaces the first.
 ---@param id string
----@param info { title: string, description: string, picture?: string, Update: fun(clip: SpokenClip?), settings?: fun(layout: table) }
+---@param info { addon: string, title: string, description: string, picture?: string, Update: fun(clip: SpokenClip?), settings?: fun(layout: table) }
 function Spoken:RegisterNarrator(id, info)
-    Require(type(id) == "string" and type(info) == "table" and type(info.title) == "string"
+    Require(type(id) == "string" and type(info) == "table" and type(info.addon) == "string" and type(info.title) == "string"
         and type(info.description) == "string" and type(info.Update) == "function"
         and (info.picture == nil or type(info.picture) == "string")
         and (info.settings == nil or type(info.settings) == "function"),
-        "RegisterNarrator needs an id and a narrator with title, description and Update")
+        "RegisterNarrator needs an id and a narrator with addon, title, description and Update")
     Require(not Options.STYLE_LABELS[id], format("%q is one of Spoken's own narrator styles", id))
     if Narrators.byId[id] then Developer:Log("api", "narrator %q registered again; the new one replaces it", id) end
-    Narrators:Register(id, { title = info.title, description = info.description, picture = info.picture,
+    Narrators:Register(id, { addon = info.addon, title = info.title, description = info.description, picture = info.picture,
         Update = info.Update, settings = info.settings })
 end
 

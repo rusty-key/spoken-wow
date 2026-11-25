@@ -23,12 +23,12 @@ local function Update(clip)
     if failing then error("broken narrator") end
 end
 local function Last() return told[#told] end
-Spoken:RegisterNarrator("scroll", { title = "Scroll", description = "Words on a scroll.", picture = "Scroll", Update = Update,
+Spoken:RegisterNarrator("scroll", { addon = "ScrollAddon", title = "Scroll", description = "Words on a scroll.", picture = "Scroll", Update = Update,
     settings = function(layout)
         layout:Section("Scroll")
         layout:Checkbox("Roll Up", nil, function() return true end, function() end)
     end })
-Spoken:RegisterNarrator("other", { title = "Other", description = "Another one.", Update = function() end })
+Spoken:RegisterNarrator("other", { addon = "OtherAddon", title = "Other", description = "Another one.", Update = function() end })
 -- Two offers from two addons, made as they load: one window between them, once the world is up.
 env.Addon.db.global.Welcomed = true
 Spoken:SuggestNarrator("scroll")
@@ -44,6 +44,9 @@ Expect("offers made as the addons load wait for the world", tostring(Offer.frame
 stub.Advance(2)
 Expect("...then come in one window, under any style, with the style the player has to keep",
     tostring(Offer.frame:IsShown()) .. " " .. Offered(), "true classic,scroll,other")
+Expect("...named \"Keep\" and its own name", Offer.styles[1].layoutTile.title, format(env.L.NARRATOR_OFFER_KEEP_FMT, env.L.OPT_STYLE_CLASSIC))
+Expect("the window names the addons that offer them", env.NarratorOffer.Intro({ "scroll", "other" }),
+    format(env.L.NARRATOR_OFFER_ADDONS_FMT, "ScrollAddon, OtherAddon"))
 local quests = env.Sources:Register("quests", { title = "Quests", addon = "Spoken_Quests", order = 1 })
 local function Line(key)
     return H.Clip({ key = key, length = 30, present = { header = "Grull", label = "One", transcript = "Words here.",
@@ -53,12 +56,12 @@ end
 ---------------------------------------------------------------- registering
 local function Raises(fn) return not pcall(fn) end
 local function Info(fields)
-    local info = { title = "X", description = "Y", Update = Update }
+    local info = { addon = "LateAddon", title = "X", description = "Y", Update = Update }
     for k, v in pairs(fields) do info[k] = v end
     return info
 end
-Expect("a narrator needs a title, a description and Update",
-    tostring(Raises(function() Spoken:RegisterNarrator("x", { title = "X" }) end)) .. " "
+Expect("a narrator needs its addon, a title, a description and Update",
+    tostring(Raises(function() Spoken:RegisterNarrator("x", Info({ addon = false })) end)) .. " "
     .. tostring(Raises(function() Spoken:RegisterNarrator("x", Info({ description = false })) end)) .. " "
     .. tostring(Raises(function() Spoken:RegisterNarrator("x", Info({ picture = 5 })) end)), "true true true")
 Expect("...and cannot take one of Spoken's own styles' names", Raises(function() Spoken:RegisterNarrator("minimal", Info({})) end), true)
@@ -136,6 +139,9 @@ do
     stub.Advance(1)
     Expect("offers made after login, close together, share one window", tostring(Offer.frame:IsShown()) .. " "
         .. Offered():gsub("^[^,]*,", ""), "true late-a,late-b")
+    Expect("...one addon's two styles said as its styles, one style as its style",
+        env.NarratorOffer.Intro({ "late-a", "late-b" }) .. " | " .. env.NarratorOffer.Intro({ "late-a" }),
+        format(env.L.NARRATOR_OFFER_STYLES_FMT, "LateAddon") .. " | " .. format(env.L.NARRATOR_OFFER_STYLE_FMT, "LateAddon"))
     Offer.frame:Hide()
     env.Addon.db.global.Welcomed = nil
     Spoken:RegisterNarrator("first-login", Info({ title = "First" }))
