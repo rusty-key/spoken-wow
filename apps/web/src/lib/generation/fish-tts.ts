@@ -21,7 +21,7 @@ import { encode } from "@msgpack/msgpack";
 
 import { fishConfig, type FishOptions } from "@/lib/voices/fish";
 
-import { classifyFish, failure, type Failure } from "./errors";
+import { classifyFish, failure, fishMessage, type Failure } from "./errors";
 import { PARAGRAPH_BREAK } from "./speakers/shape";
 import { stitchMp3 } from "./stitch";
 import { wordStarts, type WordStart } from "./word-times";
@@ -89,13 +89,15 @@ export function buildFishPayload(request: FishSpeechRequest): Record<string, unk
   };
 }
 
+export type FishTiming = { words: WordStart[]; durationSec: number };
+
 export type FishSpeechResult =
   | {
       ok: true;
       audio: Buffer;
       bytes: number;
-      /** Each spoken word's start in `audio`, or null when fish.audio did not time all of it. */
-      words: WordStart[] | null;
+      /** Null when fish.audio did not time all of `audio`. */
+      timing: FishTiming | null;
     }
   | { ok: false; failure: Failure };
 
@@ -144,30 +146,27 @@ export async function fishSpeech(
   options: FishOptions & { stitch?: typeof stitchMp3 } = {},
 ): Promise<FishSpeechResult> {
   const parts = paragraphs(request);
-  if (parts.length <= 1) {
-    const spoken = await speakOnce(parts[0] ?? request, options);
-    return spoken.ok ? { ok: true, audio: spoken.audio, bytes: spoken.bytes, words: spoken.words } : spoken;
-  }
+  if (parts.length <= 1) return speakOnce(parts[0] ?? request, options);
 
   const audio: Buffer[] = [];
   let bytes = 0;
-  let words: WordStart[] | null = [];
-  let offset = 0;
-  for (const part of parts) {
+  let timing: FishTiming | null = { words: [], durationSec: 0 };
+  for (const [i, part] of parts.entries()) {
     const spoken = await speakOnce(part, options);
     if (!spoken.ok) return spoken;
     audio.push(spoken.audio);
     bytes += spoken.bytes;
-    if (words && spoken.words && spoken.durationSec !== null) {
-      for (const word of spoken.words) words.push({ word: word.word, start: word.start + offset });
-      offset += spoken.durationSec + PARAGRAPH_PAUSE_SEC;
+    if (timing && spoken.timing) {
+      const offset = timing.durationSec + (i > 0 ? PARAGRAPH_PAUSE_SEC : 0);
+      for (const word of spoken.timing.words) timing.words.push({ word: word.word, start: word.start + offset });
+      timing.durationSec = offset + spoken.timing.durationSec;
     } else {
-      words = null;
+      timing = null;
     }
   }
   try {
     const joined = await (options.stitch ?? stitchMp3)(audio, PARAGRAPH_PAUSE_SEC);
-    return { ok: true, audio: joined, bytes, words };
+    return { ok: true, audio: joined, bytes, timing };
   } catch (error) {
     return {
       ok: false,
@@ -176,11 +175,10 @@ export async function fishSpeech(
   }
 }
 
-type SpokenPart =
-  | { ok: true; audio: Buffer; bytes: number; words: WordStart[] | null; durationSec: number | null }
-  | { ok: false; failure: Failure };
-
-async function speakOnce(request: FishSpeechRequest, options: FishOptions): Promise<SpokenPart> {
+async function speakOnce(
+  request: FishSpeechRequest,
+  options: FishOptions,
+): Promise<FishSpeechResult> {
   if (!options.apiKey) {
     // "auth" because it is fatal to a batch: every later job would fail the same way.
     return { ok: false, failure: failure("auth", "no fish.audio key was supplied for this request") };
@@ -252,7 +250,7 @@ type TimedEvent = {
   chunk_audio_offset_sec: number;
 };
 
-type TimedStream = { audio: Buffer; words: WordStart[] | null; durationSec: number | null };
+type TimedStream = { audio: Buffer; timing: FishTiming | null };
 
 /**
  * The audio and word starts of a timed stream.
@@ -273,7 +271,7 @@ export function readTimedStream(raw: string): TimedStream | { error: string } {
         .map((line) => line.slice(name.length + 1).replace(/^ /, ""));
     const data = field("data").join("\n");
     if (field("event")[0] === "error") {
-      return { error: `fish.audio's stream reported an error: ${errorText(data)}` };
+      return { error: `fish.audio's stream reported an error: ${fishMessage(data).slice(0, 200) || "no message"}` };
     }
     if (!data) continue;
     let event: TimedEvent;
@@ -284,28 +282,29 @@ export function readTimedStream(raw: string): TimedStream | { error: string } {
     }
     if (typeof event?.audio_base64 !== "string" || typeof event.chunk_seq !== "number") continue;
     audio.push(Buffer.from(event.audio_base64, "base64"));
-    const known = chunks.get(event.chunk_seq);
-    if (!known || event.alignment) chunks.set(event.chunk_seq, event);
+    if (event.alignment || !chunks.has(event.chunk_seq)) chunks.set(event.chunk_seq, event);
   }
   const joined = Buffer.concat(audio);
   if (joined.byteLength === 0) return { error: "fish.audio's stream held no audio" };
 
   const ordered = [...chunks.values()].sort((a, b) => a.chunk_seq - b.chunk_seq);
-  if (!ordered.every((chunk) => chunk.alignment)) {
-    return { audio: joined, words: null, durationSec: null };
-  }
-  let durationSec = 0;
-  const segments: { text: string; start: number }[] = [];
-  for (const { alignment, chunk_audio_offset_sec: offset } of ordered) {
-    for (const segment of alignment!.segments) {
-      segments.push({ text: segment.text, start: segment.start + offset });
-    }
-    durationSec = Math.max(durationSec, offset + alignment!.audio_duration);
-  }
-  return { audio: joined, words: segmentWords(segments), durationSec };
+  const aligned = ordered.flatMap(({ alignment, chunk_audio_offset_sec: offset }) =>
+    alignment ? [{ alignment, offset }] : [],
+  );
+  if (aligned.length < ordered.length) return { audio: joined, timing: null };
+  const segments = aligned.flatMap(({ alignment, offset }) =>
+    alignment.segments.map((segment) => ({ text: segment.text, start: segment.start + offset })),
+  );
+  const last = aligned[aligned.length - 1];
+  return {
+    audio: joined,
+    timing: {
+      words: segmentWords(segments),
+      durationSec: last.offset + last.alignment.audio_duration,
+    },
+  };
 }
 
-/** A phoneme span, or any other `<|...|>` tag. */
 const TAG = /<\|phoneme_start\|>([\s\S]*?)<\|phoneme_end\|>|<\|[^|]*\|>/g;
 
 /**
@@ -314,7 +313,7 @@ const TAG = /<\|phoneme_start\|>([\s\S]*?)<\|phoneme_end\|>|<\|[^|]*\|>/g;
  * may hold two words joined at a speaker tag (`this.<|speaker:1|>He`).
  *
  * A phoneme span stands for the one word it replaced, so it is one word. A speaker tag
- * starts a new word. Bracketed directions are left to wordStarts, which drops them.
+ * starts a new word.
  */
 function segmentWords(segments: { text: string; start: number }[]): WordStart[] {
   let text = "";
@@ -328,20 +327,18 @@ function segmentWords(segments: { text: string; start: number }[]): WordStart[] 
   const characters: string[] = [];
   const starts: number[] = [];
   const breaks: number[] = [];
+  const push = (char: string, start: number) => {
+    characters.push(char);
+    starts.push(start);
+  };
   const keep = (from: number, to: number) => {
-    for (let i = from; i < to; i++) {
-      characters.push(text[i]);
-      starts.push(times[i]);
-    }
+    for (let i = from; i < to; i++) push(text[i], times[i]);
   };
   let at = 0;
   for (const match of text.matchAll(TAG)) {
     keep(at, match.index);
     if (match[1] !== undefined) {
-      for (const char of match[1].replace(/\s+/g, "")) {
-        characters.push(char);
-        starts.push(times[match.index]);
-      }
+      for (const char of match[1].replace(/\s+/g, "")) push(char, times[match.index]);
     } else {
       breaks.push(characters.length);
     }
@@ -349,16 +346,6 @@ function segmentWords(segments: { text: string; start: number }[]): WordStart[] 
   }
   keep(at, text.length);
   return wordStarts({ characters, character_start_times_seconds: starts }, breaks);
-}
-
-function errorText(data: string): string {
-  try {
-    const parsed = JSON.parse(data) as { message?: unknown };
-    if (typeof parsed?.message === "string") return parsed.message;
-  } catch {
-    // Not JSON: the text is the message.
-  }
-  return data.slice(0, 200) || "no message";
 }
 
 function message(error: unknown): string {

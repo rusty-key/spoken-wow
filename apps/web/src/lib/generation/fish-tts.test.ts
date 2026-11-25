@@ -274,7 +274,6 @@ describe("a line of several paragraphs", () => {
   });
 });
 
-/** A stream read that must succeed. */
 function timed(raw: string) {
   const read = readTimedStream(raw);
   if ("error" in read) throw new Error(read.error);
@@ -302,12 +301,12 @@ describe("the times fish.audio streams", () => {
         { audio: "c", seq: 1, offset: 0.7, segments: [{ text: "Go.", start: 0.1, end: 0.4 }], duration: 0.5 },
       ]),
     );
-    expect(read.words).toEqual([
+    expect(read.timing?.words).toEqual([
       { word: "Take", start: 0.05 },
       { word: "this.", start: 0.3 },
       { word: "Go.", start: expect.closeTo(0.8) },
     ]);
-    expect(read.durationSec).toBeCloseTo(1.2);
+    expect(read.timing?.durationSec).toBeCloseTo(1.2);
   });
 
   it("orders words by chunk, though a chunk's alignment may arrive after the next chunk's", () => {
@@ -318,7 +317,7 @@ describe("the times fish.audio streams", () => {
         { audio: "c", seq: 0, segments: [{ text: "Take", start: 0.1, end: 0.3 }] },
       ]),
     );
-    expect(read.words?.map((word) => word.word)).toEqual(["Take", "Go."]);
+    expect(read.timing?.words?.map((word) => word.word)).toEqual(["Take", "Go."]);
   });
 
   it("leaves out speaker tags and bracketed directions, which nothing shows", () => {
@@ -336,7 +335,7 @@ describe("the times fish.audio streams", () => {
         },
       ]),
     );
-    expect(read.words?.map((word) => word.word)).toEqual(["Take", "this.", "He"]);
+    expect(read.timing?.words?.map((word) => word.word)).toEqual(["Take", "this.", "He"]);
   });
 
   it("keeps no times when any chunk never got its alignment", () => {
@@ -348,7 +347,7 @@ describe("the times fish.audio streams", () => {
         { audio: "b", seq: 1, offset: 1 },
       ]),
     );
-    expect(read.words).toBeNull();
+    expect(read.timing).toBeNull();
     expect(String(read.audio)).toBe("ab");
   });
 
@@ -367,7 +366,7 @@ describe("the times fish.audio streams", () => {
         },
       ]),
     );
-    expect(read.words).toEqual([
+    expect(read.timing?.words).toEqual([
       { word: "Ask", start: 0 },
       { word: "THRAO1L.", start: 0.3 },
     ]);
@@ -388,14 +387,14 @@ describe("the times fish.audio streams", () => {
         },
       ]),
     );
-    expect(read.words).toEqual([{ word: "Begone.", start: 0.5 }]);
+    expect(read.timing?.words).toEqual([{ word: "Begone.", start: 0.5 }]);
   });
 
   it("splits a segment that joins two turns at a speaker tag", () => {
     const read = timed(
       sse([{ audio: "a", segments: [{ text: "this.<|speaker:1|>He", start: 0.4, end: 0.9 }] }]),
     );
-    expect(read.words?.map((word) => word.word)).toEqual(["this.", "He"]);
+    expect(read.timing?.words?.map((word) => word.word)).toEqual(["this.", "He"]);
   });
 
   it("skips events that are not audio chunks, so a billed take is kept", () => {
@@ -427,25 +426,31 @@ describe("the times fish.audio streams", () => {
 
   it("reaches the speaker's take as the line's word starts", async () => {
     const result = await fishSpeech(SOLO, { ...OPTIONS, fetchImpl: stub(audio()).fetchImpl });
-    expect(result.ok && result.words).toEqual([{ word: "Hiccup", start: 0.1 }]);
+    expect(result.ok && result.timing?.words).toEqual([{ word: "Hiccup", start: 0.1 }]);
   });
 
+  const TWO_PARAGRAPHS: FishSpeechRequest = {
+    turns: [{ text: "Take this.\nGo.", speaker: 0 }],
+    references: [NPC],
+    settings: SETTINGS,
+  };
+
+  /** TWO_PARAGRAPHS, each request answered with the next of `answers`, joined as they are. */
+  const speakParagraphs = (answers: Response[]) =>
+    fishSpeech(TWO_PARAGRAPHS, {
+      ...OPTIONS,
+      fetchImpl: vi.fn(async () => answers.shift()!) as unknown as typeof globalThis.fetch,
+      stitch: async (parts: Buffer[]) => Buffer.concat(parts),
+    });
+
   it("moves each paragraph's times past the paragraphs and pauses before it", async () => {
-    const BROKEN: FishSpeechRequest = {
-      turns: [{ text: "Take this.\nGo.", speaker: 0 }],
-      references: [NPC],
-      settings: SETTINGS,
-    };
     const answers = [
       stream([{ audio: "a", segments: [{ text: "Take", start: 0.06, end: 0.3 }, { text: "this.", start: 0.3, end: 0.8 }], duration: 1.5 }]),
       stream([{ audio: "b", segments: [{ text: "Go.", start: 0.06, end: 0.4 }], duration: 0.5 }]),
     ];
-    const fetchImpl = vi.fn(async () => answers.shift()!) as unknown as typeof globalThis.fetch;
-    const stitch = vi.fn(async (parts: Buffer[]) => Buffer.concat(parts));
+    const result = await speakParagraphs(answers);
 
-    const result = await fishSpeech(BROKEN, { ...OPTIONS, fetchImpl, stitch });
-
-    expect(result.ok && result.words).toEqual([
+    expect(result.ok && result.timing?.words).toEqual([
       { word: "Take", start: 0.06 },
       { word: "this.", start: 0.3 },
       { word: "Go.", start: expect.closeTo(1.5 + PARAGRAPH_PAUSE_SEC + 0.06) },
@@ -453,17 +458,9 @@ describe("the times fish.audio streams", () => {
   });
 
   it("keeps no times for a line any paragraph of which has none", async () => {
-    const BROKEN: FishSpeechRequest = {
-      turns: [{ text: "Take this.\nGo.", speaker: 0 }],
-      references: [NPC],
-      settings: SETTINGS,
-    };
     const answers = [audio(), stream([{ audio: "b" }])];
-    const fetchImpl = vi.fn(async () => answers.shift()!) as unknown as typeof globalThis.fetch;
-    const stitch = vi.fn(async (parts: Buffer[]) => Buffer.concat(parts));
+    const result = await speakParagraphs(answers);
 
-    const result = await fishSpeech(BROKEN, { ...OPTIONS, fetchImpl, stitch });
-
-    expect(result.ok && result.words).toBeNull();
+    expect(result.ok && result.timing).toBeNull();
   });
 });
