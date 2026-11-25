@@ -1,19 +1,13 @@
 setfenv(1, SpokenEnv)
 
--- Looks other addons register for the Small and the Large Window (Spoken:RegisterLook). A look
--- describes what to draw and Spoken draws it, so the windows' frames stay Spoken's own to change.
--- The Theme row lists each look beside Spoken's; while one is chosen, its Look(clip, window) is
--- asked for every line, and nil keeps Spoken's own art for that line.
+-- Narrator styles other addons register (Spoken:RegisterLook): each a card of its own among the
+-- narrator styles, drawn in the Small or the Large Window. A look describes what to draw and Spoken
+-- draws it, so the windows' frames stay Spoken's own to change. While one is the style, its
+-- Look(clip, window) is asked for every line, and nil keeps the window's own art for that line.
 Looks = { byId = {}, order = {}, keeps = {}, pending = {} }
 
 -- The windows by the names the API uses, and the narrator style each one is.
 Looks.STYLES = { small = "minimal", large = "classic" }
-
--- Where each window keeps its choice. The Small Window's Theme was a background before looks came,
--- so a look's id goes in the same setting.
-local SETTING = { small = "MinimalBackground", large = "ClassicLook" }
-Looks.BUILT_IN = { small = { "parchment", "dark" }, large = { "default" } }
-local DEFAULT = { small = "parchment", large = "default" }
 
 function Looks:Register(id, info)
     if not self.byId[id] then table.insert(self.order, id) end
@@ -25,7 +19,7 @@ function Looks:Register(id, info)
     end
 end
 
---- The window showing lines drawn again in the look chosen for it.
+--- The window showing lines drawn again in the look on screen.
 function Looks:Refresh()
     if not PlayerFrame.frame then return end
     local skin = PlayerFrame:Skin()
@@ -36,38 +30,24 @@ function Looks:Refresh()
     end
 end
 
---- The look `window` is set to, Spoken's own ("parchment", "dark", "default") where the look chosen
---- is not registered this session: its addon was removed, or has not loaded.
-function Looks:Chosen(window)
-    local value = Addon:Profile("Frame")[SETTING[window]]
-    local look = self.byId[value]
-    if look and look.windows[window] then return value end
-    for _, own in ipairs(self.BUILT_IN[window]) do
-        if own == value then return value end
-    end
-    return DEFAULT[window]
+--- The window style a narrator style is drawn in: a look's window, else the style itself.
+function Looks:WindowStyle(style)
+    local look = self.byId[style]
+    return look and self.STYLES[look.window] or style
 end
 
-function Looks:Choose(window, value)
-    Addon.db.profile.Frame[SETTING[window]] = value
+--- The look on screen: the one previewed, else the one chosen; nil where neither is a look
+--- registered this session.
+function Looks:Current()
+    local style = Addon.previewStyle or Addon:Profile("Frame").Style
+    return self.byId[style] and style or nil
 end
 
---- What the Theme row lists for `window`: Spoken's own looks, then each registered for it.
-function Looks:Values(window)
-    local values = {}
-    for _, own in ipairs(self.BUILT_IN[window]) do table.insert(values, own) end
-    for _, id in ipairs(self.order) do
-        if self.byId[id].windows[window] then table.insert(values, id) end
-    end
-    return values
-end
-
-function Looks:Name(value)
-    local look = self.byId[value]
-    if look then return look.name end
-    if value == "dark" then return L.OPT_DUI_THEME_DARK end
-    if value == "parchment" then return L.OPT_DUI_THEME_PARCHMENT end
-    return L.OPT_LOOK_DEFAULT
+--- The narrator styles the looks add, in the order they registered.
+function Looks:Styles()
+    local styles = {}
+    for _, id in ipairs(self.order) do table.insert(styles, id) end
+    return styles
 end
 
 local function Color(value, least)
@@ -95,9 +75,9 @@ end
 --- How `clip` looks in `window`, or nil for Spoken's own art. A look that throws or answers in a
 --- shape Spoken cannot draw costs only its own art: the line is shown either way.
 function Looks:For(clip, window)
-    local id = self:Chosen(window)
+    local id = self:Current()
     local registered = self.byId[id]
-    if not (registered and clip) then return nil end
+    if not (registered and clip and registered.window == window) then return nil end
     local ok, look = pcall(registered.Look, clip, window)
     if not ok then
         Developer:Log("looks", "%s failed for %s: %s", id, Developer.Describe(clip), tostring(look))
@@ -167,23 +147,19 @@ function Looks.TintRing(ring, look)
 end
 
 --------------------------------------------------------------------------------
--- A look's rows on Spoken's page, under Theme, shown while it is the look chosen
+-- A look's rows on Spoken's page, shown while it is the narrator style
 --------------------------------------------------------------------------------
 
---- Where the looks' rows go. `window()` names the window the page's rows are for now.
-function Looks:Place(layout, window)
-    self.layout, self.window = layout, window
+--- Where the looks' rows go: each look's shown while it is the narrator style.
+function Looks:Place(layout)
+    self.layout = layout
     for _, id in ipairs(self.order) do self:PlaceSettings(id) end
 end
 
 function Looks:PlaceSettings(id)
     local look, layout = self.byId[id], self.layout
     if not (layout and look.settings) or self.keeps[id] then return end
-    local window = self.window
-    self.keeps[id] = layout:Keep(function()
-        local shown = window()
-        return shown ~= nil and self:Chosen(shown) == id
-    end)
+    self.keeps[id] = layout:Keep(function() return self:Current() == id end)
     local ok, err = pcall(layout.Fill, layout, self.keeps[id], look.settings)
     if not ok then table.insert(Callbacks.errors, "look " .. id .. " settings: " .. tostring(err)) end
 end
@@ -192,18 +168,9 @@ end
 -- Suggesting a look, once
 --------------------------------------------------------------------------------
 
--- A window shows the look only under its narrator style.
-local function Showing(look)
-    for window, style in pairs(Looks.STYLES) do
-        if look.windows[window] and Addon:DisplayStyle() == style then return window end
-    end
-    return nil
-end
-
---- Ask the player once, ever, whether to use the look `id`: not where it is already chosen, nor
---- under a narrator style whose window it does not draw, where the question would ask about nothing
---- they see. Before Spoken has its settings, kept until it does; with no `id`, ask those kept now.
---- Returns whether it asked.
+--- Ask the player once, ever, whether to switch to the look `id`, whatever style they have, unless
+--- it is theirs already. Before Spoken has its settings, kept until it does; with no `id`, ask those
+--- kept now. Returns whether it asked.
 function Looks:Suggest(id)
     if id == nil then
         local pending = self.pending
@@ -220,12 +187,10 @@ function Looks:Suggest(id)
     local global = Addon.db.global
     global.SuggestedLooks = global.SuggestedLooks or {}
     local asked = global.SuggestedLooks
-    if not look or asked[id] then return false end
-    local window = Showing(look)
-    if not window or self:Chosen(window) == id then return false end
+    if not look or asked[id] or Addon:Profile("Frame").Style == id then return false end
     asked[id] = true
-    SpokenLayout.Confirm(format(L.LOOK_SUGGEST_FMT, look.name), L.LOOK_USE, L.LOOK_KEEP, function()
-        for each in pairs(look.windows) do self:Choose(each, id) end
+    SpokenLayout.Confirm(format(L.LOOK_SUGGEST_FMT, look.title), L.LOOK_USE, L.LOOK_KEEP, function()
+        Addon:SetPlayerStyle(id)
         PlayerFrame:RefreshConfig()
         Options:UpdateRows()
     end)

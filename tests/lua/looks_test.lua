@@ -1,6 +1,7 @@
--- Looks another addon registers for the Small and the Large Window (Spoken:RegisterLook): offered
--- under Theme, asked for every line while chosen, and drawn by Spoken, which keeps its own art for a
--- line the look gives nothing for or fails on. How a look looks is checked in game.
+-- Narrator styles another addon registers (Spoken:RegisterLook): a card of their own among Spoken's,
+-- drawn in the Small or the Large Window, asked for every line while chosen, and drawn by Spoken,
+-- which keeps the window's own art for a line the look gives nothing for or fails on. How a look
+-- looks is checked in game.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
 local stub = require("wow_client_stub")
@@ -12,11 +13,11 @@ stub.SetClient("16001"); stub.ResetSound(); stub.ResetTimers(); stub.ResetFrames
 stub.settingsCategories = {}; stub.ldbObjects = {}; stub.dbIcons = {}
 _G.UISpecialFrames = _G.UISpecialFrames or {}
 local env = stub.LoadSpoken(SPOKEN)
-env.Addon.db.profile.Frame.Style = "minimal"
-local Spoken, M, P, Looks = _G.Spoken, env.MinimalPlayer, env.PlayerFrame, env.Looks
+-- Whatever style the player has: a look offers itself all the same.
+env.Addon.db.profile.Frame.Style = "subtitle"
+local Spoken, M, P = _G.Spoken, env.MinimalPlayer, env.PlayerFrame
 local frame = env.Addon.db.profile.Frame
 
--- Suggested before Spoken has its settings: kept, and asked once it has them.
 local TRIM = { horizontal = "Edge", vertical = "EdgeV", corner = "Join", size = 14 }
 local asked, answer = {}, nil
 local function Look(clip, window)
@@ -24,15 +25,16 @@ local function Look(clip, window)
     if answer == "throw" then error("broken look") end
     return answer
 end
-Spoken:RegisterLook("trim", { name = "Trim", windows = { "small", "large" }, Look = Look,
+Spoken:RegisterLook("trim", { title = "Trim", description = "Trimmed by race.", window = "small", Look = Look,
     settings = function(layout)
         layout:Section("Trim")
         layout:Checkbox("Trim Everything", nil, function() return true end, function() end)
     end })
+Spoken:RegisterLook("trim-large", { title = "Trim, Large", description = "Trimmed and bigger.", window = "large", Look = Look })
 Spoken:SuggestLook("trim")
 Expect("a suggestion before Spoken has its settings asks nothing yet", #stub.popups, 0)
 env.Addon:Enable()
-Expect("...and asks once it has them", #stub.popups, 1)
+Expect("...and asks once it has them, under any style", #stub.popups, 1)
 local quests = env.Sources:Register("quests", { title = "Quests", addon = "Spoken_Quests", order = 1 })
 local function Line(key)
     return H.Clip({ key = key, length = 30, present = { header = "Grull", label = "One", transcript = "Words here.",
@@ -41,27 +43,36 @@ end
 
 ---------------------------------------------------------------- registering
 local function Raises(fn) return not pcall(fn) end
-Expect("a look needs a name, its windows and Look", tostring(Raises(function() Spoken:RegisterLook("x", { name = "X" }) end))
-    .. " " .. tostring(Raises(function() Spoken:RegisterLook("x", { name = "X", windows = { "subtitle" }, Look = Look }) end))
-    .. " " .. tostring(Raises(function() Spoken:RegisterLook("x", { name = "X", windows = {}, Look = Look }) end)), "true true true")
+local function Info(fields)
+    local info = { title = "X", description = "Y", window = "small", Look = Look }
+    for k, v in pairs(fields) do info[k] = v end
+    return info
+end
+Expect("a look needs a title, a description, a window and Look", tostring(Raises(function() Spoken:RegisterLook("x", { title = "X" }) end))
+    .. " " .. tostring(Raises(function() Spoken:RegisterLook("x", Info({ window = "subtitle" })) end))
+    .. " " .. tostring(Raises(function() Spoken:RegisterLook("x", Info({ description = false })) end)), "true true true")
+Expect("...and cannot take one of Spoken's own styles' names", Raises(function() Spoken:RegisterLook("minimal", Info({})) end), true)
 Expect("Supports names looks", Spoken:Supports("looks"), true)
-Expect("the Small Window's Theme lists it after Spoken's own", table.concat(Looks:Values("small"), ","), "parchment,dark,trim")
-Expect("...and the Large Window's, after its own", table.concat(Looks:Values("large"), ","), "default,trim")
+Expect("each is a narrator style of its own, before Voice Only", table.concat(env.Options:Styles(), ","),
+    "subtitle,minimal,classic,trim,trim-large,none")
+local card = env.Options:StyleCard("trim")
+Expect("...its card in its own words, over its window's sketch", card.title .. " / " .. card.text .. " "
+    .. tostring(card.art == env.Options.SKETCHES.minimal), "Trim / Trimmed by race. true")
 
 ---------------------------------------------------------------- the Small Window
 quests:Enqueue(Line("q1"))
 Expect("not chosen, its Look is never asked", #asked, 0)
-Expect("...and the window stays on parchment", M.paper.texture, [[Interface\AddOns\Spoken\Textures\MinimalParchment]])
 
 stub.popups[1].dialog.OnAccept()
-Expect("taking the suggestion chooses it for each of its windows", frame.MinimalBackground .. " " .. frame.ClassicLook, "trim trim")
+Expect("taking the suggestion makes it the narrator style", frame.Style .. " " .. env.Addon:StyleChoice() .. " "
+    .. env.Addon:PlayerStyle(), "trim trim minimal")
 Spoken:SuggestLook("trim")
 Expect("...and it is never suggested again", #stub.popups, 1)
+Expect("Look is asked for the line shown, in its window", asked[#asked], "small q1")
 
 answer = { tint = { .1, .2, .3, .7 }, border = TRIM, ring = { .5, .6, .7 } }
 Spoken:RefreshLook()
-Expect("chosen, Look is asked for the line shown, in the Small Window", asked[#asked], "small q1")
-Expect("...the rock under its tint", M.paper.texture .. " " .. tostring(M.tint:IsShown()),
+Expect("drawn: the rock under its tint", M.paper.texture .. " " .. tostring(M.tint:IsShown()),
     [[Interface\AddOns\Spoken\Textures\MinimalBackground true]])
 Expect("...its border in place of Spoken's edge", tostring(M.trim.topLeft:IsShown()) .. " " .. M.trim.topLeft.texture .. " "
     .. M.trim.leftTop.texture .. " " .. M.trim.cornerTopLeft.texture .. " " .. M.panel.backdropBorderColor[4], "true Edge EdgeV Join 0")
@@ -74,7 +85,7 @@ Expect("a look's own background, with no border, keeps Spoken's edge", M.paper.t
 
 answer = nil
 Spoken:RefreshLook()
-Expect("nil for a line: Spoken's own art, parchment", M.paper.texture .. " " .. tostring(M.trim.topLeft:IsShown()),
+Expect("nil for a line: the window's own art, its Theme's", M.paper.texture .. " " .. tostring(M.trim.topLeft:IsShown()),
     [[Interface\AddOns\Spoken\Textures\MinimalParchment false]])
 answer = "throw"
 Spoken:RefreshLook()
@@ -88,21 +99,7 @@ Spoken:StopAll()
 quests:Enqueue(Line("q2"))
 Expect("each new line is asked for", asked[#asked], "small q2")
 
----------------------------------------------------------------- the Large Window
-env.Addon:SetPlayerStyle("classic")
-answer = { background = "Box", tint = { 0, 0, 0, .5 }, border = TRIM, ring = { .2, .3, .4 } }
-P:RefreshConfig()
-Expect("the Large Window asks for its own", asked[#asked], "large q2")
-Expect("...its box, wash, border and ring drawn", P.frame.background.texture .. " " .. tostring(P.frame.lookTint:IsShown()) .. " "
-    .. tostring(P.frame.trim.topLeft:IsShown()) .. " " .. table.concat(P.frame.portrait.border.texture.vertexColor, " ", 1, 3),
-    "Box true true 0.2 0.3 0.4")
-answer = nil
-Spoken:RefreshLook()
-Expect("...and with none, Spoken's own again", tostring(P.frame.background.texture ~= "Box") .. " " .. tostring(P.frame.lookTint:IsShown())
-    .. " " .. tostring(P.frame.trim.topLeft:IsShown()) .. " " .. table.concat(P.frame.portrait.border.texture.vertexColor, " ", 1, 3),
-    "true false false 1 1 1")
-
----------------------------------------------------------------- its rows, and a look gone
+---------------------------------------------------------------- its rows
 env.Options:UpdateRows()
 local main = _G.SpokenOptionsPanel.layout
 main:Refresh()
@@ -112,14 +109,32 @@ local function Shown(label)
     end
     return "missing"
 end
-Expect("the look's own rows show while it is chosen", Shown("Trim Everything"), true)
-Looks:Choose("large", "default")
-main:Refresh()
-Expect("...and not while another is", Shown("Trim Everything"), false)
+Expect("the look's own rows show while it is the style", Shown("Trim Everything"), true)
 
-frame.MinimalBackground, frame.ClassicLook = "gone", "gone"
-Expect("a look whose addon is gone reads as Spoken's own", Looks:Chosen("small") .. " " .. Looks:Chosen("large"),
-    "parchment default")
+---------------------------------------------------------------- the Large Window
+env.Addon:SetPlayerStyle("trim-large")
+answer = { background = "Box", tint = { 0, 0, 0, .5 }, border = TRIM, ring = { .2, .3, .4 } }
+P:RefreshConfig()
+main:Refresh()
+Expect("a look of the Large Window draws there", asked[#asked] .. " " .. env.Addon:PlayerStyle(), "large q2 classic")
+Expect("...its box, wash, border and ring", P.frame.background.texture .. " " .. tostring(P.frame.lookTint:IsShown()) .. " "
+    .. tostring(P.frame.trim.topLeft:IsShown()) .. " " .. table.concat(P.frame.portrait.border.texture.vertexColor, " ", 1, 3),
+    "Box true true 0.2 0.3 0.4")
+Expect("...and another look's rows hide", Shown("Trim Everything"), false)
+answer = nil
+Spoken:RefreshLook()
+Expect("...and with none, Spoken's own again", tostring(P.frame.background.texture ~= "Box") .. " " .. tostring(P.frame.lookTint:IsShown())
+    .. " " .. tostring(P.frame.trim.topLeft:IsShown()) .. " " .. table.concat(P.frame.portrait.border.texture.vertexColor, " ", 1, 3),
+    "true false false 1 1 1")
+
+---------------------------------------------------------------- previewed, and gone
+env.Addon:SetPlayerStyle("classic")
+env.Options:Preview("trim")
+Expect("a look previewed shows in its window", env.Addon:DisplayStyle() .. " " .. tostring(env.Looks:Current()), "minimal trim")
+env.Options:Preview(nil)
+frame.Style = "gone"
+Expect("a look whose addon is gone falls back to the Small Window", env.Addon:PlayerStyle() .. " " .. env.Addon:StyleChoice()
+    .. " " .. tostring(env.Looks:Current()), "minimal minimal nil")
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll look tests passed")

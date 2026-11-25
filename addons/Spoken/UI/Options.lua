@@ -289,6 +289,7 @@ function Options:Preview(style)
     Addon.previewStyle = style
     PlayerFrame:RefreshConfig()
     Transcript:RefreshConfig()
+    style = Looks:WindowStyle(style)
     Subtitle:ShowSample(style == "subtitle")
     PlayerFrame:ShowSample(style == "minimal" or style == "classic" or style == "dialogueui")
 end
@@ -348,12 +349,12 @@ end
 --- to it (StyleChosen); off, or when the page that turned it on closes, it all goes.
 function Options:SetPreviewing(on)
     self.previewing = on and true or false
-    self:Preview(on and Addon:PlayerStyle() or nil)
+    self:Preview(on and Addon:StyleChoice() or nil)
 end
 
 --- A style was chosen: in preview mode, it is the one shown now.
 function Options:StyleChosen()
-    if self.previewing then self:Preview(Addon:PlayerStyle()) end
+    if self.previewing then self:Preview(Addon:StyleChoice()) end
 end
 
 --- The one Preview button over the narrator styles, on Spoken's page and in the welcome window,
@@ -409,8 +410,19 @@ end
 function Options:Styles()
     local styles = { "subtitle", "minimal", "classic" }
     if DialogueUITheme and DialogueUITheme:Available() then table.insert(styles, "dialogueui") end
+    for _, look in ipairs(Looks:Styles()) do table.insert(styles, look) end
     table.insert(styles, "none")
     return styles
+end
+
+--- A narrator style's card: its title, its words and its sketch. A look's are its addon's, over the
+--- sketch of the window it is drawn in.
+function Options:StyleCard(style)
+    local look = Looks.byId[style]
+    if look then
+        return { value = style, title = look.title, text = look.description, art = SKETCHES[Looks.STYLES[look.window]] }
+    end
+    return { value = style, title = STYLE_LABELS[style], text = STYLE_TEXTS[style], art = SKETCHES[style] }
 end
 
 -- Contribute & Report's page: last, after the modules' (Quests 1, Gossip 2, Places 3, Readables 4,
@@ -520,12 +532,9 @@ local function Build()
     -- straight under it, with no title of their own.
     layout:Section(L.OPT_PLAYER_STYLE, true)
     local tiles = {}
-    for _, style in ipairs(Options:Styles()) do
-        table.insert(tiles, { value = style, title = STYLE_LABELS[style], text = STYLE_TEXTS[style],
-            art = SKETCHES[style] })
-    end
+    for _, style in ipairs(Options:Styles()) do table.insert(tiles, Options:StyleCard(style)) end
     Options:PreviewButton(layout)
-    layout:Choices(tiles, Style, function(v) Addon:SetPlayerStyle(v) end,
+    layout:Choices(tiles, function() return Addon:StyleChoice() end, function(v) Addon:SetPlayerStyle(v) end,
         function()
             PlayerFrame:RefreshConfig(); refreshTranscript()
             Options:StyleChosen()
@@ -768,21 +777,13 @@ local function Build()
 
     -- How the window and the subtitles look.
     layout:Section(L.OPT_LOOK_TITLE)
-    -- The Small Window's Theme, its own and the looks addons registered for it; the Large Window's,
-    -- only once an addon registered one; the DialogueUI window's, which can also follow DialogueUI's.
-    -- None in EllesmereUI's look, which has its own.
-    local function Window()
-        if Ellesmere:On() then return nil end
-        if Small() then return "small" end
-        if Style() == "classic" then return "large" end
-        return nil
-    end
-    for _, window in ipairs({ "small", "large" }) do
-        Only(layout:Dropdown(L.OPT_DUI_THEME, nil, function() return Looks:Values(window) end,
-            function() return Looks:Chosen(window) end, function(v) Looks:Choose(window, v) end, refresh,
-            function(v) return Looks:Name(v) end),
-            function() return Window() == window and #Looks:Values(window) > 1 end)
-    end
+    -- Parchment or Dark, for each window that has a choice: the Small Window's own, and the
+    -- DialogueUI window's, which can also follow DialogueUI's. None in EllesmereUI's look, which
+    -- has its own.
+    Only(layout:Dropdown(L.OPT_DUI_THEME, nil, { "parchment", "dark" },
+        function() return cfg().MinimalBackground end, function(v) cfg().MinimalBackground = v end, refresh,
+        function(v) return v == "dark" and L.OPT_DUI_THEME_DARK or L.OPT_DUI_THEME_PARCHMENT end),
+        function() return Small() and not Ellesmere:On() end)
     DialogueUIOptions:ThemeRow(layout, function(row) return Only(row, DUI) end, refresh)
     local shadow = layout:Slider(L.TRANSCRIPT_SHADOW, 0, 1, 0.05,
         function() return transcript().SubtitleShadow end,
@@ -820,7 +821,7 @@ local function Build()
     end
 
     -- The chosen look's own rows, as its addon hands them in.
-    Looks:Place(layout, Window)
+    Looks:Place(layout)
 
     -- How the words of a line show, past whether they show at all and how big.
     layout:Section(L.OPT_TEXT_TITLE)

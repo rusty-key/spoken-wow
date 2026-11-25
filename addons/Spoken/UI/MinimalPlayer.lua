@@ -355,10 +355,9 @@ function MinimalPlayer:Dress()
     -- EllesmereUI's shell is dark whichever background is chosen; a shell that failed left Spoken's.
     local shell = self.panel.spokenEllesmere == true
     local drawn = self.look
-    -- A registered look's own background, else the rock; with no look for this line, Spoken's own
-    -- Theme, Parchment where the Theme chosen is a look.
-    local background = drawn and (drawn.background or "dark") or Looks:Chosen("small")
-    if not drawn and background ~= "dark" then background = "parchment" end
+    -- A look's own background, else the rock; with no look for this line, the Theme's.
+    local background = drawn and (drawn.background or "dark") or Config().MinimalBackground
+    if background ~= "dark" and not drawn then background = "parchment" end
     local dark = background ~= "parchment" or shell
     local look = shell and LOOKS.ellesmere or dark and LOOKS.dark or LOOKS.parchment
     local paper = self.paper
@@ -569,6 +568,6 @@ end
 function MinimalPlayer:Describe()
     return format("minimal=%s visible=%s portrait=%s background=%s progress=%.1fs",
         tostring(self:IsEnabled()), tostring(self.frame and self.frame:IsShown()),
-        tostring(self.viewport and self.viewport.active), tostring(Looks:Chosen("small")),
+        tostring(self.viewport and self.viewport.active), tostring(Config().MinimalBackground),
         self.seconds or 0)
 end

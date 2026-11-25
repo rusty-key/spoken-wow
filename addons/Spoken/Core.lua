@@ -32,8 +32,6 @@ Defaults = {
             BronzeTint = true,
             -- The small window's background: "parchment" or "dark" (the rock).
             MinimalBackground = "parchment",
-            -- The Large Window's look: "default", Spoken's own, or a look an addon registered.
-            ClassicLook = "default",
             -- Per action id, for the ones an addon declared optional. Absent means shown.
             HiddenActions = {},
             DialogueUI = {
@@ -462,13 +460,22 @@ end
 --- What is on screen: the chosen style, or one previewed from the welcome window or the settings
 --- (Options:Preview). The windows and the subtitles ask this; the settings ask PlayerStyle.
 function Addon:DisplayStyle()
-    return self.previewStyle or self:PlayerStyle()
+    if self.previewStyle then return Looks:WindowStyle(self.previewStyle) end
+    return self:PlayerStyle()
+end
+
+--- The narrator style chosen as its card names it: a look another addon registered, where it is
+--- one, else PlayerStyle. PlayerStyle says the window it is drawn in.
+function Addon:StyleChoice()
+    local style = self:Profile("Frame").Style
+    if Looks.byId[style] then return style end
+    return self:PlayerStyle()
 end
 
 --- The chosen style, or a fallback where it is not on offer: no DialogueUI window without
 --- DialogueUI. The setting is kept, so installing DialogueUI later brings its window back.
 function Addon:PlayerStyle()
-    local style = self:Profile("Frame").Style
+    local style = Looks:WindowStyle(self:Profile("Frame").Style)
     if style == "none" or style == "classic" then return style end
     if style == "subtitle" then return "subtitle" end
     if style == "dialogueui" and DialogueUITheme and DialogueUITheme:Available() then return "dialogueui" end

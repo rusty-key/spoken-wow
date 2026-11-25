@@ -350,32 +350,32 @@ end
 ---@field ring? number[]       { r, g, b } the portrait's ring
 
 local LOOK_WINDOWS = { small = true, large = true }
+local OWN_STYLES = { subtitle = true, minimal = true, classic = true, dialogueui = true, none = true }
 
---- Public. Offer a look for Spoken's windows: one more choice in the Theme row of the windows it
---- names. While it is the look chosen, Spoken asks `info.Look(clip, window)` for every line it shows
---- there and draws the SpokenLook it returns; nil keeps Spoken's own art for that line.
---- `info.settings(layout)`, optional, adds a section of rows to Spoken's page, shown under the
---- window's Theme while the look is chosen. `id` taken twice replaces the first.
+--- Public. Offer a narrator style of your own: a card among Spoken's narrator styles, titled
+--- `info.title` over `info.description`, drawn in the Small or the Large Window (`info.window`,
+--- "small" or "large"). While it is the style, Spoken asks `info.Look(clip, window)` for every line
+--- and draws the SpokenLook it returns; nil keeps the window's own art for that line.
+--- `info.settings(layout)`, optional, adds a section of rows to Spoken's page, shown while it is
+--- the style. Register while your addon loads, so the card is there when the page is built. `id`
+--- taken twice replaces the first.
 ---@param id string
----@param info { name: string, windows: string[], Look: fun(clip: SpokenClip, window: string): SpokenLook?, settings?: fun(layout: table) }
+---@param info { title: string, description: string, window: string, Look: fun(clip: SpokenClip, window: string): SpokenLook?, settings?: fun(layout: table) }
 function Spoken:RegisterLook(id, info)
-    Require(type(id) == "string" and type(info) == "table" and type(info.name) == "string"
-        and type(info.Look) == "function" and type(info.windows) == "table"
+    Require(type(id) == "string" and type(info) == "table" and type(info.title) == "string"
+        and type(info.description) == "string" and type(info.Look) == "function"
         and (info.settings == nil or type(info.settings) == "function"),
-        "RegisterLook needs an id and a look with name, windows and Look")
-    local windows = {}
-    for _, window in ipairs(info.windows) do
-        Require(LOOK_WINDOWS[window], "RegisterLook's windows are \"small\" and \"large\"")
-        windows[window] = true
-    end
-    Require(next(windows) ~= nil, "RegisterLook needs at least one window")
+        "RegisterLook needs an id and a look with title, description, window and Look")
+    Require(LOOK_WINDOWS[info.window], "RegisterLook's window is \"small\" or \"large\"")
+    Require(not OWN_STYLES[id], format("%q is one of Spoken's own narrator styles", id))
     if Looks.byId[id] then Developer:Log("api", "look %q registered again; the new one replaces it", id) end
-    Looks:Register(id, { name = info.name, windows = windows, Look = info.Look, settings = info.settings })
+    Looks:Register(id, { title = info.title, description = info.description, window = info.window, Look = info.Look,
+        settings = info.settings })
 end
 
---- Public. Ask the player once, ever, whether to use the look `id`, which this addon registered.
---- Spoken asks when its window is the one showing lines and the look is not already chosen, at
---- login or now if that has passed; it never asks again, whatever the answer.
+--- Public. Ask the player once, ever, whether to switch to the narrator style `id`, which this addon
+--- registered, whatever style they have now; not where it is theirs already. At login, or now if
+--- that has passed; never again, whatever the answer.
 ---@param id string
 function Spoken:SuggestLook(id)
     if type(id) == "string" then Looks:Suggest(id) end

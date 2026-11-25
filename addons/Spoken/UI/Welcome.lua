@@ -170,11 +170,8 @@ function Welcome:Build()
     -- Preview mode, at the end of the question's line, as on Spoken's settings page.
     self.preview = Options:PreviewButton(layout)
     local styles = {}
-    for _, style in ipairs(Options:Styles()) do
-        table.insert(styles, { value = style, title = Options.STYLE_LABELS[style], text = Options.STYLE_TEXTS[style],
-            art = Options.SKETCHES[style] })
-    end
-    self.styles = layout:Choices(styles, function() return Addon:PlayerStyle() end,
+    for _, style in ipairs(Options:Styles()) do table.insert(styles, Options:StyleCard(style)) end
+    self.styles = layout:Choices(styles, function() return Addon:StyleChoice() end,
         function(v) Addon:SetPlayerStyle(v) end,
         function()
             Refresh()

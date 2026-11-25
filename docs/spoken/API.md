@@ -224,19 +224,20 @@ not frozen.
 
 ## Looks
 
-Art of your own for Spoken's Small Window and Large Window: a border, a background, a wash over
-it, the portrait's ring. You describe it and Spoken draws it, so a look keeps working when Spoken
-redesigns its windows.
+A narrator style of your own: a card among Spoken's narrator styles, with your title and
+description, drawn in the Small or the Large Window with art of yours: a border, a background, a
+wash over it, the portrait's ring. You describe the art and Spoken draws it, so a look keeps working
+when Spoken redesigns its windows.
 
 | Call | |
 |---|---|
-| `Spoken:RegisterLook(id, info)` | Adds the look to the Theme row of each window in `info.windows` (`"small"`, `"large"`). `info.name` is what the row shows. `info.Look(clip, window)` returns how a line looks; `info.settings(layout)`, optional, adds a section of rows to Spoken's page, shown while the look is chosen. Raises for a wrong argument. Registering `id` again replaces it. |
-| `Spoken:SuggestLook(id)` | Asks the player, once ever, whether to use the look. Spoken asks only while one of its windows shows lines and the look isn't chosen yet, at login if you call it before then. Whatever they answer, it never asks again. |
+| `Spoken:RegisterLook(id, info)` | Adds the narrator style. `info.title` and `info.description` are its card's words, in the player's language. `info.window` is `"small"` or `"large"`, the window it is drawn in. `info.Look(clip, window)` returns how a line looks. `info.settings(layout)`, optional, adds a section of rows to Spoken's page, shown while it is the style. Register while your addon loads, so the card is there when the page is built. Raises for a wrong argument, or an `id` that is one of Spoken's own styles. Registering `id` again replaces it. |
+| `Spoken:SuggestLook(id)` | Asks the player, once ever, whether to switch to your style, whatever style they have now. Not if it is already theirs. At login if you call it before then. Whatever they answer, it never asks again. |
 | `Spoken:RefreshLook()` | Asks `Look` again for the line shown: call it when what you decide by has changed, such as a speaker's model loading or one of your settings. |
 
-While your look is chosen for a window, Spoken calls `Look(clip, window)` for every line that
-window shows. Return a table of what to draw, every field optional, or nil to keep Spoken's own
-art for that line (Parchment, or the Large Window's own). If `Look` raises, or returns something
+While your style is chosen, Spoken calls `Look(clip, window)` for every line it shows. Return a
+table of what to draw, every field optional, or nil to keep the window's own art for that line
+(the Small Window's Theme, or the Large Window's own). If `Look` raises, or returns something
 Spoken can't draw, the line keeps Spoken's art and the error goes to the debug log.
 
 ```lua
@@ -269,8 +270,8 @@ your rows with them only:
 | `layout:Slider(label, min, max, step, read, write, apply)` | The same, for a number. |
 | `layout:Dropdown(label, tooltip, values, read, write, apply, describe)` | One of `values`, a list or a function returning one; `describe(value)` names each. |
 
-If the player removes your addon, the window goes back to Spoken's own look. Their choice is kept
-and comes back with the addon.
+If the player removes your addon, Spoken shows the Small Window. Their choice is kept and comes
+back with the addon.
 
 ## Text packs and interface packs
 
