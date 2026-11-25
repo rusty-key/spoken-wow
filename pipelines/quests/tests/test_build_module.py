@@ -284,6 +284,59 @@ def test_a_store_of_pointers_takes_its_lengths_from_durations_json(tmp_path):
     assert table.index("5-accept") < table.index("abc123")
 
 
+def _pieces_store(tmp_path):
+    """A store of pointers whose 5-accept is kept as three sentence pieces."""
+    root = tmp_path / "store"
+    (root / "quests" / "5-accept").mkdir(parents=True)
+    (root / "gossip").mkdir()
+    (root / "gossip" / "abc123.ogg").write_text("spoken-clip-pointer encodings/aa 5\n")
+    for n in ("01", "02", "03"):
+        (root / "quests" / "5-accept" / f"{n}.ogg").write_text(f"spoken-clip-pointer encodings/{n} 5\n")
+    (root / "durations.json").write_text('{"quests/5-accept": 26, "gossip/abc123": 1.25}')
+    (root / "pieces.json").write_text('{"quests/5-accept": "9 8.5 8.5", "gossip/gone": "1 1"}')
+    return root
+
+
+def test_a_line_kept_as_pieces_ships_its_folder_and_their_lengths(tmp_path):
+    build_module(CORPUS, str(_pieces_store(tmp_path)), str(tmp_path / "dist"), "Mod")
+
+    sounds = tmp_path / "dist" / "Mod" / "generated" / "sounds"
+    assert sorted(os.listdir(sounds / "quests" / "5-accept")) == ["01.ogg", "02.ogg", "03.ogg"]
+    assert not (sounds / "quests" / "5-accept.ogg").exists()
+    table = _sound_length_table(tmp_path)
+    assert '["5-accept"] = 26.0' in table
+    assert '["01"]' not in table
+    with open(tmp_path / "dist" / "Mod" / "generated" / "sound_pieces_table.lua", encoding="utf-8") as f:
+        lua = f.read()
+    assert "Mod.SoundPiecesByFileName = " in lua
+    assert '["5-accept"] = "9 8.5 8.5"' in lua
+    # Lengths for a line this pack does not carry are dead weight.
+    assert "gone" not in lua
+    assert "generated\\sound_pieces_table.lua" in _toc(tmp_path)
+
+
+def test_a_pack_without_pieces_has_no_pieces_table(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+
+    build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+
+    assert not os.path.exists(tmp_path / "dist" / "Mod" / "generated" / "sound_pieces_table.lua")
+    assert "sound_pieces_table" not in _toc(tmp_path)
+
+
+def test_a_line_kept_as_pieces_is_measured_whole_from_real_clips(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg")
+    folder = os.path.join(store, "quests", "5-accept")
+    os.makedirs(folder)
+    for n in ("01", "02"):
+        shutil.copy(os.path.join(store, "quests", "5-accept.ogg"), os.path.join(folder, f"{n}.ogg"))
+    os.remove(os.path.join(store, "quests", "5-accept.ogg"))
+
+    build_module(CORPUS, store, str(tmp_path / "dist"), "Mod")
+
+    assert '["5-accept"] = 0.6' in _sound_length_table(tmp_path)
+
+
 def test_word_times_ship_for_the_clips_a_pack_carries(tmp_path):
     store = _store(tmp_path, "quests/5-accept.ogg")
     # The gossip clip has times but is not in this store, so its times would be dead weight.

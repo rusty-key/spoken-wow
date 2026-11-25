@@ -22,8 +22,8 @@ from tts_cli.naming import (BROADCAST_SOURCES, followup_stem_from_line_id, gossi
                             several_wordings, split_voice, subfolder_from_line_id,
                             variant_file_name)
 from tts_cli.npc_bodies import GENDER_SEX, body_name
-from tts_cli.store import (SUBFOLDERS, audio_extension, durations, line_text, quest_titles, stored_files,
-                           take_text, word_times)
+from tts_cli.store import (SUBFOLDERS, audio_extension, durations, line_text, pieces, pieces_folder, quest_titles,
+                           stored_files, take_text, word_times)
 from tts_cli.utils import (get_first_n_words, get_last_n_words,
                            replace_dollar_bs_with_space)
 
@@ -564,7 +564,11 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     audio = [rel for rel in stored_files(store_dir) if carried(os.path.splitext(rel)[0])]
     iterator = tqdm(audio, unit="file", desc="Copying audio") if progress else audio
     for rel in iterator:
-        shutil.copy2(os.path.join(store_dir, rel), os.path.join(sounds_dir, rel))
+        folder = pieces_folder(store_dir, rel)
+        if folder:
+            shutil.copytree(folder, os.path.join(sounds_dir, os.path.splitext(rel)[0]))
+        else:
+            shutil.copy2(os.path.join(store_dir, rel), os.path.join(sounds_dir, rel))
 
     tables = build_tables(corpus, ignored)
     if not carries_gossip(include):
@@ -599,6 +603,17 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
     write_lua_table(os.path.join(generated_dir, "word_times_table.lua"),
                     module_name, "WordTimesByFileName", times)
     written.append("word_times_table.lua")
+
+    # The lines this pack keeps as sentence pieces, keyed like the length table. Written only where
+    # there are some, so a pack built without pieces is the file it always was.
+    split_lengths = pieces(store_dir)
+    split = {os.path.basename(stem): split_lengths[stem]
+             for stem in (os.path.splitext(rel)[0] for rel in audio)
+             if stem in split_lengths and pieces_folder(store_dir, stem + extension)}
+    if split:
+        write_lua_table(os.path.join(generated_dir, "sound_pieces_table.lua"),
+                        module_name, "SoundPiecesByFileName", split)
+        written.append("sound_pieces_table.lua")
 
     # For this pack's audio alone, or four packs of a language each repeat every line's text. Only
     # where the pack's language is the one read, the only place it shows: megabytes of strings

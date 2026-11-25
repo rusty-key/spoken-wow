@@ -24,12 +24,19 @@ def write_sound_length_table_lua(module_name: str, sound_folder_path: str, outpu
             if f.endswith(AUDIO_EXTENSIONS):
                 sound_files.append(os.path.join(root, f))
 
-    # Create a Lua table mapping the name of the sound to its length in seconds.
+    # Create a Lua table mapping the name of the sound to its length in seconds. A line kept as
+    # pieces is a folder of them under its subfolder, <sub>/<name>/01.ogg: its length is theirs.
     soundDict = {}
     for sound_file in sound_files:
-        stem = os.path.splitext(os.path.relpath(sound_file, sound_folder_path))[0]
-        length = _measured(sound_file) if durations is None else float(durations[stem.replace(os.sep, "/")])
-        soundDict[os.path.basename(stem)] = length
+        rel = os.path.relpath(sound_file, sound_folder_path)
+        parts = rel.split(os.sep)
+        piece = len(parts) > 2
+        stem = os.path.join(*parts[:-1]) if piece else os.path.splitext(rel)[0]
+        name = os.path.basename(stem)
+        if durations is not None:
+            soundDict[name] = float(durations[stem.replace(os.sep, "/")])
+        else:
+            soundDict[name] = soundDict.get(name, 0) + _measured(sound_file) if piece else _measured(sound_file)
 
     # Sorted, because the walk's order is the filesystem's, and a reordered file is a download for
     # every player.

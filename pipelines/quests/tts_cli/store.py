@@ -27,6 +27,18 @@ LINE_TEXT_FILE = "line-text.json"
 QUEST_TITLES_FILE = "quest-titles.json"
 #: Each clip's length by stem, written by sounds.mjs when the store holds pointers, not audio.
 DURATIONS_FILE = "durations.json"
+#: Each line kept as sentence pieces, its pieces' lengths by stem ("3.44 2.6 5.1"), written by
+#: sounds.mjs with SPOKEN_PIECES. Such a line is a folder, <stem>/01.ogg, 02.ogg ..., not a file.
+PIECES_FILE = "pieces.json"
+FIRST_PIECE = "01"
+
+
+def _first_piece(folder: str, extensions) -> str:
+    """The extension of a pieces folder's first piece, or None where `folder` is not one."""
+    for ext in extensions:
+        if os.path.isfile(os.path.join(folder, FIRST_PIECE + ext)):
+            return ext
+    return None
 
 
 def _walk(directory: str, extensions=(".mp3",)) -> list:
@@ -35,14 +47,30 @@ def _walk(directory: str, extensions=(".mp3",)) -> list:
         path = os.path.join(directory, sub)
         if not os.path.isdir(path):
             continue
-        found.extend(f"{sub}/{name}" for name in sorted(os.listdir(path))
-                     if name.endswith(extensions))
+        for name in sorted(os.listdir(path)):
+            full = os.path.join(path, name)
+            if name.endswith(extensions) and os.path.isfile(full):
+                found.append(f"{sub}/{name}")
+            elif os.path.isdir(full):
+                # A line kept as pieces is listed as the file it stands for.
+                ext = _first_piece(full, extensions)
+                if ext:
+                    found.append(f"{sub}/{name}{ext}")
     return found
 
 
 def stored_files(store_dir: str) -> list:
-    """Every audio file in the store, as 'subfolder/name.ext'."""
+    """Every audio file in the store, as 'subfolder/name.ext'. A line kept as pieces is listed as
+    'subfolder/name.ext' too, though it is the folder 'subfolder/name' (pieces_folder)."""
     return _walk(store_dir, AUDIO_EXTENSIONS)
+
+
+def pieces_folder(store_dir: str, rel: str) -> str:
+    """The folder of pieces `rel`, as stored_files lists it, stands for; None where it is a file."""
+    if os.path.isfile(os.path.join(store_dir, rel)):
+        return None
+    folder = os.path.join(store_dir, os.path.splitext(rel)[0])
+    return folder if os.path.isdir(folder) else None
 
 
 def audio_extension(store_dir: str) -> str:
@@ -86,6 +114,11 @@ def line_text(store_dir: str) -> dict:
 def quest_titles(store_dir: str) -> dict:
     """{quest id: title} in the store's language, empty for English or a store without the file."""
     return {int(quest_id): title for quest_id, title in _stem_table(store_dir, QUEST_TITLES_FILE).items()}
+
+
+def pieces(store_dir: str) -> dict:
+    """{stem: "3.44 2.6 5.1"} for the lines kept as pieces, empty for a store without the file."""
+    return _stem_table(store_dir, PIECES_FILE)
 
 
 def durations(store_dir: str) -> dict:

@@ -231,6 +231,16 @@ writes the live takes' `wordTimes` into `audio/word-times.json` when it assemble
 (`WordTimesByFileName`) for the clips the pack carries. A pack built without the file ships an
 empty table, and its captions are estimated.
 
+Sentence pieces, so a paused line resumes from its sentence, are cut by the site when a take is
+committed (`apps/web/src/lib/takes/pieces.ts`): at the take's word times where they fit its shown
+words, else at its measured pauses. Each piece is encoded as the whole clip is, and `take_pieces`
+records them, or `whole` where no cut was found. `apps/web/scripts/cut-pieces.mts` cuts the live
+takes committed before that. A Manager build with `SPOKEN_PIECES=1` ships a cut line as a folder of
+pointers, `quests/5-accept/01.ogg`, `02.ogg`, ..., and their lengths in `audio/pieces.json`, which
+`build` writes into `sound_pieces_table.lua` (`SoundPiecesByFileName`). It is off by default: the
+line's file becomes a folder, so every player downloads it again and only a Spoken that plays pieces
+finds it, and turning it on needs the pack's `MIN_SPOKEN` raised with it. A zip build ships no pieces.
+
 Each clip's words reach the build the same way, as `audio/take-text.json`: the take's `shownText`,
 else the current `quest_line` text of the line that names the file, its tokens as the voice says
 them. `build` writes `text_table.lua` (`TextByFileName`) for the clips the pack carries, and the addon
