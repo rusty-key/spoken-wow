@@ -29,10 +29,21 @@ Spoken:RegisterNarrator("scroll", { title = "Scroll", description = "Words on a 
         layout:Checkbox("Roll Up", nil, function() return true end, function() end)
     end })
 Spoken:RegisterNarrator("other", { title = "Other", description = "Another one.", Update = function() end })
+-- Two offers from two addons, made as they load: one window between them, once the world is up.
+env.Addon.db.global.Welcomed = true
 Spoken:SuggestNarrator("scroll")
-Expect("a suggestion before Spoken has its settings asks nothing yet", #stub.popups, 0)
+Spoken:SuggestNarrator("other")
+local Offer = env.NarratorOffer
+local function Offered()
+    local values = {}
+    for _, row in ipairs(Offer.styles or {}) do table.insert(values, row.layoutTile.value) end
+    return table.concat(values, ",")
+end
 env.Addon:Enable()
-Expect("...and asks once it has them, under any style", #stub.popups, 1)
+Expect("offers made as the addons load wait for the world", tostring(Offer.frame), "nil")
+stub.Advance(2)
+Expect("...then come in one window, under any style, with the style the player has to keep",
+    tostring(Offer.frame:IsShown()) .. " " .. Offered(), "true classic,scroll,other")
 local quests = env.Sources:Register("quests", { title = "Quests", addon = "Spoken_Quests", order = 1 })
 local function Line(key)
     return H.Clip({ key = key, length = 30, present = { header = "Grull", label = "One", transcript = "Words here.",
@@ -63,10 +74,13 @@ quests:Enqueue(Line("q1"))
 Expect("not chosen, it is never told anything", #told, 0)
 Expect("...and the Large Window shows the line", P.shown and P.shown.key, "q1")
 
-stub.popups[1].dialog.OnAccept()
-Expect("taking the suggestion makes it the narrator style", frame.Style .. " " .. env.Addon:PlayerStyle(), "scroll scroll")
+Offer.styles[2]:GetScript("OnClick")(Offer.styles[2])
+Expect("choosing one in it makes it the narrator style", frame.Style .. " " .. env.Addon:PlayerStyle(), "scroll scroll")
+Offer.frame:Hide()
 Spoken:SuggestNarrator("scroll")
-Expect("...and it is never suggested again", #stub.popups, 1)
+Spoken:SuggestNarrator("other")
+stub.Advance(2)
+Expect("...and neither is offered again", tostring(Offer.frame:IsShown()) .. " " .. Offer.shown, "false 1")
 Expect("it is told the line to show", Last(), "q1")
 Expect("...and none of Spoken's windows shows it", tostring(P:IsShowing()) .. " " .. tostring(M:IsEnabled()) .. " "
     .. tostring(P.frame:IsShown()), "false false false")
@@ -111,6 +125,26 @@ env.Options:Preview(nil)
 Expect("...and to show nothing once the preview ends", Last(), "nothing")
 frame.Style = "gone"
 Expect("a narrator whose addon is gone falls back to the Small Window", env.Addon:PlayerStyle(), "minimal")
+
+---------------------------------------------------------------- offered later
+do
+    Spoken:RegisterNarrator("late-a", Info({ title = "Late A" }))
+    Spoken:RegisterNarrator("late-b", Info({ title = "Late B" }))
+    Spoken:SuggestNarrator("late-a")
+    stub.Advance(0.5)
+    Spoken:SuggestNarrator("late-b")
+    stub.Advance(1)
+    Expect("offers made after login, close together, share one window", tostring(Offer.frame:IsShown()) .. " "
+        .. Offered():gsub("^[^,]*,", ""), "true late-a,late-b")
+    Offer.frame:Hide()
+    env.Addon.db.global.Welcomed = nil
+    Spoken:RegisterNarrator("first-login", Info({ title = "First" }))
+    Spoken:SuggestNarrator("first-login")
+    stub.Advance(1)
+    Expect("at a first login the welcome window, which lists every style, offers it instead",
+        tostring(Offer.frame:IsShown()) .. " " .. tostring(env.Addon.db.global.SuggestedNarrators["first-login"]), "false true")
+    env.Addon.db.global.Welcomed = true
+end
 
 ---------------------------------------------------------------- the status a narrator reads
 quests:Enqueue(Line("q5"))

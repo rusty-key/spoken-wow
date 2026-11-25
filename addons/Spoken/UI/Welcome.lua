@@ -38,18 +38,18 @@ local function Refresh()
 end
 
 -- The settings window's own frame where the client has it (SettingsFrameTemplate: the same
--- border, title bar and close button), an older dialog frame where not.
-local function Window()
+-- border, title bar and close button), an older dialog frame where not. Named `name`, for Escape.
+local function Window(name)
     local frame
     for _, template in ipairs({ "SettingsFrameTemplate", "BasicFrameTemplateWithInset" }) do
-        local ok, made = pcall(CreateFrame, "Frame", "SpokenWelcomeFrame", UIParent, template)
+        local ok, made = pcall(CreateFrame, "Frame", name, UIParent, template)
         if ok and made then
             frame = made
             break
         end
     end
     if not frame then
-        frame = CreateFrame("Frame", "SpokenWelcomeFrame", UIParent, "BackdropTemplate")
+        frame = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
         frame:SetBackdrop({ bgFile = [[Interface\DialogFrame\UI-DialogBox-Background]],
             edgeFile = [[Interface\DialogFrame\UI-DialogBox-Border]], tile = true, tileSize = 32, edgeSize = 32,
             insets = { left = 11, right = 12, top = 12, bottom = 11 } })
@@ -93,9 +93,11 @@ local function FooterCheck(page, frame, y, label, tip, write)
     return check
 end
 
-function Welcome:Build()
-    local frame = Window()
-    self.frame = frame
+-- The window's shell, in `owner`: the frame named `name`, closing on Escape and running `onHide` as it
+-- closes, and the settings-page layout scrolling inside it. A window is put on screen with Resize.
+local function Shell(owner, name, onHide)
+    local frame = Window(name)
+    owner.frame = frame
     Ellesmere:When(function(skin)
         skin.Shell(frame)
         local close = frame.ClosePanelButton or frame.CloseButton
@@ -110,13 +112,13 @@ function Welcome:Build()
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-    -- Seen is seen, however the window closes: Done, the X or Escape.
+    -- However the window closes, Done, the X or Escape, a preview it showed goes with it.
     frame:SetScript("OnHide", function()
-        Addon.db.global.Welcomed = true
+        onHide()
         if Subtitle:IsShowingSample() then Subtitle:ShowSample(false) end
         if Options.previewing or Addon.previewStyle or PlayerFrame:IsShowingSample() then Options:SetPreviewing(false) end
     end)
-    table.insert(UISpecialFrames, "SpokenWelcomeFrame")
+    table.insert(UISpecialFrames, name)
     frame:Hide()
 
     -- The footer's widgets sit on `page`, a few levels above the window: a section's box is drawn a
@@ -138,8 +140,38 @@ function Welcome:Build()
     -- questions under them start at the left, as a settings page's titles do.
     layout.centred = true
     layout.leftTitles = true
-    layout.onResize = function() self:Resize() end
-    self.page, self.view, self.scroller, self.layout = page, view, scroller, layout
+    layout.onResize = function() owner:Resize() end
+    owner.page, owner.view, owner.scroller, owner.layout, owner.extra = page, view, scroller, layout, 0
+    return frame, page, layout
+end
+
+-- The footer's divider, `extra` above its place for rows of switches beside the buttons, and Done.
+local function Footer(owner, extra)
+    local frame, page = owner.frame, owner.page
+    local rule = Layout.Rule(page)
+    rule:SetPoint("BOTTOM", frame, "BOTTOM", 0, BORDER + BOTTOM_MARGIN + BUTTON_HEIGHT + RULE_GAP + extra)
+    if not rule.layoutAtlas then rule:SetWidth(WIDTH - TITLE_X * 2) end
+    local done = Button(page, L.WELCOME_DONE, function() frame:Hide() end)
+    done:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -CONTENT_X, BORDER + BOTTOM_MARGIN)
+    owner.rule, owner.done, owner.extra = rule, done, extra
+    return done
+end
+
+-- Tall enough for what shows, and no taller than the screen: the rows scroll in the view between the
+-- title bar and the footer, which gives up height first.
+local function Resize(owner)
+    local content = TOP + owner.layout:Height() + BOTTOM
+    local chrome = BAR + VIEW_BOTTOM + owner.extra
+    local screen = UIParent and UIParent.GetHeight and UIParent:GetHeight() or 768
+    local view = math.max(MIN_VIEW, math.min(Layout.HEADER_HEIGHT + 2 + content, screen - SCREEN_MARGIN - chrome))
+    owner.view:SetHeight(view)
+    owner.frame:SetHeight(chrome + view)
+    owner.scroller:SetContentHeight(content)
+end
+
+function Welcome:Build()
+    -- Seen is seen, however the window closes.
+    local frame, page, layout = Shell(self, "SpokenWelcomeFrame", function() Addon.db.global.Welcomed = true end)
     -- Headed as the settings' pages are, with a name, and then what the window is for: unlike
     -- a settings page, it opens unasked, and has to say what it is.
     layout:Intro([[Interface\AddOns\Spoken\icon.tga]], L.WELCOME_TITLE, L.WELCOME_INTRO)
@@ -185,20 +217,13 @@ function Welcome:Build()
     local lowerShown = OtherSounds:IsAvailable()
     local logShown = Developer.provider ~= nil
     local extra = (lowerShown and logShown) and CHECK_ROW or 0
-    local rule = Layout.Rule(page)
-    local ruleY = BORDER + BOTTOM_MARGIN + BUTTON_HEIGHT + RULE_GAP + extra
-    rule:SetPoint("BOTTOM", frame, "BOTTOM", 0, ruleY)
-    if not rule.layoutAtlas then rule:SetWidth(WIDTH - TITLE_X * 2) end
-    self.rule = rule
-
-    local done = Button(page, L.WELCOME_DONE, function() frame:Hide() end)
-    done:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -CONTENT_X, BORDER + BOTTOM_MARGIN)
+    local done = Footer(self, extra)
     local all = Button(page, L.WELCOME_SETTINGS, function()
         frame:Hide()
         Options:Open()
     end)
     all:SetPoint("RIGHT", done, "LEFT", -10, 0)
-    self.done, self.all = done, all
+    self.all = all
 
     -- Along the bottom beside the buttons rather than in sections of their own: a third section
     -- would make the window taller than the screen at the default UI scale. Their tooltips say
@@ -221,21 +246,11 @@ function Welcome:Build()
             Developer:Call("SwitchTip") or "", function(on) Developer:Call("SetLogOn", on) end)
     end
 
-    self.extra = extra
     self:Resize()
 end
 
--- Tall enough for what shows, and no taller than the screen: the rows scroll in the view between the
--- title bar and the footer, which gives up height first. The voice pack line comes and goes.
-function Welcome:Resize()
-    local content = TOP + self.layout:Height() + BOTTOM
-    local chrome = BAR + VIEW_BOTTOM + self.extra
-    local screen = UIParent and UIParent.GetHeight and UIParent:GetHeight() or 768
-    local view = math.max(MIN_VIEW, math.min(Layout.HEADER_HEIGHT + 2 + content, screen - SCREEN_MARGIN - chrome))
-    self.view:SetHeight(view)
-    self.frame:SetHeight(chrome + view)
-    self.scroller:SetContentHeight(content)
-end
+-- The voice pack line comes and goes.
+function Welcome:Resize() Resize(self) end
 
 --- Show what is chosen now, and for each part whether it is installed.
 function Welcome:Sync()
@@ -267,3 +282,37 @@ events:SetScript("OnEvent", function()
     end
     C_Timer.After(2, Open)
 end)
+
+--------------------------------------------------------------------------------
+-- New narrator styles, offered once (Spoken:SuggestNarrator)
+--------------------------------------------------------------------------------
+
+-- The styles addons offered, in one window with the style the player has now, so several offered
+-- at once are one question rather than a popup each. Choosing applies at once, as in the welcome
+-- window, and Preview shows the one chosen.
+NarratorOffer = { shown = 0 }
+
+function NarratorOffer:Show(ids)
+    if self.frame then self.frame:Hide() end
+    -- Built afresh for each offer, its cards being the styles offered this time: named afresh too,
+    -- so Escape closes the one showing.
+    self.shown = self.shown + 1
+    local frame, _, layout = Shell(self, "SpokenNarratorOffer" .. self.shown, function() end)
+    layout:Intro([[Interface\AddOns\Spoken\icon.tga]], L.NARRATOR_OFFER_TITLE, L.NARRATOR_OFFER_INTRO)
+    layout:Section(L.WELCOME_SHOW, true)
+    self.preview = Options:PreviewButton(layout)
+    local cards = { Options:StyleCard(Addon:PlayerStyle()) }
+    for _, id in ipairs(ids) do table.insert(cards, Options:StyleCard(id)) end
+    self.styles = layout:Choices(cards, function() return Addon:PlayerStyle() end,
+        function(v) Addon:SetPlayerStyle(v) end,
+        function()
+            Refresh()
+            Options:StyleChosen()
+        end, { choose = L.STYLE_CHOOSE })
+    Footer(self, 0)
+    self:Resize()
+    layout:Refresh()
+    frame:Show()
+end
+
+function NarratorOffer:Resize() Resize(self) end

@@ -616,7 +616,7 @@ function Addon:Enable()
     Minimap:Setup()
     Options:Setup()
     RegisterSlashCommand()
-    Narrators:AskPending()
+    Narrators:Gather()
 end
 
 -- Said the first time a line waits behind a stop with nothing on screen to show it: with voice

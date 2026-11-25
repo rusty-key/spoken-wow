@@ -236,7 +236,7 @@ on this page, so your style keeps working however Spoken's own windows change.
 | Call | |
 |---|---|
 | `Spoken:RegisterNarrator(id, info)` | Adds the style. `info.title` and `info.description` are its card's words, in the player's language; `info.picture`, optional, a texture for the card. `info.Update(clip)` is called whenever the line to show changes: the clip, or nil to show nothing. `info.settings(layout)`, optional, adds a section of rows to Spoken's page, shown while it is the style. Register while your addon loads, so the card is there when the page is built. Raises for a wrong argument, or an `id` that is one of Spoken's own styles. Registering `id` again replaces it. |
-| `Spoken:SuggestNarrator(id)` | Asks the player, once ever, whether to switch to your style, whatever style they have now. Not if it is already theirs. At login if you call it before then. Whatever they answer, it never asks again. |
+| `Spoken:SuggestNarrator(id)` | Offers your style to the player, once ever, whatever style they have now; not if it is already theirs. Offers made while the addons load, and offers made within a second of each other later, from any addon, come in one window: a card for each with the player's current style to keep, and Preview. Choosing one applies it. At a first login the welcome window lists every style instead, and counts as the offer. |
 
 `Update` is told a line only when there is one to show: the line at the head of the queue, unless
 the player turned the narrator off for its part, or DialogueUI's dialog covers the screen. While

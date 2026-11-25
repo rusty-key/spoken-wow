@@ -79,33 +79,47 @@ function Narrators:PlaceSettings(id)
 end
 
 --------------------------------------------------------------------------------
--- Suggesting a narrator, once
+-- Offering a narrator, once
 --------------------------------------------------------------------------------
 
---- Ask the player once, ever, whether to switch to the narrator `id`, whatever style they have,
---- unless it is theirs already. Before Spoken has its settings, kept until it does (AskPending).
+-- Offers wait this long for others before the window opens: addons that offer after login, one
+-- after another, get one window between them. At login, as long as the welcome window waits, for
+-- the world to be up.
+local GATHER, AT_LOGIN = 1, 2
+
+--- Offer the player the narrator `id` once, ever, whatever style they have, unless it is theirs
+--- already. Offers are gathered and shown together in one window (NarratorOffer): those made while
+--- the addons load wait for Spoken's settings (AskPending), the rest a moment for each other.
 function Narrators:Suggest(id)
-    if not Addon.enabled then
-        table.insert(self.pending, id)
-        return
-    end
-    local narrator = self.byId[id]
+    table.insert(self.pending, id)
+    if Addon.enabled then self:Gather(GATHER) end
+end
+
+--- Open the window `delay` seconds from now with every offer made by then. Spoken calls it at login.
+function Narrators:Gather(delay)
+    if self.gathering or #self.pending == 0 then return end
+    self.gathering = true
+    C_Timer.After(delay or AT_LOGIN, function() self:AskPending() end)
+end
+
+--- The offers waiting, in one window, once the player can answer: not in combat, and not while the
+--- welcome window, which lists every style, is open.
+function Narrators:AskPending()
+    self.gathering = nil
+    if InCombatLockdown and InCombatLockdown() then return self:Gather(5) end
+    local pending = self.pending
+    self.pending = {}
     -- The narrators the player was asked about, whatever they answered: account-wide, as the addon is.
     local global = Addon.db.global
     global.SuggestedNarrators = global.SuggestedNarrators or {}
-    local asked = global.SuggestedNarrators
-    if not narrator or asked[id] or Addon:PlayerStyle() == id then return end
-    asked[id] = true
-    SpokenLayout.Confirm(format(L.NARRATOR_SUGGEST_FMT, narrator.title), L.NARRATOR_USE, L.NARRATOR_KEEP, function()
-        Addon:SetPlayerStyle(id)
-        PlayerFrame:RefreshConfig()
-        Options:UpdateRows()
-    end)
-end
-
---- The suggestions made before Spoken had its settings, asked now that it has them.
-function Narrators:AskPending()
-    local pending = self.pending
-    self.pending = {}
-    for _, id in ipairs(pending) do self:Suggest(id) end
+    local asked, offer = global.SuggestedNarrators, {}
+    for _, id in ipairs(pending) do
+        if self.byId[id] and not asked[id] and Addon:PlayerStyle() ~= id then
+            asked[id] = true
+            table.insert(offer, id)
+        end
+    end
+    -- The welcome window, open or about to open at a first login, lists them all already.
+    if #offer == 0 or not Addon.db.global.Welcomed or (Welcome.frame and Welcome.frame:IsShown()) then return end
+    NarratorOffer:Show(offer)
 end

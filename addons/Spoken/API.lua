@@ -462,9 +462,9 @@ function Spoken:ShowCaptions(parent, width)
     return height
 end
 
---- Public. Ask the player once, ever, whether to switch to the narrator style `id`, which this addon
---- registered, whatever style they have now; not where it is theirs already. At login, or now if
---- that has passed; never again, whatever the answer.
+--- Public. Offer the player the narrator style `id`, which this addon registered, once ever,
+--- whatever style they have now; not where it is theirs already. Offers from every addon made at
+--- login, or close together later, come in one window, each a card beside the player's own style.
 ---@param id string
 function Spoken:SuggestNarrator(id)
     if type(id) == "string" then Narrators:Suggest(id) end
