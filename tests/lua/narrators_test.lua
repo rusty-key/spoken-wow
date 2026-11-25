@@ -80,10 +80,11 @@ Expect("...and the Large Window shows the line", P.shown and P.shown.key, "q1")
 Offer.styles[2]:GetScript("OnClick")(Offer.styles[2])
 Expect("choosing one in it makes it the narrator style", frame.Style .. " " .. env.Addon:PlayerStyle(), "scroll scroll")
 Offer.frame:Hide()
+local first = Offer.frame
 Spoken:SuggestNarrator("scroll")
 Spoken:SuggestNarrator("other")
 stub.Advance(2)
-Expect("...and neither is offered again", tostring(Offer.frame:IsShown()) .. " " .. Offer.shown, "false 1")
+Expect("...and neither is offered again", tostring(Offer.frame:IsShown()) .. " " .. tostring(Offer.frame == first), "false true")
 Expect("it is told the line to show", Last(), "q1")
 Expect("...and none of Spoken's windows shows it", tostring(P:IsShowing()) .. " " .. tostring(M:IsEnabled()) .. " "
     .. tostring(P.frame:IsShown()), "false false false")

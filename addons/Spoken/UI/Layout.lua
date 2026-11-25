@@ -741,6 +741,7 @@ local function AfterCombat(run)
     table.insert(afterCombat, run)
     afterCombatFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 end
+Layout.AfterCombat = AfterCombat
 
 -- Run `set` on the controller UI's cursor now, or once combat ends.
 local function Navigate(set)

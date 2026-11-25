@@ -89,7 +89,7 @@ local GATHER, AT_LOGIN = 1, 2
 
 --- Offer the player the narrator `id` once, ever, whatever style they have, unless it is theirs
 --- already. Offers are gathered and shown together in one window (NarratorOffer): those made while
---- the addons load wait for Spoken's settings (AskPending), the rest a moment for each other.
+--- the addons load wait for Spoken's login (Gather), the rest a moment for each other.
 function Narrators:Suggest(id)
     table.insert(self.pending, id)
     if Addon.enabled then self:Gather(GATHER) end
@@ -106,7 +106,10 @@ end
 --- welcome window, which lists every style, is open.
 function Narrators:AskPending()
     self.gathering = nil
-    if InCombatLockdown and InCombatLockdown() then return self:Gather(5) end
+    if InCombatLockdown and InCombatLockdown() then
+        self.gathering = true
+        return SpokenLayout.AfterCombat(function() self:AskPending() end)
+    end
     local pending = self.pending
     self.pending = {}
     -- The narrators the player was asked about, whatever they answered: account-wide, as the addon is.
@@ -119,7 +122,6 @@ function Narrators:AskPending()
             table.insert(offer, id)
         end
     end
-    -- The welcome window, open or about to open at a first login, lists them all already.
-    if #offer == 0 or not Addon.db.global.Welcomed or (Welcome.frame and Welcome.frame:IsShown()) then return end
+    if #offer == 0 or Welcome:Covers() then return end
     NarratorOffer:Show(offer)
 end

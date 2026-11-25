@@ -114,11 +114,13 @@ local function Shell(owner, name, onHide)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
     -- However the window closes, Done, the X or Escape, a preview it showed goes with it.
     frame:SetScript("OnHide", function()
-        onHide()
+        if onHide then onHide() end
         if Subtitle:IsShowingSample() then Subtitle:ShowSample(false) end
         if Options.previewing or Addon.previewStyle or PlayerFrame:IsShowingSample() then Options:SetPreviewing(false) end
     end)
-    table.insert(UISpecialFrames, name)
+    local listed = false
+    for _, each in ipairs(UISpecialFrames) do listed = listed or each == name end
+    if not listed then table.insert(UISpecialFrames, name) end
     frame:Hide()
 
     -- The footer's widgets sit on `page`, a few levels above the window: a section's box is drawn a
@@ -169,6 +171,17 @@ local function Resize(owner)
     owner.scroller:SetContentHeight(content)
 end
 
+-- The narrator styles as cards, Preview over them, a choice applying at once.
+local function StyleChoices(owner, layout, cards)
+    owner.preview = Options:PreviewButton(layout)
+    owner.styles = layout:Choices(cards, function() return Addon:PlayerStyle() end,
+        function(v) Addon:SetPlayerStyle(v) end,
+        function()
+            Refresh()
+            Options:StyleChosen()
+        end, { choose = L.STYLE_CHOOSE })
+end
+
 function Welcome:Build()
     -- Seen is seen, however the window closes.
     local frame, page, layout = Shell(self, "SpokenWelcomeFrame", function() Addon.db.global.Welcomed = true end)
@@ -199,16 +212,9 @@ function Welcome:Build()
     -- How lines appear: the same list as Spoken's settings page, a sketch on each row. Choosing
     -- subtitles shows one, so it can be seen and dragged into place now.
     layout:Section(L.WELCOME_SHOW, true)
-    -- Preview mode, at the end of the question's line, as on Spoken's settings page.
-    self.preview = Options:PreviewButton(layout)
     local styles = {}
     for _, style in ipairs(Options:Styles()) do table.insert(styles, Options:StyleCard(style)) end
-    self.styles = layout:Choices(styles, function() return Addon:PlayerStyle() end,
-        function(v) Addon:SetPlayerStyle(v) end,
-        function()
-            Refresh()
-            Options:StyleChosen()
-        end, { choose = L.STYLE_CHOOSE })
+    StyleChoices(self, layout, styles)
 
     -- The footer: the header's divider again, as wide and as centred, then the switches on the
     -- left and the two ways out on the right: Lower Other Sounds where the client has it, and the
@@ -262,6 +268,11 @@ function Welcome:Sync()
     if self.log then self.log:SetChecked(Developer:IsLogOn()) end
 end
 
+--- Whether the welcome window, which lists every style, is open or yet to open at a first login.
+function Welcome:Covers()
+    return not Addon.db.global.Welcomed or (self.frame ~= nil and self.frame:IsShown())
+end
+
 function Welcome:Show()
     if not Addon.db then return end
     if not self.frame then self:Build() end
@@ -288,29 +299,21 @@ end)
 --------------------------------------------------------------------------------
 
 -- The styles addons offered, in one window with the style the player has now, so several offered
--- at once are one question rather than a popup each. Choosing applies at once, as in the welcome
--- window, and Preview shows the one chosen.
-NarratorOffer = { shown = 0 }
+-- at once are one question rather than a popup each.
+NarratorOffer = {}
 
 function NarratorOffer:Show(ids)
     if self.frame then self.frame:Hide() end
-    -- Built afresh for each offer, its cards being the styles offered this time: named afresh too,
-    -- so Escape closes the one showing.
-    self.shown = self.shown + 1
-    local frame, _, layout = Shell(self, "SpokenNarratorOffer" .. self.shown, function() end)
+    -- Built afresh for each offer, its cards being the styles offered this time. Escape finds the
+    -- newest by the name they share.
+    local frame, _, layout = Shell(self, "SpokenNarratorOffer")
     layout:Intro([[Interface\AddOns\Spoken\icon.tga]], L.NARRATOR_OFFER_TITLE, NarratorOffer.Intro(ids))
     layout:Section(L.WELCOME_SHOW, true)
-    self.preview = Options:PreviewButton(layout)
     local keep = Options:StyleCard(Addon:PlayerStyle())
     keep.title = format(L.NARRATOR_OFFER_KEEP_FMT, keep.title)
     local cards = { keep }
     for _, id in ipairs(ids) do table.insert(cards, Options:StyleCard(id)) end
-    self.styles = layout:Choices(cards, function() return Addon:PlayerStyle() end,
-        function(v) Addon:SetPlayerStyle(v) end,
-        function()
-            Refresh()
-            Options:StyleChosen()
-        end, { choose = L.STYLE_CHOOSE })
+    StyleChoices(self, layout, cards)
     Footer(self, 0)
     self:Resize()
     layout:Refresh()
@@ -319,10 +322,10 @@ end
 
 function NarratorOffer:Resize() Resize(self) end
 
--- An addon by the title the AddOns list shows, colour codes taken out; its folder where it has none.
+-- An addon by the title the AddOns list shows, its markup taken out; its folder where it has none.
 local function AddonTitle(folder)
     local _, title = GetAddOnInfo(folder)
-    title = type(title) == "string" and title:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") or ""
+    title = type(title) == "string" and Transcript:CleanText(title) or ""
     return title ~= "" and title or folder
 end
 
