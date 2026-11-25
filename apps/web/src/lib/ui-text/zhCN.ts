@@ -1114,6 +1114,11 @@ const zhCN: Dictionary = {
     book: "书籍",
     page: "页码",
     newBook: "都不是：采纳这一行会新建一本书",
+    npcUnclear: "NPC 不明确",
+    noTextSent: "（未发送文本）",
+    matchBook: "匹配",
+    newBookShort: "新书",
+    clearPick: "清除",
     groups: {
       clean: {
         description: "与该页语言一致、完整、占位符与英文台词相同。大致看一下就可以采纳。",

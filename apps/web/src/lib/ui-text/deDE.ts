@@ -1133,6 +1133,11 @@ const deDE: Dictionary = {
     book: "Buch",
     page: "Seite",
     newBook: "Nichts davon: Übernehmen startet ein neues Buch",
+    npcUnclear: "NPC unklar",
+    noTextSent: "(kein Text gesendet)",
+    matchBook: "Abgleichen",
+    newBookShort: "Neues Buch",
+    clearPick: "Zurücksetzen",
     groups: {
       clean: {
         description: "In der Sprache der Seite, vollständig, gleiche Platzhalter wie die englische Zeile. Überfliegen und behalten.",

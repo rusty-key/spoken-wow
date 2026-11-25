@@ -1151,6 +1151,11 @@ const zhTW: Dictionary = {
     book: "書籍",
     page: "頁碼",
     newBook: "都不是：採納這一列會建立新的一本書",
+    npcUnclear: "NPC 不明確",
+    noTextSent: "（未傳送文字）",
+    matchBook: "配對",
+    newBookShort: "新書",
+    clearPick: "清除",
     groups: {
       clean: {
         description: "用頁面的語言、內容完整、佔位符與英文台詞相同。快速看過後採用。",

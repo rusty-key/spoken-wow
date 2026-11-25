@@ -2261,6 +2261,11 @@ export const EN = {
       "A player's client showed different words than ours. Replace ours if theirs fixes a mistake; drop it if ours is right.",
     changesQuest:
       "A player's client showed different words than ours. Replace ours if theirs fixes a mistake; keep both if it is just another way to say it.",
+    npcUnclear: "NPC unclear",
+    noTextSent: "(no text sent)",
+    matchBook: "Match",
+    newBookShort: "New book",
+    clearPick: "Clear",
     groups: {
       clean: {
         title: "Looks right",

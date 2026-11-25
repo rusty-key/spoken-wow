@@ -1129,6 +1129,11 @@ const esMX: Dictionary = {
     book: "Libro",
     page: "página",
     newBook: "Ninguna de estas: aceptar esta fila inicia un libro nuevo",
+    npcUnclear: "PNJ poco claro",
+    noTextSent: "(sin texto enviado)",
+    matchBook: "Emparejar",
+    newBookShort: "Libro nuevo",
+    clearPick: "Quitar",
     groups: {
       clean: {
         description: "En el idioma de la página, completa y con los mismos marcadores que la línea en inglés. Revisa rápido y conserva.",

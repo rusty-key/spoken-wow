@@ -929,6 +929,11 @@ const ptBR: Dictionary = {
     book: "Livro",
     page: "página",
     newBook: "Nenhum destes: aceitar esta linha começa um livro novo",
+    npcUnclear: "PNJ indefinido",
+    noTextSent: "(nenhum texto enviado)",
+    matchBook: "Emparelhar",
+    newBookShort: "Livro novo",
+    clearPick: "Limpar",
     groups: {
       clean: {
         description: "No idioma da página, completo, com os mesmos marcadores da fala em inglês. Passe o olho e mantenha.",

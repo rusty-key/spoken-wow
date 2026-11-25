@@ -1129,6 +1129,11 @@ const frFR: Dictionary = {
     book: "Livre",
     page: "page",
     newBook: "Aucun de ces choix : accepter cette ligne ouvre un nouveau livre",
+    npcUnclear: "PNJ incertain",
+    noTextSent: "(aucun texte envoyé)",
+    matchBook: "Associer",
+    newBookShort: "Nouveau livre",
+    clearPick: "Retirer",
     groups: {
       clean: {
         description: "Dans la langue de la page, complet, mêmes emplacements que la réplique anglaise. Parcourez et conservez.",

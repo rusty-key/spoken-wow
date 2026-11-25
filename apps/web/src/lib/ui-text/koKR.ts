@@ -928,6 +928,11 @@ const koKR: Dictionary = {
     book: "책",
     page: "페이지",
     newBook: "해당 없음: 이 행을 받아들이면 새 책이 시작됩니다",
+    npcUnclear: "NPC 불명확",
+    noTextSent: "(보낸 텍스트 없음)",
+    matchBook: "맞추기",
+    newBookShort: "새 책",
+    clearPick: "해제",
     groups: {
       clean: {
         description: "페이지의 언어로 되어 있고, 완전하며, 영어 대사와 자리 표시자가 같습니다. 훑어보고 유지하세요.",

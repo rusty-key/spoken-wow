@@ -1129,6 +1129,11 @@ const esES: Dictionary = {
     book: "Libro",
     page: "página",
     newBook: "Ninguna de estas: aceptar esta fila crea un libro nuevo",
+    npcUnclear: "PNJ poco claro",
+    noTextSent: "(sin texto enviado)",
+    matchBook: "Emparejar",
+    newBookShort: "Libro nuevo",
+    clearPick: "Quitar",
     groups: {
       clean: {
         description: "En el idioma de la página, completa, con los mismos marcadores que la línea en inglés. Échale un vistazo y consérvala.",
