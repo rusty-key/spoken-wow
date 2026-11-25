@@ -52,7 +52,6 @@ import {
 import {
   CATEGORIES,
   CATEGORY_COLUMN,
-  STATUS_LABELS,
   type Category,
   type Queue,
   type Report,
@@ -71,7 +70,6 @@ import type { Source } from "@/lib/sections";
 
 
 
-const VIEW_LABELS: Record<StatusView, string> = { ...STATUS_LABELS, all: "All" };
 
 /** The complaint dropdown's options, in the order the report form offers them. */
 const CATEGORY_OPTIONS = CATEGORIES.map((category) => ({
@@ -307,7 +305,7 @@ export default function ReportTable({
 
     const reopen = (
       <LiteButton variant="ghost" disabled={disabled} onClick={() => resolve(ids, "open")}>
-        {all ? "Reopen all" : "Reopen"}
+        {all ? t.reports.reopenAll : t.reports.reopen}
       </LiteButton>
     );
     if (!pending.length) return reopen;
@@ -315,14 +313,14 @@ export default function ReportTable({
     return (
       <>
         <LiteButton variant="accept" disabled={disabled} onClick={() => resolve(ids, "fixed")}>
-          {all ? "All fixed" : "Fixed"}
+          {all ? t.reports.allFixed : t.reports.fixed}
         </LiteButton>
         <LiteButton variant="reject" disabled={disabled} onClick={() => resolve(ids, "not_an_issue")}>
-          {all ? "All not problems" : "Not a problem"}
+          {all ? t.reports.allNotProblems : t.reports.notAProblem}
         </LiteButton>
         {open.length ? (
           <LiteButton variant="ghost" disabled={disabled} onClick={() => resolve(ids, "minor")}>
-            {all ? "All minor" : "Minor"}
+            {all ? t.reports.allMinor : t.reports.minor}
           </LiteButton>
         ) : (
           reopen
@@ -372,7 +370,7 @@ export default function ReportTable({
     if (!passTo.includes(to)) return null;
     return (
       <LiteButton disabled={busy.has(report.id)} onClick={() => void pass(report.id, to)}>
-        {to === "text" ? "Pass to text" : "Pass to team"}
+        {to === "text" ? t.reports.passToText : t.reports.passToTeam}
       </LiteButton>
     );
   }
@@ -394,7 +392,7 @@ export default function ReportTable({
           <p className="whitespace-pre-wrap">
             {labelled ? (
               <Badge variant="outline" className="mr-2 py-0 leading-5">
-                {report.queue === "text" ? "Text" : "Team"}
+                {report.queue === "text" ? t.reports.textQueue : t.reports.teamQueue}
               </Badge>
             ) : null}
             <span className="text-muted-foreground mr-2 text-xs">{CATEGORY_COLUMN[report.category]}</span>
@@ -475,7 +473,7 @@ export default function ReportTable({
         active={filters.view}
         tabs={STATUS_VIEWS.map((view) => ({
           value: view,
-          label: `${VIEW_LABELS[view]} (${statusCounts[view]})`,
+          label: `${view === "all" ? t.reports.all : t.reports.statuses[view]} (${statusCounts[view]})`,
           href: hrefFor({ view }),
         }))}
       />
