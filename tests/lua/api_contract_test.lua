@@ -27,7 +27,45 @@ Expect("ADDON_VERSION matches the TOC", Spoken.ADDON_VERSION, toc:match("## Vers
 Expect("IsCompatible(1)", Spoken:IsCompatible(1), true)
 Expect("not IsCompatible(2)", Spoken:IsCompatible(2), false)
 
+---------------------------------------------------------------- the Public tier
+-- The functions any addon may rely on, read from API.lua's "Public." doc comments and held to
+-- this list both ways: one gone or renamed breaks every addon that calls it, and one marked
+-- Public by accident is a promise nobody meant to make. Never take a name off this list; a
+-- deprecated function stays, behind a shim (docs/spoken/API.md).
+local PUBLIC = {
+    "API_VERSION", "ADDON_VERSION", "IsCompatible",
+    "HasStory", "PlayStory", "IsPlayingStory", "StopStory",
+    "GetCaption", "GetCaptionOptions", "SplitCaption", "CaptionWords",
+    "GetNowPlaying", "GetQueueSize", "IsPlaying", "IsPaused",
+    "Pause", "Resume", "Skip", "StopAll",
+    "IsPartOn",
+    "RegisterCallback", "UnregisterCallback",
+    "RegisterText", "RegisterInterfaceStrings",
+    "HasLog", "Log", "IsLogOn", "AddLogSource", "AddDiagnostics",
+}
+do
+    local marked, pending = {}, false
+    for line in io.lines(SPOKEN .. "API.lua") do
+        if line:match("^%-%-%- Public[%.:]") then
+            pending = true
+        elseif not line:match("^%-%-%-") then
+            local name = pending and (line:match("^function Spoken:([%w_]+)") or line:match("^Spoken%.([%w_]+) ="))
+            if name then marked[#marked + 1] = name end
+            pending = false
+        end
+    end
+    local sorted = {}
+    for i, name in ipairs(PUBLIC) do sorted[i] = name end
+    table.sort(sorted); table.sort(marked)
+    Expect("API.lua marks exactly the Public set", table.concat(marked, " "), table.concat(sorted, " "))
+    for _, name in ipairs(PUBLIC) do
+        Expect("Public " .. name .. " exists", Spoken[name] ~= nil, true)
+    end
+end
+
 ---------------------------------------------------------------- every documented method exists
+-- Public and Module alike: a module of Spoken's calls these, and one lost in a refactor
+-- fails only in the game.
 local METHODS = {
     -- sources
     "RegisterSource", "GetSource", "IterateSources",
@@ -67,6 +105,19 @@ local METHODS = {
     "RegisterStoryTeller", "HasStory", "PlayStory", "IsPlayingStory", "StopStory",
     -- the voices the player hears, in order, and the voice a pack is in
     "GetLanguageChoice", "GetVoiceOrder", "SetVoiceOrder", "VoiceOf", "SplitVoice", "VoiceName",
+    -- the controls the modules' windows draw
+    "PlayState", "Previous", "CanPrevious", "CreateRoundButton", "DressBoxButton",
+    -- the parts' switches and pages
+    "IsPartOn", "SetPartOn", "PartStatus", "PartVoice", "AddSettingsPage", "ShowsNarratorFor",
+    -- text packs and interface packs
+    "RegisterText", "TextIn", "TextSection", "TextLanguage", "TextLanguageChoice", "SetTextLanguage",
+    "RegisterInterfaceStrings", "ApplyInterfaceStrings", "InterfaceIn", "InterfaceLanguage", "InterfaceBase",
+    "DeclareLanguage", "Language", "KnownLanguages", "InstalledLanguages", "BuiltinLanguages",
+    -- captions marked in another window
+    "WordMarks",
+    -- contributions and reports
+    "ShowGatherInstructions", "ShowGatheredText", "RefreshGatheredText", "AreReportButtonsHidden",
+    "ReportURL",
 }
 for _, name in ipairs(METHODS) do
     Expect("Spoken:" .. name .. " exists", type(Spoken[name]), "function")
@@ -77,8 +128,11 @@ Expect("Spoken.Packs.Register exists", type(Spoken.Packs and Spoken.Packs.Regist
 Expect("Spoken.Packs.Get exists", type(Spoken.Packs and Spoken.Packs.Get), "function")
 Expect("Spoken.Minimap.AddEntry exists", type(Spoken.Minimap and Spoken.Minimap.AddEntry), "function")
 Expect("Spoken.Minimap.RemoveEntry exists", type(Spoken.Minimap and Spoken.Minimap.RemoveEntry), "function")
+Expect("Spoken.NotSecret exists", type(Spoken.NotSecret), "function")
+Expect("Spoken.CreatureID exists", type(Spoken.CreatureID), "function")
+Expect("Spoken.Contribute exists", type(Spoken.Contribute), "table")
 
-local SOURCE_METHODS = { "Enqueue", "PlayNow", "Remove", "StopAll", "AddGate", "RecheckGates", "CanPlay", "SetQueueLimit", "SetInterClipGap" }
+local SOURCE_METHODS = { "Enqueue", "Continue", "Retry", "PlayNow", "Remove", "StopAll", "AddGate", "RecheckGates", "CanPlay", "SetQueueLimit", "SetInterClipGap" }
 local src = Spoken:RegisterSource("contract", { title = "Contract", addon = "X", order = 1 })
 for _, name in ipairs(SOURCE_METHODS) do
     Expect("source:" .. name .. " exists", type(src[name]), "function")
@@ -158,6 +212,44 @@ do
     Spoken:Resume()
     Expect("StopStory takes it out", tostring(Spoken:StopStory("contract", 7)) .. " " .. Spoken:GetQueueSize(), "true 0")
     Expect("...and a second stop finds nothing", Spoken:StopStory("contract", 7), false)
+end
+
+---------------------------------------------------------------- the Public events' payloads and the caption's shape
+do
+    local seen = {}
+    local handles = {}
+    for _, event in ipairs({ "CLIP_QUEUED", "CLIP_STARTED", "CLIP_STOPPED", "CLIP_DROPPED", "QUEUE_EMPTY", "PART_SWITCHED" }) do
+        handles[#handles + 1] = Spoken:RegisterCallback(event, function(a, b)
+            seen[#seen + 1] = event .. " " .. (type(a) == "table" and a.key or tostring(a)) .. " " .. tostring(b)
+        end)
+    end
+    local source = Spoken:RegisterSource("payloads", { title = "Payloads", addon = "X", order = 10 })
+    source:SetQueueLimit(1)
+    local spoken = H.Clip({ key = "p1", present = { header = "Who", label = "What", transcript = "one two three" } })
+    source:Enqueue(spoken)
+    source:Enqueue(H.Clip({ key = "p2" }))
+    source:Enqueue(H.Clip({ key = "p3" }))
+
+    local caption = Spoken:GetCaption()
+    local word = caption and caption.words[1]
+    Expect("a caption has its clip and its words", tostring(caption.clip == spoken) .. " " .. #caption.words
+        .. " " .. type(caption.totalWeight) .. " " .. type(caption.progress) .. " " .. type(caption.speaking)
+        .. " " .. tostring(caption.timed), "true 3 number number boolean false")
+    Expect("...each word with its text, its span and its bytes", word.text .. " " .. type(word.start) .. " "
+        .. type(word.finish) .. " " .. word.first .. "-" .. word.last .. " " .. tostring(word.joined), "one number number 1-3 false")
+    Expect("...and the player's options", type(caption.highlight) .. " " .. type(caption.typewriter) .. " "
+        .. caption.typewriterBy, "boolean boolean letter")
+    Expect("GetCaption hands back the same table each call", Spoken:GetCaption() == caption, true)
+
+    Spoken:Skip()
+    Spoken:StopAll()
+    Spoken:SetPartOn("payloads", false)
+    Spoken:SetPartOn("payloads", true)
+    for _, h in ipairs(handles) do Spoken:UnregisterCallback(h) end
+    Expect("the Public events carry their documented payloads", table.concat(seen, ", "),
+        "CLIP_QUEUED p1 nil, CLIP_STARTED p1 nil, CLIP_QUEUED p2 nil, CLIP_DROPPED p2 queue-limit, CLIP_QUEUED p3 nil, "
+        .. "CLIP_STOPPED p1 false, CLIP_STARTED p3 nil, CLIP_STOPPED p3 false, QUEUE_EMPTY nil nil, "
+        .. "PART_SWITCHED payloads false, PART_SWITCHED payloads true")
 end
 
 Spoken:AddGate(function() return "held by the player" end)

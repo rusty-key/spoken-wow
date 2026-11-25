@@ -176,20 +176,21 @@ on this client's clock, and head each line with whose it is.
 
 ## For feature addons
 
-Additive API on `Spoken`, so `API_VERSION` stays 1: guard on the method.
+`HasLog`, `IsLogOn`, `Log`, `AddLogSource` and `AddDiagnostics` are Public: any addon may call
+them, and [API.md](API.md#the-debug-log) documents them. The rest are Module tier, for Spoken's
+own modules and Spoken Developer, and may change in any release. Each was added after the first
+release, so `API_VERSION` stays 1: guard on the method.
 
-| Call | What it does |
+| Module call | What it does |
 |---|---|
-| `Spoken:HasLog()` | Whether the module is installed. |
-| `Spoken:Log(category, message, a, b, c, d)` | One line while the log is on; `message` is a format string when arguments follow (four at most: format a longer line yourself). `category` is a short word of your own. |
-| `Spoken:IsLogOn()`, `Spoken:SetLogOn(on)` | Whether it is on; turn it on or off. |
+| `Spoken:SetLogOn(on)` | Turn the log on or off. |
 | `Spoken:LogLines(count)` | A copy of the newest `count` lines (all without a count), oldest first. |
 | `Spoken:ClearLog(how)` | Empty it and every log handed in; it restarts with a session line saying `how`. |
 | `Spoken:ShowLog(count)` | The box. Returns how many lines it shows. |
-| `Spoken:AddLogSource(list, clear)` | Logs to read beside this one, such as other computers'. `list()` returns `{ { name, lines, offset }, ... }`, lines written as the log writes them, on their own clock, `offset` the seconds that put them on this one. `clear()` drops them when the log is cleared. |
-| `Spoken:AddDiagnostics(name, fn)` | `fn(detailed)` returns a list of lines: what your own diagnostics command says, and with `detailed` what an AI agent needs besides. Shown under `name` in the copies and the `diag` snapshots. |
-| `Spoken:AddDeveloperSettings(build)` | A section of your own on the Developer page; `build(layout)` adds rows to its SpokenLayout and may return a function for the page's Defaults. |
+| `Spoken:AddDeveloperSettings(build, group, order)` | Rows of your own on the Developer page; `build(layout)` adds rows to its SpokenLayout and may return a function for the page's Defaults. With `group` (`"chat"` or `"testing"`) the rows go under that group's title, among every module's, in `order` (the module's page order: Quests 1, Gossip 2, Places 3, Readables 4); without it, `build` adds a section of its own. |
 | `Spoken:ShowLogMenu(anchor)`, `Spoken:LogMenuHint()` | The Report menu, for a Report button Spoken did not make; the line its tooltip can add. Buttons made with `Spoken:CreateRoundButton(parent, "report")` have it already. |
+| `Spoken:Diagnostics(detailed)` | What `/spoken diagnostics` says, then each addon's `AddDiagnostics`, as lines. |
 
 The module registers with `Spoken:RegisterDeveloper(provider)`; `addons/Spoken/Developer.lua`
-lists what the provider holds.
+lists what the provider holds. Spoken fires `DEVELOPER_REGISTERED` when it does, and
+`DEVELOPER_SETTINGS_ADDED` with `build` for each `AddDeveloperSettings`; both are Module events.

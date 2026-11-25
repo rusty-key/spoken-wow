@@ -82,7 +82,7 @@ to type by letter or by word. It is worked out on every call rather than read fr
 which stop updating while DialogueUI hides their window. Each line of DialogueUI's text is split
 with `Spoken:SplitCaption()`, the same splitter the captions use, so Chinese is matched character by
 character. The matching and marking below are Spoken's (`UI/WordMarks.lua`), reached through
-`Spoken:WordMarks()`, so another window's text can be marked the same way. The caption's words are
+`Spoken:WordMarks()`, so Spoken Readables' book view marks its text the same way. The caption's words are
 matched in order against DialogueUI's words:
 
 - A match may skip a few words. This covers the NPC name DialogueUI can put in front of the
