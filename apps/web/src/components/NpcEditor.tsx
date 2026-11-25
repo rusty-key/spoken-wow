@@ -28,7 +28,7 @@ import { bareDirection } from "@/lib/generation/narration";
 import { fill } from "@/lib/site-text/format";
 import type { Roster, RosterData } from "@/lib/voices/roster";
 import type { NpcSummary } from "@/lib/contributions/triage";
-import { localeHref } from "@/lib/lang";
+import { langName, localeHref } from "@/lib/lang";
 import { isProvenance, PROVENANCES, sexOf, type NpcRowKind, type Provenance, type Sex } from "@/lib/npc/npc";
 import type { NpcResolution, NpcBodyAnswer } from "@/lib/npc/store";
 import type { UiText } from "@/lib/ui-text/en";
@@ -393,6 +393,9 @@ export default function NpcEditor({
   const lang = useLang();
   const t = useUiText();
   const words = t.npc;
+  const language = langName(lang);
+  const languageDirectionLabel = fill(words.languageDirectionLabel, { lang: language });
+  const languageDirectionTitle = fill(words.languageDirectionTitle, { lang: language });
   const speakerChips = useMemo(() => provenanceOptions(words), [words]);
   const progressChips = useMemo(() => PROGRESS_CHIP_OPTIONS(words), [words]);
   const edits = useRosterEdits(rosterData);
@@ -720,7 +723,7 @@ export default function NpcEditor({
               <th className="border-b py-2 pr-3 font-normal">{words.columnSpeaker}</th>
               <th className="border-b py-2 pr-3 font-normal">{words.columnDirection}</th>
               {ownDirections ? (
-                <th className="border-b py-2 pr-3 font-normal">{fill(words.columnLanguageDirection, { lang })}</th>
+                <th className="border-b py-2 pr-3 font-normal">{fill(words.columnLanguageDirection, { lang: language })}</th>
               ) : null}
               <th className="border-b py-2 font-normal" />
             </tr>
@@ -801,8 +804,8 @@ export default function NpcEditor({
                       <DirectionCell
                         direction={directionOf(k, true)}
                         busy={busy === k || bulk !== null}
-                        label={fill(words.languageDirectionLabel, { lang })}
-                        title={fill(words.languageDirectionTitle, { lang })}
+                        label={languageDirectionLabel}
+                        title={languageDirectionTitle}
                         onSave={(direction) => postDirection(npc, direction, true)}
                       />
                     </td>
