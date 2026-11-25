@@ -1113,6 +1113,43 @@ local PLAY = {
     end,
 }
 
+-- Whether this character has completed `id`, asked now: what the tab last read may be from before
+-- the quest was handed in.
+local function CompletedNow(id)
+    local ask = (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted) or IsQuestFlaggedCompleted
+    if ask then return ask(id) and true or false end
+    local done = GetQuestsCompleted and GetQuestsCompleted()
+    return type(done) == "table" and done[id] and true or false
+end
+
+-- A quest's story for another addon (Spoken:PlayStory("quest", questID)): what shift-click on its
+-- row queues, the first part shown that a pack voices. A key for every part a pack voices, so
+-- IsPlayingStory and StopStory know the quest's other parts too.
+local STORY_ORIGIN = "Spoken:PlayStory"
+
+local function StoryKeys(id)
+    local keys = {}
+    for _, moment in ipairs(MOMENTS) do
+        local soundData = SoundData(id, moment, STORY_ORIGIN)
+        if VO.DataModules:PrepareSound(soundData) then table.insert(keys, soundData.fileName) end
+    end
+    return keys
+end
+
+-- The part whose clip key is `key`, where the quest's page shows its words and that part with them.
+-- Asked with the window shut too, so the hand-in is not read from the tab's last refresh.
+local function StoryClip(id, key)
+    if not QuestsTab:Has(id) then return nil end
+    for _, moment in ipairs(MOMENTS) do
+        if moment ~= "complete" or Unlocked() or CompletedNow(id) then
+            local soundData = SoundData(id, moment, STORY_ORIGIN)
+            if VO.DataModules:PrepareSound(soundData) and soundData.fileName == key then
+                return VO.Player:Prepare(soundData)
+            end
+        end
+    end
+end
+
 -- Each part's Play and Report, on its heading's line on the page: made once, pointed at the
 -- quest shown.
 local partButtons = {}
@@ -1676,13 +1713,7 @@ end
 -- Whether this character has started `id`, asked now: what the tab last read may be from before
 -- the quest was handed in.
 local function StartedNow(id)
-    local ask = (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted) or IsQuestFlaggedCompleted
-    if ask then
-        if ask(id) then return true end
-    else
-        local done = GetQuestsCompleted and GetQuestsCompleted()
-        if type(done) == "table" and done[id] then return true end
-    end
+    if CompletedNow(id) then return true end
     if C_QuestLog and C_QuestLog.IsOnQuest then return C_QuestLog.IsOnQuest(id) and true or false end
     return GetQuestLogIndexByID ~= nil and (GetQuestLogIndexByID(id) or 0) > 0
 end
@@ -1822,6 +1853,9 @@ function QuestsTab:Setup()
     end
     frame:SetScript("OnEvent", OnEvent)
     if self.SetupOpenButtons then self:SetupOpenButtons() end
+    if Spoken and Spoken.RegisterStoryTeller and VO.Player.source then
+        Spoken:RegisterStoryTeller("quest", { source = VO.Player.source, Keys = StoryKeys, Clip = StoryClip })
+    end
 end
 
 -- Once the world is up, as the other tabs are added.

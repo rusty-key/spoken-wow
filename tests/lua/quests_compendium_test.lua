@@ -990,6 +990,51 @@ Expect("...and then a click plays it at once, the stopped line kept behind it", 
 Expect("...showing Stop", play.pageState, "stop")
 Spoken:StopAll()
 Expect("...Play again once nothing is queued without a description", play.pageState .. " " .. PlayTip(), "play " .. S.PLAY)
+-- Spoken:PlayStory("quest", questID) reaches the tab through the teller it registers: what
+-- shift-click on the quest's row queues, for a quest whose page shows its words.
+do
+    local Named = H.CaptionStory
+    Expect("a quest started and voiced has a story to play", Spoken:HasStory("quest", KOBOLDS), true)
+    Expect("...an unknown quest has none", Spoken:HasStory("quest", 99999), false)
+    Expect("...nor one voiced but not started", Spoken:HasStory("quest", NECKLACE), false)
+    C:Tab("quests").unlock.set(true)
+    Expect("...unless Unlock Unstarted Quests is on", Spoken:HasStory("quest", NECKLACE), true)
+    C:Tab("quests").unlock.set(false)
+
+    Expect("PlayStory plays it", Spoken:PlayStory("quest", KOBOLDS), true)
+    Expect("...its first part a pack voices, alone", Names(), "7-accept")
+    Expect("...named and pictured for who says it, as the page's Play has it", Who(), Npc("Marshal McBride", MCBRIDE))
+    Expect("...which GetCaption names as PlayStory took it", Named(), "quest " .. KOBOLDS)
+    Expect("...and IsPlayingStory says so", Spoken:IsPlayingStory("quest", KOBOLDS), true)
+    Expect("...as it does not of another quest", Spoken:IsPlayingStory("quest", NECKLACE), false)
+    Spoken:Pause()
+    Expect("...nor while paused", Spoken:IsPlayingStory("quest", KOBOLDS), false)
+    Spoken:Resume()
+    Expect("StopStory stops it", tostring(Spoken:StopStory("quest", KOBOLDS)) .. " " .. Spoken:GetQueueSize(), "true 0")
+    Expect("...and a second stop finds nothing", Spoken:StopStory("quest", KOBOLDS), false)
+    handIn.scripts.OnClick(handIn)
+    Expect("...the quest's other parts are its story too, played from its page",
+        tostring(Spoken:IsPlayingStory("quest", KOBOLDS)) .. " " .. tostring(Spoken:StopStory("quest", KOBOLDS)) .. " "
+        .. Spoken:GetQueueSize(), "true true 0")
+
+    -- Kobold Candles under way, its hand-in alone voiced: no story until it is handed in, asked of the
+    -- game then though the tab has not read the log again.
+    local log, done = questLog, completed[CANDLES]
+    questLog, completed[CANDLES] = { CANDLES }, nil
+    testPack.SoundLengthLookupByFileName["60-complete"] = 2
+    Expect("a quest under way whose hand-in alone is voiced has none yet", Spoken:HasStory("quest", CANDLES), false)
+    completed[CANDLES] = true
+    Expect("...and has it once handed in", Spoken:HasStory("quest", CANDLES), true)
+    Expect("...PlayStory then playing the hand-in", tostring(Spoken:PlayStory("quest", CANDLES)) .. " " .. Names(),
+        "true 60-complete")
+    Spoken:StopAll()
+    completed[CANDLES], testPack.SoundLengthLookupByFileName["60-complete"], questLog = done, nil, log
+
+    Spoken:SetPartOn("quests", false)
+    Expect("with Quests switched off there is none", tostring(Spoken:HasStory("quest", KOBOLDS)) .. " "
+        .. tostring(Spoken:PlayStory("quest", KOBOLDS)), "false false")
+    Spoken:SetPartOn("quests", true)
+end
 Spoken:RegisterDeveloper({ MenuHint = function() return "Right-click: the debug log" end })
 Expect("a part's Report tooltip keeps its title", Tip(PartButton(L.QUEST_PART_ACCEPT, "report")), L.OPT_REPORT_PROBLEM)
 Spoken:RegisterDeveloper(nil)
