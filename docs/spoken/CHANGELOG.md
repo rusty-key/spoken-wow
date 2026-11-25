@@ -13,6 +13,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
   its own card and settings, and Spoken's captions, portrait and buttons to put in it. *([rusty-key](https://github.com/rusty-key))*
 - For feature addons: `Spoken:GetSpeaker(clip)` says who speaks a line, with their race where
   Spoken knows it. *([rusty-key](https://github.com/rusty-key))*
+- **A Pause button resumes the line from its sentence,** on lines your voice pack keeps as
+  sentences. Play after Stop goes back to the text on screen. *([ScottStevenWhite](https://github.com/ScottStevenWhite))*
 
 ## 3.13.1 — 2026-11-25
 

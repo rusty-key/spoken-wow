@@ -49,6 +49,7 @@ function EasterEggs:Apply(soundData)
     soundData.length = alternate.length
     soundData.timings = nil
     soundData.packText = nil
+    soundData.pieces = nil
     -- SoundQueue logs the addon a sound came from, so there is always a module to name even
     -- when no pack held the line.
     soundData.module = soundData.module or

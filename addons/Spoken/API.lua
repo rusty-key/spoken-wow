@@ -1154,7 +1154,8 @@ function Spoken:GetHeldReason(clip)
 end
 
 --- Public. Pause the queue. The client has no seek, so the line stops and Resume replays it
---- from its start. Returns false where it was already paused.
+--- from its start, or from its sentence where the line is kept as pieces. Returns false where it
+--- was already paused.
 ---@return boolean
 function Spoken:Pause()
     return SoundQueue:PauseQueue()
@@ -1166,8 +1167,13 @@ function Spoken:Resume()
     return SoundQueue:ResumeQueue()
 end
 
+--- Stop, or Replay a stopped line from its start, as the Stop or Replay button does. A line paused
+--- at a sentence plays on from it.
 function Spoken:TogglePause()
-    return SoundQueue:TogglePauseQueue()
+    if SoundQueue:HaltedBy() == "pause" then
+        return SoundQueue:ResumeQueue()
+    end
+    return SoundQueue:ToggleStopQueue()
 end
 
 function Spoken:Mute()

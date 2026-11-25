@@ -334,6 +334,7 @@ function Followup:Play(entry, message, sender, guid, npcID, asked, event)
         length = clip.length,
         timings = clip.timings,
         packText = clip.packText,
+        pieces = clip.pieces,
         module = clip.module,
         language = clip.language,
     }
