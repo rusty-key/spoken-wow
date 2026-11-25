@@ -1711,8 +1711,8 @@ const koKR: Dictionary = {
     notSeededBefore: "발음 표가 비어 있습니다. 마이그레이션 ",
     ok: "OK",
     onItsOwn: "{name}, 단독",
-    partialAfter: "개만 보관했습니다: 올린 규칙 {sent}개 중입니다. 사전은 적용 중이지만 불완전하여 아래 이름 중 일부는 적용되지 않습니다.",
-    partialBefore: "ElevenLabs는 ",
+    partial:
+      "ElevenLabs는 올린 규칙 {sent}개 중 {kept}개만 보관했습니다. 사전은 적용 중이지만 불완전하여 아래 이름 중 일부는 적용되지 않습니다.",
     pendingAfter: ". 생성은 아직 이전 사전을 적용하고 있어, 아래 항목은 지금 대사가 들리는 소리와 다릅니다.",
     pendingBefore: "저장했지만 올리지 않음",
     previewFailed: "{name}을(를) 미리 들어 보지 못했습니다",
