@@ -14,6 +14,6 @@ describe("readingWord", () => {
   });
 
   it("writes them together in a language that does not", () => {
-    expect(readingWord(merge(EN, zhCN) as UiText, ["m", "f"])).toBe("男性和女性");
+    expect(readingWord(merge(EN, zhCN) as UiText, ["m", "f"])).toBe("男性 和 女性");
   });
 });

@@ -510,7 +510,6 @@ const deDE: Dictionary = {
       fixed: "Behoben",
       notAProblem: "Kein Problem",
       minor: "Gering",
-      reopenShort: "Wieder öffnen",
     },
     /** Die Leiste über jeder Seite, solange die Erzeugung läuft. */
     queue: {
@@ -1340,11 +1339,9 @@ const deDE: Dictionary = {
     splitTitle: "Unsere Fassung für Spieler ({ours}), ihre für Spieler ({theirs}):\n{text}",
     asAnotherWording: "Als andere Formulierung",
     theirsFor: "Ihre Fassung für Spieler ({gender})",
+    theirsForReader: "Ihre Fassung für Spieler ({gender}) · das Geschlecht des Lesers",
     theirsReadBy: "Ihre Fassung, gelesen von einem Charakter ({gender})",
     oursReadBy: "Unsere Fassung, gelesen von Charakteren ({who})",
-    readerGenderMark: " · das Geschlecht des Lesers",
-    andWord: " und ",
-    sex: { male: "männlich", female: "weiblich" },
   },
   contribute: {
     title: "Beitragen",

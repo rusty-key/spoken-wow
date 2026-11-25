@@ -508,7 +508,6 @@ const esES: Dictionary = {
       fixed: "Corregido",
       notAProblem: "No era un problema",
       minor: "Menor",
-      reopenShort: "Reabrir",
     },
     /** La barra que aparece en todas las páginas mientras se genera. */
     queue: {
@@ -1336,11 +1335,9 @@ const esES: Dictionary = {
     splitTitle: "La nuestra para jugadores {ours}, la suya para {theirs}:\n{text}",
     asAnotherWording: "Como otra redacción",
     theirsFor: "La suya para jugadores {gender}",
+    theirsForReader: "La suya para jugadores {gender} · el género del lector",
     theirsReadBy: "La suya, leída por un personaje {gender}",
     oursReadBy: "La nuestra, leída por personajes {who}",
-    readerGenderMark: " · el género del lector",
-    andWord: " y ",
-    sex: { male: "masculino", female: "femenino" },
   },
   contribute: {
     title: "Contribuir",

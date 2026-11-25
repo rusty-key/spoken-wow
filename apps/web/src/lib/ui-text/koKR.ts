@@ -508,7 +508,6 @@ const koKR: Dictionary = {
       fixed: "수정됨",
       notAProblem: "문제 아님",
       minor: "경미함",
-      reopenShort: "다시 열기",
     },
     /** 생성이 도는 동안 모든 페이지 위에 뜨는 막대입니다. */
     queue: {
@@ -1333,11 +1332,9 @@ const koKR: Dictionary = {
     splitTitle: "{ours} 플레이어에게는 우리 것, {theirs} 플레이어에게는 제보한 것:\n{text}",
     asAnotherWording: "다른 표현으로",
     theirsFor: "{gender} 플레이어에게 보낼 제보한 것",
+    theirsForReader: "{gender} 플레이어에게 보낼 제보한 것 · 읽는 사람의 성별",
     theirsReadBy: "{gender} 캐릭터가 읽은 제보한 것",
     oursReadBy: "{who} 캐릭터가 읽은 우리 것",
-    readerGenderMark: " · 읽는 사람의 성별",
-    andWord: " 및 ",
-    sex: { male: "남성", female: "여성" },
     acceptWithout: "{tokens} 없이 수락",
     acceptWithoutHow: "게임이 자체 단어를 표시하는 자리에 우리 대사에는 {tokens}이(가) 있습니다. NPC 이름 같은 경우입니다",
   },

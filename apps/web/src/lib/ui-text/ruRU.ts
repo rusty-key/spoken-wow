@@ -508,7 +508,6 @@ const ruRU: Dictionary = {
       fixed: "Исправлено",
       notAProblem: "Не проблема",
       minor: "Мелочь",
-      reopenShort: "Открыть снова",
     },
     /** Полоса над каждой страницей, пока идёт генерация. */
     queue: {
@@ -1335,11 +1334,9 @@ const ruRU: Dictionary = {
     splitTitle: "Наш вариант для игроков ({ours}), их для ({theirs}):\n{text}",
     asAnotherWording: "Как другая формулировка",
     theirsFor: "Их вариант для игроков ({gender})",
+    theirsForReader: "Их вариант для игроков ({gender}) · пол читателя",
     theirsReadBy: "Их вариант, прочитанный персонажем ({gender})",
     oursReadBy: "Наш вариант, прочитанный персонажами ({who})",
-    readerGenderMark: " · пол читателя",
-    andWord: " и ",
-    sex: { male: "мужской", female: "женский" },
     acceptWithout: "Принять без {tokens}",
     acceptWithoutHow: "В нашей строке стоят {tokens} там, где игра подставляет собственные слова, например имя NPC",
   },

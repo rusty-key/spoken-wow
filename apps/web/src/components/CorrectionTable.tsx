@@ -448,8 +448,7 @@ export default function CorrectionTable({
                     title={chooser[side]}
                     onClick={() => splitAs(side)}
                   >
-                    {fill(t.corrections.theirsFor, { gender: sexWord(t, side) })}
-                    {row.readerGender === side ? t.corrections.readerGenderMark : null}
+                    {fill(row.readerGender === side ? t.corrections.theirsForReader : t.corrections.theirsFor, { gender: sexWord(t, side) })}
                   </button>
                 ))}
                 <button type="button" className="bs-btn bs-btn-text" onClick={() => setKeepingId(null)}>

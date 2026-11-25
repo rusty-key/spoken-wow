@@ -74,7 +74,7 @@ const SECTIONS = [
   { letter: "Q", what: "questLines", href: (q: string) => questsHref({ q, filter: "text" }) },
   { letter: "Z", what: "zoneLore", href: (q: string) => placesHref({ q, field: "text" }) },
   { letter: "B", what: "bookPages", href: (q: string) => readablesHref({ q, field: "text" }) },
-] as const satisfies readonly { letter: string; what: "questLines" | "zoneLore" | "bookPages"; href: (q: string) => string }[];
+] as const;
 
 // Starts as a respelling, not IPA. Anyone who can write IPA can switch in one click, and
 // everyone else would otherwise meet an empty box they have no way to fill.
@@ -790,6 +790,7 @@ function Row({
   const t = useUiText().lexicon;
   const playable = Boolean(entry.grapheme.trim() && (entry.ipa ?? entry.alias ?? "").trim());
   const ipa = formKind(entry) === "ipa";
+  const removeLabel = fill(t.removeFor, { name: entry.grapheme || t.thisEntry });
 
   return (
     <div
@@ -901,8 +902,8 @@ function Row({
             size="icon"
             variant="ghost"
             className="text-destructive size-6"
-            title={fill(t.removeFor, { name: entry.grapheme || t.thisEntry })}
-            aria-label={fill(t.removeFor, { name: entry.grapheme || t.thisEntry })}
+            title={removeLabel}
+            aria-label={removeLabel}
             onClick={onRemove}
           >
             <Trash2 className="size-3" aria-hidden />

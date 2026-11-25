@@ -508,7 +508,6 @@ const frFR: Dictionary = {
       fixed: "Corrigé",
       notAProblem: "Pas un problème",
       minor: "Mineur",
-      reopenShort: "Rouvrir",
     },
     /** La barre au-dessus de chaque page pendant la génération. */
     queue: {
@@ -1334,11 +1333,9 @@ const frFR: Dictionary = {
     splitTitle: "La nôtre pour les joueurs {ours}, la leur pour {theirs} :\n{text}",
     asAnotherWording: "Comme une autre formulation",
     theirsFor: "La leur pour les joueurs {gender}",
+    theirsForReader: "La leur pour les joueurs {gender} · le genre du lecteur",
     theirsReadBy: "La leur, lue par un personnage {gender}",
     oursReadBy: "La nôtre, lue par des personnages {who}",
-    readerGenderMark: " · le genre du lecteur",
-    andWord: " et ",
-    sex: { male: "masculin", female: "féminin" },
     acceptWithout: "Accepter sans {tokens}",
     acceptWithoutHow: "Notre réplique contient {tokens} là où le jeu affiche ses propres mots, comme le nom d'un PNJ",
   },

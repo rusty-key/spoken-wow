@@ -502,7 +502,6 @@ const zhTW: Dictionary = {
       fixed: "已修正",
       notAProblem: "不是問題",
       minor: "輕微",
-      reopenShort: "重新開啟",
     },
     /** The bar above every page while generation runs. */
     queue: {
@@ -1326,11 +1325,9 @@ const zhTW: Dictionary = {
     splitTitle: "我們的給{ours}玩家，玩家的給{theirs}玩家：\n{text}",
     asAnotherWording: "作為另一種措辭",
     theirsFor: "玩家的版本，給{gender}玩家",
+    theirsForReader: "玩家的版本，給{gender}玩家 · 讀者性別",
     theirsReadBy: "玩家的文本，由{gender}角色朗讀",
     oursReadBy: "我們的文本，由{who}角色朗讀",
-    readerGenderMark: " · 讀者性別",
-    andWord: "和",
-    sex: { male: "男性", female: "女性" },
     acceptWithout: "不帶 {tokens} 採納",
     acceptWithoutHow: "遊戲在那裡顯示自己的詞（例如 NPC 的名字），而我們的台詞裡是 {tokens}",
   },

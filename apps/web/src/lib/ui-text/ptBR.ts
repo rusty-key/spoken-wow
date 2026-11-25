@@ -508,7 +508,6 @@ const ptBR: Dictionary = {
       fixed: "Corrigido",
       notAProblem: "Não é problema",
       minor: "Leve",
-      reopenShort: "Reabrir",
     },
     /** A barra acima de toda página enquanto a geração roda. */
     queue: {
@@ -1334,11 +1333,9 @@ const ptBR: Dictionary = {
     splitTitle: "A nossa para jogadores {ours}, a deles para {theirs}:\n{text}",
     asAnotherWording: "Como outra redação",
     theirsFor: "A deles para jogadores {gender}",
+    theirsForReader: "A deles para jogadores {gender} · o gênero do leitor",
     theirsReadBy: "A deles, lida por um personagem {gender}",
     oursReadBy: "A nossa, lida por personagens {who}",
-    readerGenderMark: " · o gênero do leitor",
-    andWord: " e ",
-    sex: { male: "masculino", female: "feminino" },
     acceptWithout: "Aceitar sem {tokens}",
     acceptWithoutHow: "Nossa fala tem {tokens} onde o jogo mostra palavras próprias, como o nome de um NPC",
   },

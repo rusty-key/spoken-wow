@@ -543,7 +543,6 @@ export const EN = {
       fixed: "Fixed",
       notAProblem: "Not a problem",
       minor: "Minor",
-      reopenShort: "Reopen",
     },
     /** The bar above every page while generation runs. */
     queue: {
@@ -2647,11 +2646,9 @@ export const EN = {
     splitTitle: "Ours for {ours} players, theirs for {theirs} ones:\n{text}",
     asAnotherWording: "As another wording",
     theirsFor: "Theirs for {gender} players",
+    theirsForReader: "Theirs for {gender} players · the reader's gender",
     theirsReadBy: "Theirs read by a {gender} character",
     oursReadBy: "Ours read by {who} characters",
-    readerGenderMark: " · the reader's gender",
-    andWord: " and ",
-    sex: { male: "male", female: "female" },
   },
   /** The Contribute page. Its maps are keyed by the parser's field and error names, not by English. */
   contribute: {
