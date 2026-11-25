@@ -1987,6 +1987,16 @@ is not queued again. The page shown with no quest chosen says so.
 A zone's, city's, continent's or dungeon's page has no words of its own: its count under the title,
 and the faction's seal. Its story is on the Places tab.
 
+Another addon plays a quest through Spoken's `HasStory`, `PlayStory`, `IsPlayingStory` and
+`StopStory` with `"quest"` and the quest's id (`addons/Spoken/API.lua`), not through
+`VoiceOver.QuestsTab`, whose methods are not frozen. The tab registers the teller as it is added;
+`StoryClip` in `UI/QuestsTab.lua` builds the clip: what shift-click on the quest's row would queue,
+the first part shown that a pack voices, with Quests on, for a quest whose page shows its words
+(`QuestsTab:Has`: this character may take it, and it is started or Unlock Unstarted Quests is on).
+The hand-in counts once the game says the quest is completed, asked then rather than read from the
+tab's last refresh. Every part a pack voices is the story's to `IsPlayingStory` and `StopStory`, so a
+part played from the page counts too.
+
 Open in Azeroth's Compendium (`UI/OpenInCompendium.lua`) is Spoken Places' lore-page button for
 quests: the Compendium's tome in the player's round button, opening the tab on the quest with its
 zone, continent or group opened and its page shown (`QuestsTab:Open(questID)`), though Started

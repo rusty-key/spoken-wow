@@ -229,10 +229,18 @@ local function ReadCompleted()
     end
 end
 
+-- Whether this character has completed `id`, asked now: what the tab last read may be from before
+-- the quest was handed in.
+local function CompletedNow(id)
+    local ask = (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted) or IsQuestFlaggedCompleted
+    if ask then return ask(id) and true or false end
+    local done = GetQuestsCompleted and GetQuestsCompleted()
+    return type(done) == "table" and done[id] and true or false
+end
+
 local function Completed(id)
     if completed then return completed[id] == true end
-    local ask = (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted) or IsQuestFlaggedCompleted
-    return ask ~= nil and ask(id) and true or false
+    return CompletedNow(id)
 end
 
 -- The quests in this character's quest log, read again on each refresh.
@@ -1047,9 +1055,10 @@ local function Voiced(id, moment)
 end
 
 -- The hand-in tells how a quest ends: it shows once the quest is completed, or with Unlock
--- Unstarted Quests on, where the player chose to see everything.
-local function Shows(id, moment)
-    return moment ~= "complete" or Completed(id) or Unlocked()
+-- Unstarted Quests on, where the player chose to see everything. `now` asks the game: with the
+-- window shut, the tab's last refresh may predate the hand-in.
+local function Shows(id, moment, now)
+    return moment ~= "complete" or (now and CompletedNow or Completed)(id) or Unlocked()
 end
 
 -- Reads stored text only, so a row can ask it on every render.
@@ -1112,6 +1121,32 @@ local PLAY = {
         end
     end,
 }
+
+local STORY_ORIGIN = "Spoken:PlayStory"
+
+-- Every part a pack voices, not only the one PlayStory picks, so IsPlayingStory and StopStory also
+-- find a part started from the quest's page.
+local function StoryKeys(id)
+    local keys = {}
+    for _, moment in ipairs(MOMENTS) do
+        local soundData = SoundData(id, moment, STORY_ORIGIN)
+        if VO.DataModules:PrepareSound(soundData) then table.insert(keys, soundData.fileName) end
+    end
+    return keys
+end
+
+-- Only a part the quest's page would show, as shift-click on its row plays.
+local function StoryClip(id, key)
+    if not QuestsTab:Has(id) then return nil end
+    for _, moment in ipairs(MOMENTS) do
+        if Shows(id, moment, true) then
+            local soundData = SoundData(id, moment, STORY_ORIGIN)
+            if VO.DataModules:PrepareSound(soundData) and soundData.fileName == key then
+                return VO.Player:Prepare(soundData)
+            end
+        end
+    end
+end
 
 -- Each part's Play and Report, on its heading's line on the page: made once, pointed at the
 -- quest shown.
@@ -1676,13 +1711,7 @@ end
 -- Whether this character has started `id`, asked now: what the tab last read may be from before
 -- the quest was handed in.
 local function StartedNow(id)
-    local ask = (C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted) or IsQuestFlaggedCompleted
-    if ask then
-        if ask(id) then return true end
-    else
-        local done = GetQuestsCompleted and GetQuestsCompleted()
-        if type(done) == "table" and done[id] then return true end
-    end
+    if CompletedNow(id) then return true end
     if C_QuestLog and C_QuestLog.IsOnQuest then return C_QuestLog.IsOnQuest(id) and true or false end
     return GetQuestLogIndexByID ~= nil and (GetQuestLogIndexByID(id) or 0) > 0
 end
@@ -1822,6 +1851,9 @@ function QuestsTab:Setup()
     end
     frame:SetScript("OnEvent", OnEvent)
     if self.SetupOpenButtons then self:SetupOpenButtons() end
+    if Spoken and Spoken.RegisterStoryTeller and VO.Player.source then
+        Spoken:RegisterStoryTeller("quest", { source = VO.Player.source, Keys = StoryKeys, Clip = StoryClip })
+    end
 end
 
 -- Once the world is up, as the other tabs are added.
