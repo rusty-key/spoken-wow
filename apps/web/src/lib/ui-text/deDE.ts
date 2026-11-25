@@ -1251,6 +1251,8 @@ const deDE: Dictionary = {
       "Diese Quest nennt eine Klasse als eigenes Wort, nicht die Klasse des Lesers: das Wort wieder in die wartenden und künftigen Beiträge dieser Quest setzen",
     rejected: "Abgelehnt: {reason}",
     rejectedNoReason: "Abgelehnt, kein Grund angegeben.",
+    acceptWithout: "Ohne {tokens} annehmen",
+    acceptWithoutHow: "Unsere Zeile hat {tokens}, wo das Spiel eigene Worte zeigt, etwa den Namen eines NSC",
     takeAsText: "Den Text des Spielers als das nehmen, was diese Zeile spricht",
     takeAsPage: "Den Text des Spielers als die Worte dieser Seite nehmen",
     addAsWording: "Unseren Text behalten und den des Spielers als weitere Formulierung dieses Moments hinzufügen",

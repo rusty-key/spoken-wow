@@ -2536,6 +2536,8 @@ export const EN = {
       "This quest names a class as a word of its own, not the reader's class: put the word back in this quest's waiting and future contributions",
     rejected: "Rejected: {reason}",
     rejectedNoReason: "Rejected, no reason given.",
+    acceptWithout: "Accept without {tokens}",
+    acceptWithoutHow: "Our line has {tokens} where the game prints words of its own, such as an NPC's name",
     takeAsText: "Take the player's text as what this line speaks",
     takeAsPage: "Take the player's text as this page's words",
     addAsWording: "Keep our text and add the player's as another wording of this moment",

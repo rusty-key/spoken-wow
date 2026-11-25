@@ -449,7 +449,11 @@ split's template included, with each overwritten line's stored text, on the side
 readers take: a `:m` line on its male side only, a plain line on both. Losing a branch counts
 only on a plain line, since a side line's branch is read one way. Tokens are counted as
 `speakPlayerTokens` replaces them (`playerTokenCounts`), so a form the language does not speak is
-not one. Book pages get the same check. The moderator puts the token back in the explorer.
+not one. Book pages get the same check. The moderator puts the token back with **Edit text** or in
+the explorer, or accepts the correction without it: the stored text can hold a token where the game
+prints words of its own (a `$n` for the raptor Tethis in esMX `q:197:progress`), and English does
+not tell which, since translations add tokens English lacks. That accept names the tokens it drops
+(`drops`), losing any other is still refused, and the activity log keeps what was dropped.
 
 The forms of one moment are linked by its id without the suffix. Each takes the moment's
 speakers, and the explorer shows a language its own lines, or English's while it has none. An

@@ -1247,6 +1247,8 @@ const esES: Dictionary = {
       "Esta misión nombra una clase como palabra propia, no la clase del lector: devolver la palabra a las aportaciones pendientes y futuras de esta misión",
     rejected: "Rechazada: {reason}",
     rejectedNoReason: "Rechazada, sin motivo indicado.",
+    acceptWithout: "Aceptar sin {tokens}",
+    acceptWithoutHow: "Nuestra línea tiene {tokens} donde el juego muestra palabras propias, como el nombre de un PNJ",
     takeAsText: "Tomar el texto del jugador como lo que dice esta línea",
     takeAsPage: "Tomar el texto del jugador como las palabras de esta página",
     addAsWording: "Conservar nuestro texto y añadir el del jugador como otra redacción de este momento",
