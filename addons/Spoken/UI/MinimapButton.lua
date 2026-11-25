@@ -328,10 +328,8 @@ local function ToggleMenu(anchor)
     if iconTooltip then
         iconTooltip:Hide()
     end
-    -- Under the controller UI the game's menus join its controller focus system
-    -- (FrameControlsManager, on MenuProxy.OnShow). One an addon opens taints that system as it
-    -- opens and closes, and the client then blocks SetPreferredGamepadInteractTarget
-    -- ("Interface action failed").
+    -- Under the controller UI the game's menus join FrameControlsManager, and one an addon opens
+    -- taints it: the client then blocks SetPreferredGamepadInteractTarget until a /reload.
     if not SpokenLayout.IsGamepadUI() then
         if HasNativeMenuAPI() then
             ToggleNativeMenu(anchor)

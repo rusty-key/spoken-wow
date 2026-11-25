@@ -127,9 +127,6 @@ Expect("a hidden minimap button still positions the native menu", stub.nativeMen
 Expect("...while UIParent keeps ownership visible", stub.nativeMenuOwner, _G.UIParent)
 
 ---------------------------------------------------------------- with the controller UI, Spoken's own menu
--- With the controller UI on, Blizzard's menus join its controller focus system, and one
--- an addon opens taints it ("Interface action failed"). There the button opens Spoken's
--- own menu instead, even where the native API exists.
 Clean()
 env = stub.LoadSpoken(SPOKEN)
 env.Addon:Enable()
