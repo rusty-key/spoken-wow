@@ -33,6 +33,7 @@ Pick the labels that fit the item, from the allowed list only.
 - Area labels: pick each part of the product the item is really about, usually one. "Addon / Spoken Player" is the core addon: playback, the narrator, subtitles, settings. "Addon / Spoken Quests" includes gossip and NPC greetings. "Addon / Spoken Books" means Readables. "Addon / Spoken Zones" means Places.
 - translation: about a specific language or localized text. content: a missing or wrong voice line, text or image, not a code defect.
 - Compatibility: interplay with another addon, such as OpenMap, Immersion, DialogueUI or Leatrix.
+- API: about Spoken's API for other addons' authors, the \`Spoken\` global (docs/spoken/API.md): a function, event or field asked for, changed or broken. Not an addon that merely clashes with Spoken, which is Compatibility.
 
 Set confident to false when the item is too vague to tell what it is about, or when you are guessing between labels. Do not stretch a label to fit.
 

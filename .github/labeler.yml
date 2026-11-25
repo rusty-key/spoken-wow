@@ -37,6 +37,14 @@
           - addons/SpokenBossesAudio/**
           - scripts/bosses/**
 
+# Issues opened from the API request form carry it too, and the sweep still classifies them.
+API:
+  - changed-files:
+      - any-glob-to-any-file:
+          - addons/Spoken/API.lua
+          - docs/spoken/API.md
+          - tests/lua/api_contract_test.lua
+
 "Web UI":
   - changed-files:
       - any-glob-to-any-file:
