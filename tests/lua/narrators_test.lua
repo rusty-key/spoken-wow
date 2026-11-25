@@ -69,8 +69,9 @@ Expect("Supports names narrators", Spoken:Supports("narrators"), true)
 Expect("each is a narrator style of its own, before Voice Only", table.concat(env.Options:Styles(), ","),
     "subtitle,minimal,classic,scroll,other,none")
 local card = env.Options:StyleCard("scroll")
-Expect("...its card in its own words, with its picture", card.title .. " / " .. card.text .. " " .. type(card.art),
-    "Scroll / Words on a scroll. function")
+Expect("...its card in its own words, with its picture, naming the addon it comes from",
+    card.title .. " / " .. card.text .. " " .. type(card.art),
+    format(env.L.NARRATOR_CARD_FMT, "Scroll", "ScrollAddon") .. " / Words on a scroll. function")
 
 ---------------------------------------------------------------- chosen
 quests:Enqueue(Line("q1"))

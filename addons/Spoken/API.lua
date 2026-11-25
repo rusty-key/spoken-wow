@@ -338,7 +338,7 @@ end
 
 --- Public. Offer a narrator style of your own: a card among Spoken's narrator styles, titled
 --- `info.title` over `info.description`, with `info.picture` (a texture) where you give one.
---- `info.addon` is your addon's folder, whose title names it where Spoken offers the style. While
+--- `info.addon` is your addon's folder, whose title names it on the card. While
 --- it is the style, Spoken shows none of its own windows and calls `info.Update(clip)` whenever the
 --- line to show changes: the clip to show, or nil to show nothing. Draw it yourself: ShowCaptions,
 --- CreateControl, CreatePortrait and CreateActions give it Spoken's own parts; the rest is on the

@@ -117,6 +117,7 @@ L = {
     NARRATOR_OFFER_STYLE_FMT = "%s adds a narrator style. Try it, or keep yours.",
     NARRATOR_OFFER_STYLES_FMT = "%s adds narrator styles. Try one, or keep yours.",
     NARRATOR_OFFER_ADDONS_FMT = "%s add narrator styles. Try one, or keep yours.",
+    NARRATOR_CARD_FMT = "%s |cff8a8a8a· %s|r",
     NARRATOR_OFFER_KEEP_FMT = "Keep %s",
     OPT_DUI_FIT_TEXT = "Fit Window to Words",
     WINDOW_WHEEL_HINT = "Over the window: Ctrl + wheel changes Window Size, Ctrl + Shift + wheel the Word Size.",

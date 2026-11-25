@@ -415,12 +415,14 @@ function Options:Styles()
     return styles
 end
 
---- A narrator style's card. A registered narrator's words and picture are its addon's.
+--- A narrator style's card. A registered narrator's words and picture are its addon's, and its title
+--- names that addon, so the player knows where a style comes from and what removing it takes away.
 function Options:StyleCard(style)
     local narrator = Narrators.byId[style]
     if narrator then
         local picture = narrator.picture
-        return { value = style, title = narrator.title, text = narrator.description,
+        return { value = style, title = format(L.NARRATOR_CARD_FMT, narrator.title, Narrators:Source(style)),
+            text = narrator.description,
             art = picture and function(art, w, h)
                 local texture = art:CreateTexture(nil, "ARTWORK")
                 texture:SetAllPoints()

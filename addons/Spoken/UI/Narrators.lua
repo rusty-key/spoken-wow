@@ -13,6 +13,15 @@ function Narrators:Register(id, info)
     if Addon.enabled then Options:UpdateRows() end
 end
 
+--- The addon that registered the narrator `id`, by the title the AddOns list shows, its markup taken
+--- out; by its folder where it has none.
+function Narrators:Source(id)
+    local folder = self.byId[id].addon
+    local _, title = GetAddOnInfo(folder)
+    title = type(title) == "string" and Transcript:CleanText(title) or ""
+    return title ~= "" and title or folder
+end
+
 --- The narrator on screen: the one previewed, else the one chosen; nil where neither is registered.
 function Narrators:Current()
     local style = Addon:DisplayStyle()

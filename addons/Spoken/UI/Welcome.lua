@@ -322,13 +322,6 @@ end
 
 function NarratorOffer:Resize() Resize(self) end
 
--- An addon by the title the AddOns list shows, its markup taken out; its folder where it has none.
-local function AddonTitle(folder)
-    local _, title = GetAddOnInfo(folder)
-    title = type(title) == "string" and Transcript:CleanText(title) or ""
-    return title ~= "" and title or folder
-end
-
 --- The window's line naming who offers what: one addon's one style, one addon's several, or several
 --- addons'.
 function NarratorOffer.Intro(ids)
@@ -337,7 +330,7 @@ function NarratorOffer.Intro(ids)
         local folder = Narrators.byId[id].addon
         if not seen[folder] then
             seen[folder] = true
-            table.insert(names, AddonTitle(folder))
+            table.insert(names, Narrators:Source(id))
         end
     end
     local list = table.concat(names, ", ")
