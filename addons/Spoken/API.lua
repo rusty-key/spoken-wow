@@ -1006,9 +1006,9 @@ end
 --               progress and, once it is handed in, its hand-in
 -- Only a voiced story counts, with its module on and the story not locked for this character.
 -- No event covers every change to HasStory: ask it as a button shows and on AUDIO_CHANGED and
--- PART_SWITCHED, and a quest's on QUEST_ACCEPTED and QUEST_TURNED_IN. Bosses meets a boss in its
--- own ENCOUNTER_START handler, which may run after the caller's, so ask a frame later. Additive:
--- guard on the field, `if Spoken.PlayStory then`.
+-- PART_SWITCHED, and a quest's on QUEST_ACCEPTED, QUEST_REMOVED and QUEST_TURNED_IN. Bosses meets a
+-- boss in its own ENCOUNTER_START handler, which may run after the caller's, so ask a frame later.
+-- Additive: guard on the field, `if Spoken.PlayStory then`.
 
 local storyTellers = {}
 

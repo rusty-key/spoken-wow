@@ -1129,6 +1129,8 @@ local STORY_ORIGIN = "Spoken:PlayStory"
 
 local function StoryKeys(id)
     local keys = {}
+    -- Another addon passes whatever it has, and the client's C functions throw on a wrong type.
+    if type(id) ~= "number" then return keys end
     for _, moment in ipairs(MOMENTS) do
         local soundData = SoundData(id, moment, STORY_ORIGIN)
         if VO.DataModules:PrepareSound(soundData) then table.insert(keys, soundData.fileName) end

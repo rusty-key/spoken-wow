@@ -997,6 +997,18 @@ do
     Expect("a quest started and voiced has a story to play", Spoken:HasStory("quest", KOBOLDS), true)
     Expect("...an unknown quest has none", Spoken:HasStory("quest", 99999), false)
     Expect("...nor one voiced but not started", Spoken:HasStory("quest", NECKLACE), false)
+    -- The client's C functions throw on an argument of the wrong type, and another addon passes
+    -- whatever it has.
+    local questLogApi = _G.C_QuestLog
+    _G.C_QuestLog = { GetTitleForQuestID = function(questID)
+        if type(questID) ~= "number" then error("bad argument #1 to 'GetTitleForQuestID'") end
+    end }
+    stub.SetLocale("deDE")
+    local asked = { pcall(Spoken.HasStory, Spoken, "quest", {}) }
+    stub.SetLocale("enUS")
+    _G.C_QuestLog = questLogApi
+    Expect("...nor an id that is not a number, asked without an error", tostring(asked[1]) .. " " .. tostring(asked[2]),
+        "true false")
     C:Tab("quests").unlock.set(true)
     Expect("...unless Unlock Unstarted Quests is on", Spoken:HasStory("quest", NECKLACE), true)
     C:Tab("quests").unlock.set(false)
