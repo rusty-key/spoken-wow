@@ -27,7 +27,45 @@ Expect("ADDON_VERSION matches the TOC", Spoken.ADDON_VERSION, toc:match("## Vers
 Expect("IsCompatible(1)", Spoken:IsCompatible(1), true)
 Expect("not IsCompatible(2)", Spoken:IsCompatible(2), false)
 
+---------------------------------------------------------------- the Public tier
+-- The functions any addon may rely on, read from API.lua's "Public." doc comments and held to
+-- this list both ways: one gone or renamed breaks every addon that calls it, and one marked
+-- Public by accident is a promise nobody meant to make. Never take a name off this list; a
+-- deprecated function stays, behind a shim (docs/spoken/API.md).
+local PUBLIC = {
+    "API_VERSION", "ADDON_VERSION", "IsCompatible",
+    "HasStory", "PlayStory", "IsPlayingStory", "StopStory",
+    "GetCaption", "GetCaptionOptions", "SplitCaption", "CaptionWords",
+    "GetNowPlaying", "GetQueueSize", "IsPlaying", "IsPaused",
+    "Pause", "Resume", "Skip", "StopAll",
+    "IsPartOn", "Supports",
+    "RegisterCallback", "UnregisterCallback",
+    "RegisterText", "RegisterInterfaceStrings",
+    "HasLog", "Log", "IsLogOn", "AddLogSource", "AddDiagnostics",
+}
+do
+    local marked, pending = {}, false
+    for line in io.lines(SPOKEN .. "API.lua") do
+        if line:match("^%-%-%- Public[%.:]") then
+            pending = true
+        elseif not line:match("^%-%-%-") then
+            local name = pending and (line:match("^function Spoken:([%w_]+)") or line:match("^Spoken%.([%w_]+) ="))
+            if name then marked[#marked + 1] = name end
+            pending = false
+        end
+    end
+    local sorted = {}
+    for i, name in ipairs(PUBLIC) do sorted[i] = name end
+    table.sort(sorted); table.sort(marked)
+    Expect("API.lua marks exactly the Public set", table.concat(marked, " "), table.concat(sorted, " "))
+    for _, name in ipairs(PUBLIC) do
+        Expect("Public " .. name .. " exists", Spoken[name] ~= nil, true)
+    end
+end
+
 ---------------------------------------------------------------- every documented method exists
+-- Module tier, and Public names listed before the tiers: a module of Spoken's calls these, and
+-- one lost in a refactor fails only in the game.
 local METHODS = {
     -- sources
     "RegisterSource", "GetSource", "IterateSources",
@@ -67,6 +105,19 @@ local METHODS = {
     "RegisterStoryTeller", "HasStory", "PlayStory", "IsPlayingStory", "StopStory",
     -- the voices the player hears, in order, and the voice a pack is in
     "GetLanguageChoice", "GetVoiceOrder", "SetVoiceOrder", "VoiceOf", "SplitVoice", "VoiceName",
+    -- the controls the modules' windows draw
+    "PlayState", "Previous", "CanPrevious", "CreateRoundButton", "DressBoxButton",
+    -- the parts' switches and pages
+    "SetPartOn", "PartStatus", "PartVoice", "AddSettingsPage", "ShowsNarratorFor",
+    -- text packs and interface packs
+    "TextIn", "TextSection", "TextLanguage", "TextLanguageChoice", "SetTextLanguage",
+    "ApplyInterfaceStrings", "InterfaceIn", "InterfaceLanguage", "InterfaceBase",
+    "DeclareLanguage", "Language", "KnownLanguages", "InstalledLanguages", "BuiltinLanguages",
+    -- captions marked in another window
+    "WordMarks",
+    -- contributions and reports
+    "ShowGatherInstructions", "ShowGatheredText", "RefreshGatheredText", "AreReportButtonsHidden",
+    "ReportURL",
 }
 for _, name in ipairs(METHODS) do
     Expect("Spoken:" .. name .. " exists", type(Spoken[name]), "function")
@@ -77,8 +128,11 @@ Expect("Spoken.Packs.Register exists", type(Spoken.Packs and Spoken.Packs.Regist
 Expect("Spoken.Packs.Get exists", type(Spoken.Packs and Spoken.Packs.Get), "function")
 Expect("Spoken.Minimap.AddEntry exists", type(Spoken.Minimap and Spoken.Minimap.AddEntry), "function")
 Expect("Spoken.Minimap.RemoveEntry exists", type(Spoken.Minimap and Spoken.Minimap.RemoveEntry), "function")
+Expect("Spoken.NotSecret exists", type(Spoken.NotSecret), "function")
+Expect("Spoken.CreatureID exists", type(Spoken.CreatureID), "function")
+Expect("Spoken.Contribute exists", type(Spoken.Contribute), "table")
 
-local SOURCE_METHODS = { "Enqueue", "PlayNow", "Remove", "StopAll", "AddGate", "RecheckGates", "CanPlay", "SetQueueLimit", "SetInterClipGap" }
+local SOURCE_METHODS = { "Enqueue", "Continue", "Retry", "PlayNow", "Remove", "StopAll", "AddGate", "RecheckGates", "CanPlay", "SetQueueLimit", "SetInterClipGap" }
 local src = Spoken:RegisterSource("contract", { title = "Contract", addon = "X", order = 1 })
 for _, name in ipairs(SOURCE_METHODS) do
     Expect("source:" .. name .. " exists", type(src[name]), "function")
@@ -158,6 +212,44 @@ do
     Spoken:Resume()
     Expect("StopStory takes it out", tostring(Spoken:StopStory("contract", 7)) .. " " .. Spoken:GetQueueSize(), "true 0")
     Expect("...and a second stop finds nothing", Spoken:StopStory("contract", 7), false)
+end
+
+---------------------------------------------------------------- the Public events' payloads and the caption's shape
+do
+    local seen = {}
+    local handles = {}
+    for _, event in ipairs({ "CLIP_QUEUED", "CLIP_STARTED", "CLIP_STOPPED", "CLIP_DROPPED", "QUEUE_EMPTY", "PART_SWITCHED" }) do
+        handles[#handles + 1] = Spoken:RegisterCallback(event, function(a, b)
+            seen[#seen + 1] = event .. " " .. (type(a) == "table" and a.key or tostring(a)) .. " " .. tostring(b)
+        end)
+    end
+    local source = Spoken:RegisterSource("payloads", { title = "Payloads", addon = "X", order = 10 })
+    source:SetQueueLimit(1)
+    local spoken = H.Clip({ key = "p1", present = { header = "Who", label = "What", transcript = "one two three" } })
+    source:Enqueue(spoken)
+    source:Enqueue(H.Clip({ key = "p2" }))
+    source:Enqueue(H.Clip({ key = "p3" }))
+
+    local caption = Spoken:GetCaption()
+    local word = caption and caption.words[1]
+    Expect("a caption has its clip and its words", tostring(caption.clip == spoken) .. " " .. #caption.words
+        .. " " .. type(caption.totalWeight) .. " " .. type(caption.progress) .. " " .. type(caption.speaking)
+        .. " " .. tostring(caption.timed), "true 3 number number boolean false")
+    Expect("...each word with its text, its span and its bytes", word.text .. " " .. type(word.start) .. " "
+        .. type(word.finish) .. " " .. word.first .. "-" .. word.last .. " " .. tostring(word.joined), "one number number 1-3 false")
+    Expect("...and the player's options", type(caption.highlight) .. " " .. type(caption.typewriter) .. " "
+        .. caption.typewriterBy, "boolean boolean letter")
+    Expect("GetCaption hands back the same table each call", Spoken:GetCaption() == caption, true)
+
+    Spoken:Skip()
+    Spoken:StopAll()
+    Spoken:SetPartOn("payloads", false)
+    Spoken:SetPartOn("payloads", true)
+    for _, h in ipairs(handles) do Spoken:UnregisterCallback(h) end
+    Expect("the Public events carry their documented payloads", table.concat(seen, ", "),
+        "CLIP_QUEUED p1 nil, CLIP_STARTED p1 nil, CLIP_QUEUED p2 nil, CLIP_DROPPED p2 queue-limit, CLIP_QUEUED p3 nil, "
+        .. "CLIP_STOPPED p1 false, CLIP_STARTED p3 nil, CLIP_STOPPED p3 false, QUEUE_EMPTY nil nil, "
+        .. "PART_SWITCHED payloads false, PART_SWITCHED payloads true")
 end
 
 Spoken:AddGate(function() return "held by the player" end)
@@ -287,6 +379,60 @@ do
     Spoken:SetVoiceOrder({ "deDE", "auto" })
     Expect("Auto second is the client's language as the old fallback", language.Fallback, "enUS")
     language.Voices, language.Voice, language.Fallback = nil, nil, nil
+end
+
+---------------------------------------------------------------- the boundary
+-- A wrong registration fails at the caller's line, where its author can see it, rather than
+-- inside the queue later. A query with the wrong input answers false or nil and never throws.
+do
+    local function Raises(fn, ...)
+        local ok, err = pcall(fn, ...)
+        return not ok and tostring(err):find("api_contract_test", 1, true) ~= nil
+    end
+    local function Handler() end
+    Expect("RegisterCallback refuses a handler that is not a function, at the caller's line",
+        Raises(function() Spoken:RegisterCallback("AUDIO_CHANGED", nil) end), true)
+    Expect("...and an event that is not a string", Raises(function() Spoken:RegisterCallback(nil, Handler) end), true)
+    Expect("UnregisterCallback ignores what is no handle", tostring(pcall(Spoken.UnregisterCallback, Spoken, 5)) .. " "
+        .. tostring(pcall(Spoken.UnregisterCallback, Spoken, nil)), "true true")
+    Expect("AddDiagnostics refuses a fn that is not a function", Raises(function() Spoken:AddDiagnostics("x", nil) end), true)
+    Expect("AddLogSource refuses a list that is not a function", Raises(function() Spoken:AddLogSource({}) end), true)
+
+    local teller = { source = src, Keys = function() return {} end, Clip = function() end }
+    Expect("RegisterStoryTeller refuses a teller without Keys and Clip",
+        Raises(function() Spoken:RegisterStoryTeller("boundary", { source = src }) end), true)
+    Spoken:RegisterStoryTeller("boundary", teller)
+    -- Another addon may take a name first; a module registering it later must still load.
+    local other = { source = src, Keys = function() return {} end, Clip = function() end }
+    Expect("a second teller of one kind replaces the first, without raising",
+        tostring(pcall(Spoken.RegisterStoryTeller, Spoken, "boundary", other)), "true")
+    Expect("a bullet id taken again is replaced, without raising",
+        tostring(pcall(Spoken.RegisterBullet, Spoken, "contract-bullet", "Interface\\Y", 12)) .. " "
+        .. Spoken:GetBullet("contract-bullet").texture, "true Interface\\Y")
+    local renderer = {}
+    Expect("a portrait renderer's kind taken again is replaced, without raising",
+        tostring(pcall(Spoken.RegisterPortraitRenderer, Spoken, "contract", renderer)) .. " "
+        .. tostring(Spoken:GetPortraitRenderer("contract") == renderer), "true true")
+
+    local ran = {}
+    local first
+    first = Spoken:RegisterCallback("QUEUE_EMPTY", function() ran[#ran + 1] = "first"; Spoken:UnregisterCallback(first) end)
+    local second = Spoken:RegisterCallback("QUEUE_EMPTY", function() ran[#ran + 1] = "second" end)
+    SpokenEnv.Callbacks:Fire("QUEUE_EMPTY")
+    Spoken:UnregisterCallback(second)
+    Expect("a handler that unregisters itself leaves the next one to run", table.concat(ran, " "), "first second")
+
+    Expect("IsPartOn answers false for what is no part's key", tostring(Spoken:IsPartOn(nil)) .. " "
+        .. tostring(Spoken:IsPartOn(5)) .. " " .. tostring(Spoken:IsPartOn("quests")), "false false true")
+    Expect("the story calls take any id without throwing", tostring(Spoken:HasStory("boundary", "x")) .. " "
+        .. tostring(Spoken:PlayStory({}, {})) .. " " .. tostring(Spoken:StopStory(nil, nil)), "false false false")
+
+    Expect("Supports names a story kind once its teller registers", tostring(Spoken:Supports("story:boundary")) .. " "
+        .. tostring(Spoken:Supports("story:nothing")), "true false")
+    Expect("...and the API's features", tostring(Spoken:Supports("captions")) .. " " .. tostring(Spoken:Supports("log")),
+        "true true")
+    Expect("...and false for anything else", tostring(Spoken:Supports(nil)) .. " " .. tostring(Spoken:Supports(7)) .. " "
+        .. tostring(Spoken:Supports("teleport")), "false false false")
 end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

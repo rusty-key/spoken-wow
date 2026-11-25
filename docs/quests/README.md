@@ -1988,7 +1988,7 @@ A zone's, city's, continent's or dungeon's page has no words of its own: its cou
 and the faction's seal. Its story is on the Places tab.
 
 Another addon plays a quest through Spoken's `HasStory`, `PlayStory`, `IsPlayingStory` and
-`StopStory` with `"quest"` and the quest's id (`addons/Spoken/API.lua`), not through
+`StopStory` with `"quest"` and the quest's id ([docs/spoken/API.md](../spoken/API.md)), not through
 `VoiceOver.QuestsTab`, whose methods are not frozen. The tab registers the teller as it is added;
 `StoryClip` in `UI/QuestsTab.lua` builds the clip: what shift-click on the quest's row would queue,
 the first part shown that a pack voices, with Quests on, for a quest whose page shows its words

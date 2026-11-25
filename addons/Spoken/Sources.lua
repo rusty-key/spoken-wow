@@ -27,6 +27,9 @@ SourceMethods.__index = SourceMethods
 ---@field packs? fun():string[] -- the voice packs this source found installed, by name
 ---@field onScreen? fun(clip):boolean -- its page is in a window the game has open now
 ---@field endsWithWindow? fun(clip):boolean -- the window that showed it stops it as it closes
+---@field textOnly? boolean   -- its lines have no recording: each shows in the narrator for its length
+---@field profiles? fun():table -- its AceDB object, switched with Spoken's own profile
+---@field diagnostics? fun()  -- prints its part of `/spoken diagnostics`, after Spoken's own
 
 ---@param key string
 ---@param info SpokenSourceInfo

@@ -1,8 +1,11 @@
 --[[
-Two globals, and only two.
+Two globals hold Spoken.
 
-    Spoken     the public API. What a feature addon calls. Frozen by API_VERSION.
+    Spoken     the API (API.lua). Its Public tier is frozen; the rest is for Spoken's own modules.
     SpokenEnv  the private environment every implementation file runs in.
+
+A few files that share UI and data with the modules run outside it and set globals of their
+own. None of those is a contract.
 
 SpokenEnv is a table whose metatable falls back to _G, so inside it every bare global
 resolves against the game as usual, while anything an implementation file assigns to a
@@ -10,7 +13,7 @@ bare name lands here and nowhere else. That is what keeps SoundQueue, Sources an
 rest out of the game-wide namespace, and it is what lets Compat.lua fill in an API one
 client lacks by writing into this table, leaving the real _G untouched.
 
-Every implementation file starts with `setfenv(1, SpokenEnv)`, and this file must load
+Every other implementation file starts with `setfenv(1, SpokenEnv)`, and this file must load
 before all of them. The API is kept out of the environment, so that what a caller can
 reach is a deliberate surface rather than the player's entire internals.
 ]]

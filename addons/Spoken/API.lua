@@ -1,12 +1,34 @@
 setfenv(1, SpokenEnv)
 
--- The public surface. Everything a feature addon may rely on is defined in this file;
--- nothing else on `Spoken` is a contract, and nothing here writes anywhere but `Spoken`.
+-- Spoken's API, in two tiers (docs/spoken/API.md).
 --
--- API_VERSION moves only on a breaking change. A feature addon's entire hard requirement
--- is `_G.Spoken and Spoken:IsCompatible(1)`.
+-- Public: a function whose doc comment starts with "Public." Any addon may call it. It is never
+-- removed or changed incompatibly, only deprecated behind a shim, and
+-- tests/lua/api_contract_test.lua pins the set.
+--
+-- Module: everything else on `Spoken`, wherever it is defined. It is how Spoken's own modules,
+-- which ship and version with it, reach the player, and it may change in any release.
+--
+-- API_VERSION is the frozen major: it moves only if a Public function breaks, which the policy
+-- forbids. A feature addon's whole hard requirement is `_G.Spoken and Spoken:IsCompatible(1)`.
+
+--- Public. The major version of the Public tier.
 Spoken.API_VERSION = 1
+--- Public. Spoken's release, such as "3.13.1". For a log line, never for feature detection.
 Spoken.ADDON_VERSION = AddonVersion
+
+-- A registration that is wrong fails at the caller's line, where its author sees it, rather than
+-- in the queue or a frame's draw later, where nothing names the addon that caused it.
+local function Require(ok, message)
+    if not ok then error("Spoken: " .. message, 3) end
+end
+
+-- A name taken twice replaces the first rather than raising: the modules register late, at their
+-- own setup, and another addon that took the name first must not stop one from loading.
+local function Put(registry, what, name, value)
+    if registry[name] then Developer:Log("api", "%s %q registered again; the new one replaces it", what, name) end
+    registry[name] = value
+end
 
 -- The shared dungeon data is Forever's, which holds every instance of the Classic-era clients.
 -- The vanilla instances end at map 533; every later one is Season of Discovery's or Forever's own.
@@ -60,7 +82,10 @@ function Spoken:ReportURL(section, path, language)
     return ("%s/%s/r/%s"):format(self.SITE_URL, section, path)
 end
 
----@param required number The API_VERSION the caller was written against.
+--- Public. Whether this Spoken keeps the contract of `required`, the API_VERSION the caller was
+--- written against.
+---@param required number
+---@return boolean
 function Spoken:IsCompatible(required)
     return type(required) == "number" and required <= self.API_VERSION
 end
@@ -69,7 +94,7 @@ end
 -- Sources: how a feature addon joins the player. See Sources.lua for the info shape.
 --------------------------------------------------------------------------------
 
----@param key string  "quests" | "places" | "readables"
+---@param key string  "quests" | "places" | "readables" | "bosses"
 ---@param info SpokenSourceInfo
 ---@return table source  Carries Enqueue, Continue, PlayNow, Remove, StopAll, AddGate, RecheckGates,
 ---                      Retry, CanPlay, SetQueueLimit and SetInterClipGap.
@@ -133,6 +158,36 @@ end
 --
 -- The player sets id, handle, source and nextSoundTimer; a caller never does.
 
+---@class SpokenClipPresent
+---@field header? string
+---@field label? string
+---@field transcript? string
+---@field font? string
+---@field timings? number[]|string
+---@field bullet? string
+---@field tint? number[]
+---@field portrait? table
+---@field actions? table[]
+
+--- The fields marked Public are what any addon may read on a clip GetNowPlaying, GetCaption or a
+--- callback hands it. The rest are for the module that queued the clip.
+---@class SpokenClip
+---@field key string                 Public. Unique within its source.
+---@field source table               Public: `source.key` ("quests", "places", ...) and `source.title` only.
+---@field length? number             Public. Seconds.
+---@field textOnly? boolean          Public. No recording: shown in the narrator for `length`.
+---@field present? SpokenClipPresent Public: `header`, `label` and `transcript` only.
+---@field story? SpokenStoryTag      Public. The story PlayStory was asked for when it played this line.
+---@field path? string
+---@field text? string
+---@field priority? string
+---@field group? string
+---@field continues? boolean
+---@field span? table
+---@field addedCallback? fun(clip: SpokenClip)
+---@field startCallback? fun(clip: SpokenClip)
+---@field stopCallback? fun(clip: SpokenClip, finishedPlaying: boolean)
+
 --- Declare an action switchable, and what the player's settings should call it. Report has
 --- its own row; the modules still declare it for an older player, which has no such row.
 ---@param id string the action id, as it appears in a clip's presentation
@@ -144,7 +199,8 @@ end
 --- A row bullet, registered once by a feature addon so SpokenReadables needs no change to
 --- the player to have one of its own.
 function Spoken:RegisterBullet(id, texture, size)
-    Bullets[id] = { texture = texture, size = size }
+    Require(type(id) == "string", "RegisterBullet needs a string id")
+    Put(Bullets, "bullet", id, { texture = texture, size = size })
 end
 
 function Spoken:GetBullet(id)
@@ -154,7 +210,8 @@ end
 --- A portrait renderer: { Acquire(portrait, parent) -> frame, Update(frame, clip) -> bool,
 --- Release(frame) }. "texture", "model" and "none" ship with the player.
 function Spoken:RegisterPortraitRenderer(kind, renderer)
-    Renderers[kind] = renderer
+    Require(type(kind) == "string" and type(renderer) == "table", "RegisterPortraitRenderer needs a kind and a renderer")
+    Put(Renderers, "portrait renderer", kind, renderer)
 end
 
 function Spoken:GetPortraitRenderer(kind)
@@ -288,9 +345,12 @@ function Spoken:AddSettingsPage(panel, name, order, layout, scroller)
     return Options:AddPage(panel, name, order, layout, scroller)
 end
 
---- Whether a part of Spoken is switched on in the settings (Sources:IsTurnedOff), for the
---- switch each feature addon puts at the top of its own page. `key` is its source key.
+--- Public. Whether a part of Spoken is switched on in the settings: "quests", "places",
+--- "readables" or "bosses". A part the player never switched off is on, installed or not.
+---@param key string
+---@return boolean
 function Spoken:IsPartOn(key)
+    if type(key) ~= "string" then return false end
     return not Sources:IsTurnedOff(key)
 end
 
@@ -688,10 +748,14 @@ function Spoken:InterfaceIn(...)
     return Interface:In(...)
 end
 
---- For an interface pack (docs/contributors/INTERFACE-PACKS.md): the strings of `module` ("Spoken",
---- "Quests", "Places", "Readables", "Bosses" or "Developer") in the language `code`, keyed as the
---- module's English. Kept only where `code` is the session's Interface Language; returns whether
---- they were.
+--- Public. For an interface pack (docs/contributors/INTERFACE-PACKS.md): the strings of `module`
+--- ("Spoken", "Quests", "Places", "Readables", "Bosses" or "Developer") in the language `code`,
+--- keyed as the module's English. Kept only where `code` is the session's Interface Language;
+--- returns whether they were.
+---@param code string
+---@param module string
+---@param strings table<string, string>
+---@return boolean kept
 function Spoken:RegisterInterfaceStrings(code, module, strings)
     return Interface:Register(code, module, strings)
 end
@@ -722,9 +786,13 @@ function Spoken:SetTextLanguage(code)
     return ok
 end
 
---- For a text pack (docs/contributors/TEXT-PACKS.md): the words of `section` ("quests",
+--- Public. For a text pack (docs/contributors/TEXT-PACKS.md): the words of `section` ("quests",
 --- "readables", "bosses" or "places") in the language `code`. Kept only where `code` is the Text
 --- Language; returns whether they were.
+---@param code string
+---@param section string
+---@param data table
+---@return boolean kept
 function Spoken:RegisterText(code, section, data)
     return Texts:Register(code, section, data)
 end
@@ -854,8 +922,10 @@ function Spoken:GetCurrent()
     return SoundQueue:GetCurrentSound()
 end
 
---- The head only if it is speaking or paused mid-clip. Controls read this: a held clip
---- sits at the head making no sound, and offering Pause over silence lies.
+--- Public. The line speaking or paused, or nil. A line held at the head of the queue, waiting on a
+--- gate such as combat, makes no sound and is not returned: offering Pause over silence lies.
+--- The clip is Spoken's own, the same table the callbacks pass: read it, never change it.
+---@return SpokenClip? clip
 function Spoken:GetNowPlaying()
     return SoundQueue:GetNowPlaying()
 end
@@ -869,6 +939,8 @@ function Spoken:GetQueue()
     return SoundQueue:GetQueue()
 end
 
+--- Public. How many lines are queued, the one at the head included.
+---@return integer
 function Spoken:GetQueueSize()
     return SoundQueue:GetQueueSize()
 end
@@ -878,10 +950,15 @@ function Spoken:GetWaitingCount()
     return SoundQueue:GetWaitingCount()
 end
 
+--- Public. Whether a line is speaking now; with `clip`, whether that one is.
+---@param clip? SpokenClip
+---@return boolean
 function Spoken:IsPlaying(clip)
     return SoundQueue:IsPlaying(clip)
 end
 
+--- Public. Whether the player paused the queue. It stays paused across a reload.
+---@return boolean
 function Spoken:IsPaused()
     return SoundQueue:IsPaused()
 end
@@ -900,11 +977,15 @@ function Spoken:GetHeldReason(clip)
     return SoundQueue:GetHeldReason(clip)
 end
 
---- Pause is stop, and resume replays from the start: the client has no seek.
+--- Public. Pause the queue. The client has no seek, so the line stops and Resume replays it
+--- from its start. Returns false where it was already paused.
+---@return boolean
 function Spoken:Pause()
     return SoundQueue:PauseQueue()
 end
 
+--- Public. Resume a paused queue. Returns false where it was not paused.
+---@return boolean
 function Spoken:Resume()
     return SoundQueue:ResumeQueue()
 end
@@ -941,7 +1022,9 @@ function Spoken:DressBoxButton(button)
     return Actions.BoxPlay(button)
 end
 
---- End the head; the backlog runs.
+--- Public. End the line at the head, speaking or held, and go on to the next. Returns whether a
+--- line was skipped: false too for a line the client gave no handle to stop, which plays on.
+---@return boolean
 function Spoken:Skip()
     return SoundQueue:Skip()
 end
@@ -951,7 +1034,8 @@ function Spoken:Previous()
     return SoundQueue:Previous()
 end
 
---- Everything, every source, and the paused flag with it.
+--- Public. Stop and clear every line of every source, and unpause. A line speaking that the
+--- client gave no handle to stop stays at the head and plays to its end.
 function Spoken:StopAll()
     SoundQueue:RemoveAllSoundsFromQueue()
 end
@@ -1008,15 +1092,19 @@ end
 -- No event covers every change to HasStory: ask it as a button shows and on AUDIO_CHANGED and
 -- PART_SWITCHED, and a quest's on QUEST_ACCEPTED, QUEST_REMOVED and QUEST_TURNED_IN. Bosses meets a
 -- boss in its own ENCOUNTER_START handler, which may run after the caller's, so ask a frame later.
+-- A kind with no teller, because its module is missing, answers false to all four.
 -- Additive: guard on the field, `if Spoken.PlayStory then`.
 
 local storyTellers = {}
 
---- For a module: who tells the stories of `kind`. `teller.source` is the module's source;
+--- Who tells the stories of `kind`. `teller.source` is the module's source;
 --- `teller.Keys(id)` lists the clip keys of the story `id`, a story per boss of an encounter; and
 --- `teller.Clip(id, key)` builds the clip of one, or nil where it cannot be played now.
 function Spoken:RegisterStoryTeller(kind, teller)
-    storyTellers[kind] = teller
+    Require(type(kind) == "string" and type(teller) == "table" and type(teller.source) == "table"
+        and type(teller.Keys) == "function" and type(teller.Clip) == "function",
+        "RegisterStoryTeller needs a kind and a teller with source, Keys and Clip")
+    Put(storyTellers, "story teller", kind, teller)
 end
 
 -- The teller of `kind` and the clip keys of its story `id`, or nil.
@@ -1043,14 +1131,18 @@ local function Tells(teller, keys, clip)
     return false
 end
 
---- Whether the story `id` of `kind` ("instance", "boss" or "quest") can be played now.
+--- Public. Whether the story `id` of `kind` ("instance", "boss" or "quest") can be played now.
+---@param kind string
+---@param id number
 ---@return boolean
 function Spoken:HasStory(kind, id)
     return Playable(kind, id) ~= nil
 end
 
---- Plays the story as the Compendium's Play does: at once where nothing speaks, else behind the line
---- speaking. Returns whether it plays or waits.
+--- Public. Plays the story as the Compendium's Play does: at once where nothing speaks, else behind
+--- the line speaking. Returns whether it plays or waits.
+---@param kind string
+---@param id number
 ---@return boolean
 function Spoken:PlayStory(kind, id)
     local teller, clip = Playable(kind, id)
@@ -1065,15 +1157,19 @@ function Spoken:PlayStory(kind, id)
     return playing
 end
 
---- Whether the story is speaking: not waiting, held or paused.
+--- Public. Whether the story is speaking: not waiting, held or paused.
+---@param kind string
+---@param id number
 ---@return boolean
 function Spoken:IsPlayingStory(kind, id)
     local teller, keys = Story(kind, id)
     return teller ~= nil and not SoundQueue:IsPaused() and Tells(teller, keys, SoundQueue:GetNowPlaying())
 end
 
---- Stops the story, speaking or waiting, and leaves every other line alone. Returns whether it was
---- in the queue.
+--- Public. Stops the story, speaking or waiting, and leaves every other line alone. Returns whether
+--- it was in the queue.
+---@param kind string
+---@param id number
 ---@return boolean
 function Spoken:StopStory(kind, id)
     local teller, keys = Story(kind, id)
@@ -1082,6 +1178,24 @@ function Spoken:StopStory(kind, id)
         if Tells(teller, keys, clip) and teller.source:Remove(clip) then stopped = true end
     end
     return stopped
+end
+
+-- Features a caller may ask Supports about. A name is added with the feature and never removed.
+local FEATURES = {
+    stories = true, captions = true, callbacks = true, log = true,
+    ["text-packs"] = true, ["interface-packs"] = true,
+}
+
+--- Public. Whether this Spoken has `feature`: a name from docs/spoken/API.md, or "story:<kind>"
+--- for a kind of story whose module is installed and has registered ("story:boss"). False for
+--- anything else.
+---@param feature string
+---@return boolean
+function Spoken:Supports(feature)
+    if type(feature) ~= "string" then return false end
+    local kind = feature:match("^story:(.+)$")
+    if kind then return storyTellers[kind] ~= nil end
+    return FEATURES[feature] == true
 end
 
 --- False in a battleground or arena with Read in Battlegrounds off, where a source's Enqueue
@@ -1101,17 +1215,35 @@ end
 
 local caption = {}
 
---- The speaking clip's caption, kept current even while the captions are hidden or off:
----   { clip, words, totalWeight, progress, speaking, activeWord, highlight, typewriter,
----     typewriterBy, timed, story }
---- words[i] = { text, start, finish, first, last, joined }: start/finish are the word's share
---- of the recording, in units of totalWeight; first/last its bytes in the clip's text. timed is
---- true when they come from the clip's present.timings, and totalWeight is then its length.
---- progress is nil for a clip with no length; activeWord is set only while speaking.
---- highlight and typewriter are the player's Highlight Words and Type Words Out (false with
---- Show Words off); typewriterBy is "letter" or "word". story is the { kind, id } PlayStory was
---- asked for when it played this line, else nil. Read-only, and the same table on every call. nil
---- without a clip.
+---@class SpokenCaptionWord
+---@field text string
+---@field start number    where the word starts, in units of the caption's totalWeight
+---@field finish number   where it ends, in the same units
+---@field first integer   its first byte in the clip's text
+---@field last integer    its last byte in the clip's text
+---@field joined boolean  cut from the same run of text as the word before it, with no space between (Chinese)
+
+---@class SpokenStoryTag
+---@field kind string  "instance" | "boss" | "quest"
+---@field id number
+
+---@class SpokenCaption
+---@field clip SpokenClip
+---@field words SpokenCaptionWord[]
+---@field totalWeight number   the words' span; the clip's length when `timed`
+---@field progress? number     the share of the recording played, 0 to 1; nil for a clip with no length
+---@field speaking boolean
+---@field activeWord? integer  the word being read, set only while speaking
+---@field timed boolean        the words' times come from the clip's present.timings, not an estimate
+---@field highlight boolean    the player's Highlight Words, false with Show Words off
+---@field typewriter boolean   the player's Type Words Out, false with Show Words off
+---@field typewriterBy string  "letter" | "word"
+---@field story? SpokenStoryTag the story PlayStory was asked for when it played this line
+
+--- Public. The speaking clip's caption, kept current even while the captions are hidden or off,
+--- or nil without a clip. Caption views call it every frame, so it is the same table on every
+--- call, and its words and clip are Spoken's own: read them, never change them.
+---@return SpokenCaption?
 function Spoken:GetCaption()
     if not Transcript.clip or not Transcript.words then return nil end
     -- Not read from what the captions last drew: they update only while shown, and
@@ -1127,9 +1259,12 @@ function Spoken:GetCaption()
     return caption
 end
 
---- Highlight Words, Type Words Out and Type Out By as GetCaption gives them, with or without a
---- clip, for a view that prepares a line before it plays. The first two are false with Show
---- Words off; Type Out By is "letter" or "word" either way.
+--- Public. Highlight Words, Type Words Out and Type Out By as GetCaption gives them, with or
+--- without a clip, for a view that prepares a line before it plays. The first two are false with
+--- Show Words off; Type Out By is "letter" or "word" either way.
+---@return boolean highlight
+---@return boolean typewriter
+---@return string typewriterBy
 function Spoken:GetCaptionOptions()
     local cfg = Addon:Profile("Transcript")
     local by = cfg.TypewriterBy == "word" and "word" or "letter"
@@ -1144,16 +1279,22 @@ function Spoken:WordMarks()
     return WordMarks
 end
 
---- Split text into words as the captions do (a Chinese character is a word), each with its
---- bytes in text as first/last, so the caller can find GetCaption's word in its own copy of
---- the line. Escape sequences are not removed.
+--- Public. Split text into words as the captions do (a Chinese character is a word), each with
+--- its bytes in text as first/last, so the caller can find GetCaption's word in its own copy of
+--- the line. Escape sequences are not removed. Nil for anything but a string.
+---@param text string
+---@return SpokenCaptionWord[]? words
+---@return number? totalWeight
 function Spoken:SplitCaption(text)
     if type(text) ~= "string" then return nil end
     return Transcript:Split(text)
 end
 
---- The words the captions show for `transcript`, escape sequences removed: what
---- present.timings lists, one time per word.
+--- Public. The words the captions show for `transcript`, escape sequences removed: what
+--- present.timings lists, one time per word. Nil for anything but a string.
+---@param transcript string
+---@return SpokenCaptionWord[]? words
+---@return number? totalWeight
 function Spoken:CaptionWords(transcript)
     if type(transcript) ~= "string" then return nil end
     return Transcript:Split(Transcript:CleanText(transcript))
@@ -1163,23 +1304,36 @@ end
 -- Callbacks
 --------------------------------------------------------------------------------
 --
---   AUDIO_CHANGED      ()                  coarse; after every mutation
+-- Public events: their names and payloads are frozen.
+--   AUDIO_CHANGED      ()                  coarse; after every change to the queue
 --   CLIP_QUEUED        (clip)
 --   CLIP_STARTED       (clip)
---   CLIP_STOPPED       (clip, finishedPlaying)
---   CLIP_DROPPED       (clip, reason)      queue-limit | outranked | missing | an admit reason
+--   CLIP_STOPPED       (clip, finishedPlaying) left the queue by Skip, StopAll or its module, started or not
+--   CLIP_DROPPED       (clip, reason)      Spoken took it out unheard: "queue-limit" | "outranked" | "missing" | "refused" | an admit reason
 --   QUEUE_EMPTY        ()
---   SOURCE_REGISTERED  (source)
 --   PART_SWITCHED      (key, on)           a part was switched on or off in Spoken's settings
+--
+-- Module events, for Spoken's own modules:
+--   SOURCE_REGISTERED  (source)
 --   CONTRIBUTE_SETTINGS_CHANGED ()          the hide-Contribute-buttons setting was toggled
 --   REPORT_SETTINGS_CHANGED     ()          the hide-Report-buttons setting was toggled
---   VOICE_PACKS_LOADED          ()          the quest and gossip voice packs found at login have loaded
+--   VOICE_PACKS_LOADED          ()          Spoken_Quests: the quest and gossip voice packs found at login have loaded
 --   COMPENDIUM_FONT_CHANGED     ()          the Compendium's Text Size changed (Spoken:CompendiumFontSize)
+--   DEVELOPER_REGISTERED        ()          Spoken_Developer registered (Spoken:RegisterDeveloper)
+--   DEVELOPER_SETTINGS_ADDED    (build)     a section was handed in with Spoken:AddDeveloperSettings
 
+--- Public. Call `fn` with the event's payload each time `event` fires. An error in `fn` is caught
+--- and kept for `/spoken diagnostics`, and the other handlers still run.
+---@param event string
+---@param fn function
+---@return table handle for UnregisterCallback
 function Spoken:RegisterCallback(event, fn)
+    Require(type(event) == "string" and type(fn) == "function", "RegisterCallback needs an event name and a function")
     return Callbacks:Register(event, fn)
 end
 
+--- Public. Stop the handler RegisterCallback returned `handle` for.
+---@param handle table
 function Spoken:UnregisterCallback(handle)
     Callbacks:Unregister(handle)
 end
@@ -1233,25 +1387,31 @@ end
 --------------------------------------------------------------------------------
 --
 -- Spoken keeps no log and draws no Developer page: the Spoken_Developer module does, and
--- registers here. Without it, every call below does nothing and answers nil or false. Additive,
--- so API_VERSION does not move: guard on the field.
+-- registers here. Without it, every call below does nothing and answers nil, false or an empty
+-- list. Additive, so API_VERSION does not move: guard on the field.
 
 --- For the module: hand Spoken the functions it calls (see Developer.lua).
 function Spoken:RegisterDeveloper(provider)
     Developer:Register(provider)
 end
 
---- Whether the module is installed, and with it the debug log.
+--- Public. Whether Spoken_Developer is installed, and with it the debug log.
+---@return boolean
 function Spoken:HasLog()
     return Developer.provider ~= nil
 end
 
---- One line in the debug log, while it is on. `message` is a format string when arguments
---- follow (four at most: format a longer line yourself); `category` a short word of your own.
+--- Public. One line in the debug log, while it is on. `message` is a format string when
+--- arguments follow (four at most: format a longer line yourself); `category` a short word of
+--- your own.
+---@param category string
+---@param message string
 function Spoken:Log(category, message, a, b, c, d)
     Developer:Log(category, message, a, b, c, d)
 end
 
+--- Public. Whether the debug log keeps lines now.
+---@return boolean
 function Spoken:IsLogOn()
     return Developer:IsLogOn()
 end
@@ -1277,11 +1437,15 @@ function Spoken:ShowLog(count)
     return Developer:Call("Show", count)
 end
 
---- Logs to read beside this one, such as other computers' that an addon collected. `list()`
---- returns { { name, lines, offset }, ... }: lines as the log writes them, on their own clock,
---- `offset` the seconds that put them on this one. `clear()`, optional, drops them when the log
---- is cleared.
+--- Public. Logs to read beside this one, such as other computers' that an addon collected.
+--- `list()` returns { { name, lines, offset }, ... }: lines as the log writes them, on their own
+--- clock, `offset` the seconds that put them on this one. `clear()`, optional, drops them when the
+--- log is cleared.
+---@param list fun(): table[]
+---@param clear? fun()
 function Spoken:AddLogSource(list, clear)
+    Require(type(list) == "function" and (clear == nil or type(clear) == "function"),
+        "AddLogSource needs a list function and, optionally, a clear function")
     Developer:Call("AddSource", list, clear)
 end
 
@@ -1320,10 +1484,13 @@ function Spoken:GetDeveloperSettings()
     return list
 end
 
---- A feature addon's diagnostics, for the debug log and its copies: fn(detailed) returns a list of
---- lines, what its own diagnostics command says, and with `detailed` what an AI agent reading the
---- log needs besides.
+--- Public. An addon's diagnostics, for the debug log and its copies: fn(detailed) returns a list
+--- of lines, what its own diagnostics command says, and with `detailed` what an AI agent reading
+--- the log needs besides.
+---@param name string
+---@param fn fun(detailed: boolean): string[]
 function Spoken:AddDiagnostics(name, fn)
+    Require(type(name) == "string" and type(fn) == "function", "AddDiagnostics needs a name and a function")
     Developer:AddDiagnostics(name, fn)
 end
 

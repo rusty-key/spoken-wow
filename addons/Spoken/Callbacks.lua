@@ -9,24 +9,28 @@ Callbacks = { handlers = {}, nextId = 0, errors = {} }
 ---@param event string
 ---@param fn function
 ---@return table handle
+-- Register and Unregister swap in a new list rather than change the one a Fire may be walking,
+-- where a handler unregistering itself would make the next one miss the event. Copying here,
+-- not in Fire, keeps the events allocation-free.
 function Callbacks:Register(event, fn)
     self.nextId = self.nextId + 1
     local handle = { event = event, id = self.nextId, fn = fn }
-    self.handlers[event] = self.handlers[event] or {}
-    table.insert(self.handlers[event], handle)
+    local list = { unpack(self.handlers[event] or {}) }
+    table.insert(list, handle)
+    self.handlers[event] = list
     return handle
 end
 
 function Callbacks:Unregister(handle)
-    local list = handle and self.handlers[handle.event]
+    local list = type(handle) == "table" and self.handlers[handle.event]
     if not list then
         return
     end
-    for i = getn(list), 1, -1 do
-        if list[i].id == handle.id then
-            table.remove(list, i)
-        end
+    local kept = {}
+    for _, other in ipairs(list) do
+        if other.id ~= handle.id then table.insert(kept, other) end
     end
+    self.handlers[handle.event] = kept
 end
 
 -- A subscriber that throws must not take the queue down with it, nor silence the
