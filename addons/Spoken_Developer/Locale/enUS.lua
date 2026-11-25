@@ -26,6 +26,8 @@ L.OPT_LOG_CLEAR = "Clear the Log"
 L.OPT_LOG_COMMANDS = "/spoken log: shows it\n/spoken log copy: copies it, with the diagnostics\n/spoken log write: writes it for an AI agent\n/spoken log on, /spoken log off: turns it on or off\n/spoken log clear: empties it\nWritten, or after a /reload, it is in:\nWTF\\Account\\<account>\\SavedVariables\\Spoken_Developer.lua"
 L.OPT_CHAT_SECTION = "Chat Messages"
 L.OPT_TESTING_SECTION = "Testing"
+L.OPT_COPY_TEXT = "Copy Text"
+L.BOX_TITLE_TEXT = "Spoken text - Ctrl+A, then Ctrl+C to copy"
 -- Under the commands: how to ask an AI agent, a question and the steps to take.
 L.OPT_LOG_AGENT_TITLE = "How to use an AI agent to read the logs?"
 L.OPT_LOG_AGENT_STEPS = "1. Keep the quest open.\n2. Right-click its Contribute or Report a Problem button.\n3. Choose Write the Debug Log for an AI Agent. The interface reloads, which saves the log.\n4. Ask the AI agent on this computer (Claude Code, for one), for example:\n    \"The voice-over did not play for the quest I just opened. Read the Spoken debug log and tell me why.\"\n\nOr, for an AI agent that cannot read this computer's files (a chat in the browser): at step 3, choose Copy the Debug Log instead (Copy with Diagnostics on this page), press Ctrl+C, and paste it into the agent's window with your question."

@@ -55,9 +55,9 @@ local function Build()
 	if UISpecialFrames then table.insert(UISpecialFrames, "SpokenDeveloperLogBox") end
 end
 
---- `text` in the box, selected, under `title`. Opened from a button on a window that hides
---- UIParent (DialogueUI's), it shows over that window.
-function Box:Show(text, title, anchor)
+--- `text` in the box, selected, under `title`; Hide(`owner`) closes only this copy. Opened from
+--- a button on a window that hides UIParent (DialogueUI's), it shows over that window.
+function Box:Show(text, title, anchor, owner)
 	if not frame then Build() end
 	local host = Developer:HostFor(anchor)
 	if frame:GetParent() ~= host then
@@ -65,6 +65,7 @@ function Box:Show(text, title, anchor)
 		frame:SetFrameStrata(host == UIParent and "DIALOG" or "FULLSCREEN_DIALOG")
 	end
 	frame.text = text
+	frame.owner = owner
 	frame.title:SetText(title or L.LOG_BOX_TITLE)
 	frame.edit:SetText(text)
 	frame:Show()
@@ -72,8 +73,8 @@ function Box:Show(text, title, anchor)
 	frame.edit:HighlightText()
 end
 
-function Box:Hide()
-	if frame then frame:Hide() end
+function Box:Hide(owner)
+	if frame and (not owner or frame.owner == owner) then frame:Hide() end
 end
 
 function Box:Frame()

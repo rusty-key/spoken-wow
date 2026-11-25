@@ -25,6 +25,8 @@ L.OPT_LOG_CLEAR = "清除紀錄"
 L.OPT_LOG_COMMANDS = "/spoken log：顯示紀錄\n/spoken log copy：連同診斷複製\n/spoken log write：為 AI 代理寫入\n/spoken log on、/spoken log off：開啟或關閉\n/spoken log clear：清除\n寫入後或 /reload 之後，它存在：\nWTF\\Account\\<帳號>\\SavedVariables\\Spoken_Developer.lua"
 L.OPT_CHAT_SECTION = "聊天訊息"
 L.OPT_TESTING_SECTION = "測試"
+L.OPT_COPY_TEXT = "複製文字"
+L.BOX_TITLE_TEXT = "Spoken 文字 - 按 Ctrl+A，再按 Ctrl+C 複製"
 -- Under the commands: how to ask an AI agent, a question and the steps to take.
 L.OPT_LOG_AGENT_TITLE = "如何讓 AI 代理讀取紀錄？"
 L.OPT_LOG_AGENT_STEPS = "1. 保持任務視窗開啟。\n2. 右鍵點擊它的「貢獻」或「回報問題」按鈕。\n3. 選擇「為 AI 代理寫入除錯紀錄」。介面會重新載入，從而儲存紀錄。\n4. 問這台電腦上的 AI 代理（例如 Claude Code），例如：\n    「我剛打開的任務沒有播放配音。請讀取 Spoken 除錯紀錄並告訴我原因。」\n\n或者，如果 AI 代理無法讀取這台電腦上的檔案（例如瀏覽器裡的聊天）：在第 3 步改選「複製除錯紀錄」（本頁上為「連同診斷複製」），按 Ctrl+C，然後連同你的問題一起貼到代理的視窗中。"

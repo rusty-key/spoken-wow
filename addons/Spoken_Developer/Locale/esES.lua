@@ -25,6 +25,8 @@ L.OPT_LOG_CLEAR = "Vaciar el registro"
 L.OPT_LOG_COMMANDS = "/spoken log: lo muestra\n/spoken log copy: lo copia con el diagnóstico\n/spoken log write: lo escribe para un agente de IA\n/spoken log on, /spoken log off: lo activa o lo desactiva\n/spoken log clear: lo vacía\nEscrito, o tras un /reload, está en:\nWTF\\Account\\<cuenta>\\SavedVariables\\Spoken_Developer.lua"
 L.OPT_CHAT_SECTION = "Mensajes en el chat"
 L.OPT_TESTING_SECTION = "Pruebas"
+L.OPT_COPY_TEXT = "Copiar texto"
+L.BOX_TITLE_TEXT = "Texto de Spoken - Ctrl+A y luego Ctrl+C para copiar"
 -- Under the commands: how to ask an AI agent, a question and the steps to take.
 L.OPT_LOG_AGENT_TITLE = "¿Cómo usar un agente de IA para leer los registros?"
 L.OPT_LOG_AGENT_STEPS = "1. Deja la misión abierta.\n2. Haz clic derecho en su botón Contribuir o Informar de un problema.\n3. Elige «Escribir el registro para un agente de IA». La interfaz se recarga y así guarda el registro.\n4. Pregunta al agente de IA de este equipo (Claude Code, por ejemplo), por ejemplo:\n    «La voz no sonó en la misión que acabo de abrir. Lee el registro de depuración de Spoken y dime por qué.»\n\nO, para un agente de IA que no puede leer los archivos de este equipo (un chat en el navegador): en el paso 3, elige «Copiar el registro de depuración» (en esta página, «Copiar con diagnóstico»), pulsa Ctrl+C y pégalo en la ventana del agente junto con tu pregunta."

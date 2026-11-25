@@ -12,6 +12,13 @@ Spoken itself keeps no log and draws no Developer page: it offers the module a p
 (`addons/Spoken/Developer.lua`) and forwards to it. Without the module, every call below does
 nothing, and `/spoken log` says the module is not installed.
 
+The module also offers **Copy Text**, enabled only under **Spoken > Developer > Testing**.
+It is off by default and adds a scroll button to the game's quest, gossip and readable windows
+when their Spoken module is installed. The shared copy box holds the current client text and
+source diagnostics for Ctrl+C. It excludes player mail and leaves DialogueUI's copy controls
+alone. Disabling it or using Developer Defaults hides the button and closes an open text copy.
+It uses the contribution capture's fields without submitting or collecting a contribution.
+
 The log is **on as soon as the module is installed**: the module is installed on purpose, by
 whoever wants a log. It can be turned off, and keeps nothing while off:
 

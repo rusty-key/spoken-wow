@@ -27,6 +27,7 @@ local function Start()
 	Log:Watch()
 	if Log:IsOn() then Log:Session("start") end
 	Write:Announce()
+	Developer.Text:Setup()
 	Developer:SetupOptions()
 	C_Timer.After(SNAPSHOT_DELAY, function() Copy:Snapshot("login") end)
 end

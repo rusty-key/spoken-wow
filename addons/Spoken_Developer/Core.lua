@@ -26,6 +26,7 @@ local function Defaults()
 		-- On: the module is installed by whoever wants a log. Off from the page, the welcome
 		-- window or /spoken log off.
 		on = true,
+		copyText = false,
 		-- "<GetTime> <category> <text>", oldest first.
 		lines = {},
 		-- The camera editor's changes: [place][model group] = { right, up, zoom, turn }.

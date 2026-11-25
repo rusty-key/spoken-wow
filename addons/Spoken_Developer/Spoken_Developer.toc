@@ -41,6 +41,7 @@ Write.lua
 Screen.lua
 Camera.lua
 UI/Box.lua
+Text.lua
 UI/Menu.lua
 UI/Options.lua
 Commands.lua

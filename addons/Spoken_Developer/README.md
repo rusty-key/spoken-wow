@@ -2,7 +2,7 @@
 
 Tools for working on Spoken, which a player never needs: a **debug log** to send with a report,
 the **Developer** page in Spoken's settings where Spoken's modules put their own tools (Spoken
-Quests' Mock Missing Voice Over, for one), and the **boss camera editor**.
+Quests' Mock Missing Voice Over, for one), **Copy Text**, and the **boss camera editor**.
 
 For developers only. It is not in Spoken's zip and is not published: there is no store page and
 no release. Link it into the game from a checkout, or build a zip with
@@ -19,6 +19,13 @@ no release. Link it into the game from a checkout, or build a zip with
   says so under its buttons. An agent that cannot read this computer's files (a chat in the
   browser) takes Copy the Debug Log instead, pasted into its window with the question.
 - `/spoken log [count] | copy | write | on | off | clear | diag`.
+- **Spoken > Developer > Testing > Copy Text** is off by default. This is the only place to
+  turn it on or off. With Spoken Quests or Spoken Readables installed, it adds a scroll button
+  to the game's quest, gossip and readable windows. Click it to select the client's current
+  text and its source diagnostics in the shared copy window, then press Ctrl+C. Page turns
+  and quest stages use their own text. Player mail is excluded. DialogueUI keeps its own copy
+  controls. Turning the setting off hides the button and closes a text copy already open;
+  Developer Defaults turns it off too. The choice is saved account-wide in `SpokenDeveloperDB`.
 - Saved in `WTF\Account\<account>\SavedVariables\Spoken_Developer.lua`, the newest 2000 lines.
 - `/spokenbosscam` (`/spbc`) sets where a boss's 3D model sits in its frame, in the Compendium and on the
   map's story panel. With it on, drag a boss to move it, right-drag to turn it and use the mouse wheel to
@@ -42,6 +49,7 @@ How it works, what a line says and the API for feature addons:
 | `Copy.lua` | the diagnostics written into the log, and the copy |
 | `Write.lua` | Write for an AI Agent: the snapshot, then the reload that writes the file |
 | `Screen.lua` | the reading window and the mailbox in the log and the snapshots, and which Spoken modules are installed |
+| `Text.lua` | the opt-in copy button, current client text and source diagnostics |
 | `Camera.lua` | the boss camera editor: the saved changes, the drag, wheel and guide, and what Spoken's TextView is handed |
 | `UI/Box.lua` | the box a log or a copy is shown in, selected |
 | `UI/Menu.lua` | the Report and Contribute buttons' right-click menu |
@@ -51,4 +59,4 @@ How it works, what a line says and the API for feature addons:
 
 Package with `scripts/developer/package.sh`. Tests: `tests/lua/developer_log_test.lua` (this
 module) and `tests/lua/developer_hooks_test.lua` (Spoken's side); the camera editor in
-`tests/lua/developer_camera_test.lua`.
+`tests/lua/developer_camera_test.lua`, and text copying in `tests/lua/developer_text_test.lua`.
