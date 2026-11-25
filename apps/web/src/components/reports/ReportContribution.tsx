@@ -32,7 +32,7 @@ export default function ReportContribution({
   report: Report;
   onFixed: (report: Report) => void;
 }) {
-  const t = useUiText();
+  const t = useUiText().reports;
   const [answer, setAnswer] = useState<Answer | { error: string } | null>(null);
   /** The wording a correction is set against, where one other than the closest was picked. */
   const [picked, setPicked] = useState<number | null>(null);
@@ -47,7 +47,7 @@ export default function ReportContribution({
     };
   }, [report.id]);
 
-  if (!answer) return <p className="text-muted-foreground mt-2">{t.reports.comparing}</p>;
+  if (!answer) return <p className="text-muted-foreground mt-2">{t.comparing}</p>;
   if ("error" in answer) return <p className="text-muted-foreground mt-2">{answer.error}</p>;
 
   async function accept(how: CorrectionAccept) {
@@ -74,17 +74,17 @@ export default function ReportContribution({
     <div className="mt-2 flex flex-col gap-2 rounded border p-2">
       <p className="text-muted-foreground font-medium">
         {state.kind === "missing"
-          ? "As a contribution: the corpus has no line for this."
+          ? t.asContribution
           : state.kind === "changed"
-            ? "As a correction: the line speaks other text."
-            : "The line already speaks this text; there is nothing to contribute."}
+            ? t.asCorrection
+            : t.nothingToContribute}
         {stored ? ` Stored as contribution #${stored.id}, ${stored.status}.` : null}
       </p>
 
       {diff && state.kind === "changed" ? (
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
-            <p className="text-muted-foreground text-xs">{t.reports.lineSpeaks}</p>
+            <p className="text-muted-foreground text-xs">{t.lineSpeaks}</p>
             {state.wordings.length > 1 ? (
               <ul className="space-y-2">
                 {state.wordings.map((line, index) => (
@@ -97,7 +97,7 @@ export default function ReportContribution({
                     ) : (
                       <button
                         type="button"
-                        title="Set the player's text against this wording"
+                        title={t.setAgainst}
                         className="text-muted-foreground hover:text-foreground text-left whitespace-pre-wrap"
                         onClick={() => setPicked(index)}
                       >
@@ -112,7 +112,7 @@ export default function ReportContribution({
             )}
           </div>
           <div>
-            <p className="text-muted-foreground text-xs">{t.reports.playerSaw}</p>
+            <p className="text-muted-foreground text-xs">{t.playerSaw}</p>
             <Marked parts={diff.after} tone="added" />
           </div>
         </div>
@@ -125,7 +125,7 @@ export default function ReportContribution({
               href={explorerHref(report.source, wording.lineId)}
               className="border-border bg-background hover:bg-muted inline-flex h-7 items-center rounded-md border px-2.5 text-[0.8rem] font-medium whitespace-nowrap"
             >
-              {report.source === "readables" ? "Edit page" : "Edit line"}
+              {report.source === "readables" ? t.editPage : t.editLine}
             </Link>
           ) : null}
           {accepted ? null : (
@@ -135,8 +135,8 @@ export default function ReportContribution({
                 disabled={busy}
                 title={
                   wording
-                    ? "Take the player's text as what this line speaks, and answer the report Fixed"
-                    : "Add the player's text as a new line, and answer the report Fixed"
+                    ? t.takeAsText
+                    : t.addAsLine
                 }
                 onClick={() => void accept(wording ? { pick: { lineId: wording.lineId, variant: wording.variant } } : {})}
               >
@@ -146,7 +146,7 @@ export default function ReportContribution({
                 <LiteButton
                   variant="accept"
                   disabled={busy}
-                  title="Keep the corpus text and add the player's as another wording of this moment, and answer the report Fixed"
+                  title={t.keepCorpusAdd}
                   onClick={() => void accept({ as: "wording" })}
                 >
                   Accept as new line

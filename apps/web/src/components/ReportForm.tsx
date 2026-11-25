@@ -1,5 +1,7 @@
 "use client";
 
+import { useUiText } from "@/components/UiTextProvider";
+
 /**
  * The form a player fills in after copying an address out of the game.
  *
@@ -45,6 +47,7 @@ export default function ReportForm({
   /** On an /r/ page the game links to, whose address may carry the addon's context. */
   fromGame?: boolean;
 }) {
+  const t = useUiText().reports;
   const lang = useLang();
   // isPending rather than a bare null check: while the session is still loading, showing
   // the fields and then pulling them out from under a half-typed name is worse than a
@@ -86,8 +89,8 @@ export default function ReportForm({
     }
     setError(
       response?.status === 429
-        ? "That is a lot of reports in a short time. Try again in a few minutes."
-        : "The report was not accepted. Check the category and try again.",
+        ? t.tooManyReports
+        : t.notAccepted,
     );
   }
 
@@ -172,7 +175,7 @@ export default function ReportForm({
 
       <div>
         <Button type="submit" disabled={busy}>
-          {busy ? "Sending…" : "Send report"}
+          {busy ? t.sending : t.sendReport}
         </Button>
       </div>
 
