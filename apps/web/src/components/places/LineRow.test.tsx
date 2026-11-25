@@ -38,7 +38,7 @@ function row(line: ResultLine, may: { canRegenerate: boolean; canEdit: boolean }
       <table>
         <tbody>
           <LineRow
-            section={{ source: "places", facetLabel: "Zone" }}
+            section={{ source: "places", facetLabel: "Zone", ownLineText: "Zone line" }}
             line={line}
             current={false}
             showMadeBy={false}

@@ -24,7 +24,7 @@ export type RowState =
   | { phase: "error"; message: string };
 
 type Props<L extends ExplorerLine> = {
-  section: Pick<ExplorerSection<L>, "source" | "facetLabel" | "ownLine" | "detail">;
+  section: Pick<ExplorerSection<L>, "source" | "facetLabel" | "ownLine" | "ownLineText" | "detail">;
   line: L;
   current: boolean;
   /** Whether to draw the "Made by" cell: the search sent it, so the viewer works here. */
@@ -222,7 +222,7 @@ export function LineRow<L extends ExplorerLine>({
       <td>
         <span className="cat-two-top">
           {section.ownLine?.(line) ? (
-            <span className="text-muted-foreground italic">{section.facetLabel.toLowerCase()} line</span>
+            <span className="text-muted-foreground italic">{section.ownLineText}</span>
           ) : (
             <Untranslated missing={line.nameMissing}>{line.name}</Untranslated>
           )}

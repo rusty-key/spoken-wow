@@ -1,5 +1,7 @@
 import { cloneName } from "@/lib/voices/clone-name";
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
+import { uiText } from "@/lib/ui-text";
+import { fill } from "@/lib/site-text/format";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -34,6 +36,8 @@ export default async function Page({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const lang = await pageLang(params);
+  const text = await uiText(await readingLang(lang));
+  const t = text.voices;
   const session = await currentSession();
 
   // 404 rather than a redirect, matching /admin: a member has no business learning that
@@ -102,8 +106,8 @@ export default async function Page({
 
   return (
     <BackstagePage
-      title={`${langName(lang)} voices`}
-      description="The voices this language's lines are spoken with, grouped by race. Open one to hear its clips."
+      title={fill(t.title, { lang: langName(lang) })}
+      description={t.lede}
     >
       <VoicesTabs
         initialTab={isProvider(tab) ? tab : preference.provider}
@@ -117,10 +121,10 @@ export default async function Page({
           preview: model.preview,
           price:
             model.usdPerMillionBytes === null
-              ? "price not published"
+              ? t.priceNotPublished
               : model.usdPerMillionBytes === 0
-                ? "free"
-                : `$${model.usdPerMillionBytes} per million bytes`,
+                ? t.free
+                : fill(t.perMillion, { price: model.usdPerMillionBytes }),
         }))}
         slots={all}
         initialSamples={samples}

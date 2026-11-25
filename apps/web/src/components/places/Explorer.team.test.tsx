@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import { LangProvider } from "@/components/LangProvider";
+import { EN } from "@/lib/ui-text/en";
 import type { ResultLine, SearchResult } from "@/lib/places/search";
 import type { TeamChoice, ViewedTeam } from "@/lib/teams/viewing";
 
@@ -101,7 +102,12 @@ const ownView: ViewedTeam = { team: second.id, slug: second.slug, name: second.n
 function explorer(viewed: ViewedTeam | null, teams = [main, second]) {
   render(
     <LangProvider lang="deDE">
-      <Explorer section={placesSection()} teams={viewed ? teams : []} viewed={viewed} home={viewed ? second.slug : null} />
+      <Explorer
+        section={placesSection([], EN.sectionLabels.places)}
+        teams={viewed ? teams : []}
+        viewed={viewed}
+        home={viewed ? second.slug : null}
+      />
     </LangProvider>,
   );
 }
@@ -182,7 +188,12 @@ test("below a site owner's acting banner the explorer shows no picker of its own
   render(
     <LangProvider lang="deDE">
       <BannerShown shown>
-        <Explorer section={placesSection()} teams={[main, second]} viewed={ownView} home={second.slug} />
+        <Explorer
+          section={placesSection([], EN.sectionLabels.places)}
+          teams={[main, second]}
+          viewed={ownView}
+          home={second.slug}
+        />
       </BannerShown>
     </LangProvider>,
   );

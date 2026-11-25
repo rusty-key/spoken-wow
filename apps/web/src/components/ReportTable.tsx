@@ -69,9 +69,7 @@ import { placesSection } from "@/components/places/sections";
 import { bossesSection } from "@/components/bosses/sections";
 import type { Source } from "@/lib/sections";
 
-// No facets: the table plays lines, it does not narrow to them.
-const PLACES = placesSection();
-const BOSSES = bossesSection();
+
 
 const VIEW_LABELS: Record<StatusView, string> = { ...STATUS_LABELS, all: "All" };
 
@@ -139,6 +137,9 @@ export default function ReportTable({
   const { pending, push } = usePendingPush();
   const { refresh } = useRouter();
   const t = useUiText();
+  // No facets: the table plays lines, it does not narrow to them.
+  const places = placesSection([], t.sectionLabels.places);
+  const bosses = bossesSection([], t.sectionLabels.bosses);
   const lang = useLang();
   const [resolved, setResolved] = useState<Record<number, Report>>({});
   /** Reports with a resolution in flight. A set, because a group resolves all of its at once. */
@@ -554,14 +555,14 @@ export default function ReportTable({
             />
           ) : playing.source === "places" ? (
             <PlacesPlayer
-              section={PLACES}
+              section={places}
               audioRef={audio}
               line={playingLine as ZoneLine}
               version={playingVersion}
             />
           ) : playing.source === "bosses" ? (
             <PlacesPlayer
-              section={BOSSES}
+              section={bosses}
               audioRef={audio}
               line={playingLine as BossLine}
               version={playingVersion}

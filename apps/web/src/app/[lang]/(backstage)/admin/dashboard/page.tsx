@@ -10,6 +10,9 @@ import { langName } from "@/lib/lang";
 import { can, isAdmin, langsWhere, type Capability } from "@/lib/permissions";
 import { queuesOf, triages } from "@/lib/reports/reports";
 import { currentSession } from "@/lib/session";
+import { readingLang } from "@/lib/lang-server";
+import { uiText } from "@/lib/ui-text";
+import { fill } from "@/lib/site-text/format";
 
 export const metadata: Metadata = { title: "Dashboard · Spoken" };
 
@@ -20,7 +23,13 @@ export const dynamic = "force-dynamic";
  * handles it. Gated like /admin, a 404 for anybody who is admin nowhere; the language comes
  * from `?lang=`, the first one administered when absent.
  */
-export default async function Page({ searchParams }: { searchParams: Promise<{ lang?: string }> }) {
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lang: string }>;
+  searchParams: Promise<{ lang?: string }>;
+}) {
   const session = await currentSession();
   const viewer = await viewerOf(session);
   const administered = langsWhere(viewer, "admin");
@@ -28,6 +37,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
 
   const { lang: asked } = await searchParams;
   const lang = administered.find((code) => code === asked) ?? administered[0];
+  const t = (await uiText(await readingLang((await params).lang))).dashboard;
   const may = (capability: Capability) => can(viewer, capability, lang);
 
   return (
@@ -37,7 +47,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
         administered={administered}
         global={isAdmin(viewer.role)}
         tab="dashboard"
-        description={`What is waiting in ${langName(lang)}, and who on the team can pick it up.`}
+        description={fill(t.lede, { lang: langName(lang) })}
       />
       <Contained className="pt-6">
         <TeamDashboard

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Check, Loader2, Pencil, SlidersHorizontal, Sparkles } from "lucide-react";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 import Link from "@/components/LocaleLink";
 import VoiceSlotList from "@/components/VoiceSlotList";
 import type { ReferenceView } from "@/components/FishReference";
@@ -73,17 +75,20 @@ type Props = {
  */
 /** What the ElevenLabs settings say under the model picker about where its options stand. */
 function modelsNote(
+  t: ReturnType<typeof useUiText>["voices"],
   hasKey: boolean,
   reading: boolean,
   account: AccountView | null | undefined,
 ): string | null {
-  if (!hasKey) return "The models your account offers appear once an ElevenLabs key is stored.";
-  if (reading) return "Reading the models your account offers…";
+  if (!hasKey) return t.modelsAfterKey;
+  if (reading) return t.readingModels;
   if (account?.models) return null;
-  return "Your account's models could not be read, so only the saved one is offered.";
+  return t.modelsUnreadable;
 }
 
 export default function VoicesTabs(props: Props) {
+  const text = useUiText();
+  const t = text.voices;
   const lang = useLang();
   const [tab, setTab] = useState(props.initialTab);
   const [active, setActive] = useState(props.active);
@@ -199,7 +204,7 @@ export default function VoicesTabs(props: Props) {
             >
               {PROVIDER_NAME[provider]}
               {active === provider && (
-                <Check className="vo-active-mark" aria-label={`active in ${langName(lang)}`} />
+                <Check className="vo-active-mark" aria-label={fill(t.activeIn, { n: langName(lang) })} />
               )}
               <span className="bs-count">
                 {provider === "elevenlabs"
@@ -220,7 +225,7 @@ export default function VoicesTabs(props: Props) {
             onClick={() => setEditing(!editing)}
           >
             <Pencil />
-            {editing ? "Done editing sources" : "Edit sources"}
+            {editing ? t.doneEditingSources : t.editSources}
           </button>
         )}
       </div>
@@ -247,7 +252,7 @@ export default function VoicesTabs(props: Props) {
             <span className="vo-note">
               Needs a {PROVIDER_NAME[tab]} key —{" "}
               <Link href={KEY_ANCHOR[tab]} className="vo-link">
-                add one on your profile
+                {t.addKeyOnProfile}
               </Link>
             </span>
           )}
@@ -265,7 +270,7 @@ export default function VoicesTabs(props: Props) {
                   </>
                 )}
                 <i>·</i>
-                {settings.elevenlabs.seedStrategy === "npc" ? "Seed per NPC" : "No seed"}
+                {settings.elevenlabs.seedStrategy === "npc" ? t.seedPerNpc : t.noSeed}
               </>
             ) : (
               <>
@@ -280,7 +285,7 @@ export default function VoicesTabs(props: Props) {
             {tab === "elevenlabs" && reading && (
               <span className="vo-note inline-flex items-center gap-1.5">
                 <Loader2 className="size-3 animate-spin" aria-hidden />
-                Reading your ElevenLabs account…
+                {t.readingAccount}
               </span>
             )}
             <button
@@ -296,7 +301,7 @@ export default function VoicesTabs(props: Props) {
             {tab === "elevenlabs" && props.keys.elevenlabs && present !== null && (
               <button type="button" className="bs-btn vo-outline vo-sm" onClick={() => setPopulating(true)}>
                 <Sparkles />
-                Populate my account…
+                {t.populateMine}
               </button>
             )}
           </span>
@@ -320,7 +325,7 @@ export default function VoicesTabs(props: Props) {
               key={JSON.stringify(settings.elevenlabs)}
               saved={settings.elevenlabs}
               models={account?.models ?? null}
-              modelsNote={modelsNote(props.keys.elevenlabs, reading, account)}
+              modelsNote={modelsNote(t, props.keys.elevenlabs, reading, account)}
               onSave={(elevenlabs) => save({ elevenlabs })}
             />
           ) : (

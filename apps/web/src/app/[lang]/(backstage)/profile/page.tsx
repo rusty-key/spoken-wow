@@ -8,7 +8,8 @@ import Link from "@/components/LocaleLink";
 import { apiKeyStatus } from "@/lib/api-key";
 import { viewerOf } from "@/lib/grants/store";
 import { localeHref } from "@/lib/lang";
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
+import { uiText } from "@/lib/ui-text";
 import { langsWhere, roleLabel, spendsCredits } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { listTokens } from "@/lib/tokens/store";
@@ -29,6 +30,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);
+  const t = (await uiText(await readingLang(lang))).profile;
   const session = await currentSession();
   if (!session) redirect(localeHref(lang, "/login"));
 
@@ -54,12 +56,12 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   return (
     <main className="pt-6 pb-36">
       <Contained>
-        <h1 className="text-xl font-semibold">Profile</h1>
+        <h1 className="text-xl font-semibold">{t.title}</h1>
 
         <dl className="mt-4 mb-8 grid max-w-md grid-cols-[6rem_1fr] gap-y-1 text-sm">
-          <dt className="text-muted-foreground">Email</dt>
+          <dt className="text-muted-foreground">{t.email}</dt>
           <dd>{session.user.email}</dd>
-          <dt className="text-muted-foreground">Role</dt>
+          <dt className="text-muted-foreground">{t.role}</dt>
           <dd>
             <span className="rounded border px-1.5 text-xs uppercase">{roleLabel(role)}</span>
           </dd>
@@ -71,7 +73,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
 
         <p className="mb-8 text-sm">
           <Link href="/request-team" className="text-foreground underline underline-offset-2">
-            Start a team for a language
+            {t.startTeam}
           </Link>
         </p>
 
@@ -80,11 +82,11 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
             {/* Which one is spent with, and how, is per language on Voices; only the keys,
                 which are the account's, live here. */}
             <p className="text-muted-foreground max-w-xl text-sm">
-              Choose which generator you use, and set it up, on{" "}
+              {t.generatorBefore}
               <Link href="/voices" className="text-foreground underline underline-offset-2">
-                Voices
+                {t.voicesLink}
               </Link>
-              .
+              {t.generatorAfter}
             </p>
             <ApiKeySection initial={status} />
             <ApiKeySection initial={fishStatus} provider="fish" />
@@ -93,10 +95,9 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
           // Said rather than hidden: a member who has been told "go and regenerate that line"
           // needs to know which of the two things they are missing.
           <p className="text-muted-foreground max-w-xl text-sm">
-            Generating audio needs the right to{" "}
-            <strong className="text-foreground">regenerate</strong> in a language. Ask an admin,
-            or whoever looks after that language, and this page will then ask you for a key of
-            your own.
+            {t.needsRegenerateBefore}
+            <strong className="text-foreground">{t.regenerateWord}</strong>
+            {t.needsRegenerateAfter}
           </p>
         )}
         {tokenLangs.length > 0 && <ApiTokenSection langs={tokenLangs} initial={tokens} />}

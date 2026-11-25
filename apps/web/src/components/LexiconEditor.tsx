@@ -1,6 +1,8 @@
 "use client";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 import { withLang, type Lang } from "@/lib/lang";
 import { Check, Loader2, Pencil, RefreshCw, Search, Trash2, Undo2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -30,10 +32,7 @@ type Saved = EffectiveLexicon & { syncError?: string | null };
 
 const PHONEME_MODEL_LIST = new Intl.ListFormat("en", { type: "conjunction" }).format(PHONEME_MODELS);
 
-const MODE_LABELS: Record<PreviewMode, string> = {
-  word: "Word",
-  sentence: "In a line",
-};
+
 
 const EMPTY_CACHE: CacheState = { word: false, sentence: false };
 
@@ -56,11 +55,7 @@ const FIELD =
 
 type OkFilter = "all" | "yes" | "no";
 
-const OK_FILTERS: { value: OkFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "yes", label: "OK" },
-  { value: "no", label: "Not OK" },
-];
+const OK_FILTERS: OkFilter[] = ["all", "yes", "no"];
 
 /**
  * Where this name is spoken, in each explorer.
@@ -247,6 +242,7 @@ function Editor({
    */
   initialCache: Promise<CacheRead> | null;
 }) {
+  const t = useUiText().lexicon;
   const lang = useLang();
   const [saved, setSaved] = useState<Saved>(initial);
   const [draft, setDraft] = useState<LexiconEntry[]>(initial.entries);
@@ -465,13 +461,12 @@ function Editor({
       {reading && (
         <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
           <Loader2 className="size-3 animate-spin" aria-hidden />
-          Reading your ElevenLabs account to see which previews are already rendered…
+          {t.readingPreviews}
         </p>
       )}
       {readError && (
         <p role="alert" className="text-destructive text-xs">
-          Could not read your ElevenLabs account, so no preview is marked as already rendered:{" "}
-          {readError}
+          {t.readError} {readError}
         </p>
       )}
 
@@ -479,12 +474,12 @@ function Editor({
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Filter by name, sound, or note"
+          placeholder={t.filter}
           className="max-w-xs"
-          aria-label="Filter entries"
+          aria-label={t.filterLabel}
         />
-        <div className="flex items-center gap-1" role="group" aria-label="Filter by OK">
-          {OK_FILTERS.map(({ value, label }) => (
+        <div className="flex items-center gap-1" role="group" aria-label={t.filterByOk}>
+          {OK_FILTERS.map((value) => (
             <Button
               key={value}
               size="sm"
@@ -492,18 +487,18 @@ function Editor({
               aria-pressed={ok === value}
               onClick={() => setOk(value)}
             >
-              {label}
+              {t.okFilters[value]}
               {value === "no" && ` · ${checks}`}
             </Button>
           ))}
         </div>
         <Button size="sm" variant="ghost" onClick={() => add()}>
-          Add name
+          {t.addName}
         </Button>
         <span className="text-muted-foreground ml-auto text-xs tabular-nums">
           {shown.length === draft.length
-            ? `${draft.length} entries`
-            : `${shown.length} of ${draft.length}`}
+            ? fill(t.entryCount, { n: draft.length })
+            : fill(t.shownOf, { shown: shown.length, all: draft.length })}
         </span>
       </div>
 
@@ -516,20 +511,20 @@ function Editor({
           className="text-muted-foreground bg-muted/40 flex items-center gap-3 px-3 py-1.5 text-[10.5px] font-semibold tracking-wider uppercase"
         >
           {/* Matches the checkbox's own width, so the columns below line up under their names. */}
-          <span className="w-4 shrink-0" title="Confirmed">
-            OK
+          <span className="w-4 shrink-0" title={t.confirmed}>
+            {t.okFilters.yes}
           </span>
           <span className="flex flex-1 gap-3 overflow-hidden">
-            <span className="w-40 shrink-0">Written</span>
-            <span className="w-52 shrink-0">Sound</span>
-            <span className="truncate">Note</span>
+            <span className="w-40 shrink-0">{t.written}</span>
+            <span className="w-52 shrink-0">{t.sound}</span>
+            <span className="truncate">{t.note}</span>
           </span>
-          <span className="shrink-0">Edit · find · hear · re-roll</span>
+          <span className="shrink-0">{t.actions}</span>
         </div>
 
         {rows.length === 0 && (
           <p className="text-muted-foreground px-4 py-8 text-center text-sm">
-            Nothing matches that filter.
+            {t.nothingMatches}
           </p>
         )}
 
@@ -571,7 +566,7 @@ function Editor({
 
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" disabled={!dirty || busy} onClick={() => void send("PUT")}>
-          {busy ? "Saving…" : "Save and upload"}
+          {busy ? t.saving : t.saveAndUpload}
         </Button>
         <Button
           size="sm"
@@ -617,6 +612,7 @@ function SyncBanner({
   busy: boolean;
   onRetry: () => void;
 }) {
+  const t = useUiText().lexicon;
   // Counted rather than stated as a blanket warning: on a model without phoneme support the
   // respelled entries still work, so "nothing on this page reaches the audio" would be false
   // and would send someone hunting for a problem in the wrong place.
@@ -624,10 +620,8 @@ function SyncBanner({
     return (
       <Banner tone="warn">
         <span>
-          Generation uses <code>{modelId}</code>, which ignores phoneme rules — only{" "}
-          {PHONEME_MODEL_LIST} honour them. {phonemes} entries
-          written in IPA are skipped; the respelled ones still apply. Switch the model on Voices,
-          or respell those entries.
+          {t.ignoresPhonemesBefore} <code>{modelId}</code>
+          {fill(t.ignoresPhonemesAfter, { models: PHONEME_MODEL_LIST, n: phonemes })}
         </span>
       </Banner>
     );
@@ -637,9 +631,7 @@ function SyncBanner({
     return (
       <Banner tone="error">
         <span>
-          The lexicon table is empty. Migration <code>0008</code> seeds it — if you are seeing
-          this, migrations have not run against this database. Do not retype the entries;
-          run them.
+          {t.notSeededBefore} <code>0008</code> {t.notSeededAfter}
         </span>
       </Banner>
     );
@@ -649,15 +641,14 @@ function SyncBanner({
     return (
       <Banner tone="warn">
         <span>
-          No dictionary has been uploaded yet, so lines are generated without one. Save to put
-          these {saved.entries.length} pronunciations in force.
+          {t.neverUploadedBefore} {saved.entries.length} {t.neverUploadedAfter}
         </span>
         {/* A seeded lexicon arrives saved but never uploaded, and Save stays disabled until
             something is edited - so without this the only way to put a seed in force would
             be a throwaway edit. */}
         {saved.entries.length > 0 && (
           <Button size="sm" variant="outline" disabled={busy} onClick={onRetry}>
-            {busy ? "Uploading…" : "Upload"}
+            {busy ? t.uploadingNow : t.upload}
           </Button>
         )}
       </Banner>
@@ -675,11 +666,11 @@ function SyncBanner({
     return (
       <Banner tone="error">
         <span>
-          ElevenLabs kept only {saved.rulesKept} of the {saved.rulesSent} rules uploaded. The
-          dictionary is in force but incomplete, so some names below are not being applied.
+          {t.partialBefore} {saved.rulesKept} of the {saved.rulesSent} rules uploaded.
+          {fill(t.partialAfter, { sent: saved.rulesSent })}
         </span>
         <Button size="sm" variant="outline" disabled={busy} onClick={onRetry}>
-          {busy ? "Uploading…" : "Upload again"}
+          {busy ? t.uploadingNow : t.uploadAgain}
         </Button>
       </Banner>
     );
@@ -689,12 +680,12 @@ function SyncBanner({
     return (
       <Banner tone="error">
         <span>
-          Saved, but not uploaded{saved.syncError ? `: ${saved.syncError}` : ""}. Generation is
-          still applying the previous dictionary, so the entries below are not what lines
-          currently sound like.
+          {t.pendingBefore}
+          {saved.syncError ? `: ${saved.syncError}` : ""}
+          {t.pendingAfter}
         </span>
         <Button size="sm" variant="outline" disabled={busy} onClick={onRetry}>
-          {busy ? "Uploading…" : "Retry upload"}
+          {busy ? t.uploadingNow : t.retryUpload}
         </Button>
       </Banner>
     );
@@ -702,10 +693,12 @@ function SyncBanner({
 
   return (
     <p className="text-muted-foreground text-xs">
-      In force since {saved.syncedAt ? new Date(saved.syncedAt).toLocaleString() : "—"} ·
-      dictionary <code>{saved.locator?.dictionaryId}</code> · version{" "}
+      {fill(t.inForceSince, {
+        when: saved.syncedAt ? new Date(saved.syncedAt).toLocaleString() : "—",
+      })}{" "}
+      · {t.dictionaryWord} <code>{saved.locator?.dictionaryId}</code> · {t.versionWord}{" "}
       <code>{saved.locator?.versionId}</code>
-      {saved.rulesKept !== null && <> · {saved.rulesKept} rules</>}
+      {saved.rulesKept !== null && <> · {fill(t.rules, { n: saved.rulesKept })}</>}
     </p>
   );
 }
@@ -799,6 +792,7 @@ function Row({
   onRemove: () => void;
   onConfirm: (confirmed: boolean) => void;
 }) {
+  const t = useUiText().lexicon;
   const playable = Boolean(entry.grapheme.trim() && (entry.ipa ?? entry.alias ?? "").trim());
   const ipa = formKind(entry) === "ipa";
 
@@ -812,7 +806,7 @@ function Row({
       <Checkbox
         checked={entry.confidence === "high"}
         onCheckedChange={(value) => onConfirm(value === true)}
-        aria-label={`Confirmed pronunciation for ${entry.grapheme || "this entry"}`}
+        aria-label={fill(t.confirmedFor, { name: entry.grapheme || t.thisEntry })}
         className="shrink-0"
       />
 
@@ -824,9 +818,9 @@ function Row({
           <Input
             value={entry.grapheme}
             onChange={(event) => onChange({ grapheme: event.target.value })}
-            placeholder="Gnomeregan"
-            aria-label="Written"
-            title="Exactly as the corpus spells it. Matching ignores case."
+            placeholder={t.writtenPlaceholder}
+            aria-label={t.written}
+            title={t.writtenHint}
             className={cn("w-40 shrink-0", FIELD)}
             autoFocus
           />
@@ -843,8 +837,8 @@ function Row({
                 <input
                   value={entry.ipa ?? ""}
                   onChange={(event) => onChange({ ipa: event.target.value })}
-                  placeholder="ˈnoʊmɹəɡæn"
-                  aria-label="IPA"
+                  placeholder={t.ipaPlaceholder}
+                  aria-label={t.ipa}
                   className="placeholder:text-muted-foreground/45 w-full min-w-0 flex-1 bg-transparent outline-none"
                 />
                 <span aria-hidden className="text-muted-foreground/60 select-none">
@@ -855,9 +849,9 @@ function Row({
               <Input
                 value={entry.alias ?? ""}
                 onChange={(event) => onChange({ alias: event.target.value })}
-                placeholder="nomeregan"
-                aria-label="Respelling"
-                title="Respell it as it should be said. Capitals mark stress — “NOME-reh-gan”."
+                placeholder={t.respellingPlaceholder}
+                aria-label={t.respelling}
+                title={t.respellingHint}
                 className={cn("flex-1", FIELD)}
               />
             )}
@@ -869,11 +863,9 @@ function Row({
               aria-pressed={ipa}
               className="size-7 shrink-0 text-sm"
               title={
-                ipa
-                  ? `Writing IPA. Only ${PHONEME_MODEL_LIST} honour it — click for a respelling.`
-                  : "Respelling it as it should be said. Click to write IPA instead."
+                ipa ? fill(t.writeIpaOnly, { models: PHONEME_MODEL_LIST }) : t.switchToRespelling
               }
-              aria-label={ipa ? "Switch to a respelling" : "Switch to IPA"}
+              aria-label={ipa ? t.switchRespelling : t.switchIpa}
               onClick={() =>
                 onChange(ipa ? { ipa: undefined, alias: "" } : { alias: undefined, ipa: "" })
               }
@@ -887,16 +879,16 @@ function Row({
           <Input
             value={entry.note ?? ""}
             onChange={(event) => onChange({ note: event.target.value })}
-            placeholder="silent G"
-            aria-label="Note"
-            title="Why this entry exists, or what is disputed about it."
+            placeholder={t.notePlaceholder}
+            aria-label={t.note}
+            title={t.noteHint}
             className={cn("flex-1", FIELD)}
           />
         </div>
       ) : (
         <div className="flex flex-1 items-baseline gap-3 overflow-hidden">
           <span className="w-40 shrink-0 truncate text-sm font-medium">
-            {entry.grapheme || <span className="text-muted-foreground">(new entry)</span>}
+            {entry.grapheme || <span className="text-muted-foreground">{t.newEntry}</span>}
           </span>
           <span className="text-primary-ink w-52 shrink-0 truncate text-sm">
             {entry.alias ? `“${entry.alias}”` : `/${entry.ipa}/`}
@@ -926,8 +918,8 @@ function Row({
           size="icon"
           variant="ghost"
           className={cn("size-6", editing ? "text-primary-ink" : "text-muted-foreground")}
-          title={editing ? "Done editing" : `Edit ${entry.grapheme || "this entry"}`}
-          aria-label={editing ? "Done editing" : `Edit ${entry.grapheme || "this entry"}`}
+          title={editing ? t.doneEditing : fill(t.editFor, { name: entry.grapheme || t.thisEntry })}
+          aria-label={editing ? t.doneEditing : fill(t.editFor, { name: entry.grapheme || t.thisEntry })}
           onClick={editing ? onClose : onOpen}
         >
           {editing ? (
@@ -975,7 +967,7 @@ function Row({
               variant="ghost"
               className="text-muted-foreground/30 h-6 w-auto gap-0.5 px-1"
               disabled
-              title="Name this entry first"
+              title={t.nameItFirst}
             >
               {glyph}
             </Button>
@@ -995,19 +987,13 @@ function Row({
                 variant="ghost"
                 className="h-7 px-2 text-xs"
                 disabled={!playable || rendering}
-                title={
-                  onDisk
-                    ? "Already rendered — plays for free"
-                    : mode === "word"
-                      ? "Hear the name on its own. Costs credits."
-                      : "Hear it in a line from the corpus. Costs credits."
-                }
+                title={onDisk ? t.alreadyRendered : mode === "word" ? t.hearAlone : t.hearInLine}
                 onClick={() => void preview.play(entry, mode, index)}
               >
                 {/* The label stays put while a render is in flight. Swapping it for an
                     ellipsis resized the button, moving the one beside it under a cursor
                     already on the way to it. The spinner to the right says it is working. */}
-                {MODE_LABELS[mode]}
+                {t.modes[mode]}
               </Button>
 
               {/* Greyed until there is something to replace: re-rolling a take that does not
@@ -1015,12 +1001,8 @@ function Row({
               <Button
                 size="icon"
                 variant="ghost"
-                aria-label={`Re-roll the ${mode} preview for ${entry.grapheme}`}
-                title={
-                  onDisk
-                    ? "Discard the cached take and pay for a fresh one"
-                    : "Nothing cached to re-roll yet"
-                }
+                aria-label={fill(t.rerollFor, { mode: t.modes[mode], name: entry.grapheme })}
+                title={onDisk ? t.rerollHint : t.nothingCached}
                 className={cn(
                   "size-6",
                   onDisk || rendering ? "text-muted-foreground" : "text-muted-foreground/30",

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { Explorer } from "@/components/places/Explorer";
+import { useUiText } from "@/components/UiTextProvider";
 import { placesSection } from "@/components/places/sections";
 import type { ZoneFacet } from "@/lib/places/catalogue";
 import type { TeamView } from "@/lib/teams/view";
@@ -12,6 +13,7 @@ import type { TeamView } from "@/lib/teams/view";
  * page cannot hand to a client component, so the page sends the facets and this builds it.
  */
 export function PlacesExplorer({ zones, ...view }: { zones: ZoneFacet[] } & TeamView) {
-  const section = useMemo(() => placesSection(zones), [zones]);
+  const words = useUiText().sectionLabels.places;
+  const section = useMemo(() => placesSection(zones, words), [zones, words]);
   return <Explorer section={section} {...view} />;
 }

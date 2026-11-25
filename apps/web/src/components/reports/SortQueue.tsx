@@ -44,10 +44,6 @@ import type { ResultLine as BossLine } from "@/lib/bosses/search";
 import { placesSection } from "@/components/places/sections";
 import { bossesSection } from "@/components/bosses/sections";
 
-// No facets: the card shows one line, with nothing to narrow.
-const PLACES = placesSection();
-const BOSSES = bossesSection();
-
 /** Enough to read a typical complaint whole without pushing the actions off a phone screen. */
 const PREVIEW = 3;
 /** Longer than this and the line's text is clamped until the card is expanded. */
@@ -114,6 +110,9 @@ export default function SortQueue({
 }) {
   const t = useUiText();
   const lang = useLang();
+  // No facets: the card shows one line, with nothing to narrow.
+  const places = placesSection([], t.sectionLabels.places);
+  const bosses = bossesSection([], t.sectionLabels.bosses);
   // Held from the first render: a refresh while sorting brings back a list without the lines
   // already answered, and the position would then point past the card on screen.
   const [groups] = useState(initial);
@@ -490,12 +489,16 @@ function SourcePlayer({
   version: number | undefined;
   audio: React.RefObject<HTMLAudioElement | null>;
 }) {
+  const words = useUiText().sectionLabels;
+  // No facets: the card shows one line, with nothing to narrow.
+  const places = placesSection([], words.places);
+  const bosses = bossesSection([], words.bosses);
   if (source === "quests") return <QuestsPlayer ref={audio} line={line as QuestLine | null} version={version} />;
   if (source === "places") {
-    return <PlacesPlayer section={PLACES} audioRef={audio} line={line as ZoneLine | null} version={version} />;
+    return <PlacesPlayer section={places} audioRef={audio} line={line as ZoneLine | null} version={version} />;
   }
   if (source === "bosses") {
-    return <PlacesPlayer section={BOSSES} audioRef={audio} line={line as BossLine | null} version={version} />;
+    return <PlacesPlayer section={bosses} audioRef={audio} line={line as BossLine | null} version={version} />;
   }
   return <ReadablesPlayer audioRef={audio} line={line as BookLine | null} version={version} />;
 }
@@ -511,11 +514,26 @@ function EditDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const words = useUiText().sectionLabels;
   if (source === "places") {
-    return <LoreDialog section={PLACES} line={line as ZoneLine} onClose={onClose} onSaved={onSaved} />;
+    return (
+      <LoreDialog
+        section={placesSection([], words.places)}
+        line={line as ZoneLine}
+        onClose={onClose}
+        onSaved={onSaved}
+      />
+    );
   }
   if (source === "bosses") {
-    return <LoreDialog section={BOSSES} line={line as BossLine} onClose={onClose} onSaved={onSaved} />;
+    return (
+      <LoreDialog
+        section={bossesSection([], words.bosses)}
+        line={line as BossLine}
+        onClose={onClose}
+        onSaved={onSaved}
+      />
+    );
   }
   if (source === "readables") return <PageTextDialog line={line as BookLine} onClose={onClose} onSaved={onSaved} />;
   const done = () => {
