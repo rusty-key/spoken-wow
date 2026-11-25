@@ -179,6 +179,36 @@ Expect("...which still sees the other sex", select(2, GreetAs("Creature-0-0-0-0-
 Expect("a split creature is split", VO.DataModules:IsSplit(15906), true)
 Expect("an unsplit one is not", VO.DataModules:IsSplit(1), false)
 
+-- Who speaks a line, for another addon's narrator style (Spoken:GetSpeaker).
+do
+    local Spoken, quests = _G.Spoken, _G.SpokenEnv.Sources:Get("quests")
+    local function Speaker(guid, read)
+        local speaker = Spoken:GetSpeaker({ source = quests, unitGUID = guid }, read)
+        return table.concat({ tostring(speaker.creatureID), tostring(speaker.sex), tostring(speaker.body),
+            tostring(speaker.race) }, " ")
+    end
+    stub.world.npcGUID, stub.world.unitSex = REVELER, 2
+    Expect("a speaker whose model was read: its body and race, and the sex it is drawn as", Speaker(REVELER),
+        "15906 male gnome-male gnome")
+    stub.world.npcGUID = "Creature-0-0-0-0-1-7"; stub.world.modelFileID = nil; stub.world.unitSex = 2
+    Expect("one the packs voice as a single body: that body, no model read", Speaker("Creature-0-0-0-0-1-7"),
+        "1 male human-male human")
+    local fresh = "Creature-0-0-0-0-15906-8"
+    stub.world.npcGUID = fresh; stub.world.modelFileID = 119159
+    Expect("a split one with no model read: no body", Speaker(fresh), "15906 male nil nil")
+    local source = Spoken:RegisterSource("speaker-test", { title = "T", addon = "T", order = 99 })
+    local queued = H.Clip({ unitGUID = fresh })
+    source:Enqueue(queued)
+    local changed
+    local handle = Spoken:RegisterCallback("SPEAKER_CHANGED", function(clip) changed = clip end)
+    Speaker(fresh, true)
+    stub.FinishModelLoad()
+    Spoken:UnregisterCallback(handle)
+    Expect("...asked to read it, it does, and says so for its lines queued", tostring(changed == queued) .. " "
+        .. Speaker(fresh), "true 15906 male gnome-male gnome")
+    source:StopAll()
+end
+
 -- A pack built before bodies carries only the sex tables: the new addon still hears the sex.
 VO = InstallBodies({
     GossipFileLookupByNPCSex = { [68] = { [3] = { [LINE] = LINE .. "-human-female-official" } } },

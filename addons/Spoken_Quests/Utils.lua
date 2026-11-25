@@ -72,6 +72,19 @@ end
 
 local SEX_UNITS = { "questnpc", "npc", "target", "mouseover" }
 
+--- A unit token on screen that points at the GUID: the one being talked to, the target, the
+--- mouseover, or its nameplate. Nil where none does.
+---@param unitGUID string|nil
+---@return string|nil unit
+function Utils:UnitForGUID(unitGUID)
+    if not unitGUID then return nil end
+    local token = UnitTokenFromGUID and NotSecret(UnitTokenFromGUID(unitGUID))
+    if token then return token end
+    for _, unit in ipairs(SEX_UNITS) do
+        if NotSecret(UnitGUID(unit)) == unitGUID then return unit end
+    end
+end
+
 --- The sex (UnitSex: 2 male, 3 female) the unit a GUID names is drawn as, where a unit token
 --- on screen still points at it: the one being talked to, the target, the mouseover, or its
 --- nameplate, which is how a creature shouting as it aggroes is usually seen.
@@ -81,16 +94,8 @@ function Utils:GetSexForGUID(unitGUID)
     if not unitGUID or not UnitSex then
         return
     end
-    local token = UnitTokenFromGUID and NotSecret(UnitTokenFromGUID(unitGUID))
-    local sex = token and NotSecret(UnitSex(token))
-    if sex then
-        return sex
-    end
-    for _, unit in ipairs(SEX_UNITS) do
-        if NotSecret(UnitGUID(unit)) == unitGUID then
-            return NotSecret(UnitSex(unit))
-        end
-    end
+    local unit = self:UnitForGUID(unitGUID)
+    return unit and NotSecret(UnitSex(unit)) or nil
 end
 
 local SPEAKER_UNITS = { "target", "mouseover", "softenemy", "softinteract" }

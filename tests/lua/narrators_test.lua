@@ -215,5 +215,19 @@ do
     frame.HiddenActions = {}
 end
 
+---------------------------------------------------------------- who speaks
+do
+    local source = env.Sources:Register("speaking", { title = "S", addon = "S", order = 98,
+        speaker = function(clip, read) return { creatureID = 7, sex = "female", body = read and "nightelf-female" or nil } end })
+    local clip = H.Clip({ source = source, present = { portrait = { kind = "model", creatureID = 9 } } })
+    local known, read = Spoken:GetSpeaker(clip), Spoken:GetSpeaker(clip, true)
+    Expect("GetSpeaker answers what the line's module knows, the race from its body",
+        known.creatureID .. " " .. known.sex .. " " .. tostring(known.body) .. " / " .. read.body .. " " .. read.race,
+        "7 female nil / nightelf-female nightelf")
+    local plain = Spoken:GetSpeaker(H.Clip({ present = { portrait = { kind = "model", creatureID = 9 } } }))
+    Expect("...a line whose module knows nothing, its portrait's creature", plain.creatureID .. " " .. tostring(plain.race), "9 nil")
+    Expect("...and nothing for what is no line", Spoken:GetSpeaker(nil), nil)
+end
+
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end
 print("\nAll narrator tests passed")
