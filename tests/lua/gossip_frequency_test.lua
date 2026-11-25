@@ -219,12 +219,26 @@ for _, client in ipairs({ "11509", "16001" }) do
     stub.FireEvent("QUEST_GREETING")
     stub.Advance(0.3)
     Expect(client .. ": a greeting reads itself at Always", _G.Spoken:GetCurrent() ~= nil, true)
-    stub.ShowPanel(nil)
+    stub.HidePanels()
     stub.FireEvent("QUEST_FINISHED")
-    stub.Advance(0.1)
+    stub.Advance(0.6)
     Expect(client .. ": ...and a greeting stops as its quest frame closes",
         _G.Spoken:GetCurrent(), nil)
     stub.Advance(10)
+    Played(played)
+
+    -- A greeting is gossip to the player: it reads on while the player stays with its NPC.
+    stub.ShowPanel("QuestFrameGreetingPanel")
+    stub.FireEvent("QUEST_GREETING")
+    stub.Advance(0.3)
+    local greetingLine = _G.Spoken:GetCurrent()
+    stub.ShowPanel("ClassTrainerFrame")
+    stub.FireEvent("QUEST_FINISHED")
+    stub.Advance(0.6)
+    Expect(client .. ": a greeting keeps playing while its NPC's next window is open",
+        greetingLine ~= nil and _G.Spoken:GetCurrent() == greetingLine, true)
+    _G.Spoken:StopAll()
+    stub.HidePanels()
     Played(played)
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
 

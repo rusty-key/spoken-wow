@@ -723,8 +723,8 @@ local function GiveVoiceBack(event)
 end
 local currentQuestSoundData
 local currentGossipSoundData
--- The gossip line whose window closed, until GOSSIP_CLOSED's grace period decides if it stops.
-local closingGossipSoundData
+-- Gossip and greeting lines whose window closed, until the grace period decides if they stop.
+local closingGossipLines = setmetatable({}, { __mode = "k" })
 -- Once per Session reads this instead of hasSeenGossipForNPC, which still records every
 -- greeting. In memory only, so every NPC greets again after a reload or relog.
 local sessionGreetingsHeard = {}
@@ -1503,7 +1503,7 @@ function Addon:EndsWithWindow(soundData)
             end
         end
     end
-    return self:IsPageLine(soundData) or soundData == closingGossipSoundData
+    return self:IsPageLine(soundData) or soundData ~= nil and closingGossipLines[soundData] == true
 end
 
 function ResolveQuestID(source, questID, questTitle, targetName, questText, quiet)
@@ -2101,6 +2101,20 @@ function Addon:GOSSIP_SHOW(event, manual)
     Player:Enqueue(soundData, manual)
 end
 
+--- Stops a gossip or greeting line whose window closed, unless the player is still with its NPC.
+--- An option that opens the NPC's trainer, vendor or quest closes the gossip or greeting window
+--- too; the "npc" unit lasts while any of that NPC's windows is open, so it tells the two apart.
+function Addon:StopGossipOnceNPCLeft(soundData)
+    closingGossipLines[soundData] = true
+    self:ScheduleTimer(function()
+        closingGossipLines[soundData] = nil
+        if not soundData.unitGUID or Utils:GetNPCGUID() ~= soundData.unitGUID then
+            Player:Remove(soundData)
+        end
+        Player:RefreshConfig()
+    end, QUEST_ACCEPT_GRACE)
+end
+
 function Addon:QUEST_FINISHED()
     local audio = Addon.db.profile.Audio
     local waitForAccept = audio.StopAudioOnDisengage and not audio.StopOnAccept
@@ -2183,7 +2197,7 @@ function Addon:QUEST_FINISHED()
         end
         -- A quest giver's greeting is read in the quest frame, so it ends with the frame.
         if currentGossipSoundData and currentGossipSoundData.event == Enums.SoundEvent.QuestGreeting then
-            Player:Remove(currentGossipSoundData)
+            self:StopGossipOnceNPCLeft(currentGossipSoundData)
         end
     end
     currentQuestSoundData = nil
@@ -2194,20 +2208,8 @@ function Addon:QUEST_FINISHED()
 end
 
 function Addon:GOSSIP_CLOSED()
-    local soundData = currentGossipSoundData
-    if Addon.db.profile.Audio.StopAudioOnDisengage and soundData then
-        -- An option that opens the NPC's trainer, vendor or quest closes the gossip window too.
-        -- The "npc" unit lasts while any of that NPC's windows is open, so it tells the two apart.
-        closingGossipSoundData = soundData
-        self:ScheduleTimer(function()
-            if closingGossipSoundData == soundData then
-                closingGossipSoundData = nil
-            end
-            if not soundData.unitGUID or Utils:GetNPCGUID() ~= soundData.unitGUID then
-                Player:Remove(soundData)
-            end
-            Player:RefreshConfig()
-        end, QUEST_ACCEPT_GRACE)
+    if Addon.db.profile.Audio.StopAudioOnDisengage and currentGossipSoundData then
+        self:StopGossipOnceNPCLeft(currentGossipSoundData)
     end
     currentGossipSoundData = nil
     EndGreetingTextWait()
