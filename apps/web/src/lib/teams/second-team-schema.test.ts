@@ -137,6 +137,27 @@ describe("copy_team_settings", () => {
       { entries: [{ from: "a", to: "b" }], dictionaryId: null, versionId: null, syncedDigest: null, syncedAt: null },
     ]);
   });
+
+  it("copies the language's NPC directions, so the new team voices its NPCs as the old one does", async () => {
+    const npcId = 900_000_000 + Math.floor(Math.random() * 99_999_999);
+    await asSystem.query(
+      `insert into "npc" ("npcKind", "npcId", "provenance", "confirmed") values ('creature', $1, 'none', false)`,
+      [npcId],
+    );
+    try {
+      await asSystem.query(
+        `insert into "npc_direction_locale" ("teamId", "lang", "npcKind", "npcId", "direction")
+         values ($1, $2, 'creature', $3, '[sailor''s drawl]')`,
+        [teamA, lang, npcId],
+      );
+      await asSystem.query(`select copy_team_settings($1, $2, $3)`, [teamA, teamB, lang]);
+      expect(
+        await systemRows(`select "direction" from "npc_direction_locale" where "teamId" = $1 and "lang" = $2`, [teamB, lang]),
+      ).toEqual([{ direction: "[sailor's drawl]" }]);
+    } finally {
+      await asSystem.query(`delete from "npc" where "npcKind" = 'creature' and "npcId" = $1`, [npcId]);
+    }
+  });
 });
 
 describe("invite.joinTeamId", () => {

@@ -106,3 +106,24 @@ begin
   return v_moved;
 end
 $$;
+
+-- A second team of the language starts voicing its NPCs as the first one does.
+create or replace function "copy_team_settings"(p_from uuid, p_to uuid, p_lang text) returns void
+language plpgsql security invoker as $$
+begin
+  perform copy_team_roster(p_from, p_to);
+  insert into "generation_setting_locale"
+    ("teamId", "lang", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedBy")
+  select p_to, "lang", "modelId", "voiceSettings", "seedStrategy", "raceTags", "updatedBy"
+    from "generation_setting_locale" where "teamId" = p_from and "lang" = p_lang
+  on conflict do nothing;
+  insert into "pronunciation_lexicon_locale" ("teamId", "lang", "entries", "updatedBy")
+  select p_to, "lang", "entries", "updatedBy"
+    from "pronunciation_lexicon_locale" where "teamId" = p_from and "lang" = p_lang
+  on conflict do nothing;
+  insert into "npc_direction_locale" ("teamId", "lang", "npcKind", "npcId", "direction", "updatedBy")
+  select p_to, "lang", "npcKind", "npcId", "direction", "updatedBy"
+    from "npc_direction_locale" where "teamId" = p_from and "lang" = p_lang
+  on conflict do nothing;
+end
+$$;

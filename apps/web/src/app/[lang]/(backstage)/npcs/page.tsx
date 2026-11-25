@@ -59,7 +59,8 @@ export default async function Page({
         <p className="text-muted-foreground mt-1 mb-5 text-sm">
           {admin
             ? "Who every NPC is, and which voice reads each type. An answer here voices every line that NPC speaks, in every language; an NPC whose type no voice reads has none until it gets one."
-            : "Who every NPC is, and the direction its lines are performed with. A direction of this language's own replaces the global one in this language only."}
+            : "Who every NPC is, and the direction its lines are performed with."}
+          {ownDirections ? " A direction of this language's own replaces the global one in this language only." : null}
         </p>
       </Contained>
       <Wide>

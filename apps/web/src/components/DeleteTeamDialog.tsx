@@ -14,7 +14,7 @@ import type { DeletedTable, DeletionPreview } from "@/lib/teams/delete";
 /** A team's setup beside its voices, which the voices' line names. */
 const SETUP: readonly DeletedTable[] = [
   "voice_assignment", "voice_sample", "fish_reference", "generation_setting_locale", "generation_setting",
-  "lexicon_change", "pronunciation_lexicon_locale", "pronunciation_lexicon",
+  "npc_direction_locale", "lexicon_change", "pronunciation_lexicon_locale", "pronunciation_lexicon",
 ];
 
 /** Rows no other line names, so a team with only these is not "nothing but its name". */
