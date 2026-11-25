@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { useLang } from "@/components/LangProvider";
 import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 import Link from "@/components/LocaleLink";
 import { withLang } from "@/lib/lang";
 import { SOURCE_LABELS } from "@/lib/reports/reports";
@@ -29,7 +30,7 @@ export default function SortPicker({ counts }: { counts: Record<Source, { left: 
       () => null,
     );
     setBusy(null);
-    if (!response?.ok) return setError("Couldn't reset the skipped reports.");
+    if (!response?.ok) return setError(t.reports.couldntReset);
     router.refresh();
   }
 
@@ -53,14 +54,14 @@ export default function SortPicker({ counts }: { counts: Record<Source, { left: 
             </Link>
             {skipped > 0 ? (
               <div className="text-muted-foreground flex items-center justify-between border-t px-5 py-2.5 text-sm">
-                <span>{skipped} skipped</span>
+                <span>{fill(t.reports.skippedCount, { n: skipped })}</span>
                 <button
                   type="button"
                   disabled={busy !== null}
                   onClick={() => void reset(source)}
                   className="text-foreground -my-2 -mr-2 rounded-md px-2 py-2 font-medium underline-offset-2 hover:underline disabled:opacity-50"
                 >
-                  {busy === source ? "Resetting…" : "Reset"}
+                  {busy === source ? t.reports.resetting : t.reports.reset}
                 </button>
               </div>
             ) : null}

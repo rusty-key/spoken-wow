@@ -183,7 +183,7 @@ export default function ReportsBadge({ source, lineId, count, canTriage }: Props
                       disabled={busy === report.id}
                       onClick={() => void resolve(report.id, "open")}
                     >
-                      Reopen
+                      {t.reopenShort}
                     </Button>
                   )}
                 </div>

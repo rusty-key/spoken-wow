@@ -15,6 +15,7 @@ import { languageStates, textByTeam } from "@/lib/languages/store";
 import { isAdmin, langsWhere } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 import { readingLang } from "@/lib/lang-server";
+import { fill } from "@/lib/site-text/format";
 import { uiText } from "@/lib/ui-text";
 import { listAllTokens } from "@/lib/tokens/store";
 import { userSortOf } from "@/lib/users/sort";
@@ -71,8 +72,8 @@ export default async function Page({
           tab="team"
           description={
             global
-              ? `Who works on ${langName(team)} and what they may do there.`
-              : `You look after ${langName(team)}. Other languages have their own teams and admins; nothing here touches them.`
+              ? fill(t.teamLedeAdmin, { lang: langName(team) })
+              : fill(t.teamLedeOwn, { lang: langName(team) })
           }
         />
         <Contained className="pt-6">
@@ -113,15 +114,7 @@ export default async function Page({
         administered={administered}
         global
         tab="team"
-        description={
-          <>
-            Everyone who registers starts as a member. What somebody may do beyond reading is
-            granted one language at a time, English included; an admin may do everything
-            everywhere. Regenerating spends credits from the person&apos;s own ElevenLabs or
-            fish.audio account, so a grant is only half of it — the key is theirs, set on
-            their profile.
-          </>
-        }
+        description={t.usersLede}
       />
       <Wide>
         <UserSearch q={q} sort={sort} />
@@ -139,10 +132,7 @@ export default async function Page({
       </Wide>
       <Contained>
         <h2 className="mt-10 text-lg font-semibold">{t.languagesHeading}</h2>
-        <p className="text-muted-foreground mt-1 mb-4 text-sm">
-          A language switched on appears in everyone&apos;s header. One that is off can still
-          be opened by an admin at its address, to prepare it before anybody else sees it.
-        </p>
+        <p className="text-muted-foreground mt-1 mb-4 text-sm">{t.languagesLede}</p>
         <LanguageTable initial={languages.map((state) => ({ ...state, name: langName(state.code) }))} />
         <ApiTokenTable initial={tokens} />
       </Contained>
