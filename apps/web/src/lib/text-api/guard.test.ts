@@ -222,6 +222,46 @@ describe("requireToken", () => {
   });
 });
 
+describe("a packs token", () => {
+  const packsToken = (lang: "deDE" | null, access: TokenAccess = "none") =>
+    createToken({
+      userId: USER,
+      lang,
+      access,
+      generate: false,
+      packs: true,
+      label: "packs",
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+
+  it.each(["read", "write", "generate", "any"] as const)("with no language is refused for %s", async (need) => {
+    const { token } = await packsToken(null);
+    viewer.grants = [
+      { lang: "deDE", capability: "text" },
+      { lang: "deDE", capability: "regenerate" },
+    ];
+    const result = await requireToken(request(`Bearer ${token}`), { need });
+    expect(result.denied?.status).toBe(403);
+    expect(await result.denied?.json()).toEqual({ error: "this token only submits community packs" });
+  });
+
+  it("never runs the work of a text route", async () => {
+    const { token } = await packsToken(null);
+    let ran = false;
+    const response = await withToken(request(`Bearer ${token}`), { need: "any" }, async () => {
+      ran = true;
+      return new Response();
+    });
+    expect(response.status).toBe(403);
+    expect(ran).toBe(false);
+  });
+
+  it("that also reads text still reads it under its owner's grant", async () => {
+    const { token } = await packsToken("deDE", "read");
+    expect((await requireToken(request(`Bearer ${token}`), { need: "read" })).denied).toBeNull();
+  });
+});
+
 describe("writeLayer", () => {
   async function contextWith(grants: Grant[]): Promise<TokenContext> {
     const { token } = await make("write");

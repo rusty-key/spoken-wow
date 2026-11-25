@@ -129,3 +129,25 @@ sha256sum SpokenCommunity_elune-quests-de.zip
 
 Copy the 64 hex digits into the checksum field. The size in bytes is shown by `dir` on Windows and by
 `stat -c %s <file>` on Linux. Use the address of the release asset as the zip link.
+
+## Submit with the API
+
+A script can do what My packs does. On your [profile](https://spoken.quest/profile), under API tokens,
+create a token with Community packs ticked. It needs no language. Send it as
+`Authorization: Bearer <token>` with a JSON body:
+
+- `GET /api/v1/packs` returns `{ "packs": [...] }`, the packs you own.
+- `POST /api/v1/packs` creates a pack and submits its first version. The body has the fields of the
+  form: `id`, `lang`, `section`, `title`, `author`, `description`, `version`, `size`, `sha256`, `url`,
+  and optionally `homepage` and `license`. It returns the pack.
+- `POST /api/v1/packs/<id>/submissions` submits a new version of your pack. The body has the same
+  fields; `id`, `lang` and `section` are not needed. It returns the submission.
+
+Admins review these submissions as they review the form's. A refusal comes back as
+`{ "error": "...", "errors": { "<field>": "..." } }`, with `errors` only when a field breaks a rule:
+400 for a broken field, 409 when a version is already waiting or the pack id is taken, 404 for an
+unknown pack, 401 for a missing, expired or revoked token, and 403 for a token without Community
+packs or a pack that is not yours.
+
+`scripts/community/speed-pack.py` publishes this way. It builds faster or slower copies of Spoken's
+packs: [`docs/contributors/SPEED-PACKS.md`](../docs/contributors/SPEED-PACKS.md).

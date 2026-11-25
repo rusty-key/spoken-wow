@@ -2121,6 +2121,9 @@ const zhTW: Dictionary = {
   profile: {
     tokens: {
       copied: "請現在複製這個權杖，之後不會再顯示。",
+      packs: "社群語音包",
+      packsAbout:
+        "社群語音包權杖不需要語言。腳本可以用它在 /api/v1/packs 列出、建立和更新你的語音包，就像在「我的語音包」中操作一樣。",
       create: "建立權杖",
       generateOnMyKey: "用我的金鑰產生音訊",
       lastUsed: "上次使用",

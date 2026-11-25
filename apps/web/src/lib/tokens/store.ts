@@ -22,7 +22,7 @@ type Row = Omit<ApiToken, "createdAt" | "expiresAt" | "lastUsedAt" | "revokedAt"
   revokedAt: Date | null;
 };
 
-const COLUMNS = `t."id", t."userId", t."lang", t."access", t."generate", t."label", t."hint",
+const COLUMNS = `t."id", t."userId", t."lang", t."access", t."generate", t."packs", t."label", t."hint",
                  t."createdAt", t."expiresAt", t."lastUsedAt", t."revokedAt"`;
 
 function toToken({ createdAt, expiresAt, lastUsedAt, revokedAt, ...rest }: Row): ApiToken {
@@ -37,9 +37,10 @@ function toToken({ createdAt, expiresAt, lastUsedAt, revokedAt, ...rest }: Row):
 
 export async function createToken(args: {
   userId: string;
-  lang: Lang;
+  lang: Lang | null;
   access: TokenAccess;
   generate: boolean;
+  packs?: boolean;
   label: string;
   expiresAt: Date;
 }): Promise<{ token: string; row: ApiToken }> {
@@ -47,10 +48,10 @@ export async function createToken(args: {
 
   const token = `spk_${mintSecret()}`;
   const rows = await query<Row>(
-    `insert into "api_token" as t ("userId", "lang", "access", "generate", "label", "tokenHash", "hint", "expiresAt")
-     values ($1, $2, $3, $4, $5, $6, $7, $8)
+    `insert into "api_token" as t ("userId", "lang", "access", "generate", "packs", "label", "tokenHash", "hint", "expiresAt")
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      returning ${COLUMNS}`,
-    [args.userId, args.lang, args.access, args.generate, args.label, hashOf(token), token.slice(-4), args.expiresAt],
+    [args.userId, args.lang, args.access, args.generate, args.packs ?? false, args.label, hashOf(token), token.slice(-4), args.expiresAt],
   );
   return { token, row: toToken(rows[0]) };
 }
@@ -81,6 +82,14 @@ export async function findLiveToken(raw: string): Promise<(ApiToken & { role: st
   }
   const { role, ...row } = rows[0];
   return { ...toToken(row), role };
+}
+
+const BEARER = /^Bearer\s+(\S+)$/;
+
+/** The live token in the request's Authorization header, as findLiveToken gives it. */
+export async function bearerToken(request: Request): Promise<(ApiToken & { role: string | null }) | null> {
+  const raw = request.headers.get("authorization")?.match(BEARER)?.[1];
+  return raw ? findLiveToken(raw) : null;
 }
 
 export async function listTokens(userId: string): Promise<ApiToken[]> {

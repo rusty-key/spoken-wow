@@ -2129,6 +2129,9 @@ const koKR: Dictionary = {
   profile: {
     tokens: {
       copied: "지금 이 토큰을 복사하세요. 다시 표시되지 않습니다.",
+      packs: "커뮤니티 팩",
+      packsAbout:
+        "커뮤니티 팩 토큰에는 언어가 필요 없습니다. 스크립트가 이 토큰으로 /api/v1/packs에서 내 팩을 조회, 생성, 업데이트할 수 있으며, 내 팩에서 하는 것과 같습니다.",
       create: "토큰 만들기",
       generateOnMyKey: "내 키로 오디오 생성",
       lastUsed: "마지막 사용",

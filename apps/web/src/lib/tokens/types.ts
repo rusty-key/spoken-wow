@@ -6,9 +6,11 @@ export type TokenAccess = "none" | "read" | "write";
 export type ApiToken = {
   id: string;
   userId: string;
-  lang: Lang;
+  /** Null on a token that only submits community packs, which no language grant backs. */
+  lang: Lang | null;
   access: TokenAccess;
   generate: boolean;
+  packs: boolean;
   label: string;
   hint: string;
   createdAt: string;

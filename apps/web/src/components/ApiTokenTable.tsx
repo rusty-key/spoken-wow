@@ -41,8 +41,16 @@ export default function ApiTokenTable({ initial }: { initial: (ApiToken & { user
               <tr key={token.id}>
                 <td className="py-1.5">{token.userEmail}</td>
                 <td>{token.label}</td>
-                <td>{langName(token.lang)}</td>
-                <td>{accessLabel(token)}{token.generate ? `, ${words.generate}` : ""}</td>
+                <td>{token.lang ? langName(token.lang) : ""}</td>
+                <td>
+                  {[
+                    token.lang || token.access !== "none" ? accessLabel(token) : null,
+                    token.generate ? words.generate : null,
+                    token.packs ? t.profile.tokens.packs : null,
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
+                </td>
                 <td>{token.expiresAt.slice(0, 10)}</td>
                 <td>{token.lastUsedAt?.slice(0, 10) ?? words.neverUsed}</td>
                 <td className="text-right">
