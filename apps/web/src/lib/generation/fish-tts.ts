@@ -14,6 +14,9 @@
  * there than at any full stop, and neither [pause] nor [long pause] changes that. So each
  * paragraph is spoken on its own and the parts are joined with a silence of our choosing
  * (stitch.ts, which re-encodes, so the result measures right).
+ *
+ * Every request goes to the timed endpoint: it costs what /v1/tts costs and says when each
+ * word starts.
  */
 import { encode } from "@msgpack/msgpack";
 
@@ -22,6 +25,7 @@ import { fishConfig, type FishOptions } from "@/lib/voices/fish";
 import { classifyFish, failure, type Failure } from "./errors";
 import { PARAGRAPH_BREAK } from "./speakers/shape";
 import { stitchMp3 } from "./stitch";
+import type { WordStart } from "./word-times";
 
 /**
  * The silence between two paragraphs, in seconds.
@@ -87,7 +91,13 @@ export function buildFishPayload(request: FishSpeechRequest): Record<string, unk
 }
 
 export type FishSpeechResult =
-  | { ok: true; audio: Buffer; bytes: number }
+  | {
+      ok: true;
+      audio: Buffer;
+      bytes: number;
+      /** Each spoken word's start in `audio`, or null when fish.audio did not time all of it. */
+      words: WordStart[] | null;
+    }
   | { ok: false; failure: Failure };
 
 /**
@@ -125,24 +135,40 @@ export function paragraphs(request: FishSpeechRequest): FishSpeechRequest[] {
  * In turn rather than at once, because fish.audio limits the requests an account has in
  * flight and the batch's concurrency is already set to that limit. Any part failing fails the
  * line: half a line is not a take. The bytes are every part's, which is what is billed.
+ *
+ * A part's times start after every part and pause before it, each part measured as fish.audio
+ * timed it. One part without times leaves the whole line without: the words after it could
+ * not be placed.
  */
 export async function fishSpeech(
   request: FishSpeechRequest,
   options: FishOptions & { stitch?: typeof stitchMp3 } = {},
 ): Promise<FishSpeechResult> {
   const parts = paragraphs(request);
-  if (parts.length <= 1) return speakOnce(parts[0] ?? request, options);
+  if (parts.length <= 1) {
+    const spoken = await speakOnce(parts[0] ?? request, options);
+    return spoken.ok ? { ok: true, audio: spoken.audio, bytes: spoken.bytes, words: spoken.words } : spoken;
+  }
 
   const audio: Buffer[] = [];
   let bytes = 0;
+  let words: WordStart[] | null = [];
+  let offset = 0;
   for (const part of parts) {
     const spoken = await speakOnce(part, options);
     if (!spoken.ok) return spoken;
     audio.push(spoken.audio);
     bytes += spoken.bytes;
+    if (words && spoken.words && spoken.durationSec !== null) {
+      for (const word of spoken.words) words.push({ word: word.word, start: word.start + offset });
+      offset += spoken.durationSec + PARAGRAPH_PAUSE_SEC;
+    } else {
+      words = null;
+    }
   }
   try {
-    return { ok: true, audio: await (options.stitch ?? stitchMp3)(audio, PARAGRAPH_PAUSE_SEC), bytes };
+    const joined = await (options.stitch ?? stitchMp3)(audio, PARAGRAPH_PAUSE_SEC);
+    return { ok: true, audio: joined, bytes, words };
   } catch (error) {
     return {
       ok: false,
@@ -151,10 +177,11 @@ export async function fishSpeech(
   }
 }
 
-async function speakOnce(
-  request: FishSpeechRequest,
-  options: FishOptions,
-): Promise<FishSpeechResult> {
+type SpokenPart =
+  | { ok: true; audio: Buffer; bytes: number; words: WordStart[] | null; durationSec: number | null }
+  | { ok: false; failure: Failure };
+
+async function speakOnce(request: FishSpeechRequest, options: FishOptions): Promise<SpokenPart> {
   if (!options.apiKey) {
     // "auth" because it is fatal to a batch: every later job would fail the same way.
     return { ok: false, failure: failure("auth", "no fish.audio key was supplied for this request") };
@@ -164,7 +191,7 @@ async function speakOnce(
 
   let response: Response;
   try {
-    response = await fetchImpl(`${baseUrl}/v1/tts`, {
+    response = await fetchImpl(`${baseUrl}/v1/tts/stream/with-timestamp`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -191,24 +218,92 @@ async function speakOnce(
 
   // An error served with a 200 would otherwise be archived as an mp3 and play as silence.
   const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.startsWith("audio/")) {
+  if (!contentType.startsWith("text/event-stream")) {
     const raw = await response.text().catch(() => "");
     return {
       ok: false,
       failure: failure(
         "upstream",
-        `fish.audio answered 200 with ${contentType || "no content type"} rather than audio: ${raw.slice(0, 200)}`,
+        `fish.audio answered 200 with ${contentType || "no content type"} rather than an event stream: ${raw.slice(0, 200)}`,
       ),
     };
   }
 
-  const audio = Buffer.from(await response.arrayBuffer());
-  if (audio.byteLength === 0) {
-    return { ok: false, failure: failure("upstream", "fish.audio returned an empty response") };
+  let raw: string;
+  try {
+    raw = await response.text();
+  } catch (error) {
+    // The stream dropped part way: what arrived is part of a take, not a take.
+    return {
+      ok: false,
+      failure: failure("upstream", `fish.audio's stream broke off: ${message(error)}`),
+    };
+  }
+  const timed = readTimedStream(raw);
+  if (!timed || timed.audio.byteLength === 0) {
+    return {
+      ok: false,
+      failure: failure("upstream", `fish.audio's stream held no audio: ${raw.slice(0, 200)}`),
+    };
   }
 
   // What fish.audio bills: the UTF-8 bytes of the text, speaker tags included.
-  return { ok: true, audio, bytes: Buffer.byteLength(payload.text as string, "utf8") };
+  return { ok: true, ...timed, bytes: Buffer.byteLength(payload.text as string, "utf8") };
+}
+
+type TimedEvent = {
+  audio_base64: string;
+  alignment: { segments: { text: string; start: number }[]; audio_duration: number } | null;
+  chunk_seq: number;
+  chunk_audio_offset_sec: number;
+};
+
+/**
+ * The audio and word starts of a timed stream, or null when it is not one.
+ *
+ * Each text chunk's alignment arrives as snapshots, each replacing the last, timed from the
+ * chunk's own start. A chunk still without one at the end leaves the take without times.
+ */
+export function readTimedStream(
+  raw: string,
+): { audio: Buffer; words: WordStart[] | null; durationSec: number | null } | null {
+  const audio: Buffer[] = [];
+  const chunks = new Map<number, TimedEvent>();
+  for (const block of raw.split(/\r?\n\r?\n/)) {
+    const data = block
+      .split(/\r?\n/)
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).replace(/^ /, ""))
+      .join("\n");
+    if (!data) continue;
+    let event: TimedEvent;
+    try {
+      event = JSON.parse(data);
+    } catch {
+      return null;
+    }
+    if (typeof event?.audio_base64 !== "string" || typeof event.chunk_seq !== "number") return null;
+    audio.push(Buffer.from(event.audio_base64, "base64"));
+    const known = chunks.get(event.chunk_seq);
+    if (!known || event.alignment) chunks.set(event.chunk_seq, event);
+  }
+  if (audio.length === 0) return null;
+
+  const ordered = [...chunks.values()].sort((a, b) => a.chunk_seq - b.chunk_seq);
+  if (!ordered.every((chunk) => chunk.alignment)) {
+    return { audio: Buffer.concat(audio), words: null, durationSec: null };
+  }
+  const words: WordStart[] = [];
+  let durationSec = 0;
+  for (const { alignment, chunk_audio_offset_sec: offset } of ordered) {
+    for (const segment of alignment!.segments) {
+      // Neither a speaker tag nor a direction is a word anyone sees.
+      const word = segment.text.replace(/<\|[^|]*\|>/g, "").replace(/\[[^\]]*\]/g, "").trim();
+      if (word) words.push({ word, start: segment.start + offset });
+    }
+    durationSec = Math.max(durationSec, offset + alignment!.audio_duration);
+  }
+  return { audio: Buffer.concat(audio), words, durationSec };
 }
 
 function message(error: unknown): string {
