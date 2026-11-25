@@ -722,14 +722,58 @@ def gh(*args: str) -> str:
     return result.stdout
 
 
-def upload(repo: str, tag: str, title: str, notes: str, zip_path: Path) -> str:
+class ProgressReader:
+    """A file read in chunks that reports how much has been read, every tenth of the way."""
+
+    def __init__(self, path: Path, progress: Callable[[str], None]):
+        self.file = open(path, "rb")
+        self.size = path.stat().st_size
+        self.sent = 0
+        self.reported = -1
+        self.progress = progress
+
+    def read(self, amount: int = -1) -> bytes:
+        chunk = self.file.read(1 << 20 if amount is None or amount < 0 else amount)
+        self.sent += len(chunk)
+        tenth = self.sent * 10 // self.size if self.size else 10
+        if tenth > self.reported:
+            self.reported = tenth
+            self.progress(f"  uploading {self.sent / 1024 ** 2:.1f}/{self.size / 1024 ** 2:.1f} MB ({tenth * 10}%)")
+        return chunk
+
+    def close(self) -> None:
+        self.file.close()
+
+
+def upload(repo: str, tag: str, title: str, notes: str, zip_path: Path,
+           progress: Callable[[str], None] = print) -> str:
     """The zip as an asset of a new release, `tag`. Each version is its own release: the site
     refuses a version whose link is the live one's."""
-    exists = subprocess.run(["gh", "release", "view", tag, "--repo", repo], capture_output=True).returncode == 0
-    if exists:
-        gh("release", "upload", tag, str(zip_path), "--repo", repo, "--clobber")
-    else:
-        gh("release", "create", tag, str(zip_path), "--repo", repo, "--title", title, "--notes", notes)
+    if subprocess.run(["gh", "release", "view", tag, "--repo", repo], capture_output=True).returncode != 0:
+        gh("release", "create", tag, "--repo", repo, "--title", title, "--notes", notes)
+    release = json.loads(gh("api", f"repos/{repo}/releases/tags/{tag}"))
+    for asset in release.get("assets", []):
+        if asset["name"] == zip_path.name:
+            gh("api", "-X", "DELETE", f"repos/{repo}/releases/assets/{asset['id']}")
+    # gh release upload prints nothing until it is done, and a pack can take minutes to send.
+    body = ProgressReader(zip_path, progress)
+    request = urllib.request.Request(
+        f"https://uploads.github.com/repos/{repo}/releases/{release['id']}/assets?name={zip_path.name}",
+        data=body, method="POST", headers={
+            "Authorization": f"Bearer {gh('auth', 'token').strip()}",
+            "Content-Type": "application/zip",
+            "Content-Length": str(body.size),
+            "Accept": "application/vnd.github+json",
+        })
+    try:
+        with urllib.request.urlopen(request, timeout=600) as response:
+            response.read()
+    except urllib.error.HTTPError as error:
+        raise Refusal(f"GitHub refused the upload ({error.code}): {error.read().decode(errors='replace')[:300]}")
+    except urllib.error.URLError as error:
+        raise Refusal(f"could not reach GitHub: {error.reason}")
+    finally:
+        body.close()
     return f"https://github.com/{repo}/releases/download/{tag}/{zip_path.name}"
 
 
