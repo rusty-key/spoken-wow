@@ -564,7 +564,7 @@ describe('saveStore', () => {
     h.store.setToken('curseforge', CF_TOKEN)
     await h.svc.contributor.saveStore({ store: 'curseforge', projects: { [PLACES]: '5' }, gameVersions: '1.15.9' })
     const quests = languageFolders('deDE').find((f) => f !== PLACES)!
-    const view = await h.svc.contributor.saveStore(storeInput(JSON.parse(JSON.stringify(projectIdInput(quests, ' 6 ')))))
+    const view = await h.svc.contributor.saveStore(storeInput(projectIdInput(quests, ' 6 ')))
     expect(h.store.token('curseforge')).toBe(CF_TOKEN)
     expect(view.config).toMatchObject({ hasCfToken: true, gameVersions: '1.15.9', projects: { [PLACES]: '5', [quests]: '6' } })
   })

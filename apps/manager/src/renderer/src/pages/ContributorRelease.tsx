@@ -35,6 +35,8 @@ function StoreRelease({ store, gameId, lang, view, onDismiss }: { store: StoreId
   const [starting, setStarting] = useState(false)
   const [refusal, setRefusal] = useState('')
   const lastRun = view.lastRuns[store] ?? null
+  // A saved project id changes the rows, whichever page saved it.
+  const projectsKey = JSON.stringify(view.config.projects)
 
   useEffect(() => {
     let alive = true
@@ -48,7 +50,7 @@ function StoreRelease({ store, gameId, lang, view, onDismiss }: { store: StoreId
       alive = false
     }
     // Every run ends with a new result, a cancelled one too, whose job is already gone.
-  }, [gameId, lang, store, refresh, lastRun?.finishedAt])
+  }, [gameId, lang, store, refresh, lastRun?.finishedAt, projectsKey])
 
   const publish = async (only?: string): Promise<void> => {
     setStarting(true)
@@ -102,7 +104,7 @@ function StoreRelease({ store, gameId, lang, view, onDismiss }: { store: StoreId
       ) : (
         <ul className="list card contrib-rows">
           {rows.map((r) => (
-            <RowItem key={r.folder} row={r} store={store} storeBusy={busy} gameId={gameId} lang={lang} onUpload={() => void publish(r.folder)} onProjectSaved={() => setRefresh((n) => n + 1)} />
+            <RowItem key={r.folder} row={r} store={store} storeBusy={busy} gameId={gameId} lang={lang} onUpload={() => void publish(r.folder)} />
           ))}
         </ul>
       )}
@@ -150,7 +152,7 @@ function RunLine({ job, onDismiss }: { job: JobProgress; onDismiss: () => void }
   )
 }
 
-function RowItem({ row, store, storeBusy, gameId, lang, onUpload, onProjectSaved }: { row: ReleaseRow; store: StoreId; storeBusy: boolean; gameId: string; lang: string; onUpload: () => void; onProjectSaved: () => void }): ReactNode {
+function RowItem({ row, store, storeBusy, gameId, lang, onUpload }: { row: ReleaseRow; store: StoreId; storeBusy: boolean; gameId: string; lang: string; onUpload: () => void }): ReactNode {
   const uploadLabel = rowUploadLabel(row)
   const { state } = useStore()
   const [zipping, setZipping] = useState(false)
@@ -196,7 +198,7 @@ function RowItem({ row, store, storeBusy, gameId, lang, onUpload, onProjectSaved
         )}
       </div>
       <span className="muted contrib-hint">{rowHint(row.state, store)}</span>
-      {store === 'curseforge' && row.state === 'no-project' && <ProjectIdForm folder={row.folder} disabled={storeBusy} onSaved={onProjectSaved} />}
+      {row.state === 'no-project' && <ProjectIdForm folder={row.folder} disabled={storeBusy} />}
       {shownZip && (
         <div className="contrib-zip" role="status">
           <span className="contrib-hint">{S.contributor.zipReady(shownZip.name, formatBytes(shownZip.bytes))}</span>
@@ -219,7 +221,7 @@ function RowItem({ row, store, storeBusy, gameId, lang, onUpload, onProjectSaved
   )
 }
 
-function ProjectIdForm({ folder, disabled, onSaved }: { folder: string; disabled: boolean; onSaved: () => void }): ReactNode {
+function ProjectIdForm({ folder, disabled }: { folder: string; disabled: boolean }): ReactNode {
   const { actions } = useStore()
   const [id, setId] = useState('')
   const [saving, setSaving] = useState(false)
@@ -229,7 +231,6 @@ function ProjectIdForm({ folder, disabled, onSaved }: { folder: string; disabled
     setError('')
     try {
       actions.applyContributor(await api().contributorSaveStore(projectIdInput(folder, id)))
-      onSaved()
     } catch (e) {
       setError(errorText(e))
     } finally {
