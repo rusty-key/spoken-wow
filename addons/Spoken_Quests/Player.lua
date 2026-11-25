@@ -60,6 +60,8 @@ function Player:SourceOf(soundData)
     return self.source
 end
 
+local function SpeakerOf(clip) return DataModules:Speaker(clip) end
+
 --- This addon's clips, in queue order.
 function Player:Queued()
     local list = {}
@@ -476,6 +478,7 @@ function Player:Setup()
         testBeforeQueue = true,
         -- Its settings follow the profile chosen in Spoken's own settings.
         profiles = function() return Addon.db end,
+        speaker = SpeakerOf,
         -- Printed after Spoken's own by its Show Diagnostics.
         diagnostics = function() Options:PrintDiagnostics() end,
         onScreen = OnPage,
@@ -499,6 +502,7 @@ function Player:Setup()
         onScreen = OnPage,
         endsWithWindow = EndsWithWindow,
         profiles = function() return Addon.db end,
+        speaker = SpeakerOf,
         -- The voice packs that hold gossip.
         packs = function()
             local names = {}
@@ -524,6 +528,7 @@ function Player:Setup()
         noNarrator = true,
         testBeforeQueue = true,
         profiles = function() return Addon.db end,
+        speaker = SpeakerOf,
         packs = function()
             local names = {}
             for _, module in DataModules:GetPresentModules() do table.insert(names, module.Title) end

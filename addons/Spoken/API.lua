@@ -448,6 +448,34 @@ function Spoken:CreateActions(parent)
     return row
 end
 
+---@class SpokenSpeaker
+---@field creatureID? number
+---@field guid? string
+---@field sex? string   "male" | "female"
+---@field body? string  as the voice packs name it: "nightelf-female"
+---@field race? string  the body's race: "nightelf", "scourge"
+
+--- Public. Who speaks `clip`, as far as Spoken knows: each field nil where it does not. The body
+--- and race come from the voice packs, or from the speaker's model once Spoken has read it for its
+--- own needs; SPEAKER_CHANGED fires with the clip then, and may fire more than once for one line.
+--- Nil for anything but a clip. A copy, yours to keep.
+---@param clip SpokenClip
+---@return SpokenSpeaker?
+function Spoken:GetSpeaker(clip)
+    if type(clip) ~= "table" then return nil end
+    local source = clip.source
+    local known = {}
+    if source and type(source.speaker) == "function" then
+        local ok, answer = pcall(source.speaker, clip)
+        if ok and type(answer) == "table" then known = answer end
+    end
+    local portrait = clip.present and clip.present.portrait
+    return {
+        creatureID = known.creatureID or (portrait and portrait.creatureID),
+        guid = known.guid, sex = known.sex, body = known.body, race = known.race,
+    }
+end
+
 --- Public. Spoken's captions of the line shown, in `parent`: from its top left, `width` wide, with the
 --- player's Word Size, Rows at Once, Highlight Words and Type Words Out, scrolling as they are read.
 --- Returns the height they take, 0 where the line shows no words; call it again on each Update to
@@ -1462,6 +1490,7 @@ end
 --   CLIP_DROPPED       (clip, reason)      Spoken took it out unheard: "queue-limit" | "outranked" | "missing" | "refused" | an admit reason
 --   QUEUE_EMPTY        ()
 --   PART_SWITCHED      (key, on)           a part was switched on or off in Spoken's settings
+--   SPEAKER_CHANGED    (clip)              more is known of who speaks it (Spoken:GetSpeaker)
 --
 -- Module events, for Spoken's own modules:
 --   SOURCE_REGISTERED  (source)

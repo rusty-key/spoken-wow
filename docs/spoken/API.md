@@ -220,6 +220,7 @@ not a handle.
 | `CLIP_DROPPED` | `clip, reason` | Spoken took a queued line out itself, unheard. `reason` is `"queue-limit"`, `"outranked"`, `"missing"` (the client could not play the file), `"refused"`, or a module's own word. |
 | `QUEUE_EMPTY` | none | The last line left the queue. |
 | `PART_SWITCHED` | `key, on` | The player switched a part on or off in Spoken's settings. |
+| `SPEAKER_CHANGED` | `clip` | Spoken knows more of who speaks a queued line (`GetSpeaker`). |
 
 Spoken fires other events for its modules (`SOURCE_REGISTERED`, `CONTRIBUTE_SETTINGS_CHANGED`,
 `REPORT_SETTINGS_CHANGED`, `VOICE_PACKS_LOADED`, `COMPENDIUM_FONT_CHANGED`,
@@ -255,8 +256,12 @@ These give your window the parts Spoken's own windows have, drawn and kept curre
 The rest of what a window usually needs, all Public:
 
 - **The reading position:** `GetCaption()`, every frame, for a progress bar of your own (`progress`).
-- **Who and what:** the clip's `present.header` and `present.label`, and `present.portrait.creatureID`
-  for anything of your own about the speaker.
+- **Who and what:** the clip's `present.header` and `present.label`.
+- **Who speaks:** `Spoken:GetSpeaker(clip)` returns `{ creatureID, guid, sex, body, race }`, each
+  nil where Spoken does not know it: `sex` is `"male"` or `"female"`, `body` the voice packs' name
+  for it (`"nightelf-female"`), `race` its first part (`"nightelf"`, `"scourge"`). A body comes
+  from the packs or from a model Spoken read for its own needs; `SPEAKER_CHANGED (clip)` fires
+  when one arrives for a queued line, possibly more than once.
 - **Status:** `IsPaused()`, `GetWaitingCount()`, `GetHeldReason(clip)`, and `AUDIO_CHANGED` to
   redraw them.
 - **Controls:** `Pause()`, `Resume()`, `Skip()`, `Previous()` with `CanPrevious()`, `StopAll()`.

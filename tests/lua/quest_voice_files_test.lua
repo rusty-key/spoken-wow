@@ -179,6 +179,43 @@ Expect("...which still sees the other sex", select(2, GreetAs("Creature-0-0-0-0-
 Expect("a split creature is split", VO.DataModules:IsSplit(15906), true)
 Expect("an unsplit one is not", VO.DataModules:IsSplit(1), false)
 
+-- Who speaks a line, for another addon's narrator style (Spoken:GetSpeaker).
+do
+    local Spoken, quests = _G.Spoken, _G.SpokenEnv.Sources:Get("quests")
+    local function Speaker(guid)
+        local speaker = Spoken:GetSpeaker({ source = quests, unitGUID = guid })
+        return table.concat({ tostring(speaker.creatureID), tostring(speaker.sex), tostring(speaker.body),
+            tostring(speaker.race) }, " ")
+    end
+    stub.world.npcGUID, stub.world.unitSex = REVELER, 2
+    Expect("a speaker whose model was read: its body and race, and the sex it is drawn as", Speaker(REVELER),
+        "15906 male gnome-male gnome")
+    stub.world.npcGUID = "Creature-0-0-0-0-1-7"; stub.world.modelFileID = nil; stub.world.unitSex = 2
+    Expect("one the packs voice as a single body: that body, no model read", Speaker("Creature-0-0-0-0-1-7"),
+        "1 male human-male human")
+    stub.world.npcGUID = "Creature-0-0-0-0-1-8"; stub.world.unitSex = 3
+    Expect("...but not where it is drawn as the other sex", Speaker("Creature-0-0-0-0-1-8"), "1 female nil nil")
+    local fresh = "Creature-0-0-0-0-15906-8"
+    stub.world.npcGUID = fresh; stub.world.modelFileID = nil; stub.world.unitSex = 2
+    local prime, primes = VO.NPCModel.Prime, 0
+    VO.NPCModel.Prime = function(...) primes = primes + 1; return prime(...) end
+    Expect("a split one with no model read: no body, and no read started for asking",
+        Speaker(fresh) .. " " .. primes, "15906 male nil nil 0")
+    VO.NPCModel.Prime = prime
+    local queued = H.Clip({ unitGUID = fresh })
+    quests:Enqueue(queued)
+    local changed
+    local handle = Spoken:RegisterCallback("SPEAKER_CHANGED", function(clip) changed = clip end)
+    -- The model read Spoken Quests starts for its own needs, as it does for a split creature.
+    stub.world.modelFileID = 119159
+    VO.NPCModel:Prime(fresh, "npc")
+    stub.FinishModelLoad()
+    Spoken:UnregisterCallback(handle)
+    Expect("...once Spoken has read it, its body, said for its lines queued", tostring(changed == queued) .. " "
+        .. Speaker(fresh), "true 15906 male gnome-male gnome")
+    quests:StopAll()
+end
+
 -- A pack built before bodies carries only the sex tables: the new addon still hears the sex.
 VO = InstallBodies({
     GossipFileLookupByNPCSex = { [68] = { [3] = { [LINE] = LINE .. "-human-female-official" } } },

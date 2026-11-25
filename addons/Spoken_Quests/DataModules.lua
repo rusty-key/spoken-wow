@@ -1063,6 +1063,38 @@ function DataModules:IsSplit(id)
     return (FirstIn("GossipFileLookupByNPCBody", id) or FirstIn("GossipFileLookupByNPCSex", id)) ~= nil
 end
 
+local SEX_NAMES = { [2] = "male", [3] = "female" }
+
+--- Who speaks a line, for Spoken:GetSpeaker: the creature, the sex it is drawn as, and its body,
+--- from its model where it was read or, for a creature the packs voice as one body only, that
+--- body. It reads no model: the probe reads one NPC at a time, and the voice files need its reads.
+---@param soundData SoundData
+---@return table|nil
+function DataModules:Speaker(soundData)
+    local id, sex, body = CreatureBody(soundData)
+    if not id then return nil end
+    if not body then
+        local bodies = FirstIn("NPCBodiesByNPCID", id)
+        local only = bodies and next(bodies)
+        -- The one body it is voiced as, unless it is drawn as another sex: a creature can be drawn
+        -- as a body its voice is not (IsOtherBody).
+        if only and next(bodies, only) == nil and (not sex or only:match("%-(%a+)$") == SEX_NAMES[sex]) then
+            body = only
+        end
+    end
+    -- Bodies are named "race-sex" ("nightelf-female") by the pack builder.
+    return { creatureID = id, guid = soundData.unitGUID, sex = SEX_NAMES[sex], body = body,
+        race = body and body:match("^(%a+)%-") or nil }
+end
+
+-- A speaker's model in with a body: Spoken tells whoever asked about its lines still queued.
+table.insert(NPCModel.onLoaded, function(guid)
+    if not Utils:GetBodyForGUID(guid) then return end
+    for _, clip in ipairs(Player:Queued()) do
+        if clip.unitGUID == guid then SpokenEnv.Callbacks:Fire("SPEAKER_CHANGED", clip) end
+    end
+end)
+
 --- Whether any installed pack lists a creature's bodies, so that its model is worth reading.
 ---@param id number
 ---@return boolean

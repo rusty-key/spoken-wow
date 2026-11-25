@@ -43,7 +43,7 @@ local PUBLIC = {
     "RegisterText", "RegisterInterfaceStrings",
     "HasLog", "Log", "IsLogOn", "AddLogSource", "AddDiagnostics",
     "RegisterNarrator", "SuggestNarrator", "Previous", "CanPrevious", "GetWaitingCount", "GetHeldReason",
-    "CreateControl", "ShowCaptions", "CreatePortrait", "CreateActions",
+    "CreateControl", "ShowCaptions", "CreatePortrait", "CreateActions", "GetSpeaker",
 }
 do
     local marked, pending = {}, false

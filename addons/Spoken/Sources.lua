@@ -30,6 +30,7 @@ SourceMethods.__index = SourceMethods
 ---@field textOnly? boolean   -- its lines have no recording: each shows in the narrator for its length
 ---@field profiles? fun():table -- its AceDB object, switched with Spoken's own profile
 ---@field diagnostics? fun()  -- prints its part of `/spoken diagnostics`, after Spoken's own
+---@field speaker? fun(clip):table? -- what it knows of a line's speaker: creatureID, guid, sex, body, race
 
 ---@param key string
 ---@param info SpokenSourceInfo
@@ -62,6 +63,7 @@ function Sources:Register(key, info)
         profiles = info.profiles,
         -- What the module prints for a report, after Spoken's own (Options:ShowDiagnostics).
         diagnostics = info.diagnostics,
+        speaker = info.speaker,
         gates = {},
     }, SourceMethods)
     self.byKey[key] = source
