@@ -150,6 +150,20 @@ hold = nil
 stub.Advance(1.05)
 Expect("a line a gate cut off plays on from its sentence once it opens", world.played[#world.played], Piece(line, 2))
 
+Fresh()
+hold = nil
+quests:AddGate(function() return hold end)
+line = H.Clip({ pieces = "2 3 1.5" })
+quests:Enqueue(line)
+stub.Advance(2.5)
+hold = "in combat"
+Q:RecheckGates(quests)
+Q:StopQueue()
+hold = nil
+Q:ResumeQueue()
+stub.Advance(1.05)
+Expect("...and so does one Stop then stopped, in the sentence the gate cut", world.played[#world.played], Piece(line, 2))
+
 ---------------------------------------------------------------- the client cutting the voice
 Fresh()
 local playing = true
@@ -346,6 +360,17 @@ local released = pcall(T.Release, T)
 Expect("captions released while the window still turns to the next line hold it again, without an error",
     tostring(released) .. " " .. tostring(T.held), "true true")
 T.holdFor, T.held, T.heldStart = holdFor, nil, nil
+
+-- Released after pieces went by while held: the words pick up where the voice began, plus the hold.
+Fresh()
+T = env.Transcript
+line = Said({ pieces = "2 2 2" })
+T:Hold()
+quests:Enqueue(line)
+T:Started(line)
+stub.Advance(2.5)
+T:Release()
+Expect("captions released after a piece went by count the hold once", string.format("%.1f", T:AudioElapsed()), "2.5")
 
 ---------------------------------------------------------------- Pause only where a line is kept as pieces
 Fresh()

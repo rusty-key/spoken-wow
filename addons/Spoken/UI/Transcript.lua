@@ -273,7 +273,7 @@ function Transcript:Release()
     local start = self.heldStart
     self.heldStart = nil
     if start then
-        self:Started(start.clip)
+        self:Started(start.clip, start.offset)
         -- Counted from when it really started, held: the voice has gone on meanwhile. Unless
         -- Started held the words again, for a window still turning: then it is not started yet.
         if not self.held and self.startedAt then
@@ -349,7 +349,8 @@ local CLAUSE_MARGIN = 1.0
 --- Where the words pick up when the line resumes `offset` seconds in, and the word there. A piece
 --- starts in the pause before its sentence or clause, still the last one's time, so the time moves
 --- to its first word: timed, the first word after the pause; estimated, the nearest sentence start,
---- or a clause start much nearer (CLAUSE_MARGIN).
+--- or a clause start much nearer (CLAUSE_MARGIN). Timed, that is at most the cut's lead (0.25 s,
+--- apps/web/src/lib/takes/cuts.ts) ahead of the voice, and the word lit is never the one before.
 function Transcript:ResumeAnchor(offset)
     local words, length = self.words, tonumber(self.clip and self.clip.length)
     if not words or #words == 0 or not length or length <= 0 or not self.totalWeight or self.totalWeight <= 0 then
@@ -393,11 +394,15 @@ function Transcript:ShowWord(index)
     end
 end
 
-function Transcript:Started(clip)
+--- `heldOffset`, where a held start's voice began: by its release the line may be pieces further on.
+function Transcript:Started(clip, heldOffset)
     if not self.held and HeldFor(self, clip) then self.held = true end
-    if self.held then self.heldStart = { clip = clip, at = GetTime() }; return end
+    if self.held then
+        self.heldStart = { clip = clip, at = GetTime(), offset = SoundQueue:PieceOffset(clip) }
+        return
+    end
     -- A line kept as pieces resumes from its sentence, and its words pick up there, not at the top.
-    local offset = SoundQueue:PieceOffset(clip)
+    local offset = heldOffset or SoundQueue:PieceOffset(clip)
     -- The same words resumed stay laid out as they are: laid out again they start at the top.
     local resumed = offset > 0 and clip == self.clip and self.words ~= nil
     if not resumed then self:SetClip(clip) end
@@ -434,7 +439,7 @@ function Transcript:Sync()
     local current = PlayerFrame and PlayerFrame:Head() or SoundQueue:GetCurrentSound()
     -- A window turning to it by fading out first: these words stay until it has.
     if HeldFor(self, current) then
-        self.held, self.heldStart = true, { clip = current, at = GetTime() }
+        self.held, self.heldStart = true, { clip = current, at = GetTime(), offset = SoundQueue:PieceOffset(current) }
         return
     end
     if current ~= self.clip then

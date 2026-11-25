@@ -339,6 +339,10 @@ end
 -- With `quiet`, its stopCallback does not run: the line stays queued, and a source reads that
 -- callback as the line being dropped (a book drops the pages after it).
 local function StopKeeping(head, quiet)
+    if head.nextSoundTimer then
+        -- Where the voice was, for a Stop that follows: once stopped, VoiceElapsed runs on.
+        head.haltedAt = SoundQueue:VoiceElapsed(head)
+    end
     KeepPlace(head)
     SoundUtils:StopSound(head)
     CancelSpeakTimer(head)
