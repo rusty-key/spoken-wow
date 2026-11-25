@@ -341,3 +341,14 @@ def test_a_pack_with_a_version_waiting_is_left_alone(tmp_path, monkeypatch, caps
         "maker-quests-enus-x200": {"live": None, "pending": {"version": "2.5.0"}}})
     assert code == 1 and calls == [] and uploads == []
     assert "waiting for review" in capsys.readouterr().err
+
+
+def test_an_upload_reports_its_progress_every_tenth(tmp_path):
+    zip_path = tmp_path / "pack.zip"
+    zip_path.write_bytes(b"x" * 1000)
+    lines = []
+    body = speed_pack.ProgressReader(zip_path, lines.append)
+    while body.read(64):
+        pass
+    body.close()
+    assert [line.split("(")[1] for line in lines] == [f"{n}%)" for n in range(0, 101, 10)]
