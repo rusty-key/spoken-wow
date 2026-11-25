@@ -36,7 +36,8 @@ function Callbacks:Fire(event, a, b, c)
     if not list then
         return
     end
-    for _, handle in ipairs(list) do
+    -- A copy: a handler that unregisters itself would shift the live list and skip the next one.
+    for _, handle in ipairs({ unpack(list) }) do
         local ok, err = pcall(handle.fn, a, b, c)
         if not ok then
             table.insert(self.errors, event .. ": " .. tostring(err))

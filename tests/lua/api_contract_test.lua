@@ -402,12 +402,25 @@ do
     Expect("RegisterStoryTeller refuses a teller without Keys and Clip",
         Raises(function() Spoken:RegisterStoryTeller("boundary", { source = src }) end), true)
     Spoken:RegisterStoryTeller("boundary", teller)
-    Expect("...and a second teller of one kind", Raises(function() Spoken:RegisterStoryTeller("boundary", teller) end), true)
-    Expect("RegisterBullet refuses an id already taken",
-        Raises(function() Spoken:RegisterBullet("contract-bullet", "Interface\\Y", 12) end), true)
-    Expect("RegisterPortraitRenderer refuses a kind already drawn, Spoken's own included",
-        tostring(Raises(function() Spoken:RegisterPortraitRenderer("contract", {}) end)) .. " "
-        .. tostring(Raises(function() Spoken:RegisterPortraitRenderer("model", {}) end)), "true true")
+    -- Another addon may take a name first; a module registering it later must still load.
+    local other = { source = src, Keys = function() return {} end, Clip = function() end }
+    Expect("a second teller of one kind replaces the first, without raising",
+        tostring(pcall(Spoken.RegisterStoryTeller, Spoken, "boundary", other)), "true")
+    Expect("a bullet id taken again is replaced, without raising",
+        tostring(pcall(Spoken.RegisterBullet, Spoken, "contract-bullet", "Interface\\Y", 12)) .. " "
+        .. Spoken:GetBullet("contract-bullet").texture, "true Interface\\Y")
+    local renderer = {}
+    Expect("a portrait renderer's kind taken again is replaced, without raising",
+        tostring(pcall(Spoken.RegisterPortraitRenderer, Spoken, "contract", renderer)) .. " "
+        .. tostring(Spoken:GetPortraitRenderer("contract") == renderer), "true true")
+
+    local ran = {}
+    local first
+    first = Spoken:RegisterCallback("QUEUE_EMPTY", function() ran[#ran + 1] = "first"; Spoken:UnregisterCallback(first) end)
+    local second = Spoken:RegisterCallback("QUEUE_EMPTY", function() ran[#ran + 1] = "second" end)
+    SpokenEnv.Callbacks:Fire("QUEUE_EMPTY")
+    Spoken:UnregisterCallback(second)
+    Expect("a handler that unregisters itself leaves the next one to run", table.concat(ran, " "), "first second")
 
     Expect("IsPartOn answers false for what is no part's key", tostring(Spoken:IsPartOn(nil)) .. " "
         .. tostring(Spoken:IsPartOn(5)) .. " " .. tostring(Spoken:IsPartOn("quests")), "false false true")

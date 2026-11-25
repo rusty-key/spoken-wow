@@ -23,6 +23,12 @@ local function Require(ok, message)
     if not ok then error("Spoken: " .. message, 3) end
 end
 
+-- A name taken twice replaces the first rather than raising: the modules register late, at their
+-- own setup, and another addon that took the name first must not stop one from loading.
+local function Replacing(registry, what, name)
+    if registry[name] then Developer:Log("api", "%s %q registered again; the new one replaces it", what, name) end
+end
+
 -- The shared dungeon data is Forever's, which holds every instance of the Classic-era clients.
 -- The vanilla instances end at map 533; every later one is Season of Discovery's or Forever's own.
 local LAST_VANILLA_DUNGEON = 533
@@ -190,11 +196,10 @@ function Spoken:RegisterOptionalAction(id, label)
 end
 
 --- A row bullet, registered once by a feature addon so SpokenReadables needs no change to
---- the player to have one of its own. An id already taken raises: two modules would otherwise
---- draw each other's.
+--- the player to have one of its own.
 function Spoken:RegisterBullet(id, texture, size)
     Require(type(id) == "string", "RegisterBullet needs a string id")
-    Require(not Bullets[id], format("a bullet %q is already registered", id))
+    Replacing(Bullets, "bullet", id)
     Bullets[id] = { texture = texture, size = size }
 end
 
@@ -203,11 +208,10 @@ function Spoken:GetBullet(id)
 end
 
 --- A portrait renderer: { Acquire(portrait, parent) -> frame, Update(frame, clip) -> bool,
---- Release(frame) }. "texture", "model" and "none" ship with the player, and a kind already drawn
---- raises.
+--- Release(frame) }. "texture", "model" and "none" ship with the player.
 function Spoken:RegisterPortraitRenderer(kind, renderer)
     Require(type(kind) == "string" and type(renderer) == "table", "RegisterPortraitRenderer needs a kind and a renderer")
-    Require(not Renderers[kind], format("a portrait renderer %q is already registered", kind))
+    Replacing(Renderers, "portrait renderer", kind)
     Renderers[kind] = renderer
 end
 
@@ -1096,13 +1100,12 @@ local storyTellers = {}
 
 --- Who tells the stories of `kind`. `teller.source` is the module's source;
 --- `teller.Keys(id)` lists the clip keys of the story `id`, a story per boss of an encounter; and
---- `teller.Clip(id, key)` builds the clip of one, or nil where it cannot be played now. A second
---- teller of one kind raises: the first would stop answering without a word.
+--- `teller.Clip(id, key)` builds the clip of one, or nil where it cannot be played now.
 function Spoken:RegisterStoryTeller(kind, teller)
     Require(type(kind) == "string" and type(teller) == "table" and type(teller.source) == "table"
         and type(teller.Keys) == "function" and type(teller.Clip) == "function",
         "RegisterStoryTeller needs a kind and a teller with source, Keys and Clip")
-    Require(not storyTellers[kind], format("a teller of %q stories is already registered", kind))
+    Replacing(storyTellers, "story teller", kind)
     storyTellers[kind] = teller
 end
 
