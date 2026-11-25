@@ -474,9 +474,8 @@ function Spoken:GetSpeaker(clip, read)
     local portrait = clip.present and clip.present.portrait
     local speaker = {
         creatureID = known.creatureID or (portrait and portrait.creatureID),
-        guid = known.guid, sex = known.sex, body = known.body,
+        guid = known.guid, sex = known.sex, body = known.body, race = known.race,
     }
-    speaker.race = type(speaker.body) == "string" and speaker.body:match("^(%a+)%-") or nil
     return speaker
 end
 

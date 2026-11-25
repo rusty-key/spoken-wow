@@ -1063,18 +1063,51 @@ function DataModules:IsSplit(id)
     return (FirstIn("GossipFileLookupByNPCBody", id) or FirstIn("GossipFileLookupByNPCSex", id)) ~= nil
 end
 
---- The bodies a creature is voiced as, from the first installed pack that lists them, or nil.
----@param id number
----@return table<string, boolean>|nil
-function DataModules:BodiesOf(id)
-    return FirstIn("NPCBodiesByNPCID", id)
+local SEX_NAMES = { [2] = "male", [3] = "female" }
+-- The speakers whose model Speaker asked to read: once each, since a second ask of one still
+-- loading counts towards giving it up, and an ask for another settles the one in flight.
+local speakerReads = {}
+
+--- Who speaks a line, for Spoken:GetSpeaker: the creature, the sex it is drawn as, and its body,
+--- from its model or, for a creature the packs voice as one body only, that body. With `read`, the
+--- model of a speaker on screen with no body is read, once, and SPEAKER_CHANGED fires once it is in.
+---@param soundData SoundData
+---@param read boolean
+---@return table|nil
+function DataModules:Speaker(soundData, read)
+    local id, sex, body = CreatureBody(soundData)
+    if not id then return nil end
+    if not body then
+        local bodies = FirstIn("NPCBodiesByNPCID", id)
+        local only = bodies and next(bodies)
+        if only and next(bodies, only) == nil then body = only end
+    end
+    local guid = soundData.unitGUID
+    if not body and read and not speakerReads[guid] then
+        local unit = Utils:UnitForGUID(guid)
+        if unit then
+            speakerReads[guid] = true
+            NPCModel:Prime(guid, unit)
+        end
+    end
+    -- Bodies are named "race-sex" ("nightelf-female") by the pack builder.
+    return { creatureID = id, guid = guid, sex = SEX_NAMES[sex], body = body,
+        race = body and body:match("^(%a+)%-") or nil }
 end
+
+-- A speaker's model in with a body: Spoken tells whoever asked about its lines still queued.
+table.insert(NPCModel.onLoaded, function(guid)
+    if not Utils:GetBodyForGUID(guid) then return end
+    for _, clip in ipairs(Spoken:GetQueue()) do
+        if clip.unitGUID == guid then SpokenEnv.Callbacks:Fire("SPEAKER_CHANGED", clip) end
+    end
+end)
 
 --- Whether any installed pack lists a creature's bodies, so that its model is worth reading.
 ---@param id number
 ---@return boolean
 function DataModules:HasBodies(id)
-    return self:BodiesOf(id) ~= nil
+    return FirstIn("NPCBodiesByNPCID", id) ~= nil
 end
 
 --- A greeting's table names its speaker's own voice's file, `{hash}-{voice}`: the line's own

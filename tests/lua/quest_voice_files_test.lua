@@ -207,6 +207,18 @@ do
     Expect("...asked to read it, it does, and says so for its lines queued", tostring(changed == queued) .. " "
         .. Speaker(fresh), "true 15906 male gnome-male gnome")
     source:StopAll()
+    -- A narrator asks on every update: asking again while the model loads must not give it up.
+    local again = "Creature-0-0-0-0-15906-9"
+    -- The model arrives only once the load finishes, as on the client.
+    stub.world.npcGUID = again; stub.world.modelFileID = nil
+    local prime, primes = VO.NPCModel.Prime, 0
+    VO.NPCModel.Prime = function(...) primes = primes + 1; return prime(...) end
+    for _ = 1, 4 do Speaker(again, true) end
+    VO.NPCModel.Prime = prime
+    stub.world.modelFileID = 119159
+    stub.FinishModelLoad()
+    Expect("...asked again and again while it loads, it starts the read once, and reads it",
+        primes .. " " .. Speaker(again), "1 15906 male gnome-male gnome")
 end
 
 -- A pack built before bodies carries only the sex tables: the new addon still hears the sex.

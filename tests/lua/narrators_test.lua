@@ -218,10 +218,12 @@ end
 ---------------------------------------------------------------- who speaks
 do
     local source = env.Sources:Register("speaking", { title = "S", addon = "S", order = 98,
-        speaker = function(clip, read) return { creatureID = 7, sex = "female", body = read and "nightelf-female" or nil } end })
+        speaker = function(clip, read)
+            return { creatureID = 7, sex = "female", body = read and "nightelf-female" or nil, race = read and "nightelf" or nil }
+        end })
     local clip = H.Clip({ source = source, present = { portrait = { kind = "model", creatureID = 9 } } })
     local known, read = Spoken:GetSpeaker(clip), Spoken:GetSpeaker(clip, true)
-    Expect("GetSpeaker answers what the line's module knows, the race from its body",
+    Expect("GetSpeaker answers what the line's module knows",
         known.creatureID .. " " .. known.sex .. " " .. tostring(known.body) .. " / " .. read.body .. " " .. read.race,
         "7 female nil / nightelf-female nightelf")
     local plain = Spoken:GetSpeaker(H.Clip({ present = { portrait = { kind = "model", creatureID = 9 } } }))
