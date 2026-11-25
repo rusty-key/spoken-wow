@@ -4,7 +4,9 @@ import { Check, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
+import { useUiText } from "@/components/UiTextProvider";
 import { DAY_TIME, useLocalDates } from "@/components/useLocalDates";
+import { fill } from "@/lib/site-text/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -37,25 +39,21 @@ function sizeOf(bytes: number): string {
   return `${bytes.toLocaleString("en-US")} bytes (${readable})`;
 }
 
-const FIELDS: { key: keyof PackFields; label: string; show?: (value: string) => ReactNode }[] = [
-  { key: "title", label: "Title" },
-  { key: "author", label: "Author" },
-  { key: "description", label: "Description", show: (value) => <span className="whitespace-pre-wrap">{value}</span> },
-  { key: "version", label: "Version", show: (value) => <span className="font-mono">{value}</span> },
-  { key: "size", label: "Size", show: (value) => <span className="tabular-nums">{sizeOf(Number(value))}</span> },
-  {
-    key: "sha256",
-    label: "SHA-256",
-    show: (value) => <span className="font-mono text-xs [overflow-wrap:anywhere]">{value}</span>,
-  },
-  { key: "url", label: "Zip link", show: link },
-  { key: "homepage", label: "Homepage", show: link },
-  { key: "license", label: "License" },
-];
+type FieldKey = keyof PackFields;
+const FIELD_KEYS: FieldKey[] = ["title", "author", "description", "version", "size", "sha256", "url", "homepage", "license"];
+const SHOWN: Partial<Record<FieldKey, (value: string) => ReactNode>> = {
+  description: (value) => <span className="whitespace-pre-wrap">{value}</span>,
+  version: (value) => <span className="font-mono">{value}</span>,
+  size: (value) => <span className="tabular-nums">{sizeOf(Number(value))}</span>,
+  sha256: (value) => <span className="font-mono text-xs [overflow-wrap:anywhere]">{value}</span>,
+  url: link,
+  homepage: link,
+};
 
-function Value({ field, value }: { field: (typeof FIELDS)[number]; value: string | number | null }) {
-  if (value === null || value === "") return <span className="text-muted-foreground">none</span>;
-  return field.show ? field.show(String(value)) : <>{value}</>;
+function Value({ field, value, none }: { field: FieldKey; value: string | number | null; none: string }) {
+  if (value === null || value === "") return <span className="text-muted-foreground">{none}</span>;
+  const show = SHOWN[field];
+  return show ? show(String(value)) : <>{value}</>;
 }
 
 /**
@@ -66,16 +64,17 @@ function Value({ field, value }: { field: (typeof FIELDS)[number]; value: string
  * thing worth a second look.
  */
 export default function PackQueue({ pending, names }: { pending: Pending[]; names: Record<string, string> }) {
+  const t = useUiText().packs.admin;
   return (
     <section aria-labelledby="pack-queue">
       <h2 id="pack-queue" className="flex items-baseline gap-2 text-lg font-semibold">
-        Waiting for review
+        {t.queueTitle}
         {pending.length > 0 && (
           <span className="text-muted-foreground text-sm font-normal tabular-nums">{pending.length}</span>
         )}
       </h2>
       {pending.length === 0 ? (
-        <p className="text-muted-foreground mt-3 rounded-lg border border-dashed p-6 text-sm">Nothing waiting.</p>
+        <p className="text-muted-foreground mt-3 rounded-lg border border-dashed p-6 text-sm">{t.nothingWaiting}</p>
       ) : (
         <ul className="mt-3 space-y-4">
           {pending.map((submission) => (
@@ -88,6 +87,8 @@ export default function PackQueue({ pending, names }: { pending: Pending[]; name
 }
 
 function QueueItem({ submission, names }: { submission: Pending; names: Record<string, string> }) {
+  const text = useUiText().packs;
+  const t = text.admin;
   const router = useRouter();
   const toast = useToast();
   const when = useLocalDates();
@@ -109,11 +110,15 @@ function QueueItem({ submission, names }: { submission: Pending; names: Record<s
     if (result.ok) {
       toast({
         tone: "info",
-        title: decision === "approve" ? `Approved ${name}.` : `Rejected ${name}.`,
-        detail: "The author gets an email.",
+        title: fill(decision === "approve" ? t.approved : t.rejectedIt, { name }),
+        detail: t.authorEmailed,
       });
     } else {
-      toast({ tone: "error", title: `Could not ${decision} ${name}.`, detail: result.error });
+      toast({
+        tone: "error",
+        title: fill(t.couldNot, { decision, name }),
+        detail: result.error,
+      });
     }
   }
 
@@ -127,33 +132,33 @@ function QueueItem({ submission, names }: { submission: Pending; names: Record<s
         <span className="ml-auto text-xs">
           {live ? (
             <span className="text-muted-foreground">
-              Update from <span className="font-mono">v{live.version}</span>
+              {t.updateFrom} <span className="font-mono">v{live.version}</span>
             </span>
           ) : (
-            <span className="text-primary-ink">New pack</span>
+            <span className="text-primary-ink">{text.newPack}</span>
           )}
         </span>
       </div>
       <p className="text-muted-foreground mt-1 text-xs">
-        Submitted by <span className="text-foreground">{submitter}</span> on {when(submission.submittedAt, DAY_TIME)}
-        {!pack.listed && " · the pack is unlisted, so approving it does not list it"}
+        {fill(t.submittedByOn, { name: submitter, when: when(submission.submittedAt, DAY_TIME) })}
+        {!pack.listed && t.unlistedNote}
       </p>
 
       <dl className="mt-4 text-sm">
         {live && (
           <div className="text-muted-foreground hidden grid-cols-[7rem_1fr_1fr] gap-x-4 pb-1 text-xs sm:grid">
             <span />
-            <span>Live</span>
-            <span>Submitted</span>
+            <span>{t.liveColumn}</span>
+            <span>{t.submittedColumn}</span>
           </div>
         )}
-        {FIELDS.map((field) => {
-          const now = submission[field.key];
-          const before = live?.[field.key] ?? null;
+        {FIELD_KEYS.map((field) => {
+          const now = submission[field];
+          const before = live?.[field] ?? null;
           const changed = live !== null && (before ?? "") !== (now ?? "");
           return (
             <div
-              key={field.key}
+              key={field}
               className={cn(
                 "grid gap-x-4 gap-y-0.5 rounded-md px-2 py-1.5 -mx-2",
                 live ? "sm:grid-cols-[7rem_1fr_1fr]" : "sm:grid-cols-[7rem_1fr]",
@@ -161,18 +166,22 @@ function QueueItem({ submission, names }: { submission: Pending; names: Record<s
               )}
             >
               <dt className="text-muted-foreground flex items-baseline gap-1.5 text-xs sm:pt-0.5">
-                {field.label}
-                {changed && <span className="text-primary-ink font-medium">changed</span>}
+                {t.status[field as keyof typeof t.status]}
+                {changed && <span className="text-primary-ink font-medium">{t.changed}</span>}
               </dt>
               {live && (
                 <dd className={cn("min-w-0", changed && "text-muted-foreground")}>
-                  <span className="text-muted-foreground mr-1.5 text-xs sm:hidden">Live:</span>
-                  <Value field={field} value={before} />
+                  <span className="text-muted-foreground mr-1.5 text-xs sm:hidden">{t.liveColumn}:</span>
+                  <Value field={field} value={before} none={t.none} />
                 </dd>
               )}
               <dd className="min-w-0">
-                {live && <span className="text-muted-foreground mr-1.5 text-xs sm:hidden">Submitted:</span>}
-                <Value field={field} value={now} />
+                {live && (
+                  <span className="text-muted-foreground mr-1.5 text-xs sm:hidden">
+                    {t.submittedColumn}:
+                  </span>
+                )}
+                <Value field={field} value={now} none={t.none} />
               </dd>
             </div>
           );
@@ -187,7 +196,7 @@ function QueueItem({ submission, names }: { submission: Pending; names: Record<s
             if (reason.trim()) void decide("reject");
           }}
         >
-          <Label htmlFor={`reason-${submission.id}`}>Why it is not approved</Label>
+          <Label htmlFor={`reason-${submission.id}`}>{t.whyNotApproved}</Label>
           <textarea
             id={`reason-${submission.id}`}
             rows={3}
@@ -201,15 +210,15 @@ function QueueItem({ submission, names }: { submission: Pending; names: Record<s
             className={TEXTAREA}
           />
           <p id={`reason-${submission.id}-help`} className="text-muted-foreground text-xs">
-            The author gets this by email and on My packs, so say what to fix.
+            {t.whyHint}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button type="submit" variant="destructive" disabled={busy || !reason.trim()}>
               <X aria-hidden />
-              {busy ? "Rejecting…" : "Reject"}
+              {busy ? t.rejecting : t.reject}
             </Button>
             <Button type="button" variant="ghost" disabled={busy} onClick={() => setRejecting(false)}>
-              Cancel
+              {t.cancel}
             </Button>
           </div>
         </form>
@@ -217,10 +226,10 @@ function QueueItem({ submission, names }: { submission: Pending; names: Record<s
         <div className="mt-4 flex flex-wrap gap-2">
           <Button disabled={busy} onClick={() => void decide("approve")}>
             <Check aria-hidden />
-            {busy ? "Approving…" : "Approve"}
+            {busy ? t.approving : t.approve}
           </Button>
           <Button variant="outline" disabled={busy} onClick={() => setRejecting(true)}>
-            Reject…
+            {t.rejectEllipsis}
           </Button>
         </div>
       )}

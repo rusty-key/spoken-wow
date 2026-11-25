@@ -5,17 +5,17 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import { Toaster, useToast } from "@/components/ui/toast";
 import type { Pack } from "@/lib/community/store";
 import { send } from "@/lib/send";
+import { fill } from "@/lib/site-text/format";
 
 import { newest } from "./common";
 import PackForm from "./PackForm";
 import PackStatus from "./PackStatus";
 
-const PENDING = "A version is already waiting for review. Withdraw it to submit another.";
-const UNLISTED = "An admin unlisted this pack, so it takes no new versions.";
 const GUIDE = "https://github.com/rusty-key/spoken-wow/blob/master/community/README.md";
 
 // A null pack for the new-pack form; the whole state is null while the form is shut.
@@ -31,6 +31,7 @@ export default function PackList({ packs }: { packs: Pack[] }) {
 }
 
 function List({ packs }: { packs: Pack[] }) {
+  const t = useUiText().packs;
   const router = useRouter();
   const toast = useToast();
   const [editing, setEditing] = useState<Editing>(null);
@@ -39,7 +40,7 @@ function List({ packs }: { packs: Pack[] }) {
   function sent() {
     setEditing(null);
     router.refresh();
-    toast({ tone: "info", title: "Sent for review. You'll get an email when it's decided." });
+    toast({ tone: "info", title: t.sent });
   }
 
   async function withdraw(pack: Pack) {
@@ -47,35 +48,35 @@ function List({ packs }: { packs: Pack[] }) {
     const result = await send(`/api/packs/${encodeURIComponent(pack.id)}/submissions/pending`, "DELETE");
     setBusy(null);
     router.refresh();
-    if (result.ok) return toast({ tone: "info", title: `Withdrew v${pack.pending?.version}.` });
-    toast({ tone: "error", title: "Could not withdraw it.", detail: result.body?.error ?? "Could not reach the server." });
+    if (result.ok) {
+      return toast({ tone: "info", title: fill(t.withdrew, { version: pack.pending?.version ?? "" }) });
+    }
+    toast({ tone: "error", title: t.withdrawFailed, detail: result.body?.error ?? t.unreachable });
   }
 
   const newPack = (
     <Button onClick={() => setEditing({ pack: null })}>
       <Plus aria-hidden />
-      New pack
+      {t.newPack}
     </Button>
   );
 
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">My packs</h1>
+        <h1 className="text-xl font-semibold">{t.myPacks}</h1>
         {packs.length > 0 && newPack}
       </div>
 
       {packs.length === 0 ? (
         <div className="mt-6 max-w-xl rounded-lg border border-dashed p-6 text-sm">
-          <p className="font-medium">No packs yet</p>
+          <p className="font-medium">{t.none}</p>
           <p className="text-muted-foreground mt-1 mb-4">
-            A community pack is a voice pack you record or generate yourself and host on your own GitHub
-            releases. Send it for review: once an admin approves it, players can install it from the
-            Spoken Manager, and you get an email either way. What a pack must contain is in the{" "}
+            {t.emptyBefore}
             <a href={GUIDE} className="text-foreground underline underline-offset-2">
-              community pack guide
+              {t.guide}
             </a>
-            .
+            {t.emptyAfter}
           </p>
           {newPack}
         </div>
@@ -103,18 +104,18 @@ function List({ packs }: { packs: Pack[] }) {
                       disabled={busy === pack.id}
                       onClick={() => withdraw(pack)}
                     >
-                      Withdraw
+                      {t.withdraw}
                     </Button>
                   )}
                   {/* The span carries the reason: a disabled button gets no hover of its own. */}
-                  <span title={!pack.listed ? UNLISTED : pack.pending ? PENDING : undefined}>
+                  <span title={!pack.listed ? t.unlisted : pack.pending ? t.waitingVersion : undefined}>
                     <Button
                       variant="outline"
                       size="sm"
                       disabled={!pack.listed || Boolean(pack.pending) || busy === pack.id}
                       onClick={() => setEditing({ pack })}
                     >
-                      Submit new version
+                      {t.newVersion}
                     </Button>
                   </span>
                 </div>
