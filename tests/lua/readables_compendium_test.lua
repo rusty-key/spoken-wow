@@ -188,7 +188,10 @@ Reopen(9004)
 Expect("...inside one with nothing to read, on the zone", panel.page.title.text, "Cragmoor")
 _G.GetInstanceInfo = nil
 Reopen(9003)
-Expect("the list sits on the professions list's background", panel.inset.Bg.atlas, "Professions-background-summarylist")
+local listArt
+for _, tex in ipairs(panel.inset.textures or {}) do if tex.atlas == "Professions-background-summarylist" then listArt = tex end end
+Expect("the list sits on the professions list's background, on a texture of its own", listArt and listArt.atlas, "Professions-background-summarylist")
+Expect("...not on the template's tiled one, which draws an atlas as a single pixel", panel.inset.Bg.alpha, 0)
 do
     local bar
     for _, child in ipairs(panel.inset.children or {}) do

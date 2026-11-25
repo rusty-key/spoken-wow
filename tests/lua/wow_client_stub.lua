@@ -313,7 +313,7 @@ local function Widget(kind, name)
         local c = self.vertexColor or {}
         return c[1] or 1, c[2] or 1, c[3] or 1, c[4] or 1
     end
-    function w:CreateTexture(n, layer) local t = Widget("Texture", n); t.parent = self; t.layer = layer; return t end
+    function w:CreateTexture(n, layer) local t = Widget("Texture", n); t.parent = self; t.layer = layer; self.textures = self.textures or {}; self.textures[#self.textures + 1] = t; return t end
     -- A mask, as the client hands one back: the small window rounds a portrait with it.
     function w:CreateMaskTexture(n) local t = Widget("MaskTexture", n); t.parent = self; return t end
     function w:CreateFontString(n, layer, template)
