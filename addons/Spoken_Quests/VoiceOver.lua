@@ -381,11 +381,21 @@ local function GetVisibleQuestEvent()
     return lastQuestEvent
 end
 
-local function IsQuestWindowVisible()
-    return IsFrameVisible(QuestFrameRewardPanel)
-        or IsFrameVisible(QuestFrameProgressPanel)
-        or IsFrameVisible(QuestFrameDetailPanel)
-        or IsFrameVisible(QuestFrameGreetingPanel)
+--- Whether `questID`'s own dialog is still open in one of the given panels. QUEST_FINISHED also
+--- fires as one panel gives way to the next, so a window that is still up after the grace period
+--- only keeps a line if it shows the same quest; another quest's window means the player left.
+local function IsQuestDialogOpen(questID, ...)
+    local open = false
+    for i = 1, select("#", ...) do
+        if IsFrameVisible(select(i, ...)) then
+            open = true
+            break
+        end
+    end
+    if not open then return false end
+    local shownID, ownID = tonumber(NotSecret(GetQuestID())), tonumber(questID)
+    -- Classic can report 0 for a moment while the panel is already filled in.
+    return not shownID or shownID == 0 or not ownID or ownID == 0 or shownID == ownID
 end
 
 -- The Forever client's gamepad UI takes over every popup as it opens, inside the code that
@@ -713,6 +723,8 @@ local function GiveVoiceBack(event)
 end
 local currentQuestSoundData
 local currentGossipSoundData
+-- Gossip and greeting lines whose window closed, until the grace period decides if they stop.
+local closingGossipLines = setmetatable({}, { __mode = "k" })
 -- Once per Session reads this instead of hasSeenGossipForNPC, which still records every
 -- greeting. In memory only, so every NPC greets again after a reload or relog.
 local sessionGreetingsHeard = {}
@@ -1458,6 +1470,13 @@ function Addon:MarkQuestTurnedIn(questID)
     end
     if not turnIn then return end
     turnIn.turnedIn = true
+    -- Stop only after a real hand-in. QUEST_FINISHED also closes the progress panel while the
+    -- player advances to the reward panel, so stopping there would cut off the progress text.
+    if self.db.profile.Audio.StopAudioOnDisengage and self.db.profile.Audio.StopOnAccept then
+        for _, soundData in ipairs(turnIn.soundData) do
+            Player:Remove(soundData)
+        end
+    end
     if turnIn.closeTimer then
         self:CancelTimer(turnIn.closeTimer)
         turnIn.closeTimer = nil
@@ -1484,7 +1503,7 @@ function Addon:EndsWithWindow(soundData)
             end
         end
     end
-    return self:IsPageLine(soundData)
+    return self:IsPageLine(soundData) or soundData ~= nil and closingGossipLines[soundData] == true
 end
 
 function ResolveQuestID(source, questID, questTitle, targetName, questText, quiet)
@@ -2082,6 +2101,20 @@ function Addon:GOSSIP_SHOW(event, manual)
     Player:Enqueue(soundData, manual)
 end
 
+--- Stops a gossip or greeting line whose window closed, unless the player is still with its NPC.
+--- An option that opens the NPC's trainer, vendor or quest closes the gossip or greeting window
+--- too; the "npc" unit lasts while any of that NPC's windows is open, so it tells the two apart.
+function Addon:StopGossipOnceNPCLeft(soundData)
+    closingGossipLines[soundData] = true
+    self:ScheduleTimer(function()
+        closingGossipLines[soundData] = nil
+        if not soundData.unitGUID or Utils:GetNPCGUID() ~= soundData.unitGUID then
+            Player:Remove(soundData)
+        end
+        Player:RefreshConfig()
+    end, QUEST_ACCEPT_GRACE)
+end
+
 function Addon:QUEST_FINISHED()
     local audio = Addon.db.profile.Audio
     local waitForAccept = audio.StopAudioOnDisengage and not audio.StopOnAccept
@@ -2090,7 +2123,7 @@ function Addon:QUEST_FINISHED()
         offer.stopOnClose = waitForAccept
         offer.closeTimer = self:ScheduleTimer(function()
             offer.closeTimer = nil
-            if IsQuestWindowVisible() then
+            if IsQuestDialogOpen(offer.questID, QuestFrameDetailPanel) then
                 return
             end
             if not offer.accepted and offer.stopOnClose and offer.soundData then
@@ -2122,10 +2155,12 @@ function Addon:QUEST_FINISHED()
     -- queued line without cleanup when the dialog closes.
     for _, retainedTurnIn in ipairs(QuestTurnInRecords()) do
         if not retainedTurnIn.turnedIn and not retainedTurnIn.closeTimer then
-            retainedTurnIn.stopOnClose = waitForAccept
+            -- A turn-in's QUEST_FINISHED can be the progress panel changing to the reward panel.
+            -- Let the timer distinguish that transition from an actual exit or cancel.
+            retainedTurnIn.stopOnClose = audio.StopAudioOnDisengage
             retainedTurnIn.closeTimer = self:ScheduleTimer(function()
                 retainedTurnIn.closeTimer = nil
-                if IsQuestWindowVisible() then
+                if IsQuestDialogOpen(retainedTurnIn.questID, QuestFrameProgressPanel, QuestFrameRewardPanel) then
                     return
                 end
                 if not retainedTurnIn.turnedIn and retainedTurnIn.stopOnClose then
@@ -2147,30 +2182,22 @@ function Addon:QUEST_FINISHED()
         end
     end
     if audio.StopAudioOnDisengage then
-        if waitForAccept then
-            local defer = offer and currentQuestSoundData and currentQuestSoundData.event == Enums.SoundEvent.QuestAccept
-                or turnIn and IsQuestTurnInSoundData(currentQuestSoundData)
-            if currentQuestSoundData and not defer then
-                Player:Remove(currentQuestSoundData)
-            end
-        else
-            if currentQuestSoundData then
-                Player:Remove(currentQuestSoundData)
-            end
-            -- An addon that moves straight from one quest's dialog to the next leaves the earlier
-            -- quest's line queued under its own record, not as the current line.
-            for _, record in ipairs(QuestTurnInRecords()) do
-                for _, soundData in ipairs(record.soundData) do
-                    Player:Remove(soundData)
-                end
-            end
+        -- Turn-in pages are removed by the close timer, or by MarkQuestTurnedIn when the player
+        -- completes the quest. Removing one here would mistake progress-to-reward for a close.
+        local defer = offer and currentQuestSoundData and currentQuestSoundData.event == Enums.SoundEvent.QuestAccept
+            or turnIn and IsQuestTurnInSoundData(currentQuestSoundData)
+        if currentQuestSoundData and not defer then
+            Player:Remove(currentQuestSoundData)
+        end
+        if not waitForAccept then
+            -- Accepting stops an offer as surely as closing does, so it need not wait to learn which.
             if offer and offer.soundData then
                 Player:Remove(offer.soundData)
             end
         end
         -- A quest giver's greeting is read in the quest frame, so it ends with the frame.
         if currentGossipSoundData and currentGossipSoundData.event == Enums.SoundEvent.QuestGreeting then
-            Player:Remove(currentGossipSoundData)
+            self:StopGossipOnceNPCLeft(currentGossipSoundData)
         end
     end
     currentQuestSoundData = nil
@@ -2182,7 +2209,7 @@ end
 
 function Addon:GOSSIP_CLOSED()
     if Addon.db.profile.Audio.StopAudioOnDisengage and currentGossipSoundData then
-        Player:Remove(currentGossipSoundData)
+        self:StopGossipOnceNPCLeft(currentGossipSoundData)
     end
     currentGossipSoundData = nil
     EndGreetingTextWait()

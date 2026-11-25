@@ -416,6 +416,42 @@ stub.FireEvent("QUEST_TURNED_IN", full, 0, 0)
 stub.Advance(0.6)
 ExpectCurrent("Stop When Window Closes stops a turned-in quest as its window closes", "")
 
+-- Moving from the progress panel to the reward panel also fires QUEST_FINISHED. That is a
+-- transition, not an exit or cancel, so Stop When Window Closes must leave progress audible.
+StartScenario()
+world.questID = full
+stub.ShowPanel("QuestFrameProgressPanel")
+stub.FireEvent("QUEST_PROGRESS")
+stub.Advance(0.6)
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.ShowPanel("QuestFrameRewardPanel")
+stub.FireEvent("QUEST_COMPLETE")
+stub.Advance(0.6)
+ExpectCurrent("Stop When Window Closes keeps progress audio through reward transition", "104-progress")
+world.questID = 0
+stub.ShowPanel(nil)
+stub.FireEvent("QUEST_FINISHED")
+stub.Advance(0.6)
+ExpectCurrent("Stop When Window Closes stops after the reward window closes", "")
+
+-- Leaving a quest's progress page for another quest's window, or the NPC's quest list, within
+-- the grace period is leaving that quest: only its own next page keeps it reading.
+local unvoiced = 199
+for _, next in ipairs({ { "QuestFrameDetailPanel", unvoiced }, { "QuestFrameGreetingPanel", 0 } }) do
+    StartScenario()
+    world.questID = full
+    stub.ShowPanel("QuestFrameProgressPanel")
+    stub.FireEvent("QUEST_PROGRESS")
+    stub.Advance(0.6)
+    stub.ShowPanel(nil)
+    stub.FireEvent("QUEST_FINISHED")
+    world.questID = next[2]
+    stub.ShowPanel(next[1])
+    stub.Advance(0.6)
+    ExpectCurrent("Stop When Window Closes stops a quest's progress as " .. next[1] .. " replaces it", "")
+end
+
 -- An addon that moves straight from one quest's dialog to the next leaves the first quest's line
 -- queued: closing stops it too, not just the line read last.
 lookup[string.format("%d-complete", followUp)] = 1

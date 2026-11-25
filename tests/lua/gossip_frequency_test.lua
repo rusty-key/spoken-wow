@@ -188,10 +188,29 @@ for _, client in ipairs({ "11509", "16001" }) do
     Expect(client .. ": gossip is playing before its window closes", _G.Spoken:GetCurrent() ~= nil, true)
     stub.HidePanels()
     stub.FireEvent("GOSSIP_CLOSED")
+    -- The stop waits out the grace period; DialogueUI's narrator must not show the line meanwhile.
     stub.Advance(0.1)
+    Expect(client .. ": ...a closed gossip line still ends with its window during the wait",
+        VO.Addon:EndsWithWindow(_G.Spoken:GetCurrent()), true)
+    stub.Advance(0.5)
     Expect(client .. ": gossip stops as its window closes, under Stop When Window Closes",
         _G.Spoken:GetCurrent(), nil)
     stub.Advance(1)
+    Played(played)
+
+    -- An option that opens the NPC's trainer closes the gossip window too, but the player has
+    -- not left the NPC.
+    stub.ShowGossip(GREETING, { BANK })
+    stub.FireEvent("GOSSIP_SHOW")
+    stub.Advance(0.3)
+    stub.ShowPanel("ClassTrainerFrame")
+    stub.FireEvent("GOSSIP_CLOSED")
+    stub.Advance(0.6)
+    Expect(client .. ": gossip keeps playing into the NPC's trainer window",
+        _G.Spoken:GetCurrent() ~= nil, true)
+    Expect(client .. ": ...and no longer ends with a window", VO.Addon:EndsWithWindow(_G.Spoken:GetCurrent()), false)
+    _G.Spoken:StopAll()
+    stub.HidePanels()
     Played(played)
 
     world.questID = 0
@@ -200,12 +219,26 @@ for _, client in ipairs({ "11509", "16001" }) do
     stub.FireEvent("QUEST_GREETING")
     stub.Advance(0.3)
     Expect(client .. ": a greeting reads itself at Always", _G.Spoken:GetCurrent() ~= nil, true)
-    stub.ShowPanel(nil)
+    stub.HidePanels()
     stub.FireEvent("QUEST_FINISHED")
-    stub.Advance(0.1)
+    stub.Advance(0.6)
     Expect(client .. ": ...and a greeting stops as its quest frame closes",
         _G.Spoken:GetCurrent(), nil)
     stub.Advance(10)
+    Played(played)
+
+    -- A greeting is gossip to the player: it reads on while the player stays with its NPC.
+    stub.ShowPanel("QuestFrameGreetingPanel")
+    stub.FireEvent("QUEST_GREETING")
+    stub.Advance(0.3)
+    local greetingLine = _G.Spoken:GetCurrent()
+    stub.ShowPanel("ClassTrainerFrame")
+    stub.FireEvent("QUEST_FINISHED")
+    stub.Advance(0.6)
+    Expect(client .. ": a greeting keeps playing while its NPC's next window is open",
+        greetingLine ~= nil and _G.Spoken:GetCurrent() == greetingLine, true)
+    _G.Spoken:StopAll()
+    stub.HidePanels()
     Played(played)
     VO.Addon.db.profile.Audio.StopAudioOnDisengage = false
 

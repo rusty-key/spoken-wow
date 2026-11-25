@@ -816,6 +816,8 @@ world.questID = 101
 DUI:HandleQuestDetail()
 Expect("back on a voiced quest, it reports again", corner.missing, false)
 world.greetingText = "Dark times, friend. Stay on the road."
+-- DialogueUI's greeting and gossip show no Blizzard frame, but the player is still with the NPC.
+world.npcPresent = true
 DUI.handler = "HandleQuestGreeting"
 DUI:HandleQuestGreeting()
 Expect("a quest giver's greeting no pack voices offers it", icon:IsShown() and corner.missing, true)
@@ -952,6 +954,7 @@ do
             world.panels[name] = nil
         end
         world.gossipText, world.gossipOptions = nil, nil
+        world.npcPresent = false
     end
     -- DialogueUI's own OnHide tells the game. The watch is a child, so it hears the hide first.
     local function Hidden()
