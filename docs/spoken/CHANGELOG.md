@@ -2,7 +2,7 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
-## Unreleased
+## 3.13.1 — 2026-11-25
 
 - For feature addons: `Spoken:PlayStory("quest", questID)`, with `HasStory`, `IsPlayingStory` and
   `StopStory`, plays a quest's first voiced part, for a quest the Compendium's Quests tab shows.
