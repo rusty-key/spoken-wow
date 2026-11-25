@@ -403,6 +403,9 @@ do
     Expect("...not the game's", table.concat(menu.clicks, " "), "")
     menu.layoutHit:OnSmartNavClick()
     Expect("...and A again closes it", own:IsShown(), false)
+    menu.layoutHit:OnSmartNavClick()
+    for _, fn in ipairs(menu.Dropdown.hooks.OnHide or {}) do fn(menu.Dropdown) end
+    Expect("the page closing closes it, as the game's menus close with their owner", own:IsShown(), false)
 
     local voices = { "one" }
     local page = CreateFrame("Frame")

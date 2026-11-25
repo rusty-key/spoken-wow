@@ -1540,6 +1540,14 @@ function Layout.OpenMenu(anchor, entries, gameMenu)
     frame:ClearAllPoints()
     frame:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -2)
     frame.anchor = anchor
+    -- Shown under UIParent, it would outlive a page closed by a keybind or a loading screen and
+    -- keep the controller there.
+    if not anchor.layoutMenuHooked then
+        anchor.layoutMenuHooked = true
+        anchor:HookScript("OnHide", function(self)
+            if ownMenu.anchor == self then ownMenu:Hide() end
+        end)
+    end
     frame:Show()
 end
 
