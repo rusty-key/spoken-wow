@@ -12,7 +12,7 @@ import type { Lang } from "@/lib/lang";
 import { can, isAdmin, type Capability, type Viewer } from "@/lib/permissions";
 import { asTeams, memberTeams } from "@/lib/teams/acting";
 import { defaultTeamOf, sharedLangs } from "@/lib/teams/store";
-import { findLiveToken } from "@/lib/tokens/store";
+import { bearerToken } from "@/lib/tokens/store";
 import type { TokenAccess } from "@/lib/tokens/types";
 
 /** The original text, written under `text`, or the owner's team's overrides, under `regenerate`. */
@@ -28,8 +28,6 @@ export type TokenContext = {
   /** The layers this token may write; both false when it cannot write text. */
   layers: Record<Layer, boolean>;
 };
-
-const BEARER = /^Bearer\s+(\S+)$/;
 
 export type TokenNeed = "read" | "write" | "generate" | "any";
 
@@ -142,26 +140,27 @@ async function checkToken(
     denied: Response.json({ error }, { status }),
   });
 
-  const raw = request.headers.get("authorization")?.match(BEARER)?.[1];
-  const token = raw ? await findLiveToken(raw) : null;
+  const token = await bearerToken(request);
   if (!token) return denied(401, "a valid API token is required");
+  const lang = token.lang;
+  if (!lang) return denied(403, "this token only submits community packs");
 
   // A language with one team reads no membership.
-  const owner = (await sharedLangs()).has(token.lang)
-    ? await ownerInTeam(token.userId, token.role, token.lang)
+  const owner = (await sharedLangs()).has(lang)
+    ? await ownerInTeam(token.userId, token.role, lang)
     : { viewer: await viewerOf({ user: { id: token.userId, role: token.role } }), teams: undefined };
   const { viewer } = owner;
   const hasText = token.access !== "none";
-  const backed = backedScopes(viewer, token.lang, token.access, token.generate);
+  const backed = backedScopes(viewer, lang, token.access, token.generate);
   const { text: textOk, generate: generateOk } = backed;
 
   const noText = () =>
     hasText
-      ? denied(403, `this token's owner holds neither text nor regenerate in ${token.lang}`)
+      ? denied(403, `this token's owner holds neither text nor regenerate in ${lang}`)
       : denied(403, "this token has no text access");
   const noGenerate = () =>
     token.generate
-      ? denied(403, `this token's owner does not hold regenerate in ${token.lang}`)
+      ? denied(403, `this token's owner does not hold regenerate in ${lang}`)
       : denied(403, "this token cannot generate");
 
   if (need === "generate") {
@@ -172,8 +171,8 @@ async function checkToken(
     if (!textOk) return noText();
     if (need === "write" && token.access !== "write") return denied(403, "this token is read-only");
   }
-  if (options.also && !can(viewer, options.also, token.lang)) {
-    return denied(403, `this token's owner does not hold ${options.also} in ${token.lang}`);
+  if (options.also && !can(viewer, options.also, lang)) {
+    return denied(403, `this token's owner does not hold ${options.also} in ${lang}`);
   }
   if (options.noQuery && new URL(request.url).search) {
     return denied(400, options.noQuery === true ? "this takes no query string" : options.noQuery);
@@ -184,7 +183,7 @@ async function checkToken(
       tokenId: token.id,
       userId: token.userId,
       role: token.role,
-      lang: token.lang,
+      lang,
       // What the grants back, not what the token stores: `any` lets one scope through alone.
       access: textOk ? token.access : "none",
       generate: generateOk,

@@ -2132,6 +2132,9 @@ const frFR: Dictionary = {
   profile: {
     tokens: {
       copied: "Copiez ce jeton maintenant. Il ne sera plus affiché.",
+      packs: "Packs de la communauté",
+      packsAbout:
+        "Un jeton de packs de la communauté n'a pas besoin de langue. Un script peut s'en servir pour lister, créer et mettre à jour vos packs sur /api/v1/packs, comme vous le faites dans Mes packs.",
       create: "Créer un jeton",
       generateOnMyKey: "Générer l'audio sur ma clé",
       lastUsed: "Dernière utilisation",

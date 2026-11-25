@@ -135,6 +135,10 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r requirements-dev.txt
+      # Without luajit the tests that load a generated pack as the addon does skip, and without
+      # ffmpeg so do the ones that re-time a clip for real (test_speed_pack.py).
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends luajit ffmpeg
+        working-directory: .
       # test_package.py runs scripts/quests/package.sh for real and asserts which .toc and
       # which vendored Ace3 each client's zip carries, so it needs the whole tree.
       - run: python -m pytest -q

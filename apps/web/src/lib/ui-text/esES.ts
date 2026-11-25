@@ -2131,6 +2131,9 @@ const esES: Dictionary = {
   profile: {
     tokens: {
       copied: "Copia este token ahora. No se volverá a mostrar.",
+      packs: "Paquetes de la comunidad",
+      packsAbout:
+        "Un token de paquetes de la comunidad no necesita idioma. Con él, un script puede listar, crear y actualizar tus paquetes en /api/v1/packs, como haces en Mis paquetes.",
       create: "Crear token",
       generateOnMyKey: "Generar audio con mi clave",
       lastUsed: "Último uso",

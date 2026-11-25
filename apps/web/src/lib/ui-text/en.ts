@@ -1622,6 +1622,9 @@ export const EN = {
       tokenFor: "{lang} agent",
       noText: "No text",
       copied: "Copy this token now. It will not be shown again.",
+      packs: "Community packs",
+      packsAbout:
+        "A community packs token needs no language. A script can list, create and update your packs with it at /api/v1/packs, as you do on My packs.",
     },
   },
   /** A community pack, from the author submitting it to an admin reviewing it. */

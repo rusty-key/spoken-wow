@@ -90,6 +90,44 @@ describe("createToken", () => {
     expect(rows[0].generate).toBe(false);
   });
 
+  it("carries a packs-only token with no language through create and find", async () => {
+    const { token, row } = await createToken({
+      userId: USER,
+      lang: null,
+      access: "none",
+      generate: false,
+      packs: true,
+      label: "packs",
+      expiresAt: TOMORROW(),
+    });
+    expect(row).toMatchObject({ lang: null, access: "none", generate: false, packs: true });
+    expect(await findLiveToken(token)).toMatchObject({ id: row.id, lang: null, packs: true });
+    expect((await make()).row.packs).toBe(false);
+  });
+
+  it.each([
+    ["text access", "read", false],
+    ["generate", "none", true],
+  ])("refuses %s without a language", async (_name, access, generate) => {
+    await expect(
+      asSystem.query(
+        `insert into "api_token" ("userId", "lang", "access", "generate", "packs", "label", "tokenHash", "hint", "expiresAt")
+         values ($1, null, $2, $3, true, 'x', $4, 'abcd', now() + interval '1 day')`,
+        [USER, access, generate, `hash-${Math.random()}`],
+      ),
+    ).rejects.toThrow(/api_token_lang_needed/);
+  });
+
+  it("refuses a token with no language and no scope", async () => {
+    await expect(
+      asSystem.query(
+        `insert into "api_token" ("userId", "lang", "access", "label", "tokenHash", "hint", "expiresAt")
+         values ($1, null, 'none', 'x', $2, 'abcd', now() + interval '1 day')`,
+        [USER, `hash-${Math.random()}`],
+      ),
+    ).rejects.toThrow(/api_token_has_scope/);
+  });
+
   it("refuses an expiry in the past", async () => {
     await expect(make(USER, new Date(Date.now() - 1000))).rejects.toThrow(/expiry/);
   });

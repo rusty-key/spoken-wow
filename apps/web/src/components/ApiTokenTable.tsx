@@ -3,7 +3,7 @@
 import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import { langName } from "@/lib/lang";
-import { accessLabel, type ApiToken } from "@/lib/tokens/types";
+import { scopeLabels, type ApiToken } from "@/lib/tokens/types";
 
 import { useApiTokens } from "./useApiTokens";
 
@@ -41,8 +41,10 @@ export default function ApiTokenTable({ initial }: { initial: (ApiToken & { user
               <tr key={token.id}>
                 <td className="py-1.5">{token.userEmail}</td>
                 <td>{token.label}</td>
-                <td>{langName(token.lang)}</td>
-                <td>{accessLabel(token)}{token.generate ? `, ${words.generate}` : ""}</td>
+                <td>{token.lang ? langName(token.lang) : ""}</td>
+                <td>
+                  {scopeLabels(token, { generate: words.generate, packs: t.profile.tokens.packs }).join(", ")}
+                </td>
                 <td>{token.expiresAt.slice(0, 10)}</td>
                 <td>{token.lastUsedAt?.slice(0, 10) ?? words.neverUsed}</td>
                 <td className="text-right">
