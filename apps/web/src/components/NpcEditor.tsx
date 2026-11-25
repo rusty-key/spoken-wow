@@ -35,6 +35,10 @@ function key(npcKind: NpcRowKind | null, npcId: number): string {
   return `${npcKind}:${npcId}`;
 }
 
+function directionKey(npcKey: string, inLanguage: boolean): string {
+  return `${inLanguage ? "lang" : "global"}:${npcKey}`;
+}
+
 // ContributionTable's own words for the same five, so a speaker reads the same on both tabs.
 const PROVENANCE_LABELS: Record<Provenance, string> = {
   corpus: "Corpus",
@@ -224,11 +228,12 @@ function DirectionCell({
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const bare = direction ? bareDirection(direction) : "";
-  if (!onSave) return bare ? <span>[{bare}]</span> : null;
+  const shown = bare ? <span>[{bare}]</span> : null;
+  if (!onSave) return shown;
   if (draft === null) {
     return (
       <div className={ROW_LINE}>
-        {bare ? <span>[{bare}]</span> : null}
+        {shown}
         <LiteButton className={ROW_BUTTON} onClick={() => setDraft(bare)} title={title}>
           {bare ? "Edit" : "Add"}
         </LiteButton>
@@ -312,25 +317,13 @@ function BodyCells({
   roster: Roster;
   edits: ReturnType<typeof useRosterEdits>;
   busy: boolean;
-  /** Absent for a reader: the bodies are shown and nothing changes them. */
+  /** Absent when read-only. */
   onPost?: (body: Record<string, unknown>) => void;
 }) {
   if (npc.npcKind !== "creature" || !npc.race || sexOf(npc.gender) === null) return null;
-  if (!onPost) {
-    if (!bodies.length) return null;
-    return (
-      <div className="mt-1 space-y-1 border-l pl-2">
-        {bodies.map((answer) => (
-          <div key={`${answer.race}:${answer.sex}`} className={ROW_LINE}>
-            <span className="text-muted-foreground w-36 shrink-0">{bodyLabel(answer)}</span>
-            <SpeakerCell npc={summaryFromBody(npc, answer, roster)} roster={roster} edits={edits} readOnly busy={busy} lockType onSave={() => {}} />
-          </div>
-        ))}
-      </div>
-    );
-  }
-  const add = <AddBody roster={roster} busy={busy} onAdd={(race, sex) => onPost({ action: "add", race, sex })} />;
-  if (!bodies.length) {
+  if (!bodies.length && !onPost) return null;
+  const add = onPost ? <AddBody roster={roster} busy={busy} onAdd={(race, sex) => onPost({ action: "add", race, sex })} /> : null;
+  if (!bodies.length && onPost) {
     return (
       <div className="mt-1 space-y-1">
         <LiteButton className={ROW_BUTTON} disabled={busy} onClick={() => onPost({ action: "split" })}
@@ -351,22 +344,26 @@ function BodyCells({
             npc={summaryFromBody(npc, answer, roster)}
             roster={roster}
             edits={edits}
-            readOnly={false}
+            readOnly={!onPost}
             busy={busy}
             lockType
-            onSave={(next) => onPost({ race: answer.race, sex: answer.sex, flavor: next.flavor ?? answer.flavor, doubtful: next.doubtful ?? false })}
+            onSave={(next) => onPost?.({ race: answer.race, sex: answer.sex, flavor: next.flavor ?? answer.flavor, doubtful: next.doubtful ?? false })}
           />
-          <LiteButton className={ROW_BUTTON} disabled={busy} onClick={() => onPost({ action: "remove", race: answer.race, sex: answer.sex })}
-            title="Stop voicing this body on its own">
-            Remove
-          </LiteButton>
+          {onPost ? (
+            <LiteButton className={ROW_BUTTON} disabled={busy} onClick={() => onPost({ action: "remove", race: answer.race, sex: answer.sex })}
+              title="Stop voicing this body on its own">
+              Remove
+            </LiteButton>
+          ) : null}
         </div>
       ))}
       {add}
-      <LiteButton className={ROW_BUTTON} disabled={busy} onClick={() => onPost({ action: "unsplit" })}
-        title="Voice every line this NPC speaks in its one answer again">
-        Unsplit
-      </LiteButton>
+      {onPost ? (
+        <LiteButton className={ROW_BUTTON} disabled={busy} onClick={() => onPost({ action: "unsplit" })}
+          title="Voice every line this NPC speaks in its one answer again">
+          Unsplit
+        </LiteButton>
+      ) : null}
     </div>
   );
 }
@@ -375,7 +372,7 @@ export default function NpcEditor({
   initial,
   roster: rosterData,
   readOnly,
-  languageDirections,
+  ownDirections,
 }: {
   /**
    * Each with the client family whose guess filed it, null for one only the extract names, its
@@ -389,10 +386,10 @@ export default function NpcEditor({
   })[];
   /** The roster, for SpeakerCell's pickers, and grown by their "New" entries. */
   roster: RosterData;
-  /** Everything but the language's own directions shown and not changed: who an NPC is is the admin's. */
+  /** No controls but the language's own directions: who an NPC is is the admin's to answer. */
   readOnly: boolean;
   /** Whether to show and set the page language's own directions. */
-  languageDirections: boolean;
+  ownDirections: boolean;
 }) {
   const lang = useLang();
   const edits = useRosterEdits(rosterData);
@@ -439,18 +436,25 @@ export default function NpcEditor({
     () => new Map(initial.filter((row) => row.bodies.length).map((row) => [key(row.npcKind, row.npcId), row.bodies])),
     [initial],
   );
-  /** Each direction this session saved, over the server's, keyed by NPC. */
+  /** Each direction this session saved, over the server's, keyed by directionKey. */
   const [savedDirections, setSavedDirections] = useState<Record<string, string | null>>({});
   const initialDirections = useMemo(
-    () => new Map(initial.map((row) => [key(row.npcKind, row.npcId), row.direction])),
+    () =>
+      new Map(
+        initial.flatMap((row) => {
+          const k = key(row.npcKind, row.npcId);
+          return [
+            [directionKey(k, false), row.direction],
+            [directionKey(k, true), row.languageDirection],
+          ] as const;
+        }),
+      ),
     [initial],
   );
-  /** Each language direction this session saved, over the server's, keyed by NPC. */
-  const [savedLanguageDirections, setSavedLanguageDirections] = useState<Record<string, string | null>>({});
-  const initialLanguageDirections = useMemo(
-    () => new Map(initial.map((row) => [key(row.npcKind, row.npcId), row.languageDirection])),
-    [initial],
-  );
+  const directionOf = (k: string, inLanguage: boolean) => {
+    const dk = directionKey(k, inLanguage);
+    return dk in savedDirections ? savedDirections[dk] : (initialDirections.get(dk) ?? null);
+  };
   const [busy, setBusy] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   /** Rows ticked for the bulk saves, keyed by NPC. */
@@ -506,8 +510,7 @@ export default function NpcEditor({
       setBusy(null);
       const saved = (await response?.json().catch(() => null)) as { direction?: string | null; error?: string } | null;
       if (!response?.ok) return saved?.error ?? "That didn't go through -- try again.";
-      const set = inLanguage ? setSavedLanguageDirections : setSavedDirections;
-      set((current) => ({ ...current, [k]: saved?.direction ?? null }));
+      setSavedDirections((current) => ({ ...current, [directionKey(k, inLanguage)]: saved?.direction ?? null }));
       return null;
     },
     [lang],
@@ -710,7 +713,7 @@ export default function NpcEditor({
               </SortHeader>
               <th className="border-b py-2 pr-3 font-normal">Type / gender / flavor</th>
               <th className="border-b py-2 pr-3 font-normal">Direction</th>
-              {languageDirections ? <th className="border-b py-2 pr-3 font-normal">{lang} direction</th> : null}
+              {ownDirections ? <th className="border-b py-2 pr-3 font-normal">{lang} direction</th> : null}
               <th className="border-b py-2 font-normal" />
             </tr>
           </thead>
@@ -778,21 +781,17 @@ export default function NpcEditor({
                   </td>
                   <td className="pr-3 text-xs">
                     <DirectionCell
-                      direction={k in savedDirections ? savedDirections[k] : (initialDirections.get(k) ?? null)}
+                      direction={directionOf(k, false)}
                       busy={busy === k || bulk !== null}
                       label="NPC direction"
                       title="A direction sent in front of every line only this NPC speaks, after its voice's"
                       onSave={readOnly ? undefined : (direction) => postDirection(npc, direction, false)}
                     />
                   </td>
-                  {languageDirections ? (
+                  {ownDirections ? (
                     <td className="pr-3 text-xs">
                       <DirectionCell
-                        direction={
-                          k in savedLanguageDirections
-                            ? savedLanguageDirections[k]
-                            : (initialLanguageDirections.get(k) ?? null)
-                        }
+                        direction={directionOf(k, true)}
                         busy={busy === k || bulk !== null}
                         label={`NPC direction in ${lang}`}
                         title={`A direction for ${lang} only, in place of the global one`}

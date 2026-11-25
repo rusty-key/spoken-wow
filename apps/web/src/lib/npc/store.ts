@@ -171,6 +171,7 @@ export async function listLanguageDirections(lang: Lang): Promise<Map<string, st
 
 /** Each NPC's direction as `lang` voices it: the language's own, else the global one. */
 export async function directionsIn(lang: Lang): Promise<Map<string, string>> {
+  if (lang === BASE_LANG) return listDirections();
   const [global, own] = await Promise.all([listDirections(), listLanguageDirections(lang)]);
   return new Map([...global, ...own]);
 }

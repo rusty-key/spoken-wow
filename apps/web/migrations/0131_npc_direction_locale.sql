@@ -1,6 +1,5 @@
--- An NPC's direction in one language, over its global one in "npc"."direction" (0126). A
--- direction is how a voice performs the line, so a team's own like its race directions
--- ("generation_setting_locale"."raceTags"): its language maintainers set it, not the site admin.
+-- An NPC's direction in one language, replacing its global "npc"."direction" there. It is how
+-- the team's voices perform, so the team's own, set by its language maintainers.
 --
 -- Additive: the previous release never reads this table and keeps using the global direction.
 
@@ -9,7 +8,7 @@ create table "npc_direction_locale" (
   "lang"      text        not null,
   "npcKind"   text        not null,
   "npcId"     integer     not null,
-  -- Stored bracketed, like the global one.
+  -- Bracketed: eleven_v3 performs a bracketed tag and reads anything else aloud.
   "direction" text        not null,
   "updatedAt" timestamptz not null default now(),
   "updatedBy" text        references "user" ("id") on delete set null,
