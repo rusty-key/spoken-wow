@@ -38,7 +38,7 @@ local PUBLIC = {
     "GetCaption", "GetCaptionOptions", "SplitCaption", "CaptionWords",
     "GetNowPlaying", "GetQueueSize", "IsPlaying", "IsPaused",
     "Pause", "Resume", "Skip", "StopAll",
-    "IsPartOn",
+    "IsPartOn", "Supports",
     "RegisterCallback", "UnregisterCallback",
     "RegisterText", "RegisterInterfaceStrings",
     "HasLog", "Log", "IsLogOn", "AddLogSource", "AddDiagnostics",
@@ -379,6 +379,47 @@ do
     Spoken:SetVoiceOrder({ "deDE", "auto" })
     Expect("Auto second is the client's language as the old fallback", language.Fallback, "enUS")
     language.Voices, language.Voice, language.Fallback = nil, nil, nil
+end
+
+---------------------------------------------------------------- the boundary
+-- A wrong registration fails at the caller's line, where its author can see it, rather than
+-- inside the queue later. A query with the wrong input answers false or nil and never throws.
+do
+    local function Raises(fn, ...)
+        local ok, err = pcall(fn, ...)
+        return not ok and tostring(err):find("api_contract_test", 1, true) ~= nil
+    end
+    local function Handler() end
+    Expect("RegisterCallback refuses a handler that is not a function, at the caller's line",
+        Raises(function() Spoken:RegisterCallback("AUDIO_CHANGED", nil) end), true)
+    Expect("...and an event that is not a string", Raises(function() Spoken:RegisterCallback(nil, Handler) end), true)
+    Expect("UnregisterCallback ignores what is no handle", tostring(pcall(Spoken.UnregisterCallback, Spoken, 5)) .. " "
+        .. tostring(pcall(Spoken.UnregisterCallback, Spoken, nil)), "true true")
+    Expect("AddDiagnostics refuses a fn that is not a function", Raises(function() Spoken:AddDiagnostics("x", nil) end), true)
+    Expect("AddLogSource refuses a list that is not a function", Raises(function() Spoken:AddLogSource({}) end), true)
+
+    local teller = { source = src, Keys = function() return {} end, Clip = function() end }
+    Expect("RegisterStoryTeller refuses a teller without Keys and Clip",
+        Raises(function() Spoken:RegisterStoryTeller("boundary", { source = src }) end), true)
+    Spoken:RegisterStoryTeller("boundary", teller)
+    Expect("...and a second teller of one kind", Raises(function() Spoken:RegisterStoryTeller("boundary", teller) end), true)
+    Expect("RegisterBullet refuses an id already taken",
+        Raises(function() Spoken:RegisterBullet("contract-bullet", "Interface\\Y", 12) end), true)
+    Expect("RegisterPortraitRenderer refuses a kind already drawn, Spoken's own included",
+        tostring(Raises(function() Spoken:RegisterPortraitRenderer("contract", {}) end)) .. " "
+        .. tostring(Raises(function() Spoken:RegisterPortraitRenderer("model", {}) end)), "true true")
+
+    Expect("IsPartOn answers false for what is no part's key", tostring(Spoken:IsPartOn(nil)) .. " "
+        .. tostring(Spoken:IsPartOn(5)) .. " " .. tostring(Spoken:IsPartOn("quests")), "false false true")
+    Expect("the story calls take any id without throwing", tostring(Spoken:HasStory("boundary", "x")) .. " "
+        .. tostring(Spoken:PlayStory({}, {})) .. " " .. tostring(Spoken:StopStory(nil, nil)), "false false false")
+
+    Expect("Supports names a story kind once its teller registers", tostring(Spoken:Supports("story:boundary")) .. " "
+        .. tostring(Spoken:Supports("story:nothing")), "true false")
+    Expect("...and the API's features", tostring(Spoken:Supports("captions")) .. " " .. tostring(Spoken:Supports("supports")),
+        "true true")
+    Expect("...and false for anything else", tostring(Spoken:Supports(nil)) .. " " .. tostring(Spoken:Supports(7)) .. " "
+        .. tostring(Spoken:Supports("teleport")), "false false false")
 end
 
 if Failures() > 0 then print(string.format("\n%d failure(s)", Failures())); os.exit(1) end

@@ -2,6 +2,12 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
+## Unreleased
+
+- For feature addons: `Spoken:Supports(feature)` says what this Spoken can do, such as
+  `"story:boss"`, and a registration with the wrong arguments now raises at your line.
+  *([rusty-key](https://github.com/rusty-key))*
+
 ## 3.13.1 — 2026-11-25
 
 - For feature addons: `Spoken:PlayStory("quest", questID)`, with `HasStory`, `IsPlayingStory` and

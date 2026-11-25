@@ -47,6 +47,31 @@ end
 ```
 
 A player with an older Spoken then sees your addon without the feature rather than an error.
+
+`Spoken:Supports(feature)` names features too, for a Spoken that has it
+(`if Spoken.Supports and Spoken:Supports("story:boss") then`). It answers true for:
+
+| `feature` | |
+|---|---|
+| `"story:<kind>"` | A kind of story whose module is installed and has registered: `"story:instance"`, `"story:boss"`, `"story:quest"`. |
+| `"stories"`, `"captions"`, `"callbacks"`, `"log"`, `"text-packs"`, `"interface-packs"`, `"supports"` | The sections of this page. |
+
+and false for anything else, a name it does not know included. A name, once listed, is never
+taken away.
+
+### Mistakes
+
+A registration with the wrong kind of value (`RegisterCallback`, `AddLogSource`,
+`AddDiagnostics`) raises an error at your line, so you find it while writing the addon rather
+than when Spoken later calls what you handed it. A query with the wrong kind of value answers
+false or nil and never raises. `RegisterText` and `RegisterInterfaceStrings` are the exception:
+they answer false, so a pack never breaks a login.
+
+### Tables Spoken hands out
+
+`GetCaption`, `GetNowPlaying` and the events hand you Spoken's own tables, the same ones the
+queue and the captions use, because they are read every frame or compared by identity. Read
+them and never change them. `SplitCaption` and `CaptionWords` return new tables, yours to keep.
 `Spoken.ADDON_VERSION` is Spoken's release (`"3.13.1"`), for a log line; never compare it to
 decide what to call.
 
@@ -164,7 +189,8 @@ Every other field belongs to the module that queued the clip.
 
 `Spoken:IsPartOn(key)` is whether the player has the part `key` (`"quests"`, `"places"`,
 `"readables"` or `"bosses"`) switched on in Spoken's settings. A part never switched off is on,
-whether its module is installed or not, so check `HasStory` before offering a story.
+whether its module is installed or not, so check `HasStory` before offering a story. Anything
+but a string answers false.
 
 ## Events
 
@@ -173,8 +199,10 @@ local handle = Spoken:RegisterCallback("CLIP_STARTED", function(clip) ... end)
 Spoken:UnregisterCallback(handle)
 ```
 
-`RegisterCallback(event, fn)` returns a handle for `UnregisterCallback`. An error in your `fn` is
-caught and kept for `/spoken diagnostics`; the other handlers still run.
+`RegisterCallback(event, fn)` returns a handle for `UnregisterCallback`, and raises where `event`
+is not a string or `fn` not a function. An error in your `fn` is caught and kept for
+`/spoken diagnostics`; the other handlers still run. `UnregisterCallback` ignores anything that is
+not a handle.
 
 | Event | Payload | When |
 |---|---|---|

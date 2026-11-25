@@ -17,6 +17,12 @@ Spoken.API_VERSION = 1
 --- Public. Spoken's release, such as "3.13.1". For a log line, never for feature detection.
 Spoken.ADDON_VERSION = AddonVersion
 
+-- A registration that is wrong fails at the caller's line, where its author sees it, rather than
+-- in the queue or a frame's draw later, where nothing names the addon that caused it.
+local function Require(ok, message)
+    if not ok then error("Spoken: " .. message, 3) end
+end
+
 -- The shared dungeon data is Forever's, which holds every instance of the Classic-era clients.
 -- The vanilla instances end at map 533; every later one is Season of Discovery's or Forever's own.
 local LAST_VANILLA_DUNGEON = 533
@@ -184,8 +190,11 @@ function Spoken:RegisterOptionalAction(id, label)
 end
 
 --- A row bullet, registered once by a feature addon so SpokenReadables needs no change to
---- the player to have one of its own.
+--- the player to have one of its own. An id already taken raises: two modules would otherwise
+--- draw each other's.
 function Spoken:RegisterBullet(id, texture, size)
+    Require(type(id) == "string", "RegisterBullet needs a string id")
+    Require(not Bullets[id], format("a bullet %q is already registered", id))
     Bullets[id] = { texture = texture, size = size }
 end
 
@@ -194,8 +203,11 @@ function Spoken:GetBullet(id)
 end
 
 --- A portrait renderer: { Acquire(portrait, parent) -> frame, Update(frame, clip) -> bool,
---- Release(frame) }. "texture", "model" and "none" ship with the player.
+--- Release(frame) }. "texture", "model" and "none" ship with the player, and a kind already drawn
+--- raises.
 function Spoken:RegisterPortraitRenderer(kind, renderer)
+    Require(type(kind) == "string" and type(renderer) == "table", "RegisterPortraitRenderer needs a kind and a renderer")
+    Require(not Renderers[kind], format("a portrait renderer %q is already registered", kind))
     Renderers[kind] = renderer
 end
 
@@ -335,6 +347,7 @@ end
 ---@param key string
 ---@return boolean
 function Spoken:IsPartOn(key)
+    if type(key) ~= "string" then return false end
     return not Sources:IsTurnedOff(key)
 end
 
@@ -1083,8 +1096,13 @@ local storyTellers = {}
 
 --- Who tells the stories of `kind`. `teller.source` is the module's source;
 --- `teller.Keys(id)` lists the clip keys of the story `id`, a story per boss of an encounter; and
---- `teller.Clip(id, key)` builds the clip of one, or nil where it cannot be played now.
+--- `teller.Clip(id, key)` builds the clip of one, or nil where it cannot be played now. A second
+--- teller of one kind raises: the first would stop answering without a word.
 function Spoken:RegisterStoryTeller(kind, teller)
+    Require(type(kind) == "string" and type(teller) == "table" and type(teller.source) == "table"
+        and type(teller.Keys) == "function" and type(teller.Clip) == "function",
+        "RegisterStoryTeller needs a kind and a teller with source, Keys and Clip")
+    Require(not storyTellers[kind], format("a teller of %q stories is already registered", kind))
     storyTellers[kind] = teller
 end
 
@@ -1159,6 +1177,24 @@ function Spoken:StopStory(kind, id)
         if Tells(teller, keys, clip) and teller.source:Remove(clip) then stopped = true end
     end
     return stopped
+end
+
+-- Features a caller may ask Supports about. A name is added with the feature and never removed.
+local FEATURES = {
+    supports = true, stories = true, captions = true, callbacks = true, log = true,
+    ["text-packs"] = true, ["interface-packs"] = true,
+}
+
+--- Public. Whether this Spoken has `feature`: a name from docs/spoken/API.md, or "story:<kind>"
+--- for a kind of story whose module is installed and has registered ("story:boss"). False for
+--- anything else.
+---@param feature string
+---@return boolean
+function Spoken:Supports(feature)
+    if type(feature) ~= "string" then return false end
+    local kind = feature:match("^story:(.+)$")
+    if kind then return storyTellers[kind] ~= nil end
+    return FEATURES[feature] == true
 end
 
 --- False in a battleground or arena with Read in Battlegrounds off, where a source's Enqueue
@@ -1291,12 +1327,14 @@ end
 ---@param fn function
 ---@return table handle for UnregisterCallback
 function Spoken:RegisterCallback(event, fn)
+    Require(type(event) == "string" and type(fn) == "function", "RegisterCallback needs an event name and a function")
     return Callbacks:Register(event, fn)
 end
 
 --- Public. Stop the handler RegisterCallback returned `handle` for.
 ---@param handle table
 function Spoken:UnregisterCallback(handle)
+    if type(handle) ~= "table" then return end
     Callbacks:Unregister(handle)
 end
 
@@ -1406,6 +1444,8 @@ end
 ---@param list fun(): table[]
 ---@param clear? fun()
 function Spoken:AddLogSource(list, clear)
+    Require(type(list) == "function" and (clear == nil or type(clear) == "function"),
+        "AddLogSource needs a list function and, optionally, a clear function")
     Developer:Call("AddSource", list, clear)
 end
 
@@ -1450,6 +1490,7 @@ end
 ---@param name string
 ---@param fn fun(detailed: boolean): string[]
 function Spoken:AddDiagnostics(name, fn)
+    Require(type(name) == "string" and type(fn) == "function", "AddDiagnostics needs a name and a function")
     Developer:AddDiagnostics(name, fn)
 end
 
