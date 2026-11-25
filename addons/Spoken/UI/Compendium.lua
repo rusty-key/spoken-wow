@@ -2350,7 +2350,7 @@ do
 	--- Says whether it did: false where the game's menu is to open instead.
 	function Pad.OpenFilter(list)
 		local manager = Manager()
-		if not (GamepadUI() and manager and manager.HandlePopupShown) or CombatRestricted() or not list.filterEntries then
+		if not (GamepadUI() and manager and manager.HandlePopupShown) or not list.filterEntries then
 			return false
 		end
 		local frame = filterPad or BuildFilterPad()

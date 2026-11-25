@@ -1427,6 +1427,122 @@ local function FaceInfo(info, face)
     if face then info.fontObject = FaceObject(face) end
 end
 
+local MENU_ROW, MENU_MIN_WIDTH, MENU_INSET, MENU_BG = 20, 120, 8, 10
+local ownMenu
+
+local function BuildMenu()
+    local frame = CreateFrame("Frame", "SpokenLayoutMenu", UIParent)
+    frame:SetFrameStrata("FULLSCREEN_DIALOG")
+    frame:SetToplevel(true)
+    frame:EnableMouse(true)
+    frame:SetClampedToScreen(true)
+    local back = AtlasTexture(frame, "BACKGROUND", "common-dropdown-bg", false)
+    if back then
+        back:SetAlpha(0.925)
+    else
+        back = frame:CreateTexture(nil, "BACKGROUND")
+        back:SetColorTexture(0, 0, 0, 0.85)
+    end
+    back:SetPoint("TOPLEFT", -MENU_BG, 3)
+    back:SetPoint("BOTTOMRIGHT", MENU_BG, -3)
+    frame.rows = {}
+    frame:Hide()
+    if UISpecialFrames then table.insert(UISpecialFrames, "SpokenLayoutMenu") end
+    Layout.FollowController(frame)
+    -- B, as the game's own menus take it (FrameControlsManager's MenuProxy.OnShow).
+    frame.SmartNavigationCloseHandler = function()
+        frame:Hide()
+        return true
+    end
+    -- The cursor starts on the chosen entry, as in the game's dropdowns.
+    frame.FocusGamepad = function(self)
+        if self.start and SmartNavigation and SmartNavigation.SetTargetButtonForFrame and not CombatRestricted() then
+            SmartNavigation:SetTargetButtonForFrame(self, self.start)
+        end
+    end
+    -- A click anywhere else closes it, as it closes the game's menus. The anchor's own click
+    -- toggles it, so that one is left to the anchor.
+    frame:HookScript("OnShow", function(self) self:RegisterEvent("GLOBAL_MOUSE_DOWN") end)
+    frame:HookScript("OnHide", function(self)
+        self:UnregisterEvent("GLOBAL_MOUSE_DOWN")
+        self.anchor = nil
+    end)
+    frame:SetScript("OnEvent", function(self, _, mouseButton)
+        if mouseButton ~= "LeftButton" and mouseButton ~= "RightButton" then return end
+        if not (self:IsMouseOver() or (self.anchor and self.anchor:IsMouseOver())) then self:Hide() end
+    end)
+    ownMenu = frame
+    return frame
+end
+
+local function MenuRow(frame, index)
+    local row = frame.rows[index]
+    if row then return row end
+    row = CreateFrame("Button", nil, frame)
+    row:SetHeight(MENU_ROW)
+    row:SetHighlightTexture([[Interface\QuestFrame\UI-QuestTitleHighlight]], "ADD")
+    row.tick = AtlasTexture(row, "ARTWORK", "common-dropdown-icon-radialtick-yellow", true)
+    if not row.tick then
+        row.tick = row:CreateTexture(nil, "ARTWORK")
+        row.tick:SetTexture([[Interface\Buttons\UI-CheckBox-Check]])
+        row.tick:SetSize(16, 16)
+    end
+    row.tick:SetPoint("LEFT", row, "LEFT", 0, 0)
+    row.label = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    row.label:SetJustifyH("LEFT")
+    row.label:SetPoint("LEFT", row, "LEFT", 20, 0)
+    row:SetScript("OnClick", function(self)
+        Sound(CLICK)
+        frame:Hide()
+        self.entry.func()
+    end)
+    frame.rows[index] = row
+    return row
+end
+
+--- Open a menu of `entries()` under `anchor`, or close it when it is already open there. With the
+--- mouse UI it is the game's menu, opened by `gameMenu()`. Under the controller UI the game's menus
+--- join the frame controls manager, and one an addon opens taints it: once it closes, the game
+--- blocks the controller's interact target until a /reload. There it is Spoken's own. An entry is
+--- `{ text, func, checked = function or nil, font = file or nil }`.
+function Layout.OpenMenu(anchor, entries, gameMenu)
+    if not GamepadUI() then
+        gameMenu()
+        return
+    end
+    local frame = ownMenu or BuildMenu()
+    if frame:IsShown() then
+        local same = frame.anchor == anchor
+        frame:Hide()
+        if same then return end
+    end
+    local list = entries()
+    local y, widest = -MENU_INSET, MENU_MIN_WIDTH
+    frame.start = nil
+    for i, entry in ipairs(list) do
+        local row = MenuRow(frame, i)
+        row.entry = entry
+        row.label:SetText(entry.text)
+        Refont(row.label, entry.font)
+        local on = entry.checked and entry.checked() and true or false
+        row.tick:SetShown(on)
+        if on or not frame.start then frame.start = row end
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", frame, "TOPLEFT", MENU_INSET, y)
+        row:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -MENU_INSET, y)
+        row:Show()
+        local width = 20 + (row.label:GetStringWidth() or 0) + 20
+        if width > widest then widest = width end
+        y = y - MENU_ROW
+    end
+    for i = #list + 1, #frame.rows do frame.rows[i]:Hide() end
+    frame:SetSize(widest + MENU_INSET * 2, -y + MENU_INSET)
+    frame:ClearAllPoints()
+    frame:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -2)
+    frame.anchor = anchor
+    frame:Show()
+end
+
 --- A dropdown: the game's settings dropdown, with steppers either side (SettingsDropdownWithButtons
 --- Template, the dropdown 220 wide, 48 left of the row's middle), its list the game's own menu.
 --- The plain dropdown where the steppers are missing, the classic one where the menu is, and a
@@ -1444,7 +1560,7 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe, f
     local hit = Band(parent, ROW_HEIGHT)
     local caption = Caption(parent, label)
 
-    local control, dropdown, Sync, setEnabled, offset
+    local control, dropdown, Sync, setEnabled, offset, openList
     -- Tables by label, since a list built afresh hands back equal entries, not the same tables;
     -- anything else by value, so two entries with one label are told apart.
     local function Chosen(value, current)
@@ -1481,6 +1597,21 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe, f
         setEnabled = function(on)
             if control.SetEnabled then control:SetEnabled(on) else dropdown:SetEnabled(on) end
         end
+        local function Entries()
+            local entries = {}
+            for _, value in ipairs(Resolve(values)) do
+                table.insert(entries, { text = describe(value), func = function() Choose(value) end,
+                    checked = function() return Chosen(value, read()) end, font = fontOf and fontOf(value) })
+            end
+            return entries
+        end
+        openList = function(gameMenu)
+            if dropdown:IsEnabled() then Layout.OpenMenu(dropdown, Entries, gameMenu) end
+        end
+        local down = dropdown:GetScript("OnMouseDown")
+        Script(dropdown, "OnMouseDown", function(self, button)
+            openList(function() if down then down(self, button) end end)
+        end)
     else
         dropdowns = dropdowns + 1
         control = CreateFrame("Frame", "SpokenLayoutDropdown" .. dropdowns, parent, "UIDropDownMenuTemplate")
@@ -1524,10 +1655,10 @@ function Layout:Dropdown(label, tooltip, values, read, write, apply, describe, f
             local arrow = forward and control.IncrementButton or control.DecrementButton
             if arrow then arrow:Click() end
         end, function()
-            if dropdown:IsEnabled() then
+            openList(function()
                 dropdown:MouseDown()
                 dropdown:MouseUp()
-            end
+            end)
         end)
     end
     Tooltip(hit, label, tooltip)
@@ -1780,7 +1911,7 @@ function Layout:OrderedList(label, tooltip, read, write, choices, describe, font
     end
 
     local menu
-    local function OpenMenu()
+    local function OpenGameMenu()
         if MenuUtil and MenuUtil.CreateContextMenu then
             MenuUtil.CreateContextMenu(add, function(_, root)
                 for _, value in ipairs(Offered()) do
@@ -1815,7 +1946,15 @@ function Layout:OrderedList(label, tooltip, read, write, choices, describe, font
         end
         ToggleDropDownMenu(1, nil, menu, add, 0, 0)
     end
-    Script(add, "OnClick", function() Sound(CLICK); OpenMenu() end)
+    local function Offers()
+        local entries = {}
+        for _, value in ipairs(Offered()) do
+            table.insert(entries, { text = describe(value), func = function() Added(value) end,
+                font = fontOf and fontOf(value) })
+        end
+        return entries
+    end
+    Script(add, "OnClick", function() Sound(CLICK); Layout.OpenMenu(add, Offers, OpenGameMenu) end)
 
     local function Sync()
         list = {}
