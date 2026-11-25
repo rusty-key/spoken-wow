@@ -2591,6 +2591,16 @@ export const EN = {
     addAsWording: "Keep our text and add the player's as another wording of this moment",
     addBeside: "Keep our text and add the player's beside it: as another wording, or one for each player gender",
     showMore: "Show {n} more of {m}",
+    replaceOurs: "Replace ours",
+    splitByGender: "Split by gender",
+    splitTitle: "Ours for {ours} players, theirs for {theirs} ones:\n{text}",
+    asAnotherWording: "As another wording",
+    theirsFor: "Theirs for {gender} players",
+    theirsReadBy: "Theirs read by a {gender} character",
+    oursReadBy: "Ours read by {who} characters",
+    readerGenderMark: "· the reader's gender",
+    andWord: "and",
+    sex: { male: "male", female: "female" },
   },
   /** The Contribute page. Its maps are keyed by the parser's field and error names, not by English. */
   contribute: {

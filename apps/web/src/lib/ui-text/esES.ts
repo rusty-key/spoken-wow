@@ -1296,6 +1296,16 @@ const esES: Dictionary = {
     addBeside:
       "Conservar nuestro texto y añadir el del jugador al lado: como otra redacción, o una por cada género de jugador",
     showMore: "Mostrar {n} más de {m}",
+    replaceOurs: "Reemplazar la nuestra",
+    splitByGender: "Dividir por género",
+    splitTitle: "La nuestra para jugadores {ours}, la suya para {theirs}:\n{text}",
+    asAnotherWording: "Como otra redacción",
+    theirsFor: "La suya para jugadores {gender}",
+    theirsReadBy: "La suya, leída por un personaje {gender}",
+    oursReadBy: "La nuestra, leída por personajes {who}",
+    readerGenderMark: "· el género del lector",
+    andWord: "y",
+    sex: { male: "masculino", female: "femenino" },
   },
   contribute: {
     title: "Contribuir",

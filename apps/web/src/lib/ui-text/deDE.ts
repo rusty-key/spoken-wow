@@ -1300,6 +1300,16 @@ const deDE: Dictionary = {
     addBeside:
       "Unseren Text behalten und den des Spielers daneben setzen: als weitere Formulierung oder je eine für jedes Spielergeschlecht",
     showMore: "{n} weitere von {m} anzeigen",
+    replaceOurs: "Unsere ersetzen",
+    splitByGender: "Nach Geschlecht teilen",
+    splitTitle: "Unsere Fassung für Spieler ({ours}), ihre für Spieler ({theirs}):\n{text}",
+    asAnotherWording: "Als andere Formulierung",
+    theirsFor: "Ihre Fassung für Spieler ({gender})",
+    theirsReadBy: "Ihre Fassung, gelesen von einem Charakter ({gender})",
+    oursReadBy: "Unsere Fassung, gelesen von Charakteren ({who})",
+    readerGenderMark: "· das Geschlecht des Lesers",
+    andWord: "und",
+    sex: { male: "männlich", female: "weiblich" },
   },
   contribute: {
     title: "Beitragen",

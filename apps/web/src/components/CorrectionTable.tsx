@@ -16,7 +16,7 @@ import { useLocalDates } from "@/components/useLocalDates";
 import type { ClientSummary } from "@/lib/contributions/client";
 import { genderSplit, hasClassSlot, readerSide, wordDiff, type DiffPart } from "@/lib/contributions/compare";
 import type { ContributionStatus } from "@/lib/contributions/contributions";
-import { GENDER_NAMES, otherGender, type ReaderGender } from "@/lib/contributions/gender";
+import { otherGender, readingWord, sexWord, type ReaderGender } from "@/lib/contributions/gender";
 import type { QuestStage } from "@/lib/contributions/query";
 import { langName, localeHref } from "@/lib/lang";
 import { cn } from "@/lib/utils";
@@ -347,17 +347,17 @@ export default function CorrectionTable({
                     title={source === "readables" ? t.corrections.takeAsPage : t.corrections.takeAsText}
                     onClick={() => void resolve(row.id, "accepted", fixOf(row))}
                   >
-                    Replace ours
+                    {t.corrections.replaceOurs}
                   </button>
                   {splits && side ? (
                     <button
                       type="button"
                       className="bs-btn"
                       disabled={hold}
-                      title={`Ours for ${GENDER_NAMES[otherGender(side)]} players, theirs for ${GENDER_NAMES[side]} ones:\n${splits[side]}`}
+                      title={fill(t.corrections.splitTitle, { ours: sexWord(t, otherGender(side)), theirs: sexWord(t, side), text: splits[side] })}
                       onClick={() => splitAs(side)}
                     >
-                      Split by gender
+                      {t.corrections.splitByGender}
                     </button>
                   ) : null}
                   {source === "quests" ? (
@@ -387,12 +387,12 @@ export default function CorrectionTable({
                     {editing ? t.corrections.cancelEdit : t.corrections.editText}
                   </button>
                   <button type="button" className="bs-btn bs-btn-text" disabled={hold} onClick={() => setDroppingId(dropping ? null : row.id)}>
-                    Drop…
+                    {t.contributions.dropEllipsis}
                   </button>
                 </>
               ) : (
                 <button type="button" className="bs-btn bs-btn-text" disabled={hold} onClick={() => void resolve(row.id, "new")}>
-                  Reopen
+                  {t.contributions.reopen}
                 </button>
               )}
               {refusal ? <p className="bs-refusal">{refusal.message}</p> : null}
@@ -417,12 +417,12 @@ export default function CorrectionTable({
                 {row.client.label} · {row.locale}
                 {row.client.buildNumber ? ` · ${row.client.buildNumber}` : null}
               </span>
-              {row.readerGender ? <span>Theirs read by a {GENDER_NAMES[row.readerGender]} character</span> : null}
-              {wording.readBy.length ? <span>Ours read by {wording.readBy.map((g) => GENDER_NAMES[g]).join(" and ")} characters</span> : null}
+              {row.readerGender ? <span>{fill(t.corrections.theirsReadBy, { gender: sexWord(t, row.readerGender) })}</span> : null}
+              {wording.readBy.length ? <span>{fill(t.corrections.oursReadBy, { who: readingWord(t, wording.readBy) })}</span> : null}
               <span className="inline-flex items-center gap-1">
-                Sent by <SendersButton id={row.id} count={row.count} />
+                {t.contributions.sentBy} <SendersButton id={row.id} count={row.count} />
               </span>
-              <span>Filed {when(row.createdAt)}</span>
+              <span>{fill(t.contributions.filed, { when: when(row.createdAt) })}</span>
               <Link href={localeHref(lang, wording.editHref)} className="underline underline-offset-[3px]">
                 {source === "readables" ? t.corrections.openPage : t.corrections.openLine}
               </Link>
@@ -437,7 +437,7 @@ export default function CorrectionTable({
               <div className="bs-reasons bs-choices">
                 <p>{t.corrections.keepBothHow}</p>
                 <button type="button" className="bs-reason" disabled={hold} onClick={keepAsWording}>
-                  As another wording
+                  {t.corrections.asAnotherWording}
                 </button>
                 {(row.readerGender === "m" ? (["m", "f"] as const) : (["f", "m"] as const)).map((side) => (
                   <button
@@ -448,11 +448,12 @@ export default function CorrectionTable({
                     title={chooser[side]}
                     onClick={() => splitAs(side)}
                   >
-                    Theirs for {GENDER_NAMES[side]} players{row.readerGender === side ? " · the reader's gender" : ""}
+                    {fill(t.corrections.theirsFor, { gender: sexWord(t, side) })}
+                    {row.readerGender === side ? t.corrections.readerGenderMark : null}
                   </button>
                 ))}
                 <button type="button" className="bs-btn bs-btn-text" onClick={() => setKeepingId(null)}>
-                  Cancel
+                  {t.common.cancel}
                 </button>
               </div>
             ) : null}
