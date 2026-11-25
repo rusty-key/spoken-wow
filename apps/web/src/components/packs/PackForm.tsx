@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SECTIONS, validateFields, validateNewPack, type Section } from "@/lib/community/rules";
 import type { Pack } from "@/lib/community/store";
 import { send } from "@/lib/send";
+import { fill } from "@/lib/site-text/format";
 import { cn } from "@/lib/utils";
 
 import { newest, TEXTAREA } from "./common";
@@ -77,6 +79,7 @@ export default function PackForm({
   onClose: () => void;
   onSent: () => void;
 }) {
+  const t = useUiText().packs;
   const [draft, setDraft] = useState<Draft>(() => draftOf(pack));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -103,7 +106,7 @@ export default function PackForm({
     setBusy(false);
 
     if (result.ok) return onSent();
-    if (!result.body) return setErrors({ form: "Could not reach the server. Try again." });
+    if (!result.body) return setErrors({ form: t.unreachableRetry });
     setErrors(result.body.errors ?? { form: result.error });
   }
 
@@ -140,11 +143,11 @@ export default function PackForm({
     <Dialog open onOpenChange={(next) => !next && !busy && onClose()}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100%-2rem)] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{pack ? "Submit new version" : "New pack"}</DialogTitle>
+          <DialogTitle>{pack ? t.newVersion : t.newPack}</DialogTitle>
           <DialogDescription>
             {pack
-              ? `${pack.id} · ${pack.lang} · ${pack.section}. An admin reviews it before players get it.`
-              : "An admin reviews it before players can install it from the Spoken Manager."}
+              ? `${pack.id} · ${pack.lang} · ${pack.section}. ${t.reviewedBy}`
+              : t.reviewedBy}
           </DialogDescription>
         </DialogHeader>
 
@@ -153,17 +156,17 @@ export default function PackForm({
             <div className="grid gap-4 sm:grid-cols-[1fr_7rem_9rem]">
               {field(
                 "id",
-                "Pack id",
+                t.packId,
                 text("id", { placeholder: "elune-quests-de", autoComplete: "off", spellCheck: false }),
-                <p>Lower-case letters, digits and hyphens. It names the folder and never changes.</p>,
+                <p>{t.packIdHint}</p>,
               )}
-              {field("lang", "Language", text("lang", { placeholder: "deDE", maxLength: 4, autoComplete: "off" }))}
+              {field("lang", t.language, text("lang", { placeholder: "deDE", maxLength: 4, autoComplete: "off" }))}
               {field(
                 "section",
-                "Section",
+                t.section,
                 <Select value={draft.section} onValueChange={set("section")} disabled={busy}>
                   <SelectTrigger id="pack-section" aria-invalid={Boolean(errors.section)} className="w-full">
-                    <SelectValue placeholder="Choose" />
+                    <SelectValue placeholder={t.choose} />
                   </SelectTrigger>
                   <SelectContent>
                     {SECTIONS.map((section) => (
@@ -178,7 +181,7 @@ export default function PackForm({
           )}
 
           <p className="text-muted-foreground -mt-2 text-xs">
-            The pack&apos;s <Code>.toc</Code> names its language with{" "}
+            {t.tocBefore} <Code>.toc</Code> {t.tocMiddle}{" "}
             <Code>
               ## {tocKey}: {draft.lang || "deDE"}
             </Code>
@@ -186,12 +189,12 @@ export default function PackForm({
           </p>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {field("title", "Title", text("title", { maxLength: 80 }))}
-            {field("author", "Author", text("author", { maxLength: 80 }))}
+            {field("title", t.title, text("title", { maxLength: 80 }))}
+            {field("author", t.author, text("author", { maxLength: 80 }))}
           </div>
           {field(
             "description",
-            "Description",
+            t.description,
             <textarea
               id="pack-description"
               rows={3}
@@ -203,56 +206,55 @@ export default function PackForm({
               disabled={busy}
               className={TEXTAREA}
             />,
-            <p>What it covers: how much of the section, and who voiced it.</p>,
+            <p>{t.covers}</p>,
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {field("version", "Version", text("version", { placeholder: "1.0.0", autoComplete: "off" }), (
+            {field("version", t.version, text("version", { placeholder: "1.0.0", autoComplete: "off" }), (
               <p>
-                {pack?.live ? `Higher than ${pack.live.version}` : "Raise it for every new zip"}, so installed copies
-                see an update.
+                {pack?.live ? fill(t.raiseAbove, { version: pack.live.version }) : t.raiseEveryZip}, so
+                installed copies see an update.
               </p>
             ))}
-            {field("size", "Size in bytes", text("size", { inputMode: "numeric", placeholder: "734003200", autoComplete: "off" }))}
+            {field("size", t.size, text("size", { inputMode: "numeric", placeholder: "734003200", autoComplete: "off" }))}
             <div className="text-muted-foreground -mt-2 space-y-1 text-xs sm:col-span-2">
               <p>
-                Size on Windows (PowerShell): <Code>(Get-Item {zip}).Length</Code>
+                {t.sizeWindows} <Code>(Get-Item {zip}).Length</Code>
               </p>
               <p>
-                On macOS: <Code>stat -f %z {zip}</Code>, on Linux: <Code>stat -c %s {zip}</Code>
+                {t.sizeMac} <Code>stat -f %z {zip}</Code>, {t.sizeLinux} <Code>stat -c %s {zip}</Code>
               </p>
             </div>
           </div>
           {field(
             "sha256",
-            "SHA-256 checksum",
+            t.checksum,
             text("sha256", { autoComplete: "off", spellCheck: false, className: "font-mono" }),
             <>
               <p>
-                Windows: <Code>certutil -hashfile {zip} SHA256</Code>
+                {t.sizeWindowsLine} <Code>certutil -hashfile {zip} SHA256</Code>
               </p>
               <p>
-                macOS or Linux: <Code>sha256sum {zip}</Code>
+                {t.macLinuxLine} <Code>sha256sum {zip}</Code>
               </p>
             </>,
           )}
           {field(
             "url",
-            "Zip link",
+            t.zipLink,
             text("url", {
               type: "url",
               placeholder: `https://github.com/you/your-pack/releases/download/v1.0.0/${zip}`,
               autoComplete: "off",
             }),
             <p>
-              A GitHub release asset. The zip holds one folder, <Code>{folder}</Code>, with{" "}
-              <Code>{folder}.toc</Code> inside, and nothing else beside it.
+              {t.zipLayout} <Code>{folder}</Code>, {t.zipLayoutInside} <Code>{folder}.toc</Code>
             </p>,
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {field("homepage", "Homepage (optional)", text("homepage", { type: "url", placeholder: "https://" }))}
-            {field("license", "License (optional)", text("license", { maxLength: 60, placeholder: "CC-BY-4.0" }))}
+            {field("homepage", t.homepage, text("homepage", { type: "url", placeholder: "https://" }))}
+            {field("license", t.license, text("license", { maxLength: 60, placeholder: "CC-BY-4.0" }))}
           </div>
 
           {errors.form && (
@@ -263,10 +265,10 @@ export default function PackForm({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
-              Cancel
+              {t.cancel}
             </Button>
             <Button type="submit" disabled={busy} className={cn(busy && "cursor-wait")}>
-              {busy ? "Sending…" : "Send for review"}
+              {busy ? t.sending : t.sendForReview}
             </Button>
           </DialogFooter>
         </form>

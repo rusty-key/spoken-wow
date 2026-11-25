@@ -28,6 +28,15 @@ export type ExplorerFilters = Omit<PlaceFilters, "field"> & { field?: PlaceFilte
 /** Either search's answer: the two differ only in the lines they carry. */
 export type ExplorerResult<L extends ExplorerLine> = Omit<ZoneResult, "lines"> & { lines: L[] };
 
+/** What a section calls its own two columns, its search box and its own lines. */
+export type SectionWords = {
+  facet: string;
+  name: string;
+  text: string;
+  search: string;
+  ownLine: string;
+};
+
 export type ExplorerSection<L extends ExplorerLine = ExplorerLine, F extends ExplorerFilters = ExplorerFilters> = {
   source: "places" | "bosses";
   /** "/api/places" | "/api/bosses". */
@@ -51,6 +60,8 @@ export type ExplorerSection<L extends ExplorerLine = ExplorerLine, F extends Exp
    * name column says so and the edit dialog is headed by the chip.
    */
   ownLine?(line: L): boolean;
+  /** What that line is called in the name column: "zone line", "instance line". */
+  ownLineText: string;
   /**
    * The entity_name row the line's name is written to in the page's language, as /api/names
    * addresses it; absent where it cannot be.

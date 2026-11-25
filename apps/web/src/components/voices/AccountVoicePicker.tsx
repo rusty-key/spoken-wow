@@ -14,7 +14,9 @@ import { useLang } from "@/components/LangProvider";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useUiText } from "@/components/UiTextProvider";
 import { withLang } from "@/lib/lang";
+import { fill } from "@/lib/site-text/format";
 import { cloneName } from "@/lib/voices/clone-name";
 
 type AccountVoice = {
@@ -39,6 +41,7 @@ export default function AccountVoicePicker({
   onAdopted: () => void;
 }) {
   const lang = useLang();
+  const words = useUiText().voices.accountVoice;
   const target = cloneName(voice, lang);
   const [open, setOpen] = useState(false);
   const [voices, setVoices] = useState<AccountVoice[] | null>(null);
@@ -53,7 +56,7 @@ export default function AccountVoicePicker({
     try {
       const response = await fetch(withLang(lang, "/api/voices/account"), { cache: "no-store" });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error ?? `could not list voices (${response.status})`);
+      if (!response.ok) throw new Error(body.error ?? fill(words.listFailed, { status: response.status }));
       setVoices(body.voices);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -74,7 +77,7 @@ export default function AccountVoicePicker({
         body: JSON.stringify({ voiceId: picked.voiceId, replace: exists }),
       });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error ?? `could not use ${picked.name} (${response.status})`);
+      if (!response.ok) throw new Error(body.error ?? fill(words.useFailed, { name: picked.name, status: response.status }));
       if (body.warning) setError(body.warning);
       // Names in the account changed, so the list read before is stale.
       setVoices(null);
@@ -105,15 +108,15 @@ export default function AccountVoicePicker({
         <PopoverTrigger asChild>
           <Button variant="outline" size="xs" disabled={disabled || busy}>
             {busy || loading ? <Loader2 className="animate-spin" /> : <Library />}
-            Use voice from my account
+            {words.useVoice}
           </Button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-80 p-0">
           <Command>
-            <CommandInput placeholder="Search your ElevenLabs voices" className="h-8 text-xs" />
+            <CommandInput placeholder={words.search} className="h-8 text-xs" />
             <CommandList>
               <CommandEmpty className="py-3 text-center text-xs">
-                {loading ? "Loading…" : "Nothing matches."}
+                {loading ? words.loading : words.nothing}
               </CommandEmpty>
               <CommandGroup>
                 {(voices ?? []).map((candidate) => (
@@ -127,11 +130,11 @@ export default function AccountVoicePicker({
                     <span className="min-w-0 flex-1 truncate">{candidate.name}</span>
                     <span className="text-muted-foreground shrink-0">
                       {candidate.name === target
-                        ? "this slot"
+                        ? words.thisSlot
                         : !candidate.renamable
-                          ? "premade, cannot be renamed"
+                          ? words.premade
                           : candidate.slot
-                            ? "fills a slot"
+                            ? words.fillsSlot
                             : candidate.category}
                     </span>
                   </CommandItem>
@@ -145,15 +148,15 @@ export default function AccountVoicePicker({
       {pending && (
         <span className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-amber-400">
-            Renames “{pending.name}” to <code>{target}</code>
-            {pending.slot ? ", so it stops filling that slot" : ""}
-            {exists ? `; the current ${target} becomes “${target} (replaced)”` : ""}.
+            {fill(words.renameToBefore, { name: pending.name })}<code>{target}</code>
+            {pending.slot ? words.renameSlotAfter : ""}
+            {exists ? fill(words.renameExistsAfter, { target }) : ""}{words.renameEnd}
           </span>
           <Button variant="destructive" size="xs" onClick={() => adopt(pending)}>
-            Confirm
+            {words.confirm}
           </Button>
           <Button variant="ghost" size="xs" onClick={() => setPending(null)}>
-            Cancel
+            {words.cancel}
           </Button>
         </span>
       )}

@@ -84,7 +84,8 @@ export function BookHeader({
         </FilterLink>
         {onRename && <RenameButton label={fill(t.catalogue.row.nameIt, { name: line.title })} onClick={() => onRename(line)} />}
         <span className="cat-group-meta">
-          {line.ownerKind === "object" ? t.catalogue.row.inWorld : t.catalogue.row.carried} · {materialName(line.material)} ·{" "}
+          {line.ownerKind === "object" ? t.catalogue.row.inWorld : t.catalogue.row.carried} ·{" "}
+          {t.catalogue.facets.material[materialName(line.material)]} ·{" "}
           {plural(line.pageCount, t.catalogue.row.batch.pageOne, t.catalogue.row.batch.pageMany)}
           {/* Which object or item opens it: two objects sharing a name is why the addon needs a checksum. */}
           <span className="cat-ids"> · {line.ownerIds.join(", ")}</span>

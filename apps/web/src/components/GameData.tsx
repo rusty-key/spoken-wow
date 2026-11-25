@@ -1,5 +1,7 @@
 "use client";
 
+import { useUiText } from "@/components/UiTextProvider";
+
 /**
  * /contributions/game-data: the chat commands for a game client, and what its cache says back.
  *
@@ -24,6 +26,7 @@ const voiceName = (v: { race: string | null; gender: string | null; flavor: stri
   v.race && v.gender ? [v.race, v.gender, v.flavor].filter(Boolean).join("-") : null;
 
 export default function GameData({ pending, script }: { pending: Pending[]; script: string[] }) {
+  const t = useUiText().contributions;
   const [copied, setCopied] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -49,7 +52,7 @@ export default function GameData({ pending, script }: { pending: Pending[]; scri
         body: JSON.stringify({ creatures }),
       });
       const body = await response.json();
-      if (!response.ok) throw new Error(body?.error ?? "That didn't go through -- try again.");
+      if (!response.ok) throw new Error(body?.error ?? t.failed);
       setResult(body);
       // Preselected: an answer the game gives for an NPC nobody has settled. A settled row is
       // shown for comparison but left alone unless someone ticks it.
@@ -116,7 +119,7 @@ export default function GameData({ pending, script }: { pending: Pending[]; scri
                 {line}
               </pre>
               <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void copy(index)}>
-                {copied === index ? "Copied" : "Copy"}
+                {copied === index ? t.copied : t.copy}
               </Button>
             </li>
           ))}

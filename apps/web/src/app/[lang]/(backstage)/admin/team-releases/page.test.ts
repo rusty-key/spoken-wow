@@ -10,6 +10,9 @@ vi.mock("@/lib/session", () => ({
   currentSession: async () => (who.role === null ? null : { user: { id: "u1", role: who.role } }),
 }));
 
+// No interface language on the account, so the page reads English.
+vi.mock("@/lib/users/ui-language", () => ({ uiLangOf: async () => null }));
+
 const review = vi.hoisted(() => ({ waitingReviews: vi.fn(), liveTeamPacks: vi.fn() }));
 vi.mock("@/lib/releases/review", () => review);
 
@@ -36,14 +39,14 @@ describe("the team releases page", () => {
   it("is not found for anybody but a site owner", async () => {
     for (const role of [null, "member"]) {
       who.role = role;
-      await expect(Page()).rejects.toMatchObject({ digest: expect.stringContaining("404") });
+      await expect(Page({ params: Promise.resolve({ lang: "enUS" }) })).rejects.toMatchObject({ digest: expect.stringContaining("404") });
     }
     expect(review.waitingReviews).not.toHaveBeenCalled();
   });
 
   it("lists the waiting versions, and the header counts the same ones", async () => {
     who.role = "admin";
-    const tree = await Page();
+    const tree = await Page({ params: Promise.resolve({ lang: "enUS" }) });
     expect(propsOf<{ waiting: WaitingVersion[] }>(tree, ReviewQueue).waiting).toBe(waiting);
     expect(propsOf<{ pendingReleases: number; tab: string }>(tree, AdminHeader)).toMatchObject({
       tab: "team-releases",

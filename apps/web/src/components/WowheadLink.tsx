@@ -1,5 +1,7 @@
 "use client";
 
+import { useUiText } from "@/components/UiTextProvider";
+
 /**
  * The way out to Wowhead, small enough to sit inside a row's id line.
  *
@@ -7,13 +9,14 @@
  * ignore clicks on an anchor, and this keeps that true if the markup around it changes.
  */
 export default function WowheadLink({ href }: { href: string }) {
+  const words = useUiText().common;
   return (
     <a
       href={href}
       target="_blank"
       rel="noreferrer"
       onClick={(event) => event.stopPropagation()}
-      title="Look this up on Wowhead Forever"
+      title={words.lookUpOnWowhead}
       className="hover:text-foreground underline underline-offset-2"
     >
       wh

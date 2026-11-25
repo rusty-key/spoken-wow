@@ -7,6 +7,8 @@ import { Contained } from "@/components/Width";
 import { viewerOf } from "@/lib/grants/store";
 import { isAdmin, langsWhere } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
+import { readingLang } from "@/lib/lang-server";
+import { uiText } from "@/lib/ui-text";
 import { storageView } from "@/lib/storage/view";
 import { ownersOf } from "@/lib/teams/store";
 
@@ -18,7 +20,7 @@ export const dynamic = "force-dynamic";
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
 /** A team's own buckets. The language in `?lang=` names the acting team; only languages with one are offered. */
-export default async function Page({ searchParams }: { searchParams: Promise<{ lang?: string; cloudflare?: string | string[]; cloudflare_error?: string | string[] }> }) {
+export default async function Page({ params, searchParams }: { params: Promise<{ lang: string }>; searchParams: Promise<{ lang?: string; cloudflare?: string | string[]; cloudflare_error?: string | string[] }> }) {
   const session = await currentSession();
   const viewer = await viewerOf(session);
   if (!session || !viewer) notFound();
@@ -29,6 +31,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
 
   const { lang: asked, cloudflare, cloudflare_error: cloudflareError } = await searchParams;
   const lang = administered.find((code) => code === asked) ?? administered[0];
+  const t = (await uiText(await readingLang((await params).lang))).admin;
 
   return (
     <main className="pb-36">
@@ -37,7 +40,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ l
         administered={administered}
         global={isAdmin(viewer.role)}
         tab="storage"
-        description="Where your team's audio is kept. Connect your own S3-compatible bucket (R2, S3, B2, Wasabi, GCS, MinIO) and send new takes there instead of Spoken's archive."
+        description={t.storageLede}
       />
       <Contained className="pt-6">
         <StoragePanel

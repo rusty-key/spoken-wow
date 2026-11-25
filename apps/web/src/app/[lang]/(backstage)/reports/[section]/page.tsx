@@ -1,4 +1,5 @@
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
+import { uiText } from "@/lib/ui-text";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
@@ -41,6 +42,7 @@ export default async function Page({
   searchParams: Promise<{ view?: string; category?: string; q?: string; dir?: string; page?: string }>;
 }) {
   const lang = await pageLang(params);
+  const t = (await uiText(await readingLang(lang))).reports;
   const { section } = await params;
   // Gossip was a tab of its own; its reports are quests reports.
   if (section === "gossip") redirect(localeHref(lang, `/reports/quests?${queryOf(await searchParams)}`));
@@ -95,16 +97,12 @@ export default async function Page({
     <main className="pt-6 pb-24">
       <Contained>
         <div className="flex items-baseline justify-between gap-4">
-          <h1 className="text-xl font-semibold">Reports</h1>
+          <h1 className="text-xl font-semibold">{t.title}</h1>
           <Link href="/reports/sort" className="text-sm underline-offset-2 hover:underline">
-            Sort one at a time
+            {t.sortOne}
           </Link>
         </div>
-        <p className="text-muted-foreground mt-1 mb-5 text-sm">
-          What players filed from inside the game. A report is a claim, not a verdict: read it,
-          listen to the line, and if it is right, queue the file for regeneration the usual way.
-          Nothing here starts a job on its own.
-        </p>
+        <p className="text-muted-foreground mt-1 mb-5 text-sm">{t.lede}</p>
       </Contained>
       <Wide>
         <ReportTable

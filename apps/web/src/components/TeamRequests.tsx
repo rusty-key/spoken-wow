@@ -5,15 +5,18 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useUiText } from "@/components/UiTextProvider";
 import { send } from "@/lib/send";
-import { branchText, requestLangName as nameOf } from "@/lib/teams/branch-text";
+import { fill } from "@/lib/site-text/format";
+import { requestLangName as nameOf } from "@/lib/teams/branch-text";
 import type { TeamRequest } from "@/lib/teams/requests";
+import type { UiText } from "@/lib/ui-text/en";
 
-function age(createdAt: string): string {
+function age(createdAt: string, words: UiText["teams"]): string {
   const minutes = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 60_000));
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return fill(words.ageMinutes, { n: minutes });
   const hours = Math.floor(minutes / 60);
-  return hours < 48 ? `${hours} h` : `${Math.floor(hours / 24)} d`;
+  return hours < 48 ? fill(words.ageHours, { n: hours }) : fill(words.ageDays, { n: Math.floor(hours / 24) });
 }
 
 type Props = {
@@ -23,6 +26,7 @@ type Props = {
 };
 
 export default function TeamRequests({ initial, besides = {} }: Props) {
+  const t = useUiText().teams;
   const router = useRouter();
   const [rows, setRows] = useState(initial);
   // router.refresh() brings a new `initial` but keeps this state, so a request sent meanwhile
@@ -62,7 +66,7 @@ export default function TeamRequests({ initial, besides = {} }: Props) {
   if (!rows.length) return null;
   return (
     <section className="mb-10 flex flex-col gap-3">
-      <h2 className="text-lg font-semibold">Team requests</h2>
+      <h2 className="text-lg font-semibold">{t.requests}</h2>
       <ul className="flex flex-col gap-3">
         {rows.map((request) => (
           <li key={request.id} className="flex flex-col gap-2 rounded border p-3 text-sm">
@@ -71,15 +75,25 @@ export default function TeamRequests({ initial, besides = {} }: Props) {
               <span>{request.email}</span>
               <span className="font-mono text-xs">
                 {request.langName
-                  ? `new: ${request.langName} / ${request.langNative ?? ""} (${request.lang})`
+                  ? fill(t.newLanguageLine, {
+                      name: request.langName,
+                      native: request.langNative ?? "",
+                      code: request.lang,
+                    })
                   : `${request.lang} ${nameOf(request)}`}
               </span>
               <span className="text-muted-foreground text-xs" suppressHydrationWarning>
-                {age(request.createdAt)}
+                {age(request.createdAt, t)}
               </span>
             </div>
             {request.note && <p className="text-muted-foreground">{request.note}</p>}
-            {request.branch && <p>{branchText(request.branch, nameOf(request))}</p>}
+            {request.branch && (
+              <p>
+                {request.branch === "new-language"
+                  ? t.branchNewLanguage
+                  : fill(t.branchAddTeam, { name: nameOf(request) })}
+              </p>
+            )}
             {besides[request.id] && (
               <label className="flex items-center gap-2">
                 <input
@@ -91,21 +105,21 @@ export default function TeamRequests({ initial, besides = {} }: Props) {
                     setCopies((was) => ({ ...was, [request.id]: checked }));
                   }}
                 />
-                Start from {besides[request.id]!.name}&apos;s voices and settings
+                {fill(t.startFrom, { name: besides[request.id]!.name })}
               </label>
             )}
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
-                aria-label={`Approve ${request.teamName}`}
+                aria-label={fill(t.approveFor, { team: request.teamName })}
                 disabled={busy !== null}
                 onClick={() => decide(request, "approve")}
               >
-                Approve
+                {t.approve}
               </Button>
               <Input
-                aria-label={`Reason for ${request.teamName}`}
-                placeholder="Reason (optional)"
+                aria-label={fill(t.reasonFor, { team: request.teamName })}
+                placeholder={t.reasonPlaceholder}
                 className="w-64"
                 value={reasons[request.id] ?? ""}
                 onChange={(event) => setReasons({ ...reasons, [request.id]: event.target.value })}
@@ -113,11 +127,11 @@ export default function TeamRequests({ initial, besides = {} }: Props) {
               <Button
                 size="sm"
                 variant="outline"
-                aria-label={`Reject ${request.teamName}`}
+                aria-label={fill(t.rejectFor, { team: request.teamName })}
                 disabled={busy !== null}
                 onClick={() => decide(request, "reject")}
               >
-                Reject
+                {t.reject}
               </Button>
             </div>
             {errors[request.id] && (

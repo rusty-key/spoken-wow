@@ -12,6 +12,7 @@
  * button starts.
  */
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
 import { Play } from "lucide-react";
 import { useState } from "react";
 
@@ -51,6 +52,7 @@ export default function ReportDetail({
   onRewritten,
   onPlay,
 }: Props) {
+  const t = useUiText();
   const lang = useLang();
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -71,7 +73,7 @@ export default function ReportDetail({
   }
 
   if (line === undefined) {
-    return <p className="text-muted-foreground px-3 py-3 text-sm">Looking up the line…</p>;
+    return <p className="text-muted-foreground px-3 py-3 text-sm">{t.reports.lookingUp}</p>;
   }
 
   // An address that resolves to nothing is itself worth reading: it means the corpus no
@@ -80,7 +82,7 @@ export default function ReportDetail({
   if (line === null) {
     return (
       <p className="text-muted-foreground px-3 py-3 text-sm">
-        No line in the corpus carries this id any more.
+        {t.reports.noLineAnyMore}
       </p>
     );
   }
@@ -91,7 +93,13 @@ export default function ReportDetail({
     <div className="flex flex-col gap-2 px-3 py-3">
       <div className="flex items-center gap-1">
         {detail.audioSrc === null ? null : (
-          <Button size="icon-xs" variant="ghost" title="Play this line" aria-label="Play this line" onClick={onPlay}>
+          <Button
+          size="icon-xs"
+          variant="ghost"
+          title={t.reports.playThisLine}
+          aria-label={t.reports.playThisLine}
+          onClick={onPlay}
+        >
             <Play />
           </Button>
         )}
@@ -101,13 +109,13 @@ export default function ReportDetail({
       </div>
 
       {detail.text === null ? (
-        <p className="text-muted-foreground text-sm italic">No story in this language yet.</p>
+        <p className="text-muted-foreground text-sm italic">{t.reports.noStory}</p>
       ) : (
         <p className="text-sm whitespace-pre-wrap">{detail.text}</p>
       )}
 
       {detail.audioSrc === null ? (
-        <p className="text-muted-foreground text-xs">No audio on file for this line.</p>
+        <p className="text-muted-foreground text-xs">{t.reports.noAudioOnFileLine}</p>
       ) : detail.stale ? (
         <OutdatedNote className="text-xs" />
       ) : null}
@@ -117,18 +125,18 @@ export default function ReportDetail({
           {/* Nothing written in the language is nothing to voice: the server would refuse it. */}
           {detail.text === null ? null : (
             <Button size="sm" variant="outline" disabled={busy} onClick={() => void regenerate()}>
-              {busy ? "Regenerating…" : "Regenerate"}
+              {busy ? t.reports.regenerating : t.reports.regenerate}
             </Button>
           )}
           {/* Quests only: the override endpoint is theirs, and places and readables have no text a
               triager may edit - their lines are the corpus itself. */}
           {source === "quests" && !(line as QuestLine).missing?.text ? (
             <Button size="sm" variant="outline" disabled={busy} onClick={() => setEditing(true)}>
-              Rewrite
+              {t.reports.rewrite}
             </Button>
           ) : null}
           {done && !busy ? (
-            <span className="text-muted-foreground text-xs">New take saved. Play it above.</span>
+            <span className="text-muted-foreground text-xs">{t.reports.takeSavedPlayAbove}</span>
           ) : null}
           {error ? <span className="text-destructive text-xs">{error}</span> : null}
         </div>

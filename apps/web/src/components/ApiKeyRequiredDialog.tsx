@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "@/components/LocaleLink";
+import { useUiText } from "@/components/UiTextProvider";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -31,29 +32,27 @@ export default function ApiKeyRequiredDialog({
   message: string | null;
   onClose: () => void;
 }) {
+  const words = useUiText();
   if (!message) return null;
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>A key is needed</DialogTitle>
+          <DialogTitle>{words.apiKeys.keyNeeded}</DialogTitle>
           <DialogDescription>{message}</DialogDescription>
         </DialogHeader>
 
         <p className="text-muted-foreground text-sm">
-          Generating audio spends from your own account with the generator active for this
-          language on Voices — ElevenLabs or fish.audio — not from the site&apos;s. Add that key to your
-          profile and this will work; it is encrypted before it is stored, and never shown
-          again.
+          {words.apiKeys.keyNeededBody}
         </p>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Close
+            {words.common.close}
           </Button>
           <Button asChild>
-            <Link href="/profile">Go to profile</Link>
+            <Link href="/profile">{words.apiKeys.goToProfile}</Link>
           </Button>
         </DialogFooter>
       </DialogContent>

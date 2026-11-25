@@ -42,7 +42,7 @@ describe("Backstage's dictionaries", () => {
     describe(code, () => {
       it("translates every key English has, with the same placeholders", async () => {
         const mine = new Map(leaves((await import(`./${code}`)).default));
-        // Partial is fine, but a key English lacks is a typo that would never render.
+        // A key English lacks is a typo that would never render.
         expect([...mine.keys()].filter((path) => !english.has(path))).toEqual([]);
         for (const [path, text] of mine) {
           expect(text.trim(), path).not.toBe("");
@@ -50,6 +50,12 @@ describe("Backstage's dictionaries", () => {
           expect(text, path).not.toContain("\uFFFD");
           expect(text, path).not.toContain("\u2014");
         }
+      });
+
+      // The fallback to English hides a dropped key from every other check.
+      it("leaves no English key untranslated", async () => {
+        const mine = new Map(leaves((await import(`./${code}`)).default));
+        expect([...english.keys()].filter((path) => !mine.has(path))).toEqual([]);
       });
 
       it("translates what English says, not only copies it", async () => {

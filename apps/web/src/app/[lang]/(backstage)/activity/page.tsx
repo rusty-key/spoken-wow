@@ -5,7 +5,8 @@ import ActivityTable from "@/components/ActivityTable";
 import { isCategory } from "@/lib/activity/kinds";
 import { activityActors, isDay, listActivity, type Cursor } from "@/lib/activity/store";
 import { viewerOf } from "@/lib/grants/store";
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
+import { uiText } from "@/lib/ui-text";
 import { can, isAdmin } from "@/lib/permissions";
 import { isSource } from "@/lib/sections";
 import { currentSession } from "@/lib/session";
@@ -44,6 +45,7 @@ export default async function Page({
   }>;
 }) {
   const lang = await pageLang(params);
+  const t = (await uiText(await readingLang(lang))).activity;
   const session = await currentSession();
 
   // 404 rather than a redirect, like /reports: the log names who did what, and a member has
@@ -72,13 +74,8 @@ export default async function Page({
   return (
     <main className="pt-6 pb-24">
       <Contained>
-        <h1 className="text-xl font-semibold">Activity</h1>
-        <p className="text-muted-foreground mt-1 mb-5 text-sm">
-          Everything done in this language, newest first, and who did it: takes cut and put
-          back, text and pronunciation changes, voices, and who was given what. Changes that
-          apply to every language are listed here too. Anything older than this log was
-          rebuilt from what the site kept, so restores and removals before it began are missing.
-        </p>
+        <h1 className="text-xl font-semibold">{t.title}</h1>
+        <p className="text-muted-foreground mt-1 mb-5 text-sm">{t.lede}</p>
       </Contained>
       <Wide>
         <ActivityTable

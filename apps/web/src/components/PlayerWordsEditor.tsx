@@ -3,9 +3,11 @@
 import { useRouter } from "next/navigation";
 import { Fragment, useState } from "react";
 
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { DeclinedForms, Lang, PlayerForms, PlayerWords } from "@/lib/lang";
+import { fill } from "@/lib/site-text/format";
 import { withLang } from "@/lib/lang";
 import { PLAYER_WORD_LIMIT } from "@/lib/player-words";
 import { send } from "@/lib/send";
@@ -17,12 +19,12 @@ type Declined = Required<DeclinedForms[string]>;
 type CaseRow = { n: string } & Record<Reader, Declined>;
 type Draft = Record<Reader, Record<Field, string>> & { cases: CaseRow[]; quantity: string };
 
-const FIELDS: { key: Field; label: string; hint: string; required: boolean }[] = [
-  { key: "name", label: "Name and class ($N, $C)", hint: "adventurer", required: true },
-  { key: "race", label: "Race ($R)", hint: "traveler", required: true },
-  { key: "nameGenitive", label: "Name with a glued s ($Ns)", hint: "Optional: German's Abenteurers", required: false },
-  { key: "classPlural", label: "Class plural ($cs)", hint: "Optional: French's aventuriers", required: false },
-  { key: "raceWeak", label: "Race after der ($R)", hint: "Optional: German's Reisende", required: false },
+const FIELDS: { key: Field; required: boolean }[] = [
+  { key: "name", required: true },
+  { key: "race", required: true },
+  { key: "nameGenitive", required: false },
+  { key: "classPlural", required: false },
+  { key: "raceWeak", required: false },
 ];
 
 const DECLINED: { key: keyof Declined; label: string }[] = [
@@ -30,9 +32,9 @@ const DECLINED: { key: keyof Declined; label: string }[] = [
   { key: "race", label: "$R" },
 ];
 
-const READERS: { key: Reader; other: Reader; label: string; aria: string }[] = [
-  { key: "m", other: "f", label: "Male", aria: "male" },
-  { key: "f", other: "m", label: "Female", aria: "female" },
+const READERS: { key: Reader; other: Reader }[] = [
+  { key: "m", other: "f" },
+  { key: "f", other: "m" },
 ];
 
 function draftFields(forms: PlayerForms | undefined): Record<Field, string> {
@@ -87,6 +89,7 @@ export default function PlayerWordsEditor({
   /** Whether the language's row holds words, so Remove or Reset has something to clear. */
   saved: boolean;
 }) {
+  const t = useUiText().playerWords;
   const router = useRouter();
   const [words, setWords] = useState<Draft>(() => draftOf(initial));
   const [error, setError] = useState<string | null>(null);
@@ -126,24 +129,27 @@ export default function PlayerWordsEditor({
         save(words);
       }}
     >
-      <p className="text-muted-foreground text-xs">A line that does not branch on the reader says the male words.</p>
+      <p className="text-muted-foreground text-xs">{t.noBranch}</p>
       <div className="grid grid-cols-[14rem_1fr_1fr] items-center gap-x-3 gap-y-2 text-sm">
         <span />
         {READERS.map((reader) => (
           <span key={reader.key} className="font-semibold">
-            {reader.label}
+            {t.readers[reader.key === "m" ? "male" : "female"]}
           </span>
         ))}
         {FIELDS.map((field) => (
           <Fragment key={field.key}>
-            <span>{field.label}</span>
+            <span>{t.fields[field.key]}</span>
             {READERS.map((reader) => (
               <Input
                 key={reader.key}
-                aria-label={`${field.label}, ${reader.aria}`}
+                aria-label={fill(t.fieldFor, {
+                  field: t.fields[field.key],
+                  reader: t.readers[reader.key === "m" ? "male" : "female"],
+                })}
                 required={field.required}
                 maxLength={PLAYER_WORD_LIMIT}
-                placeholder={field.hint}
+                placeholder={t.hints[field.key]}
                 value={words[reader.key][field.key]}
                 onChange={(event) => setWord(reader.key, field.key, event.target.value)}
               />
@@ -151,12 +157,12 @@ export default function PlayerWordsEditor({
           </Fragment>
         ))}
 
-        <span className="col-span-3 mt-4 font-semibold">Declined forms (|3-N)</span>
+        <span className="col-span-3 mt-4 font-semibold">{t.declinedForms}</span>
         {words.cases.map((row, index) => (
           <Fragment key={index}>
             <div className="col-span-3 flex items-center gap-2">
               <label className="flex items-center gap-2">
-                Case
+                {t.caseLabel}
                 <Input
                   className="w-14"
                   required
@@ -177,7 +183,7 @@ export default function PlayerWordsEditor({
                 size="sm"
                 onClick={() => updateCases((cases) => cases.filter((_, at) => at !== index))}
               >
-                Remove
+                {t.remove}
               </Button>
             </div>
             {DECLINED.map((kind) => (
@@ -186,7 +192,11 @@ export default function PlayerWordsEditor({
                 {READERS.map((reader) => (
                   <Input
                     key={reader.key}
-                    aria-label={`Case ${row.n || "N"} ${kind.label}, ${reader.aria}`}
+                    aria-label={fill(t.caseFor, {
+                      n: row.n || "N",
+                      field: kind.label,
+                      reader: t.readers[reader.key === "m" ? "male" : "female"],
+                    })}
                     // A word for one reader only leaves the other reader's lines unvoiced.
                     required={row[reader.other][kind.key].trim() !== ""}
                     maxLength={PLAYER_WORD_LIMIT}
@@ -203,17 +213,17 @@ export default function PlayerWordsEditor({
         ))}
         <div className="col-span-3">
           <Button type="button" variant="outline" size="sm" onClick={() => updateCases((cases) => [...cases, emptyCase()])}>
-            Add a case
+            {t.addCase}
           </Button>
         </div>
 
-        <span className="col-span-3 mt-4 font-semibold">Every reader</span>
-        <span>A writ&apos;s count ($2oa)</span>
+        <span className="col-span-3 mt-4 font-semibold">{t.everyReader}</span>
+        <span>{t.quantity}</span>
         <Input
-          aria-label="A writ's count ($2oa)"
+          aria-label={t.quantity}
           className="col-span-2"
           maxLength={PLAYER_WORD_LIMIT}
-          placeholder="Optional: an order of"
+          placeholder={t.quantityHint}
           value={words.quantity}
           onChange={(event) => {
             const value = event.target.value;
@@ -226,14 +236,14 @@ export default function PlayerWordsEditor({
           {error}
         </p>
       )}
-      {saved && <p className="text-muted-foreground text-sm">Saved. Takes whose lines say these words are now stale.</p>}
+      {saved && <p className="text-muted-foreground text-sm">{t.saved}</p>}
       <div className="flex gap-2">
         <Button type="submit" disabled={busy}>
-          Save
+          {t.save}
         </Button>
         {hasRow && (
           <Button type="button" variant="outline" disabled={busy} onClick={() => save(null)}>
-            {defaults ? "Reset" : "Remove"}
+            {defaults ? t.reset : t.removeAll}
           </Button>
         )}
       </div>

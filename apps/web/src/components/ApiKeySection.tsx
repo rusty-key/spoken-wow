@@ -3,9 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ApiKeyStatus } from "@/lib/api-key";
+import { fill } from "@/lib/site-text/format";
 import { PROVIDER_NAME, type Provider } from "@/lib/generation/providers";
 
 /** What differs between the two providers' sections: the words, and where the key goes. */
@@ -42,6 +44,8 @@ export default function ApiKeySection({
   initial: ApiKeyStatus | null;
   provider?: Provider;
 }) {
+  const t = useUiText();
+  const words = t.apiKeys;
   const copy = COPY[provider];
   // Re-rendered from the server after a save or a removal, because other sections of the page
   // depend on which keys exist: the generator choice offers fish.audio only once it has one.
@@ -64,7 +68,7 @@ export default function ApiKeySection({
         body: JSON.stringify({ key: entry.trim() }),
       });
       const body = (await response.json()) as { status?: ApiKeyStatus; error?: string };
-      if (!response.ok || !body.status) throw new Error(body.error ?? "could not save that key");
+      if (!response.ok || !body.status) throw new Error(body.error ?? words.couldNotSave);
       setStatus(body.status);
       setEntry("");
       setReplacing(false);
@@ -81,7 +85,7 @@ export default function ApiKeySection({
     setError(null);
     try {
       const response = await fetch(copy.endpoint, { method: "DELETE" });
-      if (!response.ok) throw new Error("could not remove that key");
+      if (!response.ok) throw new Error(words.couldNotRemove);
       setStatus(null);
       setReplacing(false);
       router.refresh();
@@ -97,23 +101,18 @@ export default function ApiKeySection({
   return (
     // Anchored so /voices can send somebody straight to the key its Activate is waiting on.
     <section id={`${provider}-key`} className="max-w-xl scroll-mt-20">
-      <h2 className="mb-1 font-medium">{PROVIDER_NAME[provider]} key</h2>
+      <h2 className="mb-1 font-medium">{fill(words.title, { provider: PROVIDER_NAME[provider] })}</h2>
       {provider === "elevenlabs" ? (
         <p className="text-muted-foreground mb-4 text-sm">
-          Regenerating a line, cloning a voice and previewing a pronunciation all spend credits
-          from <strong className="text-foreground">your own</strong> ElevenLabs account, so this
-          site needs a key of yours. It is encrypted before it is stored and is never shown
-          again — only its last four characters. Find yours under your ElevenLabs profile, in
-          API keys.
+          {words.elevenLabsBefore}
+          <strong className="text-foreground">{t.profile.yourOwn}</strong>
+          {words.elevenLabsAfter}
         </p>
       ) : (
         <p className="text-muted-foreground mb-4 text-sm">
-          fish.audio is a second generator, spent from{" "}
-          <strong className="text-foreground">your own</strong> prepaid fish.audio balance by
-          the byte of text. It is optional: without a key everything here uses ElevenLabs, and with one you choose it
-          per language on Voices. Like
-          the ElevenLabs key it is encrypted before it is stored and never shown again. Find
-          yours on fish.audio, under API keys.
+          {words.fishBefore}
+          <strong className="text-foreground">{t.profile.yourOwn}</strong>
+          {words.fishAfter}
         </p>
       )}
 
@@ -130,10 +129,10 @@ export default function ApiKeySection({
             {status.hint}
           </span>
           <span className="text-muted-foreground ml-3 text-xs">
-            {status.tier && <>{status.tier} plan · </>}
+            {status.tier && <>{fill(words.planTier, { tier: status.tier })} · </>}
             {status.verifiedAt
-              ? `verified ${new Date(status.verifiedAt).toISOString().slice(0, 10)}`
-              : "not verified"}
+              ? fill(words.verified, { when: new Date(status.verifiedAt).toISOString().slice(0, 10) })
+              : words.notVerified}
           </span>
         </p>
       )}
@@ -144,13 +143,13 @@ export default function ApiKeySection({
             type="password"
             value={entry}
             autoComplete="off"
-            placeholder={copy.placeholder}
-            aria-label={`${PROVIDER_NAME[provider]} API key`}
+            placeholder={provider === "fish" ? words.placeholderFish : words.placeholderEleven}
+            aria-label={fill(t.profile.addKey, { provider: PROVIDER_NAME[provider] })}
             onChange={(event) => setEntry(event.target.value)}
             className="w-80 font-mono"
           />
           <Button type="button" disabled={busy || entry.trim() === ""} onClick={save}>
-            {busy ? "Checking…" : "Save"}
+            {busy ? words.checking : words.save}
           </Button>
           {replacing && (
             <Button
@@ -162,20 +161,20 @@ export default function ApiKeySection({
                 setError(null);
               }}
             >
-              Cancel
+              {words.cancel}
             </Button>
           )}
           <span className="text-muted-foreground w-full text-xs">
-            {copy.checked}
+            {provider === "fish" ? t.profile.keyCheckedFish : t.profile.keyCheckedEleven}
           </span>
         </div>
       ) : (
         <div className="flex items-center gap-2">
           <Button type="button" variant="outline" onClick={() => setReplacing(true)}>
-            Replace
+            {words.replace}
           </Button>
           <Button type="button" variant="outline" disabled={busy} onClick={remove}>
-            Remove
+            {words.remove}
           </Button>
         </div>
       )}

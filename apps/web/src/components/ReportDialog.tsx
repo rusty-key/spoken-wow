@@ -1,6 +1,7 @@
 "use client";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,7 @@ type Props = {
  * per source, which is what reportTargetOf does.
  */
 export default function ReportDialog({ subject, onClose }: Props) {
+  const t = useUiText().catalogue.row;
   const lang = useLang();
   const target = subject ? reportTargetOf(subject.source, subject.line) : null;
 
@@ -50,7 +52,7 @@ export default function ReportDialog({ subject, onClose }: Props) {
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Report this line</DialogTitle>
+          <DialogTitle>{t.report}</DialogTitle>
           <DialogDescription>
             {detail.heading}
             {context ? ` — ${context}` : ""} ({target})

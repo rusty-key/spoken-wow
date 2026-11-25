@@ -4,7 +4,9 @@ import { Download, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useUiText } from "@/components/UiTextProvider";
 import { Slider } from "@/components/ui/slider";
+import { fill } from "@/lib/site-text/format";
 import { cn, timecode } from "@/lib/utils";
 
 import { Contained } from "./Width";
@@ -90,6 +92,7 @@ export default function AudioPlayer({
   totalHint,
   audioRef,
 }: Props) {
+  const t = useUiText().common;
   const local = useRef<HTMLAudioElement | null>(null);
 
   const [playing, setPlaying] = useState(false);
@@ -205,7 +208,7 @@ export default function AudioPlayer({
           variant="secondary"
           onClick={toggle}
           disabled={!src}
-          aria-label={playing ? "Pause" : "Play"}
+          aria-label={playing ? t.pause : t.play}
           className="size-10 shrink-0 rounded-full"
         >
           {playing ? <Pause className="fill-current" /> : <Play className="fill-current" />}
@@ -213,7 +216,7 @@ export default function AudioPlayer({
 
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">
-            {title ?? "Nothing playing"}
+            {title ?? t.nothingPlaying}
             {meta && <span className="text-muted-foreground ml-2 font-mono text-xs">{meta}</span>}
           </div>
           <div
@@ -223,7 +226,7 @@ export default function AudioPlayer({
             )}
             role={failed ? "alert" : undefined}
           >
-            {failed ? "Its audio is not on the server." : (subtitle ?? "Pick a line to hear it.")}
+            {failed ? t.audioMissing : (subtitle ?? t.pickLine)}
           </div>
 
           <div className="mt-1.5 flex items-center gap-3">
@@ -235,7 +238,7 @@ export default function AudioPlayer({
               max={total || 1}
               step={0.05}
               disabled={!src || !total}
-              aria-label="Seek"
+              aria-label={t.seek}
               // The bar itself is 4px tall, which is a miserable thing to hit with a mouse.
               // The padding gives the track a 20px-tall pointer target, and the matching
               // negative margin keeps the row laid out as if it were still 4px.
@@ -260,7 +263,7 @@ export default function AudioPlayer({
           variant="ghost"
           onClick={cycleRate}
           disabled={!src}
-          aria-label="Playback speed"
+          aria-label={t.playbackSpeed}
           className="w-14 shrink-0 font-mono text-xs tabular-nums"
         >
           {rate.toFixed(2).replace(/0$/, "")}x
@@ -276,7 +279,7 @@ export default function AudioPlayer({
             else changeVolume(el.volume || 1);
           }}
           disabled={!src}
-          aria-label={muted || volume === 0 ? "Unmute" : "Mute"}
+          aria-label={muted || volume === 0 ? t.unmute : t.mute}
           // A phone has volume buttons, and at its width the seek bar needs the room more.
           className="hidden shrink-0 sm:inline-flex"
         >
@@ -286,7 +289,7 @@ export default function AudioPlayer({
           value={[muted ? 0 : volume]}
           max={1}
           step={0.01}
-          aria-label="Volume"
+          aria-label={t.volume}
           // Not disabled with nothing playing: the level is worth setting before the first
           // line, and it is remembered either way. Same enlarged pointer target as the seek bar.
           className="-my-2 hidden w-20 shrink-0 cursor-pointer py-2 sm:flex"
@@ -301,8 +304,8 @@ export default function AudioPlayer({
             <a
               href={src}
               download={downloadName}
-              aria-label="Download this line"
-              title={downloadName && `Download ${downloadName}`}
+              aria-label={t.downloadThisLine}
+              title={downloadName && fill(t.downloadNamed, { name: downloadName })}
             >
               <Download />
             </a>
@@ -312,7 +315,7 @@ export default function AudioPlayer({
             size="icon"
             variant="ghost"
             disabled
-            aria-label="Download this line"
+            aria-label={t.downloadThisLine}
             className="shrink-0"
           >
             <Download />

@@ -5,11 +5,13 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useUiText } from "@/components/UiTextProvider";
 import type { Lang } from "@/lib/lang";
-import { plural } from "@/lib/plural";
 import { SECTION_LABELS } from "@/lib/releases/sections";
 import { send } from "@/lib/send";
+import { fill } from "@/lib/site-text/format";
 import type { DeletedTable, DeletionPreview } from "@/lib/teams/delete";
+import { EN, type UiText } from "@/lib/ui-text/en";
 
 /** A team's setup beside its voices, which the voices' line names. */
 const SETUP: readonly DeletedTable[] = [
@@ -17,50 +19,112 @@ const SETUP: readonly DeletedTable[] = [
   "npc_direction_locale", "lexicon_change", "pronunciation_lexicon_locale", "pronunciation_lexicon",
 ];
 
+type Words = UiText["teams"];
+type Noun = Words["nouns"][keyof Words["nouns"]];
+
 /** Rows no other line names, so a team with only these is not "nothing but its name". */
-const OTHER: readonly [DeletedTable, string, string?][] = [
-  ["line_ignore", "ignored line"],
-  ["line_flag", "line flag"],
-  ["line_issue", "line issue"],
-  ["regeneration_batch", "generation batch", "generation batches"],
-  ["regeneration_pause", "generation pause"],
-  ["queue_dismissal", "dismissed queue line"],
-  ["archive_object", "archive record"],
-  ["storage_move", "storage move"],
-  ["activity", "activity log entry", "activity log entries"],
+const OTHER: readonly [DeletedTable, keyof Words["nouns"]][] = [
+  ["line_ignore", "ignoredLine"],
+  ["line_flag", "lineFlag"],
+  ["line_issue", "lineIssue"],
+  ["regeneration_batch", "generationBatch"],
+  ["regeneration_pause", "generationPause"],
+  ["queue_dismissal", "dismissedQueueLine"],
+  ["archive_object", "archiveRecord"],
+  ["storage_move", "storageMove"],
+  ["activity", "activityEntry"],
 ];
 
-function listed(items: string[]): string {
-  return items.length > 1 ? `${items.slice(0, -1).join(", ")} and ${items.at(-1)}` : items[0];
+function count(n: number, noun: Noun, w: Words): string {
+  return fill(w.count, { n, noun: n === 1 ? noun.one : noun.many });
+}
+
+function listed(items: string[], w: Words): string {
+  return items.length > 1 ? fill(w.listJoin, { head: items.slice(0, -1).join(", "), tail: items.at(-1)! }) : items[0];
 }
 
 /** What goes with the team, one line each, in plain words; nothing for what it has none of. */
-export function deletionLines(preview: DeletionPreview, nameOf: (lang: Lang) => string): string[] {
+export function deletionLines(
+  preview: DeletionPreview,
+  nameOf: (lang: Lang) => string,
+  w: Words = EN.teams,
+): string[] {
   const { counts } = preview;
   const lines: string[] = [];
+  const noun = (key: keyof Words["nouns"]) => w.nouns[key];
   if (preview.packs.length) {
     const packs = preview.packs.map((pack) => `${SECTION_LABELS[pack.section]} in ${nameOf(pack.lang)}`).join(", ");
-    lines.push(`${plural(preview.packs.length, "pack")} will be delisted first: ${packs}.`);
+    lines.push(
+      fill(w.delistFirst, {
+        n: preview.packs.length,
+        noun: preview.packs.length === 1 ? noun("pack").one : noun("pack").many,
+        list: packs,
+      }),
+    );
   }
-  if (counts.take) lines.push(`${plural(counts.take, "take")} and their history; the audio files stay in the bucket.`);
-  if (counts.recording) lines.push(`${plural(counts.recording, "recording")}; the audio files stay in the bucket.`);
-  const voices = [counts.voice && plural(counts.voice, "voice"), counts.voice_clone && plural(counts.voice_clone, "voice clone")];
-  if (voices.some(Boolean)) lines.push(`${voices.filter(Boolean).join(" and ")}, with its generation settings and lexicon.`);
-  else if (SETUP.some((table) => counts[table])) lines.push("Its generation settings and lexicon.");
-  if (preview.pending) lines.push(`${plural(preview.pending, "line")} waiting to generate will be cancelled.`);
+  if (counts.take) {
+    lines.push(fill(w.takesHistory, { n: counts.take, noun: counts.take === 1 ? noun("take").one : noun("take").many }));
+  }
+  if (counts.recording) {
+    lines.push(
+      fill(w.filesStay, {
+        n: counts.recording,
+        noun: counts.recording === 1 ? noun("recording").one : noun("recording").many,
+      }),
+    );
+  }
+  const voices: string[] = [
+    ...(counts.voice ? [count(counts.voice, noun("voice"), w)] : []),
+    ...(counts.voice_clone ? [count(counts.voice_clone, noun("voiceClone"), w)] : []),
+  ];
+  if (voices.length) lines.push(fill(w.withSettings, { voices: listed(voices, w) }));
+  else if (SETUP.some((table) => counts[table])) lines.push(w.settingsAndLexicon);
+  if (preview.pending) {
+    lines.push(
+      fill(w.pendingCancelled, {
+        n: preview.pending,
+        noun: preview.pending === 1 ? noun("line").one : noun("line").many,
+      }),
+    );
+  }
   const overrides = counts.line_override + counts.text_override;
-  if (overrides) lines.push(`${plural(overrides, "text override")}.`);
-  if (counts.release_run) lines.push(`${plural(counts.release_run, "release")} in its history.`);
+  if (overrides) {
+    lines.push(fill(w.overridden, { n: overrides, noun: overrides === 1 ? noun("textOverride").one : noun("textOverride").many }));
+  }
+  if (counts.release_run) {
+    lines.push(
+      fill(w.releaseHistory, {
+        n: counts.release_run,
+        noun: counts.release_run === 1 ? noun("release").one : noun("release").many,
+      }),
+    );
+  }
   const { moving, closing } = preview.reports;
-  if (moving) lines.push(`${plural(moving, "text report")} will move to another team of the language, or to its text queue.`);
-  if (closing) lines.push(`${plural(closing, "open voice report")} will be closed: their takes go with the team.`);
-  if (counts.storage_backend) lines.push("Its storage bucket is forgotten; everything in it stays.");
-  const also = OTHER.filter(([table]) => counts[table]).map(([table, noun, nouns]) => plural(counts[table], noun, nouns));
-  if (also.length) lines.push(`Also ${listed(also)}.`);
+  if (moving) {
+    lines.push(
+      fill(w.reportsMove, {
+        n: moving,
+        noun: moving === 1 ? noun("textReport").one : noun("textReport").many,
+      }),
+    );
+  }
+  if (closing) {
+    lines.push(
+      fill(w.reportsClose, {
+        n: closing,
+        noun: closing === 1 ? noun("voiceReport").one : noun("voiceReport").many,
+      }),
+    );
+  }
+  if (counts.storage_backend) lines.push(w.bucketForgotten);
+  const also = OTHER.filter(([table]) => counts[table]).map(([table, key]) => count(counts[table], noun(key), w));
+  if (also.length) lines.push(fill(w.also, { items: listed(also, w) }));
   const people = new Set(preview.members.map((member) => member.email)).size;
-  if (people) lines.push(`${plural(people, "person", "people")} will lose what they do in it; text maintainers keep theirs.`);
+  if (people) {
+    lines.push(fill(w.peopleLose, { n: people, noun: people === 1 ? noun("person").one : noun("person").many }));
+  }
   for (const { lang, alone } of preview.langs) {
-    if (alone) lines.push(`${nameOf(lang)} will be hidden: it has no other team.`);
+    if (alone) lines.push(fill(w.languageHidden, { name: nameOf(lang) }));
   }
   return lines;
 }
@@ -75,6 +139,8 @@ type Props = {
 
 /** Lists what goes with the team, and deletes it once its slug is typed. */
 export default function DeleteTeamDialog({ team, nameOf, onClose, onSent }: Props) {
+  const t = useUiText();
+  const words = t.teams;
   const [preview, setPreview] = useState<DeletionPreview | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
@@ -91,13 +157,13 @@ export default function DeleteTeamDialog({ team, nameOf, onClose, onSent }: Prop
         const body = await response.json().catch(() => ({}));
         if (!live) return;
         if (response.ok) setPreview(body as DeletionPreview);
-        else setFailed((body as { error?: string }).error ?? "Could not read what the team has.");
+        else setFailed((body as { error?: string }).error ?? words.readFailed);
       })
-      .catch(() => live && setFailed("Could not reach the server."));
+      .catch(() => live && setFailed(t.packs.unreachable));
     return () => {
       live = false;
     };
-  }, [team]);
+  }, [team, words.readFailed, t.packs.unreachable]);
 
   async function remove() {
     if (!team) return;
@@ -107,42 +173,44 @@ export default function DeleteTeamDialog({ team, nameOf, onClose, onSent }: Prop
     onSent(result.ok ? null : result.error);
   }
 
-  const lines = preview ? deletionLines(preview, nameOf) : [];
+  const lines = preview ? deletionLines(preview, nameOf, words) : [];
   return (
     <Dialog open={team !== null} onOpenChange={(open) => !open && onClose()}>
       {team && (
         <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Delete {team.name}?</DialogTitle>
+            <DialogTitle>{fill(words.deleteTitle, { name: team.name })}</DialogTitle>
             <DialogDescription>
               {preview?.refusal ??
                 failed ??
-                (preview ? "This cannot be undone. Deleted with it:" : "Reading what the team has…")}
+                (preview ? words.deleteBody : words.readingTeam)}
             </DialogDescription>
           </DialogHeader>
           {preview && !preview.refusal && (
             <>
               <ul className="list-disc pl-5 text-sm">
-                {lines.length ? lines.map((line) => <li key={line}>{line}</li>) : <li>Nothing but its name.</li>}
+                {lines.length ? lines.map((line) => <li key={line}>{line}</li>) : <li>{words.nothingButName}</li>}
               </ul>
               <label className="flex flex-col gap-1 text-sm">
                 <span>
-                  Type <span className="font-mono">{team.slug}</span> to confirm
+                  {words.typeToConfirmBefore}
+                  <span className="font-mono">{team.slug}</span>
+                  {words.typeToConfirmAfter}
                 </span>
-                <Input aria-label="Team slug" value={typed} onChange={(event) => setTyped(event.target.value)} />
+                <Input aria-label={words.slugLabel} value={typed} onChange={(event) => setTyped(event.target.value)} />
               </label>
             </>
           )}
           <DialogFooter>
             <Button variant="ghost" onClick={onClose}>
-              Cancel
+              {words.cancel}
             </Button>
             <Button
               variant="destructive"
               disabled={busy || !preview || preview.refusal !== null || typed.trim() !== team.slug}
               onClick={remove}
             >
-              Delete team
+              {words.deleteTeam}
             </Button>
           </DialogFooter>
         </DialogContent>

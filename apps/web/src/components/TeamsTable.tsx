@@ -16,10 +16,12 @@ import DeleteTeamDialog from "@/components/DeleteTeamDialog";
 import NewLanguageFields, { type NewLanguage } from "@/components/NewLanguageFields";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useUiText } from "@/components/UiTextProvider";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { capabilityLabel } from "@/lib/permissions";
 import { send } from "@/lib/send";
+import { fill } from "@/lib/site-text/format";
 import type { TeamSummary } from "@/lib/teams/admin";
+import type { UiText } from "@/lib/ui-text/en";
 
 type Props = {
   initial: TeamSummary[];
@@ -28,11 +30,11 @@ type Props = {
 
 type Person = { email: string; name: string | null; held: Map<Lang, string[]> };
 
-function people(team: TeamSummary): Person[] {
+function people(team: TeamSummary, label: (capability: string) => string): Person[] {
   const byUser = new Map<string, Person>();
   for (const member of team.members) {
     const person = byUser.get(member.userId) ?? { email: member.email, name: member.name, held: new Map() };
-    person.held.set(member.lang, [...(person.held.get(member.lang) ?? []), capabilityLabel(member.capability)]);
+    person.held.set(member.lang, [...(person.held.get(member.lang) ?? []), label(member.capability)]);
     byUser.set(member.userId, person);
   }
   return [...byUser.values()];
@@ -40,16 +42,19 @@ function people(team: TeamSummary): Person[] {
 
 
 /** Where a deletion is: its delistings, or why it stopped. */
-function deletingStep(deleting: NonNullable<TeamSummary["deleting"]>): string {
-  if (deleting.error) return `Deletion stopped: ${deleting.error}`;
-  if (deleting.delists === 0) return "Being deleted";
-  return `Being deleted: taking its packs off the channel, ${deleting.delisted} of ${deleting.delists} done`;
+function deletingStep(deleting: NonNullable<TeamSummary["deleting"]>, words: UiText["teams"]): string {
+  if (deleting.error) return fill(words.deletingStopped, { error: deleting.error });
+  if (deleting.delists === 0) return words.deleting;
+  return fill(words.deletingStep, { done: deleting.delisted, all: deleting.delists });
 }
 
 // How often the page reads again while a team is being deleted.
 const DELETING_POLL_MS = 10_000;
 
 export default function TeamsTable({ initial, languages }: Props) {
+  const t = useUiText();
+  const words = t.teams;
+  const capability = (cap: string) => t.dashboard.capabilities[cap as keyof typeof t.dashboard.capabilities];
   const router = useRouter();
   const nameOf = (lang: Lang) => languages.find((language) => language.code === lang)?.name ?? lang;
   const [error, setError] = useState<string | null>(null);
@@ -134,18 +139,18 @@ export default function TeamsTable({ initial, languages }: Props) {
       <table className="w-full text-sm">
         <thead>
           <tr className="text-muted-foreground border-b text-left text-xs">
-            <th className="py-2 pr-3 font-normal">Slug</th>
-            <th className="py-2 pr-3 font-normal">Name</th>
-            <th className="py-2 pr-3 font-normal">Languages</th>
-            <th className="py-2 pr-3 font-normal">Members</th>
-            <th className="py-2 pr-3 font-normal" title="New audio goes only to its own bucket; what is already in Spoken's archive stays">
-              Own storage
+            <th className="py-2 pr-3 font-normal">{words.slug}</th>
+            <th className="py-2 pr-3 font-normal">{words.name}</th>
+            <th className="py-2 pr-3 font-normal">{words.languages}</th>
+            <th className="py-2 pr-3 font-normal">{words.members}</th>
+            <th className="py-2 pr-3 font-normal" title={words.ownStorageHint}>
+              {words.ownStorage}
             </th>
-            <th className="py-2 pr-3 font-normal" title="Its releases need no review, and its packs carry no team name in the Manager">
-              Official
+            <th className="py-2 pr-3 font-normal" title={words.officialHint}>
+              {words.official}
             </th>
             <th className="py-2 font-normal">
-              <span className="sr-only">Delete</span>
+              <span className="sr-only">{words.delete}</span>
             </th>
           </tr>
         </thead>
@@ -155,7 +160,7 @@ export default function TeamsTable({ initial, languages }: Props) {
               <td className="py-2 pr-3 font-mono text-xs">{team.slug}</td>
               <td className="py-2 pr-3">
                 <Input
-                  aria-label={`Name of ${team.slug}`}
+                  aria-label={fill(words.nameOf, { slug: team.slug })}
                   value={names[team.id] ?? team.name}
                   disabled={busy}
                   onChange={(event) => setNames({ ...names, [team.id]: event.target.value })}
@@ -170,7 +175,7 @@ export default function TeamsTable({ initial, languages }: Props) {
                       {lang}
                     </li>
                   ))}
-                  {team.langs.length === 0 && <li className="text-muted-foreground text-xs">none</li>}
+                  {team.langs.length === 0 && <li className="text-muted-foreground text-xs">{words.none}</li>}
                   {!team.langs.includes(BASE_LANG) && (
                     <li>
                       <Select
@@ -178,8 +183,8 @@ export default function TeamsTable({ initial, languages }: Props) {
                         disabled={busy}
                         onValueChange={(lang) => setJoining({ lang: lang as Lang, team })}
                       >
-                        <SelectTrigger size="sm" className="text-xs" aria-label={`Add ${team.slug} to a language`}>
-                          <SelectValue placeholder="Add to…" />
+                        <SelectTrigger size="sm" className="text-xs" aria-label={fill(words.addToLanguage, { slug: team.slug })}>
+                          <SelectValue placeholder={words.addTo} />
                         </SelectTrigger>
                         <SelectContent>
                           {languages
@@ -197,7 +202,7 @@ export default function TeamsTable({ initial, languages }: Props) {
               </td>
               <td className="py-2 pr-3">
                 <ul className="flex flex-col gap-1">
-                  {people(team).map((person) => (
+                  {people(team, capability).map((person) => (
                     <li key={person.email}>
                       <span>{person.name ?? person.email}</span>
                       <span className="text-muted-foreground text-xs">
@@ -211,7 +216,7 @@ export default function TeamsTable({ initial, languages }: Props) {
               <td className="py-2 pr-3">
                 <input
                   type="checkbox"
-                  aria-label={`${team.slug}'s new audio goes only to its own bucket`}
+                  aria-label={fill(words.storageFor, { slug: team.slug })}
                   checked={ownStorage[team.id] ?? team.ownStorage}
                   disabled={busy}
                   onChange={(event) => {
@@ -225,7 +230,7 @@ export default function TeamsTable({ initial, languages }: Props) {
               <td className="py-2 pr-3">
                 <input
                   type="checkbox"
-                  aria-label={`${team.slug} is official`}
+                  aria-label={fill(words.officialFor, { slug: team.slug })}
                   checked={official[team.id] ?? team.official}
                   disabled={busy}
                   onChange={(event) => {
@@ -240,17 +245,17 @@ export default function TeamsTable({ initial, languages }: Props) {
                 {team.deleting ? (
                   <div className="flex flex-col items-end gap-1">
                     <span className={team.deleting.error ? "text-destructive text-xs" : "text-muted-foreground text-xs"}>
-                      {deletingStep(team.deleting)}
+                      {deletingStep(team.deleting, words)}
                     </span>
                     {team.deleting.error && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        aria-label={`Retry deleting ${team.slug}`}
+                        aria-label={fill(words.retryFor, { slug: team.slug })}
                         disabled={busy}
                         onClick={() => void run(() => send(`/api/teams/${team.id}/deletion`, "POST"))}
                       >
-                        Retry
+                        {words.retry}
                       </Button>
                     )}
                   </div>
@@ -258,12 +263,12 @@ export default function TeamsTable({ initial, languages }: Props) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    aria-label={`Delete ${team.slug}`}
-                    title={team.langs.includes(BASE_LANG) ? "English's team cannot be deleted" : undefined}
+                    aria-label={fill(words.deleteFor, { slug: team.slug })}
+                    title={team.langs.includes(BASE_LANG) ? words.englishCannotBeDeleted : undefined}
                     disabled={busy || team.langs.includes(BASE_LANG)}
                     onClick={() => setDeleting(team)}
                   >
-                    Delete
+                    {words.delete}
                   </Button>
                 )}
               </td>
@@ -273,22 +278,22 @@ export default function TeamsTable({ initial, languages }: Props) {
       </table>
 
       <form onSubmit={create} className="flex max-w-md flex-col gap-3">
-        <h2 className="text-lg font-semibold">New team</h2>
+        <h2 className="text-lg font-semibold">{words.newTeam}</h2>
         <Input
-          aria-label="Slug"
-          placeholder="slug (german)"
+          aria-label={words.slug}
+          placeholder={words.slugPlaceholder}
           value={form.slug}
           onChange={(event) => setForm({ ...form, slug: event.target.value })}
         />
         <Input
-          aria-label="Name"
-          placeholder="Name"
+          aria-label={words.name}
+          placeholder={words.name}
           value={form.name}
           onChange={(event) => setForm({ ...form, name: event.target.value })}
         />
         <select
           multiple
-          aria-label="Languages"
+          aria-label={words.languages}
           disabled={newLanguage}
           className="border-input bg-background h-40 rounded-md border px-2 py-1 text-sm"
           value={form.langs}
@@ -304,18 +309,18 @@ export default function TeamsTable({ initial, languages }: Props) {
         </select>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={newLanguage} onChange={(event) => setNewLanguage(event.target.checked)} />
-          New language…
+          {words.newLanguageOption}
         </label>
         {newLanguage && <NewLanguageFields value={fresh} onChange={setFresh} />}
         <Input
-          aria-label="Admin email"
+          aria-label={words.adminEmail}
           type="email"
-          placeholder="Admin email (optional)"
+          placeholder={words.adminEmailPlaceholder}
           value={form.adminEmail}
           onChange={(event) => setForm({ ...form, adminEmail: event.target.value })}
         />
         <Button type="submit" disabled={busy || !form.slug.trim() || !form.name.trim()}>
-          Create team
+          {words.createTeam}
         </Button>
       </form>
 
@@ -334,16 +339,16 @@ export default function TeamsTable({ initial, languages }: Props) {
         {joining && (
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{`Add ${joining.team.name} to ${joining.lang}?`}</DialogTitle>
+              <DialogTitle>{fill(words.addToTitle, { team: joining.team.name, lang: joining.lang })}</DialogTitle>
               <DialogDescription>
-                {`It voices ${joining.lang} beside any team there, from English's voices, with nothing of theirs. A language with no team is switched on.`}
+                {fill(words.addToBody, { lang: joining.lang })}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setJoining(null)}>
-                Cancel
+                {words.cancel}
               </Button>
-              <Button onClick={join}>Add</Button>
+              <Button onClick={join}>{words.add}</Button>
             </DialogFooter>
           </DialogContent>
         )}

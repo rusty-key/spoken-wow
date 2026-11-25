@@ -11,7 +11,7 @@
  * One catch-all segment serves both address shapes, so there is one page rather than two that
  * drift apart.
  */
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
 import { withLang } from "@/lib/lang";
 import { corpus, isCorpusEmpty } from "@/lib/quests/catalogue";
 import type { Metadata } from "next";
@@ -24,7 +24,12 @@ import { audioRelPath } from "@/lib/audio";
 import { formatTarget, parseTarget, pickLine, resolveTarget } from "@/lib/reports/target";
 import { liveTake } from "@/lib/takes/store";
 import { Contained } from "@/components/Width";
+import { uiText } from "@/lib/ui-text";
 import { cn } from "@/lib/utils";
+
+async function words(lang: string) {
+  return (await uiText(await readingLang(lang))).reports.landing;
+}
 
 export const metadata: Metadata = { title: "Report a voice line · VoiceOver" };
 
@@ -38,6 +43,7 @@ export default async function ReportPage({
   searchParams: Promise<{ line?: string; file?: string }>;
 }) {
   const lang = await pageLang(params);
+  const t = await words(lang);
   const segments = (await params).target;
   const { line: chosen = null, file: played = null } = await searchParams;
   const target = parseTarget(segments);
@@ -46,10 +52,8 @@ export default async function ReportPage({
     return (
       <main className="pt-6 pb-24">
         <Contained>
-          <h1 className="text-xl font-semibold">Report a voice line</h1>
-          <p className="text-muted-foreground mt-1 mb-5 text-sm">
-            That address is not one this site understands, but you can still tell us about it.
-          </p>
+          <h1 className="text-xl font-semibold">{t.questsTitle}</h1>
+          <p className="text-muted-foreground mt-1 mb-5 text-sm">{t.unknownAddress}</p>
           <ReportForm source="quests" target={segments.join("/")} lineId={null} fromGame />
         </Contained>
       </main>
@@ -84,10 +88,8 @@ export default async function ReportPage({
   return (
     <main className="pt-6 pb-24">
       <Contained>
-        <h1 className="text-xl font-semibold">Report a voice line</h1>
-        <p className="text-muted-foreground mt-1 mb-5 text-sm">
-          You came here from the game. Tell us what sounded wrong and someone will listen to it.
-        </p>
+        <h1 className="text-xl font-semibold">{t.questsTitle}</h1>
+        <p className="text-muted-foreground mt-1 mb-5 text-sm">{t.arrived}</p>
 
         {take ? <ListenFirst className="mb-4" source="quests" recordedAt={take.createdAt} releases={releases} /> : null}
 
@@ -101,9 +103,7 @@ export default async function ReportPage({
             {/* No live take is the line a player heard in the fallback language and reported as
                 missing in this one: the audio route has nothing to serve, so say so. */}
             {version === null ? (
-              <p className="text-muted-foreground mt-3 text-sm">
-                This line has no recording in this language yet.
-              </p>
+              <p className="text-muted-foreground mt-3 text-sm">{t.noRecording}</p>
             ) : (
               <audio
                 controls
@@ -120,9 +120,7 @@ export default async function ReportPage({
           <section className="mb-6 rounded border p-4">
             <h2 className="font-medium">{choices[0].npcName}</h2>
             <p className="text-muted-foreground mt-1 mb-2 text-sm">
-              {line
-                ? "Not this one? Pick the line that sounded wrong."
-                : "This character has more than one line. Which one sounded wrong?"}
+              {line ? t.pickOther : t.whichLine}
             </p>
             <ul className="flex flex-col gap-2 text-sm">
               {choices.map((candidate) => {
@@ -150,10 +148,7 @@ export default async function ReportPage({
         ) : null}
 
         {lines.length === 0 ? (
-          <p className="text-muted-foreground mb-6 text-sm">
-            Nothing in the corpus matches that address. File the report anyway — an address that
-            resolves to nothing is worth knowing about.
-          </p>
+          <p className="text-muted-foreground mb-6 text-sm">{t.nothingMatches}</p>
         ) : null}
 
         <ReportForm source="quests" target={formatTarget(target)} lineId={line?.lineId ?? null} fromGame />

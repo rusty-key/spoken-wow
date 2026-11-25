@@ -3,17 +3,17 @@
 import { useState } from "react";
 
 import Link from "@/components/LocaleLink";
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { resetPassword } from "@/lib/auth-client";
 
-const FAILED = "Something went wrong. Try again.";
-
 const LINK_CLASS = "text-foreground underline underline-offset-4";
 
 /** `token` is null when the link was expired, already used, or opened without one. */
 export default function ResetPasswordForm({ token }: { token: string | null }) {
+  const t = useUiText().auth;
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [expired, setExpired] = useState(token === null);
@@ -30,36 +30,36 @@ export default function ResetPasswordForm({ token }: { token: string | null }) {
       if (!error) setDone(true);
       // The form checks the link when it opens, but it can run out while the page sits open.
       else if (error.code === "INVALID_TOKEN") setExpired(true);
-      else setError(error.message || FAILED);
+      else setError(error.message || t.failed);
     } catch {
       // A dropped connection throws instead of returning an error.
-      setError(FAILED);
+      setError(t.failed);
     }
     setPending(false);
   }
 
   return (
     <>
-      <h1 className="text-xl font-semibold">Choose a new password</h1>
+      <h1 className="text-xl font-semibold">{t.chooseNew}</h1>
 
       {done ? (
         <p role="status" className="mt-6 max-w-sm text-sm">
-          Password changed, and every device signed out.{" "}
+          {t.changed}{" "}
           <Link href="/login" className={LINK_CLASS}>
-            Sign in
+            {t.backToSignIn}
           </Link>
         </p>
       ) : expired ? (
         <p role="alert" className="mt-6 max-w-sm text-sm">
-          This link has expired or was already used.{" "}
+          {t.linkExpired}{" "}
           <Link href="/forgot-password" className={LINK_CLASS}>
-            Ask for a new one
+            {t.askNew}
           </Link>
         </p>
       ) : (
         <form onSubmit={onSubmit} className="mt-6 flex max-w-sm flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="password">New password</Label>
+            <Label htmlFor="password">{t.newPassword}</Label>
             <Input
               id="password"
               type="password"
@@ -69,7 +69,7 @@ export default function ResetPasswordForm({ token }: { token: string | null }) {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
-            <p className="text-muted-foreground text-xs">At least 8 characters.</p>
+            <p className="text-muted-foreground text-xs">{t.minChars}</p>
           </div>
 
           {error && (
@@ -79,7 +79,7 @@ export default function ResetPasswordForm({ token }: { token: string | null }) {
           )}
 
           <Button type="submit" disabled={pending} className="self-start">
-            {pending ? "Working…" : "Change password"}
+            {pending ? t.working : t.changePassword}
           </Button>
         </form>
       )}

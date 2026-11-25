@@ -19,6 +19,7 @@ import { useUiText } from "@/components/UiTextProvider";
 import { useGameContext } from "@/components/reports/useGameContext";
 import { useLocalDates } from "@/components/useLocalDates";
 import { packDownloads, packFor, partOf, type Pack, type PackPart } from "@/lib/packs";
+import { fill } from "@/lib/site-text/format";
 import { contextFrom, lineNews, type LineNews, type PackRelease } from "@/lib/reports/context";
 import type { Source } from "@/lib/sections";
 import { cn } from "@/lib/utils";
@@ -48,7 +49,14 @@ export default function ListenFirst({
   const news = context?.fields.pack === lang ? lineNews(context, releases, recordedAt) : null;
   const pack = source ? packFor(source, lang) : undefined;
   const part = partOf(pack, context?.fields.packFolder);
-  const message = news && describe(news, part?.name ?? pack?.name ?? "your pack", format(news.recordedAt, DAY));
+  const message =
+    news &&
+    describe(
+      t.listenFirst,
+      news,
+      part?.name ?? pack?.name ?? t.listenFirst.yourPack,
+      format(news.recordedAt, DAY),
+    );
 
   return (
     <aside
@@ -62,7 +70,7 @@ export default function ListenFirst({
       <TriangleAlertIcon className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
       <div className="flex flex-col gap-1.5">
         <p className={cn("font-medium text-amber-700 dark:text-amber-300", message?.urgent && "text-base font-semibold")}>
-          {message?.title ?? "Important: listen first"}
+          {message?.title ?? t.listenFirst.important}
         </p>
         {message ? (
           <>
@@ -85,7 +93,7 @@ export default function ListenFirst({
  */
 function Downloads({ pack, part }: { pack: Pack | undefined; part: PackPart | undefined }) {
   const t = useUiText();
-  const links = [{ label: "Spoken Manager", href: MANAGER_URL }, ...(pack ? packDownloads(pack, part) : [])];
+  const links = [{ label: t.listenFirst.manager, href: MANAGER_URL }, ...(pack ? packDownloads(pack, part) : [])];
   return (
     <p className="flex flex-wrap gap-x-3 gap-y-1">
       <span>{t.reports.updateWith}</span>
@@ -104,7 +112,11 @@ function Downloads({ pack, part }: { pack: Pack | undefined; part: PackPart | un
   );
 }
 
+/** The note's sentences, already filled in: the dictionary is read where a hook can run. */
+type Said = ReturnType<typeof useUiText>["listenFirst"];
+
 function describe(
+  said: Said,
   news: LineNews,
   name: string,
   recorded: string,
@@ -113,38 +125,34 @@ function describe(
   const pack = !version
     ? null
     : latest
-      ? `You are using ${name} ${version}, and ${latest} is available.`
+      ? fill(said.usingAvailable, { name, version, latest })
       : news.exact
-        ? `You are using ${name} ${version}.`
-        : `You are using ${name} ${version}, the latest.`;
-  const said = { title: latest ? "Your voice pack is out of date" : "Important: listen first", pack };
+        ? fill(said.using, { name, version })
+        : fill(said.usingLatest, { name, version });
+  const title = { title: latest ? said.outOfDate : said.important, pack };
 
   if (inYours === false) {
     return {
-      ...said,
+      ...title,
       urgent: true,
       line: shipsIn
-        ? `This line was re-recorded on ${recorded}, after your pack. The new recording is in ${shipsIn} and later.`
-        : `This line was re-recorded on ${recorded}, after the latest pack. The new recording comes with the next one.`,
-      ask: shipsIn
-        ? "Play it below. If it sounds right, there is nothing to report: update your pack to hear it in the game."
-        : "Play it below. If it sounds right, there is nothing to report: the fix is on its way.",
+        ? fill(said.reRecordedShips, { when: recorded, ships: shipsIn })
+        : fill(said.reRecordedNext, { when: recorded }),
+      ask: shipsIn ? said.playUpdate : said.fixOnWay,
     };
   }
   if (inYours) {
     return {
-      ...said,
+      ...title,
       urgent: false,
-      line: `This line has not been re-recorded since your pack: it was last recorded on ${recorded}, so you heard the current recording.`,
-      ask: "Play it below to check, and report it if it is wrong.",
+      line: fill(said.notReRecorded, { when: recorded }),
+      ask: said.playCheck,
     };
   }
   return {
-    ...said,
+    ...title,
     urgent: latest !== null,
-    line: `This line was last recorded on ${recorded}.`,
-    ask: latest
-      ? "Play it below before reporting. If it sounds right, update your pack to hear it in the game."
-      : "Play the current version below before reporting.",
+    line: fill(said.lastRecorded, { when: recorded }),
+    ask: latest ? said.playBeforeUpdate : said.playBeforeReport,
   };
 }

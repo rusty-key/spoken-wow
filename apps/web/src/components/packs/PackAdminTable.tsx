@@ -4,7 +4,9 @@ import { ChevronDown, ChevronRight, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Fragment, useState } from "react";
 
+import { useUiText } from "@/components/UiTextProvider";
 import { DAY, useLocalDates } from "@/components/useLocalDates";
+import { fill } from "@/lib/site-text/format";
 import { useSearchBox } from "@/components/useSearchBox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,11 +24,11 @@ import { nameOf } from "./common";
 
 type Row = Pack & { history: Submission[] };
 
-const STATUS: Record<Submission["status"], { label: string; className: string }> = {
-  pending: { label: "Pending", className: "text-primary-ink" },
-  approved: { label: "Approved", className: "text-foreground" },
-  rejected: { label: "Rejected", className: "text-destructive" },
-  withdrawn: { label: "Withdrawn", className: "text-muted-foreground" },
+const STATUS: Record<Submission["status"], string> = {
+  pending: "text-primary-ink",
+  approved: "text-foreground",
+  rejected: "text-destructive",
+  withdrawn: "text-muted-foreground",
 };
 
 /** The newest submission's title stands for the pack; the live one is what players see, so it wins. */
@@ -35,6 +37,7 @@ function titleOf(pack: Row): string | null {
 }
 
 export default function PackAdminTable({ packs, names }: { packs: Row[]; names: Record<string, string> }) {
+  const t = useUiText().packs.admin;
   const router = useRouter();
   const toast = useToast();
   const [busy, setBusy] = useState<string | null>(null);
@@ -46,11 +49,11 @@ export default function PackAdminTable({ packs, names }: { packs: Row[]; names: 
     setBusy(null);
     router.refresh();
     if (result.ok) toast({ tone: "info", title: done });
-    else toast({ tone: "error", title: `Could not change ${pack.id}.`, detail: result.error });
+    else toast({ tone: "error", title: fill(t.couldNotChange, { pack: pack.id }), detail: result.error });
   }
 
   if (packs.length === 0) {
-    return <p className="text-muted-foreground py-3 text-sm">No community packs yet.</p>;
+    return <p className="text-muted-foreground py-3 text-sm">{t.noPacks}</p>;
   }
 
   return (
@@ -58,13 +61,13 @@ export default function PackAdminTable({ packs, names }: { packs: Row[]; names: 
       <table className="w-full min-w-[52rem] text-sm">
         <thead>
           <tr className="text-muted-foreground border-b text-left text-xs">
-            <th className="py-2 pr-3 font-normal">Pack</th>
-            <th className="py-2 pr-3 font-normal">Title</th>
-            <th className="py-2 pr-3 font-normal">Language</th>
-            <th className="py-2 pr-3 font-normal">Owner</th>
-            <th className="py-2 pr-3 font-normal">Live</th>
-            <th className="py-2 pr-3 font-normal">Listed</th>
-            <th className="py-2 font-normal">History</th>
+            <th className="py-2 pr-3 font-normal">{t.pack}</th>
+            <th className="py-2 pr-3 font-normal">{t.titleColumn}</th>
+            <th className="py-2 pr-3 font-normal">{t.languageColumn}</th>
+            <th className="py-2 pr-3 font-normal">{t.ownerColumn}</th>
+            <th className="py-2 pr-3 font-normal">{t.liveColumn2}</th>
+            <th className="py-2 pr-3 font-normal">{t.listedColumn}</th>
+            <th className="py-2 font-normal">{t.historyColumn}</th>
           </tr>
         </thead>
         <tbody>
@@ -75,7 +78,9 @@ export default function PackAdminTable({ packs, names }: { packs: Row[]; names: 
               <Fragment key={pack.id}>
                 <tr className={cn("align-middle", !expanded && "border-b")}>
                   <td className="py-2 pr-3 font-mono text-xs">{pack.id}</td>
-                  <td className="py-2 pr-3">{title ?? <span className="text-muted-foreground">none</span>}</td>
+                  <td className="py-2 pr-3">
+                    {title ?? <span className="text-muted-foreground">{t.none}</span>}
+                  </td>
                   <td className="py-2 pr-3">
                     <Badge variant="outline">{pack.lang}</Badge>{" "}
                     <span className="text-muted-foreground text-xs">{pack.section}</span>
@@ -88,30 +93,38 @@ export default function PackAdminTable({ packs, names }: { packs: Row[]; names: 
                         change(
                           pack,
                           { ownerId: owner?.id ?? null },
-                          owner ? `Handed ${pack.id} to ${owner.name || owner.email}.` : `${pack.id} has no owner now.`,
+                          owner
+                            ? fill(t.handedTo, { pack: pack.id, name: owner.name || owner.email })
+                            : fill(t.noOwnerNow, { pack: pack.id }),
                         )
                       }
                     />
                   </td>
                   <td className="py-2 pr-3 font-mono text-xs">
-                    {pack.live ? `v${pack.live.version}` : <span className="text-muted-foreground font-sans">not yet</span>}
+                    {pack.live ? (
+                      `v${pack.live.version}`
+                    ) : (
+                      <span className="text-muted-foreground font-sans">{t.notYet}</span>
+                    )}
                   </td>
                   <td className="py-2 pr-3">
                     <label className="flex items-center gap-2">
                       <Checkbox
-                        aria-label={`Listed: ${pack.id}`}
+                        aria-label={fill(t.listedLabel, { pack: pack.id })}
                         checked={pack.listed}
                         disabled={busy === pack.id}
                         onCheckedChange={(checked) =>
                           change(
                             pack,
                             { listed: checked === true },
-                            checked === true ? `Listed ${pack.id} again.` : `Unlisted ${pack.id}.`,
+                            checked === true
+                              ? fill(t.listedAgain, { pack: pack.id })
+                              : fill(t.unlistedIt, { pack: pack.id }),
                           )
                         }
                       />
                       <span className={cn("text-xs", !pack.listed && "text-muted-foreground")}>
-                        {pack.listed ? "Listed" : "Unlisted"}
+                        {pack.listed ? t.listedWord : t.unlistedWord}
                       </span>
                     </label>
                   </td>
@@ -121,11 +134,11 @@ export default function PackAdminTable({ packs, names }: { packs: Row[]; names: 
                       size="sm"
                       aria-expanded={expanded}
                       aria-controls={`history-${pack.id}`}
-                      aria-label={`History of ${pack.id}, ${pack.history.length} submitted`}
+                      aria-label={fill(t.historyOf, { pack: pack.id, n: pack.history.length })}
                       onClick={() => setOpen(expanded ? null : pack.id)}
                     >
                       {expanded ? <ChevronDown aria-hidden /> : <ChevronRight aria-hidden />}
-                      History
+                      {t.history}
                       <span className="text-muted-foreground tabular-nums">{pack.history.length}</span>
                     </Button>
                   </td>
@@ -147,6 +160,7 @@ export default function PackAdminTable({ packs, names }: { packs: Row[]; names: 
 }
 
 function History({ submissions, names }: { submissions: Submission[]; names: Record<string, string> }) {
+  const t = useUiText().packs.admin;
   const when = useLocalDates();
   const who = (id: string | null) => nameOf(id, id && names[id]);
   return (
@@ -156,15 +170,21 @@ function History({ submissions, names }: { submissions: Submission[]; names: Rec
         return (
           <li key={submission.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-3 py-2">
             <span className="w-24 shrink-0 font-mono">v{submission.version}</span>
-            <span className={cn("w-20 shrink-0 font-medium", status.className)}>{status.label}</span>
+            <span
+              className={cn("w-20 shrink-0 font-medium", STATUS[submission.status])}
+            >
+              {t.statusWord[submission.status]}
+            </span>
             <span className="text-muted-foreground">
-              sent {when(submission.submittedAt, DAY)} by {who(submission.submittedBy)}
-              {submission.reviewedAt && (
-                <>
-                  {" "}
-                  · decided {when(submission.reviewedAt, DAY)} by {who(submission.reviewedBy)}
-                </>
-              )}
+              {fill(t.sentByOn, {
+                when: when(submission.submittedAt, DAY),
+                name: who(submission.submittedBy),
+              })}
+              {submission.reviewedAt &&
+                fill(t.decidedByOn, {
+                  when: when(submission.reviewedAt, DAY),
+                  name: who(submission.reviewedBy),
+                })}
             </span>
             {submission.rejectReason && (
               <p className="text-foreground basis-full pl-[6.75rem] whitespace-pre-wrap">{submission.rejectReason}</p>
@@ -204,6 +224,7 @@ function OwnerPicker({
   disabled: boolean;
   onPick: (owner: Found | null) => void;
 }) {
+  const t = useUiText().packs.admin;
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState<Search>({ state: "idle" });
   const [query, setQuery] = useSearchBox("", (next) => {
@@ -228,28 +249,33 @@ function OwnerPicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" disabled={disabled} aria-label={`Owner of ${pack.id}: ${current ?? "none"}`}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          aria-label={fill(t.ownerOfPack, { pack: pack.id, owner: current ?? t.none })}
+        >
           <UserRound aria-hidden />
-          {current ?? <span className="text-muted-foreground">No owner</span>}
+          {current ?? <span className="text-muted-foreground">{t.noOwner}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 p-1.5">
         <Input
           type="search"
           value={query}
-          placeholder="Name or email…"
-          aria-label="Find a user"
+          placeholder={t.nameOrEmail}
+          aria-label={t.findUser}
           className="h-8"
           autoFocus
           onChange={(event) => setQuery(event.target.value)}
         />
         <div className="mt-1 max-h-64 overflow-y-auto">
           {search.state === "error" ? (
-            <p className="text-destructive px-2 py-1.5 text-xs">Could not search users. Try again.</p>
+            <p className="text-destructive px-2 py-1.5 text-xs">{t.searchFailed}</p>
           ) : search.state === "loading" && !users ? (
-            <p className="text-muted-foreground px-2 py-1.5 text-xs">Searching…</p>
+            <p className="text-muted-foreground px-2 py-1.5 text-xs">{t.searching}</p>
           ) : users?.length === 0 ? (
-            <p className="text-muted-foreground px-2 py-1.5 text-xs">Nobody matches.</p>
+            <p className="text-muted-foreground px-2 py-1.5 text-xs">{t.nobodyMatches}</p>
           ) : (
             users?.map((user) => (
               <button
@@ -276,7 +302,7 @@ function OwnerPicker({
               onClick={() => pick(null)}
               className="hover:bg-muted text-muted-foreground hover:text-foreground w-full rounded px-2 py-1.5 text-left text-sm"
             >
-              Clear the owner
+              {t.clearOwner}
             </button>
           </>
         )}

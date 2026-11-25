@@ -8,6 +8,7 @@ import { useState } from "react";
 
 import { useLang } from "@/components/LangProvider";
 import { LiteButton } from "@/components/LiteControls";
+import { useUiText } from "@/components/UiTextProvider";
 import { dropTextOverride, saveTextOverride } from "@/lib/text-overrides/client";
 import type { NarratedSource } from "@/lib/text-overrides/types";
 
@@ -23,6 +24,7 @@ export default function TextOverrideDrift({
   onAnswered: () => void;
 }) {
   const lang = useLang();
+  const t = useUiText().catalogue.drift;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,7 +38,7 @@ export default function TextOverrideDrift({
         return;
       }
       const body = (await response?.json().catch(() => null)) as { error?: string } | null;
-      setError(body?.error ?? "That didn't go through -- try again.");
+      setError(body?.error ?? t.failed);
     } finally {
       // Only once the refusal is read: a retry started sooner would have its error overwritten.
       setBusy(false);
@@ -45,12 +47,12 @@ export default function TextOverrideDrift({
 
   return (
     <span className="mt-1 flex flex-wrap items-center gap-1 text-xs text-amber-300">
-      The original changed since your override.
+      {t.changedLine}
       <LiteButton disabled={busy} onClick={() => void answer(() => saveTextOverride(lang, source, lineId, text))}>
-        Keep
+        {t.keep}
       </LiteButton>
       <LiteButton disabled={busy} onClick={() => void answer(() => dropTextOverride(lang, source, lineId))}>
-        Drop
+        {t.drop}
       </LiteButton>
       {error ? (
         <span role="alert" className="text-destructive">

@@ -8,7 +8,9 @@ import { auth } from "@/lib/auth";
 import { missingAudioRanking } from "@/lib/contributions/missing-audio";
 import { viewerOf } from "@/lib/grants/store";
 import { langName, localeHref } from "@/lib/lang";
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
+import { uiText } from "@/lib/ui-text";
+import { fill } from "@/lib/site-text/format";
 import { explorerHref } from "@/lib/links";
 import { can } from "@/lib/permissions";
 
@@ -29,26 +31,24 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   if (!session || !can(viewer, "edit", lang)) notFound();
 
   const rows = await missingAudioRanking(lang);
+  const t = (await uiText(await readingLang(lang))).missingAudio;
 
   return (
     <main className="pt-6 pb-24">
       <Contained>
-        <h1 className="text-xl font-semibold">Missing audio</h1>
-        <p className="text-muted-foreground mt-1 mb-5 text-sm">
-          Lines players heard with no voice in {langName(lang)}, counted once per manager install.
-          &ldquo;Voiced here&rdquo; means the site has a take and the players&apos; packs are older.
-        </p>
+        <h1 className="text-xl font-semibold">{t.title}</h1>
+        <p className="text-muted-foreground mt-1 mb-5 text-sm">{fill(t.lede, { lang: langName(lang) })}</p>
         {rows.length === 0 ? (
-          <p className="text-sm">Nothing reported yet.</p>
+          <p className="text-sm">{t.nothing}</p>
         ) : (
           <table className="w-full text-sm">
             <thead className="text-muted-foreground text-left">
               <tr>
-                <th className="py-1 pr-3 font-medium">Players</th>
-                <th className="py-1 pr-3 font-medium">Line</th>
-                <th className="py-1 pr-3 font-medium">Text</th>
-                <th className="py-1 pr-3 font-medium">State</th>
-                <th className="py-1 font-medium">Pack versions</th>
+                <th className="py-1 pr-3 font-medium">{t.players}</th>
+                <th className="py-1 pr-3 font-medium">{t.line}</th>
+                <th className="py-1 pr-3 font-medium">{t.text}</th>
+                <th className="py-1 pr-3 font-medium">{t.state}</th>
+                <th className="py-1 font-medium">{t.packVersions}</th>
               </tr>
             </thead>
             <tbody>
@@ -64,7 +64,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
                     </Link>
                   </td>
                   <td className="py-1 pr-3">{row.text ? row.text.slice(0, 160) : "—"}</td>
-                  <td className="py-1 pr-3 whitespace-nowrap">{row.voiced ? "voiced here" : "not voiced"}</td>
+                  <td className="py-1 pr-3 whitespace-nowrap">{row.voiced ? t.voicedHere : t.notVoiced}</td>
                   <td className="py-1 font-mono">{row.packVersions.join(", ") || "—"}</td>
                 </tr>
               ))}

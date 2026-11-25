@@ -34,16 +34,6 @@ export const SOURCE_LABELS: Record<Source, string> = {
   bosses: "Bosses",
 };
 
-/** Written for a player rather than an editor: the reporter is not reading the schema. */
-export const CATEGORY_LABELS: Record<Category, string> = {
-  pronunciation: "Said a word wrong",
-  wrong_voice: "Wrong voice for this character",
-  audio_quality: "Cut off, garbled or noisy",
-  missing: "No voiceover played at all",
-  wrong_text: "Read text that is not what the NPC says",
-  other: "Something else",
-};
-
 /**
  * The same six, as a triage column rather than a sentence.
  *

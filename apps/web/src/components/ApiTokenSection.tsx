@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { langName, type Lang } from "@/lib/lang";
+import { fill } from "@/lib/site-text/format";
 import { accessLabel, type ApiToken, type TokenAccess } from "@/lib/tokens/types";
 
 import { useApiTokens } from "./useApiTokens";
@@ -29,6 +31,8 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
     initial,
     (id) => `/api/profile/tokens/${id}`,
   );
+  const t = useUiText();
+  const words = t.apiKeys;
   const [label, setLabel] = useState("");
   const [lang, setLang] = useState<Lang>(langs[0].lang);
   const [access, setAccess] = useState<TokenAccess>("read");
@@ -56,7 +60,7 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
         body: JSON.stringify({ label, lang, access, generate, expiresAt: `${expires}T23:59:59Z` }),
       });
       const body = (await response.json()) as { token?: string; row?: ApiToken; error?: string };
-      if (!response.ok || !body.token || !body.row) throw new Error(body.error ?? "could not create that token");
+      if (!response.ok || !body.token || !body.row) throw new Error(body.error ?? words.couldNotCreate);
       setCreated(body.token);
       setTokens((current) => [body.row!, ...current]);
       setLabel("");
@@ -70,15 +74,11 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
 
   return (
     <section id="api-tokens" className="mt-10 max-w-2xl scroll-mt-20">
-      <h2 className="mb-1 font-medium">API tokens</h2>
+      <h2 className="mb-1 font-medium">{t.profile.tokens.title}</h2>
       <p className="text-muted-foreground mb-4 text-sm">
-        Lets a script or an agent read or change text in one language on your behalf. Point it at{" "}
-        <code>/api/v1</code>. Writes go live at once, under your name. If you are a text maintainer
-        in the token's language, it writes the original text; if not, it writes only your team's
-        overrides. A token stops working at its expiry, when revoked, or when you hold neither the
-        text grant nor the right to regenerate in its language. A generate token also queues audio,
-        which spends your own ElevenLabs or fish.audio key, and can no longer queue audio once you
-        lose the right to regenerate in its language.
+        {words.aboutBefore}
+        <code>/api/v1</code>
+        {words.aboutAfter}
       </p>
 
       {error && (
@@ -89,21 +89,21 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
 
       {created && (
         <div className="mb-4 rounded border p-3 text-sm">
-          <p className="mb-2 font-medium">Copy this token now. It will not be shown again.</p>
+          <p className="mb-2 font-medium">{t.profile.tokens.copied}</p>
           <code className="bg-muted mb-2 block break-all rounded px-2 py-1">{created}</code>
           <Button size="sm" variant="outline" onClick={copy}>
-            {copied ? "Copied" : "Copy"}
+            {copied ? words.copied : words.copy}
           </Button>
         </div>
       )}
 
       <div className="mb-6 flex flex-wrap items-end gap-2 text-sm">
         <label className="flex flex-col gap-1">
-          Label
-          <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="German agent" className="w-44" />
+          {words.label}
+          <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={words.labelPlaceholder} className="w-44" />
         </label>
         <label className="flex flex-col gap-1">
-          Language
+          {words.language}
           <select value={lang} onChange={(e) => chooseLang(e.target.value as Lang)} className={SELECT}>
             {langs.map(({ lang: code }) => (
               <option key={code} value={code}>
@@ -113,11 +113,11 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
           </select>
         </label>
         <label className="flex flex-col gap-1">
-          Access
+          {words.access}
           <select value={access} onChange={(e) => setAccess(e.target.value as TokenAccess)} className={SELECT}>
-            <option value="none">No text</option>
-            <option value="read">Read</option>
-            <option value="write">Read and write</option>
+            <option value="none">{words.noText}</option>
+            <option value="read">{words.read}</option>
+            <option value="write">{t.profile.tokens.readWrite}</option>
           </select>
         </label>
         <label className="flex items-center gap-2 pb-2">
@@ -127,10 +127,10 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
             disabled={!chosen.generate}
             onChange={(e) => setGenerate(e.target.checked)}
           />
-          Generate audio on my key
+          {t.profile.tokens.generateOnMyKey}
         </label>
         <label className="flex flex-col gap-1">
-          Expires
+          {words.expires}
           <Input
             type="date"
             required
@@ -141,7 +141,7 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
           />
         </label>
         <Button onClick={create} disabled={busy || !label.trim() || !expires || (access === "none" && !generate)}>
-          Create token
+          {t.profile.tokens.create}
         </Button>
       </div>
 
@@ -153,16 +153,16 @@ export default function ApiTokenSection({ langs, initial }: { langs: TokenLang[]
               <span className="text-muted-foreground font-mono">…{token.hint}</span>
               <span>{langName(token.lang)}</span>
               <span>{accessLabel(token)}</span>
-              {token.generate && <span>generate</span>}
-              <span className="text-muted-foreground">expires {token.expiresAt.slice(0, 10)}</span>
+              {token.generate && <span>{words.generate}</span>}
+              <span className="text-muted-foreground">{fill(words.expiresOn, { when: token.expiresAt.slice(0, 10) })}</span>
               <span className="text-muted-foreground">
-                {token.lastUsedAt ? `last used ${token.lastUsedAt.slice(0, 10)}` : "never used"}
+                {token.lastUsedAt ? fill(words.lastUsedOn, { when: token.lastUsedAt.slice(0, 10) }) : words.neverUsed}
               </span>
               {token.revokedAt ? (
-                <span className="text-muted-foreground ml-auto">revoked</span>
+                <span className="text-muted-foreground ml-auto">{words.revoked}</span>
               ) : (
                 <Button size="sm" variant="outline" className="ml-auto" disabled={busy} onClick={() => revoke(token.id)}>
-                  Revoke
+                  {words.revoke}
                 </Button>
               )}
             </li>

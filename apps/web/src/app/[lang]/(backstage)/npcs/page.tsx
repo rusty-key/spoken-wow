@@ -8,11 +8,12 @@ import { Contained, Wide } from "@/components/Width";
 import { clientOf } from "@/lib/contributions/client";
 import { summaryFromResolution } from "@/lib/contributions/speaker";
 import { BASE_LANG, localeHref } from "@/lib/lang";
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
 import { viewerOf } from "@/lib/grants/store";
 import { listBodies, listLanguageDirections, listResolutions, resolutionKey, type NpcBodyAnswer } from "@/lib/npc/store";
 import { can, isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
+import { uiText } from "@/lib/ui-text";
 import { loadRoster } from "@/lib/voices/roster-store";
 
 export const metadata: Metadata = { title: "NPCs · Spoken" };
@@ -42,7 +43,8 @@ export default async function Page({
 
   const tab = admin && (await searchParams).tab === "types" ? "types" : "npcs";
   const npcs = tab === "npcs";
-  const [roster, resolutions, bodies, languageDirections] = await Promise.all([
+  const [t, roster, resolutions, bodies, languageDirections] = await Promise.all([
+    readingLang(lang).then(uiText),
     loadRoster(lang),
     npcs ? listResolutions() : [],
     npcs ? listBodies() : new Map<string, NpcBodyAnswer[]>(),
@@ -52,22 +54,20 @@ export default async function Page({
   return (
     <main className="pt-6 pb-24">
       <Contained>
-        <h1 className="text-xl font-semibold">NPCs</h1>
+        <h1 className="text-xl font-semibold">{t.menu.npcs}</h1>
         <p className="text-muted-foreground mt-1 mb-5 text-sm">
-          {admin
-            ? "Who every NPC is, and which voice reads each type. An answer here voices every line that NPC speaks, in every language; an NPC whose type no voice reads has none until it gets one."
-            : "Who every NPC is, and the direction its lines are performed with."}
-          {ownDirections ? " A direction of this language's own replaces the global one in this language only." : null}
+          {admin ? t.npc.introAdmin : t.npc.intro}
+          {ownDirections ? ` ${t.npc.introOwnDirections}` : null}
         </p>
       </Contained>
       <Wide>
         {admin ? (
           <LinkTabs
-            label="NPCs"
+            label={t.menu.npcs}
             active={tab}
             tabs={[
-              { value: "npcs", label: "NPCs", href: localeHref(lang, "/npcs") },
-              { value: "types", label: "Types", href: localeHref(lang, "/npcs?tab=types") },
+              { value: "npcs", label: t.menu.npcs, href: localeHref(lang, "/npcs") },
+              { value: "types", label: t.npc.tabTypes, href: localeHref(lang, "/npcs?tab=types") },
             ]}
           />
         ) : null}

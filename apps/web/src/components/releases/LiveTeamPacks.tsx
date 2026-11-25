@@ -5,27 +5,26 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { useUiText } from "@/components/UiTextProvider";
 import { DAY_TIME, useLocalDates } from "@/components/useLocalDates";
 import { langName } from "@/lib/lang";
 import type { LiveTeamPack } from "@/lib/releases/sections";
-import { SOURCE_LABELS } from "@/lib/reports/reports";
+import { fill } from "@/lib/site-text/format";
 
 /**
  * The packs of teams that are not official which players have, each with Delist: it takes the
  * pack off the channel, and the team's next approved release lists it again.
  */
 export default function LiveTeamPacks({ packs }: { packs: LiveTeamPack[] }) {
+  const t = useUiText().releases;
   return (
     <section aria-labelledby="live-team-packs">
       <h2 id="live-team-packs" className="text-lg font-semibold">
-        Team packs on the channel
+        {t.teamPacksTitle}
       </h2>
-      <p className="text-muted-foreground mt-1 max-w-[65ch] text-sm">
-        A delisted pack leaves the Manager and keeps its files. The team sees it was delisted, and its next
-        approved release lists it again. An official team&apos;s packs are not listed here.
-      </p>
+      <p className="text-muted-foreground mt-1 max-w-[65ch] text-sm">{t.teamPacksLede}</p>
       {packs.length === 0 ? (
-        <p className="text-muted-foreground mt-3 rounded-lg border border-dashed p-6 text-sm">No team pack is listed.</p>
+        <p className="text-muted-foreground mt-3 rounded-lg border border-dashed p-6 text-sm">{t.noTeamPack}</p>
       ) : (
         <ul className="mt-3 divide-y rounded-lg border">
           {packs.map((pack) => (
@@ -41,9 +40,15 @@ function PackRow({ pack }: { pack: LiveTeamPack }) {
   const router = useRouter();
   const toast = useToast();
   const when = useLocalDates();
+  const words = useUiText();
+  const t = words.releases;
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const name = `${pack.team.name}'s ${SOURCE_LABELS[pack.section]} in ${langName(pack.lang)}`;
+  const name = fill(t.teamSectionInLang, {
+    team: pack.team.name,
+    section: words.menu.sectionsNav[pack.section],
+    lang: langName(pack.lang),
+  });
 
   async function delist() {
     setBusy(true);
@@ -56,10 +61,10 @@ function PackRow({ pack }: { pack: LiveTeamPack }) {
     setConfirming(false);
     router.refresh();
     if (response?.ok) {
-      toast({ tone: "info", title: `Delisting ${name}.`, detail: "It leaves the channel once its turn comes." });
+      toast({ tone: "info", title: fill(t.delisting, { name }), detail: t.delistGoes });
     } else {
       const { error } = ((await response?.json().catch(() => ({}))) ?? {}) as { error?: string };
-      toast({ tone: "error", title: `Could not delist ${name}.`, detail: error ?? "Could not reach the server." });
+      toast({ tone: "error", title: fill(t.couldNotDelist, { name }), detail: error ?? t.couldNotReach });
     }
   }
 
@@ -68,24 +73,25 @@ function PackRow({ pack }: { pack: LiveTeamPack }) {
       <span className="min-w-48 flex-1">
         <span className="font-medium">{pack.team.name}</span>{" "}
         <span className="text-muted-foreground">
-          · {SOURCE_LABELS[pack.section]} in {langName(pack.lang)}
+          {fill(t.sectionBeside, { section: words.menu.sectionsNav[pack.section], lang: langName(pack.lang) })}
         </span>
       </span>
       <span className="text-muted-foreground tabular-nums">
-        {pack.version && <span className="text-foreground font-mono">v{pack.version}</span>} since {when(pack.releasedAt, DAY_TIME)}
+        {pack.version && <span className="text-foreground font-mono">v{pack.version}</span>}{" "}
+        {fill(t.sinceDate, { date: when(pack.releasedAt, DAY_TIME) })}
       </span>
       {confirming ? (
         <span className="flex gap-2">
           <Button size="sm" variant="destructive" disabled={busy} onClick={() => void delist()}>
-            {busy ? "Delisting…" : "Delist it"}
+            {busy ? t.delistingNow : t.delistIt}
           </Button>
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => setConfirming(false)}>
-            Keep it
+            {t.keepIt}
           </Button>
         </span>
       ) : (
         <Button size="sm" variant="outline" onClick={() => setConfirming(true)}>
-          Delist…
+          {t.delistMore}
         </Button>
       )}
     </li>

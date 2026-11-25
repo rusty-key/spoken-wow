@@ -9,21 +9,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useUiText } from "@/components/UiTextProvider";
 import type { Estimate } from "@/lib/generation/billing";
 import type { BatchSkip, GenerationStatusResponse } from "@/lib/generation/client";
 import { usd } from "@/lib/generation/money";
+import { fill } from "@/lib/site-text/format";
 
 function n(value: number): string {
   return value.toLocaleString();
 }
 
-/** Each reason a matched line is not a job of its own, worded for the dialog. */
-const SKIP_REASONS: [BatchSkip, string][] = [
-  ["no-voice", "no voice"],
-  ["untranslated", "not translated"],
-  ["invalid-chars", "unspeakable characters ($, < or >)"],
-  ["shared-file", "same audio file as another line, generated once"],
-];
+const SKIP_REASONS: BatchSkip[] = ["no-voice", "untranslated", "invalid-chars", "shared-file"];
+
+const SKIP_WORDS = {
+  "no-voice": "noVoice",
+  untranslated: "untranslated",
+  "invalid-chars": "invalidChars",
+  "shared-file": "sharedFile",
+} as const;
 
 export type PendingBatch = {
   label: string;
@@ -57,6 +60,7 @@ type Props = {
  * will cost against what is left.
  */
 export default function RegenerateDialog({ pending, status, onConfirm, onCancel }: Props) {
+  const t = useUiText().catalogue.dialogs.regenerate;
   if (!pending) return null;
   if (!pending.estimate) {
     return <Waiting label={pending.label} failed={!!pending.failed} onCancel={onCancel} />;
@@ -65,9 +69,9 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
   const { estimate, label } = pending;
   const pinned = pending.pinnedEstimate ?? null;
   const total = (count: "lines" | "files" | "characters") => estimate[count] + (pinned?.[count] ?? 0);
-  const skips = SKIP_REASONS.flatMap(([why, text]) => {
+  const skips = SKIP_REASONS.flatMap((why) => {
     const count = pending.skipped?.[why] ?? 0;
-    return count > 0 ? [{ why, text, count }] : [];
+    return count > 0 ? [{ why, text: t.reasons[SKIP_WORDS[why]], count }] : [];
   });
   const skippedTotal = skips.reduce((sum, skip) => sum + skip.count, 0);
   // Dollars for fish.audio, credits for ElevenLabs: the estimate, the balance it is weighed
@@ -81,7 +85,7 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
       : null;
   const cost = dollars ? estimate.usd : estimate.credits;
   const overBudget = remaining !== null && cost !== null && cost > remaining;
-  const amount = (value: number) => (dollars ? usd(value) : `${n(value)} credits`);
+  const amount = (value: number) => (dollars ? usd(value) : fill(t.credits, { n: n(value) }));
 
   // Zero samples means nothing has been generated with this model yet, so the estimate is
   // using the list rate - an upper bound rather than a measurement. Saying so matters,
@@ -92,50 +96,47 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Regenerate {label}?</DialogTitle>
-          <DialogDescription>
-            This replaces audio that already exists. Every take is kept, so it can be undone
-            line by line.
-          </DialogDescription>
+          <DialogTitle>{fill(t.title, { what: label })}</DialogTitle>
+          <DialogDescription>{t.body}</DialogDescription>
         </DialogHeader>
 
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
-          <dt className="text-muted-foreground">Lines</dt>
+          <dt className="text-muted-foreground">{t.lines}</dt>
           <dd className="text-right font-mono">{n(total("lines"))}</dd>
 
-          <dt className="text-muted-foreground">Audio files</dt>
+          <dt className="text-muted-foreground">{t.files}</dt>
           <dd className="text-right font-mono">{n(total("files"))}</dd>
 
-          <dt className="text-muted-foreground">Characters</dt>
+          <dt className="text-muted-foreground">{t.characters}</dt>
           <dd className="text-right font-mono">{n(total("characters"))}</dd>
 
-          <dt className="text-muted-foreground">Estimated cost</dt>
+          <dt className="text-muted-foreground">{t.estimatedCost}</dt>
           <dd className="text-right font-mono">
             {cost === null
-              ? "unknown"
+              ? t.unknown
               : uncalibrated
-                ? `up to ${amount(cost)}`
-                : `~${amount(cost)}`}
+                ? fill(t.upTo, { amount: amount(cost) })
+                : fill(t.about, { amount: amount(cost) })}
           </dd>
 
           {pinned && (
             <>
               <dt className="text-muted-foreground">
-                Pinned to fish.audio, {n(pinned.files)} {pinned.files === 1 ? "file" : "files"}
+                {fill(t.pinned, { n: n(pinned.files), what: pinned.files === 1 ? t.fileOne : t.fileMany })}
               </dt>
               <dd className="text-right font-mono">
                 {pinned.usd === null
-                  ? "unknown"
+                  ? t.unknown
                   : pinned.rate.samples === 0
-                    ? `up to ${usd(pinned.usd)}`
-                    : `~${usd(pinned.usd)}`}
+                    ? fill(t.upTo, { amount: usd(pinned.usd) })
+                    : fill(t.about, { amount: usd(pinned.usd) })}
               </dd>
             </>
           )}
 
           {remaining !== null && (
             <>
-              <dt className="text-muted-foreground">Remaining</dt>
+              <dt className="text-muted-foreground">{t.remaining}</dt>
               <dd
                 className={`text-right font-mono ${overBudget ? "text-destructive" : ""}`}
               >
@@ -150,9 +151,14 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
         {skippedTotal > 0 && (
           <div className="text-muted-foreground text-xs">
             <p>
-              {n(skippedTotal)}
-              {pending.matched !== undefined && ` of ${n(pending.matched)}`} matching{" "}
-              {skippedTotal === 1 ? "line" : "lines"} skipped:
+              {fill(
+                pending.matched !== undefined ? t.skipped : t.skippedAll,
+                {
+                  n: n(skippedTotal),
+                  all: pending.matched !== undefined ? n(pending.matched) : "",
+                  what: skippedTotal === 1 ? t.lineOne : t.lineMany,
+                },
+              )}
             </p>
             <ul className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 pl-3">
               {skips.map(({ why, text, count }) => (
@@ -168,46 +174,46 @@ export default function RegenerateDialog({ pending, status, onConfirm, onCancel 
         {dollars ? (
           <p className="text-muted-foreground text-xs">
             {estimate.rate.unknown
-              ? `fish.audio publishes no price for ${estimate.rate.modelId ?? "this model"}, so there is nothing to estimate from. The cost of each line is recorded as it runs.`
+              ? fill(t.unknownPrice, { model: estimate.rate.modelId ?? t.thisModel })
               : uncalibrated
-                ? `Nothing has been generated with ${estimate.rate.modelId ?? "this model"} in this language yet, so this is fish.audio's list price at the widest this script's characters can be — an upper bound.`
-                : `Calibrated from the last ${estimate.rate.samples} fish.audio ${estimate.rate.samples === 1 ? "take" : "takes"} in this language. The cost of each line is recorded as it runs.`}
+                ? fill(t.fishListPrice, { model: estimate.rate.modelId ?? t.thisModel })
+                : fill(t.fishCalibrated, {
+                    n: estimate.rate.samples,
+                    takes: estimate.rate.samples === 1 ? t.takeOne : t.takeMany,
+                  })}
           </p>
         ) : uncalibrated ? (
           <p className="text-muted-foreground text-xs">
-            Nothing has been generated with {estimate.rate.modelId ?? "this model"} yet, so
-            this is the list rate — an upper bound. ElevenLabs bills a rate set by your plan,
-            and the exact figure is reported after each line.
+            {fill(t.creditsListPrice, { model: estimate.rate.modelId ?? t.thisModel })}
           </p>
         ) : (
           <p className="text-muted-foreground text-xs">
-            Calibrated from the last {estimate.rate.samples}{" "}
-            {estimate.rate.samples === 1 ? "take" : "takes"} on this account at{" "}
-            {estimate.rate.rate.toFixed(3)} credits per character. The exact cost is reported
-            as it runs.
+            {fill(t.creditsCalibrated, {
+              n: estimate.rate.samples,
+              takes: estimate.rate.samples === 1 ? t.takeOne : t.takeMany,
+              rate: estimate.rate.rate.toFixed(3),
+            })}
           </p>
         )}
 
         {overBudget && (
           <p role="alert" className="text-destructive text-xs">
-            This is more than {dollars ? "the fish.audio balance holds" : "the plan has left"}.
-            It will run until {dollars ? "the balance runs out" : "the credits are gone"} and
-            then stop, keeping whatever it finished.
+            {dollars ? t.overBudgetFish : t.overBudgetCredits}
           </p>
         )}
 
         {!dollars && subscription?.resetAt && (
           <p className="text-muted-foreground text-xs">
-            Balance resets {new Date(subscription.resetAt).toLocaleDateString()}.
+            {fill(t.resets, { date: new Date(subscription.resetAt).toLocaleDateString() })}
           </p>
         )}
 
         <DialogFooter>
           <Button variant="ghost" size="sm" onClick={onCancel}>
-            Cancel
+            {t.cancel}
           </Button>
           <Button size="sm" onClick={onConfirm} disabled={total("files") === 0}>
-            Regenerate {n(total("files"))} {total("files") === 1 ? "file" : "files"}
+            {fill(t.submit, { n: n(total("files")), what: total("files") === 1 ? t.fileOne : t.fileMany })}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -225,23 +231,20 @@ function Waiting({
   failed: boolean;
   onCancel: () => void;
 }) {
+  const t = useUiText().catalogue.dialogs.regenerate;
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Regenerate {label}?</DialogTitle>
-          <DialogDescription>
-            {failed
-              ? "Could not work out what this would regenerate."
-              : "Counting what this would regenerate…"}
-          </DialogDescription>
+          <DialogTitle>{fill(t.title, { what: label })}</DialogTitle>
+          <DialogDescription>{failed ? t.waitingFailed : t.waiting}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="ghost" size="sm" onClick={onCancel}>
-            {failed ? "Close" : "Cancel"}
+            {failed ? t.close : t.cancel}
           </Button>
           <Button size="sm" disabled>
-            Regenerate
+            {t.submitShort}
           </Button>
         </DialogFooter>
       </DialogContent>

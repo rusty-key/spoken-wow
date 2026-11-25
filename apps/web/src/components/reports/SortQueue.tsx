@@ -34,19 +34,16 @@ import { withLang, type Lang } from "@/lib/lang";
 import { explorerHref } from "@/lib/links";
 import { resolveReport } from "@/lib/reports/client";
 import { detailOf, fileOf, regenerateLine, searchPath, type SourceLine } from "@/lib/reports/detail";
-import { CATEGORY_COLUMN, SOURCE_LABELS, STATUS_LABELS, type Report, type Status } from "@/lib/reports/reports";
+import { CATEGORY_COLUMN, SOURCE_LABELS, type Report, type Status } from "@/lib/reports/reports";
 import type { ReportGroup } from "@/lib/reports/rows";
 import type { ResultLine as QuestLine } from "@/lib/search";
 import type { Source } from "@/lib/sections";
 import { cn, endsSelection } from "@/lib/utils";
 import type { ResultLine as ZoneLine } from "@/lib/places/search";
 import type { ResultLine as BossLine } from "@/lib/bosses/search";
+import { fill } from "@/lib/site-text/format";
 import { placesSection } from "@/components/places/sections";
 import { bossesSection } from "@/components/bosses/sections";
-
-// No facets: the card shows one line, with nothing to narrow.
-const PLACES = placesSection();
-const BOSSES = bossesSection();
 
 /** Enough to read a typical complaint whole without pushing the actions off a phone screen. */
 const PREVIEW = 3;
@@ -57,18 +54,11 @@ type Answer = Exclude<Status, "open"> | "skip";
 type Busy = Answer | "regenerate" | null;
 
 /** The completion row, left to right, with each answer's key. */
-const ANSWERS: { answer: Answer; label: string; done: string; busy: string; key: string; tone?: string }[] = [
-  { answer: "fixed", label: STATUS_LABELS.fixed, done: STATUS_LABELS.fixed, busy: "Saving…", key: "f", tone: ACCEPT_TONE },
-  {
-    answer: "not_an_issue",
-    label: STATUS_LABELS.not_an_issue,
-    done: STATUS_LABELS.not_an_issue,
-    busy: "Saving…",
-    key: "n",
-    tone: REJECT_TONE,
-  },
-  { answer: "minor", label: STATUS_LABELS.minor, done: STATUS_LABELS.minor, busy: "Saving…", key: "m" },
-  { answer: "skip", label: "Skip", done: "Skipped", busy: "Skipping…", key: "s" },
+const ANSWERS: { answer: Answer; word: keyof ReturnType<typeof useUiText>["reports"]["answers"]; key: string; tone?: string }[] = [
+  { answer: "fixed", word: "fixed", key: "f", tone: ACCEPT_TONE },
+  { answer: "not_an_issue", word: "notAnIssue", key: "n", tone: REJECT_TONE },
+  { answer: "minor", word: "minor", key: "m" },
+  { answer: "skip", word: "skip", key: "s" },
 ];
 
 /** A line not fetched yet is absent; null is a line the corpus no longer has. */
@@ -114,6 +104,9 @@ export default function SortQueue({
 }) {
   const t = useUiText();
   const lang = useLang();
+  // No facets: the card shows one line, with nothing to narrow.
+  const places = placesSection([], t.sectionLabels.places);
+  const bosses = bossesSection([], t.sectionLabels.bosses);
   // Held from the first render: a refresh while sorting brings back a list without the lines
   // already answered, and the position would then point past the card on screen.
   const [groups] = useState(initial);
@@ -233,7 +226,7 @@ export default function SortQueue({
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ ids: current.reports.map((report) => report.id) }),
     }).catch(() => null);
-    return response?.ok ? null : "Couldn't skip. Try again.";
+    return response?.ok ? null : t.reports.skipFailed;
   }
 
   async function regenerate(lineId: string) {
@@ -248,7 +241,7 @@ export default function SortQueue({
     if ("error" in result) return setError(`Regenerate failed: ${result.error}`);
 
     setVersions((current) => ({ ...current, [lineId]: result.version }));
-    setNotice({ lineId, text: "New take saved." });
+    setNotice({ lineId, text: t.reports.takeSaved });
     if (pickedId.current === lineId) playWhenReady.current = true;
     // Refetched rather than patched: a line that had no take until now only gains its audio
     // path from the search.
@@ -352,14 +345,27 @@ export default function SortQueue({
 
       {answer ? (
         <p className="bg-muted rounded-lg px-3 py-2 text-sm">
-          Answered <span className="font-medium">{ANSWERS.find((each) => each.answer === answer)!.done}</span>.
-          Pick another answer below to change it.
+          {t.reports.answered}{" "}
+          <span className="font-medium">
+            {t.reports.answers[
+              answer === "fixed"
+                ? "fixed"
+                : answer === "not_an_issue"
+                  ? "notAnIssue"
+                  : answer === "minor"
+                    ? "minor"
+                    : "skipped"
+            ]}
+          </span>
+          . {t.reports.pickAnother}
         </p>
       ) : null}
 
       {ids.length === 0 ? (
         <section className="bg-card flex flex-col gap-2 rounded-xl border p-4">
-          <p className="font-medium">{group.reports[0].target ? "No line picked" : "About the project"}</p>
+          <p className="font-medium">
+            {group.reports[0].target ? t.reports.noLinePicked : t.reports.aboutProject}
+          </p>
           {group.reports[0].target ? (
             <p className="text-muted-foreground font-mono text-xs break-all">{group.reports[0].target}</p>
           ) : null}
@@ -367,8 +373,12 @@ export default function SortQueue({
       ) : null}
       {!group.reports[0].lineId && ids.length > 0 ? (
         <p className="text-muted-foreground text-sm">
-          Filed against <span className="font-mono">{group.reports[0].target}</span> without a line picked.{" "}
-          {ids.length === 1 ? "One line answers to it:" : `All ${ids.length} lines that answer to it:`}
+          {t.reports.filedWithout.split("{target}")[0]}
+          <span className="font-mono">{group.reports[0].target}</span>
+          {t.reports.filedWithout.split("{target}")[1]}{" "}
+          {ids.length === 1
+            ? t.reports.oneLineAnswers
+            : fill(t.reports.allLinesAnswer, { n: ids.length })}
         </p>
       ) : null}
       {ids.map((id, at) => (
@@ -460,7 +470,7 @@ export default function SortQueue({
               disabled={busy !== null}
               onClick={() => void give(each.answer)}
             >
-              {busy === each.answer ? each.busy : each.label}
+              {busy === each.answer ? t.reports.answers.saving : t.reports.answers[each.word]}
               <Hint>[{each.key.toUpperCase()}]</Hint>
             </LiteButton>
           ))}
@@ -490,12 +500,16 @@ function SourcePlayer({
   version: number | undefined;
   audio: React.RefObject<HTMLAudioElement | null>;
 }) {
+  const words = useUiText().sectionLabels;
+  // No facets: the card shows one line, with nothing to narrow.
+  const places = placesSection([], words.places);
+  const bosses = bossesSection([], words.bosses);
   if (source === "quests") return <QuestsPlayer ref={audio} line={line as QuestLine | null} version={version} />;
   if (source === "places") {
-    return <PlacesPlayer section={PLACES} audioRef={audio} line={line as ZoneLine | null} version={version} />;
+    return <PlacesPlayer section={places} audioRef={audio} line={line as ZoneLine | null} version={version} />;
   }
   if (source === "bosses") {
-    return <PlacesPlayer section={BOSSES} audioRef={audio} line={line as BossLine | null} version={version} />;
+    return <PlacesPlayer section={bosses} audioRef={audio} line={line as BossLine | null} version={version} />;
   }
   return <ReadablesPlayer audioRef={audio} line={line as BookLine | null} version={version} />;
 }
@@ -511,11 +525,26 @@ function EditDialog({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const words = useUiText().sectionLabels;
   if (source === "places") {
-    return <LoreDialog section={PLACES} line={line as ZoneLine} onClose={onClose} onSaved={onSaved} />;
+    return (
+      <LoreDialog
+        section={placesSection([], words.places)}
+        line={line as ZoneLine}
+        onClose={onClose}
+        onSaved={onSaved}
+      />
+    );
   }
   if (source === "bosses") {
-    return <LoreDialog section={BOSSES} line={line as BossLine} onClose={onClose} onSaved={onSaved} />;
+    return (
+      <LoreDialog
+        section={bossesSection([], words.bosses)}
+        line={line as BossLine}
+        onClose={onClose}
+        onSaved={onSaved}
+      />
+    );
   }
   if (source === "readables") return <PageTextDialog line={line as BookLine} onClose={onClose} onSaved={onSaved} />;
   const done = () => {
@@ -634,12 +663,12 @@ function LineCard({
       <div className="mt-1 grid grid-cols-3 gap-2">
         <Button variant="outline" className="h-11" disabled={!detail?.audioSrc} onClick={onPlay}>
           {picked && playing ? <Pause /> : <Play />}
-          {picked && playing ? "Pause" : "Play"}
+          {picked && playing ? t.reports.pause : t.reports.play}
           <Hint>[Space]</Hint>
         </Button>
         <Button variant="outline" className="h-11" disabled={!canEdit || busy !== null} onClick={onEdit}>
           <Pencil />
-          Edit
+          {t.reports.editLineButton}
           <Hint>[E]</Hint>
         </Button>
         <Button
@@ -649,14 +678,14 @@ function LineCard({
           onClick={onRegenerate}
           title={
             !canRegenerate
-              ? "You can't regenerate in this language"
+              ? t.reports.cannotRegenerate
               : unwritten
-                ? "No story in this language to voice"
-                : "Regenerate this line"
+                ? t.reports.noStoryToVoice
+                : t.reports.regenerateThis
           }
         >
           <RefreshCw className={cn(regenerating && "animate-spin")} />
-          {regenerating ? "Working…" : "Regenerate"}
+          {regenerating ? t.reports.working : t.reports.regenerate}
           <Hint>[R]</Hint>
         </Button>
       </div>

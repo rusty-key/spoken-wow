@@ -13,7 +13,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useUiText } from "@/components/UiTextProvider";
 import { withLang, type Lang } from "@/lib/lang";
+import { fill } from "@/lib/site-text/format";
 
 /**
  * Clone one voice's clips into the caller's own ElevenLabs account. Null on success, or why
@@ -71,6 +73,8 @@ export default function PopulateDialog({
   onCloned: (voice: string) => void;
 }) {
   const lang = useLang();
+  const t = useUiText();
+  const words = t.voices;
   const [run, setRun] = useState<Run | null>(null);
 
   const missing = cloneable.filter((voice) => !present.has(voice));
@@ -109,25 +113,28 @@ export default function PopulateDialog({
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Populate your ElevenLabs account</DialogTitle>
+          <DialogTitle>{words.populateTitle}</DialogTitle>
           <DialogDescription>
-            Clones each voice from its clips into your own account, one voice slot each.
+            {words.populateLede}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2 text-sm">
           <p className="tabular-nums">
-            {cloneable.length - missing.length} of {cloneable.length} voices are in your account;{" "}
-            {missing.length} missing.
+            {fill(words.populateCount, {
+              here: cloneable.length - missing.length,
+              all: cloneable.length,
+              missing: missing.length,
+            })}
           </p>
           {free !== null && (
             <p className="text-muted-foreground tabular-nums">
-              Voice slots: {slotsUsed} of {slotLimit} used, {free} free.
+              {fill(words.slotsLine, { used: String(slotsUsed), limit: String(slotLimit), free })}
             </p>
           )}
           {short > 0 && (
             <p className="text-amber-400">
-              Your plan has room for {free} more; {short} would be left out.
+              {fill(words.planRoom, { free: String(free), short })}
             </p>
           )}
 
@@ -135,16 +142,16 @@ export default function PopulateDialog({
             <div className="bg-muted/40 rounded-md border px-3 py-2 text-xs">
               <p className="tabular-nums">
                 {running && <Loader2 className="mr-1 inline size-3 animate-spin" />}
-                {run.done.length} done
-                {run.left.length > 0 && `, ${run.left.length} left`}
+                {fill(words.doneCount, { n: run.done.length })}
+                {run.left.length > 0 && fill(words.leftCount, { n: run.left.length })}
               </p>
               {run.error && (
                 <p role="alert" className="text-destructive mt-1">
-                  Stopped at {run.error}
+                  {fill(words.stoppedAt, { error: run.error })}
                 </p>
               )}
               {!running && run.left.length > 0 && (
-                <p className="text-muted-foreground mt-1">Not done: {run.left.join(", ")}</p>
+                <p className="text-muted-foreground mt-1">{fill(words.notDone, { list: run.left.join(", ") })}</p>
               )}
             </div>
           )}
@@ -154,14 +161,14 @@ export default function PopulateDialog({
           <Button
             variant="outline"
             disabled={running || cloneable.length === 0}
-            title="Deletes and re-creates every voice, so they pick up the current clips"
+            title={words.populateRebuild}
             onClick={() => start("all")}
           >
-            Replace all ({cloneable.length})
+            {fill(words.replaceAll, { n: cloneable.length })}
           </Button>
           <Button disabled={running || missing.length === 0} onClick={() => start("missing")}>
             {running && run?.mode === "missing" && <Loader2 className="animate-spin" />}
-            Missing only ({missing.length})
+            {fill(words.missingOnly, { n: missing.length })}
           </Button>
         </DialogFooter>
       </DialogContent>

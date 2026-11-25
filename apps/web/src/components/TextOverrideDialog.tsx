@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,6 +33,8 @@ type Props = {
  */
 export default function TextOverrideDialog({ source, line, onSaved, onCancel }: Props) {
   const lang = useLang();
+  const words = useUiText();
+  const t = words.catalogue.dialogs.teamOverride;
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,16 +88,13 @@ export default function TextOverrideDialog({ source, line, onSaved, onCancel }: 
     <Dialog open onOpenChange={(open) => !open && !busy && cancel()}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>What should your team say?</DialogTitle>
-          <DialogDescription>
-            Your team&apos;s audio speaks this instead of the original. The text shown on the site and
-            in game, and every name, stay the original, and other teams keep hearing it.
-          </DialogDescription>
+          <DialogTitle>{t.title}</DialogTitle>
+          <DialogDescription>{t.body}</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-2">
           <label htmlFor="text-override" className="text-muted-foreground text-xs">
-            What your team says
+            {t.ours}
           </label>
           <textarea
             id="text-override"
@@ -108,7 +108,7 @@ export default function TextOverrideDialog({ source, line, onSaved, onCancel }: 
         </div>
 
         <div className="grid gap-1">
-          <span className="text-muted-foreground text-xs">The original says</span>
+          <span className="text-muted-foreground text-xs">{t.original}</span>
           <p
             id="text-override-original"
             className="text-muted-foreground bg-muted/40 max-h-24 overflow-y-auto rounded-md px-3 py-2 text-xs whitespace-pre-wrap"
@@ -129,19 +129,19 @@ export default function TextOverrideDialog({ source, line, onSaved, onCancel }: 
               variant="ghost"
               disabled={busy}
               onClick={() => void send("DELETE")}
-              title="Go back to the original"
+              title={t.removeTitle}
             >
-              Remove
+              {t.remove}
             </Button>
           ) : (
             <span />
           )}
           <span className="flex gap-2">
             <Button variant="ghost" onClick={cancel} disabled={busy}>
-              Cancel
+              {words.common.cancel}
             </Button>
             <Button disabled={busy || !dirty} onClick={() => void send(backToOriginal ? "DELETE" : "PUT")}>
-              {busy ? "Saving…" : "Save"}
+              {busy ? words.catalogue.dialogs.saving : words.catalogue.dialogs.save}
             </Button>
           </span>
         </DialogFooter>

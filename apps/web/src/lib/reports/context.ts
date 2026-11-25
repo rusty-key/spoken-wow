@@ -191,28 +191,43 @@ export function outdatedVersion(context: ReportContext | null): string | null {
  * The context as short labelled facts, in the order a reader weighs them. The NPC field is
  * "<id> <name>" as the addon writes it.
  */
-export function contextFacts(context: ReportContext): { label: string; value: string }[] {
+/** The words the facts are labelled with, which are the reader's and not this module's. */
+export type FactWords = Record<
+  "addon" | "client" | "language" | "pack" | "npc" | "quest" | "book" | "place" | "seen",
+  string
+> & { hearing: string; page: string; noPack: string; sex: Record<string, string> };
+
+export function contextFacts(
+  context: ReportContext,
+  w: FactWords,
+  fill: (text: string, values: Record<string, string>) => string,
+): { label: string; value: string }[] {
   const f = context.fields;
   const facts: { label: string; value: string }[] = [];
   const add = (label: string, value: string | undefined) => {
     if (value) facts.push({ label, value });
   };
-  add("Addon", addonLabel(context));
-  add("Client", f.build);
-  add("Language", f.locale && f.pack && f.pack !== f.locale ? `${f.locale}, hearing ${f.pack}` : f.locale);
+  add(w.addon, addonLabel(context));
+  add(w.client, f.build);
   add(
-    "Pack",
+    w.language,
+    f.locale && f.pack && f.pack !== f.locale
+      ? fill(w.hearing, { locale: f.locale, pack: f.pack })
+      : f.locale,
+  );
+  add(
+    w.pack,
     f.packFolder
       ? `${f.packFolder} ${f.packFolderVersion ?? ""}`.trim()
-      : f.packVersion && (f.packVersion === "none" ? "none installed" : f.packVersion),
+      : f.packVersion && (f.packVersion === "none" ? w.noPack : f.packVersion),
   );
-  add("NPC", f.npc);
-  add("Quest", f.quest && [f.quest, f.event, f.title].filter(Boolean).join(" "));
-  add("Book", f.book && (f.number ? `${f.book}, page ${f.number}` : f.book));
-  add("Place", [f.zone, f.key].filter(Boolean).join(" · ") || undefined);
-  add("Seen", [f.kind, f.creature, f.sex && SEX[f.sex]].filter(Boolean).join(", ") || undefined);
+  add(w.npc, f.npc);
+  add(w.quest, f.quest && [f.quest, f.event, f.title].filter(Boolean).join(" "));
+  add(w.book, f.book && (f.number ? fill(w.page, { book: f.book, number: f.number }) : f.book));
+  add(w.place, [f.zone, f.key].filter(Boolean).join(" · ") || undefined);
+  add(
+    w.seen,
+    [f.kind, f.creature, f.sex && w.sex[f.sex]].filter(Boolean).join(", ") || undefined,
+  );
   return facts;
 }
-
-/** UnitSex: 1 unknown, 2 male, 3 female. */
-const SEX: Record<string, string> = { "1": "", "2": "male", "3": "female" };

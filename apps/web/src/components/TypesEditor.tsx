@@ -16,8 +16,14 @@ import { NewFlavorForm, NewTypeForm, useRosterEdits, type RosterEdits } from "@/
 import SearchSelect from "@/components/SearchSelect";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useUiText } from "@/components/UiTextProvider";
 import { newVoiceName, type Gender, type RosterData } from "@/lib/voices/roster";
 import { GENDERS } from "@/lib/voices/voices";
+
+import { fill } from "@/lib/site-text/format";
+import type { UiText } from "@/lib/ui-text/en";
+
+type Words = UiText["lexicon"]["types"];
 
 /**
  * Delete stays out of sight until its row is hovered, as a column of red reads as noise
@@ -26,14 +32,15 @@ import { GENDERS } from "@/lib/voices/voices";
 const ON_TYPE_HOVER = "opacity-0 group-hover/type:opacity-100 focus-visible:opacity-100";
 const ON_ROW_HOVER = "opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100";
 
-const VOICED_OPTIONS: ChipOption[] = [
-  { value: "yes", label: "has a voice" },
-  { value: "no", label: "has no voice" },
+const voicedOptions = (t: Words): ChipOption[] => [
+  { value: "yes", label: t.hasVoice },
+  { value: "no", label: t.hasNoVoice },
 ];
 
 type Group = { gender: Gender | null; flavors: (string | null)[] };
 
 export default function TypesEditor({ initial }: { initial: RosterData }) {
+  const t = useUiText().lexicon.types;
   const edits = useRosterEdits(initial);
   const { roster, busy, send } = edits;
   const data = roster.data;
@@ -62,12 +69,12 @@ export default function TypesEditor({ initial }: { initial: RosterData }) {
       <div className="flex flex-wrap items-center gap-2">
         <Input
           type="search"
-          placeholder="Search types, flavors, voices"
+          placeholder={t.search}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           className="h-8 max-w-xs text-sm"
         />
-        <FilterChip label="voice" value={voiced} options={VOICED_OPTIONS} onChange={setVoiced} />
+        <FilterChip label={t.voiced} value={voiced} options={voicedOptions(t)} onChange={setVoiced} />
       </div>
       <div>
         <AddType at="add-top" edits={edits} />
@@ -75,11 +82,11 @@ export default function TypesEditor({ initial }: { initial: RosterData }) {
       <table className="w-fit border-collapse">
         <thead className="text-muted-foreground text-left text-xs">
           <tr>
-            <th className="px-3 py-1 font-normal">Type</th>
-            <th className="px-3 py-1 font-normal">Gender</th>
-            <th className="px-3 py-1 font-normal">Flavor</th>
-            <th className="px-3 py-1 font-normal">Read by</th>
-            <th className="px-3 py-1 font-normal">Add</th>
+            <th className="px-3 py-1 font-normal">{t.type}</th>
+            <th className="px-3 py-1 font-normal">{t.gender}</th>
+            <th className="px-3 py-1 font-normal">{t.flavor}</th>
+            <th className="px-3 py-1 font-normal">{t.readBy}</th>
+            <th className="px-3 py-1 font-normal">{t.add}</th>
           </tr>
         </thead>
         {shown.map(({ race, groups }) => (
@@ -91,7 +98,7 @@ export default function TypesEditor({ initial }: { initial: RosterData }) {
           />
         ))}
       </table>
-      {shown.length === 0 ? <p className="text-muted-foreground text-xs">Nothing matches.</p> : null}
+      {shown.length === 0 ? <p className="text-muted-foreground text-xs">{t.nothing}</p> : null}
       {/* Again below a table long enough to scroll the first one away. */}
       <div>
         <AddType at="add-bottom" edits={edits} />
@@ -101,13 +108,14 @@ export default function TypesEditor({ initial }: { initial: RosterData }) {
 }
 
 function AddType({ at, edits }: { at: string; edits: RosterEdits }) {
+  const t = useUiText().lexicon.types;
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <LiteButton className={BUTTON} disabled={edits.busy}>
           <Plus className="size-3.5 shrink-0" />
-          type
+          {t.addType}
         </LiteButton>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80 p-2">
@@ -132,6 +140,7 @@ function TypeRows({
   edits: RosterEdits;
 }) {
   const { roster, busy, refusal, send } = edits;
+  const t = useUiText().lexicon.types;
   const at = (what: string) => `${race.key}:${what}`;
   const missing = GENDERS.filter((g) => !race.genders.includes(g));
   const total = groups.reduce((sum, { flavors }) => sum + flavors.length, 0);
@@ -146,7 +155,7 @@ function TypeRows({
           <div className={LINE}>
             {race.key}
             <TrashButton
-              title={`Delete ${race.key}`}
+              title={fill(t.deleteFor, { name: race.key })}
               busy={busy}
               reveal={ON_TYPE_HOVER}
               onClick={() => void send(at("delete"), { action: "delete-type", key: race.key })}
@@ -194,7 +203,7 @@ function TypeRows({
                 <>
                   {flavor}
                   <TrashButton
-                    title={`Delete ${flavor}`}
+                    title={fill(t.deleteFor, { name: flavor })}
                     busy={busy}
                     reveal={ON_ROW_HOVER}
                     onClick={() => void send(key, { action: "delete-flavor", race: race.key, gender, flavor })}
@@ -229,13 +238,14 @@ function TypeRows({
 
 /** The button that opens a flavor form for one gender of a type, or for a type with none. */
 function AddFlavor({ race, gender, edits }: { race: string; gender: Gender | null; edits: RosterEdits }) {
+  const t = useUiText().lexicon.types;
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <LiteButton className={BUTTON} disabled={edits.busy}>
           <Plus className="size-3.5 shrink-0" />
-          flavor
+          {t.addFlavor}
         </LiteButton>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 p-2">
@@ -293,6 +303,7 @@ function VoiceSelect({
   onPick: (voice: string | null) => void;
 }) {
   // Only its own assignment, not one it falls back to: a flavor read by its type's voice says so.
+  const t = useUiText().lexicon.types;
   const own =
     roster.data.assignments.find((a) => a.race === race && a.gender === gender && a.flavor === flavor)?.voice ?? null;
   const inherited = own ? null : roster.voiceFor(race, gender, flavor);
@@ -301,9 +312,9 @@ function VoiceSelect({
     <SearchSelect
       value={own}
       options={roster.voiceNames}
-      placeholder="no voice"
-      label={own ? undefined : inherited ? `as ${inherited}` : undefined}
-      create={roster.isVoice(fresh) ? undefined : { label: `New voice: ${fresh}`, onSelect: () => onPick(null) }}
+      placeholder={t.noVoice}
+      label={own ? undefined : inherited ? fill(t.inherited, { voice: inherited }) : undefined}
+      create={roster.isVoice(fresh) ? undefined : { label: fill(t.makeVoice, { name: fresh }), onSelect: () => onPick(null) }}
       disabled={busy}
       className="w-60"
       onChange={onPick}

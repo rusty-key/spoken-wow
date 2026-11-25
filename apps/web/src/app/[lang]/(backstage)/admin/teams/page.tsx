@@ -8,6 +8,8 @@ import { Wide } from "@/components/Width";
 import { allLangs, languageOptions, type Lang } from "@/lib/lang";
 import { isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
+import { readingLang } from "@/lib/lang-server";
+import { uiText } from "@/lib/ui-text";
 import { listTeams } from "@/lib/teams/admin";
 import { listRequests } from "@/lib/teams/requests";
 import { teamsOf } from "@/lib/teams/store";
@@ -17,9 +19,10 @@ export const metadata: Metadata = { title: "Teams · Spoken" };
 export const dynamic = "force-dynamic";
 
 /** Site admins only; everyone else gets a 404. */
-export default async function Page() {
+export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const session = await currentSession();
   if (!session || !isAdmin(session.user.role)) notFound();
+  const t = (await uiText(await readingLang((await params).lang))).admin;
 
   const [teams, requests] = await Promise.all([listTeams(), listRequests({ state: "pending" })]);
   // The team a request's new team would start from, where its language has one.
@@ -41,7 +44,7 @@ export default async function Page() {
         administered={allLangs()}
         global
         tab="teams"
-        description="A team keeps its own takes, voices and settings in each language it voices, and the people who regenerate them. A language's teams are equal."
+        description={t.teamsLede}
       />
       <Wide>
         <TeamRequests initial={requests} besides={besides} />

@@ -1,6 +1,8 @@
 "use client";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 import { BASE_LANG, langName, withLang } from "@/lib/lang";
 import { cloneName } from "@/lib/voices/clone-name";
 import { Fragment, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
@@ -122,6 +124,7 @@ export default function VoiceSlotList({
   editing,
   canClone,
 }: Props) {
+  const t = useUiText().voices.slots;
   const lang = useLang();
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set());
   const [query, setQuery] = useState("");
@@ -249,8 +252,8 @@ export default function VoiceSlotList({
   function directionInput(key: string, placeholder: string, autoFocus = false) {
     return (
       <input
-        aria-label={`Direction for ${key}`}
-        title="Direction, sent to ElevenLabs and fish.audio alike; a voice's follows its race's"
+        aria-label={fill(t.directionFor, { voice: key })}
+        title={t.directionHint}
         value={tags[key] ?? ""}
         // No brackets: they are added on save, and typing them is harmless.
         placeholder={placeholder}
@@ -272,16 +275,16 @@ export default function VoiceSlotList({
   function status(slot: VoiceSlot): Status {
     if (tab === "fish") {
       const reference = references[slot.name];
-      if (!reference) return { tone: "quiet", label: "No reference" };
+      if (!reference) return { tone: "quiet", label: t.noReference };
       return reference.pinned
-        ? { tone: "info", label: "Pinned to fish.audio", pinned: true }
-        : { tone: "info", label: "Reference" };
+        ? { tone: "info", label: t.pinned, pinned: true }
+        : { tone: "info", label: t.referenceState };
     }
     // Before the clips: a voice adopted from the account has none.
-    if (present?.has(slot.name)) return { tone: "good", label: "In your account" };
-    if ((samples[slot.name] ?? []).length === 0) return { tone: "bad", label: "No clips" };
-    if (present === null) return { tone: "quiet", label: "Unknown" };
-    return { tone: "fix", label: "Not in your account" };
+    if (present?.has(slot.name)) return { tone: "good", label: t.inAccount };
+    if ((samples[slot.name] ?? []).length === 0) return { tone: "bad", label: t.noClips };
+    if (present === null) return { tone: "quiet", label: t.unknown };
+    return { tone: "fix", label: t.notInAccount };
   }
 
   // On the saved directions, so a row being edited does not filter itself away before its save.
@@ -289,18 +292,18 @@ export default function VoiceSlotList({
   const filters: Filter[] =
     tab === "elevenlabs"
       ? [
-          { key: "all", label: "All", test: () => true },
-          { key: "missing", label: "Not in your account", tone: "fix", test: (s) => status(s).tone === "fix" },
-          { key: "noclips", label: "No clips", tone: "bad", test: (s) => status(s).tone === "bad" },
-          { key: "unused", label: "No NPCs", tone: "quiet", test: (s) => s.npcCount === 0 },
-          { key: "directed", label: "Has a direction", test: directed },
+          { key: "all", label: t.allFilter, test: () => true },
+          { key: "missing", label: t.notInAccount, tone: "fix", test: (s) => status(s).tone === "fix" },
+          { key: "noclips", label: t.noClips, tone: "bad", test: (s) => status(s).tone === "bad" },
+          { key: "unused", label: t.noNpcs, tone: "quiet", test: (s) => s.npcCount === 0 },
+          { key: "directed", label: t.hasDirection, test: directed },
         ]
       : [
-          { key: "all", label: "All", test: () => true },
-          { key: "noref", label: "No reference", tone: "quiet", test: (s) => !references[s.name] },
-          { key: "pinned", label: "Pinned", tone: "info", test: (s) => Boolean(references[s.name]?.pinned) },
-          { key: "unused", label: "No NPCs", tone: "quiet", test: (s) => s.npcCount === 0 },
-          { key: "directed", label: "Has a direction", test: directed },
+          { key: "all", label: t.allFilter, test: () => true },
+          { key: "noref", label: t.noReference, tone: "quiet", test: (s) => !references[s.name] },
+          { key: "pinned", label: t.pinnedShort, tone: "info", test: (s) => Boolean(references[s.name]?.pinned) },
+          { key: "unused", label: t.noNpcs, tone: "quiet", test: (s) => s.npcCount === 0 },
+          { key: "directed", label: t.hasDirection, test: directed },
         ];
   const activeFilter = filters.find((each) => each.key === filter) ?? filters[0];
   const needle = query.trim().toLowerCase();
@@ -389,14 +392,16 @@ export default function VoiceSlotList({
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Voice, race or direction"
-            aria-label="Search voices"
+            placeholder={t.filter}
+            aria-label={t.filterLabel}
           />
           <span className="vo-q-count">
-            {shown === slots.length ? plural(slots.length, "voice", "voices") : `${shown} of ${slots.length} voices`}
+            {shown === slots.length
+              ? fill(slots.length === 1 ? t.voiceCountOne : t.voiceCountMany, { n: slots.length })
+              : fill(t.filteredCount, { shown, all: slots.length })}
           </span>
         </label>
-        <div className="cat-row" role="group" aria-label="Show">
+        <div className="cat-row" role="group" aria-label={t.show}>
           {filters.map((each) => {
             const count = slots.filter(each.test).length;
             // An empty chip is a promise of nothing: it shows only while it is the one picked.
@@ -440,14 +445,14 @@ export default function VoiceSlotList({
             <thead>
               <tr>
                 <th>
-                  <span className="sr-only">Play</span>
+                  <span className="sr-only">{t.columns.play}</span>
                 </th>
-                <th>Voice</th>
-                <th>Speaks</th>
+                <th>{t.columns.voice}</th>
+                <th>{t.columns.speaks}</th>
                 <th>{tab === "elevenlabs" ? "ElevenLabs" : "fish.audio"}</th>
-                <th>Direction</th>
+                <th>{t.columns.direction}</th>
                 <th>
-                  <span className="sr-only">Open</span>
+                  <span className="sr-only">{t.columns.open}</span>
                 </th>
               </tr>
             </thead>
@@ -482,14 +487,14 @@ export default function VoiceSlotList({
                                       </span>
                                     </>
                                   ) : (
-                                    <span className="vo-faint">No accent</span>
+                                    <span className="vo-faint">{t.noAccentBody}</span>
                                   )}
                                   {directs && (
                                     <button
                                       type="button"
                                       className="vo-icon-btn"
-                                      title={`Change the accent for ${group.race}`}
-                                      aria-label={`Change the accent for ${group.race}`}
+                                      title={fill(t.changeAccentFor, { race: group.race })}
+                                      aria-label={fill(t.changeAccentFor, { race: group.race })}
                                       onClick={() => setAccentOpen(group.race)}
                                     >
                                       <Pencil />
@@ -522,8 +527,12 @@ export default function VoiceSlotList({
                                 className="cat-play"
                                 disabled={src === null}
                                 aria-current={playing ? "true" : undefined}
-                                aria-label={playing ? `Stop ${slot.name}` : `Hear ${slot.name}`}
-                                title={src === null ? "Nothing to hear yet" : undefined}
+                                aria-label={
+                                  playing
+                                    ? fill(t.stopFor, { name: slot.name })
+                                    : fill(t.hearFor, { name: slot.name })
+                                }
+                                title={src === null ? t.nothingToHear : undefined}
                                 onClick={(event) => {
                                   event.stopPropagation();
                                   if (src) player.toggle(src);
@@ -554,8 +563,11 @@ export default function VoiceSlotList({
                             </td>
                             <td className={cn("vo-speaks", slot.npcCount === 0 && "vo-faint")}>
                               {slot.npcCount === 0
-                                ? "No NPCs"
-                                : `${plural(slot.npcCount, "NPC", "NPCs")} · ${plural(slot.lineCount, "line", "lines")}`}
+                                ? t.noNpcs
+                                : `${fill(slot.npcCount === 1 ? t.npcOne : t.npcMany, { n: slot.npcCount })} · ${fill(
+                                    slot.lineCount === 1 ? t.lineOne : t.lineMany,
+                                    { n: slot.lineCount },
+                                  )}`}
                             </td>
                             <td>
                               <span className={cn("vo-state", `vo-tone-${state.tone}`)}>
@@ -565,7 +577,7 @@ export default function VoiceSlotList({
                             </td>
                             <td>
                               <span className={cn("vo-dir", !own && "vo-faint")} title={own ?? accent ?? undefined}>
-                                {own || (accent ? `↳ ${solo ? accent : "race accent"}` : "—")}
+                                {own || (accent ? `↳ ${solo ? accent : t.raceAccentLine}` : "—")}
                               </span>
                             </td>
                             <td>
@@ -724,6 +736,7 @@ function ClonePanel({
   canClone: boolean;
   onCloned: () => void;
 }) {
+  const t = useUiText().voices.slots;
   const lang = useLang();
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -772,10 +785,10 @@ function ClonePanel({
             <i aria-hidden />
             {exists ? (
               <>
-                In your account as <span className="vo-mono">{cloneName(voice, lang)}</span>
+                {fill(t.inAccountAs, { name: cloneName(voice, lang) })}
               </>
             ) : (
-              "Not in your account yet"
+              t.notYet
             )}
           </span>
           <button
@@ -785,21 +798,20 @@ function ClonePanel({
             onClick={() => (exists && !confirming ? setConfirming(true) : clone())}
           >
             {busy ? <Loader2 className="animate-spin" /> : <Sparkles />}
-            {confirming ? "Confirm replace" : exists ? "Replace in my account" : "Add to my account"}
+            {confirming ? t.confirmReplace : exists ? t.replaceInAccount : t.addToAccount}
           </button>
           {!confirming && <AccountVoicePicker voice={voice} exists={exists} disabled={busy} onAdopted={onCloned} />}
           {confirming ? (
             <>
               <span className="vo-warn">
-                Deletes <code>{cloneName(voice, lang)}</code> from your ElevenLabs account and clones it
-                again from these clips; it will not sound quite the same.
+                {fill(t.confirmWarn, { name: cloneName(voice, lang) })}
               </span>
               <button type="button" className="bs-btn bs-btn-text vo-sm" onClick={() => setConfirming(false)}>
-                Cancel
+                {t.cancel}
               </button>
             </>
           ) : (
-            !exists && <span className="vo-note">Uses one voice slot.</span>
+            !exists && <span className="vo-note">{t.oneSlot}</span>
           )}
         </div>
       )}
@@ -815,13 +827,14 @@ function ClonePanel({
 
 /** One voice on the fish.audio tab: the reference it is spoken from, and nothing else. */
 function ReferencePlayer({ voice, reference }: { voice: string; reference: ReferenceView | null }) {
+  const t = useUiText().voices.slots;
   const lang = useLang();
   if (!reference) {
-    return <p className="vo-note">No fish.audio reference for this voice in {langName(lang)} yet.</p>;
+    return <p className="vo-note">{fill(t.referenceOnly, { lang: langName(lang) })}</p>;
   }
   return (
     <div>
-      <p className="bs-label">Reference</p>
+      <p className="bs-label">{t.referenceState}</p>
       <audio
         controls
         preload="none"

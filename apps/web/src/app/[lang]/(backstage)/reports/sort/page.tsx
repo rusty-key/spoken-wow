@@ -1,4 +1,5 @@
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
+import { uiText } from "@/lib/ui-text";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);
+  const t = (await uiText(await readingLang(lang))).reports;
   const session = await auth.api.getSession({ headers: await headers() });
   // The same gate as /reports: these are the same reports, a card at a time.
   const viewer = await viewerOf(session);
@@ -33,10 +35,8 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
 
   return (
     <main className="mx-auto max-w-xl px-4 pt-6 pb-24">
-      <h1 className="text-xl font-semibold">Sort reports</h1>
-      <p className="text-muted-foreground mt-1 mb-5 text-sm">
-        One line at a time: listen, fix or dismiss, next.
-      </p>
+      <h1 className="text-xl font-semibold">{t.sortTitle}</h1>
+      <p className="text-muted-foreground mt-1 mb-5 text-sm">{t.sortLede}</p>
       <SortPicker counts={counts} />
     </main>
   );

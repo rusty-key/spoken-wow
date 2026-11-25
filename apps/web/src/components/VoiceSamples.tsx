@@ -10,6 +10,8 @@ import AccountVoicePicker from "@/components/voices/AccountVoicePicker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
 import { displayName } from "@/lib/voices/names";
 import type { Sample } from "@/lib/voices/samples";
 
@@ -53,6 +55,8 @@ export default function VoiceSamples({
   onCloned,
 }: Props) {
   const lang = useLang();
+  const t = useUiText();
+  const words = t.voices.samples;
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<Action | null>(null);
   const [confirmingReplace, setConfirmingReplace] = useState(false);
@@ -70,7 +74,7 @@ export default function VoiceSamples({
     try {
       const response = await send();
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error ?? `${kind} failed (${response.status})`);
+      if (!response.ok) throw new Error(payload.error ?? fill(words.requestFailed, { status: response.status }));
       return payload;
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -167,10 +171,8 @@ export default function VoiceSamples({
     <div>
       {samples.length === 0 ? (
         <p className="text-muted-foreground mb-3 text-sm">
-          No clips yet.{" "}
-          {hasSeedClips
-            ? "Import the seed clips for this voice, or upload your own — short greeting clips are fine, and several merge into one take."
-            : "Short greeting clips are fine — upload several and merge them into one take."}
+          {words.none}{" "}
+          {hasSeedClips ? words.lede : words.ledeShort}
         </p>
       ) : (
         <>
@@ -183,7 +185,7 @@ export default function VoiceSamples({
               }
             />
             <Label htmlFor={`${voice}-all`} className="text-muted-foreground text-xs">
-              Select all
+              {words.selectAll}
             </Label>
           </div>
 
@@ -193,7 +195,7 @@ export default function VoiceSamples({
                 <Checkbox
                   checked={selected.has(sample.file)}
                   onCheckedChange={() => toggle(sample.file)}
-                  aria-label={`Select ${sample.file}`}
+                  aria-label={fill(words.selectFor, { voice: sample.file })}
                 />
                 <audio
                   controls
@@ -225,8 +227,8 @@ export default function VoiceSamples({
                   variant="ghost"
                   size="icon-xs"
                   disabled={busy !== null}
-                  title={`Delete ${sample.file}`}
-                  aria-label={`Delete ${sample.file}`}
+                  title={fill(words.deleteFor, { voice: sample.file })}
+                  aria-label={fill(words.deleteFor, { voice: sample.file })}
                   onClick={() => remove(sample.file)}
                 >
                   <Trash2 />
@@ -253,7 +255,7 @@ export default function VoiceSamples({
           onClick={() => input.current?.click()}
         >
           {busy === "upload" ? <Loader2 className="animate-spin" /> : <Upload />}
-          Add clips
+          {words.addClips}
         </Button>
 
         <AccountVoicePicker
@@ -268,11 +270,11 @@ export default function VoiceSamples({
             variant="outline"
             size="xs"
             disabled={busy !== null}
-            title={`Replace these clips with the seed clips for ${voice}, merged into one take`}
+            title={fill(t.voices.reference.importSeed, { voice })}
             onClick={importSeedClips}
           >
             {busy === "import" ? <Loader2 className="animate-spin" /> : <Download />}
-            {samples.length > 0 ? "Re-import seed clips" : "Import seed clips"}
+            {samples.length > 0 ? words.reimportSeed : words.importSeedShort}
           </Button>
         )}
 
@@ -282,16 +284,16 @@ export default function VoiceSamples({
               variant="outline"
               size="xs"
               disabled={busy !== null || selected.size < 2 || !pauseValid}
-              title={selected.size < 2 ? "Select at least two clips" : undefined}
+              title={selected.size < 2 ? words.mergeTooltip : undefined}
               onClick={merge}
             >
               {busy === "merge" ? <Loader2 className="animate-spin" /> : <Combine />}
-              Merge {selected.size > 1 ? `${selected.size} clips` : "selected"}
+              {selected.size > 1 ? fill(words.mergeCount, { n: selected.size }) : words.mergeSelected}
             </Button>
 
             <span className="flex items-center gap-1.5">
               <Label htmlFor={`${voice}-pause`} className="text-muted-foreground text-xs">
-                pause
+                {words.pause}
               </Label>
               <Input
                 id={`${voice}-pause`}
@@ -314,7 +316,7 @@ export default function VoiceSamples({
                 onCheckedChange={(checked) => setDeleteSources(checked === true)}
               />
               <Label htmlFor={`${voice}-delete-sources`} className="text-muted-foreground text-xs">
-                delete originals
+                {words.deleteOriginals}
               </Label>
             </span>
           </>
@@ -322,7 +324,7 @@ export default function VoiceSamples({
 
         {samples.length > 0 && (
           <span className="text-muted-foreground text-xs tabular-nums">
-            {samples.length} {samples.length === 1 ? "clip" : "clips"} · {complete ? "" : "≥ "}
+            {samples.length} {samples.length === 1 ? words.clipOne : words.clipMany} · {complete ? "" : "≥ "}
             {formatDuration(total)}
           </span>
         )}
@@ -339,24 +341,24 @@ export default function VoiceSamples({
             onClick={() => (exists && !confirmingReplace ? setConfirmingReplace(true) : clone())}
           >
             {busy === "clone" ? <Loader2 className="animate-spin" /> : <Sparkles />}
-            {confirmingReplace ? "Confirm replace" : exists ? "Replace voice" : "Create voice"}
+            {confirmingReplace ? t.voices.slots.confirmReplace : exists ? words.replaceVoice : words.createVoice}
           </Button>
 
           {confirmingReplace ? (
             <>
               <span className="text-xs text-amber-400">
-                This deletes the current <code>{voice}</code> in ElevenLabs and creates a new one
-                from these {samples.length} {samples.length === 1 ? "clip" : "clips"}.
+                {words.confirmBefore}<code>{voice}</code>
+                {fill(words.confirmAfter, { n: samples.length, clips: samples.length === 1 ? words.clipOne : words.clipMany })}
               </span>
               <Button variant="ghost" size="xs" onClick={() => setConfirmingReplace(false)}>
-                Cancel
+                {words.cancel}
               </Button>
             </>
           ) : (
             <span className="text-muted-foreground text-xs">
               {exists
-                ? `Re-clones "${voice}" from the clips above.`
-                : `Creates "${voice}" from the clips above, using one voice slot.`}
+                ? fill(words.reClone, { voice })
+                : fill(words.creates, { voice })}
             </span>
           )}
         </div>
@@ -372,18 +374,19 @@ export default function VoiceSamples({
 }
 
 function DurationHint({ seconds, known }: { seconds: number; known: boolean }) {
+  const words = useUiText().voices.samples;
   if (!known) return null;
   if (seconds > TARGET_MAX_SECONDS) {
     return (
       <span className="text-xs text-amber-400">
-        over three minutes — extra audio tends to make the clone less stable
+        {words.durationOver}
       </span>
     );
   }
   if (seconds < TARGET_MIN_SECONDS) {
-    return <span className="text-muted-foreground text-xs">under five seconds — add more</span>;
+    return <span className="text-muted-foreground text-xs">{words.durationUnder}</span>;
   }
-  return <span className="text-xs text-emerald-400">good length</span>;
+  return <span className="text-xs text-emerald-400">{words.durationGood}</span>;
 }
 
 function formatDuration(seconds: number): string {

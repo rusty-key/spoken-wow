@@ -10,10 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { LiteButton, LiteCheckbox, ROW_BUTTON, ROW_LINE } from "@/components/LiteControls";
 import { NewFlavorForm, NewGenderForm, NewTypeForm, type RosterEdits } from "@/components/RosterEdits";
 import SearchSelect from "@/components/SearchSelect";
+import { useUiText } from "@/components/UiTextProvider";
 // `import type`: triage.ts is server-only (it pulls in corpus.ts), see ContributionTable.
 import type { NpcSummary } from "@/lib/contributions/triage";
 import { flavorOptionsFor } from "@/lib/contributions/speaker";
 import { NPC_KINDS, type NpcKind, type Provenance } from "@/lib/npc/npc";
+import type { UiText } from "@/lib/ui-text/en";
 import type { Gender, Roster } from "@/lib/voices/roster";
 import { GENDERS } from "@/lib/voices/voices";
 
@@ -31,18 +33,19 @@ export type SpeakerAnswer = Partial<{
 
 // A speaker's provenance as a pill: a letter or two, so the answer and its Edit fit on one
 // line, with what it means on hover.
-const PROVENANCE_PILLS: Record<Provenance, { short: string; title: string }> = {
-  corpus: { short: "C", title: "Corpus: the game's own data for this NPC" },
-  display: { short: "D", title: "Display: the game's voice set for the appearance the client saw" },
-  client: { short: "G", title: "Guess: from the model the client reported" },
-  moderator: { short: "M", title: "Moderator: set by hand" },
-  none: { short: "?", title: "No race: nothing known about this NPC" },
+const PROVENANCE_PILLS: Record<Provenance, { short: string }> = {
+  corpus: { short: "C" },
+  display: { short: "D" },
+  client: { short: "G" },
+  moderator: { short: "M" },
+  none: { short: "?" },
 };
 
 export function ProvenanceBadge({ provenance }: { provenance: Provenance }) {
+  const words = useUiText().npc;
   const pill = PROVENANCE_PILLS[provenance];
   return (
-    <Badge variant="outline" className="cursor-help px-1.5 py-0 leading-5" title={pill.title}>
+    <Badge variant="outline" className="cursor-help px-1.5 py-0 leading-5" title={words.provenanceHints[provenance]}>
       {pill.short}
     </Badge>
   );
@@ -53,13 +56,14 @@ export function ProvenanceBadge({ provenance }: { provenance: Provenance }) {
  * /npcs can find it again for a second look.
  */
 function DoubtBadge() {
+  const words = useUiText().npc;
   return (
     <Badge
       variant="outline"
       className="cursor-help border-amber-500/60 px-1.5 py-0 leading-5 text-amber-600 dark:text-amber-400"
-      title="Doubtful: a best answer, saved to be checked later"
+      title={words.doubtBadge}
     >
-      doubt
+      {words.doubt}
     </Badge>
   );
 }
@@ -88,9 +92,9 @@ function speaker(npc: NpcSummary): string {
  * could -- a redundant "not identified" used to sit here saying the same thing a third time,
  * after the missing provenance badge (see the `none` branch below) already dropped it once.
  */
-function speakerNote(npc: NpcSummary): string | null {
+function speakerNote(npc: NpcSummary, words: UiText["npc"]): string | null {
   if (npc.confirmed) {
-    return npc.race || npc.gender || npc.flavor ? null : "confirmed: no race";
+    return npc.race || npc.gender || npc.flavor ? null : words.confirmedNoRace;
   }
   return null;
 }
@@ -134,6 +138,7 @@ export default function SpeakerCell({
   onSave: (answer: SpeakerAnswer) => void;
 }) {
   const [race, setRace] = useState(npc.race ?? "");
+  const words = useUiText().npc;
   const [gender, setGender] = useState(npc.gender ?? "");
   const [flavor, setFlavor] = useState(npc.flavor ?? "");
   const [doubtful, setDoubtful] = useState(npc.doubtful);
@@ -157,11 +162,11 @@ export default function SpeakerCell({
     return (
       <div>
         <div className={`${ROW_LINE} whitespace-nowrap`}>
-          {npc.race ? <span>{speaker(npc)}</span> : <span className="text-muted-foreground">Missing type</span>}
+          {npc.race ? <span>{speaker(npc)}</span> : <span className="text-muted-foreground">{words.missingType}</span>}
           <ProvenanceBadge provenance={npc.provenance} />
           {npc.doubtful ? <DoubtBadge /> : null}
         </div>
-        {speakerNote(npc) ? <p className="text-muted-foreground mt-0.5">{speakerNote(npc)}</p> : null}
+        {speakerNote(npc, words) ? <p className="text-muted-foreground mt-0.5">{speakerNote(npc, words)}</p> : null}
       </div>
     );
   }
@@ -183,10 +188,10 @@ export default function SpeakerCell({
           <ProvenanceBadge provenance={npc.provenance} />
           {npc.doubtful ? <DoubtBadge /> : null}
           <LiteButton className={ROW_BUTTON} onClick={() => setEditing(true)}>
-            Edit
+            {words.edit}
           </LiteButton>
         </div>
-        {speakerNote(npc) ? <p className="text-muted-foreground mt-0.5">{speakerNote(npc)}</p> : null}
+        {speakerNote(npc, words) ? <p className="text-muted-foreground mt-0.5">{speakerNote(npc, words)}</p> : null}
       </div>
     );
   }
@@ -233,7 +238,7 @@ export default function SpeakerCell({
               <SearchSelect
                 value={kind || null}
                 options={NPC_KINDS}
-                placeholder="kind?"
+                placeholder={words.kindPlaceholder}
                 className={PICKER}
                 onChange={(next) => setKind((next as NpcKind | null) ?? "")}
               />
@@ -241,12 +246,12 @@ export default function SpeakerCell({
             <SearchSelect
               value={race || null}
               options={roster.races}
-              placeholder="type?"
-              clear="no type"
+              placeholder={words.typePlaceholder}
+              clear={words.noType}
               className={PICKER}
               create={
                 edits && {
-                  label: "New type",
+                  label: words.newType,
                   form: (close) => (
                     <NewTypeForm
                       at={at("type")}
@@ -265,13 +270,13 @@ export default function SpeakerCell({
               <SearchSelect
                 value={gender || null}
                 options={race ? roster.gendersOf(race) : GENDERS}
-                placeholder="gender?"
-                clear="no gender"
+                placeholder={words.genderPlaceholder}
+                clear={words.noGender}
                 className={PICKER}
                 create={
                   edits && race && missingGenders.length > 0
                     ? {
-                        label: "New gender",
+                        label: words.newGender,
                         form: (close) => (
                           <NewGenderForm
                             at={at("gender")}
@@ -299,13 +304,13 @@ export default function SpeakerCell({
           <SearchSelect
             value={flavor || null}
             options={flavorOptions}
-            placeholder="flavor?"
-            clear="no flavor"
+            placeholder={words.flavorPlaceholder}
+            clear={words.noFlavor}
             className={PICKER}
             create={
               edits && flavorRace
                 ? {
-                    label: "New flavor",
+                    label: words.newFlavor,
                     form: (close) => (
                       <NewFlavorForm
                         at={at("flavor")}
@@ -338,10 +343,10 @@ export default function SpeakerCell({
             save made without it is one the moderator now stands by. */}
         <label
           className="text-muted-foreground flex items-center gap-1"
-          title="Save as a best answer, to be checked later -- lines still voice from it"
+          title={words.doubtTitle}
         >
           <LiteCheckbox checked={doubtful} onChange={(event) => setDoubtful(event.target.checked)} />
-          doubt
+          {words.doubt}
         </label>
         <LiteButton
           className={ROW_BUTTON}
@@ -363,10 +368,10 @@ export default function SpeakerCell({
             setEditing(false);
           }}
         >
-          Save
+          {words.save}
         </LiteButton>
       </div>
-      {speakerNote(npc) ? <p className="text-muted-foreground">{speakerNote(npc)}</p> : null}
+      {speakerNote(npc, words) ? <p className="text-muted-foreground">{speakerNote(npc, words)}</p> : null}
     </div>
   );
 }

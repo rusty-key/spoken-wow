@@ -66,7 +66,7 @@ export type PageFilters = {
 
 // item_template.page_material, as the client draws it. 0 is what the extract records for
 // GameObject books, whose material comes from the display rather than from the template,
-// so it reads as the default parchment.
+// so it reads as the default. The keys are the dictionary's; the words are the reader's.
 export const MATERIALS: Record<number, string> = {
   0: "parchment",
   1: "parchment",

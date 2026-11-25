@@ -1,4 +1,4 @@
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
 import { withLang } from "@/lib/lang";
 import type { Metadata } from "next";
 import Link from "@/components/LocaleLink";
@@ -10,6 +10,8 @@ import ListenFirst from "@/components/reports/ListenFirst";
 import { audioRelPath } from "@/lib/readables/audio";
 import { isCorpusEmpty, loadContext, teamPageById } from "@/lib/readables/catalogue";
 import { Contained } from "@/components/Width";
+import { fill } from "@/lib/site-text/format";
+import { uiText } from "@/lib/ui-text";
 
 /**
  * One page of one book, and the form to complain about it.
@@ -44,6 +46,10 @@ async function resolve(params: Promise<Params>) {
   }
 }
 
+async function words(params: Promise<Params>) {
+  return (await uiText(await readingLang(await pageLang(params)))).reports.landing;
+}
+
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
@@ -54,14 +60,18 @@ export async function generateMetadata({
   const page = await resolve(params);
   // notFound() belongs in the page, not here; this just declines to name a title.
   if (!page) return {};
+  const t = await words(params);
   return {
     title: `${page.title} · Spoken`,
-    description: `Report a problem with the text or narration of ${page.title}.`,
+    description: fill(t.readables.description, { title: page.title }),
   };
 }
 
 export default async function Page({ params }: { params: Promise<Params> }) {
   const lang = await pageLang(params);
+  const dictionary = await uiText(await readingLang(lang));
+  const t = dictionary.reports.landing;
+  const row = dictionary.catalogue.row;
   const page = await resolve(params);
   if (!page) notFound();
 
@@ -78,7 +88,9 @@ export default async function Page({ params }: { params: Promise<Params> }) {
           <p className="text-muted-foreground mt-1 text-sm">
             {/* Only where there is more than one: "page 1 of 1" is noise on a letter, which is
                 most of this corpus. The addon's queue label makes the same call. */}
-            {page.pageCount > 1 ? `Page ${page.pageNumber} of ${page.pageCount}` : "One page"}
+            {page.pageCount > 1
+              ? fill(t.readables.pageOf, { page: page.pageNumber, count: page.pageCount })
+              : t.readables.onePage}
           </p>
 
           {take ? <ListenFirst className="mt-4" source="readables" recordedAt={take.generatedAt} releases={releases} /> : null}
@@ -100,8 +112,8 @@ export default async function Page({ params }: { params: Promise<Params> }) {
               {/* The 88 unvoiceable pages are not a gap anybody can fix, and saying so here
                   stops a report that no regeneration could answer. */}
               {page.generatable
-                ? "This page has no narration yet."
-                : `This page is not narrated: ${page.skipReason ?? "there is nothing to read"}.`}
+                ? t.readables.noNarration
+                : fill(t.readables.notNarrated, { reason: page.skipReason ?? t.readables.nothingToRead })}
             </p>
           )}
 
@@ -109,17 +121,14 @@ export default async function Page({ params }: { params: Promise<Params> }) {
           {/* Under the original, which is what the game shows, and only while the live take speaks it:
               until then the override is the team's work in progress and the narration says the original. */}
           {page.override && take?.textHash === page.hash && (
-            <p className="mt-2 border-l-2 border-sky-400/60 pl-2 whitespace-pre-line" title="What the narration says">
+            <p className="mt-2 border-l-2 border-sky-400/60 pl-2 whitespace-pre-line" title={t.overrideTitle}>
               {page.override.text}
             </p>
           )}
 
           <section className="bg-muted mt-8 rounded-lg border p-4">
-            <h2 className="font-medium">Report a problem</h2>
-            <p className="text-muted-foreground mt-1 mb-3 text-xs">
-              A bad reading, a mispronounced name, or narration that does not match the page.
-              Nothing is required but the description.
-            </p>
+            <h2 className="font-medium">{row.report}</h2>
+            <p className="text-muted-foreground mt-1 mb-3 text-xs">{t.readables.lede}</p>
             {/* The target is the page id, which is what the addon put in the address and what
                 the endpoint resolves; the lineId is sent for the endpoint to ignore, exactly as
                 the places form does. */}
@@ -128,9 +137,9 @@ export default async function Page({ params }: { params: Promise<Params> }) {
 
           <footer className="text-muted-foreground mt-8 text-sm">
             <Link href={`/readables?book=${page.bookId}`} className="hover:text-foreground">
-              Browse every page of {page.title}
+              {fill(t.readables.browse, { title: page.title })}
             </Link>
-            <p className="mt-2 text-xs">Text from the game, extracted from the world database.</p>
+            <p className="mt-2 text-xs">{t.readables.textNote}</p>
           </footer>
         </article>
       </Contained>

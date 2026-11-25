@@ -1,5 +1,8 @@
 "use client";
 
+import { useUiText } from "@/components/UiTextProvider";
+import { fill } from "@/lib/site-text/format";
+
 /**
  * What a reported line is and who says it. The quest title opens the explorer on the quest's
  * lines; the NPC's name opens their NPC page, with a search icon beside it for the explorer on
@@ -64,11 +67,16 @@ function Speaker({
   admin: boolean;
   className?: string;
 }) {
+  const t = useUiText().reports;
   return (
     <span className="inline-flex items-center gap-1">
       <Link
         href={admin ? speaker.page : speaker.search}
-        title={admin ? "Open this NPC on the NPCs page" : `Show ${speaker.name}'s lines`}
+        title={
+          admin
+            ? t.openNpcPage
+            : fill(t.showLinesOf, { name: speaker.name })
+        }
         className={cn(LINK, className)}
       >
         {speaker.name}

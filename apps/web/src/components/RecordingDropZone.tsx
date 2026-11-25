@@ -14,20 +14,6 @@ import { uploadRecording } from "@/lib/recordings/upload";
 import type { Source } from "@/lib/sections";
 import { cn } from "@/lib/utils";
 
-const REASONS: Record<Exclude<Match, { file: string }>["reason"], string> = {
-  format: "not .mp3 or .ogg",
-  unmatched: "no line has this name",
-  ambiguous: "more than one line has this name",
-  duplicate: "another file in this drop names the same line",
-};
-
-/** What each section's files are called, for the hint under the zone. */
-const NAMING: Record<Source, string> = {
-  quests: "the line's file name: 33-accept.ogg, m-33-accept.ogg (male player), or a gossip hash",
-  places: "map id and place: 1411-razor-hill.ogg, or 1411-zone.ogg for the zone itself",
-  readables: "the page id: 1381.ogg",
-  bosses: "map id and boss: 36-edwin-vancleef.ogg",
-};
 
 type Matched = Extract<Match, { file: string }>;
 
@@ -119,9 +105,11 @@ export default function RecordingDropZone({ source, onUploaded }: { source: Sour
         <Upload className="text-muted-foreground size-4" />
         <span>{t.drop}</span>
         <Button variant="outline" size="xs" disabled={uploading} onClick={() => input.current?.click()}>
-          choose files
+          {t.choose}
         </Button>
-        <span className="text-muted-foreground text-xs">Name each after its line: {NAMING[source]}.</span>
+        <span className="text-muted-foreground text-xs">
+          {fill(t.nameEach, { pattern: t.naming[source] })}
+        </span>
         <input
           ref={input}
           type="file"
@@ -145,20 +133,21 @@ export default function RecordingDropZone({ source, onUploaded }: { source: Sour
         <div className="mt-2 space-y-2 text-xs">
           <div className="flex flex-wrap items-center gap-2">
             <span>
-              {plan.matched.length} of {plan.matched.length + plan.refused.length} files match a line.
+              {fill(t.matched, { matched: plan.matched.length, all: plan.matched.length + plan.refused.length })}
             </span>
             <Button size="xs" disabled={plan.matched.length === 0} onClick={() => void upload(plan)}>
-              Upload {plan.matched.length}
+              {fill(t.uploadCount, { n: plan.matched.length })}
             </Button>
             <Button variant="ghost" size="xs" onClick={() => setPlan(null)}>
-              Cancel
+              {t.cancel}
             </Button>
           </div>
           {plan.refused.length > 0 && (
             <ul className="text-muted-foreground max-h-40 overflow-y-auto">
               {plan.refused.map((match) => (
                 <li key={match.name}>
-                  <span className="text-foreground font-mono">{match.name}</span> — {"reason" in match && REASONS[match.reason]}
+                  <span className="text-foreground font-mono">{match.name}</span>:{" "}
+                  {"reason" in match && t.reasons[match.reason]}
                 </li>
               ))}
             </ul>
@@ -172,7 +161,7 @@ export default function RecordingDropZone({ source, onUploaded }: { source: Sour
             {uploading && <Loader2 className="size-3 animate-spin" />}
             <span>
               {uploading ? t.uploading : t.uploaded} {fill(t.of, { done: progress.done - progress.failed.length, total: progress.total })}
-              {progress.failed.length > 0 && `, ${progress.failed.length} refused`}
+              {progress.failed.length > 0 && ", " + fill(t.refused, { n: progress.failed.length })}
             </span>
           </div>
           {progress.failed.length > 0 && (

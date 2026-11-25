@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { useLang } from "@/components/LangProvider";
+import { useUiText } from "@/components/UiTextProvider";
 import Link from "@/components/LocaleLink";
 import { withLang } from "@/lib/lang";
 import { SOURCE_LABELS } from "@/lib/reports/reports";
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 const ORDER: readonly Source[] = ["quests", "readables", "places", "bosses"];
 
 export default function SortPicker({ counts }: { counts: Record<Source, { left: number; skipped: number }> }) {
+  const t = useUiText();
   const lang = useLang();
   const router = useRouter();
   const [busy, setBusy] = useState<Source | null>(null);
@@ -67,7 +69,7 @@ export default function SortPicker({ counts }: { counts: Record<Source, { left: 
       })}
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
       <Link href="/reports/quests" className="text-muted-foreground mt-2 text-sm underline-offset-2 hover:underline">
-        All reports as a table
+        {t.reports.sortTable}
       </Link>
     </div>
   );

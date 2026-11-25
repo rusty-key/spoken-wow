@@ -6,35 +6,32 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "@/components/LocaleLink";
 
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signIn, signUp } from "@/lib/auth-client";
+import { fill } from "@/lib/site-text/format";
 
 type Mode = "login" | "register";
 
 const COPY = {
-  login: {
-    title: "Sign in",
-    submit: "Sign in",
-    switchText: "No account yet?",
-    switchLabel: "Register",
-    switchHref: "/register",
-  },
-  register: {
-    title: "Register",
-    submit: "Create account",
-    switchText: "Already registered?",
-    switchLabel: "Sign in",
-    switchHref: "/login",
-  },
+  login: { switchHref: "/register" },
+  register: { switchHref: "/login" },
 } as const;
 
 /** `invite`: a pending invite the form answers (its token is in a cookie); it sends back to /invite, never a free path. */
 export default function AuthForm({ mode, invite }: { mode: Mode; invite?: { email: string } }) {
   const router = useRouter();
   const lang = useLang();
-  const copy = COPY[mode];
+  const t = useUiText();
+  const copy = {
+    ...COPY[mode],
+    title: mode === "register" ? t.menu.register : t.menu.signIn,
+    submit: mode === "register" ? t.auth.createAccount : t.menu.signIn,
+    switchText: mode === "register" ? t.auth.alreadyRegistered : t.auth.noAccount,
+    switchLabel: mode === "register" ? t.menu.signIn : t.menu.register,
+  };
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState(invite?.email ?? "");
@@ -53,7 +50,7 @@ export default function AuthForm({ mode, invite }: { mode: Mode; invite?: { emai
         : await signIn.email({ email, password });
 
     if (error) {
-      setError(error.message ?? "Something went wrong. Try again.");
+      setError(error.message ?? t.auth.failed);
       setPending(false);
       return;
     }
@@ -68,12 +65,12 @@ export default function AuthForm({ mode, invite }: { mode: Mode; invite?: { emai
     <>
       <h1 className="text-xl font-semibold">{copy.title}</h1>
 
-      {invite && <p className="text-muted-foreground mt-2 text-sm">You&apos;re answering an invite to {invite.email}.</p>}
+      {invite && <p className="text-muted-foreground mt-2 text-sm">{fill(t.auth.answeringInvite, { email: invite.email })}</p>}
 
       <form onSubmit={onSubmit} className="mt-6 flex max-w-sm flex-col gap-4">
         {mode === "register" && (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{t.auth.name}</Label>
             <Input
               id="name"
               required
@@ -85,7 +82,7 @@ export default function AuthForm({ mode, invite }: { mode: Mode; invite?: { emai
         )}
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t.auth.email}</Label>
           <Input
             id="email"
             type="email"
@@ -99,7 +96,7 @@ export default function AuthForm({ mode, invite }: { mode: Mode; invite?: { emai
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t.auth.password}</Label>
           <Input
             id="password"
             type="password"
@@ -112,14 +109,14 @@ export default function AuthForm({ mode, invite }: { mode: Mode; invite?: { emai
             onChange={(event) => setPassword(event.target.value)}
           />
           {mode === "register" && (
-            <p className="text-muted-foreground text-xs">At least 8 characters.</p>
+            <p className="text-muted-foreground text-xs">{t.auth.minChars}</p>
           )}
           {mode === "login" && (
             <Link
               href="/forgot-password"
               className="text-muted-foreground self-start text-xs underline underline-offset-4"
             >
-              Forgot your password?
+              {t.auth.forgot}
             </Link>
           )}
         </div>
@@ -131,7 +128,7 @@ export default function AuthForm({ mode, invite }: { mode: Mode; invite?: { emai
         )}
 
         <Button type="submit" disabled={pending} className="self-start">
-          {pending ? "Working…" : copy.submit}
+          {pending ? t.auth.working : copy.submit}
         </Button>
 
         <p className="text-muted-foreground text-sm">

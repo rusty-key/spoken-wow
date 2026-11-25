@@ -45,9 +45,14 @@ type Props = {
   counts?: StateCounts;
 };
 
-// Roster values are lower-case identifiers; the label capitalises them, the URL keeps the value.
+// Flavours and voice names are the roster's own: an admin adds them, so no dictionary can name
+// them all, and capitalising the value is the best that can be done.
 const plain = (values: readonly string[]): Option[] =>
   values.map((value) => ({ value, label: capital(value) }));
+
+/** A value the roster gained after the dictionary was written falls back to being capitalised. */
+const named = (values: readonly string[], names: Record<string, string>): Option[] =>
+  values.map((value) => ({ value, label: names[value] ?? capital(value) }));
 
 const optionsOf = <K extends string>(keys: readonly K[], labels: Record<K, string>): Option[] =>
   keys.map((value) => ({ value, label: labels[value] }));
@@ -134,7 +139,7 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
     : [];
 
   const authors: Option[] = madeBy?.authors.map(({ id, name }) => ({ value: id, label: name })) ?? [];
-  const genderOptions = plain(facets.genders);
+  const genderOptions = named(facets.genders, facetsText.gender);
   const zoneOptions: Option[] = facets.zones.map((zone) => ({ value: String(zone.uiMapID), label: zone.name }));
 
   const active: ActiveFilter[] = [];
@@ -151,8 +156,14 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
   }
   add("broadcast", f.broadcast, filters.broadcast ? labelOf(broadcastOptions, filters.broadcast) : undefined, { broadcast: undefined });
   add("client", f.client, filters.client && filters.client !== DEFAULT_CLIENT_FILTER ? facetsText.client[filters.client] : undefined, { client: undefined });
-  add("race", f.race, filters.race && capital(filters.race), { race: undefined, flavor: keptFlavor({ race: undefined }) });
-  add("gender", f.gender, filters.gender && capital(filters.gender), { gender: undefined, flavor: keptFlavor({ gender: undefined }) });
+  add("race", f.race, filters.race && (facetsText.race[filters.race] ?? capital(filters.race)), {
+    race: undefined,
+    flavor: keptFlavor({ race: undefined }),
+  });
+  add("gender", f.gender, filters.gender && (facetsText.gender[filters.gender] ?? capital(filters.gender)), {
+    gender: undefined,
+    flavor: keptFlavor({ gender: undefined }),
+  });
   add("flavor", f.flavor, filters.flavor && capital(filters.flavor), { flavor: undefined });
   add("voice", f.voice, filters.voice && capital(filters.voice), { voice: undefined });
   add("playerGender", f.playerGender, filters.playerGender ? labelOf(playerOptions, filters.playerGender) : undefined, { playerGender: undefined });
@@ -227,7 +238,12 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
           </FilterGroup>
 
           <FilterGroup title={s.groups.speaker} description={s.groups.speakerHint}>
-            <FilterSelect label={f.race} value={filters.race} options={plain(facets.races)} onChange={(race) => onFilters({ race, flavor: keptFlavor({ race }) })} />
+            <FilterSelect
+              label={f.race}
+              value={filters.race}
+              options={named(facets.races, facetsText.race)}
+              onChange={(race) => onFilters({ race, flavor: keptFlavor({ race }) })}
+            />
             {genderOptions.length <= 3 ? (
               <FilterSegments label={f.gender} value={filters.gender} options={genderOptions} onChange={(gender) => onFilters({ gender, flavor: keptFlavor({ gender }) })} />
             ) : (
