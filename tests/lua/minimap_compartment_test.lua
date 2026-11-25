@@ -136,9 +136,9 @@ local controllerButton = stub.dbIcons.Spoken.button
 stub.ldbObjects.Spoken.OnClick(controllerButton, "RightButton")
 Expect("with the controller UI, the native menu stays closed", stub.openNativeMenu, nil)
 Expect("...and so does the dropdown", stub.openDropDown, nil)
-Expect("...and Spoken's own menu opens", _G.SpokenMinimapMenu ~= nil and _G.SpokenMinimapMenu:IsShown(), true)
+Expect("...and Spoken's own menu opens", _G.SpokenLayoutMenu ~= nil and _G.SpokenLayoutMenu:IsShown(), true)
 stub.ldbObjects.Spoken.OnClick(controllerButton, "RightButton")
-Expect("...and a second click closes it", _G.SpokenMinimapMenu:IsShown(), false)
+Expect("...and a second click closes it", _G.SpokenLayoutMenu:IsShown(), false)
 _G.InputUtil = { IsGamepadUIEnabled = function() return false end }
 stub.ldbObjects.Spoken.OnClick(controllerButton, "RightButton")
 Expect("with the mouse UI, the native menu opens again", stub.openNativeMenu ~= nil, true)
