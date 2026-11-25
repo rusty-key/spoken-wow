@@ -25,8 +25,9 @@ end
 
 -- A name taken twice replaces the first rather than raising: the modules register late, at their
 -- own setup, and another addon that took the name first must not stop one from loading.
-local function Replacing(registry, what, name)
+local function Put(registry, what, name, value)
     if registry[name] then Developer:Log("api", "%s %q registered again; the new one replaces it", what, name) end
+    registry[name] = value
 end
 
 -- The shared dungeon data is Forever's, which holds every instance of the Classic-era clients.
@@ -199,8 +200,7 @@ end
 --- the player to have one of its own.
 function Spoken:RegisterBullet(id, texture, size)
     Require(type(id) == "string", "RegisterBullet needs a string id")
-    Replacing(Bullets, "bullet", id)
-    Bullets[id] = { texture = texture, size = size }
+    Put(Bullets, "bullet", id, { texture = texture, size = size })
 end
 
 function Spoken:GetBullet(id)
@@ -211,8 +211,7 @@ end
 --- Release(frame) }. "texture", "model" and "none" ship with the player.
 function Spoken:RegisterPortraitRenderer(kind, renderer)
     Require(type(kind) == "string" and type(renderer) == "table", "RegisterPortraitRenderer needs a kind and a renderer")
-    Replacing(Renderers, "portrait renderer", kind)
-    Renderers[kind] = renderer
+    Put(Renderers, "portrait renderer", kind, renderer)
 end
 
 function Spoken:GetPortraitRenderer(kind)
@@ -1105,8 +1104,7 @@ function Spoken:RegisterStoryTeller(kind, teller)
     Require(type(kind) == "string" and type(teller) == "table" and type(teller.source) == "table"
         and type(teller.Keys) == "function" and type(teller.Clip) == "function",
         "RegisterStoryTeller needs a kind and a teller with source, Keys and Clip")
-    Replacing(storyTellers, "story teller", kind)
-    storyTellers[kind] = teller
+    Put(storyTellers, "story teller", kind, teller)
 end
 
 -- The teller of `kind` and the clip keys of its story `id`, or nil.
@@ -1184,7 +1182,7 @@ end
 
 -- Features a caller may ask Supports about. A name is added with the feature and never removed.
 local FEATURES = {
-    supports = true, stories = true, captions = true, callbacks = true, log = true,
+    stories = true, captions = true, callbacks = true, log = true,
     ["text-packs"] = true, ["interface-packs"] = true,
 }
 
@@ -1337,7 +1335,6 @@ end
 --- Public. Stop the handler RegisterCallback returned `handle` for.
 ---@param handle table
 function Spoken:UnregisterCallback(handle)
-    if type(handle) ~= "table" then return end
     Callbacks:Unregister(handle)
 end
 

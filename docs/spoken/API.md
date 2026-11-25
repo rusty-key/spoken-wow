@@ -54,7 +54,7 @@ A player with an older Spoken then sees your addon without the feature rather th
 | `feature` | |
 |---|---|
 | `"story:<kind>"` | A kind of story whose module is installed and has registered: `"story:instance"`, `"story:boss"`, `"story:quest"`. |
-| `"stories"`, `"captions"`, `"callbacks"`, `"log"`, `"text-packs"`, `"interface-packs"`, `"supports"` | The sections of this page. |
+| `"stories"`, `"captions"`, `"callbacks"`, `"log"`, `"text-packs"`, `"interface-packs"` | The sections of this page. |
 
 and false for anything else, a name it does not know included. `"log"` means the log calls
 exist; `HasLog()` says whether the log does, with Spoken Developer installed. A name, once listed, is never

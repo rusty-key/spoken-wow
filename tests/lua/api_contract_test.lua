@@ -429,7 +429,7 @@ do
 
     Expect("Supports names a story kind once its teller registers", tostring(Spoken:Supports("story:boundary")) .. " "
         .. tostring(Spoken:Supports("story:nothing")), "true false")
-    Expect("...and the API's features", tostring(Spoken:Supports("captions")) .. " " .. tostring(Spoken:Supports("supports")),
+    Expect("...and the API's features", tostring(Spoken:Supports("captions")) .. " " .. tostring(Spoken:Supports("log")),
         "true true")
     Expect("...and false for anything else", tostring(Spoken:Supports(nil)) .. " " .. tostring(Spoken:Supports(7)) .. " "
         .. tostring(Spoken:Supports("teleport")), "false false false")
