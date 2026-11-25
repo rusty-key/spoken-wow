@@ -321,6 +321,8 @@ function Layout:AddRow(height, control, regions, place)
         AddItem(self, row)
     end
     control.layoutRow = row
+    -- A Keep shown only `when` shows each row filled in at it only then.
+    if self.filling and self.filling.when then self:ShowWhen(control, self.filling.when) end
     self.dirty = true
     return row
 end
@@ -660,9 +662,9 @@ end
 
 --- A place on the page for sections added later, by another addon after the page was built:
 --- Fill puts them there, in the order they come, inside the group this stands in.
-function Layout:Keep()
+function Layout:Keep(when)
     self:Columns(nil)
-    local keep = { kind = "keep", group = self.group, x = self.x }
+    local keep = { kind = "keep", group = self.group, x = self.x, when = when }
     table.insert(self.items, keep)
     self.current = nil
     return keep
@@ -739,6 +741,7 @@ local function AfterCombat(run)
     table.insert(afterCombat, run)
     afterCombatFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 end
+Layout.AfterCombat = AfterCombat
 
 -- Run `set` on the controller UI's cursor now, or once combat ends.
 local function Navigate(set)

@@ -65,6 +65,7 @@ E.Portrait={Configure=function(_,frame) frame.active='mock-model' end}
 dofile(addons .. 'Spoken/UI/Actions.lua')
 dofile(addons .. 'Spoken/UI/Snap.lua')
 dofile(addons .. 'Spoken/UI/Face.lua')
+dofile(addons .. 'Spoken/UI/Narrators.lua')
 dofile(addons .. 'Spoken/UI/PlayerFrame.lua')
 dofile(addons .. 'Spoken/UI/MinimalPlayer.lua')
 dofile(addons .. 'Spoken/UI/Ellesmere.lua')

@@ -42,6 +42,8 @@ local PUBLIC = {
     "RegisterCallback", "UnregisterCallback",
     "RegisterText", "RegisterInterfaceStrings",
     "HasLog", "Log", "IsLogOn", "AddLogSource", "AddDiagnostics",
+    "RegisterNarrator", "SuggestNarrator", "Previous", "CanPrevious", "GetWaitingCount", "GetHeldReason",
+    "CreateControl", "ShowCaptions", "CreatePortrait", "CreateActions",
 }
 do
     local marked, pending = {}, false

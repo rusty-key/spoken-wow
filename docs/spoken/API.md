@@ -55,7 +55,7 @@ A player with an older Spoken then sees your addon without the feature rather th
 | `feature` | |
 |---|---|
 | `"story:<kind>"` | A kind of story whose module is installed and has registered: `"story:instance"`, `"story:boss"`, `"story:quest"`. |
-| `"stories"`, `"captions"`, `"callbacks"`, `"log"`, `"text-packs"`, `"interface-packs"` | The sections of this page. |
+| `"stories"`, `"captions"`, `"callbacks"`, `"log"`, `"narrators"`, `"text-packs"`, `"interface-packs"` | The sections of this page. |
 
 and false for anything else, a name it does not know included. `"log"` means the log calls
 exist; `HasLog()` says whether the log does, with Spoken Developer installed. A name, once listed, is never
@@ -166,6 +166,10 @@ the captions time the words.
 | `Spoken:Pause()` | `boolean`: false where already paused. The client has no seek, so the line stops and `Resume` replays it from the start. |
 | `Spoken:Resume()` | `boolean`: false where not paused. |
 | `Spoken:Skip()` | `boolean`: ends the line at the head, speaking or held, and goes on. False where nothing was skipped, and for a line the client gave no handle to stop, which plays on. |
+| `Spoken:Previous()` | `boolean`: replays the line before the current one, or the last line heard once the queue is empty. False where there is none. |
+| `Spoken:CanPrevious()` | `boolean`: whether `Previous` has a line to go back to. |
+| `Spoken:GetWaitingCount()` | `integer`: lines waiting behind the head. |
+| `Spoken:GetHeldReason(clip)` | Why `clip` waits at the head without speaking, such as combat, in the player's language; nil where nothing holds it. |
 | `Spoken:StopAll()` | Stops and clears every line of every source, and unpauses. A line speaking that the client gave no handle to stop stays and plays to its end. |
 
 ### Clips
@@ -183,6 +187,7 @@ Spoken's own clip tables; read them, never change them. These fields are Public:
 | `present.header` | Who or where: an NPC's name, a place, a book's title. May be nil. |
 | `present.label` | What: a quest's title, a subzone, a page. May be nil. |
 | `present.transcript` | The words read. May be nil. |
+| `present.portrait.creatureID` | The creature speaking, where the line has one. May be nil. |
 | `story` | `{ kind, id }` as on the caption. |
 
 Every other field belongs to the module that queued the clip.
@@ -220,6 +225,54 @@ Spoken fires other events for its modules (`SOURCE_REGISTERED`, `CONTRIBUTE_SETT
 `REPORT_SETTINGS_CHANGED`, `VOICE_PACKS_LOADED`, `COMPENDIUM_FONT_CHANGED`,
 `DEVELOPER_REGISTERED`, `DEVELOPER_SETTINGS_ADDED`). They are Module tier: listed in `API.lua`,
 not frozen.
+
+## Narrator styles
+
+A narrator style of your own: a card among Spoken's narrator styles, with your title, description
+and picture, and a window your addon draws itself. While it is the style, Spoken shows none of its
+own windows and tells yours which line to show. Everything else you read and do through the calls
+on this page, so your style keeps working however Spoken's own windows change.
+
+| Call | |
+|---|---|
+| `Spoken:RegisterNarrator(id, info)` | Adds the style. `info.addon` is your addon's folder: Spoken names it by its title on the style's card and where it offers the style. `info.title` and `info.description` are its card's words, in the player's language; `info.picture`, optional, a texture for the card. `info.Update(clip)` is called whenever the line to show changes: the clip, or nil to show nothing. `info.settings(layout)`, optional, adds a section of rows to Spoken's page, shown while it is the style. Register while your addon loads, so the card is there when the page is built. Raises for a wrong argument, or an `id` that is one of Spoken's own styles. Registering `id` again replaces it. |
+| `Spoken:SuggestNarrator(id)` | Offers your style to the player, once ever, whatever style they have now; not if it is already theirs. Offers made while the addons load, and offers made within a second of each other later, from any addon, come in one window that names the addons offering them: a card for each, a "Keep" card for the player's current style, and Preview. Choosing one applies it. At a first login the welcome window lists every style instead, and counts as the offer. |
+
+`Update` is told a line only when there is one to show: the line at the head of the queue, unless
+the player turned the narrator off for its part, or DialogueUI's dialog covers the screen. While
+the player previews your style with nothing playing, it is told a sample line. If `Update` raises,
+the line still plays and the error goes to the debug log.
+
+These give your window the parts Spoken's own windows have, drawn and kept current by Spoken:
+
+| Call | |
+|---|---|
+| `Spoken:ShowCaptions(parent, width)` | Spoken's captions of the line shown, in `parent` from its top left, `width` wide: the player's Word Size, Rows at Once, Highlight Words and Type Words Out, scrolling as the line is read. Returns the height they take, 0 where the line shows no words. Call it on each `Update` and size your window to it. |
+| `Spoken:CreateControl(parent, kind)` | One of Spoken's round buttons: `"previous"`, `"stop"` (Stop, then Replay), `"skip"` or `"stopall"`. It acts when clicked, has its tooltip, and greys out while it can do nothing. Anchor it yourself. Raises for another `kind`. |
+| `Spoken:CreatePortrait(parent, size)` | Spoken's round portrait. `portrait:SetClip(clip)` shows the line's speaker with the line's badge on the ring, and draws the face again once the game has it. `portrait:SetRingColor(r, g, b)` tints the ring; no colour gives Spoken's back. |
+| `Spoken:CreateActions(parent)` | A row for the line's own buttons: Report, and whatever the module that queued the line adds, minus those the player hid. `row:SetClip(clip)` fills it and sizes the row to them. |
+
+The rest of what a window usually needs, all Public:
+
+- **The reading position:** `GetCaption()`, every frame, for a progress bar of your own (`progress`).
+- **Who and what:** the clip's `present.header` and `present.label`, and `present.portrait.creatureID`
+  for anything of your own about the speaker.
+- **Status:** `IsPaused()`, `GetWaitingCount()`, `GetHeldReason(clip)`, and `AUDIO_CHANGED` to
+  redraw them.
+- **Controls:** `Pause()`, `Resume()`, `Skip()`, `Previous()` with `CanPrevious()`, `StopAll()`.
+
+`settings(layout)` gets the page's layout. These of its methods are part of the contract; build
+your rows with them only:
+
+| Method | |
+|---|---|
+| `layout:Section(title)` | Starts your section. Call it first. |
+| `layout:Checkbox(label, tooltip, read, write, apply)` | `read()` gives the value, `write(value)` stores it, then `apply()` runs. |
+| `layout:Slider(label, min, max, step, read, write, apply)` | The same, for a number. |
+| `layout:Dropdown(label, tooltip, values, read, write, apply, describe)` | One of `values`, a list or a function returning one; `describe(value)` names each. |
+
+If the player removes your addon, Spoken shows its Small Window. Their choice is kept and comes
+back with the addon.
 
 ## Text packs and interface packs
 

@@ -467,7 +467,7 @@ end
 --- DialogueUI. The setting is kept, so installing DialogueUI later brings its window back.
 function Addon:PlayerStyle()
     local style = self:Profile("Frame").Style
-    if style == "none" or style == "classic" then return style end
+    if style == "none" or style == "classic" or Narrators.byId[style] then return style end
     if style == "subtitle" then return "subtitle" end
     if style == "dialogueui" and DialogueUITheme and DialogueUITheme:Available() then return "dialogueui" end
     return "minimal"
@@ -616,6 +616,7 @@ function Addon:Enable()
     Minimap:Setup()
     Options:Setup()
     RegisterSlashCommand()
+    Narrators:Gather()
 end
 
 -- Said the first time a line waits behind a stop with nothing on screen to show it: with voice

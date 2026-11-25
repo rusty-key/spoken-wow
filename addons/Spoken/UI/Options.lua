@@ -290,7 +290,8 @@ function Options:Preview(style)
     PlayerFrame:RefreshConfig()
     Transcript:RefreshConfig()
     Subtitle:ShowSample(style == "subtitle")
-    PlayerFrame:ShowSample(style == "minimal" or style == "classic" or style == "dialogueui")
+    PlayerFrame:ShowSample(style == "minimal" or style == "classic" or style == "dialogueui"
+        or Narrators.byId[style] ~= nil)
 end
 
 -- Where Spoken lives outside the game: a row each, its icon and its address to copy, the game being
@@ -409,8 +410,26 @@ end
 function Options:Styles()
     local styles = { "subtitle", "minimal", "classic" }
     if DialogueUITheme and DialogueUITheme:Available() then table.insert(styles, "dialogueui") end
+    for _, id in ipairs(Narrators.order) do table.insert(styles, id) end
     table.insert(styles, "none")
     return styles
+end
+
+--- A narrator style's card. A registered narrator's words and picture are its addon's, and its title
+--- names that addon, so the player knows where a style comes from and what removing it takes away.
+function Options:StyleCard(style)
+    local narrator = Narrators.byId[style]
+    if narrator then
+        local picture = narrator.picture
+        return { value = style, title = format(L.NARRATOR_CARD_FMT, narrator.title, Narrators:Source(style)),
+            text = narrator.description,
+            art = picture and function(art, w, h)
+                local texture = art:CreateTexture(nil, "ARTWORK")
+                texture:SetAllPoints()
+                texture:SetTexture(picture)
+            end }
+    end
+    return { value = style, title = STYLE_LABELS[style], text = STYLE_TEXTS[style], art = SKETCHES[style] }
 end
 
 -- Contribute & Report's page: last, after the modules' (Quests 1, Gossip 2, Places 3, Readables 4,
@@ -520,10 +539,7 @@ local function Build()
     -- straight under it, with no title of their own.
     layout:Section(L.OPT_PLAYER_STYLE, true)
     local tiles = {}
-    for _, style in ipairs(Options:Styles()) do
-        table.insert(tiles, { value = style, title = STYLE_LABELS[style], text = STYLE_TEXTS[style],
-            art = SKETCHES[style] })
-    end
+    for _, style in ipairs(Options:Styles()) do table.insert(tiles, Options:StyleCard(style)) end
     Options:PreviewButton(layout)
     layout:Choices(tiles, Style, function(v) Addon:SetPlayerStyle(v) end,
         function()
@@ -810,6 +826,8 @@ local function Build()
         layout:Checkbox(L.OPT_BRONZE_TINT, nil,
             function() return cfg().BronzeTint end, function(v) cfg().BronzeTint = v end, refresh)
     end
+
+    Narrators:Place(layout)
 
     -- How the words of a line show, past whether they show at all and how big.
     layout:Section(L.OPT_TEXT_TITLE)

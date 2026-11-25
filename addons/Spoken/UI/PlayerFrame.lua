@@ -227,9 +227,15 @@ function PlayerFrame:InitMover()
 end
 
 --- The skin drawing the queue in place of this window, or nil when this window does.
+-- The windows drawn in this one's place, the first enabled one drawing; by name, as they load after
+-- this file.
+local SKINS = { "MinimalPlayer", "DialogueUIPlayer", "Narrators" }
+
 function PlayerFrame:Skin()
-    if MinimalPlayer:IsEnabled() then return MinimalPlayer end
-    if DialogueUIPlayer and DialogueUIPlayer:IsEnabled() then return DialogueUIPlayer end
+    for _, name in ipairs(SKINS) do
+        local skin = SpokenEnv[name]
+        if skin and skin:IsEnabled() then return skin end
+    end
     return nil
 end
 
@@ -288,8 +294,9 @@ function PlayerFrame:RefreshConfig()
     local skin = self:Skin()
     -- Each window dresses the captions its own way; the others' look must not stay on them.
     if skin ~= DialogueUIPlayer and not self:IsShowing() then Transcript:SetStyle(nil) end
-    for _, other in ipairs({ MinimalPlayer, DialogueUIPlayer }) do
-        if other ~= skin then other:SetVisible(false, true) end
+    for _, name in ipairs(SKINS) do
+        local other = SpokenEnv[name]
+        if other and other ~= skin then other:SetVisible(false, true) end
     end
     if skin then
         self.fader:Set(false, true)

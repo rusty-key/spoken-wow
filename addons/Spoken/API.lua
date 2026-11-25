@@ -176,7 +176,7 @@ end
 ---@field source table               Public: `source.key` ("quests", "places", ...) and `source.title` only.
 ---@field length? number             Public. Seconds.
 ---@field textOnly? boolean          Public. No recording: shown in the narrator for `length`.
----@field present? SpokenClipPresent Public: `header`, `label` and `transcript` only.
+---@field present? SpokenClipPresent Public: `header`, `label`, `transcript` and `portrait.creatureID` only.
 ---@field story? SpokenStoryTag      Public. The story PlayStory was asked for when it played this line.
 ---@field path? string
 ---@field text? string
@@ -329,6 +329,146 @@ end
 
 function Spoken:OpenSettings()
     Options:Open()
+end
+
+--------------------------------------------------------------------------------
+-- Narrators: narrator styles other addons draw themselves
+--------------------------------------------------------------------------------
+
+
+--- Public. Offer a narrator style of your own: a card among Spoken's narrator styles, titled
+--- `info.title` over `info.description`, with `info.picture` (a texture) where you give one.
+--- `info.addon` is your addon's folder, whose title names it on the card. While
+--- it is the style, Spoken shows none of its own windows and calls `info.Update(clip)` whenever the
+--- line to show changes: the clip to show, or nil to show nothing. Draw it yourself: ShowCaptions,
+--- CreateControl, CreatePortrait and CreateActions give it Spoken's own parts; the rest is on the
+--- Public API.
+--- `info.settings(layout)`, optional, adds a section of rows to Spoken's page, shown while it is
+--- the style. Register while your addon loads, so the card is there when the page is built. `id`
+--- taken twice replaces the first.
+---@param id string
+---@param info { addon: string, title: string, description: string, picture?: string, Update: fun(clip: SpokenClip?), settings?: fun(layout: table) }
+function Spoken:RegisterNarrator(id, info)
+    Require(type(id) == "string" and type(info) == "table" and type(info.addon) == "string" and type(info.title) == "string"
+        and type(info.description) == "string" and type(info.Update) == "function"
+        and (info.picture == nil or type(info.picture) == "string")
+        and (info.settings == nil or type(info.settings) == "function"),
+        "RegisterNarrator needs an id and a narrator with addon, title, description and Update")
+    Require(not Options.STYLE_LABELS[id], format("%q is one of Spoken's own narrator styles", id))
+    if Narrators.byId[id] then Developer:Log("api", "narrator %q registered again; the new one replaces it", id) end
+    Narrators:Register(id, { addon = info.addon, title = info.title, description = info.description, picture = info.picture,
+        Update = info.Update, settings = info.settings })
+end
+
+-- The controls handed out, kept current as the queue changes: weak, so a dropped one is let go.
+local controls = setmetatable({}, { __mode = "k" })
+local function Current(button)
+    Actions.SetPausable({ button })
+    if button.stops then Actions.SetPlayGlyph(button, Actions.HeadState()) end
+end
+Callbacks:Register("AUDIO_CHANGED", function()
+    for button in pairs(controls) do Current(button) end
+end)
+local CONTROLS = {
+    previous = Actions.PreviousButton,
+    skip = Actions.SkipButton,
+    stopall = Actions.EjectButton,
+    stop = function(parent)
+        local function Speaking() return SoundQueue:GetCurrentSound() ~= nil end
+        local button = Actions.StopButton(parent, Speaking)
+        button.stops = true
+        button.canAct = function() return Speaking() and SoundQueue:CanBePaused() end
+        return button
+    end,
+}
+
+--- Public. One of Spoken's round buttons, as its own windows have them, for a window of your own:
+--- "previous" (back a line), "stop" (Stop, or Replay once stopped), "skip" (the next line) or
+--- "stopall" (stop and clear every line). It acts when clicked, names itself in its tooltip and
+--- greys out while it can do nothing; Spoken keeps all of that current. Anchor it yourself.
+---@param parent table a frame
+---@param kind string
+---@return table button
+function Spoken:CreateControl(parent, kind)
+    Require(type(parent) == "table" and CONTROLS[kind] ~= nil,
+        "CreateControl needs a parent frame and \"previous\", \"stop\", \"skip\" or \"stopall\"")
+    local button = CONTROLS[kind](parent)
+    controls[button] = true
+    button:HookScript("OnShow", Current)
+    Current(button)
+    return button
+end
+
+--- Public. Spoken's round portrait, `size` across, for a window of your own: `portrait:SetClip(clip)`
+--- shows the line's speaker as Spoken's windows do (their face, else the line's own picture) with the
+--- line's badge on the ring, and draws the face again once the game has it; nil shows nobody.
+--- `portrait:SetRingColor(r, g, b)` tints the ring; with no colour, the ring is Spoken's again.
+--- Anchor it yourself.
+---@param parent table a frame
+---@param size number
+---@return table portrait
+function Spoken:CreatePortrait(parent, size)
+    Require(type(parent) == "table" and type(size) == "number", "CreatePortrait needs a parent frame and a size")
+    local portrait = Face.Build(parent, size, parent:GetFrameLevel() + 2)
+    function portrait:SetClip(clip)
+        self.clip = clip
+        Face.Show(self, clip)
+    end
+    function portrait:SetRingColor(r, g, b)
+        if r then self.ring:SetVertexColor(r, g, b) else Actions.TintWithRings(self.ring) end
+    end
+    -- A face the game had not cached when the line came is drawn once it has; Spoken's own windows
+    -- ask the same while they show.
+    portrait:HookScript("OnUpdate", function(self)
+        if self.clip and StaticPortrait:Resolved() then Face.Show(self, self.clip) end
+    end)
+    return portrait
+end
+
+--- Public. The line's own buttons, as Spoken's windows show them beside its controls: Report, and
+--- whatever the module that queued the line adds, minus those the player hid in Spoken's settings.
+--- `row:SetClip(clip)` puts them in the row, left to right, and sizes the row to them; nil empties
+--- it. Anchor the row yourself.
+---@param parent table a frame
+---@return table row
+function Spoken:CreateActions(parent)
+    Require(type(parent) == "table", "CreateActions needs a parent frame")
+    local row = CreateFrame("Frame", nil, parent)
+    row:SetSize(1, 1)
+    Actions:Build(row)
+    function row:SetClip(clip)
+        Actions:Configure(self, clip)
+        local shown = {}
+        for _, button in ipairs(self.actions.buttons) do
+            -- One anchored to a window's header stands in for a control a window has; here it has none.
+            if button.action.anchor == "header" then button:Hide() else table.insert(shown, button) end
+        end
+        Actions.LayOutRow(self, shown, Actions.ROUND_GAP)
+    end
+    return row
+end
+
+--- Public. Spoken's captions of the line shown, in `parent`: from its top left, `width` wide, with the
+--- player's Word Size, Rows at Once, Highlight Words and Type Words Out, scrolling as they are read.
+--- Returns the height they take, 0 where the line shows no words; call it again on each Update to
+--- size your window to them.
+---@param parent table a frame
+---@param width number
+---@return number height
+function Spoken:ShowCaptions(parent, width)
+    Require(type(parent) == "table" and type(width) == "number", "ShowCaptions needs a parent frame and a width")
+    if not Transcript.frame then return 0 end
+    local height = Transcript:HeightForClip(PlayerFrame:Current())
+    Transcript:Dock(parent, parent, "TOPLEFT", 0, 0, width, height)
+    return height
+end
+
+--- Public. Offer the player the narrator style `id`, which this addon registered, once ever,
+--- whatever style they have now; not where it is theirs already. Offers from every addon made at
+--- login, or close together later, come in one window, each a card beside the player's own style.
+---@param id string
+function Spoken:SuggestNarrator(id)
+    if type(id) == "string" then Narrators:Suggest(id) end
 end
 
 --- Re-read the speaking clip's presentation -- after a setting changed an action's
@@ -930,6 +1070,8 @@ function Spoken:GetNowPlaying()
     return SoundQueue:GetNowPlaying()
 end
 
+--- Public. Whether Previous has a line to go back to.
+---@return boolean
 function Spoken:CanPrevious()
     return SoundQueue:CanPrevious()
 end
@@ -945,7 +1087,8 @@ function Spoken:GetQueueSize()
     return SoundQueue:GetQueueSize()
 end
 
---- Excludes the speaking head.
+--- Public. How many lines wait behind the one at the head.
+---@return integer
 function Spoken:GetWaitingCount()
     return SoundQueue:GetWaitingCount()
 end
@@ -973,7 +1116,12 @@ function Spoken:PlayState(clip)
     return SoundQueue:PlayState(clip)
 end
 
+--- Public. Why `clip` waits at the head without speaking, in the player's words (in combat, say), or
+--- nil where nothing holds it.
+---@param clip SpokenClip
+---@return string?
 function Spoken:GetHeldReason(clip)
+    if type(clip) ~= "table" then return nil end
     return SoundQueue:GetHeldReason(clip)
 end
 
@@ -1029,7 +1177,9 @@ function Spoken:Skip()
     return SoundQueue:Skip()
 end
 
---- Replay the line before the current one, or the most recent line after the queue drained.
+--- Public. Replay the line before the current one, or the most recent line after the queue drained.
+--- Returns whether there was one.
+---@return boolean
 function Spoken:Previous()
     return SoundQueue:Previous()
 end
@@ -1182,7 +1332,7 @@ end
 
 -- Features a caller may ask Supports about. A name is added with the feature and never removed.
 local FEATURES = {
-    stories = true, captions = true, callbacks = true, log = true,
+    stories = true, captions = true, callbacks = true, log = true, narrators = true,
     ["text-packs"] = true, ["interface-packs"] = true,
 }
 
