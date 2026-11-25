@@ -44,6 +44,8 @@ _G.CreateFrame = function(kind, name, parent, template)
         function f.Dropdown:IsEnabled() return f.enabled ~= false end
         function f.Dropdown:MouseDown() table.insert(f.clicks, "down") end
         function f.Dropdown:MouseUp() table.insert(f.clicks, "open") end
+        -- What the game's DropdownButton does on a click: open its menu.
+        f.Dropdown:SetScript("OnMouseDown", function() table.insert(f.clicks, "game menu") end)
     end
     return f
 end
@@ -350,6 +352,91 @@ do
     Layout.Confirm("Reset?", "Reset", "Cancel", function() end)
     Expect("...and a confirmation is a StaticPopup", #stub.popups, stubPopups + 1)
     _G.InputUtil, _G.GamepadMode, _G.C_RestrictedActions = nil, nil, nil
+end
+
+---------------------------------------------------------------- menus under the controller UI
+-- A game menu an addon's control opens there taints the frame controls manager, and the game then
+-- blocks SetPreferredGamepadInteractTarget until a /reload.
+do
+    local gamepadUI, calls, gameMenus = true, {}, {}
+    _G.InputUtil = { IsGamepadUIEnabled = function() return gamepadUI end }
+    _G.GamepadMode = { FrameControlsManager = {
+        HandlePopupShown = function(_, frame) table.insert(calls, { "shown", frame }) end,
+        HandlePopupHide = function(_, frame) table.insert(calls, { "hide", frame }) end,
+    } }
+    _G.C_RestrictedActions = { IsAddOnRestrictionActive = function() return false end }
+    _G.MenuUtil.CreateContextMenu = function(owner) table.insert(gameMenus, owner) end
+
+    local rows = Page()
+    local menu = rows.menu
+    state.choice = "b"
+    menu.clicks = {}
+    menu.Dropdown:GetScript("OnMouseDown")(menu.Dropdown, "LeftButton")
+    local own = _G.SpokenLayoutMenu
+    Expect("a click on a dropdown opens no game menu", table.concat(menu.clicks, " "), "")
+    Expect("...but Spoken's own", own ~= nil and own:IsShown(), true)
+    -- The stub fires OnShow hooks but not OnHide ones; the client fires both.
+    local stubHide = own.Hide
+    function own:Hide()
+        local was = self:IsShown()
+        stubHide(self)
+        if was then for _, fn in ipairs(self.hooks.OnHide or {}) do fn(self) end end
+    end
+    Expect("...which takes the controller's focus as a popup", calls[1] and calls[1][1], "shown")
+    local function Shown()
+        local texts, ticked = {}, {}
+        for _, row in ipairs(own.rows) do
+            if row:IsShown() then
+                table.insert(texts, row.label:GetText())
+                if row.tick:IsShown() then table.insert(ticked, row.label:GetText()) end
+            end
+        end
+        return table.concat(texts, " "), table.concat(ticked, " ")
+    end
+    local texts, ticked = Shown()
+    Expect("...listing every choice", texts, "a b c")
+    Expect("...the chosen one ticked", ticked, "b")
+    own.rows[3].scripts.OnClick(own.rows[3])
+    Expect("a choice in it is taken", state.choice, "c")
+    Expect("...and closes it", own:IsShown(), false)
+    Expect("...handing the focus back", calls[2] and calls[2][1], "hide")
+
+    menu.clicks = {}
+    menu.layoutHit:OnSmartNavClick()
+    Expect("A on a dropdown's row opens Spoken's menu too", own:IsShown(), true)
+    Expect("...not the game's", table.concat(menu.clicks, " "), "")
+    menu.layoutHit:OnSmartNavClick()
+    Expect("...and A again closes it", own:IsShown(), false)
+    menu.layoutHit:OnSmartNavClick()
+    for _, fn in ipairs(menu.Dropdown.hooks.OnHide or {}) do fn(menu.Dropdown) end
+    Expect("the page closing closes it, as the game's menus close with their owner", own:IsShown(), false)
+
+    local voices = { "one" }
+    local page = CreateFrame("Frame")
+    page.children = {}
+    function page:GetWidth() return 640 end
+    local layout = Layout.New(page, 25, -16)
+    local ordered = layout:OrderedList("Voices", nil, function() return voices end,
+        function(list) voices = list end, { "one", "two", "three" }, nil, nil,
+        { add = "Add a Voice", earlier = "Up", later = "Down", remove = "Remove" })
+    layout:Reflow()
+    local add = ordered.layoutAdd
+    add.scripts.OnClick(add)
+    Expect("Add a Voice opens no game menu", #gameMenus, 0)
+    Expect("...but Spoken's own", own:IsShown(), true)
+    Expect("...offering the voices not in the list", (Shown()), "two three")
+    own.rows[2].scripts.OnClick(own.rows[2])
+    Expect("a voice chosen there is added", table.concat(voices, " "), "one three")
+    Expect("...and the menu closes", own:IsShown(), false)
+
+    gamepadUI = false
+    menu.clicks = {}
+    menu.Dropdown:GetScript("OnMouseDown")(menu.Dropdown, "LeftButton")
+    Expect("with the mouse UI a dropdown opens the game's menu", table.concat(menu.clicks, " "), "game menu")
+    Expect("...and Spoken's stays closed", own:IsShown(), false)
+    add.scripts.OnClick(add)
+    Expect("...and so does Add a Voice", gameMenus[1], add)
+    _G.InputUtil, _G.GamepadMode, _G.C_RestrictedActions, _G.MenuUtil.CreateContextMenu = nil, nil, nil, nil
 end
 
 os.exit(Failures() == 0 and 0 or 1)

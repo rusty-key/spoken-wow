@@ -117,6 +117,9 @@ local function MenuIsOpen()
     if menuFrame and menuFrame:IsShown() then
         return true
     end
+    if _G.SpokenLayoutMenu and _G.SpokenLayoutMenu:IsShown() then
+        return true
+    end
     local list = _G.DropDownList1
     if dropDown and list and list.IsShown and list:IsShown()
         and _G.UIDROPDOWNMENU_OPEN_MENU == dropDown then
@@ -328,23 +331,25 @@ local function ToggleMenu(anchor)
     if iconTooltip then
         iconTooltip:Hide()
     end
-    -- Under the controller UI the game's menus join FrameControlsManager, and one an addon opens
-    -- taints it: the client then blocks SetPreferredGamepadInteractTarget until a /reload.
-    if not SpokenLayout.IsGamepadUI() then
+    local function Entries()
+        local entries = {}
+        for _, entry in ipairs(Minimap:BuildMenu()) do
+            table.insert(entries, { text = _MenuLabel(entry),
+                func = function() if entry.onClick then entry.onClick(anchor) end end })
+        end
+        return entries
+    end
+    SpokenLayout.OpenMenu(anchor, Entries, function()
         if HasNativeMenuAPI() then
             ToggleNativeMenu(anchor)
-            return
-        end
-        if HasLegacyMenuAPI() then
+        elseif HasLegacyMenuAPI() then
             ToggleClientMenu(anchor)
-            return
+        elseif menuFrame and menuFrame:IsShown() then
+            HideMenu()
+        else
+            ShowMenu(anchor)
         end
-    end
-    if menuFrame and menuFrame:IsShown() then
-        HideMenu()
-        return
-    end
-    ShowMenu(anchor)
+    end)
 end
 
 --- One click on the button, wherever it is: on the minimap or in Blizzard's addon

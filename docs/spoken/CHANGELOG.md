@@ -4,11 +4,13 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **The minimap button's right-click menu works with the Gamepad UI on,** and the controller keeps
-  working after it closes. *([ArtisanGW](https://github.com/ArtisanGW))*
 - For feature addons: `Spoken:PlayStory("quest", questID)`, with `HasStory`, `IsPlayingStory` and
   `StopStory`, plays a quest's first voiced part, for a quest the Compendium's Quests tab shows.
   *([Torchlite-bit](https://github.com/Torchlite-bit))*
+- **The minimap button's right-click menu works with the Gamepad UI on,** and the controller keeps
+  working after it closes. *([ArtisanGW](https://github.com/ArtisanGW))*
+- **With the Gamepad UI on, settings dropdowns, Add a Voice and the Compendium's filter keep the
+  controller working after they close.** *([rusty-key](https://github.com/rusty-key))*
 
 ## 3.13.0 — 2026-11-25
 
