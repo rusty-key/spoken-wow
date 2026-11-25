@@ -328,13 +328,17 @@ local function ToggleMenu(anchor)
     if iconTooltip then
         iconTooltip:Hide()
     end
-    if HasNativeMenuAPI() then
-        ToggleNativeMenu(anchor)
-        return
-    end
-    if HasLegacyMenuAPI() then
-        ToggleClientMenu(anchor)
-        return
+    -- Under the controller UI the game's menus join FrameControlsManager, and one an addon opens
+    -- taints it: the client then blocks SetPreferredGamepadInteractTarget until a /reload.
+    if not SpokenLayout.IsGamepadUI() then
+        if HasNativeMenuAPI() then
+            ToggleNativeMenu(anchor)
+            return
+        end
+        if HasLegacyMenuAPI() then
+            ToggleClientMenu(anchor)
+            return
+        end
     end
     if menuFrame and menuFrame:IsShown() then
         HideMenu()
