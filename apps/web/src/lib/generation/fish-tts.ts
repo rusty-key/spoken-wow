@@ -15,8 +15,7 @@
  * paragraph is spoken on its own and the parts are joined with a silence of our choosing
  * (stitch.ts, which re-encodes, so the result measures right).
  *
- * Every request goes to the timed endpoint: it costs what /v1/tts costs and says when each
- * word starts.
+ * Every request goes to the timed endpoint, which says when each word starts at no extra cost.
  */
 import { encode } from "@msgpack/msgpack";
 
@@ -25,7 +24,7 @@ import { fishConfig, type FishOptions } from "@/lib/voices/fish";
 import { classifyFish, failure, type Failure } from "./errors";
 import { PARAGRAPH_BREAK } from "./speakers/shape";
 import { stitchMp3 } from "./stitch";
-import type { WordStart } from "./word-times";
+import { wordStarts, type WordStart } from "./word-times";
 
 /**
  * The silence between two paragraphs, in seconds.
@@ -240,12 +239,7 @@ async function speakOnce(request: FishSpeechRequest, options: FishOptions): Prom
     };
   }
   const timed = readTimedStream(raw);
-  if (!timed || timed.audio.byteLength === 0) {
-    return {
-      ok: false,
-      failure: failure("upstream", `fish.audio's stream held no audio: ${raw.slice(0, 200)}`),
-    };
-  }
+  if ("error" in timed) return { ok: false, failure: failure("upstream", timed.error) };
 
   // What fish.audio bills: the UTF-8 bytes of the text, speaker tags included.
   return { ok: true, ...timed, bytes: Buffer.byteLength(payload.text as string, "utf8") };
@@ -258,52 +252,113 @@ type TimedEvent = {
   chunk_audio_offset_sec: number;
 };
 
+type TimedStream = { audio: Buffer; words: WordStart[] | null; durationSec: number | null };
+
 /**
- * The audio and word starts of a timed stream, or null when it is not one.
+ * The audio and word starts of a timed stream.
  *
  * Each text chunk's alignment arrives as snapshots, each replacing the last, timed from the
  * chunk's own start. A chunk still without one at the end leaves the take without times.
+ * An event that is not an audio chunk is skipped: the take is already billed, and failing it
+ * over a closing or keep-alive event would throw the audio away.
  */
-export function readTimedStream(
-  raw: string,
-): { audio: Buffer; words: WordStart[] | null; durationSec: number | null } | null {
+export function readTimedStream(raw: string): TimedStream | { error: string } {
   const audio: Buffer[] = [];
   const chunks = new Map<number, TimedEvent>();
   for (const block of raw.split(/\r?\n\r?\n/)) {
-    const data = block
-      .split(/\r?\n/)
-      .filter((line) => line.startsWith("data:"))
-      .map((line) => line.slice(5).replace(/^ /, ""))
-      .join("\n");
+    const lines = block.split(/\r?\n/);
+    const field = (name: string) =>
+      lines
+        .filter((line) => line.startsWith(`${name}:`))
+        .map((line) => line.slice(name.length + 1).replace(/^ /, ""));
+    const data = field("data").join("\n");
+    if (field("event")[0] === "error") {
+      return { error: `fish.audio's stream reported an error: ${errorText(data)}` };
+    }
     if (!data) continue;
     let event: TimedEvent;
     try {
       event = JSON.parse(data);
     } catch {
-      return null;
+      continue;
     }
-    if (typeof event?.audio_base64 !== "string" || typeof event.chunk_seq !== "number") return null;
+    if (typeof event?.audio_base64 !== "string" || typeof event.chunk_seq !== "number") continue;
     audio.push(Buffer.from(event.audio_base64, "base64"));
     const known = chunks.get(event.chunk_seq);
     if (!known || event.alignment) chunks.set(event.chunk_seq, event);
   }
-  if (audio.length === 0) return null;
+  const joined = Buffer.concat(audio);
+  if (joined.byteLength === 0) return { error: "fish.audio's stream held no audio" };
 
   const ordered = [...chunks.values()].sort((a, b) => a.chunk_seq - b.chunk_seq);
   if (!ordered.every((chunk) => chunk.alignment)) {
-    return { audio: Buffer.concat(audio), words: null, durationSec: null };
+    return { audio: joined, words: null, durationSec: null };
   }
-  const words: WordStart[] = [];
   let durationSec = 0;
+  const segments: { text: string; start: number }[] = [];
   for (const { alignment, chunk_audio_offset_sec: offset } of ordered) {
     for (const segment of alignment!.segments) {
-      // Neither a speaker tag nor a direction is a word anyone sees.
-      const word = segment.text.replace(/<\|[^|]*\|>/g, "").replace(/\[[^\]]*\]/g, "").trim();
-      if (word) words.push({ word, start: segment.start + offset });
+      segments.push({ text: segment.text, start: segment.start + offset });
     }
     durationSec = Math.max(durationSec, offset + alignment!.audio_duration);
   }
-  return { audio: Buffer.concat(audio), words, durationSec };
+  return { audio: joined, words: segmentWords(segments), durationSec };
+}
+
+/** A phoneme span, or any other `<|...|>` tag. */
+const TAG = /<\|phoneme_start\|>([\s\S]*?)<\|phoneme_end\|>|<\|[^|]*\|>/g;
+
+/**
+ * The shown words of fish.audio's segments, read as one stream rather than segment by
+ * segment: a tag or direction with spaces in it may be split across segments, and a segment
+ * may hold two words joined at a speaker tag (`this.<|speaker:1|>He`).
+ *
+ * A phoneme span stands for the one word it replaced, so it is one word. A speaker tag
+ * starts a new word. Bracketed directions are left to wordStarts, which drops them.
+ */
+function segmentWords(segments: { text: string; start: number }[]): WordStart[] {
+  let text = "";
+  const times: number[] = [];
+  for (const segment of segments) {
+    const piece = (text ? " " : "") + segment.text;
+    text += piece;
+    for (let i = 0; i < piece.length; i++) times.push(segment.start);
+  }
+
+  const characters: string[] = [];
+  const starts: number[] = [];
+  const breaks: number[] = [];
+  const keep = (from: number, to: number) => {
+    for (let i = from; i < to; i++) {
+      characters.push(text[i]);
+      starts.push(times[i]);
+    }
+  };
+  let at = 0;
+  for (const match of text.matchAll(TAG)) {
+    keep(at, match.index);
+    if (match[1] !== undefined) {
+      for (const char of match[1].replace(/\s+/g, "")) {
+        characters.push(char);
+        starts.push(times[match.index]);
+      }
+    } else {
+      breaks.push(characters.length);
+    }
+    at = match.index + match[0].length;
+  }
+  keep(at, text.length);
+  return wordStarts({ characters, character_start_times_seconds: starts }, breaks);
+}
+
+function errorText(data: string): string {
+  try {
+    const parsed = JSON.parse(data) as { message?: unknown };
+    if (typeof parsed?.message === "string") return parsed.message;
+  } catch {
+    // Not JSON: the text is the message.
+  }
+  return data.slice(0, 200) || "no message";
 }
 
 function message(error: unknown): string {

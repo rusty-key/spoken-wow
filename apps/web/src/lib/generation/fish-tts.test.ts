@@ -274,14 +274,21 @@ describe("a line of several paragraphs", () => {
   });
 });
 
+/** A stream read that must succeed. */
+function timed(raw: string) {
+  const read = readTimedStream(raw);
+  if ("error" in read) throw new Error(read.error);
+  return read;
+}
+
 describe("the times fish.audio streams", () => {
   it("joins every chunk's audio in order", () => {
-    const read = readTimedStream(sse([{ audio: "ID3a" }, { audio: "b" }, { audio: "c", seq: 1 }]));
-    expect(read && String(read.audio)).toBe("ID3abc");
+    const read = timed(sse([{ audio: "ID3a" }, { audio: "b" }, { audio: "c", seq: 1 }]));
+    expect(String(read.audio)).toBe("ID3abc");
   });
 
   it("keeps each chunk's latest alignment, moved by the chunk's offset", () => {
-    const read = readTimedStream(
+    const read = timed(
       sse([
         { audio: "a", segments: [{ text: "Take", start: 0.06, end: 0.3 }] },
         {
@@ -295,27 +302,27 @@ describe("the times fish.audio streams", () => {
         { audio: "c", seq: 1, offset: 0.7, segments: [{ text: "Go.", start: 0.1, end: 0.4 }], duration: 0.5 },
       ]),
     );
-    expect(read?.words).toEqual([
+    expect(read.words).toEqual([
       { word: "Take", start: 0.05 },
       { word: "this.", start: 0.3 },
       { word: "Go.", start: expect.closeTo(0.8) },
     ]);
-    expect(read?.durationSec).toBeCloseTo(1.2);
+    expect(read.durationSec).toBeCloseTo(1.2);
   });
 
-  it("orders chunks by their sequence, not by when their alignment arrived", () => {
-    const read = readTimedStream(
+  it("orders words by chunk, though a chunk's alignment may arrive after the next chunk's", () => {
+    const read = timed(
       sse([
         { audio: "a" },
         { audio: "b", seq: 1, offset: 1, segments: [{ text: "Go.", start: 0, end: 0.2 }] },
         { audio: "c", seq: 0, segments: [{ text: "Take", start: 0.1, end: 0.3 }] },
       ]),
     );
-    expect(read?.words?.map((word) => word.word)).toEqual(["Take", "Go."]);
+    expect(read.words?.map((word) => word.word)).toEqual(["Take", "Go."]);
   });
 
   it("leaves out speaker tags and bracketed directions, which nothing shows", () => {
-    const read = readTimedStream(
+    const read = timed(
       sse([
         {
           audio: "a",
@@ -329,31 +336,93 @@ describe("the times fish.audio streams", () => {
         },
       ]),
     );
-    expect(read?.words?.map((word) => word.word)).toEqual(["Take", "this.", "He"]);
+    expect(read.words?.map((word) => word.word)).toEqual(["Take", "this.", "He"]);
   });
 
   it("keeps no times when any chunk never got its alignment", () => {
     // Times for half the line would light the right words and then stop, or shift every
     // word after the gap.
-    const read = readTimedStream(
+    const read = timed(
       sse([
         { audio: "a", segments: [{ text: "Take", start: 0, end: 0.2 }] },
         { audio: "b", seq: 1, offset: 1 },
       ]),
     );
-    expect(read?.words).toBeNull();
-    expect(read && String(read.audio)).toBe("ab");
+    expect(read.words).toBeNull();
+    expect(String(read.audio)).toBe("ab");
   });
 
-  it("is null for a stream that is not fish.audio's events", () => {
-    expect(readTimedStream("")).toBeNull();
-    expect(readTimedStream("data: not json\n\n")).toBeNull();
-    expect(readTimedStream(`data: ${JSON.stringify({ message: "queued" })}\n\n`)).toBeNull();
+  it("reads a phoneme span split across segments as the one word it replaced", () => {
+    const read = timed(
+      sse([
+        {
+          audio: "a",
+          segments: [
+            { text: "Ask", start: 0, end: 0.2 },
+            { text: "<|phoneme_start|>TH", start: 0.3, end: 0.4 },
+            { text: "R", start: 0.4, end: 0.5 },
+            { text: "AO1", start: 0.5, end: 0.6 },
+            { text: "L<|phoneme_end|>.", start: 0.6, end: 0.8 },
+          ],
+        },
+      ]),
+    );
+    expect(read.words).toEqual([
+      { word: "Ask", start: 0 },
+      { word: "THRAO1L.", start: 0.3 },
+    ]);
+  });
+
+  it("drops a direction split across segments", () => {
+    const read = timed(
+      sse([
+        {
+          audio: "a",
+          segments: [
+            { text: "[in", start: 0, end: 0.1 },
+            { text: "a", start: 0.1, end: 0.2 },
+            { text: "gruff", start: 0.2, end: 0.3 },
+            { text: "voice]", start: 0.3, end: 0.4 },
+            { text: "Begone.", start: 0.5, end: 0.9 },
+          ],
+        },
+      ]),
+    );
+    expect(read.words).toEqual([{ word: "Begone.", start: 0.5 }]);
+  });
+
+  it("splits a segment that joins two turns at a speaker tag", () => {
+    const read = timed(
+      sse([{ audio: "a", segments: [{ text: "this.<|speaker:1|>He", start: 0.4, end: 0.9 }] }]),
+    );
+    expect(read.words?.map((word) => word.word)).toEqual(["this.", "He"]);
+  });
+
+  it("skips events that are not audio chunks, so a billed take is kept", () => {
+    const raw =
+      ": keep-alive\n\n" +
+      sse([{ audio: "a" }]) +
+      `data: ${JSON.stringify({ status: "progress" })}\n\n` +
+      "event: done\ndata: [DONE]\n\n";
+    const read = timed(raw);
+    expect(String(read.audio)).toBe("a");
+  });
+
+  it("names fish.audio's error, not the audio before it", () => {
+    const raw = sse([{ audio: "a" }]) + `event: error\ndata: ${JSON.stringify({ message: "model overloaded" })}\n\n`;
+    expect(readTimedStream(raw)).toEqual({ error: "fish.audio's stream reported an error: model overloaded" });
+  });
+
+  it("is an error when no audio came", () => {
+    expect(readTimedStream("")).toEqual({ error: "fish.audio's stream held no audio" });
+    expect(readTimedStream(`data: ${JSON.stringify({ message: "queued" })}\n\n`)).toEqual({
+      error: "fish.audio's stream held no audio",
+    });
   });
 
   it("reads events split by CRLF, as SSE allows", () => {
-    const read = readTimedStream(sse([{ audio: "a" }, { audio: "b" }]).replace(/\n/g, "\r\n"));
-    expect(read && String(read.audio)).toBe("ab");
+    const read = timed(sse([{ audio: "a" }, { audio: "b" }]).replace(/\n/g, "\r\n"));
+    expect(String(read.audio)).toBe("ab");
   });
 
   it("reaches the speaker's take as the line's word starts", async () => {
