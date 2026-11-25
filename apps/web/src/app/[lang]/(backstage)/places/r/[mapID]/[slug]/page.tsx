@@ -1,4 +1,4 @@
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
 import { withLang } from "@/lib/lang";
 import type { Metadata } from "next";
 import Link from "@/components/LocaleLink";
@@ -10,6 +10,8 @@ import ListenFirst from "@/components/reports/ListenFirst";
 import { audioRelPath } from "@/lib/places/audio";
 import { isCorpusEmpty, loadContext, teamLineByPath } from "@/lib/places/catalogue";
 import { Contained } from "@/components/Width";
+import { fill } from "@/lib/site-text/format";
+import { uiText } from "@/lib/ui-text";
 
 /**
  * One zone line, and the form to complain about it.
@@ -44,6 +46,10 @@ async function resolve(params: Promise<Params>) {
   }
 }
 
+async function words(params: Promise<Params>) {
+  return (await uiText(await readingLang(await pageLang(params)))).reports.landing;
+}
+
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
@@ -54,14 +60,18 @@ export async function generateMetadata({
   const entry = await resolve(params);
   // notFound() belongs in the page, not here; this just declines to name a title.
   if (!entry) return {};
+  const t = await words(params);
   return {
     title: `${entry.name} · Spoken`,
-    description: `Report a problem with the lore or narration for ${entry.name}.`,
+    description: fill(t.places.description, { name: entry.name }),
   };
 }
 
 export default async function Page({ params }: { params: Promise<Params> }) {
   const lang = await pageLang(params);
+  const dictionary = await uiText(await readingLang(lang));
+  const t = dictionary.reports.landing;
+  const row = dictionary.catalogue.row;
   const entry = await resolve(params);
   if (!entry) notFound();
 
@@ -77,7 +87,7 @@ export default async function Page({ params }: { params: Promise<Params> }) {
         <article className="max-w-2xl">
           <h1 className="text-xl font-semibold">{entry.name}</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {entry.kind === "subzone" ? `In ${entry.zoneName}` : "Zone lore"}
+            {entry.kind === "subzone" ? fill(t.places.inZone, { zone: entry.zoneName }) : t.places.zoneLore}
           </p>
 
           {take ? <ListenFirst className="mt-4" source="places" recordedAt={take.generatedAt} releases={releases} /> : null}
@@ -95,9 +105,7 @@ export default async function Page({ params }: { params: Promise<Params> }) {
               src={withLang(lang, `/api/places/audio/${audioRelPath(entry.file)}?v=${take.version}`)}
             />
           ) : (
-            <p className="text-muted-foreground mt-4 text-sm">
-              This line has no narration yet.
-            </p>
+            <p className="text-muted-foreground mt-4 text-sm">{t.places.noNarration}</p>
           )}
 
           {entry.full ? (
@@ -106,7 +114,7 @@ export default async function Page({ params }: { params: Promise<Params> }) {
               {/* Under the original, which is what the game shows, and only while the live take speaks it:
                   until then the override is the team's work in progress and the narration says the original. */}
               {entry.override && take?.textHash === entry.hash && (
-                <p className="mt-2 border-l-2 border-sky-400/60 pl-2 whitespace-pre-line" title="What the narration says">
+                <p className="mt-2 border-l-2 border-sky-400/60 pl-2 whitespace-pre-line" title={t.overrideTitle}>
                   {entry.override.text}
                 </p>
               )}
@@ -115,28 +123,23 @@ export default async function Page({ params }: { params: Promise<Params> }) {
             // Said plainly rather than left as an empty gap, because somebody arriving from
             // the game is here to report a problem and "there is no text yet" is the answer
             // to the one they are about to file.
-            <p className="text-muted-foreground mt-5 italic">
-              There is no lore written for this place yet.
-            </p>
+            <p className="text-muted-foreground mt-5 italic">{t.places.noLore}</p>
           )}
 
           <section className="bg-muted mt-8 rounded-lg border p-4">
-            <h2 className="font-medium">Report a problem</h2>
-            <p className="text-muted-foreground mt-1 mb-3 text-xs">
-              Wrong lore, a mispronunciation, or narration that does not play. Nothing is
-              required but the description.
-            </p>
+            <h2 className="font-medium">{row.report}</h2>
+            <p className="text-muted-foreground mt-1 mb-3 text-xs">{t.places.lede}</p>
             <ReportForm source="places" target={entry.file} lineId={entry.id} fromGame />
           </section>
 
           <footer className="text-muted-foreground mt-8 text-sm">
             <Link href={`/places?zone=${entry.mapID}`} className="hover:text-foreground">
-              Browse every line in {entry.zoneName}
+              {fill(t.places.browse, { zone: entry.zoneName })}
             </Link>
             <p className="mt-2 text-xs">
-              Lore from{" "}
-              {entry.source ? <a href={entry.source}>warcraft.wiki.gg</a> : "warcraft.wiki.gg"}{" "}
-              (CC BY-SA 4.0)
+              {t.places.loreBefore}
+              {entry.source ? <a href={entry.source}>warcraft.wiki.gg</a> : "warcraft.wiki.gg"}
+              {t.places.loreAfter}
             </p>
           </footer>
         </article>

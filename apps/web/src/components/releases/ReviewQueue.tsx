@@ -11,23 +11,27 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
+import { useUiText } from "@/components/UiTextProvider";
 import { DAY_TIME, useLocalDates } from "@/components/useLocalDates";
 import { langName, withLang } from "@/lib/lang";
 import type { WaitingVersion } from "@/lib/releases/sections";
-import { SOURCE_LABELS } from "@/lib/reports/reports";
+import { fill } from "@/lib/site-text/format";
+import type { UiText } from "@/lib/ui-text/en";
 
 const MAX_REASON = 500;
 
-async function send(url: string, body: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
+type Words = UiText["releases"];
+
+async function send(url: string, body: unknown, words: Words): Promise<{ ok: true } | { ok: false; error: string }> {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   }).catch(() => null);
-  if (!response) return { ok: false, error: "Could not reach the server." };
+  if (!response) return { ok: false, error: words.couldNotReach };
   if (response.ok) return { ok: true };
   const { error } = (await response.json().catch(() => ({}))) as { error?: string };
-  return { ok: false, error: error ?? "Something went wrong." };
+  return { ok: false, error: error ?? words.wentWrong };
 }
 
 /**
@@ -36,14 +40,15 @@ async function send(url: string, body: unknown): Promise<{ ok: true } | { ok: fa
  * with a reason the team sees.
  */
 export default function ReviewQueue({ waiting }: { waiting: WaitingVersion[] }) {
+  const t = useUiText().releases;
   return (
     <section aria-labelledby="release-queue">
       <h2 id="release-queue" className="flex items-baseline gap-2 text-lg font-semibold">
-        Waiting for review
+        {t.waitingForReview}
         {waiting.length > 0 && <span className="text-muted-foreground text-sm font-normal tabular-nums">{waiting.length}</span>}
       </h2>
       {waiting.length === 0 ? (
-        <p className="text-muted-foreground mt-3 rounded-lg border border-dashed p-6 text-sm">Nothing waiting.</p>
+        <p className="text-muted-foreground mt-3 rounded-lg border border-dashed p-6 text-sm">{t.nothingWaiting}</p>
       ) : (
         <ul className="mt-3 space-y-4">
           {waiting.map((version) => (
@@ -59,18 +64,28 @@ function QueueItem({ version }: { version: WaitingVersion }) {
   const router = useRouter();
   const toast = useToast();
   const when = useLocalDates();
+  const words = useUiText();
+  const t = words.releases;
   const [busy, setBusy] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [open, setOpen] = useState(false);
 
   const { pending, team } = version;
-  const name = `${team.name}'s ${SOURCE_LABELS[version.section]} in ${langName(version.lang)}`;
+  const name = fill(t.teamSectionInLang, {
+    team: team.name,
+    section: words.menu.sectionsNav[version.section],
+    lang: langName(version.lang),
+  });
   const total = pending.count + pending.textChanges;
 
   async function decide(action: "approve" | "reject") {
     setBusy(true);
-    const result = await send(`/api/releases/${version.id}/review`, action === "reject" ? { action, note: reason.trim() } : { action });
+    const result = await send(
+      `/api/releases/${version.id}/review`,
+      action === "reject" ? { action, note: reason.trim() } : { action },
+      t,
+    );
     setBusy(false);
     // Refreshed either way: a 409 means another site owner decided it, and the page should say so.
     router.refresh();
@@ -78,11 +93,11 @@ function QueueItem({ version }: { version: WaitingVersion }) {
       setOpen(false);
       toast({
         tone: "info",
-        title: action === "approve" ? `Approved ${name}.` : `Did not approve ${name}.`,
-        detail: action === "approve" ? "It is listed once its turn comes; the team gets an email then." : "The team gets an email with your reason.",
+        title: action === "approve" ? fill(t.approved, { name }) : fill(t.didNotApprove, { name }),
+        detail: action === "approve" ? t.approvedDetail : t.didNotApproveDetail,
       });
     } else {
-      toast({ tone: "error", title: `Could not ${action} ${name}.`, detail: result.error });
+      toast({ tone: "error", title: fill(action === "approve" ? t.couldNotApprove : t.couldNotReject, { name }), detail: result.error });
     }
   }
 
@@ -94,7 +109,7 @@ function QueueItem({ version }: { version: WaitingVersion }) {
         if (reason.trim()) void decide("reject");
       }}
     >
-      <Label htmlFor={`reason-${version.id}`}>Why it is not approved</Label>
+      <Label htmlFor={`reason-${version.id}`}>{t.whyNotApproved}</Label>
       <textarea
         id={`reason-${version.id}`}
         rows={3}
@@ -108,15 +123,15 @@ function QueueItem({ version }: { version: WaitingVersion }) {
         className={TEXTAREA}
       />
       <p id={`reason-${version.id}-help`} className="text-muted-foreground text-xs">
-        The team sees this on its release page and gets it by email, so say what to fix.
+        {t.reasonHelp}
       </p>
       <div className="flex flex-wrap gap-2">
         <Button type="submit" variant="destructive" disabled={busy || !reason.trim()}>
           <X aria-hidden />
-          {busy ? "Rejecting…" : "Reject"}
+          {busy ? t.rejecting : t.reject}
         </Button>
         <Button type="button" variant="ghost" disabled={busy} onClick={() => setRejecting(false)}>
-          Cancel
+          {words.common.cancel}
         </Button>
       </div>
     </form>
@@ -124,10 +139,10 @@ function QueueItem({ version }: { version: WaitingVersion }) {
     <div className="flex flex-wrap gap-2">
       <Button disabled={busy || version.approving} onClick={() => void decide("approve")}>
         <Check aria-hidden />
-        {version.approving ? "Being listed…" : busy ? "Approving…" : "Approve"}
+        {version.approving ? t.beingListed : busy ? t.approving : t.approve}
       </Button>
       <Button variant="outline" disabled={busy || version.approving} onClick={() => setRejecting(true)}>
-        Reject…
+        {t.rejectMore}
       </Button>
     </div>
   );
@@ -137,25 +152,28 @@ function QueueItem({ version }: { version: WaitingVersion }) {
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="font-medium">{team.name}</span>
         <Badge variant="outline">{version.lang}</Badge>
-        <span className="text-muted-foreground text-xs">{SOURCE_LABELS[version.section]}</span>
+        <span className="text-muted-foreground text-xs">{words.menu.sectionsNav[version.section]}</span>
         {version.version && <span className="ml-auto font-mono text-xs">v{version.version}</span>}
       </div>
       <p className="text-muted-foreground mt-1 text-xs">
-        Pressed by <span className="text-foreground">{version.by ?? "someone unnamed"}</span> on{" "}
+        {t.pressedByBefore}
+        <span className="text-foreground">{version.by ?? t.someoneUnnamed}</span>
+        {t.pressedByAfter}
         {when(version.pressedAt, DAY_TIME)}
       </p>
       <p className="mt-3 text-sm">
         {total === 0 ? (
-          <span className="text-muted-foreground">No line counted since the team&apos;s last approved release.</span>
+          <span className="text-muted-foreground">{t.noneSinceApproved}</span>
         ) : (
           <>
             <span className="text-primary-ink font-semibold tabular-nums">
-              {pending.count.toLocaleString()} {pending.count === 1 ? "line" : "lines"}
+              {fill(pending.count === 1 ? t.lineOne : t.lineMany, { n: pending.count.toLocaleString() })}
             </span>
             <span className="text-muted-foreground">
-              {pending.since ? ` new or changed since ${when(pending.since, DAY_TIME)}` : " · the team's first release"}
-              {pending.textChanges > 0 && ` · ${pending.textChanges.toLocaleString()} text changes`}
-              {pending.people.length > 0 && ` · by ${pending.people.map((person) => person.name ?? "unnamed").join(", ")}`}
+              {pending.since ? fill(t.newOrChangedSince, { date: when(pending.since, DAY_TIME) }) : t.firstRelease}
+              {pending.textChanges > 0 && fill(t.textChanges, { n: pending.textChanges.toLocaleString() })}
+              {pending.people.length > 0 &&
+                fill(t.byPeople, { people: pending.people.map((person) => person.name ?? t.unnamed).join(", ") })}
             </span>
           </>
         )}
@@ -167,13 +185,13 @@ function QueueItem({ version }: { version: WaitingVersion }) {
       )}
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
         <Button variant="link" className="h-auto px-0" onClick={() => setOpen(true)}>
-          Read and listen
+          {t.readAndListen}
         </Button>
         <LocaleLink
           href={withLang(version.lang, `/${version.section}?team=${encodeURIComponent(team.slug)}`)}
           className="text-muted-foreground hover:text-foreground underline underline-offset-4"
         >
-          Open in the explorer
+          {t.openInExplorer}
         </LocaleLink>
       </div>
       {/* One form at a time: the dialog's carries the same ids, which the card's would take. */}

@@ -4,6 +4,7 @@ import { Pause, Play } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import Avatar from "@/components/Avatar";
+import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -17,21 +18,25 @@ import {
   type ReleaseSection,
   type ReviewTeam,
 } from "@/lib/releases/sections";
-import { SOURCE_LABELS } from "@/lib/reports/reports";
+import { fill } from "@/lib/site-text/format";
+import type { UiText } from "@/lib/ui-text/en";
 import { cn } from "@/lib/utils";
+
+type Words = UiText["releases"];
 
 const CLOCK: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
 
-const lines = (n: number) => `${n.toLocaleString()} ${n === 1 ? "line" : "lines"}`;
+const lines = (words: Words, n: number) => fill(n === 1 ? words.lineOne : words.lineMany, { n: n.toLocaleString() });
 
 /** "q:123:accept" reads as its moment; ids of the other sections say nothing a reader needs. */
-const MOMENTS: Record<string, string> = { accept: "Accept", progress: "Progress", complete: "Complete" };
+const MOMENTS = { accept: "momentAccept", progress: "momentProgress", complete: "momentComplete" } as const;
 
-function momentOf(change: PendingChange): string | null {
+function momentOf(words: Words, change: PendingChange): string | null {
   const id = change.lineId ?? "";
-  if (id.startsWith("g:")) return "Gossip";
+  if (id.startsWith("g:")) return words.gossip;
   const moment = /^q:\d+:([a-z]+)/.exec(id)?.[1];
-  return moment ? (MOMENTS[moment] ?? moment) : null;
+  const named = moment ? MOMENTS[moment as keyof typeof MOMENTS] : undefined;
+  return named ? words[named] : moment ?? null;
 }
 
 /** The version a bump makes of `from`; null when nothing was released from here to count from. */
@@ -128,6 +133,8 @@ function Review({
   onRelease: (bump: ReleaseBump) => void;
 }) {
   const date = useLocalDates();
+  const words = useUiText();
+  const t = words.releases;
   // The page carries the counts alone; the lines themselves are asked for here, once.
   const [loaded, setLoaded] = useState<PendingView | null>(null);
   const [failed, setFailed] = useState(false);
@@ -148,7 +155,7 @@ function Review({
   const [filter, setFilter] = useState<Filter>({ kind: "all", q: "" });
   const [playing, setPlaying] = useState<string | null>(null);
   const audio = useRef<HTMLAudioElement>(null);
-  const name = SOURCE_LABELS[section];
+  const name = words.menu.sectionsNav[section];
   // Without a bump the release keeps the version GitHub's workflow gives it, which nothing here knows.
   const next = bumpable ? bumped(version, bump) : null;
   const created = pending.count - pending.restored;
@@ -167,7 +174,7 @@ function Review({
   const groups = useMemo(() => {
     const out: { title: string; changes: PendingChange[] }[] = [];
     for (const change of shown) {
-      const title = change.title ?? "Without text yet";
+      const title = change.title ?? t.withoutText;
       const last = out.at(-1);
       if (last && last.title === title) last.changes.push(change);
       else out.push({ title, changes: [change] });
@@ -204,34 +211,34 @@ function Review({
       <audio ref={audio} onEnded={() => setPlaying(null)} className="hidden" />
       <header className="pt-4 pr-12 pb-3 pl-5">
         <DialogTitle className="text-lg">
-          {reviewed ? `${reviewed.team.name}: ${name} in ${langName(lang)}` : `Release ${name} in ${langName(lang)}`}
+          {reviewed
+            ? fill(t.titleReviewed, { team: reviewed.team.name, section: name, lang: langName(lang) })
+            : fill(t.titleRelease, { section: name, lang: langName(lang) })}
         </DialogTitle>
         <DialogDescription className="mt-1.5">
-          {pending.since ? (
-            <>Audio that went live since the {reviewed ? "team's last approved" : "last"} release started, on {date(pending.since)}. </>
-          ) : (
-            <>Nothing was released from {reviewed ? "this team" : "here"} yet, so this sends every live line. </>
-          )}
-          {reviewed
-            ? "The lines this version was built with, each playing the take it holds. Players get this version once you approve it."
-            : "Players get it on their next Manager refresh."}
+          {pending.since
+            ? fill(reviewed ? t.sinceTeam : t.sinceAny, { date: date(pending.since) })
+            : reviewed
+              ? t.nothingReleasedTeam
+              : t.nothingReleasedHere}{" "}
+          {reviewed ? t.reviewedLines : t.playersNext}
         </DialogDescription>
         {pending.count > 0 && (
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <Tile highlight value={pending.count.toLocaleString()} label="lines change for players" />
+            <Tile highlight value={pending.count.toLocaleString()} label={t.linesChange} />
             <Tile
               value={
                 <>
-                  {created.toLocaleString()} <small className="text-xs font-medium text-emerald-300">new</small>
+                  {created.toLocaleString()} <small className="text-xs font-medium text-emerald-300">{t.newWord}</small>
                   {pending.restored > 0 && (
                     <>
                       {" "}
-                      {pending.restored.toLocaleString()} <small className="text-xs font-medium text-sky-300">put back</small>
+                      {pending.restored.toLocaleString()} <small className="text-xs font-medium text-sky-300">{t.putBack}</small>
                     </>
                   )}
                 </>
               }
-              label={pending.restored > 0 ? "new takes and older versions restored" : "new takes"}
+              label={pending.restored > 0 ? t.newTakesRestored : t.newTakes}
             />
             <Tile
               value={
@@ -241,7 +248,7 @@ function Review({
                   ))}
                 </span>
               }
-              label={pending.people.map((person) => `${person.name ?? "unnamed"} ${person.count}`).join(" · ") || "nobody"}
+              label={pending.people.map((person) => `${person.name ?? t.unnamed} ${person.count}`).join(" · ") || t.nobody}
             />
           </div>
         )}
@@ -250,7 +257,7 @@ function Review({
       {pending.count > 0 ? (
         <div className="flex flex-wrap items-center gap-1.5 border-y px-5 py-2.5">
           <button type="button" className={chip(filter.kind === "all")} onClick={() => setFilter({ ...filter, kind: "all" })}>
-            All <b className="font-semibold">{pending.count}</b>
+            {t.all} <b className="font-semibold">{pending.count}</b>
           </button>
           <button type="button" className={chip(filter.kind === "new")} onClick={() => setFilter({ ...filter, kind: "new" })}>
             <Kind kind="new" /> <b className="font-semibold">{created}</b>
@@ -274,13 +281,13 @@ function Review({
                 onClick={() => setFilter({ ...filter, person: filter.person === person.id ? undefined : person.id })}
               >
                 <Avatar name={person.name} small />
-                {person.name ?? "unnamed"} <b className="font-semibold">{person.count}</b>
+                {person.name ?? t.unnamed} <b className="font-semibold">{person.count}</b>
               </button>
             ))}
           <Input
             type="search"
-            placeholder="Search title or text"
-            aria-label="Search the lines"
+            placeholder={t.searchTitleOrText}
+            aria-label={t.searchTheLines}
             value={filter.q}
             onChange={(event) => setFilter({ ...filter, q: event.target.value })}
             className="ml-auto h-8 w-52 max-w-full"
@@ -293,37 +300,32 @@ function Review({
       <div className="min-h-24 overflow-auto">
         {pending.textChanges > 0 && (
           <p className="text-muted-foreground border-b px-5 py-2.5 text-sm">
-            {pending.count > 0 ? "Also " : ""}
-            <span className="text-foreground font-medium">
-              {lines(pending.textChanges)}
-            </span>{" "}
-            changed in text, name or ignore with no new audio; their text goes out with the release.
+            {pending.count > 0 && t.also}
+            <span className="text-foreground font-medium">{lines(t, pending.textChanges)}</span>
+            {t.textChangedBefore}
           </p>
         )}
         {pending.count === 0 && pending.textChanges === 0 && (
-          <p className="text-muted-foreground px-5 py-6 text-sm">
-            Nothing counted since the last release. A release now finds out for itself whether anything else
-            changed, such as a line folded into another, and releases nothing otherwise.
-          </p>
+          <p className="text-muted-foreground px-5 py-6 text-sm">{t.nothingCounted}</p>
         )}
         {loaded && pending.count > 0 && shown.length === 0 && (
-          <p className="text-muted-foreground px-5 py-6 text-sm">No line matches.</p>
+          <p className="text-muted-foreground px-5 py-6 text-sm">{t.noLineMatches}</p>
         )}
         {groups.map((group, index) => (
           <section key={`${group.title}:${index}`}>
             <h3 className="bg-muted/60 sticky top-0 z-[1] flex justify-between border-b px-5 py-1.5 text-xs font-semibold">
               {group.title}
-              <span className="text-muted-foreground font-normal">{lines(group.changes.length)}</span>
+              <span className="text-muted-foreground font-normal">{lines(t, group.changes.length)}</span>
             </h3>
             {group.changes.map((change) => {
               const key = `${change.file}:${change.version}`;
-              const moment = momentOf(change);
+              const moment = momentOf(t, change);
               return (
                 <div key={`${key}:${change.kind}`} className="hover:bg-muted/20 grid grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-3 border-b px-5 py-2.5">
                   <button
                     type="button"
                     onClick={() => play(change)}
-                    aria-label={playing === key ? "Pause" : `Play ${change.title ?? change.file}`}
+                    aria-label={playing === key ? t.pause : fill(t.play, { what: change.title ?? change.file })}
                     className={cn(
                       "bg-muted grid size-7 place-items-center rounded-full border",
                       playing === key ? "border-primary text-primary-ink" : "hover:border-primary hover:text-primary-ink",
@@ -338,9 +340,8 @@ function Review({
                     <p className="text-muted-foreground text-xs">
                       {[moment, `v${change.version}`].filter(Boolean).join(" · ")}
                       {reviewed && change.current != null && (
-                        <span className="text-amber-300" title="The team recut this line after the version was built; this version keeps the take it was built with.">
-                          {" "}
-                          · v{change.current} live now
+                        <span className="text-amber-300" title={t.recutTitle}>
+                          {fill(t.liveNow, { version: change.current })}
                         </span>
                       )}
                     </p>
@@ -360,12 +361,15 @@ function Review({
         ))}
         {!loaded && pending.count > 0 && (
           <p className="text-muted-foreground px-5 py-6 text-sm">
-            {failed ? "The lines did not load; the counts above still hold." : "Loading the lines…"}
+            {failed ? t.loadFailed : t.loadingLines}
           </p>
         )}
         {loaded && pending.count > pending.changes.length && (
           <p className="text-muted-foreground px-5 py-3 text-xs">
-            Showing the newest {pending.changes.length.toLocaleString()} of {lines(pending.count)}; all of them go out.
+            {fill(t.showingNewest, {
+              shown: pending.changes.length.toLocaleString(),
+              total: lines(t, pending.count),
+            })}
           </p>
         )}
       </div>
@@ -377,15 +381,19 @@ function Review({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
             <span
               className="text-muted-foreground flex-1 text-sm"
-              title={next ? "From the last release made here; the release bumps what players have, which may be newer." : undefined}
+              title={next ? t.versionHint : undefined}
             >
-              Version{" "}
+              {t.versionLabel}
               <span className="text-foreground font-mono">
-                {next ? `about ${version} → ${next}` : bumpable ? "set by the pack's first release" : "chosen by the release workflow"}
+                {next
+                  ? fill(t.versionAbout, { from: String(version), to: next })
+                  : bumpable
+                    ? t.versionFirstRelease
+                    : t.versionWorkflow}
               </span>
             </span>
             {bumpable && (
-              <div role="group" aria-label="Version bump" className="flex overflow-hidden rounded-md border text-sm">
+              <div role="group" aria-label={t.versionBump} className="flex overflow-hidden rounded-md border text-sm">
                 {RELEASE_BUMPS.map((option) => (
                   <button
                     key={option}
@@ -397,24 +405,23 @@ function Review({
                       bump === option ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
                     )}
                   >
-                    {option}
+                    {t.bumps[option]}
                   </button>
                 ))}
               </div>
             )}
             <Button variant="ghost" onClick={onCancel}>
-              Cancel
+              {words.common.cancel}
             </Button>
             <Button onClick={() => onRelease(bump)}>
               {pending.count + pending.textChanges > 0
-                ? `Release ${lines(pending.count + pending.textChanges)}`
-                : "Release anyway"}
+                ? fill(pending.count + pending.textChanges === 1 ? t.releaseOne : t.releaseMany, {
+                    n: (pending.count + pending.textChanges).toLocaleString(),
+                  })
+                : t.releaseAnyway}
             </Button>
           </div>
-          <p className="text-muted-foreground px-5 pb-2.5 text-xs">
-            Counted from the live takes. The release compares the built pack with what players have, so its own numbers
-            can differ slightly.
-          </p>
+          <p className="text-muted-foreground px-5 pb-2.5 text-xs">{t.countedNote}</p>
         </footer>
       )}
     </DialogContent>
@@ -433,6 +440,7 @@ function Tile({ value, label, highlight }: { value: React.ReactNode; label: stri
 }
 
 function Kind({ kind }: { kind: PendingChange["kind"] }) {
+  const t = useUiText().releases;
   return (
     <span
       className={cn(
@@ -440,7 +448,7 @@ function Kind({ kind }: { kind: PendingChange["kind"] }) {
         kind === "new" ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300" : "border-sky-400/30 bg-sky-400/10 text-sky-300",
       )}
     >
-      {kind === "new" ? "new" : "put back"}
+      {kind === "new" ? t.newWord : t.putBack}
     </span>
   );
 }

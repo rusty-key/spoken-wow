@@ -6,9 +6,10 @@ import TeamRequestForm from "@/components/TeamRequestForm";
 import TeamRequestList from "@/components/TeamRequestList";
 import { Contained } from "@/components/Width";
 import { languageOptions, localeHref } from "@/lib/lang";
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
 import { currentSession } from "@/lib/session";
 import { listRequests } from "@/lib/teams/requests";
+import { uiText } from "@/lib/ui-text";
 
 export const metadata: Metadata = { title: "Request a team · Spoken" };
 
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
 /** Signed-out visitors are sent to sign in. */
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);
+  const words = await uiText(await readingLang(lang));
   const session = await currentSession();
   if (!session) redirect(localeHref(lang, "/login"));
 
@@ -26,10 +28,13 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   return (
     <main className="pt-6 pb-36">
       <Contained>
-        <h1 className="text-xl font-semibold">Start a team for a language</h1>
+        <h1 className="text-xl font-semibold">{words.profile.startTeam}</h1>
         <p className="text-muted-foreground mt-2 mb-8 max-w-xl text-sm">
-          A team looks after a language&apos;s text, voices and takes. A site admin approves each
-          request. <Link href="/profile" className="text-foreground underline underline-offset-2">Back to your profile</Link>.
+          {words.packs.requestLedeBefore}
+          <Link href="/profile" className="text-foreground underline underline-offset-2">
+            {words.packs.backToProfile}
+          </Link>
+          {words.packs.requestLedeAfter}
         </p>
         <div className="flex flex-col gap-10">
           <TeamRequestList initial={requests} />

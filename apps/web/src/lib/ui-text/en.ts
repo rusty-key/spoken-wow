@@ -444,6 +444,68 @@ export const EN = {
         note: "Why this wording? (optional, kept with the version)",
         versions: "{n} versions",
       },
+      /** What a team's audio says for a place, readable or boss line, in place of its text. */
+      teamOverride: {
+        title: "What should your team say?",
+        body:
+          "Your team's audio speaks this instead of the original. The text shown on the site and in game, and every name, stay the original, and other teams keep hearing it.",
+        ours: "What your team says",
+        original: "The original says",
+        remove: "Remove",
+        removeTitle: "Go back to the original",
+      },
+      /** The confirmation before a batch of lines is generated, and its estimate. */
+      regenerate: {
+        title: "Regenerate {what}?",
+        body: "This replaces audio that already exists. Every take is kept, so it can be undone line by line.",
+        lines: "Lines",
+        files: "Audio files",
+        characters: "Characters",
+        estimatedCost: "Estimated cost",
+        remaining: "Remaining",
+        pinned: "Pinned to fish.audio, {n} {what}",
+        fileOne: "file",
+        fileMany: "files",
+        unknown: "unknown",
+        upTo: "up to {amount}",
+        about: "~{amount}",
+        credits: "{n} credits",
+        thisModel: "this model",
+        /** Why some matched lines are not jobs of their own. */
+        reasons: {
+          noVoice: "no voice",
+          untranslated: "not translated",
+          invalidChars: "unspeakable characters ($, < or >)",
+          sharedFile: "same audio file as another line, generated once",
+        },
+        skipped: "{n} of {all} matching {what} skipped:",
+        skippedAll: "{n} matching {what} skipped:",
+        lineOne: "line",
+        lineMany: "lines",
+        takeOne: "take",
+        takeMany: "takes",
+        unknownPrice:
+          "fish.audio publishes no price for {model}, so there is nothing to estimate from. The cost of each line is recorded as it runs.",
+        fishListPrice:
+          "Nothing has been generated with {model} in this language yet, so this is fish.audio's list price at the widest this script's characters can be: an upper bound.",
+        fishCalibrated:
+          "Calibrated from the last {n} fish.audio {takes} in this language. The cost of each line is recorded as it runs.",
+        creditsListPrice:
+          "Nothing has been generated with {model} yet, so this is the list rate: an upper bound. ElevenLabs bills a rate set by your plan, and the exact figure is reported after each line.",
+        creditsCalibrated:
+          "Calibrated from the last {n} {takes} on this account at {rate} credits per character. The exact cost is reported as it runs.",
+        overBudgetFish:
+          "This is more than the fish.audio balance holds. It will run until the balance runs out and then stop, keeping whatever it finished.",
+        overBudgetCredits:
+          "This is more than the plan has left. It will run until the credits are gone and then stop, keeping whatever it finished.",
+        resets: "Balance resets {date}.",
+        waiting: "Counting what this would regenerate…",
+        waitingFailed: "Could not work out what this would regenerate.",
+        submit: "Regenerate {n} {what}",
+        submitShort: "Regenerate",
+        close: "Close",
+        cancel: "Cancel",
+      },
     },
     /** An English stand-in for text with no translation yet. */
     untranslated: {
@@ -543,6 +605,8 @@ export const EN = {
     /** An override saved over an original that has since changed. */
     drift: {
       changed: "original changed since your override",
+      /** The same, standing on its own as a sentence. */
+      changedLine: "The original changed since your override.",
       keep: "Keep",
       drop: "Drop",
       failed: "That didn't go through, try again.",
@@ -1373,6 +1437,19 @@ export const EN = {
     searchUsers: "Search users",
     close: "Close",
     cancel: "Cancel",
+    /** The transport bar both explorers play through, whatever they are playing. */
+    play: "Play",
+    pause: "Pause",
+    mute: "Mute",
+    unmute: "Unmute",
+    volume: "Volume",
+    seek: "Seek",
+    playbackSpeed: "Playback speed",
+    nothingPlaying: "Nothing playing",
+    audioMissing: "Its audio is not on the server.",
+    pickLine: "Pick a line to hear it.",
+    downloadThisLine: "Download this line",
+    downloadNamed: "Download {name}",
   },
   /** The pronunciation page: the lexicon table and the phoneme rules it uploads. */
   lexicon: {
@@ -1474,6 +1551,18 @@ export const EN = {
       deleteFor: "Delete {name}",
       readBy: "Read by",
       nothing: "Nothing matches.",
+      /** The filter, its two answers, and the table's other headings. */
+      voiced: "voice",
+      hasVoice: "has a voice",
+      hasNoVoice: "has no voice",
+      type: "Type",
+      gender: "Gender",
+      flavor: "Flavor",
+      add: "Add",
+      addType: "type",
+      addFlavor: "flavor",
+      inherited: "as {voice}",
+      makeVoice: "New voice: {name}",
     },
   },
   /** The lines players heard in silence, most players first. */
@@ -1526,6 +1615,17 @@ export const EN = {
   packs: {
     myPacks: "My packs",
     none: "No packs yet",
+    /** The request-a-team page, which hands out no packs but shares this page's words. */
+    requestLedeBefore:
+      "A team looks after a language's text, voices and takes. A site admin approves each request. ",
+    requestLedeAfter: ".",
+    backToProfile: "Back to your profile",
+    /** An admin's list of every community pack. */
+    allPacks: "All packs",
+    allLede:
+      "An unlisted pack leaves the Manager's list and keeps its versions, so listing it again brings back the live one. The owner is the account that may submit its next version.",
+    adminLede:
+      "Voice packs that authors host on their own GitHub releases. Nothing reaches the Spoken Manager until you approve it, and each new version waits for you again.",
     guide: "community pack guide",
     /** The empty state, split around the guide link. */
     emptyBefore:
@@ -1957,6 +2057,51 @@ export const EN = {
   },
   reports: {
     title: "Reports",
+    /** Where the game's Report button sends a player: one page per section, and no editor. */
+    landing: {
+      questsTitle: "Report a voice line",
+      arrived: "You came here from the game. Tell us what sounded wrong and someone will listen to it.",
+      unknownAddress: "That address is not one this site understands, but you can still tell us about it.",
+      noRecording: "This line has no recording in this language yet.",
+      pickOther: "Not this one? Pick the line that sounded wrong.",
+      whichLine: "This character has more than one line. Which one sounded wrong?",
+      nothingMatches:
+        "Nothing in the corpus matches that address. File the report anyway: an address that resolves to nothing is worth knowing about.",
+      /** Tooltip over a team's override, which plays while the live take speaks it. */
+      overrideTitle: "What the narration says",
+      bosses: {
+        description: "Report a problem with the story or narration for {name}.",
+        inInstance: "In {instance}",
+        noNarration: "This story has no narration yet.",
+        lede: "A wrong story, a mispronunciation, or narration that does not play. Nothing is required but the description.",
+        browse: "Browse every boss in {instance}",
+        /** Split around the site named, which stays a link. */
+        sourceBefore: "Story drawn in part from ",
+        sourceAfter: " (CC BY-SA 4.0)",
+      },
+      places: {
+        description: "Report a problem with the lore or narration for {name}.",
+        inZone: "In {zone}",
+        zoneLore: "Zone lore",
+        noNarration: "This line has no narration yet.",
+        noLore: "There is no lore written for this place yet.",
+        lede: "Wrong lore, a mispronunciation, or narration that does not play. Nothing is required but the description.",
+        browse: "Browse every line in {zone}",
+        loreBefore: "Lore from ",
+        loreAfter: " (CC BY-SA 4.0)",
+      },
+      readables: {
+        description: "Report a problem with the text or narration of {title}.",
+        onePage: "One page",
+        pageOf: "Page {page} of {count}",
+        noNarration: "This page has no narration yet.",
+        notNarrated: "This page is not narrated: {reason}.",
+        nothingToRead: "there is nothing to read",
+        lede: "A bad reading, a mispronounced name, or narration that does not match the page. Nothing is required but the description.",
+        browse: "Browse every page of {title}",
+        textNote: "Text from the game, extracted from the world database.",
+      },
+    },
     tooManyReports: "That is a lot of reports in a short time. Try again in a few minutes.",
     notAccepted: "The report was not accepted. Check the category and try again.",
     sending: "Sending…",
@@ -2232,6 +2377,133 @@ export const EN = {
     releasingNow: "Releasing now. You can leave this page.",
     startsByItself: "It starts by itself. You can leave this page.",
     progress: "Release progress",
+  },
+  /** The release screens: what goes out, what waits for a site owner, and a run's own output. */
+  releases: {
+    /** A count of audio lines, as its number asks. */
+    lineOne: "{n} line",
+    lineMany: "{n} lines",
+    /** The moment a quest's line id names, its last part being one of these. */
+    momentAccept: "Accept",
+    momentProgress: "Progress",
+    momentComplete: "Complete",
+    gossip: "Gossip",
+    withoutText: "Without text yet",
+    /** A team's staged version, as a site owner reads it; and a review before a release. */
+    titleReviewed: "{team}: {section} in {lang}",
+    titleRelease: "Release {section} in {lang}",
+    sinceTeam: "Audio that went live since the team's last approved release started, on {date}.",
+    sinceAny: "Audio that went live since the last release started, on {date}.",
+    nothingReleasedTeam: "Nothing was released from this team yet, so this sends every live line.",
+    nothingReleasedHere: "Nothing was released from here yet, so this sends every live line.",
+    reviewedLines:
+      "The lines this version was built with, each playing the take it holds. Players get this version once you approve it.",
+    playersNext: "Players get it on their next Manager refresh.",
+    linesChange: "lines change for players",
+    newWord: "new",
+    putBack: "put back",
+    newTakes: "new takes",
+    newTakesRestored: "new takes and older versions restored",
+    unnamed: "unnamed",
+    nobody: "nobody",
+    all: "All",
+    searchTitleOrText: "Search title or text",
+    searchTheLines: "Search the lines",
+    also: "Also ",
+    textChangedBefore: " changed in text, name or ignore with no new audio; their text goes out with the release.",
+    nothingCounted:
+      "Nothing counted since the last release. A release now finds out for itself whether anything else changed, such as a line folded into another, and releases nothing otherwise.",
+    noLineMatches: "No line matches.",
+    pause: "Pause",
+    play: "Play {what}",
+    recutTitle: "The team recut this line after the version was built; this version keeps the take it was built with.",
+    liveNow: " · v{version} live now",
+    loadFailed: "The lines did not load; the counts above still hold.",
+    loadingLines: "Loading the lines…",
+    showingNewest: "Showing the newest {shown} of {total}; all of them go out.",
+    versionHint: "From the last release made here; the release bumps what players have, which may be newer.",
+    versionLabel: "Version ",
+    versionAbout: "about {from} → {to}",
+    versionFirstRelease: "set by the pack's first release",
+    versionWorkflow: "chosen by the release workflow",
+    versionBump: "Version bump",
+    /** The three kinds of version bump the workflow offers. */
+    bumps: {
+      major: "Major",
+      minor: "Minor",
+      patch: "Patch",
+    },
+    releaseOne: "Release {n} line",
+    releaseMany: "Release {n} lines",
+    releaseAnyway: "Release anyway",
+    countedNote:
+      "Counted from the live takes. The release compares the built pack with what players have, so its own numbers can differ slightly.",
+    /** A team's version waiting for a site owner to approve or reject it. */
+    teamSectionInLang: "{team}'s {section} in {lang}",
+    sectionInLang: "{section} in {lang}",
+    waitingForReview: "Waiting for review",
+    nothingWaiting: "Nothing waiting.",
+    couldNotReach: "Could not reach the server.",
+    wentWrong: "Something went wrong.",
+    approved: "Approved {name}.",
+    didNotApprove: "Did not approve {name}.",
+    approvedDetail: "It is listed once its turn comes; the team gets an email then.",
+    didNotApproveDetail: "The team gets an email with your reason.",
+    couldNotApprove: "Could not approve {name}.",
+    couldNotReject: "Could not reject {name}.",
+    whyNotApproved: "Why it is not approved",
+    reasonHelp: "The team sees this on its release page and gets it by email, so say what to fix.",
+    rejecting: "Rejecting…",
+    reject: "Reject",
+    rejectMore: "Reject…",
+    approve: "Approve",
+    approving: "Approving…",
+    beingListed: "Being listed…",
+    pressedByBefore: "Pressed by ",
+    pressedByAfter: " on ",
+    someoneUnnamed: "someone unnamed",
+    noneSinceApproved: "No line counted since the team's last approved release.",
+    newOrChangedSince: " new or changed since {date}",
+    firstRelease: " · the team's first release",
+    textChanges: " · {n} text changes",
+    byPeople: " · by {people}",
+    readAndListen: "Read and listen",
+    openInExplorer: "Open in the explorer",
+    /** The packs of teams that are not official, which players have and a site owner may delist. */
+    teamPacksTitle: "Team packs on the channel",
+    teamPacksLede:
+      "A delisted pack leaves the Manager and keeps its files. The team sees it was delisted, and its next approved release lists it again. An official team's packs are not listed here.",
+    noTeamPack: "No team pack is listed.",
+    delisting: "Delisting {name}.",
+    delistGoes: "It leaves the channel once its turn comes.",
+    couldNotDelist: "Could not delist {name}.",
+    delistingNow: "Delisting…",
+    delistIt: "Delist it",
+    keepIt: "Keep it",
+    delistMore: "Delist…",
+    sectionBeside: "· {section} in {lang}",
+    sinceDate: "since {date}",
+    /** A release run's log: its steps, its lines, and how it ended. */
+    viewLog: "View log",
+    started: "Started {date}",
+    byWho: " by {who}",
+    finishedTook: " · finished {finished} · took {took}",
+    seconds: "{n} s",
+    minutesSeconds: "{m} min {s} s",
+    copy: "Copy",
+    copied: "Copied",
+    steps: "Steps",
+    cutOff: "Earlier output is cut off: the site keeps the last 8 KB of each run.",
+    noErrors: "No errors in this output.",
+    nothingWritten: "Nothing written yet.",
+    followNewLines: "Follow new lines",
+    errorsOnly: "Errors only",
+    errorsOnlyCount: "Errors only ({n})",
+    releasedVersion: "Released {version}",
+    released: "Released",
+    failed: "Failed",
+    nothingChanged: "Nothing changed",
+    running: "Running",
   },
   /** Comparing a player's correction with what the corpus says. */
   corrections: {

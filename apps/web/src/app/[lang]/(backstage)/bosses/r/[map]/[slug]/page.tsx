@@ -1,4 +1,4 @@
-import { pageLang } from "@/lib/lang-server";
+import { pageLang, readingLang } from "@/lib/lang-server";
 import { withLang } from "@/lib/lang";
 import type { Metadata } from "next";
 import Link from "@/components/LocaleLink";
@@ -10,6 +10,8 @@ import { audioRelPath } from "@/lib/bosses/audio";
 import { loadContext, teamLineByPath } from "@/lib/bosses/catalogue";
 import { bossesHref } from "@/lib/links";
 import { Contained } from "@/components/Width";
+import { fill } from "@/lib/site-text/format";
+import { uiText } from "@/lib/ui-text";
 
 /**
  * One boss's story, and the form to complain about it. A player arriving from the game wants
@@ -26,6 +28,10 @@ async function resolve(params: Promise<Params>) {
   return teamLineByPath(Number(map), slug, lang);
 }
 
+async function words(params: Promise<Params>) {
+  return (await uiText(await readingLang(await pageLang(params)))).reports.landing;
+}
+
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
@@ -35,14 +41,18 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const entry = await resolve(params);
   if (!entry) return {};
+  const t = await words(params);
   return {
     title: `${entry.name} · Spoken`,
-    description: `Report a problem with the story or narration for ${entry.name}.`,
+    description: fill(t.bosses.description, { name: entry.name }),
   };
 }
 
 export default async function Page({ params }: { params: Promise<Params> }) {
   const lang = await pageLang(params);
+  const dictionary = await uiText(await readingLang(lang));
+  const t = dictionary.reports.landing;
+  const row = dictionary.catalogue.row;
   const entry = await resolve(params);
   if (!entry) notFound();
 
@@ -55,7 +65,7 @@ export default async function Page({ params }: { params: Promise<Params> }) {
       <Contained>
         <article className="max-w-2xl">
           <h1 className="text-xl font-semibold">{entry.name}</h1>
-          <p className="text-muted-foreground mt-1 text-sm">In {entry.instanceName}</p>
+          <p className="text-muted-foreground mt-1 text-sm">{fill(t.bosses.inInstance, { instance: entry.instanceName })}</p>
 
           {take ? <ListenFirst className="mt-4" /> : null}
 
@@ -69,7 +79,7 @@ export default async function Page({ params }: { params: Promise<Params> }) {
               src={withLang(lang, `/api/bosses/audio/${audioRelPath(entry.file)}?v=${take.version}`)}
             />
           ) : (
-            <p className="text-muted-foreground mt-4 text-sm">This story has no narration yet.</p>
+            <p className="text-muted-foreground mt-4 text-sm">{t.bosses.noNarration}</p>
           )}
 
           {entry.text ? (
@@ -78,31 +88,30 @@ export default async function Page({ params }: { params: Promise<Params> }) {
               {/* Under the original, which is what the game shows, and only while the live take speaks it:
                   until then the override is the team's work in progress and the narration says the original. */}
               {entry.override && take?.textHash === entry.hash && (
-                <p className="mt-2 border-l-2 border-sky-400/60 pl-2 whitespace-pre-line" title="What the narration says">
+                <p className="mt-2 border-l-2 border-sky-400/60 pl-2 whitespace-pre-line" title={t.overrideTitle}>
                   {entry.override.text}
                 </p>
               )}
             </>
           ) : (
-            <p className="text-muted-foreground mt-5 italic">No story in this language yet.</p>
+            <p className="text-muted-foreground mt-5 italic">{row.noStory}</p>
           )}
 
           <section className="bg-muted mt-8 rounded-lg border p-4">
-            <h2 className="font-medium">Report a problem</h2>
-            <p className="text-muted-foreground mt-1 mb-3 text-xs">
-              A wrong story, a mispronunciation, or narration that does not play. Nothing is
-              required but the description.
-            </p>
+            <h2 className="font-medium">{row.report}</h2>
+            <p className="text-muted-foreground mt-1 mb-3 text-xs">{t.bosses.lede}</p>
             <ReportForm source="bosses" target={entry.file} lineId={entry.id} fromGame />
           </section>
 
           <footer className="text-muted-foreground mt-8 text-sm">
             <Link href={bossesHref({ mapID: entry.map })} className="hover:text-foreground">
-              Browse every boss in {entry.instanceName}
+              {fill(t.bosses.browse, { instance: entry.instanceName })}
             </Link>
             {entry.source ? (
               <p className="mt-2 text-xs">
-                Story drawn in part from <a href={entry.source}>warcraft.wiki.gg</a> (CC BY-SA 4.0)
+                {t.bosses.sourceBefore}
+                <a href={entry.source}>warcraft.wiki.gg</a>
+                {t.bosses.sourceAfter}
               </p>
             ) : null}
           </footer>

@@ -5,12 +5,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { useUiText } from "@/components/UiTextProvider";
 import { useLocalDates } from "@/components/useLocalDates";
 import { langName } from "@/lib/lang";
 import { parseLog, type LogLine, type Tone } from "@/lib/releases/log";
 import { isSettled, type RunView } from "@/lib/releases/sections";
-import { SOURCE_LABELS } from "@/lib/reports/reports";
+import { fill } from "@/lib/site-text/format";
+import type { UiText } from "@/lib/ui-text/en";
 import { cn } from "@/lib/utils";
+
+type Words = UiText["releases"];
 
 const TONES: Record<Tone, string> = {
   plain: "",
@@ -24,9 +28,11 @@ const TONES: Record<Tone, string> = {
 
 const CLOCK: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
 
-function minutes(from: string, to: string): string {
+function minutes(words: Words, from: string, to: string): string {
   const seconds = Math.max(0, Math.round((Date.parse(to) - Date.parse(from)) / 1000));
-  return seconds < 60 ? `${seconds} s` : `${Math.floor(seconds / 60)} min ${seconds % 60} s`;
+  return seconds < 60
+    ? fill(words.seconds, { n: seconds })
+    : fill(words.minutesSeconds, { m: Math.floor(seconds / 60), s: seconds % 60 });
 }
 
 /**
@@ -35,13 +41,14 @@ function minutes(from: string, to: string): string {
  * the new lines unless the reader turned that off or scrolled up to read.
  */
 export default function ReleaseLog({ run }: { run: RunView }) {
+  const t = useUiText().releases;
   const [open, setOpen] = useState(false);
   if (!run.log) return null;
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Button variant="ghost" size="sm" className="text-muted-foreground -ml-2" onClick={() => setOpen(true)}>
         <ScrollText className="size-4" aria-hidden />
-        View log
+        {t.viewLog}
       </Button>
       {open && <LogDialog run={run} />}
     </Dialog>
@@ -50,6 +57,8 @@ export default function ReleaseLog({ run }: { run: RunView }) {
 
 function LogDialog({ run }: { run: RunView }) {
   const date = useLocalDates();
+  const words = useUiText();
+  const t = words.releases;
   const lines = useMemo(() => parseLog(run.log ?? ""), [run.log]);
   const steps = lines.filter((line) => line.step);
   const cut = run.logCut;
@@ -66,7 +75,7 @@ function LogDialog({ run }: { run: RunView }) {
     // On the text, not the line count: once the kept tail is full it slides at the same length.
   }, [follow, run.log]);
 
-  const section = SOURCE_LABELS[run.section];
+  const section = words.menu.sectionsNav[run.section];
   const text = run.log ?? "";
 
   function jump(no: number) {
@@ -104,16 +113,18 @@ function LogDialog({ run }: { run: RunView }) {
       <header className="flex flex-wrap items-start gap-x-4 gap-y-2 border-b pt-4 pr-12 pb-3 pl-5">
         <div className="min-w-0 flex-1">
           <DialogTitle className="flex flex-wrap items-center gap-2.5 text-base">
-            {section} in {langName(run.lang)}
+            {fill(t.sectionInLang, { section, lang: langName(run.lang) })}
             <StatePill run={run} />
           </DialogTitle>
           <DialogDescription className="mt-1.5 tabular-nums">
-            {run.startedAt && <>Started {date(run.startedAt, CLOCK)}</>}
-            {run.by && <> by {run.by}</>}
+            {run.startedAt && fill(t.started, { date: date(run.startedAt, CLOCK) })}
+            {run.by && fill(t.byWho, { who: run.by })}
             {run.startedAt && run.finishedAt && (
               <>
-                {" "}
-                · finished {date(run.finishedAt, CLOCK)} · took {minutes(run.startedAt, run.finishedAt)}
+                {fill(t.finishedTook, {
+                  finished: date(run.finishedAt, CLOCK),
+                  took: minutes(t, run.startedAt, run.finishedAt),
+                })}
               </>
             )}
           </DialogDescription>
@@ -121,7 +132,7 @@ function LogDialog({ run }: { run: RunView }) {
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" onClick={() => void copy()}>
             {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
-            {copied ? "Copied" : "Copy"}
+            {copied ? t.copied : t.copy}
           </Button>
           <Button variant="ghost" size="sm" onClick={download}>
             <Download className="size-4" aria-hidden />
@@ -131,7 +142,7 @@ function LogDialog({ run }: { run: RunView }) {
       </header>
 
       {steps.length > 0 ? (
-        <nav aria-label="Steps" className="flex items-center gap-1 overflow-x-auto border-b px-4 py-2">
+        <nav aria-label={t.steps} className="flex items-center gap-1 overflow-x-auto border-b px-4 py-2">
           {steps.map((line, index) => {
             const last = index === steps.length - 1;
             const state = !last ? "done" : settled ? (run.state === "failed" ? "failed" : "done") : "current";
@@ -169,13 +180,11 @@ function LogDialog({ run }: { run: RunView }) {
         className="min-h-48 overflow-auto bg-[oklch(0.115_0.004_260)] py-2 font-mono text-[12.5px] leading-[1.7]"
       >
         {cut && !errorsOnly && (
-          <p className="text-muted-foreground px-4 pb-1 font-sans text-xs">
-            Earlier output is cut off: the site keeps the last 8 KB of each run.
-          </p>
+          <p className="text-muted-foreground px-4 pb-1 font-sans text-xs">{t.cutOff}</p>
         )}
         {shown.length === 0 && (
           <p className="text-muted-foreground px-4 py-2 font-sans text-sm">
-            {errorsOnly ? "No errors in this output." : "Nothing written yet."}
+            {errorsOnly ? t.noErrors : t.nothingWritten}
           </p>
         )}
         {shown.map((line) => (
@@ -192,7 +201,7 @@ function LogDialog({ run }: { run: RunView }) {
               onChange={(event) => setFollow(event.target.checked)}
               className="accent-primary size-3.5"
             />
-            Follow new lines
+            {t.followNewLines}
           </label>
         )}
         <span className="flex-1" />
@@ -204,10 +213,10 @@ function LogDialog({ run }: { run: RunView }) {
           onClick={() => setErrorsOnly((on) => !on)}
           className={cn(errorsOnly && "bg-muted text-foreground")}
         >
-          Errors only{errors.length > 0 && ` (${errors.length})`}
+          {errors.length > 0 ? fill(t.errorsOnlyCount, { n: errors.length }) : t.errorsOnly}
         </Button>
         <span className="tabular-nums">
-          {lines.length} {lines.length === 1 ? "line" : "lines"}
+          {fill(lines.length === 1 ? t.lineOne : t.lineMany, { n: lines.length.toLocaleString() })}
         </span>
       </footer>
     </DialogContent>
@@ -262,13 +271,14 @@ function StepMark({ state, at }: { state: "done" | "current" | "failed"; at: num
 }
 
 function StatePill({ run }: { run: RunView }) {
+  const t = useUiText().releases;
   const [label, tone] =
     run.state === "done"
-      ? [run.version ? `Released ${run.version}` : "Released", "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"]
+      ? [run.version ? fill(t.releasedVersion, { version: run.version }) : t.released, "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"]
       : run.state === "failed"
-        ? ["Failed", "border-destructive/30 bg-destructive/10 text-destructive"]
+        ? [t.failed, "border-destructive/30 bg-destructive/10 text-destructive"]
         : run.state === "unchanged"
-          ? ["Nothing changed", "bg-muted text-muted-foreground"]
-          : ["Running", "border-primary/35 bg-primary/10 text-primary-ink"];
+          ? [t.nothingChanged, "bg-muted text-muted-foreground"]
+          : [t.running, "border-primary/35 bg-primary/10 text-primary-ink"];
   return <span className={cn("rounded-full border px-2 py-px text-xs font-medium", tone)}>{label}</span>;
 }
