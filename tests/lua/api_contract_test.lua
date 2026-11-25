@@ -64,8 +64,8 @@ do
 end
 
 ---------------------------------------------------------------- every documented method exists
--- Public and Module alike: a module of Spoken's calls these, and one lost in a refactor
--- fails only in the game.
+-- Module tier, and Public names listed before the tiers: a module of Spoken's calls these, and
+-- one lost in a refactor fails only in the game.
 local METHODS = {
     -- sources
     "RegisterSource", "GetSource", "IterateSources",
@@ -108,10 +108,10 @@ local METHODS = {
     -- the controls the modules' windows draw
     "PlayState", "Previous", "CanPrevious", "CreateRoundButton", "DressBoxButton",
     -- the parts' switches and pages
-    "IsPartOn", "SetPartOn", "PartStatus", "PartVoice", "AddSettingsPage", "ShowsNarratorFor",
+    "SetPartOn", "PartStatus", "PartVoice", "AddSettingsPage", "ShowsNarratorFor",
     -- text packs and interface packs
-    "RegisterText", "TextIn", "TextSection", "TextLanguage", "TextLanguageChoice", "SetTextLanguage",
-    "RegisterInterfaceStrings", "ApplyInterfaceStrings", "InterfaceIn", "InterfaceLanguage", "InterfaceBase",
+    "TextIn", "TextSection", "TextLanguage", "TextLanguageChoice", "SetTextLanguage",
+    "ApplyInterfaceStrings", "InterfaceIn", "InterfaceLanguage", "InterfaceBase",
     "DeclareLanguage", "Language", "KnownLanguages", "InstalledLanguages", "BuiltinLanguages",
     -- captions marked in another window
     "WordMarks",
