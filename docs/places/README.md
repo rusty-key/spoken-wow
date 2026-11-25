@@ -33,7 +33,7 @@ The notes for the module itself are in `docs/spoken/CHANGELOG.md`, because it ve
 | Folder | What it is |
 | --- | --- |
 | `addons/Spoken_Places` | The module: stories, lookup code, the map panel, the Places tab, settings page. |
-| `addons/SpokenPlacesAudio` | The English voice pack. The repository holds `Data/Sounds.lua` (the clip lookup) and the `.toc`; the Ogg clips in `Sounds/` are gitignored and assembled from the site's takes. |
+| `addons/SpokenPlacesAudio` | The English voice pack. The repository holds the `.toc`; the clip lookup `Data/Sounds.lua` and the Ogg clips in `Sounds/` are gitignored and built from the site's takes. |
 | `SpokenPlacesAudio_<locale>` | One pack per other language. Built into `build/places/<locale>`, never committed. |
 
 The addon still reads the packs that were published as `ZoneLoreAudio` and `ZoneLoreAudio64`

@@ -61,5 +61,5 @@ is skipped. Otherwise Spoken would read the player's own post aloud.
 
 `make readables-full-release` chains sync, pull-live and package-audio, then asks once before
 uploading. `package-audio` runs `check-synced`, `sounds` and `lookup` itself.
-`addons/SpokenReadablesAudio/Data/Sounds.lua` is regenerated locally and committed. The site no
-longer writes it.
+`addons/SpokenReadablesAudio/Data/Sounds.lua` is build output, written by `make readables-lookup`
+before every build and never committed.

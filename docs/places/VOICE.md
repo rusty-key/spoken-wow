@@ -96,8 +96,8 @@ Every pack ships one quality: Ogg Vorbis (`ogg-q0-44k`), as the quests packs do.
 each take when it is committed. `make places-pull-live` fetches those Oggs into a cache keyed by
 each master's hash, and `make places-sounds` encodes only the takes the cache lacks. A Manager
 release points at the site's Oggs directly. The English pack is
-`addons/SpokenPlacesAudio`: its `.toc` and `Data/Sounds.lua` are committed and its `Sounds/` folder
-is not. `ZoneLoreAudio64`, a 64 kbps tier, is retired and never uploaded to again.
+`addons/SpokenPlacesAudio`: its `.toc` is committed, and its `Data/Sounds.lua` and `Sounds/` are
+build output (`make places-lookup`, `make places-sounds`). `ZoneLoreAudio64`, a 64 kbps tier, is retired and never uploaded to again.
 
 ## Building and releasing a pack
 

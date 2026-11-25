@@ -445,9 +445,10 @@ do
 end
 
 ---------------------------------------------------------------- the pack this repo ships
--- The shipped Data/Sounds.lua, loaded for real. Everything above uses hand-built tables, so
--- nothing until here notices if the generator writes a registry name the addon does not read
--- -- which is exactly what a rename does, and the generator is the half that moves.
+-- A Data/Sounds.lua as the generator writes it (tests/fixtures/places/Sounds.lua, which
+-- build-lookup.test.mjs holds to the generator), loaded for real. Everything above uses
+-- hand-built tables, so nothing until here notices if the generator writes a registry name the
+-- addon does not read -- which is exactly what a rename does, and the generator is the half that moves.
 local PACK_FOLDER = "SpokenPlacesAudio"
 local packSaved = { _G.SpokenPlacesAudioPacks, _G.ZoneLoreAudioPacks, _G.ZoneLoreAudioData }
 _G.SpokenPlacesAudioPacks, _G.ZoneLoreAudioPacks, _G.ZoneLoreAudioData = nil, nil, nil
@@ -458,7 +459,7 @@ stub.SetAddOns({ { folder = PACK_FOLDER, meta = {
     ["X-SpokenPlaces-Language"] = "enUS",
     ["Version"] = "2.0.0",
 } } })
-local shipped = assert(loadfile(here .. "/../../addons/SpokenPlacesAudio/Data/Sounds.lua"))
+local shipped = assert(loadfile(here .. "/../fixtures/places/Sounds.lua"))
 shipped(PACK_FOLDER)
 
 Expect("the shipped pack registers itself", type(_G.SpokenPlacesAudioPacks), "table")
@@ -468,6 +469,7 @@ Expect("...in a format this build reads", registered and registered.version, 1)
 Expect("...reading its quality out of the .toc", registered and registered.quality, "high")
 Expect("...and its language", registered and registered.language, "enUS")
 Expect("...with lore to play", registered and registered.zones and registered.zones[1411] ~= nil, true)
+Expect("...in Ogg", registered and registered.format, "ogg")
 -- Not in the pre-rename registries: writing those was dropped once the addon and the pack
 -- started shipping together, and a pack that still wrote them would be found twice.
 Expect("...and nowhere else", _G.ZoneLoreAudioPacks, nil)
