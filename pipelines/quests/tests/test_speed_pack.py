@@ -190,6 +190,33 @@ def test_every_row_of_a_generated_sounds_table_is_scaled(tmp_path, addon, sectio
             assert [float(t) for t in after[key][1].split()] == pytest.approx(scaled, abs=0.006), key
 
 
+@needs_luajit
+def test_a_line_kept_as_pieces_has_each_piece_sped_up_and_their_lengths_scaled(tmp_path):
+    store = _store(tmp_path, "quests/5-accept.ogg", "gossip/abc123.ogg")
+    folder = os.path.join(store, "quests", "5-accept")
+    os.makedirs(folder)
+    for n in ("01", "02"):
+        shutil.copy(os.path.join(store, "quests", "5-accept.ogg"), os.path.join(folder, f"{n}.ogg"))
+    os.remove(os.path.join(store, "quests", "5-accept.ogg"))
+    (tmp_path / "store" / "pieces.json").write_text(json.dumps({"quests/5-accept": "3.5 2.25"}))
+    source_dir = build_module(CORPUS, store, str(tmp_path / "dist"), "SpokenQuestsAudio_enUS", version="2.5.0")["moduleDir"]
+
+    plan, built = speed_up(tmp_path, source_dir)
+
+    assert sorted(os.listdir(built / "generated" / "sounds" / "quests" / "5-accept")) == ["01.ogg", "02.ogg"]
+    out = load_quests(built, plan.folder, tmp_path / "after.lua",
+                      f'print(registered["{plan.folder}"].SoundPiecesByFileName["5-accept"])\n')
+    assert out.split("\n")[0] == "1.75 1.13"
+
+
+def test_a_sounds_tables_piece_lengths_are_scaled_with_its_times():
+    source = 'local pack = { rows = { [1] = { file = "1", len = 6, times = "0 3", pieces = "4 2" } } }'
+    scaled, count = speed_pack.scale_values(source, 2.0, speed_pack.field_value("len"),
+                                            speed_pack.any_of(speed_pack.field_value("times"), speed_pack.field_value("pieces")))
+    assert count == 3
+    assert 'len = 3, times = "0 1.5", pieces = "2 1"' in scaled
+
+
 def test_numbers_inside_a_lines_text_are_left_alone():
     source = 'local pack = { rows = { [1] = { file = "1", len = 3, text = "len = 9, times = \\"1 2\\"" } } }'
     scaled, count = speed_pack.scale_values(source, 2.0, speed_pack.field_value("len"),

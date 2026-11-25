@@ -221,6 +221,10 @@ def field_value(name: str) -> Picker:
     return lambda tokens, i, table: after(tokens, i, name, "=")
 
 
+def any_of(*pickers: Picker) -> Picker:
+    return lambda tokens, i, table: any(pick(tokens, i, table) for pick in pickers)
+
+
 def table_value(name: str) -> Picker:
     """A value of `<module>.<name> = { ["key"] = <value>, ... }`, as the quests tables are."""
     def pick(tokens: List[Token], i: int, table: Optional[str]) -> bool:
@@ -436,9 +440,14 @@ def rewrite_lua(plan: Plan, rel: str, source: str) -> Tuple[str, int]:
             source, scaled = scale_values(source, speed, lengths=table_value("SoundLengthLookupByFileName"))
         elif name == "word_times_table.lua":
             source, scaled = scale_values(source, speed, times=table_value("WordTimesByFileName"))
+        elif name == "sound_pieces_table.lua":
+            # Each piece of a line kept as sentence pieces is sped up as the line is.
+            source, scaled = scale_values(source, speed, times=table_value("SoundPiecesByFileName"))
         source = rename_module(source, plan.source.folder, plan.folder, module_file=(rel == "Module.lua"))
     elif rel == "Data/Sounds.lua":
-        source, scaled = scale_values(source, speed, field_value("len"), field_value("times"))
+        # A line kept as sentence pieces lists their lengths, which scale as its times do.
+        source, scaled = scale_values(source, speed, field_value("len"),
+                                      any_of(field_value("times"), field_value("pieces")))
     return source, scaled
 
 
