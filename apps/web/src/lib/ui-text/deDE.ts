@@ -701,6 +701,8 @@ const deDE: Dictionary = {
       npcSpeakerReplaced: "setzte {speaker} anstelle von {from} bei {subject} ein",
       npcDirectionSet: "legte die Richtung für {name} fest",
       npcDirectionCleared: "hob die Richtung für {name} auf",
+      npcLanguageDirectionSet: "legte die Richtung für {name} in dieser Sprache fest",
+      npcLanguageDirectionCleared: "hob die Richtung für {name} in dieser Sprache auf",
       npcResolved: "legte fest, wer {name} ist",
       npcResolvedWoman: "legte fest, dass {name} eine Frau ist",
       npcResolvedMan: "legte fest, dass {name} ein Mann ist",

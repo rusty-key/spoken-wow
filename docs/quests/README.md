@@ -860,6 +860,13 @@ once per stretch of speech, as before. It applies only on a file that no other N
 without the same direction: a gossip line shared with every other human man stays theirs. Setting one marks the NPC's takes **text changed**, like any change to what is
 sent.
 
+That direction is global and the admin's. Whoever configures a language other than English
+sees `/npcs` read-only there, with one more column: the NPC's direction in that language,
+which replaces the global one in that language only and outdates only its takes (migration
+0131, `npc_direction_locale`). It is the team's, like its race directions, and moves with the
+language. Clearing it falls back to the global one; there is no way to have none in one
+language while the global one stands.
+
 Expanding one shows the clips it would be cloned from: upload, play back, delete, and
 **merge** a selection into one take with an adjustable pause. A slot finds its own source
 material in `voice/seed-clips/<race-gender>/<flavor>/`, which is the shape of its name — no

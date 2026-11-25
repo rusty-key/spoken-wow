@@ -659,6 +659,8 @@ const zhCN: Dictionary = {
       npcSpeakerReplaced: "在{subject}上用{speaker}替换了{from}",
       npcDirectionSet: "设定了{name}的方向",
       npcDirectionCleared: "清除了{name}的方向",
+      npcLanguageDirectionSet: "设定了{name}在此语言中的方向",
+      npcLanguageDirectionCleared: "清除了{name}在此语言中的方向",
       npcResolved: "设定了{name}是谁",
       npcResolvedWoman: "把{name}设定为女性",
       npcResolvedMan: "把{name}设定为男性",

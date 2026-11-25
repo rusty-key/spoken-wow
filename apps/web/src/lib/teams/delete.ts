@@ -38,7 +38,7 @@ export const DELETED = [
   "line_override", "text_override",
   // Its roster, generation settings and lexicon.
   "voice_assignment", "voice", "voice_clone", "voice_sample", "fish_reference",
-  "generation_setting_locale", "generation_setting", "lexicon_change",
+  "generation_setting_locale", "generation_setting", "npc_direction_locale", "lexicon_change",
   "pronunciation_lexicon_locale", "pronunciation_lexicon",
   "release_run",
   // Rows only: the objects stay in the bucket (AGENTS.md).

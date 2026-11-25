@@ -819,6 +819,8 @@ const koKR: Dictionary = {
       npcSpeakerReplaced: "{subject}에서 {from} 대신 {speaker}을(를) 넣었다",
       npcDirectionSet: "{name}의 지시문을 설정했다",
       npcDirectionCleared: "{name}의 지시문을 지웠다",
+      npcLanguageDirectionSet: "이 언어에서 {name}의 지시문을 정했다",
+      npcLanguageDirectionCleared: "이 언어에서 {name}의 지시문을 지웠다",
       npcResolved: "{name}이(가) 누구인지 지정했다",
       npcResolvedWoman: "{name}을(를) 여자로 지정했다",
       npcResolvedMan: "{name}을(를) 남자로 지정했다",

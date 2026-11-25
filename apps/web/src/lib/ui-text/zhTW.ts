@@ -690,6 +690,8 @@ const zhTW: Dictionary = {
       npcSpeakerReplaced: "在{subject}上以{speaker}取代{from}",
       npcDirectionSet: "設定了{name}的方向",
       npcDirectionCleared: "清除了{name}的方向",
+      npcLanguageDirectionSet: "設定了{name}在此語言中的方向",
+      npcLanguageDirectionCleared: "清除了{name}在此語言中的方向",
       npcResolved: "設定了{name}是誰",
       npcResolvedWoman: "把{name}設定為女性",
       npcResolvedMan: "把{name}設定為男性",

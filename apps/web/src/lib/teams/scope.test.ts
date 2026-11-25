@@ -20,6 +20,7 @@ const BY_LANG = [
   "voice_clone",
   "fish_reference",
   "generation_setting_locale",
+  "npc_direction_locale",
   "pronunciation_lexicon_locale",
   "lexicon_change",
   "line_ignore",

@@ -82,6 +82,7 @@ const preview = (overrides: Record<string, unknown> = {}) => ({
       "regeneration_job", "regeneration_batch", "regeneration_pause", "queue_dismissal", "take_ack", "take", "recording",
       "line_flag", "line_issue_line", "line_issue", "line_ignore", "line_override", "text_override", "voice_assignment",
       "voice", "voice_clone", "voice_sample", "fish_reference", "generation_setting_locale", "generation_setting",
+      "npc_direction_locale",
       "lexicon_change", "pronunciation_lexicon_locale", "pronunciation_lexicon", "release_run", "archive_object",
       "storage_move", "storage_backend", "activity", "report",
     ].map((table) => [table, 0]),

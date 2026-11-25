@@ -14,7 +14,7 @@ import { useUiText } from "@/components/UiTextProvider";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { signOut, useSession } from "@/lib/auth-client";
-import { stripLang } from "@/lib/lang";
+import { BASE_LANG, stripLang } from "@/lib/lang";
 import { isAdmin, langsWhere, roleLabel } from "@/lib/permissions";
 import { triages } from "@/lib/reports/reports";
 import { cn } from "@/lib/utils";
@@ -165,8 +165,9 @@ export default function UserMenu() {
         may("text") && { href: "/contributions", label: t.contributions },
         may("text") && { href: "/player-words", label: t.playerWords },
         may("edit") && { href: "/missing-audio", label: t.missingAudio },
-        // Who every NPC is holds in every language, so it is the global admin's alone.
-        isAdmin(role) && { href: "/npcs", label: t.npcs },
+        // Who every NPC is holds in every language, so it is the global admin's alone; whoever
+        // configures a language reads it there to set that language's NPC directions.
+        (isAdmin(role) || (lang !== BASE_LANG && may("configure"))) && { href: "/npcs", label: t.npcs },
         // Who did what in this language: for whoever answers for the grants in it.
         may("admin") && { href: "/activity", label: t.activity },
         // Not per language: a pack names its own.
