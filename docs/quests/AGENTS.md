@@ -38,8 +38,9 @@ From `apps/web/`, or `pnpm --filter @spoken/web <script>` at the root: `pnpm dev
 
 Web tests run against a real Postgres. `DATABASE_URL` comes from the environment, then the
 root `.env`, then `apps/web/.env.local`. Migrate with `deploy/web/bin/migrate.sh "$PWD/apps/web"`
-and seed with `python cli-main.py import-corpus`. `fileParallelism` is off because queue
-claiming is global.
+and seed with `python cli-main.py import-corpus`. Queue claiming is global, so files run side by
+side only when the role may create databases: each worker then gets a clone. Without CREATEDB
+the suite runs one file at a time.
 
 ## Packs and releases
 

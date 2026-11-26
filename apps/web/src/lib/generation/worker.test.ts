@@ -686,7 +686,10 @@ describe("per-owner queues", () => {
         quests: async () => {
           live += 1;
           peak = Math.max(peak, live);
-          await sleep(20);
+          // Held until ten overlap, not for a fixed time: on a busy machine a short sleep
+          // ends before the worker has claimed the tenth, and the peak never shows.
+          const held = Date.now() + 1_000;
+          while (peak <= 9 && Date.now() < held) await sleep(5);
           live -= 1;
           return OK;
         },
