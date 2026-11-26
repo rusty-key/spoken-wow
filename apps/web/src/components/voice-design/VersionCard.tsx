@@ -77,6 +77,14 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
   const [note, setNote] = useState("");
   const [best, setBest] = useState<number | null>(last?.bestPreview ?? design.chosenPreview ?? null);
   const [clips, setClips] = useState<Record<string, ClipMark>>(last?.clips ?? {});
+  // A re-sample puts new lines behind the same `sample:<n>` keys: a mark on the old line must not
+  // carry over to the new one.
+  const sampled = design.samples.map((sample) => sample.sha256).join();
+  const [marksFor, setMarksFor] = useState(sampled);
+  if (marksFor !== sampled) {
+    setMarksFor(sampled);
+    setClips((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith("sample:"))));
+  }
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
