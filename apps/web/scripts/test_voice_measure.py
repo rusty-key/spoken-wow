@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 np = pytest.importorskip("numpy")
-pytest.importorskip("opensmile")
 
 SCRIPT = Path(__file__).with_name("voice_measure.py")
 
@@ -31,6 +30,7 @@ def run(*paths):
 
 
 def test_measures_pitch_in_hertz(tmp_path):
+    pytest.importorskip("opensmile")
     low, high = tmp_path / "low.wav", tmp_path / "high.wav"
     tone(low, 110)
     tone(high, 220)
@@ -41,6 +41,7 @@ def test_measures_pitch_in_hertz(tmp_path):
 
 
 def test_reports_an_unreadable_file_without_failing_the_rest(tmp_path):
+    pytest.importorskip("opensmile")
     good, bad = tmp_path / "good.wav", tmp_path / "bad.wav"
     tone(good, 150)
     bad.write_bytes(b"not audio")

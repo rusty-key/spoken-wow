@@ -22,6 +22,7 @@ export async function POST(request: Request) {
       previewText: text("previewText"),
       analysisId: text("analysisId") || null,
       revisionHeard: text("revisionHeard") || null,
+      archetype: text("archetype") || null,
       userId: session.user.id,
       apiKey: key,
     });

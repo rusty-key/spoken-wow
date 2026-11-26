@@ -92,7 +92,9 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
   const [status, setStatus] = useState<ReviewStatus | null>(last?.status ?? null);
   const [note, setNote] = useState("");
   const recommended = recommendedPreview(design.previews.map((preview) => preview.measures));
-  const [best, setBest] = useState<number | null>(last?.bestPreview ?? design.chosenPreview ?? recommended);
+  // A person's pick, kept apart from the recommendation: a verdict records only what someone chose.
+  const [picked, setPicked] = useState<number | null>(last?.bestPreview ?? design.chosenPreview ?? null);
+  const best = picked ?? recommended;
   const [clips, setClips] = useState<Record<string, ClipMark>>(last?.clips ?? {});
   // A re-sample puts new lines behind the same `sample:<n>` keys: a mark on the old line must not
   // carry over to the new one.
@@ -144,12 +146,13 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
   const revisable = isRevisable(design);
   const revise = () =>
     run("revise", async () => {
-      const { revision } = await send<{ revision: Revision }>(withLang(lang, `/api/voices/design/${design.id}/revise`));
+      const { revision } = await send<{ revision: Revision & { archetype: string } }>(withLang(lang, `/api/voices/design/${design.id}/revise`));
       setDraft(slot.name, {
         prompt: revision.prompt,
         previewText: revision.preview_text,
         analysisId: null,
         heard: revision.heard,
+        archetype: revision.archetype,
         from: fill(t.geminiRevision, { v: tag }),
       });
     });
@@ -229,7 +232,7 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
                   {can ? (
                     <span className="vd-clip-end">
                       <label className="vd-radio">
-                        <input type="radio" name={`best-${design.id}`} checked={best === index} onChange={() => setBest(index)} />
+                        <input type="radio" name={`best-${design.id}`} checked={best === index} onChange={() => setPicked(index)} />
                         {t.best}
                       </label>
                       <Marks value={clips[key]} onChange={(m) => mark(key, m)} disabled={busy !== null} />
@@ -341,7 +344,7 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
           onSubmit={async (event) => {
             event.preventDefault();
             if (!status) return;
-            const ok = await act("review", `/api/voices/design/${design.id}/reviews`, { body: { status, note, bestPreview: best, clips } });
+            const ok = await act("review", `/api/voices/design/${design.id}/reviews`, { body: { status, note, bestPreview: picked, clips } });
             if (ok) setNote("");
           }}
         >

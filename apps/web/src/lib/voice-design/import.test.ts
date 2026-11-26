@@ -159,6 +159,11 @@ describe("importVersion", () => {
     expect(v5.samples.map((s) => s.sha256)).not.toContain(expect.stringMatching(/live/));
   });
 
+  it("keeps no description that is a list rather than an object", async () => {
+    await importVersion(parseVersion(folder({ ...META, version: 6, analysis: ["not", "an", "object"] }), []), { lang, userId: user.id });
+    expect((await listDesigns(lang)).find((d) => d.version === 6)?.analysis).toBeNull();
+  });
+
   it("refuses a slot not on the roster", async () => {
     await expect(importVersion(parseVersion(folder({ ...META, slot: "elf-male-x" }), []), { lang, userId: user.id })).rejects.toThrow(/elf-male-x/);
   });

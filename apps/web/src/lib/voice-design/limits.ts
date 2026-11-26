@@ -25,13 +25,27 @@ export const SIBILANT_WORDS = ["crisp", "sharp", "hissing", "sibilant", "snappy 
 export const EFFECT_WORDS = ["reverb", "echo", "pitch shift"] as const;
 const HARSH_WORDS = [...SIBILANT_WORDS, ...EFFECT_WORDS];
 
-const OLD_ENDING = /\s*Perfect audio quality[^]*$/i;
+/** The ending round one used, which made s sounds harsh: replaced wherever a draft still has it. */
+const OLD_ENDING = "Perfect audio quality, dry close-mic studio recording, no reverb or effects.";
 
 /** The prompt with the required ending, replacing the old studio sentence where a draft still has it. */
 export function withEnding(prompt: string): string {
-  const body = prompt.trim().replace(OLD_ENDING, "");
+  const body = prompt.replace(OLD_ENDING, " ").replace(/\s+/g, " ").trim();
   if (!body.replace(PROMPT_ENDING, "").trim()) return body;
   return body.endsWith(PROMPT_ENDING) ? body : `${body.replace(PROMPT_ENDING, "").trim()} ${PROMPT_ENDING}`;
+}
+
+/**
+ * Why Voice Design would refuse the prompt, or null. The minimum is on what was written, since the
+ * ending alone would pass it; the maximum is on what is sent, ending included.
+ */
+export function promptLengthProblem(prompt: string): string | null {
+  const { promptMin, promptMax } = DESIGN_LIMITS;
+  const written = withEnding(prompt).replace(PROMPT_ENDING, "").trim().length;
+  const sent = withEnding(prompt).length;
+  if (written < promptMin) return `the prompt needs at least ${promptMin} characters of description`;
+  if (sent > promptMax) return `the prompt is ${sent} characters with its ending; the limit is ${promptMax}`;
+  return null;
 }
 
 export function promptProblems(prompt: string): { missingEnding: boolean; words: string[] } {

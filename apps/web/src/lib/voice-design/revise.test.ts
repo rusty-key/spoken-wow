@@ -83,6 +83,17 @@ describe("reviseDesign", () => {
     expect(d.revise).toHaveBeenCalledWith(expect.objectContaining({ archetype: "Shady rogue" }));
   });
 
+  it("sends the newest note on the version, even when the latest verdict has none", async () => {
+    const d = deps(design("troll-male-dark", 3, [review("needs-work", "Accent too weak"), review("needs-work", "")]));
+    await reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, d);
+    expect(d.revise).toHaveBeenCalledWith(expect.objectContaining({ note: "Accent too weak" }));
+  });
+
+  it("hands back who the voice is for, so the next version keeps it", async () => {
+    const revision = await reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, deps(ALL[0]));
+    expect(revision.archetype).toBe("Witch doctor");
+  });
+
   it("revises a version nobody has reviewed yet, from its siblings' notes", async () => {
     const d = deps(design("troll-male-dark", 1, []));
     await reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, d);

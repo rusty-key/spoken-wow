@@ -17,7 +17,7 @@ import { isVoiceSlot } from "@/lib/voices/slots";
 
 import { DesignError } from "./access";
 import { keepDesignAudio } from "./audio";
-import { DESIGN_LIMITS, designName, withEnding } from "./limits";
+import { DESIGN_LIMITS, designName, promptLengthProblem, withEnding } from "./limits";
 import { withDesignLock } from "./lock";
 import { measureAudio } from "./measure";
 import { createDesign, isOwnAnalysis, markVoiceDeleted, readDesign, saveVoice, type NewDesign } from "./store";
@@ -55,9 +55,20 @@ const LIVE: DesignDeps = {
   lock: withDesignLock,
 };
 
+/** Long enough for any honest description; these arrive in the request, not from Gemini directly. */
+const MAX_DESCRIPTION = 1000;
+
+function describedBy(heard: string | null | undefined, archetype: string | null | undefined): Record<string, string> | null {
+  const analysis: Record<string, string> = {};
+  if (heard) analysis.revision_heard = heard.slice(0, MAX_DESCRIPTION);
+  if (archetype) analysis.archetype = archetype.slice(0, MAX_DESCRIPTION);
+  return Object.keys(analysis).length > 0 ? analysis : null;
+}
+
 export function rejectDesign(prompt: string, previewText: string): string | null {
-  const { promptMin, promptMax, textMin, textMax } = DESIGN_LIMITS;
-  if (prompt.length < promptMin || prompt.length > promptMax) return `the prompt must be ${promptMin} to ${promptMax} characters`;
+  const { textMin, textMax } = DESIGN_LIMITS;
+  const promptProblem = promptLengthProblem(prompt);
+  if (promptProblem) return promptProblem;
   if (previewText.length < textMin || previewText.length > textMax) return `the preview text must be ${textMin} to ${textMax} characters`;
   return null;
 }
@@ -69,8 +80,9 @@ export async function designVersion(
     prompt: string;
     previewText: string;
     analysisId: string | null;
-    /** What Gemini heard when it drafted this version from a review. */
+    /** What Gemini heard when it drafted this version from a review, and who the voice is for. */
     revisionHeard?: string | null;
+    archetype?: string | null;
     userId: string;
     apiKey: string;
   },
@@ -79,7 +91,7 @@ export async function designVersion(
   // The ending keeps s sounds soft, so no prompt reaches ElevenLabs without it, whoever wrote it.
   const prompt = withEnding(input.prompt);
   const previewText = input.previewText.trim();
-  const rejected = rejectDesign(prompt, previewText);
+  const rejected = rejectDesign(input.prompt, previewText);
   if (rejected) throw new DesignError(rejected, 400);
   if (!(await deps.isSlot(input.slot, input.lang))) throw new DesignError(`no voice slot ${input.slot}`, 404);
   if (input.analysisId !== null && !(await deps.isOwnAnalysis(input.lang, input.analysisId))) {
@@ -98,7 +110,7 @@ export async function designVersion(
     previewText,
     previews: made.map((preview, i) => ({ generatedVoiceId: preview.generatedVoiceId, sha256: shas[i], measures: measured?.[i] ?? null })),
     analysisId: input.analysisId,
-    analysis: input.revisionHeard ? { revision_heard: input.revisionHeard } : null,
+    analysis: describedBy(input.revisionHeard, input.archetype),
     userId: input.userId,
   });
 }

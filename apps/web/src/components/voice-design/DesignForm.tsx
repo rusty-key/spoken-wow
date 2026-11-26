@@ -6,13 +6,13 @@ import { useState } from "react";
 import { useUiText } from "@/components/UiTextProvider";
 import { withLang } from "@/lib/lang";
 import { fill } from "@/lib/site-text/format";
-import { DESIGN_LIMITS, PREVIEWS_PER_DESIGN, promptProblems, withEnding } from "@/lib/voice-design/limits";
+import { DESIGN_LIMITS, PREVIEWS_PER_DESIGN, promptLengthProblem, promptProblems, withEnding } from "@/lib/voice-design/limits";
 import type { Design } from "@/lib/voice-design/types";
 
 import { send, useWorkbench, type Draft } from "./context";
 import type { SlotView } from "./Workbench";
 
-const { promptMin, promptMax, textMin, textMax } = DESIGN_LIMITS;
+const { promptMax, textMin, textMax } = DESIGN_LIMITS;
 
 export default function DesignForm({ slot, initial, onDone }: { slot: SlotView; initial: Draft | null; onDone: () => void }) {
   const t = useUiText().voiceDesign;
@@ -23,7 +23,9 @@ export default function DesignForm({ slot, initial, onDone }: { slot: SlotView; 
   const [error, setError] = useState<string | null>(null);
 
   const problems = promptProblems(prompt);
-  const promptOk = prompt.trim().length >= promptMin && prompt.trim().length <= promptMax;
+  // Counted as sent: the server adds the ending, and the limit is on the whole prompt.
+  const lengthProblem = promptLengthProblem(prompt);
+  const promptOk = lengthProblem === null;
   const textOk = previewText.trim().length >= textMin && previewText.trim().length <= textMax;
   // Voice Design bills about the preview text for each preview it makes.
   const cost = previewText.trim().length * PREVIEWS_PER_DESIGN;
@@ -33,7 +35,7 @@ export default function DesignForm({ slot, initial, onDone }: { slot: SlotView; 
     setError(null);
     try {
       const { design } = await send<{ design: Design }>(withLang(lang, "/api/voices/design"), {
-        body: { slot: slot.name, prompt, previewText, analysisId: initial?.analysisId ?? null, revisionHeard: initial?.heard ?? null },
+        body: { slot: slot.name, prompt, previewText, analysisId: initial?.analysisId ?? null, revisionHeard: initial?.heard ?? null, archetype: initial?.archetype ?? null },
       });
       updateDesign(design);
       onDone();
@@ -62,7 +64,7 @@ export default function DesignForm({ slot, initial, onDone }: { slot: SlotView; 
         <span className="bs-label">{t.promptLabel}</span>
         <textarea className="bs-textarea vd-input" rows={5} value={prompt} onChange={(event) => setPrompt(event.target.value)} />
         <span className="vd-hint" data-bad={prompt.length > 0 && !promptOk ? "" : undefined}>
-          {fill(t.promptHint, { n: prompt.trim().length, max: promptMax })}
+          {fill(t.promptHint, { n: withEnding(prompt).length, max: promptMax })}
         </span>
         {problems.words.length > 0 ? <span className="vd-hint" data-bad="">{fill(t.harshWords, { words: problems.words.join(", ") })}</span> : null}
         {prompt.trim() && problems.missingEnding ? (
