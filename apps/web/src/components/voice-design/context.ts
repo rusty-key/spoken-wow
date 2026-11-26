@@ -12,8 +12,9 @@ export type Draft = {
   prompt: string;
   previewText: string;
   analysisId: string | null;
-  /** What Gemini heard, for a draft it revised from a review. */
+  /** What Gemini heard, for a draft it revised from a review, and who the voice is for. */
   heard?: string;
+  archetype?: string;
   from: string;
 };
 

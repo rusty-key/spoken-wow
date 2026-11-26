@@ -61,7 +61,7 @@ export function siblingNotes(designs: readonly Design[], slot: string): Record<s
 export async function reviseDesign(
   input: { lang: Lang; id: string; apiKey: string },
   deps: ReviseDeps = LIVE,
-): Promise<Revision> {
+): Promise<Revision & { archetype: string }> {
   const design = await found(deps.read, input.lang, input.id);
   const last = design.reviews.at(-1);
   if (!isRevisable(design)) {
@@ -83,12 +83,13 @@ export async function reviseDesign(
   if (!reference) throw new DesignError(`${design.slot} has no game clip on the site to compare with`, 409);
   if (!sample) throw new DesignError(`v${design.version}'s first sample line is missing from the archive`, 409);
 
-  return deps.revise({
+  const revision = await deps.revise({
     apiKey: input.apiKey,
     slot: design.slot,
     version: design.version,
     status: last?.status ?? "not reviewed yet",
-    note: last?.note ?? "",
+    // A later verdict without words does not take back what an earlier one said.
+    note: [...design.reviews].reverse().find((review) => review.note)?.note ?? "",
     siblings: siblingNotes(designs, design.slot),
     archetype,
     prompt: design.prompt,
@@ -96,4 +97,6 @@ export async function reviseDesign(
     reference,
     sample,
   });
+  // Handed back so the version it becomes keeps it: a revision of a revision has no comparison to ask.
+  return { ...revision, archetype };
 }

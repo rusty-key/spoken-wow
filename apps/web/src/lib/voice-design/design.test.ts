@@ -81,6 +81,17 @@ describe("designVersion", () => {
     expect(vi.mocked(d.design).mock.calls[0][0].prompt).toBe(`A gruff orc, a back-alley dealer. ${PROMPT_ENDING}`);
   });
 
+  it("keeps who the voice is for and what Gemini heard on a revised version, within bounds", async () => {
+    const d = deps();
+    await designVersion(
+      { ...base, slot: "orc-male-shady", prompt: DESIGN.prompt, previewText: DESIGN.previewText, analysisId: null, revisionHeard: "x".repeat(5000), archetype: "Shady dealer" },
+      d,
+    );
+    const analysis = vi.mocked(d.create).mock.calls[0][0].analysis as Record<string, string>;
+    expect(analysis.archetype).toBe("Shady dealer");
+    expect(analysis.revision_heard).toHaveLength(1000);
+  });
+
   it("still refuses an empty prompt", async () => {
     const d = deps();
     await expect(designVersion({ ...base, slot: "orc-male-shady", prompt: "  ", previewText: DESIGN.previewText, analysisId: null }, d)).rejects.toThrow(/prompt/);

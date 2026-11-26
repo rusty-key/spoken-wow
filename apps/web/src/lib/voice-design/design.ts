@@ -55,6 +55,16 @@ const LIVE: DesignDeps = {
   lock: withDesignLock,
 };
 
+/** Long enough for any honest description; these arrive in the request, not from Gemini directly. */
+const MAX_DESCRIPTION = 1000;
+
+function describedBy(heard: string | null | undefined, archetype: string | null | undefined): Record<string, string> | null {
+  const analysis: Record<string, string> = {};
+  if (heard) analysis.revision_heard = heard.slice(0, MAX_DESCRIPTION);
+  if (archetype) analysis.archetype = archetype.slice(0, MAX_DESCRIPTION);
+  return Object.keys(analysis).length > 0 ? analysis : null;
+}
+
 export function rejectDesign(prompt: string, previewText: string): string | null {
   const { textMin, textMax } = DESIGN_LIMITS;
   const promptProblem = promptLengthProblem(prompt);
@@ -70,8 +80,9 @@ export async function designVersion(
     prompt: string;
     previewText: string;
     analysisId: string | null;
-    /** What Gemini heard when it drafted this version from a review. */
+    /** What Gemini heard when it drafted this version from a review, and who the voice is for. */
     revisionHeard?: string | null;
+    archetype?: string | null;
     userId: string;
     apiKey: string;
   },
@@ -99,7 +110,7 @@ export async function designVersion(
     previewText,
     previews: made.map((preview, i) => ({ generatedVoiceId: preview.generatedVoiceId, sha256: shas[i], measures: measured?.[i] ?? null })),
     analysisId: input.analysisId,
-    analysis: input.revisionHeard ? { revision_heard: input.revisionHeard } : null,
+    analysis: describedBy(input.revisionHeard, input.archetype),
     userId: input.userId,
   });
 }

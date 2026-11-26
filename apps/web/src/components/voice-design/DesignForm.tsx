@@ -35,7 +35,7 @@ export default function DesignForm({ slot, initial, onDone }: { slot: SlotView; 
     setError(null);
     try {
       const { design } = await send<{ design: Design }>(withLang(lang, "/api/voices/design"), {
-        body: { slot: slot.name, prompt, previewText, analysisId: initial?.analysisId ?? null, revisionHeard: initial?.heard ?? null },
+        body: { slot: slot.name, prompt, previewText, analysisId: initial?.analysisId ?? null, revisionHeard: initial?.heard ?? null, archetype: initial?.archetype ?? null },
       });
       updateDesign(design);
       onDone();

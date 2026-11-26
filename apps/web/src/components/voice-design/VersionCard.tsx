@@ -146,12 +146,13 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
   const revisable = isRevisable(design);
   const revise = () =>
     run("revise", async () => {
-      const { revision } = await send<{ revision: Revision }>(withLang(lang, `/api/voices/design/${design.id}/revise`));
+      const { revision } = await send<{ revision: Revision & { archetype: string } }>(withLang(lang, `/api/voices/design/${design.id}/revise`));
       setDraft(slot.name, {
         prompt: revision.prompt,
         previewText: revision.preview_text,
         analysisId: null,
         heard: revision.heard,
+        archetype: revision.archetype,
         from: fill(t.geminiRevision, { v: tag }),
       });
     });
