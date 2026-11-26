@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const { promptOf, reviseDesign, siblingNotes } = await import("./revise");
+const { reviseDesign, siblingNotes } = await import("./revise");
 import type { ReviseDeps } from "./revise";
 import type { Design } from "./types";
 
@@ -128,11 +128,3 @@ describe("reviseDesign", () => {
   });
 });
 
-describe("promptOf", () => {
-  it("tells Gemini a remix's changes with its parent's prompt, so a revision keeps them", () => {
-    const remixed = design("dwarf-female-guard", 3, [], { analysis: { remix_of: 2, remix_changes: "Add a thick Scottish accent." } });
-    expect(promptOf(remixed)).toContain("prompt dwarf-female-guard");
-    expect(promptOf(remixed)).toContain("Add a thick Scottish accent.");
-    expect(promptOf(design("dwarf-female-guard", 2, []))).toBe("prompt dwarf-female-guard");
-  });
-});

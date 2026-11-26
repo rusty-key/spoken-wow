@@ -9,7 +9,7 @@ import Link from "@/components/LocaleLink";
 import { useUiText } from "@/components/UiTextProvider";
 import { fill } from "@/lib/site-text/format";
 import { DONENESS, donenessOf, isRevisable, type Doneness } from "@/lib/voice-design/groups";
-import { parseRemixSettings, PREVIEWS_PER_DESIGN, REMIX_SETTINGS, type RemixSettings } from "@/lib/voice-design/limits";
+import { parseRemixSettings, PREVIEWS_PER_DESIGN, REMIX_DEFAULTS, type RemixSettings } from "@/lib/voice-design/limits";
 import type { Analysis, Design } from "@/lib/voice-design/types";
 
 import AnalysePanel from "./AnalysePanel";
@@ -38,7 +38,6 @@ export type GroupView = { group: string; analysis: Analysis | null; slots: SlotV
 type Filter = "all" | Doneness;
 
 const REMIX_KEY = "spoken.voiceDesign.remix";
-const REMIX_DEFAULTS: RemixSettings = { promptStrength: REMIX_SETTINGS.promptStrength.initial, guidanceScale: null, loudness: null, seed: null };
 
 const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 

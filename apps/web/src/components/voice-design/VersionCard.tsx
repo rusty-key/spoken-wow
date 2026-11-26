@@ -193,7 +193,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const revise = () => run("revise", async () => setDraft(slot.name, await revision()));
   // Only the holder can remix: the voice is in their account and the call spends from their key.
   const remixable = hasVoice && holds;
-  const remixDraft = (from: Partial<Draft>): Draft => ({
+  const remixDraft = (from: Partial<Draft>) => ({
     prompt: design.prompt,
     previewText: design.previewText,
     analysisId: design.analysisId,
@@ -201,31 +201,23 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
     from: tag,
     remix: { id: design.id, version: design.version },
   });
-  // Gemini says what to change and Voice Remix changes only that; a failed remix leaves the draft in the form.
-  const remixFromReview = () =>
-    run("remix", async () => {
-      const draft = remixDraft(await revision());
+  /**
+   * Gemini's revision, then straight to Voice Design or Voice Remix. If that second call fails, the
+   * paid-for draft waits in the form; if it succeeds, a draft left open would revise the old version.
+   */
+  const fromReview = <D extends Draft>(what: string, toDraft: (revised: Draft) => D, make: (draft: D) => Promise<Design>) =>
+    run(what, async () => {
+      const draft = toDraft(await revision());
       try {
-        updateDesign(await remixFrom(lang, draft, remixSettings));
+        updateDesign(await make(draft));
         setDraft(slot.name, null);
       } catch (err) {
         setDraft(slot.name, draft);
         throw err;
       }
     });
-  // Gemini's rewrite goes straight to Voice Design. If that fails, the paid-for draft waits in the form.
-  const generate = () =>
-    run("generate", async () => {
-      const draft = await revision();
-      try {
-        updateDesign(await designFrom(lang, slot.name, draft));
-        // A draft still open in the form would revise the version this one replaces.
-        setDraft(slot.name, null);
-      } catch (err) {
-        setDraft(slot.name, draft);
-        throw err;
-      }
-    });
+  const generate = () => fromReview("generate", (draft) => draft, (draft) => designFrom(lang, slot.name, draft));
+  const remixFromReview = () => fromReview("remix", remixDraft, (draft) => remixFrom(lang, draft, remixSettings));
 
   return (
     <section className="vd-version" aria-label={fill(t.versionLabel, { slot: slot.name, v: design.version })}>

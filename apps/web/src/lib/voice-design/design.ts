@@ -19,7 +19,7 @@ import { isVoiceSlot } from "@/lib/voices/slots";
 
 import { DesignError } from "./access";
 import { keepDesignAudio } from "./audio";
-import { DESIGN_LIMITS, designName, promptLengthProblem, REMIX_CHANGES_MAX, withEnding, type RemixSettings } from "./limits";
+import { designName, previewTextProblem, promptLengthProblem, REMIX_CHANGES_MAX, withEnding, type RemixSettings } from "./limits";
 import { withDesignLock } from "./lock";
 import { measureAudio } from "./measure";
 import { createDesign, isOwnAnalysis, markVoiceDeleted, readDesign, saveVoice, type NewDesign } from "./store";
@@ -70,11 +70,7 @@ function describedBy(heard: string | null | undefined, archetype: string | null 
 }
 
 export function rejectDesign(prompt: string, previewText: string): string | null {
-  const { textMin, textMax } = DESIGN_LIMITS;
-  const promptProblem = promptLengthProblem(prompt);
-  if (promptProblem) return promptProblem;
-  if (previewText.length < textMin || previewText.length > textMax) return `the preview text must be ${textMin} to ${textMax} characters`;
-  return null;
+  return promptLengthProblem(prompt) ?? previewTextProblem(previewText);
 }
 
 export async function designVersion(
@@ -125,14 +121,15 @@ async function keptPreviews(made: DesignedPreview[], lang: Lang, deps: DesignDep
 
 /**
  * The next version as a Voice Remix of this one: the voice is kept and only the changes are made.
- * It keeps the parent's prompt, which describes it when saved, and records the changes and settings.
- * Only the holder may remix, on their own key: the voice is in their account.
+ * Its prompt is the whole new description (Gemini's rewrite, or the form's), so everything that
+ * reads a version's prompt reads this voice. Only the holder may remix, on their own key.
  */
 export async function remixVersion(
   input: {
     lang: Lang;
     id: string;
     changes: string;
+    prompt: string;
     previewText: string;
     settings: RemixSettings;
     revisionHeard?: string | null;
@@ -143,17 +140,19 @@ export async function remixVersion(
   deps: DesignDeps = LIVE,
 ): Promise<Design> {
   const changes = input.changes.trim();
+  const prompt = withEnding(input.prompt);
   const previewText = input.previewText.trim();
-  const { textMin, textMax } = DESIGN_LIMITS;
   if (!changes || changes.length > REMIX_CHANGES_MAX) throw new DesignError(`the changes must be 1 to ${REMIX_CHANGES_MAX} characters`, 400);
-  if (previewText.length < textMin || previewText.length > textMax) throw new DesignError(`the preview text must be ${textMin} to ${textMax} characters`, 400);
+  const rejected = rejectDesign(input.prompt, previewText);
+  if (rejected) throw new DesignError(rejected, 400);
   const parent = await found(deps.read, input.lang, input.id);
   const refused = holderRefusal(parent, input.userId);
   if (refused) throw new DesignError(refused, 403);
 
   const made = await deps.remix({ voiceId: parent.voiceId!, changes, text: previewText, ...input.settings }, input.apiKey);
+  const parentArchetype = typeof parent.analysis?.archetype === "string" ? parent.analysis.archetype : null;
   const analysis: Record<string, unknown> = {
-    ...describedBy(input.revisionHeard, input.archetype || (typeof parent.analysis?.archetype === "string" ? parent.analysis.archetype : null)),
+    ...describedBy(input.revisionHeard, input.archetype || parentArchetype),
     remix_of: parent.version,
     remix_changes: changes,
     remix_settings: input.settings,
@@ -161,7 +160,7 @@ export async function remixVersion(
   return deps.create({
     lang: input.lang,
     slot: parent.slot,
-    prompt: parent.prompt,
+    prompt,
     previewText,
     previews: await keptPreviews(made, input.lang, deps),
     analysisId: parent.analysisId,

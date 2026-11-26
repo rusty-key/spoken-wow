@@ -130,9 +130,10 @@ not only against the reference clip. **Voice the lines again** replaces them. Sa
   nobody has reviewed yet, from its siblings' notes. Edit the draft, then **Design 3 previews**.
 - **Remix from review** keeps the voice and changes only what the review asks for: Gemini writes the
   changes ("Add a thick Scottish accent. Keep the timbre and pace."), then ElevenLabs Voice Remix
-  makes the next version from this version's voice. Use it when the voice is close; use Generate
+  makes the next version from this version's voice. Gemini also rewrites the whole prompt, which the
+  new version keeps as its description. Use it when the voice is close; use Generate
   when it is wrong at the root. Only the voice's holder can remix, and only while it is in their
-  account. **Remix vN by hand** under **⋯** opens the form for the changes. The settings button
+  account. **Remix vN by hand** under **⋯** opens the form for the changes and the new voice's prompt. The settings button
   beside Remix sets prompt strength (0 keeps the voice, 1 follows the changes), guidance (lower is
   freer, high can sound artificial), loudness and seed (the same seed and inputs give the same
   voice); the browser keeps them for every remix. A remix costs about the preview text's length in

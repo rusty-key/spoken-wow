@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const { deleteDesignVoice, designVersion, remixVersion, saveDesignVoice } = await import("./design");
-const { designName, PROMPT_ENDING } = await import("./limits");
+const { designName, PROMPT_ENDING, withEnding } = await import("./limits");
 import type { DesignDeps } from "./design";
 import type { Design } from "./types";
 
@@ -192,9 +192,9 @@ describe("deleteDesignVoice", () => {
 describe("remixVersion", () => {
   const saved = { voiceId: "voice-9", voiceName: "design-orc-male-shady-v3", holderId: "u1", holderName: "Ann", analysis: { archetype: "Back-alley dealer" } };
   const settings = { promptStrength: 0.3, guidanceScale: null, loudness: null, seed: 4 };
-  const remix = { ...base, id: "d1", changes: "  Add a thick Scottish accent.  ", previewText: "x".repeat(120), settings };
+  const remix = { ...base, id: "d1", changes: "  Add a thick Scottish accent.  ", prompt: "A gruff orc with a thick Scottish accent.", previewText: "x".repeat(120), settings };
 
-  it("remixes the holder's voice with only the changes, and keeps the parent's prompt", async () => {
+  it("remixes the holder's voice with only the changes, and keeps the whole new prompt as the version's", async () => {
     const d = deps(saved);
     await remixVersion(remix, d);
     expect(d.remix).toHaveBeenCalledWith({ voiceId: "voice-9", changes: "Add a thick Scottish accent.", text: "x".repeat(120), ...settings }, "k");
@@ -202,7 +202,7 @@ describe("remixVersion", () => {
     expect(d.create).toHaveBeenCalledWith(
       expect.objectContaining({
         slot: DESIGN.slot,
-        prompt: DESIGN.prompt,
+        prompt: withEnding("A gruff orc with a thick Scottish accent."),
         previews: [{ generatedVoiceId: "r0", sha256: "r".repeat(64), measures: { f0Hz: 100 } }],
         analysis: { archetype: "Back-alley dealer", remix_of: 3, remix_changes: "Add a thick Scottish accent.", remix_settings: settings },
       }),

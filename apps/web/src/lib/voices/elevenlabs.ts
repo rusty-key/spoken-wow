@@ -460,24 +460,26 @@ export async function designPreviews(
     headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
     body: JSON.stringify({ voice_description: input.prompt, text: input.text, model_id: "eleven_ttv_v3" }),
   });
-  if (!response.ok) throw await failure(response, "designing a voice");
+  return previewsOf(response, "designing a voice");
+}
+
+/** The previews Voice Design and Voice Remix answer with, their audio decoded. */
+async function previewsOf(response: Response, what: string): Promise<DesignedPreview[]> {
+  if (!response.ok) throw await failure(response, what);
   const body = (await response.json()) as { previews?: { generated_voice_id?: string; audio_base_64?: string }[] };
   const previews = (body.previews ?? []).flatMap((preview) =>
     preview.generated_voice_id && preview.audio_base_64
       ? [{ generatedVoiceId: preview.generated_voice_id, audio: Buffer.from(preview.audio_base_64, "base64") }]
       : [],
   );
-  if (previews.length === 0) throw new Error("ElevenLabs designed no previews");
+  if (previews.length === 0) throw new Error(`ElevenLabs returned no previews ${what}`);
   return previews;
 }
 
 /** Voice Remix's settings, as ElevenLabs names them; unset ones take its defaults. */
 export type RemixOptions = {
-  /** 0 keeps the voice, 1 follows the changes; only eleven_ttv_v3 voices take it. */
   promptStrength?: number | null;
-  /** Lower is freer; high values can sound artificial. ElevenLabs' default is 2. */
   guidanceScale?: number | null;
-  /** -1 quietest to 1 loudest. ElevenLabs' default is 0.5. */
   loudness?: number | null;
   seed?: number | null;
 };
@@ -498,15 +500,7 @@ export async function remixPreviews(
     headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!response.ok) throw await failure(response, "remixing a voice");
-  const answer = (await response.json()) as { previews?: { generated_voice_id?: string; audio_base_64?: string }[] };
-  const previews = (answer.previews ?? []).flatMap((preview) =>
-    preview.generated_voice_id && preview.audio_base_64
-      ? [{ generatedVoiceId: preview.generated_voice_id, audio: Buffer.from(preview.audio_base_64, "base64") }]
-      : [],
-  );
-  if (previews.length === 0) throw new Error("ElevenLabs remixed no previews");
-  return previews;
+  return previewsOf(response, "remixing a voice");
 }
 
 export async function createDesignedVoice(

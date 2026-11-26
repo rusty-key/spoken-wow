@@ -178,6 +178,7 @@ test("remixes the held voice from the review in one press: Gemini's changes, the
   expect(remixUrl).toContain(`/api/voices/design/${DESIGN.id}/remix`);
   expect(JSON.parse(String(init.body))).toEqual({
     changes: "Make it colder. Keep the accent.",
+    prompt: "A colder voice.",
     previewText: "y".repeat(120),
     settings: { promptStrength: 0.5, guidanceScale: null, loudness: null, seed: 9 },
     revisionHeard: "too noble",

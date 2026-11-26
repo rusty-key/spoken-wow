@@ -17,6 +17,14 @@ export const REMIX_CHANGES_MAX = 500;
 /** ElevenLabs refuses a seed past an unsigned 32-bit integer. */
 export const REMIX_SEED_MAX = 4294967295;
 
+/** Voice Remix's settings as the page starts them: ElevenLabs' defaults, and a fresh voice each time. */
+export const REMIX_DEFAULTS = {
+  promptStrength: REMIX_SETTINGS.promptStrength.initial,
+  guidanceScale: REMIX_SETTINGS.guidanceScale.initial,
+  loudness: REMIX_SETTINGS.loudness.initial,
+  seed: null,
+} as const;
+
 export type RemixSettings = { promptStrength: number | null; guidanceScale: number | null; loudness: number | null; seed: number | null };
 
 /** The settings as sent, or what is wrong with them. */
@@ -40,6 +48,12 @@ export function parseRemixSettings(input: unknown): RemixSettings | string {
 
 /** Voice Design makes this many previews per request. */
 export const PREVIEWS_PER_DESIGN = 3;
+
+export function previewTextProblem(text: string): string | null {
+  const { textMin, textMax } = DESIGN_LIMITS;
+  const length = text.trim().length;
+  return length < textMin || length > textMax ? `the preview text must be ${textMin} to ${textMax} characters` : null;
+}
 
 /** The account name of a version's voice: one name per attempt, so the account shows which is which. */
 export function designName(design: { slot: string; version: number }): string {
