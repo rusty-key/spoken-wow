@@ -2183,8 +2183,9 @@ the Forever one.
 The web suite runs against a **real Postgres**, because the invariants it protects — archive
 the current take before anything overwrites it, never hand the same file to two jobs — live in
 schema constraints rather than in code. It reads `DATABASE_URL` from the environment or from
-`apps/web/.env.local`, and runs one file at a time, since claiming from a shared queue is global by
-definition. `audio.test.ts` is the one that stops a naming change going unnoticed: it asserts
+`apps/web/.env.local`. Claiming from a shared queue is global by definition, so when the role may
+create databases each worker runs on its own clone of that one, and otherwise the suite runs one
+file at a time. `audio.test.ts` is the one that stops a naming change going unnoticed: it asserts
 every file in the store is addressed by some corpus line.
 
 ## Contributing
