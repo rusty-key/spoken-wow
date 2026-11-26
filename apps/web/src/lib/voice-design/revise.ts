@@ -49,7 +49,7 @@ const raceOf = (slot: string) => slot.split("-")[0];
 /** Each other flavor of the race's newest note, from its newest version back. */
 export function siblingNotes(designs: readonly Design[], slot: string): Record<string, string> {
   const notes: Record<string, string> = {};
-  // listDesigns orders each slot's versions newest first.
+  // Each slot's versions arrive newest first, so the first note found per slot is its newest.
   for (const design of designs) {
     if (design.slot === slot || raceOf(design.slot) !== raceOf(slot) || design.slot in notes) continue;
     const note = [...design.reviews].reverse().find((review) => review.note)?.note;

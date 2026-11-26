@@ -146,7 +146,7 @@ export async function importVersion(version: ImportedVersion, input: { lang: Lan
     sampleModel: meta.model_id ?? null,
     createdAt: version.reviews[0]?.at ?? null,
     note: typeof meta.note === "string" && meta.note.trim() ? meta.note.trim() : null,
-    analysis: meta.analysis && typeof meta.analysis === "object" ? meta.analysis : null,
+    analysis: meta.analysis && typeof meta.analysis === "object" && !Array.isArray(meta.analysis) ? meta.analysis : null,
     voiceDeleted: meta.voice_deleted === true,
     samples,
     reviews: version.reviews.map((review) => ({ ...review, userId: input.userId })),
