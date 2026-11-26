@@ -62,6 +62,21 @@ describe("detemplated", () => {
 
   it("ends a name at a particle written straight after it", () => {
     expect(detemplated(shown("홍길동님, 어서 오세요.", { reader: "홍길동" }))).toBe("$N님, 어서 오세요.");
+    expect(detemplated(shown("홍길동이여, 홍길동에게 맡기겠소. 홍길동!", { reader: "홍길동" }))).toBe(
+      "$N이여, $N에게 맡기겠소. $N!",
+    );
+    expect(nameless(shown("홍길동입니다. 홍길동에서 홍길동으로.", { reader: "홍길동" })).text).toBe(
+      "$N입니다. $N에서 $N으로.",
+    );
+  });
+
+  it("leaves a Korean name that is only the syllables of a longer word", () => {
+    expect(detemplated(shown("어서 오게. 이에 대해서도 레이크샤이어에서 들었네.", { reader: "서" }))).toBe(
+      "어서 오게. 이에 대해서도 레이크샤이어에서 들었네.",
+    );
+    expect(detemplated(shown("우리 기사들을 보게.", { reader: "사" }))).toBe("우리 기사들을 보게.");
+    expect(detemplated(shown("대사제께 가 보게, 사제여.", { readerClass: "사제" }))).toBe("대사제께 가 보게, $C여.");
+    expect(nameless(shown("어서 오게, 서.", { reader: "서" })).text).toBe("어서 오게, $N.");
   });
 
   it("reads an envelope from an older addon as the template it already is", () => {
