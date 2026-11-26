@@ -241,7 +241,13 @@ end
 
 -- Whether the byte at i belongs to a word. Byte-wise because %w knows only ASCII: a high byte is
 -- judged by its whole character, and bytes that are no character count as a letter's.
-local function IsWordByte(text, i)
+--
+-- `strict` is for a Chinese class or race word on a page. There Chinese writes one word for a noun,
+-- an adjective and an address alike -- 资深德鲁伊 / 德鲁伊咒语 / 我的德鲁伊之力 are all "德鲁伊" --
+-- so Han counts as part of the word and only a pause ends it. A name never takes it: a Chinese name
+-- is Han itself and sits straight against the words around it, so a strict boundary would leave the
+-- player's own name in the text.
+local function IsWordByte(text, i, strict)
     local b = byte(text, i)
     if b == nil then
         return false
@@ -258,6 +264,10 @@ local function IsWordByte(text, i)
     if not point then
         return true
     end
+    if strict and ((point >= 0x3400 and point <= 0x4DBF) or (point >= 0x4E00 and point <= 0x9FFF)
+        or (point >= 0xF900 and point <= 0xFAFF)) then
+        return true
+    end
     for _, range in ipairs(SEPARATORS) do
         if point >= range[1] and point <= range[2] then
             return false
@@ -269,14 +279,15 @@ end
 --- Every whole-word occurrence of `word` in `text` replaced by `token`, so a player called Mist
 --- leaves "Mistwood" alone but not "Mist's". A plain find: a pattern would need the player's input
 --- escaped, and %f is not safe on every client's Lua.
-function Contribute:ReplaceWord(text, word, token)
+---@param strict boolean|nil  Han counts as part of the word (a Chinese class or race on a page)
+function Contribute:ReplaceWord(text, word, token, strict)
     local out, pos = {}, 1
     while true do
         local first, last = string.find(text, word, pos, true)
         if not first then
             break
         end
-        if IsWordByte(text, first - 1) or IsWordByte(text, last + 1) then
+        if IsWordByte(text, first - 1, strict) or IsWordByte(text, last + 1, strict) then
             out[#out + 1] = string.sub(text, pos, last)
         else
             out[#out + 1] = string.sub(text, pos, first - 1)
@@ -374,20 +385,34 @@ function Contribute:ReaderFields(fields)
     add("readerSex", reader.sex)
 end
 
+--- Whether a Chinese class or race word takes the strict boundary on a page.
+---
+--- A page is prose, where 资深德鲁伊 / 德鲁伊咒语 / 我的德鲁伊之力 all read "德鲁伊" as a noun or an
+--- adjective, and English pages almost never carry a class token at all. A quest's text and gossip
+--- keep the loose boundary, which is the opposite trade: there the word follows an adjective far
+--- more often (尊贵的$c), where strictness would miss the reader. Only Chinese: Korean and Japanese
+--- glue particles to a word, and Latin writes spaces.
+---@return boolean
+function Contribute:StrictClass()
+    local locale = GetLocale and GetLocale()
+    return locale == "zhCN" or locale == "zhTW"
+end
+
 --- The text with this character's name, class and race put back as the game's own tokens, for
 --- the keys a line is kept and named under: the same gossip line or page read on two characters is
 --- one. Not what is sent: the site puts the tokens back in the text (ReaderFields).
-function Contribute:Detemplate(text)
+---@param strict boolean|nil  a Chinese class or race takes the strict boundary (StrictClass)
+function Contribute:Detemplate(text, strict)
     local swaps = {}
-    local function add(word, token)
+    local function add(word, token, words)
         if type(word) == "string" and word ~= "" then
-            swaps[#swaps + 1] = { word, token }
+            swaps[#swaps + 1] = { word, token, words }
         end
     end
-    local function addCased(word, upper, lower)
-        add(word, upper)
+    local function addCased(word, upper, lower, words)
+        add(word, upper, words)
         if type(word) == "string" and string.lower(word) ~= word then
-            add(string.lower(word), lower)
+            add(string.lower(word), lower, words)
         end
     end
 
@@ -396,16 +421,18 @@ function Contribute:Detemplate(text)
     for _, word in ipairs(self:NameWords(reader.name)) do
         add(word, "$N")
     end
-    addCased(reader.class, "$C", "$c")
-    addCased(reader.classMale, "$C", "$c")
-    addCased(reader.classFemale, "$C", "$c")
-    addCased(reader.race, "$R", "$r")
+    -- A Chinese class or race on a page takes the strict boundary (`strict`): there the word is
+    -- 资深德鲁伊 or 德鲁伊咒语 far more often than it is an address.
+    addCased(reader.class, "$C", "$c", strict)
+    addCased(reader.classMale, "$C", "$c", strict)
+    addCased(reader.classFemale, "$C", "$c", strict)
+    addCased(reader.race, "$R", "$r", strict)
 
     -- Longest first, so "Night Elf" goes as one race, and a part of the name inside a longer class
     -- ("Hunter" in "Demon Hunter") does not take it first.
     table.sort(swaps, function(a, b) return len(a[1]) > len(b[1]) end)
     for _, pair in ipairs(swaps) do
-        text = self:ReplaceWord(text, pair[1], pair[2])
+        text = self:ReplaceWord(text, pair[1], pair[2], pair[3])
     end
     return text
 end

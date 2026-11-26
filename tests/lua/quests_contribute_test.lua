@@ -316,6 +316,27 @@ world.playerName = "Гримбалор"
 Expect("...as is a Cyrillic one", SpokenEnv.Spoken.Contribute:Detemplate("ГРИМБАЛОР."), "$N.")
 world.playerName = nil
 
+-- A Chinese class word on a quest's text keeps the loose boundary: Blizzard puts the address
+-- straight after an adjective in about a quarter of its class lines.
+do
+    local class, race, name = world.playerClass, world.playerRace, world.playerName
+    local locale = stub.locale
+    stub.SetLocale("zhCN")
+    world.playerName, world.playerClass, world.playerRace = "小明", "德鲁伊", "暗夜精灵"
+
+    Expect("a Chinese class behind a modifier is still the reader",
+        SpokenEnv.Spoken.Contribute:Detemplate("尊贵的德鲁伊。"), "尊贵的$C。")
+    Expect("gossip keeps the loose boundary it always had",
+        SpokenEnv.Spoken.Contribute:Detemplate("你好，德鲁伊。"), "你好，$C。")
+    Expect("a Chinese client is what takes the strict boundary",
+        SpokenEnv.Spoken.Contribute:StrictClass(), true)
+    stub.SetLocale("enUS")
+    Expect("...and no other client does", SpokenEnv.Spoken.Contribute:StrictClass(), false)
+
+    stub.SetLocale(locale)
+    world.playerName, world.playerClass, world.playerRace = name, class, race
+end
+
 stub.HidePanels()
 stub.ShowGossip("Well met, Tester.")
 local gossipShown, key = VoiceOver.Contribute:Capture()

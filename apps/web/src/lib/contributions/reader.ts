@@ -23,11 +23,14 @@ function isShown(envelope: Envelope): boolean {
   return envelope.fields.shown === "1";
 }
 
-type Swap = { word: string; token: string };
+type Swap = { word: string; token: string; strict?: boolean };
 
 type Range = readonly [number, number];
 
 const HANGUL: readonly Range[] = [[0x1100, 0x11ff], [0x3130, 0x318f], [0xac00, 0xd7af]];
+
+/** Han, which Chinese writes a class or race word in and which glues to its neighbours. */
+const HAN: readonly Range[] = [[0x3400, 0x4dbf], [0x4e00, 0x9fff], [0xf900, 0xfaff]];
 
 /**
  * The code points past ASCII that end a word, as Spoken's Contribute.lua lists them: Latin-1 and
@@ -40,7 +43,8 @@ const SEPARATORS: readonly Range[] = [
   [0x3000, 0x3004], [0x3008, 0x3020], [0x3030, 0x3030], [0x303d, 0x303f],
   [0xfe30, 0xfe6f], [0xff00, 0xff0f], [0xff1a, 0xff20], [0xff3b, 0xff40], [0xff5b, 0xff65],
   [0xffe0, 0xffee], [0x1f000, 0x1faff],
-  [0x3040, 0x30ff], [0x3400, 0x4dbf], [0x4e00, 0x9fff], [0xf900, 0xfaff],
+  [0x3040, 0x30ff],
+  ...HAN,
   ...HANGUL,
 ];
 
@@ -48,10 +52,19 @@ function inRanges(point: number, ranges: readonly Range[]): boolean {
   return ranges.some(([first, last]) => point >= first && point <= last);
 }
 
-/** ASCII letters and digits only, so "Tester's" and "Tester-like" still hold the name. */
-function isWordPoint(point: number | undefined): boolean {
+/**
+ * ASCII letters and digits only, so "Tester's" and "Tester-like" still hold the name.
+ *
+ * `strict` is for a Chinese class or race word on a page. Chinese writes one word for a noun, an
+ * adjective and an address alike -- 资深德鲁伊 / 德鲁伊咒语 / 我的德鲁伊之力 are all "德鲁伊" -- so
+ * Han counts as part of the word there and only a pause ends it. A name never takes it: a Chinese
+ * name is Han itself and sits straight against the words around it, so a strict boundary would
+ * leave the player's own name in the text.
+ */
+function isWordPoint(point: number | undefined, strict = false): boolean {
   if (point === undefined) return false;
   if (point < 0x80) return /[0-9A-Za-z]/.test(String.fromCodePoint(point));
+  if (strict && inRanges(point, HAN)) return true;
   return !inRanges(point, SEPARATORS);
 }
 
@@ -63,8 +76,8 @@ function isHangul(point: number | undefined): boolean {
  * Hangul ends a word on the right, where a particle follows a name with no space, but not on the
  * left: nothing comes straight before a Korean name, and a reader named "서" would otherwise take "어서".
  */
-function isWholeWord(before: number | undefined, after: number | undefined): boolean {
-  return !isWordPoint(before) && !isHangul(before) && !isWordPoint(after);
+function isWholeWord(before: number | undefined, after: number | undefined, strict = false): boolean {
+  return !isWordPoint(before, strict) && !isHangul(before) && !isWordPoint(after, strict);
 }
 
 function pointBefore(text: string, index: number): number | undefined {
@@ -86,9 +99,9 @@ function swapWords(text: string, swaps: readonly Swap[]): string {
   let kept = 0;
   let index = 0;
   next: while (index < text.length) {
-    for (const { word, token } of present) {
+    for (const { word, token, strict } of present) {
       const end = index + word.length;
-      if (text.startsWith(word, index) && isWholeWord(pointBefore(text, index), text.codePointAt(end))) {
+      if (text.startsWith(word, index) && isWholeWord(pointBefore(text, index), text.codePointAt(end), strict)) {
         out += text.slice(kept, index) + token;
         index = kept = end;
         continue next;
@@ -127,17 +140,37 @@ function isClassQuest(fields: Record<string, string>): boolean {
 }
 
 /**
+ * Whether a class or race word takes the strict boundary: a page's text, in Chinese.
+ *
+ * A page is prose, and English pages almost never carry a class token at all, so a word of it is
+ * far more often a noun or an adjective than the reader. Chinese writes one word for all three --
+ * 资深德鲁伊 / 德鲁伊咒语 / 我的德鲁伊之力 are all "德鲁伊" -- so only a pause ends it there.
+ *
+ * A quest's text keeps the loose boundary, which is the opposite trade: Blizzard's own Chinese
+ * puts the address straight after an adjective in about a quarter of its class lines (尊贵的$c,
+ * 勇敢的$C), where a strict boundary would miss the reader. Gossip keeps it too, being an NPC
+ * talking to the reader.
+ *
+ * Only Chinese: Korean and Japanese glue particles to a word, and Latin writes spaces.
+ */
+function strictClass(envelope: Envelope): boolean {
+  if (envelope.source !== "readables") return false;
+  const locale = envelope.fields.locale ?? "";
+  return locale === "zhCN" || locale === "zhTW";
+}
+
+/**
  * The swaps for the reader `fields` describe, longest first; class and race kept as written unless
  * `tokens`. A word kept as written is still a swap, so a part of the name inside it ("Hunter" in
  * "Demon Hunter") cannot take it.
  */
-function swapsOf(fields: Record<string, string>, tokens: boolean): Swap[] {
+function swapsOf(fields: Record<string, string>, tokens: boolean, strict = false): Swap[] {
   const swaps: Swap[] = [];
   const addCased = (word: string | undefined, upper: string, lower: string, swapped: boolean) => {
     if (!word) return;
-    swaps.push({ word, token: swapped ? upper : word });
+    swaps.push({ word, token: swapped ? upper : word, strict: swapped && strict });
     const lowered = word.toLowerCase();
-    if (lowered !== word) swaps.push({ word: lowered, token: swapped ? lower : lowered });
+    if (lowered !== word) swaps.push({ word: lowered, token: swapped ? lower : lowered, strict: swapped && strict });
   };
   for (const word of nameWords(readerFact(fields, NAME))) swaps.push({ word, token: "$N" });
   // A locale that names a class by gender ("Kriegerin") may write the other form.
@@ -166,5 +199,5 @@ export function nameless<S extends string>(envelope: Envelope<S>): Envelope<S> {
 /** The envelope's text with the reader's name, class and race as `$N`, `$C` and `$R`. */
 export function detemplated(envelope: Envelope): string | null {
   if (!isShown(envelope) || envelope.text === null) return envelope.text;
-  return swapWords(envelope.text, swapsOf(envelope.fields, true));
+  return swapWords(envelope.text, swapsOf(envelope.fields, true, strictClass(envelope)));
 }
