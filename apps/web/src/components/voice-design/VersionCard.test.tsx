@@ -72,7 +72,7 @@ test("drops the marks on lines that a re-sample replaced, and the preview marks 
   const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
   vi.stubGlobal("fetch", fetchMock);
   const { rerender } = render(card(DESIGN));
-  rerender(card({ ...DESIGN, samples: [sample(0, "d"), sample(1, "e")] }));
+  rerender(card({ ...DESIGN, samples: [sample(0, "d"), sample(1, "e"), sample(2, "f")], sampledAt: "2026-11-27T00:00:00Z" }));
 
   await userEvent.click(verdict("Good"));
   const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
@@ -143,4 +143,24 @@ test("generates the next version from the review in one press: Gemini's prompt, 
   const [designUrl, init] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
   expect(designUrl).toMatch(/\/api\/voices\/design(\?|$)/);
   expect(JSON.parse(String(init.body))).toMatchObject({ slot: DESIGN.slot, prompt: "A colder voice.", previewText: "y".repeat(120), revisionHeard: "too noble", archetype: "Queen" });
+});
+
+test("loads only marks that still apply: none from before the lines were voiced again, none on lines that are gone", async () => {
+  const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
+  vi.stubGlobal("fetch", fetchMock);
+  const sent = () => JSON.parse(String((fetchMock.mock.calls.at(-1) as unknown as [string, RequestInit])[1].body)).clips;
+
+  render(card(DESIGN));
+  await userEvent.click(verdict("Good"));
+  expect(sent()).toEqual({ "sample:2": "off" });
+  cleanup();
+
+  render(card({ ...DESIGN, sampledAt: "2026-11-27T00:00:00Z" }));
+  await userEvent.click(verdict("Good"));
+  expect(sent()).toEqual({});
+  cleanup();
+
+  render(card({ ...DESIGN, samples: [], sampledAt: null }));
+  await userEvent.click(verdict("Good"));
+  expect(sent()).toEqual({});
 });

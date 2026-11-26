@@ -11,7 +11,7 @@ import { fill } from "@/lib/site-text/format";
 import { cn } from "@/lib/utils";
 import { isRevisable } from "@/lib/voice-design/groups";
 import { designName, recommendedPreview } from "@/lib/voice-design/limits";
-import type { ClipMark, Design, Measures, Review } from "@/lib/voice-design/types";
+import type { ClipMark, Design, Measures } from "@/lib/voice-design/types";
 
 import StatusBadge from "./StatusBadge";
 import { designFrom, requestRevision, send, useWorkbench } from "./context";
@@ -50,9 +50,17 @@ function Field({ label, value }: { label: string; value: unknown }) {
   );
 }
 
-/** Only sample lines are marked here; an old verdict's preview marks would ride along unseen in every new one. */
-const sampleMarks = (last: Review | undefined) =>
-  Object.fromEntries(Object.entries(last?.clips ?? {}).filter(([key]) => key.startsWith("sample:"))) as Record<string, ClipMark>;
+/**
+ * The newest verdict's marks on the lines the version has now. Marks from before the lines were
+ * voiced again name other lines, and the server refuses a mark on a line that is gone. Preview
+ * marks are left out: nothing here shows them, so they would ride along unseen.
+ */
+function currentMarks(design: Design): Record<string, ClipMark> {
+  const last = design.reviews.at(-1);
+  if (!last || (design.sampledAt && last.createdAt < design.sampledAt)) return {};
+  const lines = new Set(design.samples.map((sample) => `sample:${sample.position}`));
+  return Object.fromEntries(Object.entries(last.clips).filter(([key]) => lines.has(key)));
+}
 
 function Confirm({
   question,
@@ -128,20 +136,13 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const last = design.reviews.at(-1);
   const [note, setNote] = useState("");
   const recommended = recommendedPreview(design.previews.map((preview) => preview.measures));
-  const [clips, setClips] = useState<Record<string, ClipMark>>(() => sampleMarks(last));
-  // A removed verdict must not stay preset in the form, one press from coming back.
-  const [formFor, setFormFor] = useState(last?.id);
-  if (formFor !== last?.id) {
-    setFormFor(last?.id);
-    setClips(sampleMarks(last));
-  }
-  // A re-sample puts new lines behind the same `sample:<n>` keys: a mark on the old line must not
-  // carry over to the new one.
-  const sampled = design.samples.map((sample) => sample.sha256).join();
-  const [marksFor, setMarksFor] = useState(sampled);
-  if (marksFor !== sampled) {
-    setMarksFor(sampled);
-    setClips({});
+  const [clips, setClips] = useState<Record<string, ClipMark>>(() => currentMarks(design));
+  // A removed verdict or lines voiced again: the marks start over from what still applies.
+  const marksBasis = `${last?.id}|${design.samples.map((sample) => sample.sha256).join()}`;
+  const [marksFor, setMarksFor] = useState(marksBasis);
+  if (marksFor !== marksBasis) {
+    setMarksFor(marksBasis);
+    setClips(currentMarks(design));
   }
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -195,6 +196,8 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
       const draft = await revision();
       try {
         updateDesign(await designFrom(lang, slot.name, draft));
+        // A draft still open in the form would revise the version this one replaces.
+        setDraft(slot.name, null);
       } catch (err) {
         setDraft(slot.name, draft);
         throw err;

@@ -122,3 +122,27 @@ test("Revise puts Gemini's draft into a form that was already open", async () =>
   await userEvent.click(await screen.findByRole("button", { name: "Revise from review" }));
   expect(await screen.findByDisplayValue("Gemini's new prompt")).toBeTruthy();
 });
+
+test("Generate opens the new version with an empty note and closes a draft left from the old one", async () => {
+  const line = { position: 0, sha256: "a".repeat(64), lineId: "q:1", text: "t", npcName: null, characters: 1, credits: 1 };
+  const v2 = { ...design("orc-male-shady", 2, "needs-work", "too noble"), samples: [line] };
+  const v3 = { ...design("orc-male-shady", 3, null), id: "orc-male-shady-3" };
+  const revision = { heard: "h", prompt: "Gemini's new prompt", preview_text: "y".repeat(120), archetype: "a" };
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: v3 })));
+  Element.prototype.scrollIntoView = () => {};
+  render(
+    <LangProvider lang="enUS">
+      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [v2])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
+    </LangProvider>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+  await userEvent.click(await screen.findByRole("button", { name: "Revise from review" }));
+  expect(await screen.findByDisplayValue("Gemini's new prompt")).toBeTruthy();
+  const note = (v: number) => within(screen.getByRole("region", { name: `orc-male-shady v${v}` })).getByRole("textbox", { name: "Note" }) as HTMLInputElement;
+  await userEvent.type(note(2), "half-typed");
+
+  await userEvent.click(screen.getByRole("button", { name: "Generate from review" }));
+  expect(await screen.findByText("Prompt of orc-male-shady v3")).toBeTruthy();
+  expect(note(3).value).toBe("");
+  expect(screen.queryByDisplayValue("Gemini's new prompt")).toBeNull();
+});

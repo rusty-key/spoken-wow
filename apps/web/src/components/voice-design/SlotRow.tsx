@@ -62,7 +62,7 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
         </p>
       </header>
 
-      {newest ? <VersionCard design={newest} slot={slot} newest /> : null}
+      {newest ? <VersionCard key={newest.id} design={newest} slot={slot} newest /> : null}
 
       {formOpen ? (
         <div id={`design-${slot.name}`}>
