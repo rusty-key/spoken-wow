@@ -28,8 +28,10 @@ export type Workbench = {
   model: string;
   /** A sampled line's live take, by line id. */
   live: Record<string, string>;
-  playing: Playing | null;
+  /** Starts the clip, or pauses or resumes it when it is the one already in the player. */
   play: (clip: Playing) => void;
+  /** Whether this clip is in the player and sounding. */
+  isPlaying: (src: string) => boolean;
   drafts: Record<string, Draft>;
   setDraft: (slot: string, draft: Draft | null) => void;
   updateDesign: (design: Design) => void;

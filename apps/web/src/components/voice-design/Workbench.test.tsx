@@ -51,6 +51,7 @@ const slot = (name: string, designs: Design[]): SlotView => ({
   npcs: ["Grunt"],
   reference: null,
   candidates: [],
+  previewLines: {},
   sampleChars: 300,
   designs,
 });
@@ -178,4 +179,59 @@ test("Generate all asks first with the cost, then makes each needs-work slot's n
   await userEvent.click(screen.getByRole("button", { name: "Generate" }));
   await vi.waitFor(() => expect(calls).toHaveLength(4));
   expect(calls).toEqual(["revise orc-male-shady-2", "design orc-male-shady", "revise orc-male-grunt-1", "design orc-male-grunt"]);
+});
+
+test("a clip's button pauses it while it plays and resumes it after", async () => {
+  // jsdom has no media playback or ResizeObserver, which the player's sliders measure with.
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+  const paused = new WeakMap<HTMLMediaElement, boolean>();
+  vi.spyOn(HTMLMediaElement.prototype, "paused", "get").mockImplementation(function (this: HTMLMediaElement) {
+    return paused.get(this) ?? true;
+  });
+  vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(async function (this: HTMLMediaElement) {
+    paused.set(this, false);
+    this.dispatchEvent(new Event("play"));
+  });
+  vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(function (this: HTMLMediaElement) {
+    paused.set(this, true);
+    this.dispatchEvent(new Event("pause"));
+  });
+  const voiced = { ...design("orc-male-shady", 1, null), previews: [{ sha256: "a".repeat(64), measures: null }] };
+  render(
+    <LangProvider lang="enUS">
+      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [voiced])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
+    </LangProvider>,
+  );
+  const preview = screen.getByRole("button", { name: "Preview 1" });
+
+  await userEvent.click(preview);
+  await vi.waitFor(() => expect(preview.getAttribute("aria-pressed")).toBe("true"));
+  await userEvent.click(preview);
+  expect(preview.getAttribute("aria-pressed")).toBe("false");
+  expect(HTMLMediaElement.prototype.pause).toHaveBeenCalledTimes(1);
+  await userEvent.click(preview);
+  expect(preview.getAttribute("aria-pressed")).toBe("true");
+  vi.restoreAllMocks();
+});
+
+test("plays the game's clip and the corpus line a preview text came from beside the previews", () => {
+  const picked = design("orc-male-shady", 1, null);
+  const line = { lineId: "q:7:accept", npcName: "Grukk", src: "/api/quests/audio/x.mp3" };
+  render(
+    <LangProvider lang="enUS">
+      <Workbench
+        groups={[{ group: "orc-male", analysis: null, slots: [{ ...slot("orc-male-shady", [picked]), reference: "/ref.mp3", previewLines: { [picked.previewText]: line } }] }]}
+        live={{}}
+        viewer={{ id: "u1", designs: true, admin: false }}
+        keys={{ elevenlabs: true, gemini: true }}
+        rate={0.5}
+        model="eleven_v4"
+      />
+    </LangProvider>,
+  );
+  const card = within(screen.getByRole("region", { name: "orc-male-shady v1" }));
+  expect(card.getByRole("button", { name: "Reference clip" })).toBeTruthy();
+  expect(card.getByRole("button", { name: "Live" })).toBeTruthy();
+  expect(card.getByText("Grukk")).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: "Reference clip" })).toHaveLength(1);
 });

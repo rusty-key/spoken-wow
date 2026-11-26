@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Play, Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { useUiText } from "@/components/UiTextProvider";
@@ -8,6 +8,7 @@ import { fill } from "@/lib/site-text/format";
 import type { Doneness } from "@/lib/voice-design/groups";
 
 import DesignForm from "./DesignForm";
+import PlayButton from "./PlayButton";
 import StatusBadge from "./StatusBadge";
 import VersionCard from "./VersionCard";
 import { useWorkbench } from "./context";
@@ -15,7 +16,7 @@ import type { SlotView } from "./Workbench";
 
 export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: Doneness }) {
   const t = useUiText().voiceDesign;
-  const { viewer, drafts, setDraft, play } = useWorkbench();
+  const { viewer, drafts, setDraft } = useWorkbench();
   const draft = drafts[slot.name];
   const [newest, ...older] = slot.designs;
   const [designing, setDesigning] = useState(false);
@@ -35,16 +36,15 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
           <StatusBadge doneness={doneness} />
         </div>
         <div className="vd-slot-actions">
-          {slot.reference ? (
-            <button
-              type="button"
-              className="bs-btn bs-btn-text"
+          {/* A version's card plays the clip beside its previews. */}
+          {newest ? null : slot.reference ? (
+            <PlayButton
+              clip={{ src: slot.reference, title: slot.name, meta: t.gameReference, subtitle: t.gameClipNote }}
+              className="vd-play vd-play-live"
               title={t.gameClipNote}
-              onClick={() => play({ src: slot.reference!, title: slot.name, meta: t.gameReference, subtitle: t.gameClipNote })}
             >
-              <Play size={14} aria-hidden="true" />
               {t.gameReference}
-            </button>
+            </PlayButton>
           ) : (
             <span className="vd-muted" title={t.gameClipNote}>
               {t.noGameReference}

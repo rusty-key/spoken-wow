@@ -87,6 +87,13 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
     .filter((slot) => slot.name.split("-").length >= 2)
     .map((slot) => {
       const own = byVoice.get(slot.name) ?? [];
+      const designed = bySlot.get(slot.name) ?? [];
+      // A preview text picked from the slot's lines is heard against that line's live take.
+      const previewLines: SlotView["previewLines"] = {};
+      for (const design of designed) {
+        const line = own.find((candidate) => candidate.text.trim() === design.previewText);
+        if (line) previewLines[design.previewText] = { lineId: line.lineId, npcName: line.npcName, src: withLang(lang, `/api/quests/audio/${audioRelPath(line)}`) };
+      }
       return {
         name: slot.name,
         group: groupOf(slot.name),
@@ -95,7 +102,8 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
         reference: referenceUrl(slot.name),
         candidates: previewTextCandidates(own, slot.name),
         sampleChars: defaultSampleLines(own, slot.name).reduce((sum, line) => sum + line.text.length, 0),
-        designs: bySlot.get(slot.name) ?? [],
+        previewLines,
+        designs: designed,
       };
     });
   const groups: GroupView[] = [...new Set(views.map((slot) => slot.group))].map((group) => ({

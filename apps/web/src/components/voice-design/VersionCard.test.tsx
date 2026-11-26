@@ -51,8 +51,8 @@ const context: Workbench = {
   rate: 0.5,
   model: "eleven_v4",
   live: {},
-  playing: null,
   play: () => {},
+  isPlaying: () => false,
   drafts: {},
   setDraft: () => {},
   updateDesign: () => {},
@@ -64,7 +64,7 @@ const verdict = (name: string) => within(screen.getByRole("textbox", { name: "No
 
 const card = (design: Design) => (
   <WorkbenchContext.Provider value={context}>
-    <VersionCard design={design} slot={{ name: design.slot, sampleChars: 0 } as SlotView} newest />
+    <VersionCard design={design} slot={{ name: design.slot, sampleChars: 0, reference: null, previewLines: {} } as unknown as SlotView} newest />
   </WorkbenchContext.Provider>
 );
 
