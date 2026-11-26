@@ -32,14 +32,16 @@ export type Workbench = {
   model: string;
   /** A sampled line's live take, by line id. */
   live: Record<string, string>;
-  playing: Playing | null;
+  /** Starts the clip, or pauses or resumes it when it is the one already in the player. */
   play: (clip: Playing) => void;
+  isPlaying: (src: string) => boolean;
   drafts: Record<string, Draft>;
   setDraft: (slot: string, draft: Draft | null) => void;
   /** Voice Remix's settings, one set for the page; every remix sends them. */
   remixSettings: RemixSettings;
   setRemixSettings: (settings: RemixSettings) => void;
-  updateDesign: (design: Design) => void;
+  /** `live` holds the live takes of lines the design was just voiced on. */
+  updateDesign: (design: Design, live?: Record<string, string>) => void;
   updateAnalysis: (analysis: Analysis) => void;
 };
 

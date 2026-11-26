@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import BackstagePage from "@/components/backstage/BackstagePage";
 import Workbench, { type GroupView, type SlotView } from "@/components/voice-design/Workbench";
 import { apiKeyStatus } from "@/lib/api-key";
-import { audioRelPath } from "@/lib/audio";
 import type { CorpusLine } from "@/lib/corpus";
 import { observedRate } from "@/lib/generation/calibration";
 import { readPreference } from "@/lib/generation/preference";
@@ -18,6 +17,7 @@ import { fill } from "@/lib/site-text/format";
 import { uiText } from "@/lib/ui-text";
 import { groupOf } from "@/lib/voice-design/groups";
 import { defaultSampleLines, previewTextCandidates, slotNpcs } from "@/lib/voice-design/lines";
+import { liveTakes, liveTakeUrl } from "@/lib/voice-design/live";
 import { latestAnalyses, listDesigns } from "@/lib/voice-design/store";
 import type { Design } from "@/lib/voice-design/types";
 import { cloneName } from "@/lib/voices/clone-name";
@@ -75,27 +75,31 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   const bySlot = new Map<string, Design[]>();
   for (const design of designs) bySlot.set(design.slot, [...(bySlot.get(design.slot) ?? []), design]);
 
-  const live: Record<string, string> = {};
-  for (const design of designs) {
-    for (const sample of design.samples) {
-      const line = index.get(sample.lineId)?.[0];
-      if (line) live[sample.lineId] = withLang(lang, `/api/quests/audio/${audioRelPath(line)}`);
-    }
-  }
+  const live = liveTakes(lang, index, designs.flatMap((design) => design.samples));
 
   const views: SlotView[] = all
     .filter((slot) => slot.name.split("-").length >= 2)
     .map((slot) => {
       const own = byVoice.get(slot.name) ?? [];
+      const designed = bySlot.get(slot.name) ?? [];
+      const candidates = previewTextCandidates(own, slot.name);
+      // Candidates too: a version made from one after the page loaded still finds its line.
+      const texts = new Set([...candidates, ...designed.map((design) => design.previewText)]);
+      const previewLines: SlotView["previewLines"] = {};
+      for (const line of own) {
+        const text = line.text.trim();
+        if (texts.has(text) && !previewLines[text]) previewLines[text] = { lineId: line.lineId, npcName: line.npcName, src: liveTakeUrl(lang, line) };
+      }
       return {
         name: slot.name,
         group: groupOf(slot.name),
         lineCount: slot.lineCount,
         npcs: slotNpcs(own, slot.name),
         reference: referenceUrl(slot.name),
-        candidates: previewTextCandidates(own, slot.name),
+        candidates,
         sampleChars: defaultSampleLines(own, slot.name).reduce((sum, line) => sum + line.text.length, 0),
-        designs: bySlot.get(slot.name) ?? [],
+        previewLines,
+        designs: designed,
       };
     });
   const groups: GroupView[] = [...new Set(views.map((slot) => slot.group))].map((group) => ({

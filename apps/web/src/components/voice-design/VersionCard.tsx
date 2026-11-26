@@ -1,6 +1,6 @@
 "use client";
 
-import { AudioLines, Blend, Check, Loader2, MoreHorizontal, Pencil, Play, RefreshCw, Save, SlidersHorizontal, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { AudioLines, Blend, Check, Loader2, MoreHorizontal, Pencil, RefreshCw, Save, SlidersHorizontal, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import Link from "@/components/LocaleLink";
@@ -13,6 +13,7 @@ import { isRevisable } from "@/lib/voice-design/groups";
 import { designName, recommendedPreview } from "@/lib/voice-design/limits";
 import type { ClipMark, Design, Measures } from "@/lib/voice-design/types";
 
+import PlayButton, { ReferenceClip } from "./PlayButton";
 import StatusBadge from "./StatusBadge";
 import { designFrom, remixFrom, requestRevision, send, useWorkbench, type Draft } from "./context";
 import RemixSettingsFields from "./RemixSettings";
@@ -133,9 +134,10 @@ function Marks({ value, onChange, disabled }: { value: ClipMark | undefined; onC
 /** The newest version carries the slot's next step; an older one can only be started from again. */
 export default function VersionCard({ design, slot, newest }: { design: Design; slot: SlotView; newest: boolean }) {
   const t = useUiText().voiceDesign;
-  const { lang, viewer, keys, rate, model, live, play, playing, updateDesign, setDraft, remixSettings } = useWorkbench();
+  const { lang, viewer, keys, rate, model, live, updateDesign, setDraft, remixSettings } = useWorkbench();
   const last = design.reviews.at(-1);
   const [note, setNote] = useState("");
+  const previewLine = slot.previewLines[design.previewText];
   const recommended = recommendedPreview(design.previews.map((preview) => preview.measures));
   const [clips, setClips] = useState<Record<string, ClipMark>>(() => currentMarks(design));
   // A removed verdict or lines voiced again: the marks start over from what still applies.
@@ -176,7 +178,10 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   }
 
   const act = (what: string, url: string, init: { method?: string; body?: unknown } = {}) =>
-    run(what, async () => updateDesign((await send<{ design: Design }>(withLang(lang, url), init)).design));
+    run(what, async () => {
+      const { design, live } = await send<{ design: Design; live?: Record<string, string> }>(withLang(lang, url), init);
+      updateDesign(design, live);
+    });
 
   const mark = (key: string, value: ClipMark | undefined) =>
     setClips((current) => {
@@ -185,8 +190,6 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
       else delete next[key];
       return next;
     });
-
-  const isPlaying = (src: string) => playing?.src === src;
 
   const revisable = isRevisable(design);
   const revision = () => requestRevision(lang, design, fill(t.geminiRevision, { v: tag }));
@@ -253,44 +256,52 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
         <div className="vd-clips">
           <p className="bs-label">{t.previewsLabel}</p>
           <ul className="vd-cliplist">
-            {design.previews.map((preview, index) => {
-              const src = audio(preview.sha256);
-              return (
-                <li key={preview.sha256 + index} className="vd-clip">
+            <li className="vd-clip">
+              <ReferenceClip slot={slot} />
+            </li>
+            {previewLine ? (
+              <li className="vd-clip">
+                <PlayButton
+                  clip={{ src: previewLine.src, title: previewLine.npcName, meta: `${t.liveTake} · ${previewLine.lineId}`, subtitle: design.previewText }}
+                  live
+                >
+                  {t.liveTake}
+                </PlayButton>
+                <span className="vd-muted">{previewLine.npcName}</span>
+              </li>
+            ) : null}
+            {design.previews.map((preview, index) => (
+              <li key={preview.sha256 + index} className="vd-clip">
+                <PlayButton
+                  clip={{ src: audio(preview.sha256), title: `${slot.name} ${tag}`, meta: fill(t.previewN, { n: index + 1 }), subtitle: design.previewText }}
+                >
+                  {fill(t.previewN, { n: index + 1 })}
+                </PlayButton>
+                {can && !hasVoice ? (
                   <button
                     type="button"
-                    className={cn("vd-play", isPlaying(src) && "vd-play-on")}
-                    onClick={() => play({ src, title: `${slot.name} ${tag}`, meta: fill(t.previewN, { n: index + 1 }), subtitle: design.previewText })}
+                    className={cn("bs-btn vd-tip", recommended === index && "bs-btn-primary")}
+                    data-tip={fill(t.saveCost, { name: designName(design) })}
+                    disabled={busy !== null || !keys.elevenlabs}
+                    onClick={() => void act(`save-${index}`, `/api/voices/design/${design.id}/voice`, { body: { preview: index } })}
                   >
-                    <Play size={13} aria-hidden="true" />
-                    {fill(t.previewN, { n: index + 1 })}
+                    {busy === `save-${index}` ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Save size={14} aria-hidden="true" />}
+                    {t.saveAsVoice}
                   </button>
-                  {can && !hasVoice ? (
-                    <button
-                      type="button"
-                      className={cn("bs-btn vd-tip", recommended === index && "bs-btn-primary")}
-                      data-tip={fill(t.saveCost, { name: designName(design) })}
-                      disabled={busy !== null || !keys.elevenlabs}
-                      onClick={() => void act(`save-${index}`, `/api/voices/design/${design.id}/voice`, { body: { preview: index } })}
-                    >
-                      {busy === `save-${index}` ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Save size={14} aria-hidden="true" />}
-                      {t.saveAsVoice}
-                    </button>
-                  ) : null}
-                  <MeasureLine measures={preview.measures} />
-                  {recommended === index && design.previews.length > 1 ? (
-                    <span className="vd-tag" title={t.recommendedTitle}>
-                      {t.recommended}
-                    </span>
-                  ) : null}
-                  {design.chosenPreview === index && hasVoice ? (
-                    <span className="vd-tag vd-tag-gold" title={t.savedTitle}>
-                      {t.saved}
-                    </span>
-                  ) : null}
-                </li>
-              );
-            })}
+                ) : null}
+                {recommended === index && design.previews.length > 1 ? (
+                  <span className="vd-tag" title={t.recommendedTitle}>
+                    {t.recommended}
+                  </span>
+                ) : null}
+                {design.chosenPreview === index && hasVoice ? (
+                  <span className="vd-tag vd-tag-gold" title={t.savedTitle}>
+                    {t.saved}
+                  </span>
+                ) : null}
+                <MeasureLine measures={preview.measures} />
+              </li>
+            ))}
           </ul>
         </div>
 
@@ -300,7 +311,6 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
           {design.samples.length === 0 ? <p className="vd-muted">{hasVoice ? t.noSamples : t.saveFirst}</p> : null}
           <ul className="vd-cliplist">
             {design.samples.map((sample) => {
-              const src = audio(sample.sha256);
               const now = live[sample.lineId];
               const key = `sample:${sample.position}`;
               return (
@@ -310,23 +320,16 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                     <p className="bs-text">{sample.text}</p>
                   </div>
                   <div className="vd-sample-play">
-                    <button
-                      type="button"
-                      className={cn("vd-play", isPlaying(src) && "vd-play-on")}
-                      onClick={() => play({ src, title: sample.npcName ?? slot.name, meta: `${tag} · ${sample.lineId}`, subtitle: sample.text })}
-                    >
-                      <Play size={13} aria-hidden="true" />
+                    <PlayButton clip={{ src: audio(sample.sha256), title: sample.npcName ?? slot.name, meta: `${tag} · ${sample.lineId}`, subtitle: sample.text }}>
                       {t.newTake}
-                    </button>
+                    </PlayButton>
                     {now ? (
-                      <button
-                        type="button"
-                        className={cn("vd-play", "vd-play-live", isPlaying(now) && "vd-play-on")}
-                        onClick={() => play({ src: now, title: sample.npcName ?? slot.name, meta: `${t.liveTake} · ${sample.lineId}`, subtitle: sample.text })}
+                      <PlayButton
+                        clip={{ src: now, title: sample.npcName ?? slot.name, meta: `${t.liveTake} · ${sample.lineId}`, subtitle: sample.text }}
+                        live
                       >
-                        <Play size={13} aria-hidden="true" />
                         {t.liveTake}
-                      </button>
+                      </PlayButton>
                     ) : (
                       <span className="vd-muted">{t.noLiveTake}</span>
                     )}
