@@ -127,8 +127,9 @@ not only against the reference clip. **Voice the lines again** replaces them. Sa
   with what it heard and a rewritten prompt. Notes travel across a race: write "trolls need a
   Jamaican accent" on one troll and every troll's revision reads it. It also works on a version
   nobody has reviewed yet, from its siblings' notes. Edit the draft, then **Design 3 previews**.
-- On the **Needs work** filter, **Revise all from reviews** does that for every slot shown, one at a
-  time, and leaves a draft in each slot's form. Designing stays one slot at a time.
+- On the **Needs work** filter, **Generate all from reviews** runs Generate from review on every slot
+  shown, one at a time, after asking with the total ElevenLabs cost. A slot whose design fails keeps
+  Gemini's draft in its form.
 - Filter the page by **No design**, **Pending**, **Needs work** and **Good**, and search slots, NPCs,
   prompts and notes.
 - Accounts cap custom voices. **Delete from ElevenLabs** on a version you will not use frees the slot;
