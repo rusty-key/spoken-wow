@@ -443,3 +443,54 @@ export async function deleteVoice(
   });
   if (!response.ok) throw await failure(response, `deleting voice ${voiceId}`);
 }
+
+/** ElevenLabs' limits for Voice Design: what it rejects, refused here before anything is spent. */
+export const DESIGN_LIMITS = { promptMin: 20, promptMax: 1000, textMin: 100, textMax: 1000 } as const;
+
+export type DesignedPreview = { generatedVoiceId: string; audio: Buffer };
+
+/**
+ * Voice Design: previews of a voice made from a description alone. Nothing is created in the
+ * account until one is saved (createDesignedVoice), and no audio is ever sent.
+ */
+export async function designPreviews(
+  input: { prompt: string; text: string },
+  options: ElevenLabsOptions = {},
+): Promise<DesignedPreview[]> {
+  const { apiKey, baseUrl, fetchImpl } = config(options);
+  const response = await fetchImpl(`${baseUrl}/v1/text-to-voice/design`, {
+    method: "POST",
+    headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({ voice_description: input.prompt, text: input.text, model_id: "eleven_ttv_v3" }),
+  });
+  if (!response.ok) throw await failure(response, "designing a voice");
+  const body = (await response.json()) as { previews?: { generated_voice_id?: string; audio_base_64?: string }[] };
+  const previews = (body.previews ?? []).flatMap((preview) =>
+    preview.generated_voice_id && preview.audio_base_64
+      ? [{ generatedVoiceId: preview.generated_voice_id, audio: Buffer.from(preview.audio_base_64, "base64") }]
+      : [],
+  );
+  if (previews.length === 0) throw new Error("ElevenLabs designed no previews");
+  return previews;
+}
+
+/** Save a preview as a voice in the account, and return its id. */
+export async function createDesignedVoice(
+  input: { name: string; prompt: string; generatedVoiceId: string },
+  options: ElevenLabsOptions = {},
+): Promise<string> {
+  const { apiKey, baseUrl, fetchImpl } = config(options);
+  const response = await fetchImpl(`${baseUrl}/v1/text-to-voice`, {
+    method: "POST",
+    headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      voice_name: input.name,
+      voice_description: input.prompt,
+      generated_voice_id: input.generatedVoiceId,
+    }),
+  });
+  if (!response.ok) throw await failure(response, `saving the voice "${input.name}"`);
+  const body = (await response.json()) as { voice_id?: string };
+  if (!body.voice_id) throw new Error(`ElevenLabs saved "${input.name}" but returned no voice_id`);
+  return body.voice_id;
+}

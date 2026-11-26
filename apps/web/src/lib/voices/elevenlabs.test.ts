@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   addVoice,
+  createDesignedVoice,
   deleteVoice,
+  designPreviews,
   getSubscription,
   isRenamable,
   listAccountVoices,
@@ -338,5 +340,56 @@ describe("account reads", () => {
     ["getSubscription", () => getSubscription(options)],
   ])("%s gives up on a stalled ElevenLabs and says so", async (_name, read) => {
     await expect(read()).rejects.toThrow(/timed out: ElevenLabs did not answer within 0.02s/);
+  });
+});
+
+describe("designPreviews", () => {
+  it("asks Voice Design for previews from text alone, and decodes their audio", async () => {
+    const fetchImpl = respondWith({
+      previews: [
+        { generated_voice_id: "g1", audio_base_64: Buffer.from("one").toString("base64") },
+        { generated_voice_id: "g2", audio_base_64: Buffer.from("two").toString("base64") },
+      ],
+    });
+    const previews = await designPreviews(
+      { prompt: "A gruff orc.", text: "Hello there." },
+      { apiKey: "k", baseUrl: "https://stub.test", fetchImpl },
+    );
+
+    expect(previews).toEqual([
+      { generatedVoiceId: "g1", audio: Buffer.from("one") },
+      { generatedVoiceId: "g2", audio: Buffer.from("two") },
+    ]);
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe("https://stub.test/v1/text-to-voice/design");
+    expect(JSON.parse(String(init?.body))).toEqual({
+      voice_description: "A gruff orc.",
+      text: "Hello there.",
+      model_id: "eleven_ttv_v3",
+    });
+  });
+
+  it("says what ElevenLabs said when it refuses", async () => {
+    const fetchImpl = respondWith({ detail: "voice_limit_reached" }, { status: 400 });
+    await expect(designPreviews({ prompt: "p", text: "t" }, { apiKey: "k", fetchImpl })).rejects.toThrow(/voice_limit_reached/);
+  });
+});
+
+describe("createDesignedVoice", () => {
+  it("saves the chosen preview under its name", async () => {
+    const fetchImpl = respondWith({ voice_id: "v9" });
+    const id = await createDesignedVoice(
+      { name: "design-orc-male-shady-v3", prompt: "A gruff orc.", generatedVoiceId: "g2" },
+      { apiKey: "k", baseUrl: "https://stub.test", fetchImpl },
+    );
+
+    expect(id).toBe("v9");
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe("https://stub.test/v1/text-to-voice");
+    expect(JSON.parse(String(init?.body))).toEqual({
+      voice_name: "design-orc-male-shady-v3",
+      voice_description: "A gruff orc.",
+      generated_voice_id: "g2",
+    });
   });
 });
