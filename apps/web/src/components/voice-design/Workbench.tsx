@@ -13,6 +13,7 @@ import { parseRemixSettings, PREVIEWS_PER_DESIGN, REMIX_DEFAULTS, type RemixSett
 import type { Analysis, Design } from "@/lib/voice-design/types";
 
 import AnalysePanel from "./AnalysePanel";
+import DeleteOlder from "./DeleteOlder";
 import ImportForm from "./ImportForm";
 import SlotRow from "./SlotRow";
 import { designFrom, requestRevision, WorkbenchContext, type Draft, type Playing, type Workbench as WorkbenchState } from "./context";
@@ -260,6 +261,8 @@ export default function Workbench({
           ) : null}
         </div>
       ) : null}
+
+      {viewer.designs && keys.elevenlabs ? <DeleteOlder slots={groups.flatMap((group) => group.slots)} /> : null}
 
       {viewer.designs && (!keys.elevenlabs || !keys.gemini) ? (
         <p className="vd-note">
