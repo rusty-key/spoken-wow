@@ -5,6 +5,7 @@ import BackstagePage from "@/components/backstage/BackstagePage";
 import Workbench, { type GroupView, type SlotView } from "@/components/voice-design/Workbench";
 import { apiKeyStatus } from "@/lib/api-key";
 import { audioRelPath } from "@/lib/audio";
+import type { CorpusLine } from "@/lib/corpus";
 import { observedRate } from "@/lib/generation/calibration";
 import { readPreference } from "@/lib/generation/preference";
 import { viewerOf } from "@/lib/grants/store";
@@ -15,7 +16,7 @@ import { corpus, lineIndex } from "@/lib/quests/catalogue";
 import { currentSession } from "@/lib/session";
 import { fill } from "@/lib/site-text/format";
 import { uiText } from "@/lib/ui-text";
-import { groupOf, flavorOf } from "@/lib/voice-design/groups";
+import { groupOf } from "@/lib/voice-design/groups";
 import { defaultSampleLines, previewTextCandidates, slotNpcs } from "@/lib/voice-design/lines";
 import { latestAnalyses, listDesigns } from "@/lib/voice-design/store";
 import type { Design } from "@/lib/voice-design/types";
@@ -37,7 +38,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   if (!session || !canViewVoices(viewer, lang)) notFound();
   const userId = session.user.id;
 
-  const [all, designs, analyses, references, { lines }, index, eleven, gemini, preference] = await Promise.all([
+  const [all, designs, analyses, references, { lines }, index, eleven, gemini, rate] = await Promise.all([
     slots(lang),
     listDesigns(lang),
     latestAnalyses(lang),
@@ -46,9 +47,18 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
     lineIndex(lang),
     apiKeyStatus(userId),
     apiKeyStatus(userId, "gemini"),
-    readPreference(userId, lang),
+    readPreference(userId, lang).then(async (preference) => ({
+      model: preference.elevenlabs.modelId,
+      perCharacter: (await observedRate(preference.elevenlabs.modelId)).rate,
+    })),
   ]);
-  const rate = (await observedRate(preference.elevenlabs.modelId)).rate;
+  // One pass over the corpus: each slot's helpers then read only its own lines.
+  const byVoice = new Map<string, CorpusLine[]>();
+  for (const line of lines) {
+    const own = byVoice.get(line.voice);
+    if (own) own.push(line);
+    else byVoice.set(line.voice, [line]);
+  }
 
   // The game clip a slot is heard by: what fish.audio speaks it from, else its first stored clip.
   const firstClips = new Map(
@@ -75,17 +85,19 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
 
   const views: SlotView[] = all
     .filter((slot) => slot.name.split("-").length >= 2)
-    .map((slot) => ({
-      name: slot.name,
-      group: groupOf(slot.name),
-      flavor: flavorOf(slot.name),
-      lineCount: slot.lineCount,
-      npcs: slotNpcs(lines, slot.name),
-      reference: referenceUrl(slot.name),
-      candidates: previewTextCandidates(lines, slot.name),
-      sampleChars: defaultSampleLines(lines, slot.name).reduce((sum, line) => sum + line.text.length, 0),
-      designs: bySlot.get(slot.name) ?? [],
-    }));
+    .map((slot) => {
+      const own = byVoice.get(slot.name) ?? [];
+      return {
+        name: slot.name,
+        group: groupOf(slot.name),
+        lineCount: slot.lineCount,
+        npcs: slotNpcs(own, slot.name),
+        reference: referenceUrl(slot.name),
+        candidates: previewTextCandidates(own, slot.name),
+        sampleChars: defaultSampleLines(own, slot.name).reduce((sum, line) => sum + line.text.length, 0),
+        designs: bySlot.get(slot.name) ?? [],
+      };
+    });
   const groups: GroupView[] = [...new Set(views.map((slot) => slot.group))].map((group) => ({
     group,
     analysis: analyses.get(group) ?? null,
@@ -99,8 +111,8 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
         live={live}
         viewer={{ id: userId, designs: can(viewer, "configure", lang), admin: isAdmin(session.user.role) }}
         keys={{ elevenlabs: eleven !== null, gemini: gemini !== null }}
-        rate={rate}
-        model={preference.elevenlabs.modelId}
+        rate={rate.perCharacter}
+        model={rate.model}
       />
     </BackstagePage>
   );

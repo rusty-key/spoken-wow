@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const { deleteDesignVoice, designVersion, saveDesignVoice, designName } = await import("./design");
+const { deleteDesignVoice, designVersion, saveDesignVoice } = await import("./design");
+const { designName } = await import("./limits");
 import type { DesignDeps } from "./design";
 import type { Design } from "./types";
 

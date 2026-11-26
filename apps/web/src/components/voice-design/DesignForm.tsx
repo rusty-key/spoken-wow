@@ -6,16 +6,13 @@ import { useState } from "react";
 import { useUiText } from "@/components/UiTextProvider";
 import { withLang } from "@/lib/lang";
 import { fill } from "@/lib/site-text/format";
+import { DESIGN_LIMITS, PREVIEWS_PER_DESIGN } from "@/lib/voice-design/limits";
 import type { Design } from "@/lib/voice-design/types";
 
 import { send, useWorkbench, type Draft } from "./context";
 import type { SlotView } from "./Workbench";
 
-/** Voice Design refuses a prompt or preview text outside these. */
-const PROMPT = { min: 20, max: 1000 };
-const TEXT = { min: 100, max: 1000 };
-/** Voice Design bills about the preview text's length for each of its three previews. */
-const PREVIEWS = 3;
+const { promptMin, promptMax, textMin, textMax } = DESIGN_LIMITS;
 
 export default function DesignForm({ slot, initial, onDone }: { slot: SlotView; initial: Draft | null; onDone: () => void }) {
   const t = useUiText().voiceDesign;
@@ -25,9 +22,10 @@ export default function DesignForm({ slot, initial, onDone }: { slot: SlotView; 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const promptOk = prompt.trim().length >= PROMPT.min && prompt.trim().length <= PROMPT.max;
-  const textOk = previewText.trim().length >= TEXT.min && previewText.trim().length <= TEXT.max;
-  const cost = previewText.trim().length * PREVIEWS;
+  const promptOk = prompt.trim().length >= promptMin && prompt.trim().length <= promptMax;
+  const textOk = previewText.trim().length >= textMin && previewText.trim().length <= textMax;
+  // Voice Design bills about the preview text for each preview it makes.
+  const cost = previewText.trim().length * PREVIEWS_PER_DESIGN;
 
   async function design() {
     setBusy(true);
@@ -58,14 +56,14 @@ export default function DesignForm({ slot, initial, onDone }: { slot: SlotView; 
         <span className="bs-label">{t.promptLabel}</span>
         <textarea className="bs-textarea vd-input" rows={5} value={prompt} onChange={(event) => setPrompt(event.target.value)} />
         <span className="vd-hint" data-bad={prompt.length > 0 && !promptOk ? "" : undefined}>
-          {fill(t.promptHint, { n: prompt.trim().length, max: PROMPT.max })}
+          {fill(t.promptHint, { n: prompt.trim().length, max: promptMax })}
         </span>
       </label>
       <label className="vd-field">
         <span className="bs-label">{t.previewTextLabel}</span>
         <textarea className="bs-textarea vd-input" rows={3} value={previewText} onChange={(event) => setPreviewText(event.target.value)} />
         <span className="vd-hint" data-bad={previewText.length > 0 && !textOk ? "" : undefined}>
-          {fill(t.previewTextHint, { n: previewText.trim().length, min: TEXT.min })}
+          {fill(t.previewTextHint, { n: previewText.trim().length, min: textMin })}
         </span>
       </label>
       {slot.candidates.length > 0 ? (

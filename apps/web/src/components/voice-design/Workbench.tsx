@@ -14,13 +14,12 @@ import type { Analysis, Design } from "@/lib/voice-design/types";
 import AnalysePanel from "./AnalysePanel";
 import ImportForm from "./ImportForm";
 import SlotRow from "./SlotRow";
-import { WorkbenchContext, type Draft, type Playing } from "./context";
+import { WorkbenchContext, type Draft, type Playing, type Workbench as WorkbenchState } from "./context";
 
 
 export type SlotView = {
   name: string;
   group: string;
-  flavor: string | null;
   lineCount: number;
   npcs: string[];
   /** Where the slot's game clip plays, or null when it has none on the site. */
@@ -34,7 +33,6 @@ export type SlotView = {
 
 export type GroupView = { group: string; analysis: Analysis | null; slots: SlotView[] };
 
-export type Viewer = { id: string; designs: boolean; admin: boolean };
 
 type Filter = "all" | Doneness;
 
@@ -61,7 +59,7 @@ export default function Workbench({
 }: {
   groups: GroupView[];
   live: Record<string, string>;
-  viewer: Viewer;
+  viewer: WorkbenchState["viewer"];
   keys: { elevenlabs: boolean; gemini: boolean };
   rate: number;
   model: string;

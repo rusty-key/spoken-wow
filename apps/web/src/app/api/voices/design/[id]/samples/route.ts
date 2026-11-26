@@ -12,13 +12,10 @@ export async function POST(request: Request, context: Context) {
   const { id } = await context.params;
   const { session, lang, denied } = await requireDesigner(request);
   if (denied) return denied;
-  const body = (await request.json().catch(() => ({}))) as { lineIds?: unknown };
-  const lineIds = Array.isArray(body.lineIds) && body.lineIds.every((v) => typeof v === "string") ? (body.lineIds as string[]) : null;
-
   const { key, denied: noKey } = await requireApiKey(session.user.id, "elevenlabs");
   if (noKey) return noKey;
   try {
-    return Response.json({ design: await sampleDesign({ lang, id, lineIds, userId: session.user.id, apiKey: key }) });
+    return Response.json({ design: await sampleDesign({ lang, id, userId: session.user.id, apiKey: key }) });
   } catch (error) {
     return failed(error);
   }

@@ -8,7 +8,6 @@ import type { Lang } from "@/lib/lang";
 import {
   createDesignedVoice,
   deleteVoice,
-  DESIGN_LIMITS,
   designPreviews,
   listAccountVoices,
   type AccountVoice,
@@ -18,6 +17,7 @@ import { isVoiceSlot } from "@/lib/voices/slots";
 
 import { DesignError } from "./access";
 import { keepDesignAudio } from "./audio";
+import { DESIGN_LIMITS, designName } from "./limits";
 import { withDesignLock } from "./lock";
 import { measureAudio } from "./measure";
 import { createDesign, isOwnAnalysis, markVoiceDeleted, readDesign, saveVoice, type NewDesign } from "./store";
@@ -55,11 +55,6 @@ const LIVE: DesignDeps = {
   lock: withDesignLock,
 };
 
-/** The account name of a version's voice: one name per attempt, so the account shows which is which. */
-export function designName(design: Pick<Design, "slot" | "version">): string {
-  return `design-${design.slot}-v${design.version}`;
-}
-
 export function rejectDesign(prompt: string, previewText: string): string | null {
   const { promptMin, promptMax, textMin, textMax } = DESIGN_LIMITS;
   if (prompt.length < promptMin || prompt.length > promptMax) return `the prompt must be ${promptMin} to ${promptMax} characters`;
@@ -96,8 +91,8 @@ export async function designVersion(
   });
 }
 
-async function found(deps: DesignDeps, lang: Lang, id: string): Promise<Design> {
-  const design = await deps.read(lang, id);
+export async function found(read: (lang: Lang, id: string) => Promise<Design | null>, lang: Lang, id: string): Promise<Design> {
+  const design = await read(lang, id);
   if (!design) throw new DesignError("no such design", 404);
   return design;
 }
@@ -108,7 +103,7 @@ export async function saveDesignVoice(
   deps: DesignDeps = LIVE,
 ): Promise<Design> {
   return deps.lock(input.id, async () => {
-    const design = await found(deps, input.lang, input.id);
+    const design = await found(deps.read, input.lang, input.id);
     if (design.voiceId) throw new DesignError(`v${design.version} is already saved, in ${design.holderName ?? "someone"}'s account`);
     const preview = design.previews[input.preview];
     if (!Number.isInteger(input.preview) || !preview) throw new DesignError(`v${design.version} has no preview ${input.preview + 1}`, 400);
@@ -138,7 +133,7 @@ export async function deleteDesignVoice(
   deps: DesignDeps = LIVE,
 ): Promise<Design> {
   return deps.lock(input.id, async () => {
-    const design = await found(deps, input.lang, input.id);
+    const design = await found(deps.read, input.lang, input.id);
     const refused = holderRefusal(design, input.userId);
     if (refused) throw new DesignError(refused, 403);
 

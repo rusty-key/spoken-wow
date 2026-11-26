@@ -8,6 +8,7 @@ import type { PoolClient } from "pg";
 
 import type { Lang } from "@/lib/lang";
 import { asTeamOf, readAs } from "@/lib/teams/store";
+import { isUuid } from "@/lib/uuid";
 
 import type { ReviewStatus } from "./groups";
 import type { Analysis, ClipMark, Design, DesignPreview, DesignSample, GeminiResult, Measures, Review } from "./types";
@@ -83,11 +84,8 @@ export async function listDesigns(lang: Lang): Promise<Design[]> {
   return assemble(lang, rows);
 }
 
-/** Ids come from URLs and bodies; Postgres answers anything else with an error, not "no such row". */
-export const isUuid = (id: unknown): id is string =>
-  typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-
 export async function readDesign(lang: Lang, id: string): Promise<Design | null> {
+  // Ids come from URLs and bodies: Postgres answers a malformed one with a cast error, not "no row".
   if (!isUuid(id)) return null;
   const rows = await readAs<DesignRow>(lang, `${DESIGN_SELECT} where d."lang" = $1 and d."id" = $2`, [lang, id]);
   return (await assemble(lang, rows))[0] ?? null;
@@ -110,6 +108,24 @@ async function insertPreviews(client: PoolClient, designId: string, previews: De
       [designId, position, preview.sha256],
     );
   }
+}
+
+async function insertSamples(client: PoolClient, designId: string, samples: DesignSample[]): Promise<void> {
+  for (const sample of samples) {
+    await client.query(
+      `insert into "voice_design_clip" ("designId", "kind", "position", "sha256", "lineId", "text", "npcName", "characters", "credits")
+       values ($1, 'sample', $2, $3, $4, $5, $6, $7, $8)`,
+      [designId, sample.position, sample.sha256, sample.lineId, sample.text, sample.npcName, sample.characters, sample.credits],
+    );
+  }
+}
+
+async function insertReview(client: PoolClient, designId: string, review: NewReview): Promise<void> {
+  await client.query(
+    `insert into "voice_design_review" ("designId", "status", "note", "bestPreview", "clips", "createdBy", "createdAt")
+     values ($1, $2, $3, $4, $5, $6, coalesce($7::timestamptz, now()))`,
+    [designId, review.status, review.note, review.bestPreview, JSON.stringify(review.clips), review.userId, review.at ?? null],
+  );
 }
 
 /** The next version of the slot. Two people designing the same slot at once queue on a lock. */
@@ -171,20 +187,8 @@ export async function importDesign(
     if (!rows[0]) return null;
     const id = rows[0].id;
     await insertPreviews(client, id, input.previews);
-    for (const sample of input.samples) {
-      await client.query(
-        `insert into "voice_design_clip" ("designId", "kind", "position", "sha256", "lineId", "text", "npcName", "characters", "credits")
-         values ($1, 'sample', $2, $3, $4, $5, $6, $7, $8)`,
-        [id, sample.position, sample.sha256, sample.lineId, sample.text, sample.npcName, sample.characters, sample.credits],
-      );
-    }
-    for (const review of input.reviews) {
-      await client.query(
-        `insert into "voice_design_review" ("designId", "status", "note", "bestPreview", "clips", "createdBy", "createdAt")
-         values ($1, $2, $3, $4, $5, $6, coalesce($7::timestamptz, now()))`,
-        [id, review.status, review.note, review.bestPreview, JSON.stringify(review.clips), review.userId, review.at ?? null],
-      );
-    }
+    await insertSamples(client, id, input.samples);
+    for (const review of input.reviews) await insertReview(client, id, review);
     return id;
   });
 }
@@ -212,13 +216,7 @@ export async function replaceSamples(
 ): Promise<void> {
   await asTeamOf(lang, async (client) => {
     await client.query(`delete from "voice_design_clip" where "designId" = $1 and "kind" = 'sample'`, [id]);
-    for (const sample of samples) {
-      await client.query(
-        `insert into "voice_design_clip" ("designId", "kind", "position", "sha256", "lineId", "text", "npcName", "characters", "credits")
-         values ($1, 'sample', $2, $3, $4, $5, $6, $7, $8)`,
-        [id, sample.position, sample.sha256, sample.lineId, sample.text, sample.npcName, sample.characters, sample.credits],
-      );
-    }
+    await insertSamples(client, id, samples);
     await client.query(
       `update "voice_design" set "sampleModel" = $2, "sampleSettings" = $3 where "id" = $1`,
       [id, made.model, JSON.stringify(made.settings)],
@@ -237,13 +235,7 @@ export type NewReview = {
 };
 
 export async function addReview(lang: Lang, id: string, review: NewReview): Promise<void> {
-  await asTeamOf(lang, (client) =>
-    client.query(
-      `insert into "voice_design_review" ("designId", "status", "note", "bestPreview", "clips", "createdBy", "createdAt")
-       values ($1, $2, $3, $4, $5, $6, coalesce($7::timestamptz, now()))`,
-      [id, review.status, review.note, review.bestPreview, JSON.stringify(review.clips), review.userId, review.at ?? null],
-    ),
-  );
+  await asTeamOf(lang, (client) => insertReview(client, id, review));
 }
 
 export async function markVoiceDeleted(lang: Lang, id: string): Promise<void> {

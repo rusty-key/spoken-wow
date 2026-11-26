@@ -44,7 +44,6 @@ function design(slot: string, version: number, review: Design["reviews"][number]
 const slot = (name: string, designs: Design[]): SlotView => ({
   name,
   group: name.split("-").slice(0, 2).join("-"),
-  flavor: name.split("-")[2] ?? null,
   lineCount: 10,
   npcs: ["Grunt"],
   reference: null,

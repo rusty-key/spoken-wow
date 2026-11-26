@@ -9,6 +9,7 @@ import { withLang } from "@/lib/lang";
 import { fill } from "@/lib/site-text/format";
 import { cn } from "@/lib/utils";
 import type { ReviewStatus } from "@/lib/voice-design/groups";
+import { designName } from "@/lib/voice-design/limits";
 import type { ClipMark, Design, Measures } from "@/lib/voice-design/types";
 
 import StatusBadge from "./StatusBadge";
@@ -200,7 +201,7 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
                 {busy === "save" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Save size={14} aria-hidden="true" />}
                 {best === null ? t.pickPreview : fill(t.saveVoice, { n: best + 1 })}
               </button>
-              <span className="vd-cost">{fill(t.saveCost, { name: `design-${slot.name}-${tag}` })}</span>
+              <span className="vd-cost">{fill(t.saveCost, { name: designName(design) })}</span>
             </div>
           ) : null}
         </div>

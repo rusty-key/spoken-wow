@@ -30,8 +30,8 @@ const DESIGN = {
 function deps(design: Partial<Design> = {}): SampleDeps {
   return {
     read: vi.fn(async () => ({ ...DESIGN, ...design })),
-    lines: async () => ({ all: LINES, byId: (id) => LINES.find((l) => l.lineId === id) }),
-    shape: async (l) => `[gruff] ${l.text}`,
+    lines: async () => LINES,
+    shaper: async () => (l) => `[gruff] ${l.text}`,
     settings: async () => ({ modelId: "eleven_v4", voiceSettings: { stability: 0.4 } }) as never,
     speak: vi.fn(async ({ text }) => ({
       ok: true as const,
@@ -49,7 +49,7 @@ function deps(design: Partial<Design> = {}): SampleDeps {
   };
 }
 
-const input = { lang: "enUS" as const, id: "d1", lineIds: null, userId: "u1", apiKey: "k" };
+const input = { lang: "enUS" as const, id: "d1", userId: "u1", apiKey: "k" };
 
 describe("sampleDesign", () => {
   it("voices the default lines in the version's voice, shaped as regeneration would, with the caller's model", async () => {
@@ -82,11 +82,5 @@ describe("sampleDesign", () => {
   it("needs a saved voice", async () => {
     const d = deps({ voiceId: null, holderId: null });
     await expect(sampleDesign(input, d)).rejects.toThrow(/no voice/);
-  });
-
-  it("refuses a line another slot speaks", async () => {
-    const d = deps();
-    await expect(sampleDesign({ ...input, lineIds: ["q:2:accept"] }, d)).rejects.toThrow(/q:2:accept/);
-    expect(d.speak).not.toHaveBeenCalled();
   });
 });

@@ -40,7 +40,7 @@ function config(options: ElevenLabsOptions = {}) {
  * to what went wrong — a plan without cloning, a duplicate name, an unusable sample. Losing
  * it behind a generic message would make every failure a support ticket.
  */
-async function failure(response: Response, what: string): Promise<Error> {
+export async function failure(response: Response, what: string): Promise<Error> {
   const body = await response.text().catch(() => "");
   return new Error(`${what} failed (${response.status}): ${body.slice(0, 300)}`);
 }
@@ -443,9 +443,6 @@ export async function deleteVoice(
   });
   if (!response.ok) throw await failure(response, `deleting voice ${voiceId}`);
 }
-
-/** ElevenLabs' limits for Voice Design: what it rejects, refused here before anything is spent. */
-export const DESIGN_LIMITS = { promptMin: 20, promptMax: 1000, textMin: 100, textMax: 1000 } as const;
 
 export type DesignedPreview = { generatedVoiceId: string; audio: Buffer };
 
