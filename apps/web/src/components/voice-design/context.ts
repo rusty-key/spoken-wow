@@ -8,7 +8,14 @@ import type { Analysis, Design } from "@/lib/voice-design/types";
 export type Playing = { src: string; title: string; meta?: string; subtitle?: string };
 
 /** A prompt and preview text waiting in a slot's Design form: Gemini's draft, or an old version's. */
-export type Draft = { prompt: string; previewText: string; analysisId: string | null; from: string };
+export type Draft = {
+  prompt: string;
+  previewText: string;
+  analysisId: string | null;
+  /** What Gemini heard, for a draft it revised from a review. */
+  heard?: string;
+  from: string;
+};
 
 export type Workbench = {
   lang: Lang;

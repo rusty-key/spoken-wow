@@ -104,13 +104,16 @@ export default function Workbench({
     playing,
     play: (clip: Playing) => setPlaying(clip),
     drafts,
-    setDraft: (slot: string, draft: Draft | null) =>
+    setDraft: (slot: string, draft: Draft | null) => {
       setDrafts((current) => {
         const next = { ...current };
         if (draft) next[slot] = draft;
         else delete next[slot];
         return next;
-      }),
+      });
+      // The form opens at the top of the slot, which may be far from the button pressed.
+      if (draft) document.getElementById(`slot-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
     updateDesign: (design: Design) =>
       setGroups((current) =>
         current.map((group) => ({

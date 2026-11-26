@@ -1,5 +1,5 @@
 /**
- * openSMILE on the droplet, through scripts/voice_measure.py.
+ * openSMILE and librosa on the droplet, through scripts/voice_measure.py.
  *
  * Optional by design: without VOICE_ANALYSIS_PYTHON, or when the helper fails, the workbench
  * shows no measurements and everything else still works.
@@ -28,8 +28,12 @@ function locate(options?: MeasureOptions) {
   };
 }
 
+/** A file the helper measured at all: without openSMILE or librosa, part of it is absent. */
 const isMeasures = (value: unknown): value is Measures =>
-  Boolean(value) && typeof value === "object" && typeof (value as Measures).f0Hz === "number";
+  Boolean(value) &&
+  typeof value === "object" &&
+  !("error" in (value as object)) &&
+  Object.values(value as object).some((v) => typeof v === "number");
 
 /** Each file's measures; null when there is no helper or it failed as a whole. */
 export async function measureFiles(paths: string[], options?: MeasureOptions): Promise<Map<string, Measures> | null> {

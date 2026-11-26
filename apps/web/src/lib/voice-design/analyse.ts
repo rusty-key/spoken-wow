@@ -35,7 +35,7 @@ export type AnalyseDeps = {
 };
 
 /** The slot's fish.audio reference window if it has one, else the first 30 seconds of its first clip. */
-async function gameClip(slot: string, lang: Lang): Promise<Buffer | null> {
+export async function gameClip(slot: string, lang: Lang): Promise<Buffer | null> {
   const reference = await readReference(slot, lang);
   if (reference) {
     const audio = await readReferenceAudio(slot, lang, reference.sha256);

@@ -15,18 +15,34 @@ const VERSION_DIR = /(^|\/)([a-z]+(?:-[a-z0-9]+)+-v\d+)\/(meta\.json|preview\d+\
 
 type Picked = { folders: Map<string, File[]>; reviews: Record<string, unknown> };
 
-async function pick(files: FileList): Promise<Picked> {
+/**
+ * The version folders anywhere under the picked folder, and the reviews.json nearest its top:
+ * the scratch folder holds voices/ beside reviews.json, and older copies may sit deeper.
+ */
+export async function pick(files: Iterable<File>): Promise<Picked> {
   const folders = new Map<string, File[]>();
-  let reviews: Record<string, unknown> = {};
-  for (const file of Array.from(files)) {
+  const copies = new Map<string, { dir: string }>();
+  let reviewsFile: { file: File; depth: number } | null = null;
+  for (const file of files) {
     const path = file.webkitRelativePath || file.name;
-    if (path.endsWith("reviews.json")) {
-      reviews = JSON.parse(await file.text()) as Record<string, unknown>;
+    if (path === "reviews.json" || path.endsWith("/reviews.json")) {
+      const depth = path.split("/").length;
+      if (!reviewsFile || depth < reviewsFile.depth) reviewsFile = { file, depth };
       continue;
     }
     const match = VERSION_DIR.exec(path);
-    if (match) folders.set(match[2], [...(folders.get(match[2]) ?? []), file]);
+    if (!match) continue;
+    // An older copy of a version deeper in the folder is not uploaded beside the real one.
+    const dir = path.slice(0, path.length - match[3].length - 1);
+    const seen = copies.get(match[2]);
+    if (seen && seen.dir !== dir) {
+      if (seen.dir.split("/").length <= dir.split("/").length) continue;
+      folders.delete(match[2]);
+    }
+    copies.set(match[2], { dir });
+    folders.set(match[2], [...(folders.get(match[2]) ?? []), file]);
   }
+  const reviews = reviewsFile ? (JSON.parse(await reviewsFile.file.text()) as Record<string, unknown>) : {};
   return { folders, reviews };
 }
 
@@ -44,7 +60,7 @@ export default function ImportForm() {
     try {
       let picked: Picked;
       try {
-        picked = await pick(files);
+        picked = await pick(Array.from(files));
       } catch (err) {
         // Otherwise a reviews.json that does not parse stops the spinner with no word.
         setLog([`reviews.json: ${err instanceof Error ? err.message : String(err)}`]);

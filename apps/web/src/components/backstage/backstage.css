@@ -2218,3 +2218,24 @@ body:has(main.bs) {
   margin-top: 2px;
   color: var(--bs-gold);
 }
+.vd-measure-lines {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.vd-heard {
+  margin: 0;
+  color: var(--bs-text-2);
+  font-size: 13px;
+  line-height: 19px;
+}
+.vd-inline-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bs-gold);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

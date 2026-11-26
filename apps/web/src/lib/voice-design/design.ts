@@ -17,7 +17,7 @@ import { isVoiceSlot } from "@/lib/voices/slots";
 
 import { DesignError } from "./access";
 import { keepDesignAudio } from "./audio";
-import { DESIGN_LIMITS, designName } from "./limits";
+import { DESIGN_LIMITS, designName, withEnding } from "./limits";
 import { withDesignLock } from "./lock";
 import { measureAudio } from "./measure";
 import { createDesign, isOwnAnalysis, markVoiceDeleted, readDesign, saveVoice, type NewDesign } from "./store";
@@ -63,10 +63,21 @@ export function rejectDesign(prompt: string, previewText: string): string | null
 }
 
 export async function designVersion(
-  input: { lang: Lang; slot: string; prompt: string; previewText: string; analysisId: string | null; userId: string; apiKey: string },
+  input: {
+    lang: Lang;
+    slot: string;
+    prompt: string;
+    previewText: string;
+    analysisId: string | null;
+    /** What Gemini heard when it drafted this version from a review. */
+    revisionHeard?: string | null;
+    userId: string;
+    apiKey: string;
+  },
   deps: DesignDeps = LIVE,
 ): Promise<Design> {
-  const prompt = input.prompt.trim();
+  // The ending keeps s sounds soft, so no prompt reaches ElevenLabs without it, whoever wrote it.
+  const prompt = withEnding(input.prompt);
   const previewText = input.previewText.trim();
   const rejected = rejectDesign(prompt, previewText);
   if (rejected) throw new DesignError(rejected, 400);
@@ -87,6 +98,7 @@ export async function designVersion(
     previewText,
     previews: made.map((preview, i) => ({ generatedVoiceId: preview.generatedVoiceId, sha256: shas[i], measures: measured?.[i] ?? null })),
     analysisId: input.analysisId,
+    analysis: input.revisionHeard ? { revision_heard: input.revisionHeard } : null,
     userId: input.userId,
   });
 }

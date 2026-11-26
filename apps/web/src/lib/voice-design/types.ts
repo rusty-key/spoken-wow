@@ -1,17 +1,22 @@
 import type { ReviewStatus } from "./groups";
+import type { PreviewMetrics } from "./limits";
 
-/** openSMILE eGeMAPS functionals over a whole clip (scripts/voice_measure.py). */
-export type Measures = {
-  f0Hz: number;
-  f0RangeSt: number;
-  hnrDb: number;
-  jitter: number;
-  shimmerDb: number;
-  alphaRatioDb: number;
-  hammarbergDb: number;
-  h1h2Db: number;
-  loudness: number;
-  voicedPerSec: number;
+/**
+ * A clip's measurements (scripts/voice_measure.py): openSMILE's eGeMAPS functionals, and the
+ * s-level, room tail and speech level a preview is chosen by. Any part the helper could not
+ * measure is absent; imported previews may carry only the last three.
+ */
+export type Measures = PreviewMetrics & {
+  f0Hz?: number;
+  f0RangeSt?: number;
+  hnrDb?: number;
+  jitter?: number;
+  shimmerDb?: number;
+  alphaRatioDb?: number;
+  hammarbergDb?: number;
+  h1h2Db?: number;
+  loudness?: number;
+  voicedPerSec?: number;
 };
 
 export type DesignPreview = { generatedVoiceId: string; sha256: string; measures: Measures | null };
@@ -56,6 +61,10 @@ export type Design = {
   voiceDeletedAt: string | null;
   sampleModel: string | null;
   analysisId: string | null;
+  /** The designer's note on the version, such as which preview was saved and why. */
+  note: string | null;
+  /** Gemini's description of the voice: its archetype and, for a revision, what it heard. */
+  analysis: Record<string, unknown> | null;
   samples: DesignSample[];
   /** Oldest first: the last is the version's verdict. */
   reviews: Review[];
