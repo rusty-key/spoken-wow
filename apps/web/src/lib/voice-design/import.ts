@@ -12,7 +12,7 @@ import { isVoiceSlot } from "@/lib/voices/slots";
 
 import { DesignError } from "./access";
 import { keepDesignAudio } from "./audio";
-import { addReview, importDesign, replaceSamples } from "./store";
+import { importDesign } from "./store";
 import type { ClipMark } from "./types";
 
 export type ImportFile = { name: string; data: Buffer };
@@ -103,8 +103,20 @@ export async function importVersion(version: ImportedVersion, input: { lang: Lan
   const name = `${meta.slot}-v${meta.version}`;
   if (!(await isVoiceSlot(meta.slot, input.lang))) throw new DesignError(`${meta.slot} is not a voice slot`, 400);
 
+  // Every file first: keeping one twice is harmless, so a failure here leaves no row to block a retry.
   const shas = await Promise.all(version.previews.map((audio) => keepDesignAudio(audio, input.lang)));
-  const chosen = Number.isInteger(meta.chosen_preview) && meta.chosen_preview! < shas.length ? meta.chosen_preview! : null;
+  const samples = await Promise.all(
+    version.lines.map(async (line, position) => ({
+      position,
+      sha256: await keepDesignAudio(line.audio, input.lang),
+      lineId: line.lineId,
+      text: line.text,
+      npcName: line.npcName,
+      characters: line.text.length,
+      credits: null,
+    })),
+  );
+  const chosen = meta.chosen_preview;
   const id = await importDesign({
     lang: input.lang,
     slot: meta.slot,
@@ -114,28 +126,13 @@ export async function importVersion(version: ImportedVersion, input: { lang: Lan
     previews: shas.map((sha256, i) => ({ generatedVoiceId: meta.preview_ids?.[i] ?? "", sha256, measures: null })),
     analysisId: null,
     userId: input.userId,
-    chosenPreview: chosen,
+    chosenPreview: Number.isInteger(chosen) && chosen! >= 0 && chosen! < shas.length ? chosen! : null,
     voiceId: meta.voice_id ?? null,
     voiceName: meta.voice_id ? (meta.name ?? `design-${name}`) : null,
     sampleModel: meta.model_id ?? null,
     createdAt: version.reviews[0]?.at ?? null,
+    samples,
+    reviews: version.reviews.map((review) => ({ ...review, userId: input.userId })),
   });
-  if (!id) return { id: null, name };
-
-  if (version.lines.length > 0) {
-    const samples = await Promise.all(
-      version.lines.map(async (line, position) => ({
-        position,
-        sha256: await keepDesignAudio(line.audio, input.lang),
-        lineId: line.lineId,
-        text: line.text,
-        npcName: line.npcName,
-        characters: line.text.length,
-        credits: null,
-      })),
-    );
-    await replaceSamples(input.lang, id, samples, { model: meta.model_id ?? "unknown", settings: {} });
-  }
-  for (const review of version.reviews) await addReview(input.lang, id, { ...review, userId: input.userId });
   return { id, name };
 }

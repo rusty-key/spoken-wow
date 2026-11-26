@@ -124,7 +124,10 @@ export async function createDesign(input: NewDesign): Promise<Design> {
   return (await readDesign(input.lang, id))!;
 }
 
-/** For the round-one import, which carries its own version numbers and dates. */
+/**
+ * For the round-one import, which carries its own version numbers and dates. One transaction, so
+ * a failure leaves nothing behind and the folder can simply be imported again.
+ */
 export async function importDesign(
   input: NewDesign & {
     version: number;
@@ -133,6 +136,8 @@ export async function importDesign(
     voiceName: string | null;
     sampleModel: string | null;
     createdAt: string | null;
+    samples: DesignSample[];
+    reviews: NewReview[];
   },
 ): Promise<string | null> {
   return asTeamOf(input.lang, async (client) => {
@@ -159,8 +164,23 @@ export async function importDesign(
       ],
     );
     if (!rows[0]) return null;
-    await insertPreviews(client, rows[0].id, input.previews);
-    return rows[0].id;
+    const id = rows[0].id;
+    await insertPreviews(client, id, input.previews);
+    for (const sample of input.samples) {
+      await client.query(
+        `insert into "voice_design_clip" ("designId", "kind", "position", "sha256", "lineId", "text", "npcName", "characters", "credits")
+         values ($1, 'sample', $2, $3, $4, $5, $6, $7, $8)`,
+        [id, sample.position, sample.sha256, sample.lineId, sample.text, sample.npcName, sample.characters, sample.credits],
+      );
+    }
+    for (const review of input.reviews) {
+      await client.query(
+        `insert into "voice_design_review" ("designId", "status", "note", "bestPreview", "clips", "createdBy", "createdAt")
+         values ($1, $2, $3, $4, $5, $6, coalesce($7::timestamptz, now()))`,
+        [id, review.status, review.note, review.bestPreview, JSON.stringify(review.clips), review.userId, review.at ?? null],
+      );
+    }
+    return id;
   });
 }
 

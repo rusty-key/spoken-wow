@@ -10,6 +10,17 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/voices/slots", () => ({ isVoiceSlot: async (slot: string) => slot.startsWith("orc-male") }));
+const bucket = vi.hoisted(() => ({ down: false }));
+vi.mock("./audio", async (original) => {
+  const actual = await original<typeof import("./audio")>();
+  return {
+    ...actual,
+    keepDesignAudio: async (data: Buffer, lang: string) => {
+      if (bucket.down && data.toString() === "l2") throw new Error("bucket unreachable");
+      return actual.keepDesignAudio(data, lang as never);
+    },
+  };
+});
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "voice-design-import-"));
 process.env.SPOKEN_QUESTS_VOICE_DESIGNS = root;
@@ -91,7 +102,7 @@ describe("importVersion", () => {
     expect(first.id).not.toBeNull();
     expect(again.id).toBeNull();
 
-    const [design] = await listDesigns(lang);
+    const design = (await listDesigns(lang)).find((d) => d.version === 2)!;
     expect(design).toMatchObject({
       slot: "orc-male-shady",
       version: 2,
@@ -103,6 +114,22 @@ describe("importVersion", () => {
     });
     expect(design.samples.map((s) => s.lineId)).toEqual(["g:a5954f", "g:d02f82"]);
     expect(design.reviews.map((r) => r.status)).toEqual(["needs-work", "good"]);
+  });
+
+  it("leaves nothing behind when a file cannot be kept, so importing again completes it", async () => {
+    const folder3 = folder({ ...META, version: 3 });
+    bucket.down = true;
+    await expect(importVersion(parseVersion(folder3, REVIEWS), { lang, userId: user.id })).rejects.toThrow(/bucket/);
+    bucket.down = false;
+    expect((await importVersion(parseVersion(folder3, REVIEWS), { lang, userId: user.id })).id).not.toBeNull();
+    const v3 = (await listDesigns(lang)).find((d) => d.version === 3)!;
+    expect(v3.samples).toHaveLength(2);
+    expect(v3.reviews).toHaveLength(2);
+  });
+
+  it("records no chosen preview for a negative one", async () => {
+    await importVersion(parseVersion(folder({ ...META, version: 4, chosen_preview: -1 }), []), { lang, userId: user.id });
+    expect((await listDesigns(lang)).find((d) => d.version === 4)?.chosenPreview).toBeNull();
   });
 
   it("refuses a slot not on the roster", async () => {
