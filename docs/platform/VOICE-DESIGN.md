@@ -119,7 +119,7 @@ not only against the reference clip. **Voice the lines again** replaces them. Sa
   Gemini rewrites the prompt from the review, then Voice Design makes the next version's three
   previews. It spends from both keys.
 - Turn that sentence into prompt changes: remove the words that caused it, add an explicit anchor,
-  and change the preview text if it pulled the voice the wrong way. Then **New version from vN**.
+  and change the preview text if it pulled the voice the wrong way. Then **New version from vN** under **⋯**.
   Old versions stay, folded under the newest. Usually 1–3 rounds per voice.
 - Or choose **Revise from review** under **⋯** (needs your Gemini key and the version's
   sample lines). Gemini hears the reference clip and the sample line marked wrong (else the first), reads the verdict and its note, the notes on the
