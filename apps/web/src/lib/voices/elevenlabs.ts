@@ -460,15 +460,47 @@ export async function designPreviews(
     headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
     body: JSON.stringify({ voice_description: input.prompt, text: input.text, model_id: "eleven_ttv_v3" }),
   });
-  if (!response.ok) throw await failure(response, "designing a voice");
+  return previewsOf(response, "designing a voice");
+}
+
+/** The previews Voice Design and Voice Remix answer with, their audio decoded. */
+async function previewsOf(response: Response, what: string): Promise<DesignedPreview[]> {
+  if (!response.ok) throw await failure(response, what);
   const body = (await response.json()) as { previews?: { generated_voice_id?: string; audio_base_64?: string }[] };
   const previews = (body.previews ?? []).flatMap((preview) =>
     preview.generated_voice_id && preview.audio_base_64
       ? [{ generatedVoiceId: preview.generated_voice_id, audio: Buffer.from(preview.audio_base_64, "base64") }]
       : [],
   );
-  if (previews.length === 0) throw new Error("ElevenLabs designed no previews");
+  if (previews.length === 0) throw new Error(`ElevenLabs returned no previews ${what}`);
   return previews;
+}
+
+/** Voice Remix's settings, as ElevenLabs names them; unset ones take its defaults. */
+export type RemixOptions = {
+  promptStrength?: number | null;
+  guidanceScale?: number | null;
+  loudness?: number | null;
+  seed?: number | null;
+};
+
+/** Variants of one of the account's own voices, changed as the description says. */
+export async function remixPreviews(
+  input: { voiceId: string; changes: string; text: string } & RemixOptions,
+  options: ElevenLabsOptions = {},
+): Promise<DesignedPreview[]> {
+  const { apiKey, baseUrl, fetchImpl } = config(options);
+  const body: Record<string, unknown> = { voice_description: input.changes, text: input.text };
+  if (input.promptStrength != null) body.prompt_strength = input.promptStrength;
+  if (input.guidanceScale != null) body.guidance_scale = input.guidanceScale;
+  if (input.loudness != null) body.loudness = input.loudness;
+  if (input.seed != null) body.seed = input.seed;
+  const response = await fetchImpl(`${baseUrl}/v1/text-to-voice/${encodeURIComponent(input.voiceId)}/remix`, {
+    method: "POST",
+    headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return previewsOf(response, "remixing a voice");
 }
 
 export async function createDesignedVoice(

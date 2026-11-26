@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const { deleteDesignVoice, designVersion, saveDesignVoice } = await import("./design");
-const { designName, PROMPT_ENDING } = await import("./limits");
+const { deleteDesignVoice, designVersion, remixVersion, saveDesignVoice } = await import("./design");
+const { designName, PROMPT_ENDING, withEnding } = await import("./limits");
 import type { DesignDeps } from "./design";
 import type { Design } from "./types";
 
@@ -43,6 +43,7 @@ function deps(design: Partial<Design> = {}, over: Partial<DesignDeps> = {}): Des
       { generatedVoiceId: "g1", audio: Buffer.from("b") },
       { generatedVoiceId: "g2", audio: Buffer.from("c") },
     ]),
+    remix: vi.fn(async () => [{ generatedVoiceId: "r0", audio: Buffer.from("r") }]),
     keepAudio: vi.fn(async (data: Buffer) => data.toString().repeat(64)),
     measure: vi.fn(async (clips: Buffer[]) => clips.map((_, i) => ({ f0Hz: 100 - i }) as never)),
     create: vi.fn(async (input) => ({ ...current, ...input, version: 1 })),
@@ -185,5 +186,42 @@ describe("deleteDesignVoice", () => {
     await deleteDesignVoice({ ...base, id: "d1" }, d);
     expect(d.deleteVoice).not.toHaveBeenCalled();
     expect(d.markDeleted).toHaveBeenCalled();
+  });
+});
+
+describe("remixVersion", () => {
+  const saved = { voiceId: "voice-9", voiceName: "design-orc-male-shady-v3", holderId: "u1", holderName: "Ann", analysis: { archetype: "Back-alley dealer" } };
+  const settings = { promptStrength: 0.3, guidanceScale: null, loudness: null, seed: 4 };
+  const remix = { ...base, id: "d1", changes: "  Add a thick Scottish accent.  ", prompt: "A gruff orc with a thick Scottish accent.", previewText: "x".repeat(120), settings };
+
+  it("remixes the holder's voice with only the changes, and keeps the whole new prompt as the version's", async () => {
+    const d = deps(saved);
+    await remixVersion(remix, d);
+    expect(d.remix).toHaveBeenCalledWith({ voiceId: "voice-9", changes: "Add a thick Scottish accent.", text: "x".repeat(120), ...settings }, "k");
+    expect(d.design).not.toHaveBeenCalled();
+    expect(d.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        slot: DESIGN.slot,
+        prompt: withEnding("A gruff orc with a thick Scottish accent."),
+        previews: [{ generatedVoiceId: "r0", sha256: "r".repeat(64), measures: { f0Hz: 100 } }],
+        analysis: { archetype: "Back-alley dealer", remix_of: 3, remix_changes: "Add a thick Scottish accent.", remix_settings: settings },
+      }),
+    );
+  });
+
+  it("keeps the archetype Gemini gave with the changes over the parent's", async () => {
+    const d = deps(saved);
+    await remixVersion({ ...remix, archetype: "City guard" }, d);
+    expect(d.create).toHaveBeenCalledWith(expect.objectContaining({ analysis: expect.objectContaining({ archetype: "City guard" }) }));
+  });
+
+  it("refuses anyone but the holder, a deleted voice, and empty changes, before anything is spent", async () => {
+    const other = deps({ ...saved, holderId: "u2" });
+    await expect(remixVersion(remix, other)).rejects.toThrow(/Ann's ElevenLabs account/);
+    const deleted = deps({ ...saved, voiceDeletedAt: "2026-11-26T00:00:00Z" });
+    await expect(remixVersion(remix, deleted)).rejects.toThrow(/no voice/);
+    const empty = deps(saved);
+    await expect(remixVersion({ ...remix, changes: " " }, empty)).rejects.toThrow(/changes/);
+    for (const d of [other, deleted, empty]) expect(d.remix).not.toHaveBeenCalled();
   });
 });

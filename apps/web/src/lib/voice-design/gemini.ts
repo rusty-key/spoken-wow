@@ -182,7 +182,8 @@ export async function compareBlind(
   return result;
 }
 
-export type Revision = { heard: string; prompt: string; preview_text: string };
+/** `changes` is the same fix said as a change to the existing voice, for Voice Remix. */
+export type Revision = { heard: string; prompt: string; preview_text: string; changes: string };
 
 export type ReviseInput = {
   slot: string;
@@ -212,7 +213,8 @@ Rewrite the ElevenLabs Voice Design prompt (text only, 350-600 characters) so th
 - Avoid modern inflections (upspeak, vocal fry, valley/Californian) unless the role demands them: this is a fantasy game.
 ${DRAFTING_RULES}
 Also return a preview_text (120-400 characters, in the character's normal register; keep the old one unless it fights the notes).
-Return JSON only: {"heard": "one sentence: how the v${input.version} voice differs from the reference and the notes", "prompt": "...", "preview_text": "..."}`;
+Also return changes: the same fix said only as changes to the v${input.version} voice, for ElevenLabs Voice Remix, which keeps the voice and alters what you name (20-300 characters, e.g. "Add a thick Scottish accent. Keep the timbre, age and pace."). Name what to keep when the reviewer liked it.
+Return JSON only: {"heard": "one sentence: how the v${input.version} voice differs from the reference and the notes", "prompt": "...", "preview_text": "...", "changes": "..."}`;
 }
 
 /** Revise a version: Gemini hears the game reference and the version's first sample line. */
@@ -226,5 +228,10 @@ export async function reviseVoice(
   if (typeof answer?.prompt !== "string" || typeof answer.preview_text !== "string") {
     throw new Error("Gemini returned no prompt or preview text");
   }
-  return { heard: typeof answer.heard === "string" ? answer.heard : "", prompt: withEnding(answer.prompt), preview_text: answer.preview_text.trim() };
+  return {
+    heard: typeof answer.heard === "string" ? answer.heard : "",
+    prompt: withEnding(answer.prompt),
+    preview_text: answer.preview_text.trim(),
+    changes: typeof answer.changes === "string" ? answer.changes.trim() : "",
+  };
 }

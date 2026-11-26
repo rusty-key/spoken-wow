@@ -4,6 +4,7 @@ import { createContext, useContext } from "react";
 
 import { withLang, type Lang } from "@/lib/lang";
 import type { Revision } from "@/lib/voice-design/gemini";
+import type { RemixSettings } from "@/lib/voice-design/limits";
 import type { Analysis, Design } from "@/lib/voice-design/types";
 
 export type Playing = { src: string; title: string; meta?: string; subtitle?: string };
@@ -17,6 +18,9 @@ export type Draft = {
   heard?: string;
   archetype?: string;
   from: string;
+  /** Set for a remix: the version whose voice is remixed, and the changes to make to it. */
+  remix?: { id: string; version: number };
+  changes?: string;
 };
 
 export type Workbench = {
@@ -33,6 +37,9 @@ export type Workbench = {
   isPlaying: (src: string) => boolean;
   drafts: Record<string, Draft>;
   setDraft: (slot: string, draft: Draft | null) => void;
+  /** Voice Remix's settings, one set for the page; every remix sends them. */
+  remixSettings: RemixSettings;
+  setRemixSettings: (settings: RemixSettings) => void;
   /** `live` holds the live takes of lines the design was just voiced on. */
   updateDesign: (design: Design, live?: Record<string, string>) => void;
   updateAnalysis: (analysis: Analysis) => void;
@@ -68,6 +75,7 @@ export async function requestRevision(lang: Lang, design: Design, from: string):
     heard: revision.heard,
     archetype: revision.archetype,
     from,
+    changes: revision.changes,
   };
 }
 
@@ -78,6 +86,21 @@ export async function designFrom(lang: Lang, slot: string, draft: Draft): Promis
       prompt: draft.prompt,
       previewText: draft.previewText,
       analysisId: draft.analysisId,
+      revisionHeard: draft.heard ?? null,
+      archetype: draft.archetype ?? null,
+    },
+  });
+  return design;
+}
+
+export async function remixFrom(lang: Lang, draft: Draft & Required<Pick<Draft, "remix">>, settings: RemixSettings): Promise<Design> {
+  if (!draft.changes?.trim()) throw new Error("Gemini said no changes to remix with");
+  const { design } = await send<{ design: Design }>(withLang(lang, `/api/voices/design/${draft.remix.id}/remix`), {
+    body: {
+      changes: draft.changes,
+      prompt: draft.prompt,
+      previewText: draft.previewText,
+      settings,
       revisionHeard: draft.heard ?? null,
       archetype: draft.archetype ?? null,
     },

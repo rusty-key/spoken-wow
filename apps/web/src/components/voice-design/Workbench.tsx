@@ -9,7 +9,7 @@ import Link from "@/components/LocaleLink";
 import { useUiText } from "@/components/UiTextProvider";
 import { fill } from "@/lib/site-text/format";
 import { DONENESS, donenessOf, isRevisable, type Doneness } from "@/lib/voice-design/groups";
-import { PREVIEWS_PER_DESIGN } from "@/lib/voice-design/limits";
+import { parseRemixSettings, PREVIEWS_PER_DESIGN, REMIX_DEFAULTS, type RemixSettings } from "@/lib/voice-design/limits";
 import type { Analysis, Design } from "@/lib/voice-design/types";
 
 import AnalysePanel from "./AnalysePanel";
@@ -38,6 +38,8 @@ export type GroupView = { group: string; analysis: Analysis | null; slots: SlotV
 
 
 type Filter = "all" | Doneness;
+
+const REMIX_KEY = "spoken.voiceDesign.remix";
 
 const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
@@ -75,6 +77,25 @@ export default function Workbench({
   const [query, setQuery] = useState("");
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [playing, setPlaying] = useState<Playing | null>(null);
+  const [remixSettings, setRemixSettings] = useState<RemixSettings>(REMIX_DEFAULTS);
+  // Kept per browser, so a setting that worked carries to the next session; read after mount so
+  // the server's render matches the first client one.
+  useEffect(() => {
+    try {
+      const kept = parseRemixSettings(JSON.parse(window.localStorage?.getItem(REMIX_KEY) ?? "null"));
+      if (typeof kept !== "string") setRemixSettings({ ...REMIX_DEFAULTS, ...Object.fromEntries(Object.entries(kept).filter(([, v]) => v !== null)) });
+    } catch {
+      // Storage blocked or a value this release cannot read: the defaults stand.
+    }
+  }, []);
+  const keepRemixSettings = (settings: RemixSettings) => {
+    setRemixSettings(settings);
+    try {
+      window.localStorage?.setItem(REMIX_KEY, JSON.stringify(settings));
+    } catch {
+      // Storage blocked: the settings last for this visit.
+    }
+  };
   const [generatingAll, setGeneratingAll] = useState<{ done: number; total: number } | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
   const [generateLog, setGenerateLog] = useState<string[]>([]);
@@ -116,6 +137,8 @@ export default function Workbench({
     },
     isPlaying: (src: string) => sounding && playing?.src === src,
     drafts,
+    remixSettings,
+    setRemixSettings: keepRemixSettings,
     setDraft: (slot: string, draft: Draft | null) => {
       setDrafts((current) => {
         const next = { ...current };

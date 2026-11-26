@@ -45,7 +45,7 @@ function deps(target: Design, over: Partial<ReviseDeps> = {}): ReviseDeps {
     reference: async () => Buffer.from("ref"),
     audio: async () => Buffer.from("smp"),
     analysis: async () => ({ labels: { B: "troll-male-dark" }, result: { voices: { B: { archetype: "Shady rogue", voice_design_prompt: "", preview_text: "" } } } }) as never,
-    revise: vi.fn(async () => ({ heard: "h", prompt: "p", preview_text: "t" })),
+    revise: vi.fn(async () => ({ heard: "h", prompt: "p", preview_text: "t", changes: "c" })),
     ...over,
   };
 }
@@ -127,3 +127,4 @@ describe("reviseDesign", () => {
     for (const d of [good, unsampled, noClip]) expect(d.revise).not.toHaveBeenCalled();
   });
 });
+

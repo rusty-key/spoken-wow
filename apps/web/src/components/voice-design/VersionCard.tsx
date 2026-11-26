@@ -1,6 +1,6 @@
 "use client";
 
-import { AudioLines, Check, Loader2, MoreHorizontal, Pencil, RefreshCw, Save, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { AudioLines, Blend, Check, Loader2, MoreHorizontal, Pencil, RefreshCw, Save, SlidersHorizontal, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import Link from "@/components/LocaleLink";
@@ -15,7 +15,8 @@ import type { ClipMark, Design, Measures } from "@/lib/voice-design/types";
 
 import PlayButton, { ReferenceClip } from "./PlayButton";
 import StatusBadge from "./StatusBadge";
-import { designFrom, requestRevision, send, useWorkbench } from "./context";
+import { designFrom, remixFrom, requestRevision, send, useWorkbench, type Draft } from "./context";
+import RemixSettingsFields from "./RemixSettings";
 import type { SlotView } from "./Workbench";
 
 const day = (iso: string) => iso.slice(0, 10);
@@ -133,7 +134,7 @@ function Marks({ value, onChange, disabled }: { value: ClipMark | undefined; onC
 /** The newest version carries the slot's next step; an older one can only be started from again. */
 export default function VersionCard({ design, slot, newest }: { design: Design; slot: SlotView; newest: boolean }) {
   const t = useUiText().voiceDesign;
-  const { lang, viewer, keys, rate, model, live, updateDesign, setDraft } = useWorkbench();
+  const { lang, viewer, keys, rate, model, live, updateDesign, setDraft, remixSettings } = useWorkbench();
   const last = design.reviews.at(-1);
   const [note, setNote] = useState("");
   const previewLine = slot.previewLines[design.previewText];
@@ -193,19 +194,33 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const revisable = isRevisable(design);
   const revision = () => requestRevision(lang, design, fill(t.geminiRevision, { v: tag }));
   const revise = () => run("revise", async () => setDraft(slot.name, await revision()));
-  // Gemini's rewrite goes straight to Voice Design. If that fails, the paid-for draft waits in the form.
-  const generate = () =>
-    run("generate", async () => {
-      const draft = await revision();
+  // Only the holder can remix: the voice is in their account and the call spends from their key.
+  const remixable = hasVoice && holds;
+  const remixDraft = (from: Partial<Draft>) => ({
+    prompt: design.prompt,
+    previewText: design.previewText,
+    analysisId: design.analysisId,
+    ...from,
+    from: tag,
+    remix: { id: design.id, version: design.version },
+  });
+  /**
+   * Gemini's revision, then straight to Voice Design or Voice Remix. If that second call fails, the
+   * paid-for draft waits in the form; if it succeeds, a draft left open would revise the old version.
+   */
+  const fromReview = <D extends Draft>(what: string, toDraft: (revised: Draft) => D, make: (draft: D) => Promise<Design>) =>
+    run(what, async () => {
+      const draft = toDraft(await revision());
       try {
-        updateDesign(await designFrom(lang, slot.name, draft));
-        // A draft still open in the form would revise the version this one replaces.
+        updateDesign(await make(draft));
         setDraft(slot.name, null);
       } catch (err) {
         setDraft(slot.name, draft);
         throw err;
       }
     });
+  const generate = () => fromReview("generate", (draft) => draft, (draft) => designFrom(lang, slot.name, draft));
+  const remixFromReview = () => fromReview("remix", remixDraft, (draft) => remixFrom(lang, draft, remixSettings));
 
   return (
     <section className="vd-version" aria-label={fill(t.versionLabel, { slot: slot.name, v: design.version })}>
@@ -232,6 +247,9 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
           <p className="bs-text bs-text-en">{design.previewText}</p>
           <Field label={t.archetypeLabel} value={design.analysis?.archetype} />
           <Field label={t.heardLabel} value={design.analysis?.revision_heard} />
+          {typeof design.analysis?.remix_of === "number" ? (
+            <Field label={fill(t.remixOf, { v: `v${design.analysis.remix_of}` })} value={design.analysis.remix_changes} />
+          ) : null}
           <Field label={t.designNoteLabel} value={design.note} />
         </div>
 
@@ -430,6 +448,30 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
               {busy === "generate" ? t.generating : t.generate}
             </button>
           ) : null}
+          {newest && revisable && remixable ? (
+            <span className="vd-split">
+              <button
+                type="button"
+                className="bs-btn vd-btn-remix"
+                title={t.remixCost}
+                disabled={busy !== null || !keys.gemini || !keys.elevenlabs}
+                onClick={() => void remixFromReview()}
+              >
+                {busy === "remix" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Blend size={14} aria-hidden="true" />}
+                {busy === "remix" ? t.remixing : t.remix}
+              </button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button type="button" className="bs-btn vd-btn-remix" aria-label={t.remixSettings} title={t.remixSettings}>
+                    <SlidersHorizontal size={14} aria-hidden="true" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" side="top" className="vd-pop">
+                  <RemixSettingsFields />
+                </PopoverContent>
+              </Popover>
+            </span>
+          ) : null}
           <Popover open={menuOpen} onOpenChange={setMenuOpen}>
             <PopoverTrigger asChild>
               <button type="button" className="bs-btn bs-btn-text" aria-label={t.moreActions} title={t.moreActions}>
@@ -462,6 +504,19 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                 <Pencil size={14} aria-hidden="true" />
                 {fill(t.branch, { v: tag })}
               </button>
+              {remixable ? (
+                <button
+                  type="button"
+                  title={t.remixByHandTitle}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setDraft(slot.name, remixDraft({ changes: "" }));
+                  }}
+                >
+                  <Blend size={14} aria-hidden="true" />
+                  {fill(t.remixByHand, { v: tag })}
+                </button>
+              ) : null}
             </PopoverContent>
           </Popover>
           {last?.status === "good" && hasVoice ? (

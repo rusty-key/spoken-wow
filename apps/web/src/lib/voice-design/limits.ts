@@ -3,8 +3,57 @@
 /** ElevenLabs' limits: what Voice Design rejects, refused before anything is spent. */
 export const DESIGN_LIMITS = { promptMin: 20, promptMax: 1000, textMin: 100, textMax: 1000 } as const;
 
+/**
+ * Voice Remix's settings, each with the range ElevenLabs takes. Unset ones take its own defaults.
+ * Prompt strength: 0 keeps the voice, 1 follows the changes. Guidance: lower is freer, high can
+ * sound artificial. Loudness: -1 quietest to 1 loudest.
+ */
+export const REMIX_SETTINGS = {
+  promptStrength: { min: 0, max: 1, step: 0.05, initial: 0.5 },
+  guidanceScale: { min: 0, max: 20, step: 0.5, initial: 2 },
+  loudness: { min: -1, max: 1, step: 0.05, initial: 0.5 },
+} as const;
+export const REMIX_CHANGES_MAX = 500;
+/** ElevenLabs refuses a seed past an unsigned 32-bit integer. */
+export const REMIX_SEED_MAX = 4294967295;
+
+/** Voice Remix's settings as the page starts them: ElevenLabs' defaults, and a fresh voice each time. */
+export const REMIX_DEFAULTS = {
+  promptStrength: REMIX_SETTINGS.promptStrength.initial,
+  guidanceScale: REMIX_SETTINGS.guidanceScale.initial,
+  loudness: REMIX_SETTINGS.loudness.initial,
+  seed: null,
+} as const;
+
+export type RemixSettings = { promptStrength: number | null; guidanceScale: number | null; loudness: number | null; seed: number | null };
+
+/** The settings as sent, or what is wrong with them. */
+export function parseRemixSettings(input: unknown): RemixSettings | string {
+  const raw = (input ?? {}) as Record<string, unknown>;
+  const settings: RemixSettings = { promptStrength: null, guidanceScale: null, loudness: null, seed: null };
+  for (const key of ["promptStrength", "guidanceScale", "loudness"] as const) {
+    const value = raw[key];
+    if (value === null || value === undefined) continue;
+    const { min, max } = REMIX_SETTINGS[key];
+    if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) return `${key} must be ${min} to ${max}`;
+    settings[key] = value;
+  }
+  const seed = raw.seed;
+  if (seed !== null && seed !== undefined) {
+    if (typeof seed !== "number" || !Number.isInteger(seed) || seed < 0 || seed > REMIX_SEED_MAX) return `seed must be a whole number, 0 to ${REMIX_SEED_MAX}`;
+    settings.seed = seed;
+  }
+  return settings;
+}
+
 /** Voice Design makes this many previews per request. */
 export const PREVIEWS_PER_DESIGN = 3;
+
+export function previewTextProblem(text: string): string | null {
+  const { textMin, textMax } = DESIGN_LIMITS;
+  const length = text.trim().length;
+  return length < textMin || length > textMax ? `the preview text must be ${textMin} to ${textMax} characters` : null;
+}
 
 /** The account name of a version's voice: one name per attempt, so the account shows which is which. */
 export function designName(design: { slot: string; version: number }): string {

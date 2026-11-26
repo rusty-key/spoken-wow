@@ -146,7 +146,7 @@ describe("reviseVoice", () => {
     );
     const revision = await reviseVoice({ ...input, apiKey: "k", reference: Buffer.from("ref"), sample: Buffer.from("smp"), fetchImpl: fetchImpl as never });
     // An array answer is read as its first element, and the prompt gets the agreed ending.
-    expect(revision).toEqual({ heard: "No accent.", prompt: `A troll, thick Jamaican accent. ${PROMPT_ENDING}`, preview_text: "Hey mon, welcome." });
+    expect(revision).toEqual({ heard: "No accent.", prompt: `A troll, thick Jamaican accent. ${PROMPT_ENDING}`, preview_text: "Hey mon, welcome.", changes: "" });
     const parts = JSON.parse(String(fetchImpl.mock.calls[0][1].body)).contents[0].parts;
     expect(parts.slice(1).map((p: { inline_data: { data: string } }) => Buffer.from(p.inline_data.data, "base64").toString())).toEqual(["ref", "smp"]);
   });

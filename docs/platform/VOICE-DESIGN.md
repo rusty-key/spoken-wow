@@ -5,7 +5,8 @@ recordings are only inspiration. ElevenLabs never receives them, only a written 
 
 **Reference clips (recordings from the game) are for comparison and inspiration only.** Never clone one, remix one, or upload one to
 ElevenLabs (Voice Clone, Voice Remix or design-from-audio). The page says so wherever a reference clip
-appears; the only places they go are Gemini's blind comparison and openSMILE.
+appears; the only places they go are Gemini's blind comparison and openSMILE. Voice Remix is used only
+on our own designed voices, by their ID; no recording goes with it.
 
 All of it happens on `/voices/design` (Backstage, "Design new voices" on `/voices`). Anyone with
 `configure` in a language may design and review its slots; anyone who may see `/voices` may listen.
@@ -127,6 +128,16 @@ not only against the reference clip. **Voice the lines again** replaces them. Sa
   with what it heard and a rewritten prompt. Notes travel across a race: write "trolls need a
   Jamaican accent" on one troll and every troll's revision reads it. It also works on a version
   nobody has reviewed yet, from its siblings' notes. Edit the draft, then **Design 3 previews**.
+- **Remix from review** keeps the voice and changes only what the review asks for: Gemini writes the
+  changes ("Add a thick Scottish accent. Keep the timbre and pace."), then ElevenLabs Voice Remix
+  makes the next version from this version's voice. Gemini also rewrites the whole prompt, which the
+  new version keeps as its description. Use it when the voice is close; use Generate
+  when it is wrong at the root. Only the voice's holder can remix, and only while it is in their
+  account. **Remix vN by hand** under **⋯** opens the form for the changes and the new voice's prompt. The settings button
+  beside Remix sets prompt strength (0 keeps the voice, 1 follows the changes), guidance (lower is
+  freer, high can sound artificial), loudness and seed (the same seed and inputs give the same
+  voice); the browser keeps them for every remix. A remix costs about the preview text's length in
+  credits, and ElevenLabs may return fewer previews than Voice Design's three.
 - On the **Needs work** filter, **Generate all from reviews** runs Generate from review on every slot
   shown, one at a time, after asking with the total ElevenLabs cost. A slot whose design fails keeps
   Gemini's draft in its form.
