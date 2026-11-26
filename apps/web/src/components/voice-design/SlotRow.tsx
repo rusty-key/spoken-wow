@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Pencil, Play, Plus } from "lucide-react";
+import { ChevronRight, Play, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { useUiText } from "@/components/UiTextProvider";
@@ -50,10 +50,10 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
               {t.noGameReference}
             </span>
           )}
-          {viewer.designs && !formOpen ? (
-            <button type="button" className="bs-btn" title={newest ? fill(t.editPromptTitle, { v: `v${newest.version}` }) : undefined} onClick={() => setDesigning(true)}>
-              {newest ? <Pencil size={14} aria-hidden="true" /> : <Plus size={14} aria-hidden="true" />}
-              {newest ? t.editPrompt : t.firstVersion}
+          {viewer.designs && !newest && !formOpen ? (
+            <button type="button" className="bs-btn" onClick={() => setDesigning(true)}>
+              <Plus size={14} aria-hidden="true" />
+              {t.firstVersion}
             </button>
           ) : null}
         </div>
@@ -62,17 +62,19 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
         </p>
       </header>
 
-      {formOpen ? (
-        <DesignForm
-          // A draft arriving while the form is open replaces what it shows; the form reads it once.
-          key={draft ? `${draft.from}\n${draft.prompt}` : "manual"}
-          slot={slot}
-          initial={draft ?? (newest ? { prompt: newest.prompt, previewText: newest.previewText, analysisId: newest.analysisId, from: `v${newest.version}` } : null)}
-          onDone={close}
-        />
-      ) : null}
-
       {newest ? <VersionCard design={newest} slot={slot} newest /> : null}
+
+      {formOpen ? (
+        <div id={`design-${slot.name}`}>
+          <DesignForm
+            // A draft arriving while the form is open replaces what it shows; the form reads it once.
+            key={draft ? `${draft.from}\n${draft.prompt}` : "manual"}
+            slot={slot}
+            initial={draft ?? (newest ? { prompt: newest.prompt, previewText: newest.previewText, analysisId: newest.analysisId, from: `v${newest.version}` } : null)}
+            onDone={close}
+          />
+        </div>
+      ) : null}
 
       {older.length > 0 ? (
         <details className="vd-older">

@@ -1,6 +1,6 @@
 "use client";
 
-import { AudioLines, Check, Loader2, Play, RefreshCw, Save, Sparkles, Trash2, X } from "lucide-react";
+import { AudioLines, Check, Loader2, Pencil, Play, RefreshCw, Save, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import Link from "@/components/LocaleLink";
@@ -21,23 +21,21 @@ const one = (value: number) => value.toFixed(1);
 
 const two = (value: number) => value.toFixed(2);
 
-/** What a preview is chosen by, then openSMILE's voice measures, each only when measured. */
+/** The s-level, which the pick mostly turns on; every other measure is in its tooltip. */
 function MeasureLine({ measures }: { measures: Measures | null }) {
   const t = useUiText().voiceDesign;
-  if (!measures) return null;
+  if (measures?.ess === undefined) return null;
   const { ess, decay, level, f0Hz, hnrDb, alphaRatioDb } = measures;
+  const detail = [
+    decay !== undefined && level !== undefined ? fill(t.previewMetrics, { ess: two(ess), decay: one(decay), level: one(level) }) : null,
+    f0Hz !== undefined && hnrDb !== undefined && alphaRatioDb !== undefined
+      ? `${fill(t.measures, { f0: Math.round(f0Hz), hnr: one(hnrDb), alpha: one(alphaRatioDb) })}\n${t.measuresTitle}`
+      : null,
+    t.previewMetricsTitle,
+  ];
   return (
-    <span className="vd-measure-lines">
-      {ess !== undefined && decay !== undefined && level !== undefined ? (
-        <span className="vd-measures" title={t.previewMetricsTitle}>
-          {fill(t.previewMetrics, { ess: two(ess), decay: one(decay), level: one(level) })}
-        </span>
-      ) : null}
-      {f0Hz !== undefined && hnrDb !== undefined && alphaRatioDb !== undefined ? (
-        <span className="vd-measures" title={t.measuresTitle}>
-          {fill(t.measures, { f0: Math.round(f0Hz), hnr: one(hnrDb), alpha: one(alphaRatioDb) })}
-        </span>
-      ) : null}
+    <span className="vd-measures vd-tip" data-tip={detail.filter(Boolean).join("\n")} tabIndex={0}>
+      {fill(t.essShort, { ess: two(ess) })}
     </span>
   );
 }
@@ -56,10 +54,9 @@ function Field({ label, value }: { label: string; value: unknown }) {
  * The verdict form as the newest verdict left it. Previews are no longer marked here, so a mark on
  * one would ride along unseen in every later verdict.
  */
-function formFrom(last: Review | undefined, chosenPreview: number | null) {
+function formFrom(last: Review | undefined) {
   return {
     status: last?.status ?? null,
-    picked: last?.bestPreview ?? chosenPreview,
     clips: Object.fromEntries(Object.entries(last?.clips ?? {}).filter(([key]) => key.startsWith("sample:"))) as Record<string, ClipMark>,
   };
 }
@@ -105,24 +102,24 @@ function Marks({ value, onChange, disabled }: { value: ClipMark | undefined; onC
     <span className="vd-marks" role="group" aria-label={t.markLabel}>
       <button
         type="button"
-        className="vd-mark"
+        className="vd-mark vd-tip"
         data-mark="good"
         aria-pressed={value === "good"}
         disabled={disabled}
         onClick={() => onChange(value === "good" ? undefined : "good")}
-        title={t.markGoodTitle}
+        data-tip={t.markGoodTitle}
       >
         <Check size={14} aria-hidden="true" />
         <span className="sr-only">{t.markGood}</span>
       </button>
       <button
         type="button"
-        className="vd-mark"
+        className="vd-mark vd-tip"
         data-mark="off"
         aria-pressed={value === "off"}
         disabled={disabled}
         onClick={() => onChange(value === "off" ? undefined : "off")}
-        title={t.markOffTitle}
+        data-tip={t.markOffTitle}
       >
         <X size={14} aria-hidden="true" />
         <span className="sr-only">{t.markOff}</span>
@@ -136,20 +133,18 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const t = useUiText().voiceDesign;
   const { lang, viewer, keys, rate, model, live, play, playing, updateDesign, setDraft } = useWorkbench();
   const last = design.reviews.at(-1);
-  const start = formFrom(last, design.chosenPreview);
+  const start = formFrom(last);
   const [status, setStatus] = useState<ReviewStatus | null>(start.status);
   const [note, setNote] = useState("");
   const recommended = recommendedPreview(design.previews.map((preview) => preview.measures));
-  // A person's pick, kept apart from the recommendation: a verdict records only what someone chose.
-  const [picked, setPicked] = useState<number | null>(start.picked);
-  const best = picked ?? recommended;
+  const [picked, setPicked] = useState<number | null>(null);
+  const best = picked ?? recommended ?? design.chosenPreview;
   const [clips, setClips] = useState<Record<string, ClipMark>>(start.clips);
   // A removed verdict must not stay preset in the form, one press from coming back.
   const [formFor, setFormFor] = useState(last?.id);
   if (formFor !== last?.id) {
     setFormFor(last?.id);
     setStatus(start.status);
-    setPicked(start.picked);
     setClips(start.clips);
   }
   // A re-sample puts new lines behind the same `sample:<n>` keys: a mark on the old line must not
@@ -203,7 +198,24 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const isPlaying = (src: string) => playing?.src === src;
 
   const revisable = isRevisable(design);
-  const revise = () => run("revise", async () => setDraft(slot.name, await requestRevision(lang, design, fill(t.geminiRevision, { v: tag }))));
+  const revision = () => requestRevision(lang, design, fill(t.geminiRevision, { v: tag }));
+  const revise = () => run("revise", async () => setDraft(slot.name, await revision()));
+  // Gemini's rewrite goes straight to Voice Design: the next version, without stopping at the form.
+  const generate = () =>
+    run("generate", async () => {
+      const draft = await revision();
+      const { design: next } = await send<{ design: Design }>(withLang(lang, "/api/voices/design"), {
+        body: {
+          slot: slot.name,
+          prompt: draft.prompt,
+          previewText: draft.previewText,
+          analysisId: null,
+          revisionHeard: draft.heard ?? null,
+          archetype: draft.archetype ?? null,
+        },
+      });
+      updateDesign(next);
+    });
 
   return (
     <section className="vd-version" aria-label={fill(t.versionLabel, { slot: slot.name, v: design.version })}>
@@ -219,16 +231,6 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
               ? fill(t.voiceDeleted, { name: design.voiceName })
               : fill(t.voiceIn, { name: design.voiceName, who: holds ? t.yourAccount : fill(t.theirAccount, { who: design.holderName ?? t.someone }) })}
           </span>
-        ) : null}
-        {can && !newest ? (
-          <button
-            type="button"
-            className="bs-btn bs-btn-text vd-push"
-            title={t.branchTitle}
-            onClick={() => setDraft(slot.name, { prompt: design.prompt, previewText: design.previewText, analysisId: design.analysisId, from: tag })}
-          >
-            {fill(t.branch, { v: tag })}
-          </button>
         ) : null}
       </header>
 
@@ -258,6 +260,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                     <Play size={13} aria-hidden="true" />
                     {fill(t.previewN, { n: index + 1 })}
                   </button>
+                  <MeasureLine measures={preview.measures} />
                   {recommended === index && design.previews.length > 1 ? (
                     <span className="vd-tag" title={t.recommendedTitle}>
                       {t.recommended}
@@ -268,8 +271,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                       {t.saved}
                     </span>
                   ) : null}
-                  <MeasureLine measures={preview.measures} />
-                  {can ? (
+                  {can && !hasVoice ? (
                     <label className="vd-radio vd-push" title={t.bestTitle}>
                       <input type="radio" name={`best-${design.id}`} checked={best === index} onChange={() => setPicked(index)} />
                       {t.best}
@@ -408,7 +410,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
           onSubmit={async (event) => {
             event.preventDefault();
             if (!status) return;
-            const ok = await act("review", `/api/voices/design/${design.id}/reviews`, { body: { status, note, bestPreview: picked, clips } });
+            const ok = await act("review", `/api/voices/design/${design.id}/reviews`, { body: { status, note, bestPreview: null, clips } });
             if (ok) setNote("");
           }}
         >
@@ -447,28 +449,8 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
         </form>
       ) : null}
 
-      {can && (last?.status === "good" || (hasVoice && holds) || (newest && revisable)) ? (
+      {can ? (
         <div className="vd-version-foot">
-          {hasVoice && holds ? (
-            <Confirm
-              question={t.deleteConfirm}
-              label={t.deleteVoice}
-              open={confirmDelete}
-              working={busy === "delete"}
-              disabled={busy !== null}
-              onCancel={() => setConfirmDelete(false)}
-              onConfirm={async () => {
-                await act("delete", `/api/voices/design/${design.id}/voice`, { method: "DELETE" });
-                setConfirmDelete(false);
-              }}
-              trigger={
-                <button type="button" className="bs-btn bs-btn-danger" title={t.deleteTitle} onClick={() => setConfirmDelete(true)}>
-                  <Trash2 size={14} aria-hidden="true" />
-                  {t.deleteVoice}
-                </button>
-              }
-            />
-          ) : null}
           {last?.status === "good" && hasVoice ? (
             <span className="vd-muted">
               {t.adoptBefore}
@@ -478,18 +460,55 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
               {t.adoptAfter}
             </span>
           ) : null}
-          {newest && revisable ? (
+          <span className="vd-foot-actions">
+            {hasVoice && holds ? (
+              <Confirm
+                question={t.deleteConfirm}
+                label={t.deleteVoice}
+                open={confirmDelete}
+                working={busy === "delete"}
+                disabled={busy !== null}
+                onCancel={() => setConfirmDelete(false)}
+                onConfirm={async () => {
+                  await act("delete", `/api/voices/design/${design.id}/voice`, { method: "DELETE" });
+                  setConfirmDelete(false);
+                }}
+                trigger={
+                  <button type="button" className="bs-btn bs-btn-danger" title={t.deleteTitle} onClick={() => setConfirmDelete(true)}>
+                    <Trash2 size={14} aria-hidden="true" />
+                    {t.deleteVoice}
+                  </button>
+                }
+              />
+            ) : null}
             <button
               type="button"
-              className="bs-btn vd-btn-go vd-push"
-              title={t.reviseCost}
-              disabled={busy !== null || !keys.gemini}
-              onClick={() => void revise()}
+              className="bs-btn"
+              title={t.branchTitle}
+              onClick={() => setDraft(slot.name, { prompt: design.prompt, previewText: design.previewText, analysisId: design.analysisId, from: tag })}
             >
-              {busy === "revise" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Sparkles size={14} aria-hidden="true" />}
-              {busy === "revise" ? t.revising : t.revise}
+              <Pencil size={14} aria-hidden="true" />
+              {fill(t.branch, { v: tag })}
             </button>
-          ) : null}
+            {newest && revisable ? (
+              <>
+                <button type="button" className="bs-btn" title={t.reviseCost} disabled={busy !== null || !keys.gemini} onClick={() => void revise()}>
+                  {busy === "revise" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Sparkles size={14} aria-hidden="true" />}
+                  {busy === "revise" ? t.revising : t.revise}
+                </button>
+                <button
+                  type="button"
+                  className="bs-btn vd-btn-go"
+                  title={t.generateCost}
+                  disabled={busy !== null || !keys.gemini || !keys.elevenlabs}
+                  onClick={() => void generate()}
+                >
+                  {busy === "generate" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Wand2 size={14} aria-hidden="true" />}
+                  {busy === "generate" ? t.generating : t.generate}
+                </button>
+              </>
+            ) : null}
+          </span>
         </div>
       ) : null}
 

@@ -39,8 +39,8 @@ Slots are grouped by race, then gender. Open a group and press **Compare blind**
 
 ## 2. Write the prompt and the preview text
 
-Press **Use this draft** under a flavor, **Edit prompt manually** on a slot (it starts from the newest
-version), or **Start from vN's prompt** on an older one. Template:
+Press **Use this draft** under a flavor, **Design v1** on a slot without a version, or **New version
+from vN** at the foot of a version. The form opens under the newest version. Template:
 
 ```
 [Age] [gender] [race], [role: who uses this voice].
@@ -89,14 +89,14 @@ no harshness, no room echo.
 
 - **Design 3 previews** calls Voice Design (`eleven_ttv_v3`) and keeps all three on the site. The
   three previews of one design differ enormously (s-levels of 0.74, 0.18 and 0.70 on one slot), so
-  each is measured: its **s**-level (how harsh the s sounds are; live takes sit near 0.07), its
-  **room** tail (the echo after a phrase, in dB) and its speech **level**, and, with openSMILE, its
-  pitch, roughness (HNR) and brightness (alpha ratio). Play them beside the slot's **Reference clip**.
-- The page marks one **Recommended**: the softest s among the previews whose room tail is at most
-  -17 dB and whose level is within 6 dB of the loudest; if none qualifies, the softest s. It starts
-  as the best preview, and your ears decide.
+  each is measured. The page shows its **s**-level (how harsh the s sounds are; live takes sit near
+  0.07); its tooltip adds the **room** tail (the echo after a phrase, in dB), the speech **level** and,
+  with openSMILE, pitch, roughness (HNR) and brightness (alpha ratio). Play them beside the slot's **Reference clip**.
+- The page marks one **Recommended**, and **Use** starts on it: the softest s among the previews whose room tail is at most
+  -17 dB and whose level is within 6 dB of the loudest; if none qualifies, the softest s. Your ears
+  decide.
 - The reference clip is there to compare against, by ear. It is never sent anywhere when you design.
-- Pick the **Best**, then **Save preview N as a voice**. It is created in *your* ElevenLabs account as
+- Choose one with **Use**, then **Save preview N as a voice**. It is created in *your* ElevenLabs account as
   `design-<slot>-v<n>`, and you become its holder: only you can voice lines with it or delete it.
   Teammates see whose account it is in. To use another preview instead, **Delete from ElevenLabs**,
   then save the other one; the old voice's sample lines go with it.
@@ -115,10 +115,13 @@ not only against the reference clip. **Voice the lines again** replaces them. Sa
   female", "too wise, like a tauren"). Mark sample lines that sound right or wrong; the marks go with
   the verdict. Verdicts stack: **Add verdict** puts a new one under the old, and the newest sets the
   version's status. Remove one given by mistake with its ✕.
+- **Generate from review** at the foot of the newest version does the whole round in one press:
+  Gemini rewrites the prompt from the review, then Voice Design makes the next version's three
+  previews. It spends from both keys.
 - Turn that sentence into prompt changes: remove the words that caused it, add an explicit anchor,
-  and change the preview text if it pulled the voice the wrong way. Then **Edit prompt manually**.
+  and change the preview text if it pulled the voice the wrong way. Then **New version from vN**.
   Old versions stay, folded under the newest. Usually 1–3 rounds per voice.
-- Or press **Revise from review** at the foot of the version (needs your Gemini key and the version's
+- Or press **Revise from review** beside it (needs your Gemini key and the version's
   sample lines). Gemini hears the reference clip and the sample line marked wrong (else the first), reads the verdict and its note, the notes on the
   race's other flavors, and the old prompt and preview text, and fills in the next version's form
   with what it heard and a rewritten prompt. Notes travel across a race: write "trolls need a

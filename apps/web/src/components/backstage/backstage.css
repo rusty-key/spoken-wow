@@ -1933,7 +1933,7 @@ body:has(main.bs) {
 }
 .vd-version-body {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.65fr) minmax(0, 1.4fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.75fr) minmax(0, 1.4fr);
   gap: 20px;
   padding: 14px;
 }
@@ -2162,6 +2162,43 @@ body:has(main.bs) {
   gap: 8px;
   color: var(--bs-text-2);
   font-size: 12.5px;
+}
+.vd-foot-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+/* Shown at once on hover or focus: the native title waits a second and never shows on focus. */
+.vd-tip {
+  position: relative;
+}
+.vd-tip[data-tip]:hover::after,
+.vd-tip[data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  bottom: calc(100% + 6px);
+  width: max-content;
+  max-width: 280px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #0c0d10;
+  box-shadow: 0 0 0 1px var(--bs-line), 0 6px 18px rgba(0, 0, 0, 0.4);
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 17px;
+  text-align: left;
+  white-space: pre-line;
+  pointer-events: none;
+}
+.vd-measures.vd-tip[data-tip]:hover::after,
+.vd-measures.vd-tip[data-tip]:focus-visible::after {
+  right: auto;
+  left: 0;
 }
 .vd-btn-go {
   background: rgba(95, 207, 79, 0.18);

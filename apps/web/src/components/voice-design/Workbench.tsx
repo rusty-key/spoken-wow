@@ -113,8 +113,8 @@ export default function Workbench({
         else delete next[slot];
         return next;
       });
-      // The form opens at the top of the slot, which may be far from the button pressed.
-      if (draft) document.getElementById(`slot-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      // The form may open far from the button pressed; it exists once this render lands.
+      if (draft) setTimeout(() => document.getElementById(`design-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
     },
     updateDesign: (design: Design) =>
       setGroups((current) =>

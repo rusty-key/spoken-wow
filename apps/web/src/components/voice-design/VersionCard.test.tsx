@@ -125,3 +125,15 @@ test("clears the form of a verdict that was removed", () => {
   expect(screen.getByRole("radio", { name: "Needs work" }).getAttribute("aria-checked")).toBe("false");
   expect(screen.getByRole("button", { name: "Save verdict" })).toBeTruthy();
 });
+
+test("generates the next version from the review in one press: Gemini's prompt, then Voice Design", async () => {
+  const revision = { heard: "too noble", prompt: "A colder voice.", preview_text: "y".repeat(120), archetype: "Queen" };
+  const fetchMock = vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: { ...DESIGN, id: "d2", version: 3 } }));
+  vi.stubGlobal("fetch", fetchMock);
+  render(card(DESIGN));
+
+  await userEvent.click(screen.getByRole("button", { name: "Generate from review" }));
+  const [designUrl, init] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
+  expect(designUrl).toMatch(/\/api\/voices\/design(\?|$)/);
+  expect(JSON.parse(String(init.body))).toMatchObject({ slot: DESIGN.slot, prompt: "A colder voice.", previewText: "y".repeat(120), revisionHeard: "too noble", archetype: "Queen" });
+});

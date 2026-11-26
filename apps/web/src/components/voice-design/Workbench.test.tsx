@@ -103,7 +103,7 @@ test("shows the newest version open and folds the older ones", () => {
   expect(older.contains(newest)).toBe(false);
 });
 
-test("Revise all puts Gemini's draft into a form that was already open", async () => {
+test("Revise puts Gemini's draft into a form that was already open", async () => {
   const sampled = { ...design("orc-male-shady", 2, "needs-work", "too noble"), samples: [{ position: 0, sha256: "a".repeat(64), lineId: "q:1", text: "t", npcName: null, characters: 1, credits: 1 }] };
   const revisable: GroupView[] = [{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [sampled])] }];
   vi.stubGlobal("fetch", vi.fn(async () => Response.json({ revision: { heard: "h", prompt: "Gemini's new prompt", preview_text: "y".repeat(120), archetype: "a" } })));
@@ -113,10 +113,9 @@ test("Revise all puts Gemini's draft into a form that was already open", async (
       <Workbench groups={revisable} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
     </LangProvider>,
   );
-  await userEvent.click(screen.getByRole("button", { name: /^Needs work/ }));
-  await userEvent.click(screen.getByRole("button", { name: "Edit prompt manually" }));
-  expect((screen.getAllByRole("textbox")[0] as HTMLTextAreaElement).value).toContain("Prompt of orc-male-shady v2");
+  await userEvent.click(screen.getByRole("button", { name: "New version from v2" }));
+  expect(screen.getByDisplayValue(/^Prompt of orc-male-shady v2/)).toBeTruthy();
 
-  await userEvent.click(screen.getByRole("button", { name: /Revise all from reviews/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Revise from review" }));
   expect(await screen.findByDisplayValue("Gemini's new prompt")).toBeTruthy();
 });
