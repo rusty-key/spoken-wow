@@ -10,12 +10,14 @@ vi.mock("@/lib/voice-design/access", async (original) => ({
   ...(await original<typeof import("@/lib/voice-design/access")>()),
   requireDesigner: async () =>
     access.allowed
-      ? { session: { user: { id: "u1" } }, lang: "enUS", admin: false, denied: null }
-      : { session: null, lang: null, admin: false, denied: Response.json({}, { status: 403 }) },
-  keyOrRefusal: async (_user: string, provider: string) =>
+      ? { session: { user: { id: "u1" } }, lang: "enUS", denied: null }
+      : { session: null, lang: null, denied: Response.json({}, { status: 403 }) },
+}));
+vi.mock("@/lib/generation/authz", () => ({
+  requireApiKey: async (_user: string, provider: string) =>
     key.value
       ? { key: key.value, denied: null }
-      : { key: null, denied: Response.json({ key: provider }, { status: 400 }) },
+      : { key: null, denied: Response.json({ key: provider }, { status: 428 }) },
 }));
 vi.mock("@/lib/voice-design/analyse", () => ({ analyseGroup }));
 
@@ -45,7 +47,7 @@ describe("POST /api/voices/design/analyse", () => {
   it("sends somebody without a Gemini key to their profile", async () => {
     key.value = null;
     const response = await post({ group: "orc-male" });
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(428);
     expect(await response.json()).toEqual({ key: "gemini" });
   });
 

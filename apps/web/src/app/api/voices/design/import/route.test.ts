@@ -7,7 +7,7 @@ const { importVersion, access } = vi.hoisted(() => ({
 
 vi.mock("@/lib/voice-design/access", async (original) => ({
   ...(await original<typeof import("@/lib/voice-design/access")>()),
-  requireDesigner: async () => ({ session: { user: { id: "admin" } }, lang: "enUS", admin: access.admin, denied: null }),
+  requireDesigner: async () => ({ session: { user: { id: "admin", role: access.admin ? "admin" : "member" } }, lang: "enUS", denied: null }),
 }));
 vi.mock("@/lib/voice-design/import", async (original) => ({
   ...(await original<typeof import("@/lib/voice-design/import")>()),

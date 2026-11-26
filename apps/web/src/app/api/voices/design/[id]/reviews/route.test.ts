@@ -4,7 +4,7 @@ const { addReview } = vi.hoisted(() => ({ addReview: vi.fn(async () => {}) }));
 
 vi.mock("@/lib/voice-design/access", async (original) => ({
   ...(await original<typeof import("@/lib/voice-design/access")>()),
-  requireDesigner: async () => ({ session: { user: { id: "u1" } }, lang: "enUS", admin: false, denied: null }),
+  requireDesigner: async () => ({ session: { user: { id: "u1" } }, lang: "enUS", denied: null }),
 }));
 vi.mock("@/lib/voice-design/store", () => ({
   addReview,

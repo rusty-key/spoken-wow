@@ -12,11 +12,10 @@ import "server-only";
 
 import { query } from "./db";
 import { open, seal } from "./secrets";
-import type { Provider } from "./generation/providers";
+import type { KeyProvider } from "./generation/providers";
 
 
-/** A key the profile stores: a generator's, or Gemini's, which listens on /voices/design. */
-export type KeyProvider = Provider | "gemini";
+export type { KeyProvider };
 
 // A table per provider (see migration 0040 for why not one table with a column). Written
 // out rather than interpolated from the argument, so no caller can name a table.

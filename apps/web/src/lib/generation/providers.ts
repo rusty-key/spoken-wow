@@ -17,3 +17,8 @@ export const PROVIDER_NAME: Record<Provider, string> = {
   elevenlabs: "ElevenLabs",
   fish: "fish.audio",
 };
+
+/** A key the profile stores: a generator's, or Gemini's, which listens on /voices/design. */
+export type KeyProvider = Provider | "gemini";
+
+export const KEY_PROVIDER_NAME: Record<KeyProvider, string> = { ...PROVIDER_NAME, gemini: "Gemini" };

@@ -1,5 +1,6 @@
 /** Analyse a race-gender: Gemini compares its flavors blind, on the caller's Gemini key. */
-import { failed, keyOrRefusal, requireDesigner } from "@/lib/voice-design/access";
+import { requireApiKey } from "@/lib/generation/authz";
+import { failed, requireDesigner } from "@/lib/voice-design/access";
 import { analyseGroup } from "@/lib/voice-design/analyse";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
   const group = typeof body.group === "string" ? body.group : "";
   if (!GROUP.test(group)) return Response.json({ error: "group must be a race-gender, like orc-male" }, { status: 400 });
 
-  const { key, denied: noKey } = await keyOrRefusal(session.user.id, "gemini");
+  const { key, denied: noKey } = await requireApiKey(session.user.id, "gemini");
   if (noKey) return noKey;
   try {
     return Response.json(await analyseGroup({ lang, group, userId: session.user.id, apiKey: key }));

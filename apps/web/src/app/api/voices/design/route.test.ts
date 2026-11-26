@@ -12,10 +12,12 @@ vi.mock("@/lib/voice-design/access", async (original) => ({
   ...(await original<typeof import("@/lib/voice-design/access")>()),
   requireDesigner: async () =>
     access.allowed
-      ? { session: { user: { id: "u1" } }, lang: "enUS", admin: false, denied: null }
-      : { session: null, lang: null, admin: false, denied: Response.json({}, { status: 403 }) },
-  keyOrRefusal: async (_user: string, provider: string) =>
-    key.value ? { key: key.value, denied: null } : { key: null, denied: Response.json({ key: provider }, { status: 400 }) },
+      ? { session: { user: { id: "u1" } }, lang: "enUS", denied: null }
+      : { session: null, lang: null, denied: Response.json({}, { status: 403 }) },
+}));
+vi.mock("@/lib/generation/authz", () => ({
+  requireApiKey: async (_user: string, provider: string) =>
+    key.value ? { key: key.value, denied: null } : { key: null, denied: Response.json({ key: provider }, { status: 428 }) },
 }));
 vi.mock("@/lib/voice-design/design", () => ({ designVersion, saveDesignVoice, deleteDesignVoice }));
 
@@ -46,7 +48,7 @@ describe("POST /api/voices/design", () => {
     expect((await POST(new Request(url, { method: "POST", body: JSON.stringify(body) }))).status).toBe(403);
     access.allowed = true;
     key.value = null;
-    expect((await POST(new Request(url, { method: "POST", body: JSON.stringify(body) }))).status).toBe(400);
+    expect((await POST(new Request(url, { method: "POST", body: JSON.stringify(body) }))).status).toBe(428);
     expect(designVersion).not.toHaveBeenCalled();
   });
 
