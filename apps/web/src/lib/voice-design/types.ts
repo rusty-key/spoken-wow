@@ -4,7 +4,7 @@ import type { PreviewMetrics } from "./limits";
 /**
  * A clip's measurements (scripts/voice_measure.py): openSMILE's eGeMAPS functionals, and the
  * s-level, room tail and speech level a preview is chosen by. Any part the helper could not
- * measure is absent; previews imported from round two carry only the last three.
+ * measure is absent; imported previews may carry only the last three.
  */
 export type Measures = PreviewMetrics & {
   f0Hz?: number;

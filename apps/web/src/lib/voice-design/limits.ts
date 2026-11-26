@@ -12,9 +12,9 @@ export function designName(design: { slot: string; version: number }): string {
 }
 
 /**
- * Every prompt ends with this. Round two measured why: the old "dry close-mic studio recording"
- * ending and any wording about consonants gave designed voices s sounds four times harsher than
- * the live takes; this ending brought them below the live takes.
+ * Every prompt ends with this. Measured on 45 slots: with the old "dry close-mic studio recording"
+ * ending and consonant wording, s sounds were four times harsher than the live takes; with this
+ * ending, softer than them.
  */
 export const PROMPT_ENDING =
   "Soft, gentle s sounds. Clean professional audiobook recording, close to a warm studio microphone, natural and full-bodied, no harshness, no room echo.";

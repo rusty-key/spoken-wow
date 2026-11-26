@@ -28,10 +28,7 @@ export async function verifyGeminiKey(key: string, options: GeminiOptions = {}):
 
 export const GEMINI_MODEL = "gemini-3.1-pro-preview";
 
-/**
- * Wording rules every drafted prompt follows. Round two measured that consonant wording and the
- * old studio sentence made every s harsh, and that effects come out badly from Voice Design.
- */
+/** Consonant wording and the old studio sentence make every s harsh; effects come out badly. */
 const quoted = (words: readonly string[]) => words.map((word) => `"${word}"`).join(", ");
 const DRAFTING_RULES = `- Never describe consonants or sibilants (no ${quoted(SIBILANT_WORDS)}): it makes every s harsh.
 - Never describe post-processing (${EFFECT_WORDS.join(", ")}, filters). Describe a clean voice.

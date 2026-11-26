@@ -1,8 +1,7 @@
 /**
- * Revise: Gemini drafts the next version of a slot from its review. It hears the game reference
- * and the version's first sample line, and reads the reviewer's note, the notes on the race's
- * other flavors ("trolls need a Jamaican accent" holds for every troll) and the old prompt.
- * The draft goes to the Design form; nothing is spent at ElevenLabs until Design is pressed.
+ * Revise: Gemini drafts a slot's next version from its review. The race's other flavors' notes go
+ * with it, since "trolls need a Jamaican accent" holds for every troll. Nothing is spent at
+ * ElevenLabs until Design is pressed.
  */
 import "server-only";
 

@@ -6,8 +6,8 @@ Prints one JSON object, file path to its measures or to {"error": "..."}.
 Two independent parts, each used when its library is installed:
 - openSMILE eGeMAPS functionals over the whole file (pitch, roughness, brightness). Only the
   differences between voices mean much: game audio is pitch-shifted and processed.
-- librosa: the s-level, room tail and speech level a preview is chosen by (see recommendedPreview
-  in lib/voice-design/limits.ts), measured the way round two measured them.
+- librosa: the s-level, room tail and speech level a preview is chosen by. Changing how they are
+  measured changes what the page recommends, and makes old previews incomparable with new ones.
 
 Run by the site (lib/voice-design/measure.ts) with the interpreter named by VOICE_ANALYSIS_PYTHON;
 mp3 needs ffmpeg on PATH.
