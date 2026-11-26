@@ -2948,6 +2948,16 @@ export const EN = {
     none: "No voices to listen to yet.",
     noMatch: "No voice matches.",
     allDone: "You have voted on every voice. Thank you!",
+    followAccount: "Email me at {email} when a voice I voted on gets a new version",
+    followPrompt: "Want to hear when a voice you voted on gets a new version?",
+    followEmailLabel: "Your email",
+    followButton: "Email me",
+    followPending: "Check {email} for a link to confirm.",
+    followWait: "We sent a link to {email} a moment ago. Check your inbox, or try again in an hour.",
+    followOn: "We'll email {email} when a voice you voted on gets a new version.",
+    followStop: "Stop",
+    followed: "Your email is confirmed. We'll let you know when voices change.",
+    followFailed: "That confirmation link is not valid any more. Ask for a new one below.",
   },
 };
 

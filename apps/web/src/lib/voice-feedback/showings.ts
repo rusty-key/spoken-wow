@@ -9,6 +9,8 @@ import { asTeamOf } from "@/lib/teams/store";
 import { isUuid } from "@/lib/uuid";
 import { DesignError } from "@/lib/voice-design/access";
 
+import { queueNotices } from "./follow";
+
 /** `replaced` when the slot was already public, so voters of the earlier round may hear of it. */
 export async function showVersion(lang: Lang, designId: string, userId: string): Promise<{ showingId: number; replaced: boolean }> {
   if (!isUuid(designId)) throw new DesignError("no such design", 404);
@@ -29,7 +31,10 @@ export async function showVersion(lang: Lang, designId: string, userId: string):
       `insert into "voice_design_showing" ("designId", "lang", "slot", "createdBy") values ($1, $2, $3, $4) returning "id"`,
       [designId, lang, design.slot, userId],
     );
-    return { showingId: Number(inserted.rows[0].id), replaced: earlier.rows.length > 0 };
+    const showingId = Number(inserted.rows[0].id);
+    const replaced = earlier.rows.length > 0;
+    if (replaced) await queueNotices(client, showingId);
+    return { showingId, replaced };
   });
 }
 

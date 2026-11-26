@@ -1,5 +1,6 @@
 import { loadLanguages } from "@/lib/languages/catalogue";
 import { ensureReleaseTick } from "@/lib/releases/tick";
+import { ensureFollowTick } from "@/lib/voice-feedback/tick";
 
 /** The Node half of instrumentation.ts. */
 export async function loadLanguagesAtBoot(): Promise<void> {
@@ -17,4 +18,5 @@ export async function loadLanguagesAtBoot(): Promise<void> {
 export function startReleaseTickAtBoot(): void {
   if (process.env.NEXT_PHASE === "phase-production-build") return;
   ensureReleaseTick();
+  ensureFollowTick();
 }

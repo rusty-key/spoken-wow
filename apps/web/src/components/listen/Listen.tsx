@@ -9,6 +9,7 @@ import { withLang, type Lang } from "@/lib/lang";
 import { fill } from "@/lib/site-text/format";
 import { cn } from "@/lib/utils";
 import type { Verdict } from "@/lib/voice-design/types";
+import { slotLabel } from "@/lib/voice-feedback/label";
 import type { OwnVote, PublicVoice } from "@/lib/voice-feedback/public";
 
 import VoteControls from "./VoteControls";
@@ -17,11 +18,7 @@ type Filter = "all" | "unvoted" | "voted";
 type View = "table" | "cards";
 type Clip = { src: string; title: string; subtitle: string };
 
-const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
-
-/** `orc-male-shady` reads Orc · Male · Shady. */
-export const voiceName = (voice: PublicVoice) =>
-  [voice.race, voice.gender, ...(voice.flavor ? voice.flavor.split("-") : [])].map(capital).join(" · ");
+const voiceName = (voice: PublicVoice) => slotLabel(voice.slot);
 
 function shuffled<T>(items: readonly T[]): T[] {
   const copy = [...items];

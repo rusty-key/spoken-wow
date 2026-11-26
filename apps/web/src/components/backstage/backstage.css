@@ -2522,3 +2522,27 @@ body:has(main.bs) {
     padding: 14px;
   }
 }
+.ls-follow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.ls-follow-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ls-follow-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.ls-follow-email {
+  width: 240px;
+  height: 32px;
+  padding-block: 0;
+}
