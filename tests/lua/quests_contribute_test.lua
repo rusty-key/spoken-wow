@@ -316,8 +316,6 @@ world.playerName = "Гримбалор"
 Expect("...as is a Cyrillic one", SpokenEnv.Spoken.Contribute:Detemplate("ГРИМБАЛОР."), "$N.")
 world.playerName = nil
 
--- A Chinese class word on a quest's text keeps the loose boundary: Blizzard puts the address
--- straight after an adjective in about a quarter of its class lines.
 do
     local class, race, name = world.playerClass, world.playerRace, world.playerName
     local locale = stub.locale

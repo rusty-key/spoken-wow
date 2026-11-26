@@ -88,8 +88,6 @@ stub.ShowPage({ title = "Ledger of Nothing", number = 4, text = "VALAAS DAWNSIGH
 Expect("a page's name in capitals is keyed as a token",
     B:CaptureContribution():match("\npage=" .. B:ChecksumOf("$N,\n\n$N, keep this. VALAASWOOD waits.") .. "\n") ~= nil, true)
 
--- On a Chinese client a class word is a noun on a page far more often than it is the reader, so
--- the page is keyed on the text as it stands rather than on a $C that would be wrong.
 do
     local locale, w = stub.locale, stub.world
     local name, class, race = w.playerName, w.playerClass, w.playerRace

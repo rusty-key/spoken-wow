@@ -29,7 +29,6 @@ type Range = readonly [number, number];
 
 const HANGUL: readonly Range[] = [[0x1100, 0x11ff], [0x3130, 0x318f], [0xac00, 0xd7af]];
 
-/** Han, which Chinese writes a class or race word in and which glues to its neighbours. */
 const HAN: readonly Range[] = [[0x3400, 0x4dbf], [0x4e00, 0x9fff], [0xf900, 0xfaff]];
 
 /**
@@ -53,13 +52,9 @@ function inRanges(point: number, ranges: readonly Range[]): boolean {
 }
 
 /**
- * ASCII letters and digits only, so "Tester's" and "Tester-like" still hold the name.
- *
- * `strict` is for a Chinese class or race word on a page. Chinese writes one word for a noun, an
- * adjective and an address alike -- 资深德鲁伊 / 德鲁伊咒语 / 我的德鲁伊之力 are all "德鲁伊" -- so
- * Han counts as part of the word there and only a pause ends it. A name never takes it: a Chinese
- * name is Han itself and sits straight against the words around it, so a strict boundary would
- * leave the player's own name in the text.
+ * ASCII letters and digits only, so "Tester's" and "Tester-like" still hold the name. `strict`
+ * makes Han part of the word, so only punctuation ends it. A name never takes it: a Chinese name is
+ * Han itself and sits straight against its neighbours.
  */
 function isWordPoint(point: number | undefined, strict = false): boolean {
   if (point === undefined) return false;
@@ -140,18 +135,10 @@ function isClassQuest(fields: Record<string, string>): boolean {
 }
 
 /**
- * Whether a class or race word takes the strict boundary: a page's text, in Chinese.
- *
- * A page is prose, and English pages almost never carry a class token at all, so a word of it is
- * far more often a noun or an adjective than the reader. Chinese writes one word for all three --
- * 资深德鲁伊 / 德鲁伊咒语 / 我的德鲁伊之力 are all "德鲁伊" -- so only a pause ends it there.
- *
- * A quest's text keeps the loose boundary, which is the opposite trade: Blizzard's own Chinese
- * puts the address straight after an adjective in about a quarter of its class lines (尊贵的$c,
- * 勇敢的$C), where a strict boundary would miss the reader. Gossip keeps it too, being an NPC
- * talking to the reader.
- *
- * Only Chinese: Korean and Japanese glue particles to a word, and Latin writes spaces.
+ * Whether a class or race word takes the strict boundary: a Chinese page. Chinese writes one word
+ * for a noun and an address (德鲁伊咒语, 你好，德鲁伊。), and English pages almost never carry a
+ * class token, so there a word against Han is a noun. Quest text and gossip stay loose: Blizzard's
+ * Chinese puts the address straight after an adjective in a quarter of its class lines (尊贵的$c).
  */
 function strictClass(envelope: Envelope): boolean {
   if (envelope.source !== "readables") return false;
@@ -168,9 +155,10 @@ function swapsOf(fields: Record<string, string>, tokens: boolean, strict = false
   const swaps: Swap[] = [];
   const addCased = (word: string | undefined, upper: string, lower: string, swapped: boolean) => {
     if (!word) return;
-    swaps.push({ word, token: swapped ? upper : word, strict: swapped && strict });
+    const glued = swapped && strict;
+    swaps.push({ word, token: swapped ? upper : word, strict: glued });
     const lowered = word.toLowerCase();
-    if (lowered !== word) swaps.push({ word: lowered, token: swapped ? lower : lowered, strict: swapped && strict });
+    if (lowered !== word) swaps.push({ word: lowered, token: swapped ? lower : lowered, strict: glued });
   };
   for (const word of nameWords(readerFact(fields, NAME))) swaps.push({ word, token: "$N" });
   // A locale that names a class by gender ("Kriegerin") may write the other form.

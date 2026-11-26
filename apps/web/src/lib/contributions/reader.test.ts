@@ -128,17 +128,15 @@ describe("a reader no game would send", () => {
   });
 });
 
+const druid = { readerClass: "德鲁伊", readerRace: "暗夜精灵" };
+
 describe("a Chinese class or race word on a page", () => {
-  const druid = { readerClass: "德鲁伊", readerRace: "暗夜精灵" };
   const page = (text: string, fields: Record<string, string> = {}): Envelope => ({
     source: "readables",
     fields: { page: "1", shown: "1", locale: "zhCN", reader: "小明", ...druid, ...fields },
     text,
   });
 
-  // Chinese writes one word for noun, adjective and address alike, so on a page -- prose -- only
-  // a pause marks the reader being addressed. The first three are the noun and the adjective,
-  // whose English originals carry no token at all.
   it("is a noun in 资深德鲁伊会避开 (experienced druids partake)", () => {
     const text = "有时候，几位资深德鲁伊会避开永夜港的其他人，偷偷进行暴力的仪式。";
     expect(detemplated(page(text))).toBe(text);
@@ -158,19 +156,16 @@ describe("a Chinese class or race word on a page", () => {
     expect(detemplated(page("你好，德鲁伊。"))).toBe("你好，$C。");
   });
 
-  // The cost of the strict boundary: a modifier glued to the word hides the pause, so this
-  // address is missed rather than guessed at.
+  // The known cost: a modifier against the address hides it.
   it("is missed behind a glued modifier: 年轻的德鲁伊。", () => {
     expect(detemplated(page("年轻的德鲁伊。"))).toBe("年轻的德鲁伊。");
   });
 
-  // A name is Han itself and sits straight against the words around it, so it keeps the loose
-  // boundary: a strict one would leave the player's own name in the text.
   it("leaves a name its loose boundary: 做法小明。", () => {
     expect(detemplated(page("做法小明。"))).toBe("做法$N。");
   });
 
-  it("keeps the loose boundary in Twilight, whose pages read the same", () => {
+  it("takes the strict boundary on a zhTW page too", () => {
     expect(detemplated(page("他低声念起德魯伊咒語。", { locale: "zhTW", readerClass: "德魯伊" }))).toBe(
       "他低声念起德魯伊咒語。",
     );
@@ -178,7 +173,6 @@ describe("a Chinese class or race word on a page", () => {
 });
 
 describe("a Chinese class word on quest text or in gossip", () => {
-  const druid = { readerClass: "德鲁伊", readerRace: "暗夜精灵" };
   const quest = (text: string): Envelope => ({
     source: "quests",
     fields: { quest: "9123", event: "accept", shown: "1", locale: "zhCN", reader: "小明", ...druid },
@@ -190,8 +184,6 @@ describe("a Chinese class word on quest text or in gossip", () => {
     text,
   });
 
-  // Blizzard's own Chinese puts the address straight after an adjective in about a quarter of
-  // its class lines, so both keep the loose boundary they always had.
   it("still swaps behind a modifier on a quest: 尊贵的德鲁伊。", () => {
     expect(detemplated(quest("尊贵的德鲁伊。"))).toBe("尊贵的$C。");
   });
