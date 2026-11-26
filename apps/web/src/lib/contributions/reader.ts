@@ -25,53 +25,46 @@ function isShown(envelope: Envelope): boolean {
 
 type Swap = { word: string; token: string };
 
+type Range = readonly [number, number];
+
+const HANGUL: readonly Range[] = [[0x1100, 0x11ff], [0x3130, 0x318f], [0xac00, 0xd7af]];
+
 /**
  * The code points past ASCII that end a word, as Spoken's Contribute.lua lists them: Latin-1 and
  * general punctuation, symbols, emoji, and Hangul, kana and Han, which put no space between a name
- * and the next word ("홍길동님").
+ * and the next word ("홍길동님"). Hangul ends one only on the right.
  */
-const SEPARATORS: readonly (readonly [number, number])[] = [
+const SEPARATORS: readonly Range[] = [
   [0x80, 0xa9], [0xab, 0xb4], [0xb6, 0xb9], [0xbb, 0xbf], [0xd7, 0xd7], [0xf7, 0xf7],
   [0x2000, 0x206f], [0x20a0, 0x20cf], [0x2190, 0x23ff], [0x2500, 0x27bf], [0x2e00, 0x2e7f],
   [0x3000, 0x3004], [0x3008, 0x3020], [0x3030, 0x3030], [0x303d, 0x303f],
   [0xfe30, 0xfe6f], [0xff00, 0xff0f], [0xff1a, 0xff20], [0xff3b, 0xff40], [0xff5b, 0xff65],
   [0xffe0, 0xffee], [0x1f000, 0x1faff],
-  [0x1100, 0x11ff], [0x3040, 0x30ff], [0x3130, 0x318f], [0x3400, 0x4dbf], [0x4e00, 0x9fff],
-  [0xac00, 0xd7af], [0xf900, 0xfaff],
+  [0x3040, 0x30ff], [0x3400, 0x4dbf], [0x4e00, 0x9fff], [0xf900, 0xfaff],
+  ...HANGUL,
 ];
+
+function inRanges(point: number, ranges: readonly Range[]): boolean {
+  return ranges.some(([first, last]) => point >= first && point <= last);
+}
 
 /** ASCII letters and digits only, so "Tester's" and "Tester-like" still hold the name. */
 function isWordPoint(point: number | undefined): boolean {
   if (point === undefined) return false;
   if (point < 0x80) return /[0-9A-Za-z]/.test(String.fromCodePoint(point));
-  return !SEPARATORS.some(([first, last]) => point >= first && point <= last);
+  return !inRanges(point, SEPARATORS);
 }
 
 function isHangul(point: number | undefined): boolean {
-  if (point === undefined) return false;
-  return (
-    (point >= 0x1100 && point <= 0x11ff) || (point >= 0x3130 && point <= 0x318f) || (point >= 0xac00 && point <= 0xd7af)
-  );
+  return point !== undefined && inRanges(point, HANGUL);
 }
 
 /**
- * What Korean writes straight after a name: an honorific or a particle. Any other syllable makes the
- * name part of a longer word, so a reader named "우" leaves "우리" alone.
+ * Hangul ends a word on the right, where a particle follows a name with no space, but not on the
+ * left: nothing comes straight before a Korean name, and a reader named "서" would otherwise take "어서".
  */
-const HANGUL_AFTER_NAME = [
-  "님", "씨", "이", "가", "은", "는", "을", "를", "의", "에게", "께", "한테", "와", "과", "도", "여", "시여",
-];
-
-/**
- * Whether a word ending at `end` and starting after `before` stands alone. Hangul ends a word, since
- * nothing spaces a name from its particle ("홍길동님"), but only on the right and only before a
- * particle: Korean puts nothing straight before a name, and a reader named "서" would otherwise
- * take "어서" and "대해서도".
- */
-function isWholeWord(text: string, before: number | undefined, end: number): boolean {
-  const after = text.codePointAt(end);
-  if (isWordPoint(before) || isHangul(before) || isWordPoint(after)) return false;
-  return !isHangul(after) || HANGUL_AFTER_NAME.some((particle) => text.startsWith(particle, end));
+function isWholeWord(before: number | undefined, after: number | undefined): boolean {
+  return !isWordPoint(before) && !isHangul(before) && !isWordPoint(after);
 }
 
 function pointBefore(text: string, index: number): number | undefined {
@@ -95,7 +88,7 @@ function swapWords(text: string, swaps: readonly Swap[]): string {
   next: while (index < text.length) {
     for (const { word, token } of present) {
       const end = index + word.length;
-      if (text.startsWith(word, index) && isWholeWord(text, pointBefore(text, index), end)) {
+      if (text.startsWith(word, index) && isWholeWord(pointBefore(text, index), text.codePointAt(end))) {
         out += text.slice(kept, index) + token;
         index = kept = end;
         continue next;
