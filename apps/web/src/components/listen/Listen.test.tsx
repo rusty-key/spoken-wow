@@ -80,3 +80,17 @@ test("shows one voice at a time in cards, and moves on with Next", async () => {
   // A card spells each line out; the table keeps them in tooltips.
   expect(screen.getByText(/^Grunt: Line 0 of /)).toBeTruthy();
 });
+
+test("opens cards on the voices not voted yet, and keeps a card in place once it is voted", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ ok: true })));
+  render(<Listen lang="enUS" voices={VOICES} votes={{ 2: { verdict: "skip", note: "" } }} />);
+  await userEvent.click(screen.getByRole("button", { name: "One at a time" }));
+  expect(screen.getByRole("button", { name: /Not voted/ }).getAttribute("aria-current")).toBe("page");
+  expect(screen.getByText("1 of 2")).toBeTruthy();
+
+  const name = screen.getByRole("heading", { level: 2 }).textContent;
+  await userEvent.click(screen.getByRole("button", { name: "Fits" }));
+  // Still here, so a note can follow the answer.
+  expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(name);
+  expect(screen.getByText("1 of 2")).toBeTruthy();
+});

@@ -35,6 +35,10 @@ export default function Listen({ lang, voices, votes: initialVotes }: { lang: La
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [view, setView] = useState<View>("table");
+  // The votes the filter was set against: a voice voted since stays in the list, so its note
+  // field does not vanish under the cursor.
+  const [filteredBy, setFilteredBy] = useState(initialVotes);
+  const [cardsOpened, setCardsOpened] = useState(false);
   // Shuffled after mount, so the server's render matches the first client one.
   const [order, setOrder] = useState<string[]>(() => voices.map((voice) => voice.slot));
   const [at, setAt] = useState(0);
@@ -44,7 +48,7 @@ export default function Listen({ lang, voices, votes: initialVotes }: { lang: La
 
   useEffect(() => {
     setOrder(shuffled(voices.map((voice) => voice.slot)));
-    if (window.matchMedia?.("(max-width: 640px)").matches) setView("cards");
+    if (window.matchMedia?.("(max-width: 640px)").matches) openCards();
   }, [voices]);
 
   // Started as soon as the bar has the new source: a play button that only loads would need a second press.
@@ -58,10 +62,25 @@ export default function Listen({ lang, voices, votes: initialVotes }: { lang: La
     else setPlaying(clip);
   };
 
+  function chooseFilter(value: Filter) {
+    setFilter(value);
+    setFilteredBy(votes);
+    setAt(0);
+  }
+
+  /** The first time, cards start on what is left to vote on. */
+  function openCards() {
+    setView("cards");
+    if (!cardsOpened) {
+      setCardsOpened(true);
+      chooseFilter("unvoted");
+    }
+  }
+
   const needle = query.trim().toLowerCase();
   const matches = (voice: PublicVoice) =>
     (!needle || [voice.race, voice.gender, voice.flavor ?? ""].join(" ").toLowerCase().includes(needle)) &&
-    (filter === "all" || (filter === "voted") === (voice.showingId in votes));
+    (filter === "all" || (filter === "voted") === (voice.showingId in filteredBy));
   const listed = voices.filter(matches);
   const bySlot = useMemo(() => new Map(voices.map((voice) => [voice.slot, voice])), [voices]);
   const cards = order.map((slot) => bySlot.get(slot)).filter((voice): voice is PublicVoice => voice !== undefined && matches(voice));
@@ -122,10 +141,7 @@ export default function Listen({ lang, voices, votes: initialVotes }: { lang: La
               type="button"
               className="bs-chip"
               aria-current={filter === value ? "page" : undefined}
-              onClick={() => {
-                setFilter(value);
-                setAt(0);
-              }}
+              onClick={() => chooseFilter(value)}
             >
               {filterLabel[value]}
               <span className="bs-count">{counts[value]}</span>
@@ -145,7 +161,7 @@ export default function Listen({ lang, voices, votes: initialVotes }: { lang: La
             }}
           />
         </label>
-        <button type="button" className="bs-btn ls-view" onClick={() => setView(view === "table" ? "cards" : "table")}>
+        <button type="button" className="bs-btn ls-view" onClick={() => (view === "table" ? openCards() : setView("table"))}>
           {view === "table" ? <SquareStack size={14} aria-hidden="true" /> : <LayoutList size={14} aria-hidden="true" />}
           {view === "table" ? t.cardsView : t.tableView}
         </button>
