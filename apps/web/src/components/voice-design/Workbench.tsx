@@ -26,6 +26,8 @@ export type SlotView = {
   /** Where the slot's game clip plays, or null when it has none on the site. */
   reference: string | null;
   candidates: string[];
+  /** The slot's lines that preview texts were taken from, by text. */
+  previewLines: Record<string, { lineId: string; npcName: string; src: string }>;
   /** Characters of the default sample lines, for the cost before Sample is pressed. */
   sampleChars: number;
   /** Newest version first. */
@@ -52,7 +54,7 @@ function haystack(slot: SlotView): string {
 
 export default function Workbench({
   groups: initialGroups,
-  live,
+  live: initialLive,
   viewer,
   keys,
   rate,
@@ -68,6 +70,7 @@ export default function Workbench({
   const t = useUiText().voiceDesign;
   const lang = useLang();
   const [groups, setGroups] = useState(initialGroups);
+  const [live, setLive] = useState(initialLive);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
@@ -75,6 +78,7 @@ export default function Workbench({
   const [generatingAll, setGeneratingAll] = useState<{ done: number; total: number } | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
   const [generateLog, setGenerateLog] = useState<string[]>([]);
+  const [sounding, setSounding] = useState(false);
   const audio = useRef<HTMLAudioElement | null>(null);
 
   // Started as soon as the bar has the new source: a play button that only loads would need a second press.
@@ -105,8 +109,12 @@ export default function Workbench({
     rate,
     model,
     live,
-    playing,
-    play: (clip: Playing) => setPlaying(clip),
+    play: (clip: Playing) => {
+      const el = audio.current;
+      if (el && playing?.src === clip.src) void (el.paused ? el.play().catch(() => {}) : el.pause());
+      else setPlaying(clip);
+    },
+    isPlaying: (src: string) => sounding && playing?.src === src,
     drafts,
     setDraft: (slot: string, draft: Draft | null) => {
       setDrafts((current) => {
@@ -118,7 +126,8 @@ export default function Workbench({
       // The form may open far from the button pressed; it exists once this render lands.
       if (draft) setTimeout(() => document.getElementById(`design-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
     },
-    updateDesign: (design: Design) =>
+    updateDesign: (design: Design, takes?: Record<string, string>) => {
+      if (takes) setLive((current) => ({ ...current, ...takes }));
       setGroups((current) =>
         current.map((group) => ({
           ...group,
@@ -128,7 +137,8 @@ export default function Workbench({
             return { ...slot, designs: [...others, design].sort((a, b) => b.version - a.version) };
           }),
         })),
-      ),
+      );
+    },
     updateAnalysis: (analysis: Analysis) =>
       setGroups((current) => current.map((group) => (group.group === analysis.group ? { ...group, analysis } : group))),
   };
@@ -282,7 +292,7 @@ export default function Workbench({
 
       {playing ? (
         <div className="fixed inset-x-0 bottom-0 z-40">
-          <AudioPlayer audioRef={audio} src={playing.src} title={playing.title} meta={playing.meta} subtitle={playing.subtitle} />
+          <AudioPlayer audioRef={audio} onPlayingChange={setSounding} src={playing.src} title={playing.title} meta={playing.meta} subtitle={playing.subtitle} />
         </div>
       ) : null}
     </WorkbenchContext.Provider>

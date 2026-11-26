@@ -81,6 +81,8 @@ type Props = {
    */
   totalHint?: number;
   audioRef: React.RefObject<HTMLAudioElement | null>;
+  /** Told when the clip starts or stops sounding, for buttons elsewhere that show it. */
+  onPlayingChange?: (playing: boolean) => void;
 };
 
 export default function AudioPlayer({
@@ -91,6 +93,7 @@ export default function AudioPlayer({
   downloadName,
   totalHint,
   audioRef,
+  onPlayingChange,
 }: Props) {
   const t = useUiText().common;
   const local = useRef<HTMLAudioElement | null>(null);
@@ -108,6 +111,8 @@ export default function AudioPlayer({
   // clip whose row exists and whose file does not -- the archive is not on every machine
   // that serves this page.
   const [failed, setFailed] = useState(false);
+
+  useEffect(() => onPlayingChange?.(playing), [playing, onPlayingChange]);
 
   const fail = () => {
     setFailed(true);
