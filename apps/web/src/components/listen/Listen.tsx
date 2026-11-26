@@ -163,6 +163,7 @@ export default function Listen({ lang, voices, votes: initialVotes }: { lang: La
               <th scope="col">{t.columnCharacter}</th>
               <th scope="col">{t.columnLines}</th>
               <th scope="col">{t.columnVote}</th>
+              <th scope="col">{t.noteLabel}</th>
             </tr>
           </thead>
           <tbody>
@@ -173,9 +174,7 @@ export default function Listen({ lang, voices, votes: initialVotes }: { lang: La
                 </th>
                 <td className="vd-muted">{voice.archetype}</td>
                 <td>{lines(voice, false)}</td>
-                <td>
-                  <VoteControls key={voice.showingId} vote={votes[voice.showingId]} onVote={(verdict, note) => vote(voice, verdict, note)} />
-                </td>
+                <VoteControls key={voice.showingId} cells vote={votes[voice.showingId]} onVote={(verdict, note) => vote(voice, verdict, note)} />
               </tr>
             ))}
           </tbody>

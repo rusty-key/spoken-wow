@@ -4,7 +4,6 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
 import { useUiText } from "@/components/UiTextProvider";
-import { cn } from "@/lib/utils";
 import { VERDICTS, type Verdict } from "@/lib/voice-design/types";
 import type { OwnVote } from "@/lib/voice-feedback/public";
 
@@ -15,9 +14,11 @@ import type { OwnVote } from "@/lib/voice-feedback/public";
 export default function VoteControls({
   vote,
   onVote,
+  cells = false,
 }: {
   vote: OwnVote | undefined;
   onVote: (verdict: Verdict, note: string) => Promise<void>;
+  cells?: boolean;
 }) {
   const t = useUiText().listen;
   const [note, setNote] = useState(vote?.note ?? "");
@@ -38,24 +39,27 @@ export default function VoteControls({
     }
   }
 
-  return (
+  const verdicts = (
+    <div className="ls-verdicts" role="group" aria-label={t.question}>
+      {VERDICTS.map((verdict) => (
+        <button
+          key={verdict}
+          type="button"
+          className="bs-btn ls-verdict"
+          data-verdict={verdict}
+          aria-pressed={vote?.verdict === verdict}
+          disabled={busy !== null}
+          onClick={() => void send(verdict, verdict)}
+        >
+          {busy === verdict ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : null}
+          {label[verdict]}
+        </button>
+      ))}
+    </div>
+  );
+
+  const noteField = (
     <div className="ls-vote">
-      <div className="ls-verdicts" role="group" aria-label={t.question}>
-        {VERDICTS.map((verdict) => (
-          <button
-            key={verdict}
-            type="button"
-            className={cn("bs-btn ls-verdict")}
-            data-verdict={verdict}
-            aria-pressed={vote?.verdict === verdict}
-            disabled={busy !== null}
-            onClick={() => void send(verdict, verdict)}
-          >
-            {busy === verdict ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : null}
-            {label[verdict]}
-          </button>
-        ))}
-      </div>
       <textarea
         className="ls-note"
         rows={2}
@@ -78,6 +82,22 @@ export default function VoteControls({
           {error}
         </p>
       ) : null}
+    </div>
+  );
+
+  // A table row gives the answers and the note a column each; a card stacks them.
+  if (cells) {
+    return (
+      <>
+        <td>{verdicts}</td>
+        <td className="ls-note-cell">{noteField}</td>
+      </>
+    );
+  }
+  return (
+    <div className="ls-vote">
+      {verdicts}
+      {noteField}
     </div>
   );
 }
