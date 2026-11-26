@@ -68,3 +68,17 @@ export async function requestRevision(lang: Lang, design: Design, from: string):
     from,
   };
 }
+
+export async function designFrom(lang: Lang, slot: string, draft: Draft): Promise<Design> {
+  const { design } = await send<{ design: Design }>(withLang(lang, "/api/voices/design"), {
+    body: {
+      slot,
+      prompt: draft.prompt,
+      previewText: draft.previewText,
+      analysisId: draft.analysisId,
+      revisionHeard: draft.heard ?? null,
+      archetype: draft.archetype ?? null,
+    },
+  });
+  return design;
+}

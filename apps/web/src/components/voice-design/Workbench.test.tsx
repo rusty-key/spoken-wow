@@ -114,11 +114,11 @@ test("Revise puts Gemini's draft into a form that was already open", async () =>
       <Workbench groups={revisable} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
     </LangProvider>,
   );
-  await userEvent.click(screen.getByTitle("More actions"));
-  await userEvent.click(screen.getByRole("menuitem", { name: "New version from v2" }));
+  await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+  await userEvent.click(await screen.findByRole("button", { name: "New version from v2" }));
   expect(screen.getByDisplayValue(/^Prompt of orc-male-shady v2/)).toBeTruthy();
 
-  await userEvent.click(screen.getByTitle("More actions"));
-  await userEvent.click(screen.getByRole("menuitem", { name: "Revise from review" }));
+  await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+  await userEvent.click(await screen.findByRole("button", { name: "Revise from review" }));
   expect(await screen.findByDisplayValue("Gemini's new prompt")).toBeTruthy();
 });

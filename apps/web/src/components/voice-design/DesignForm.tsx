@@ -9,7 +9,7 @@ import { fill } from "@/lib/site-text/format";
 import { DESIGN_LIMITS, PREVIEWS_PER_DESIGN, promptLengthProblem, promptProblems, withEnding } from "@/lib/voice-design/limits";
 import type { Design } from "@/lib/voice-design/types";
 
-import { send, useWorkbench, type Draft } from "./context";
+import { designFrom, useWorkbench, type Draft } from "./context";
 import type { SlotView } from "./Workbench";
 
 const { promptMax, textMin, textMax } = DESIGN_LIMITS;
@@ -34,10 +34,7 @@ export default function DesignForm({ slot, initial, onDone }: { slot: SlotView; 
     setBusy(true);
     setError(null);
     try {
-      const { design } = await send<{ design: Design }>(withLang(lang, "/api/voices/design"), {
-        body: { slot: slot.name, prompt, previewText, analysisId: initial?.analysisId ?? null, revisionHeard: initial?.heard ?? null, archetype: initial?.archetype ?? null },
-      });
-      updateDesign(design);
+      updateDesign(await designFrom(lang, slot.name, { ...initial, prompt, previewText, analysisId: initial?.analysisId ?? null, from: initial?.from ?? "" }));
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

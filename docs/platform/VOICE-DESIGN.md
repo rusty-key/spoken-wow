@@ -92,11 +92,11 @@ no harshness, no room echo.
   each is measured. The page shows its **s**-level (how harsh the s sounds are; live takes sit near
   0.07); its tooltip adds the **room** tail (the echo after a phrase, in dB), the speech **level** and,
   with openSMILE, pitch, roughness (HNR) and brightness (alpha ratio). Play them beside the slot's **Reference clip**.
-- The page marks one **Recommended**, and **Use** starts on it: the softest s among the previews whose room tail is at most
+- The page marks one **Recommended**, and gilds its **Save as voice** button: the softest s among the previews whose room tail is at most
   -17 dB and whose level is within 6 dB of the loudest; if none qualifies, the softest s. Your ears
   decide.
 - The reference clip is there to compare against, by ear. It is never sent anywhere when you design.
-- Choose one with **Use**, then **Save preview N as a voice**. It is created in *your* ElevenLabs account as
+- Press **Save as voice** beside the preview you want. It is created in *your* ElevenLabs account as
   `design-<slot>-v<n>`, and you become its holder: only you can voice lines with it or delete it.
   Teammates see whose account it is in. To use another preview instead, **Delete from ElevenLabs**,
   then save the other one; the old voice's sample lines go with it.

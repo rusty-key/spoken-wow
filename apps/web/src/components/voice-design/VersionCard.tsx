@@ -1,9 +1,10 @@
 "use client";
 
 import { AudioLines, Check, Loader2, MoreHorizontal, Pencil, Play, RefreshCw, Save, Sparkles, Trash2, Wand2, X } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import Link from "@/components/LocaleLink";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useUiText } from "@/components/UiTextProvider";
 import { withLang } from "@/lib/lang";
 import { fill } from "@/lib/site-text/format";
@@ -13,12 +14,11 @@ import { designName, recommendedPreview } from "@/lib/voice-design/limits";
 import type { ClipMark, Design, Measures, Review } from "@/lib/voice-design/types";
 
 import StatusBadge from "./StatusBadge";
-import { requestRevision, send, useWorkbench } from "./context";
+import { designFrom, requestRevision, send, useWorkbench } from "./context";
 import type { SlotView } from "./Workbench";
 
 const day = (iso: string) => iso.slice(0, 10);
 const one = (value: number) => value.toFixed(1);
-
 const two = (value: number) => value.toFixed(2);
 
 /** The s-level, which the pick mostly turns on; every other measure is in its tooltip. */
@@ -50,7 +50,7 @@ function Field({ label, value }: { label: string; value: unknown }) {
   );
 }
 
-/** Previews are no longer marked here, so a mark on one would ride along unseen in every later verdict. */
+/** Only sample lines are marked here; an old verdict's preview marks would ride along unseen in every new one. */
 const sampleMarks = (last: Review | undefined) =>
   Object.fromEntries(Object.entries(last?.clips ?? {}).filter(([key]) => key.startsWith("sample:"))) as Record<string, ClipMark>;
 
@@ -128,9 +128,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const last = design.reviews.at(-1);
   const [note, setNote] = useState("");
   const recommended = recommendedPreview(design.previews.map((preview) => preview.measures));
-  const [picked, setPicked] = useState<number | null>(null);
-  const best = picked ?? recommended ?? design.chosenPreview;
-  const [clips, setClips] = useState<Record<string, ClipMark>>(sampleMarks(last));
+  const [clips, setClips] = useState<Record<string, ClipMark>>(() => sampleMarks(last));
   // A removed verdict must not stay preset in the form, one press from coming back.
   const [formFor, setFormFor] = useState(last?.id);
   if (formFor !== last?.id) {
@@ -149,20 +147,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [removing, setRemoving] = useState<number | null>(null);
-  const more = useRef<HTMLDetailsElement>(null);
-  const closeMore = () => more.current?.removeAttribute("open");
-  // A <details> menu stays open until its summary is pressed again; a menu closes on a click away or Escape.
-  useEffect(() => {
-    const away = (event: Event) => {
-      if (event instanceof KeyboardEvent ? event.key === "Escape" : !more.current?.contains(event.target as Node)) closeMore();
-    };
-    document.addEventListener("pointerdown", away);
-    document.addEventListener("keydown", away);
-    return () => {
-      document.removeEventListener("pointerdown", away);
-      document.removeEventListener("keydown", away);
-    };
-  }, []);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const audio = (sha: string) => withLang(lang, `/api/voices/design/audio/${sha}`);
   const holds = design.holderId === viewer.id;
@@ -204,21 +189,16 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const revisable = isRevisable(design);
   const revision = () => requestRevision(lang, design, fill(t.geminiRevision, { v: tag }));
   const revise = () => run("revise", async () => setDraft(slot.name, await revision()));
-  // Gemini's rewrite goes straight to Voice Design: the next version, without stopping at the form.
+  // Gemini's rewrite goes straight to Voice Design. If that fails, the paid-for draft waits in the form.
   const generate = () =>
     run("generate", async () => {
       const draft = await revision();
-      const { design: next } = await send<{ design: Design }>(withLang(lang, "/api/voices/design"), {
-        body: {
-          slot: slot.name,
-          prompt: draft.prompt,
-          previewText: draft.previewText,
-          analysisId: null,
-          revisionHeard: draft.heard ?? null,
-          archetype: draft.archetype ?? null,
-        },
-      });
-      updateDesign(next);
+      try {
+        updateDesign(await designFrom(lang, slot.name, draft));
+      } catch (err) {
+        setDraft(slot.name, draft);
+        throw err;
+      }
     });
 
   return (
@@ -264,6 +244,18 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                     <Play size={13} aria-hidden="true" />
                     {fill(t.previewN, { n: index + 1 })}
                   </button>
+                  {can && !hasVoice ? (
+                    <button
+                      type="button"
+                      className={cn("bs-btn vd-tip", recommended === index && "bs-btn-primary")}
+                      data-tip={fill(t.saveCost, { name: designName(design) })}
+                      disabled={busy !== null || !keys.elevenlabs}
+                      onClick={() => void act(`save-${index}`, `/api/voices/design/${design.id}/voice`, { body: { preview: index } })}
+                    >
+                      {busy === `save-${index}` ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Save size={14} aria-hidden="true" />}
+                      {t.saveAsVoice}
+                    </button>
+                  ) : null}
                   <MeasureLine measures={preview.measures} />
                   {recommended === index && design.previews.length > 1 ? (
                     <span className="vd-tag" title={t.recommendedTitle}>
@@ -275,36 +267,15 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                       {t.saved}
                     </span>
                   ) : null}
-                  {can && !hasVoice ? (
-                    <label className="vd-radio vd-push" title={t.bestTitle}>
-                      <input type="radio" name={`best-${design.id}`} checked={best === index} onChange={() => setPicked(index)} />
-                      {t.best}
-                    </label>
-                  ) : null}
                 </li>
               );
             })}
           </ul>
-
-          {can && !hasVoice ? (
-            <div className="vd-step">
-              <button
-                type="button"
-                className="bs-btn bs-btn-primary"
-                disabled={busy !== null || best === null || !keys.elevenlabs}
-                onClick={() => void act("save", `/api/voices/design/${design.id}/voice`, { body: { preview: best } })}
-              >
-                {busy === "save" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Save size={14} aria-hidden="true" />}
-                {best === null ? t.pickPreview : fill(t.saveVoice, { n: best + 1 })}
-              </button>
-              <span className="vd-cost">{fill(t.saveCost, { name: designName(design) })}</span>
-            </div>
-          ) : null}
         </div>
 
         <div className="vd-samples">
           <p className="bs-label">{t.samplesLabel}</p>
-          {can && design.samples.length > 0 ? <p className="vd-muted vd-hint">{t.marksHint}</p> : null}
+          {can && design.samples.length > 0 ? <p className="vd-muted vd-marks-hint">{t.marksHint}</p> : null}
           {design.samples.length === 0 ? <p className="vd-muted">{hasVoice ? t.noSamples : t.saveFirst}</p> : null}
           <ul className="vd-cliplist">
             {design.samples.map((sample) => {
@@ -409,7 +380,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
       ) : null}
 
       {can ? (
-        <form className="vd-review-form" onSubmit={(event) => event.preventDefault()}>
+        <div className="vd-review-form">
           <input
             className="vd-note-input"
             value={note}
@@ -427,7 +398,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                 data-status={value}
                 disabled={busy !== null}
                 onClick={async () => {
-                  const ok = await act(`review-${value}`, `/api/voices/design/${design.id}/reviews`, { body: { status: value, note, bestPreview: null, clips } });
+                  const ok = await act(`review-${value}`, `/api/voices/design/${design.id}/reviews`, { body: { status: value, note, clips } });
                   if (ok) setNote("");
                 }}
               >
@@ -436,7 +407,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
               </button>
             ))}
           </div>
-        </form>
+        </div>
       ) : null}
 
       {can ? (
@@ -453,40 +424,40 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
               {busy === "generate" ? t.generating : t.generate}
             </button>
           ) : null}
-          <details className="vd-more" ref={more}>
-            <summary className="bs-btn bs-btn-text" aria-label={t.moreActions} title={t.moreActions}>
-              {busy === "revise" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <MoreHorizontal size={16} aria-hidden="true" />}
-            </summary>
-            <div className="vd-more-menu" role="menu">
+          <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+            <PopoverTrigger asChild>
+              <button type="button" className="bs-btn bs-btn-text" aria-label={t.moreActions} title={t.moreActions}>
+                {busy === "revise" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <MoreHorizontal size={16} aria-hidden="true" />}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" side="top" className="vd-more-menu">
               {newest && revisable ? (
                 <button
                   type="button"
-                  role="menuitem"
                   title={t.reviseCost}
                   disabled={busy !== null || !keys.gemini}
                   onClick={() => {
-                    closeMore();
+                    setMenuOpen(false);
                     void revise();
                   }}
                 >
                   <Sparkles size={14} aria-hidden="true" />
-                  {busy === "revise" ? t.revising : t.revise}
+                  {t.revise}
                 </button>
               ) : null}
               <button
                 type="button"
-                role="menuitem"
                 title={t.branchTitle}
                 onClick={() => {
-                  closeMore();
+                  setMenuOpen(false);
                   setDraft(slot.name, { prompt: design.prompt, previewText: design.previewText, analysisId: design.analysisId, from: tag });
                 }}
               >
                 <Pencil size={14} aria-hidden="true" />
                 {fill(t.branch, { v: tag })}
               </button>
-            </div>
-          </details>
+            </PopoverContent>
+          </Popover>
           {last?.status === "good" && hasVoice ? (
             <span className="vd-muted">
               {t.adoptBefore}

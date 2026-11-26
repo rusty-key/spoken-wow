@@ -60,7 +60,7 @@ const context: Workbench = {
 };
 
 /** A verdict button: the sample lines' marks are named Good too. */
-const verdict = (name: string) => within(screen.getByRole("textbox", { name: "Note" }).closest("form")!).getByRole("button", { name });
+const verdict = (name: string) => within(screen.getByRole("textbox", { name: "Note" }).closest(".vd-review-form") as HTMLElement).getByRole("button", { name });
 
 const card = (design: Design) => (
   <WorkbenchContext.Provider value={context}>
@@ -79,7 +79,7 @@ test("drops the marks on lines that a re-sample replaced, and the preview marks 
   expect(body.clips).toEqual({});
 });
 
-test("leaves the best preview out of a verdict until the reviewer picks one, though Save starts on the recommended", async () => {
+test("saves the preview whose button is pressed, the recommended one marked out", async () => {
   const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
   vi.stubGlobal("fetch", fetchMock);
   const measured = (ess: number) => ({ ess, decay: -20, level: -12 });
@@ -94,11 +94,13 @@ test("leaves the best preview out of a verdict until the reviewer picks one, tho
     previews: [0, 1, 2].map((n) => ({ generatedVoiceId: `g${n}`, sha256: String(n).repeat(64), measures: measured([0.5, 0.02, 0.4][n]) })),
   };
   render(card(fresh));
-  expect(screen.getByRole("button", { name: "Save preview 2 as a voice" })).toBeTruthy();
+  const saves = screen.getAllByRole("button", { name: "Save as voice" });
+  expect(saves.map((button) => button.classList.contains("bs-btn-primary"))).toEqual([false, true, false]);
 
-  await userEvent.click(verdict("Needs work"));
-  const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
-  expect(body.bestPreview).toBeNull();
+  await userEvent.click(saves[2]);
+  const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+  expect(url).toContain(`/api/voices/design/${DESIGN.id}/voice`);
+  expect(JSON.parse(String(init.body))).toEqual({ preview: 2 });
 });
 
 test("removes a verdict only after it is confirmed", async () => {
@@ -116,7 +118,7 @@ test("removes a verdict only after it is confirmed", async () => {
 
 test("offers to save another preview once the voice is deleted from ElevenLabs", () => {
   render(card({ ...DESIGN, voiceDeletedAt: "2026-11-26T00:00:00Z" }));
-  expect(screen.getByRole("button", { name: /^Save preview \d as a voice$/ })).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: "Save as voice" })).toHaveLength(DESIGN.previews.length);
 });
 
 test("gives a verdict in one press, with the note, and drops the marks of a verdict that was removed", async () => {
