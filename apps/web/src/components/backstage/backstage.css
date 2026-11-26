@@ -2093,42 +2093,14 @@ body:has(main.bs) {
   color: var(--foreground);
 }
 .vd-review-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  display: grid;
+  justify-items: start;
   gap: 8px;
   padding: 10px 14px;
   box-shadow: inset 0 1px 0 var(--bs-line);
 }
-.vd-verdict {
-  display: inline-flex;
-  padding: 2px;
-  border-radius: 7px;
-  background: var(--bs-field);
-  box-shadow: inset 0 0 0 1px var(--bs-line);
-}
-.vd-verdict-option {
-  height: 28px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 5px;
-  background: none;
-  color: var(--bs-text-2);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 500;
-  cursor: pointer;
-}
-.vd-verdict-option[aria-checked="true"][data-status="good"] {
-  background: rgba(95, 207, 79, 0.18);
-  color: var(--bs-green-text);
-}
-.vd-verdict-option[aria-checked="true"][data-status="needs-work"] {
-  background: rgba(240, 194, 90, 0.18);
-  color: var(--bs-gold);
-}
 .vd-note-input {
-  flex: 1 1 280px;
+  width: 100%;
   min-width: 0;
   height: 32px;
   padding: 0 10px;
@@ -2163,12 +2135,68 @@ body:has(main.bs) {
   color: var(--bs-text-2);
   font-size: 12.5px;
 }
-.vd-foot-actions {
-  display: inline-flex;
-  flex-wrap: wrap;
+.vd-more {
+  position: relative;
+}
+.vd-more > summary {
+  list-style: none;
+  padding: 0 8px;
+}
+.vd-more > summary::-webkit-details-marker {
+  display: none;
+}
+.vd-more-menu {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  bottom: calc(100% + 4px);
+  display: grid;
+  min-width: max-content;
+  padding: 4px;
+  border-radius: 8px;
+  background: #0c0d10;
+  box-shadow: 0 0 0 1px var(--bs-line), 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.vd-more-menu button {
+  display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: auto;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.vd-more-menu button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+.vd-more-menu button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.vd-verdict-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+.vd-verdict-option[data-status="good"] {
+  background: rgba(95, 207, 79, 0.18);
+  color: var(--bs-green-text);
+}
+.vd-verdict-option[data-status="good"]:hover {
+  background: rgba(95, 207, 79, 0.28);
+}
+.vd-verdict-option[data-status="needs-work"] {
+  background: rgba(240, 194, 90, 0.16);
+  color: var(--bs-gold);
+}
+.vd-verdict-option[data-status="needs-work"]:hover {
+  background: rgba(240, 194, 90, 0.26);
 }
 /* Shown at once on hover or focus: the native title waits a second and never shows on focus. */
 .vd-tip {

@@ -40,7 +40,7 @@ Slots are grouped by race, then gender. Open a group and press **Compare blind**
 ## 2. Write the prompt and the preview text
 
 Press **Use this draft** under a flavor, **Design v1** on a slot without a version, or **New version
-from vN** at the foot of a version. The form opens under the newest version. Template:
+from vN** under **⋯** at the foot of a version. The form opens under the newest version. Template:
 
 ```
 [Age] [gender] [race], [role: who uses this voice].
@@ -112,16 +112,16 @@ not only against the reference clip. **Voice the lines again** replaces them. Sa
 ## 5. Review and iterate
 
 - Give the version a verdict: **Good**, or **Needs work** plus one sentence on what is wrong ("sounds
-  female", "too wise, like a tauren"). Mark sample lines that sound right or wrong; the marks go with
-  the verdict. Verdicts stack: **Add verdict** puts a new one under the old, and the newest sets the
-  version's status. Remove one given by mistake with its ✕.
+  female", "too wise, like a tauren"). Write the note, then press **Good** or **Needs work**, which saves the
+  verdict. Mark sample lines that sound right or wrong first; the marks go with it. Verdicts stack: a
+  new one goes under the old, and the newest sets the version's status. Remove one given by mistake with its ✕.
 - **Generate from review** at the foot of the newest version does the whole round in one press:
   Gemini rewrites the prompt from the review, then Voice Design makes the next version's three
   previews. It spends from both keys.
 - Turn that sentence into prompt changes: remove the words that caused it, add an explicit anchor,
   and change the preview text if it pulled the voice the wrong way. Then **New version from vN**.
   Old versions stay, folded under the newest. Usually 1–3 rounds per voice.
-- Or press **Revise from review** beside it (needs your Gemini key and the version's
+- Or choose **Revise from review** under **⋯** (needs your Gemini key and the version's
   sample lines). Gemini hears the reference clip and the sample line marked wrong (else the first), reads the verdict and its note, the notes on the
   race's other flavors, and the old prompt and preview text, and fills in the next version's form
   with what it heard and a rewritten prompt. Notes travel across a race: write "trolls need a

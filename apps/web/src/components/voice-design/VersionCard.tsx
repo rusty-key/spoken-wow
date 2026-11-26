@@ -1,14 +1,14 @@
 "use client";
 
-import { AudioLines, Check, Loader2, Pencil, Play, RefreshCw, Save, Sparkles, Trash2, Wand2, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { AudioLines, Check, Loader2, MoreHorizontal, Pencil, Play, RefreshCw, Save, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import Link from "@/components/LocaleLink";
 import { useUiText } from "@/components/UiTextProvider";
 import { withLang } from "@/lib/lang";
 import { fill } from "@/lib/site-text/format";
 import { cn } from "@/lib/utils";
-import { isRevisable, type ReviewStatus } from "@/lib/voice-design/groups";
+import { isRevisable } from "@/lib/voice-design/groups";
 import { designName, recommendedPreview } from "@/lib/voice-design/limits";
 import type { ClipMark, Design, Measures, Review } from "@/lib/voice-design/types";
 
@@ -50,16 +50,9 @@ function Field({ label, value }: { label: string; value: unknown }) {
   );
 }
 
-/**
- * The verdict form as the newest verdict left it. Previews are no longer marked here, so a mark on
- * one would ride along unseen in every later verdict.
- */
-function formFrom(last: Review | undefined) {
-  return {
-    status: last?.status ?? null,
-    clips: Object.fromEntries(Object.entries(last?.clips ?? {}).filter(([key]) => key.startsWith("sample:"))) as Record<string, ClipMark>,
-  };
-}
+/** Previews are no longer marked here, so a mark on one would ride along unseen in every later verdict. */
+const sampleMarks = (last: Review | undefined) =>
+  Object.fromEntries(Object.entries(last?.clips ?? {}).filter(([key]) => key.startsWith("sample:"))) as Record<string, ClipMark>;
 
 function Confirm({
   question,
@@ -133,19 +126,16 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const t = useUiText().voiceDesign;
   const { lang, viewer, keys, rate, model, live, play, playing, updateDesign, setDraft } = useWorkbench();
   const last = design.reviews.at(-1);
-  const start = formFrom(last);
-  const [status, setStatus] = useState<ReviewStatus | null>(start.status);
   const [note, setNote] = useState("");
   const recommended = recommendedPreview(design.previews.map((preview) => preview.measures));
   const [picked, setPicked] = useState<number | null>(null);
   const best = picked ?? recommended ?? design.chosenPreview;
-  const [clips, setClips] = useState<Record<string, ClipMark>>(start.clips);
+  const [clips, setClips] = useState<Record<string, ClipMark>>(sampleMarks(last));
   // A removed verdict must not stay preset in the form, one press from coming back.
   const [formFor, setFormFor] = useState(last?.id);
   if (formFor !== last?.id) {
     setFormFor(last?.id);
-    setStatus(start.status);
-    setClips(start.clips);
+    setClips(sampleMarks(last));
   }
   // A re-sample puts new lines behind the same `sample:<n>` keys: a mark on the old line must not
   // carry over to the new one.
@@ -159,6 +149,20 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [removing, setRemoving] = useState<number | null>(null);
+  const more = useRef<HTMLDetailsElement>(null);
+  const closeMore = () => more.current?.removeAttribute("open");
+  // A <details> menu stays open until its summary is pressed again; a menu closes on a click away or Escape.
+  useEffect(() => {
+    const away = (event: Event) => {
+      if (event instanceof KeyboardEvent ? event.key === "Escape" : !more.current?.contains(event.target as Node)) closeMore();
+    };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", away);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", away);
+    };
+  }, []);
 
   const audio = (sha: string) => withLang(lang, `/api/voices/design/audio/${sha}`);
   const holds = design.holderId === viewer.id;
@@ -405,52 +409,84 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
       ) : null}
 
       {can ? (
-        <form
-          className="vd-review-form"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            if (!status) return;
-            const ok = await act("review", `/api/voices/design/${design.id}/reviews`, { body: { status, note, bestPreview: null, clips } });
-            if (ok) setNote("");
-          }}
-        >
-          <div className="vd-verdict" role="radiogroup" aria-label={t.verdictLabel}>
-            {(["good", "needs-work"] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={status === value}
-                className="vd-verdict-option"
-                data-status={value}
-                onClick={() => setStatus(value)}
-              >
-                {value === "good" ? t.statusGood : t.statusNeedsWork}
-              </button>
-            ))}
-          </div>
+        <form className="vd-review-form" onSubmit={(event) => event.preventDefault()}>
           <input
             className="vd-note-input"
             value={note}
             maxLength={2000}
-            placeholder={status === "needs-work" ? t.notePlaceholderWork : t.notePlaceholder}
+            placeholder={t.notePlaceholderWork}
             aria-label={t.noteLabel}
             onChange={(event) => setNote(event.target.value)}
           />
-          <button
-            type="submit"
-            className="bs-btn"
-            title={design.reviews.length > 0 ? t.addReviewTitle : undefined}
-            disabled={busy !== null || status === null}
-          >
-            {busy === "review" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : null}
-            {design.reviews.length > 0 ? t.addReview : t.saveReview}
-          </button>
+          <div className="vd-verdict-actions" title={design.reviews.length > 0 ? t.addReviewTitle : undefined}>
+            {(["good", "needs-work"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                className="bs-btn vd-verdict-option"
+                data-status={value}
+                disabled={busy !== null}
+                onClick={async () => {
+                  const ok = await act(`review-${value}`, `/api/voices/design/${design.id}/reviews`, { body: { status: value, note, bestPreview: null, clips } });
+                  if (ok) setNote("");
+                }}
+              >
+                {busy === `review-${value}` ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : null}
+                {value === "good" ? t.statusGood : t.statusNeedsWork}
+              </button>
+            ))}
+          </div>
         </form>
       ) : null}
 
       {can ? (
         <div className="vd-version-foot">
+          {newest && revisable ? (
+            <button
+              type="button"
+              className="bs-btn vd-btn-go"
+              title={t.generateCost}
+              disabled={busy !== null || !keys.gemini || !keys.elevenlabs}
+              onClick={() => void generate()}
+            >
+              {busy === "generate" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Wand2 size={14} aria-hidden="true" />}
+              {busy === "generate" ? t.generating : t.generate}
+            </button>
+          ) : null}
+          <details className="vd-more" ref={more}>
+            <summary className="bs-btn bs-btn-text" aria-label={t.moreActions} title={t.moreActions}>
+              {busy === "revise" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <MoreHorizontal size={16} aria-hidden="true" />}
+            </summary>
+            <div className="vd-more-menu" role="menu">
+              {newest && revisable ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  title={t.reviseCost}
+                  disabled={busy !== null || !keys.gemini}
+                  onClick={() => {
+                    closeMore();
+                    void revise();
+                  }}
+                >
+                  <Sparkles size={14} aria-hidden="true" />
+                  {busy === "revise" ? t.revising : t.revise}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                role="menuitem"
+                title={t.branchTitle}
+                onClick={() => {
+                  closeMore();
+                  setDraft(slot.name, { prompt: design.prompt, previewText: design.previewText, analysisId: design.analysisId, from: tag });
+                }}
+              >
+                <Pencil size={14} aria-hidden="true" />
+                {fill(t.branch, { v: tag })}
+              </button>
+            </div>
+          </details>
           {last?.status === "good" && hasVoice ? (
             <span className="vd-muted">
               {t.adoptBefore}
@@ -460,8 +496,8 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
               {t.adoptAfter}
             </span>
           ) : null}
-          <span className="vd-foot-actions">
-            {hasVoice && holds ? (
+          {hasVoice && holds ? (
+            <span className="vd-push">
               <Confirm
                 question={t.deleteConfirm}
                 label={t.deleteVoice}
@@ -480,35 +516,8 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                   </button>
                 }
               />
-            ) : null}
-            <button
-              type="button"
-              className="bs-btn"
-              title={t.branchTitle}
-              onClick={() => setDraft(slot.name, { prompt: design.prompt, previewText: design.previewText, analysisId: design.analysisId, from: tag })}
-            >
-              <Pencil size={14} aria-hidden="true" />
-              {fill(t.branch, { v: tag })}
-            </button>
-            {newest && revisable ? (
-              <>
-                <button type="button" className="bs-btn" title={t.reviseCost} disabled={busy !== null || !keys.gemini} onClick={() => void revise()}>
-                  {busy === "revise" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Sparkles size={14} aria-hidden="true" />}
-                  {busy === "revise" ? t.revising : t.revise}
-                </button>
-                <button
-                  type="button"
-                  className="bs-btn vd-btn-go"
-                  title={t.generateCost}
-                  disabled={busy !== null || !keys.gemini || !keys.elevenlabs}
-                  onClick={() => void generate()}
-                >
-                  {busy === "generate" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Wand2 size={14} aria-hidden="true" />}
-                  {busy === "generate" ? t.generating : t.generate}
-                </button>
-              </>
-            ) : null}
-          </span>
+            </span>
+          ) : null}
         </div>
       ) : null}
 

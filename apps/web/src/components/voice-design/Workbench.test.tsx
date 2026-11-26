@@ -78,12 +78,13 @@ const slotsShown = () => screen.queryAllByRole("heading", { level: 3 }).map((h) 
 
 test("filters by how far each slot's newest version has got, with counts", async () => {
   workbench();
-  expect(screen.getByRole("button", { name: /^Good\s*1$/ })).toBeTruthy();
-  expect(screen.getByRole("button", { name: /^No design\s*1$/ })).toBeTruthy();
+  const chips = within(screen.getByRole("group", { name: "Show slots" }));
+  expect(chips.getByRole("button", { name: /^Good\s*1$/ })).toBeTruthy();
+  expect(chips.getByRole("button", { name: /^No design\s*1$/ })).toBeTruthy();
 
-  await userEvent.click(screen.getByRole("button", { name: /^Good/ }));
+  await userEvent.click(chips.getByRole("button", { name: /^Good/ }));
   expect(slotsShown()).toEqual(["orc-male-guard"]);
-  await userEvent.click(screen.getByRole("button", { name: /^No design/ }));
+  await userEvent.click(chips.getByRole("button", { name: /^No design/ }));
   expect(slotsShown()).toEqual(["orc-male-standard"]);
 });
 
@@ -113,9 +114,11 @@ test("Revise puts Gemini's draft into a form that was already open", async () =>
       <Workbench groups={revisable} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
     </LangProvider>,
   );
-  await userEvent.click(screen.getByRole("button", { name: "New version from v2" }));
+  await userEvent.click(screen.getByTitle("More actions"));
+  await userEvent.click(screen.getByRole("menuitem", { name: "New version from v2" }));
   expect(screen.getByDisplayValue(/^Prompt of orc-male-shady v2/)).toBeTruthy();
 
-  await userEvent.click(screen.getByRole("button", { name: "Revise from review" }));
+  await userEvent.click(screen.getByTitle("More actions"));
+  await userEvent.click(screen.getByRole("menuitem", { name: "Revise from review" }));
   expect(await screen.findByDisplayValue("Gemini's new prompt")).toBeTruthy();
 });

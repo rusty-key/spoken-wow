@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 
@@ -59,6 +59,9 @@ const context: Workbench = {
   updateAnalysis: () => {},
 };
 
+/** A verdict button: the sample lines' marks are named Good too. */
+const verdict = (name: string) => within(screen.getByRole("textbox", { name: "Note" }).closest("form")!).getByRole("button", { name });
+
 const card = (design: Design) => (
   <WorkbenchContext.Provider value={context}>
     <VersionCard design={design} slot={{ name: design.slot, sampleChars: 0 } as SlotView} newest />
@@ -71,8 +74,7 @@ test("drops the marks on lines that a re-sample replaced, and the preview marks 
   const { rerender } = render(card(DESIGN));
   rerender(card({ ...DESIGN, samples: [sample(0, "d"), sample(1, "e")] }));
 
-  await userEvent.click(screen.getByRole("radio", { name: "Good" }));
-  await userEvent.click(screen.getByRole("button", { name: "Add verdict" }));
+  await userEvent.click(verdict("Good"));
   const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
   expect(body.clips).toEqual({});
 });
@@ -94,8 +96,7 @@ test("leaves the best preview out of a verdict until the reviewer picks one, tho
   render(card(fresh));
   expect(screen.getByRole("button", { name: "Save preview 2 as a voice" })).toBeTruthy();
 
-  await userEvent.click(screen.getByRole("radio", { name: "Needs work" }));
-  await userEvent.click(screen.getByRole("button", { name: "Save verdict" }));
+  await userEvent.click(verdict("Needs work"));
   const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
   expect(body.bestPreview).toBeNull();
 });
@@ -118,12 +119,16 @@ test("offers to save another preview once the voice is deleted from ElevenLabs",
   expect(screen.getByRole("button", { name: /^Save preview \d as a voice$/ })).toBeTruthy();
 });
 
-test("clears the form of a verdict that was removed", () => {
+test("gives a verdict in one press, with the note, and drops the marks of a verdict that was removed", async () => {
+  const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
+  vi.stubGlobal("fetch", fetchMock);
   const { rerender } = render(card(DESIGN));
-  expect(screen.getByRole("radio", { name: "Needs work" }).getAttribute("aria-checked")).toBe("true");
   rerender(card({ ...DESIGN, reviews: [] }));
-  expect(screen.getByRole("radio", { name: "Needs work" }).getAttribute("aria-checked")).toBe("false");
-  expect(screen.getByRole("button", { name: "Save verdict" })).toBeTruthy();
+
+  await userEvent.type(screen.getByRole("textbox", { name: "Note" }), "sounds female");
+  await userEvent.click(verdict("Needs work"));
+  const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+  expect(body).toMatchObject({ status: "needs-work", note: "sounds female", clips: {} });
 });
 
 test("generates the next version from the review in one press: Gemini's prompt, then Voice Design", async () => {
