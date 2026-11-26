@@ -59,8 +59,14 @@ test("buildManifest totals the files", () => {
 test("diffFiles counts added, changed and removed paths", () => {
   const before = [{ path: "a", sha256: "1" }, { path: "b", sha256: "2" }];
   const after = [{ path: "a", sha256: "1" }, { path: "b", sha256: "3" }, { path: "c", sha256: "4" }];
-  assert.deepEqual(diffFiles(before, after), { added: 1, changed: 1, removed: 0, same: false });
+  assert.deepEqual(diffFiles(before, after), { added: 1, changed: 1, removed: 0, lost: 0, same: false });
   assert.equal(diffFiles(before, before).same, true);
+});
+
+test("diffFiles counts a clip back in another format or as pieces as removed, not lost", () => {
+  const before = ["a.mp3", "b.ogg", "c.ogg"].map((p, i) => ({ path: `Sounds/${p}`, sha256: String(i) }));
+  const after = [{ path: "Sounds/a.ogg", sha256: "3" }, { path: "Sounds/b/01.ogg", sha256: "4" }, { path: "Sounds/b/02.ogg", sha256: "5" }];
+  assert.deepEqual(diffFiles(before, after), { added: 3, changed: 0, removed: 3, lost: 1, same: false });
 });
 
 test("revOf is UTC to the second", () => {

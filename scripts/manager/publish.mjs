@@ -254,8 +254,8 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
       continue;
     }
     log(`${folder}: +${diff.added} ~${diff.changed} -${diff.removed}`);
-    if (!allowRemovals && diff.removed > MAX_REMOVED_FILES && diff.removed > before.length * MAX_REMOVED_SHARE) {
-      throw new Error(`${folder} would lose ${diff.removed} of its ${before.length} files: check the build, or allow it with --allow-removals`);
+    if (!allowRemovals && diff.lost > MAX_REMOVED_FILES && diff.lost > before.length * MAX_REMOVED_SHARE) {
+      throw new Error(`${folder} would lose ${diff.lost} of its ${before.length} files: check the build, or allow it with --allow-removals`);
     }
     changes.push({ folder, files, requires });
   }
