@@ -47,6 +47,33 @@ function isWordPoint(point: number | undefined): boolean {
   return !SEPARATORS.some(([first, last]) => point >= first && point <= last);
 }
 
+function isHangul(point: number | undefined): boolean {
+  if (point === undefined) return false;
+  return (
+    (point >= 0x1100 && point <= 0x11ff) || (point >= 0x3130 && point <= 0x318f) || (point >= 0xac00 && point <= 0xd7af)
+  );
+}
+
+/**
+ * What Korean writes straight after a name: an honorific or a particle. Any other syllable makes the
+ * name part of a longer word, so a reader named "우" leaves "우리" alone.
+ */
+const HANGUL_AFTER_NAME = [
+  "님", "씨", "이", "가", "은", "는", "을", "를", "의", "에게", "께", "한테", "와", "과", "도", "여", "시여",
+];
+
+/**
+ * Whether a word ending at `end` and starting after `before` stands alone. Hangul ends a word, since
+ * nothing spaces a name from its particle ("홍길동님"), but only on the right and only before a
+ * particle: Korean puts nothing straight before a name, and a reader named "서" would otherwise
+ * take "어서" and "대해서도".
+ */
+function isWholeWord(text: string, before: number | undefined, end: number): boolean {
+  const after = text.codePointAt(end);
+  if (isWordPoint(before) || isHangul(before) || isWordPoint(after)) return false;
+  return !isHangul(after) || HANGUL_AFTER_NAME.some((particle) => text.startsWith(particle, end));
+}
+
 function pointBefore(text: string, index: number): number | undefined {
   if (index === 0) return undefined;
   const unit = text.charCodeAt(index - 1);
@@ -68,7 +95,7 @@ function swapWords(text: string, swaps: readonly Swap[]): string {
   next: while (index < text.length) {
     for (const { word, token } of present) {
       const end = index + word.length;
-      if (text.startsWith(word, index) && !isWordPoint(pointBefore(text, index)) && !isWordPoint(text.codePointAt(end))) {
+      if (text.startsWith(word, index) && isWholeWord(text, pointBefore(text, index), end)) {
         out += text.slice(kept, index) + token;
         index = kept = end;
         continue next;
