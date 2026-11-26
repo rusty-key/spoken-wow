@@ -18,6 +18,7 @@ import { isVoiceSlot } from "@/lib/voices/slots";
 
 import { DesignError } from "./access";
 import { keepDesignAudio } from "./audio";
+import { withDesignLock } from "./lock";
 import { measureAudio } from "./measure";
 import { createDesign, markVoiceDeleted, readDesign, saveVoice, type NewDesign } from "./store";
 import type { Design, Measures } from "./types";
@@ -34,6 +35,7 @@ export type DesignDeps = {
   accountVoices: (apiKey: string) => Promise<AccountVoice[]>;
   deleteVoice: (voiceId: string, apiKey: string) => Promise<void>;
   markDeleted: (lang: Lang, id: string) => Promise<void>;
+  lock: <T>(id: string, work: () => Promise<T>) => Promise<T>;
 };
 
 const LIVE: DesignDeps = {
@@ -48,6 +50,7 @@ const LIVE: DesignDeps = {
   accountVoices: (apiKey) => listAccountVoices({ apiKey }),
   deleteVoice: (voiceId, apiKey) => deleteVoice(voiceId, { apiKey }),
   markDeleted: markVoiceDeleted,
+  lock: withDesignLock,
 };
 
 /** The account name of a version's voice: one name per attempt, so the account shows which is which. */
@@ -99,15 +102,17 @@ export async function saveDesignVoice(
   input: { lang: Lang; id: string; preview: number; userId: string; apiKey: string },
   deps: DesignDeps = LIVE,
 ): Promise<Design> {
-  const design = await found(deps, input.lang, input.id);
-  if (design.voiceId) throw new DesignError(`v${design.version} is already saved, in ${design.holderName ?? "someone"}'s account`);
-  const preview = design.previews[input.preview];
-  if (!Number.isInteger(input.preview) || !preview) throw new DesignError(`v${design.version} has no preview ${input.preview + 1}`, 400);
+  return deps.lock(input.id, async () => {
+    const design = await found(deps, input.lang, input.id);
+    if (design.voiceId) throw new DesignError(`v${design.version} is already saved, in ${design.holderName ?? "someone"}'s account`);
+    const preview = design.previews[input.preview];
+    if (!Number.isInteger(input.preview) || !preview) throw new DesignError(`v${design.version} has no preview ${input.preview + 1}`, 400);
 
-  const voiceName = designName(design);
-  const voiceId = await deps.createVoice({ name: voiceName, prompt: design.prompt, generatedVoiceId: preview.generatedVoiceId }, input.apiKey);
-  await deps.save(input.lang, input.id, { chosenPreview: input.preview, voiceId, voiceName, holderId: input.userId });
-  return (await deps.read(input.lang, input.id))!;
+    const voiceName = designName(design);
+    const voiceId = await deps.createVoice({ name: voiceName, prompt: design.prompt, generatedVoiceId: preview.generatedVoiceId }, input.apiKey);
+    await deps.save(input.lang, input.id, { chosenPreview: input.preview, voiceId, voiceName, holderId: input.userId });
+    return (await deps.read(input.lang, input.id))!;
+  });
 }
 
 /** Whether the caller may act on the version's account voice, or the refusal naming whose it is. */
@@ -127,15 +132,17 @@ export async function deleteDesignVoice(
   input: { lang: Lang; id: string; userId: string; apiKey: string },
   deps: DesignDeps = LIVE,
 ): Promise<Design> {
-  const design = await found(deps, input.lang, input.id);
-  const refused = holderRefusal(design, input.userId);
-  if (refused) throw new DesignError(refused, 403);
+  return deps.lock(input.id, async () => {
+    const design = await found(deps, input.lang, input.id);
+    const refused = holderRefusal(design, input.userId);
+    if (refused) throw new DesignError(refused, 403);
 
-  const inAccount = (await deps.accountVoices(input.apiKey)).find((voice) => voice.voiceId === design.voiceId);
-  if (inAccount && inAccount.name !== design.voiceName) {
-    throw new DesignError(`the voice is now named "${inAccount.name}" in the account, so it may be in use; delete it on ElevenLabs if it is not`);
-  }
-  if (inAccount) await deps.deleteVoice(design.voiceId!, input.apiKey);
-  await deps.markDeleted(input.lang, input.id);
-  return (await deps.read(input.lang, input.id))!;
+    const inAccount = (await deps.accountVoices(input.apiKey)).find((voice) => voice.voiceId === design.voiceId);
+    if (inAccount && inAccount.name !== design.voiceName) {
+      throw new DesignError(`the voice is now named "${inAccount.name}" in the account, so it may be in use; delete it on ElevenLabs if it is not`);
+    }
+    if (inAccount) await deps.deleteVoice(design.voiceId!, input.apiKey);
+    await deps.markDeleted(input.lang, input.id);
+    return (await deps.read(input.lang, input.id))!;
+  });
 }

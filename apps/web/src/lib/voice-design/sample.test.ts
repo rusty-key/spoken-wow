@@ -45,6 +45,7 @@ function deps(design: Partial<Design> = {}): SampleDeps {
     })),
     keepAudio: async (data) => data.length.toString(16).padStart(64, "0"),
     replace: vi.fn(async () => {}),
+    lock: (_id, work) => work(),
   };
 }
 
@@ -69,6 +70,12 @@ describe("sampleDesign", () => {
   it("is the holder's alone, and spends nothing for anybody else", async () => {
     const d = deps({ holderId: "u2", holderName: "Bo" });
     await expect(sampleDesign(input, d)).rejects.toThrow(/Bo's ElevenLabs account/);
+    expect(d.speak).not.toHaveBeenCalled();
+  });
+
+  it("refuses a second run on the same version before spending", async () => {
+    const d = { ...deps(), lock: async () => Promise.reject(new Error("someone is already working on this version")) };
+    await expect(sampleDesign(input, d)).rejects.toThrow(/already working/);
     expect(d.speak).not.toHaveBeenCalled();
   });
 

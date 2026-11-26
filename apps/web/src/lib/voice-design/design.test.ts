@@ -47,6 +47,7 @@ function deps(design: Partial<Design> = {}, over: Partial<DesignDeps> = {}): Des
     accountVoices: vi.fn(async () => [{ voiceId: "voice-9", name: "design-orc-male-shady-v3", category: "generated" }]),
     deleteVoice: vi.fn(async () => {}),
     markDeleted: vi.fn(async () => {}),
+    lock: (_id, work) => work(),
     ...over,
   };
 }
@@ -103,6 +104,14 @@ describe("saveDesignVoice", () => {
 
   it("refuses a preview the version does not have", async () => {
     await expect(saveDesignVoice({ ...base, id: "d1", preview: 3 }, deps())).rejects.toThrow(/preview/);
+  });
+});
+
+describe("a busy version", () => {
+  it("refuses a second save before anything is spent", async () => {
+    const d = deps({}, { lock: async () => Promise.reject(new Error("someone is already working on this version")) });
+    await expect(saveDesignVoice({ ...base, id: "d1", preview: 0 }, d)).rejects.toThrow(/already working/);
+    expect(d.createVoice).not.toHaveBeenCalled();
   });
 });
 

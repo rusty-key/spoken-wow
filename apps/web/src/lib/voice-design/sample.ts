@@ -20,6 +20,7 @@ import { audioRelPath } from "@/lib/audio";
 import { DesignError } from "./access";
 import { keepDesignAudio } from "./audio";
 import { holderRefusal } from "./design";
+import { withDesignLock } from "./lock";
 import { defaultSampleLines, soloLine } from "./lines";
 import { readDesign, replaceSamples } from "./store";
 import type { Design, DesignSample } from "./types";
@@ -36,6 +37,7 @@ export type SampleDeps = {
   speak: (input: { text: string; voiceId: string; lang: Lang; apiKey: string; settings: ElevenLabsSettings }) => Promise<Spoken>;
   keepAudio: (data: Buffer, lang: Lang) => Promise<string>;
   replace: typeof replaceSamples;
+  lock: <T>(id: string, work: () => Promise<T>) => Promise<T>;
 };
 
 async function shape(line: CorpusLine, lang: Lang, settings: ElevenLabsSettings): Promise<string> {
@@ -56,12 +58,20 @@ const LIVE: SampleDeps = {
     elevenLabsSpeaker({ apiKey, settings }).speak({ turns: [{ text, voiceId }], lang, seed: null, dialogue: false }),
   keepAudio: keepDesignAudio,
   replace: replaceSamples,
+  lock: withDesignLock,
 };
 
 /** The holder alone, on their own key: the voice is in their account, and nobody spends a teammate's credits. */
 export async function sampleDesign(
   input: { lang: Lang; id: string; lineIds: string[] | null; userId: string; apiKey: string },
   deps: SampleDeps = LIVE,
+): Promise<Design> {
+  return deps.lock(input.id, () => sampleLocked(input, deps));
+}
+
+async function sampleLocked(
+  input: { lang: Lang; id: string; lineIds: string[] | null; userId: string; apiKey: string },
+  deps: SampleDeps,
 ): Promise<Design> {
   const design = await deps.read(input.lang, input.id);
   if (!design) throw new DesignError("no such design", 404);
