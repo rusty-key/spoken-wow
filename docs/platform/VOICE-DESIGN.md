@@ -100,6 +100,7 @@ no harshness, no room echo.
   `design-<slot>-v<n>`, and you become its holder: only you can voice lines with it or delete it.
   Teammates see whose account it is in. To use another preview instead, **Delete from ElevenLabs**,
   then save the other one; the old voice's sample lines go with it.
+  Its verdicts stay: remove those that judged the old voice.
 
 ## 4. Hear it on real lines
 

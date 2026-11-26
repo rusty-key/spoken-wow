@@ -26,6 +26,7 @@ const DESIGN: Design = {
   note: null,
   analysis: null,
   samples: [],
+  sampledAt: null,
   reviews: [],
   createdBy: "u1",
   createdByName: "Ann",

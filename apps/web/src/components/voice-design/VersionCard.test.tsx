@@ -37,6 +37,7 @@ const DESIGN: Design = {
   note: null,
   analysis: null,
   samples: [sample(0, "a"), sample(1, "b"), sample(2, "c")],
+  sampledAt: "2026-11-25T00:00:00Z",
   reviews: [{ id: 1, status: "needs-work", note: "", bestPreview: 0, clips: { "sample:2": "off", "preview:0": "good" }, createdBy: "u1", createdByName: "Ann", createdAt: "2026-11-26T00:00:00Z" }],
   createdBy: "u1",
   createdByName: "Ann",
@@ -64,7 +65,7 @@ const card = (design: Design) => (
   </WorkbenchContext.Provider>
 );
 
-test("drops the marks on lines that a re-sample replaced, and keeps the previews'", async () => {
+test("drops the marks on lines that a re-sample replaced, and the preview marks nobody can see", async () => {
   const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
   vi.stubGlobal("fetch", fetchMock);
   const { rerender } = render(card(DESIGN));
@@ -73,7 +74,7 @@ test("drops the marks on lines that a re-sample replaced, and keeps the previews
   await userEvent.click(screen.getByRole("radio", { name: "Good" }));
   await userEvent.click(screen.getByRole("button", { name: "Add verdict" }));
   const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
-  expect(body.clips).toEqual({ "preview:0": "good" });
+  expect(body.clips).toEqual({});
 });
 
 test("leaves the best preview out of a verdict until the reviewer picks one, though Save starts on the recommended", async () => {
@@ -115,4 +116,12 @@ test("removes a verdict only after it is confirmed", async () => {
 test("offers to save another preview once the voice is deleted from ElevenLabs", () => {
   render(card({ ...DESIGN, voiceDeletedAt: "2026-11-26T00:00:00Z" }));
   expect(screen.getByRole("button", { name: /^Save preview \d as a voice$/ })).toBeTruthy();
+});
+
+test("clears the form of a verdict that was removed", () => {
+  const { rerender } = render(card(DESIGN));
+  expect(screen.getByRole("radio", { name: "Needs work" }).getAttribute("aria-checked")).toBe("true");
+  rerender(card({ ...DESIGN, reviews: [] }));
+  expect(screen.getByRole("radio", { name: "Needs work" }).getAttribute("aria-checked")).toBe("false");
+  expect(screen.getByRole("button", { name: "Save verdict" })).toBeTruthy();
 });

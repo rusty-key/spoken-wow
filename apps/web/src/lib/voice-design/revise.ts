@@ -72,8 +72,9 @@ export async function reviseDesign(
       409,
     );
   }
-  // The line a reviewer marked off is the one worth hearing; else the first.
-  const marks = last?.clips ?? {};
+  // The line a reviewer marked off is the one worth hearing; else the first. Marks from before
+  // the lines were voiced again name other lines.
+  const marks = last && (!design.sampledAt || last.createdAt >= design.sampledAt) ? last.clips : {};
   const first = design.samples.find((sample) => marks[`sample:${sample.position}`] === "off") ?? design.samples[0];
 
   const [reference, sample, designs, archetype] = await Promise.all([

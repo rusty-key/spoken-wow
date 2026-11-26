@@ -95,7 +95,17 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   // A person's pick, kept apart from the recommendation: a verdict records only what someone chose.
   const [picked, setPicked] = useState<number | null>(last?.bestPreview ?? design.chosenPreview ?? null);
   const best = picked ?? recommended;
-  const [clips, setClips] = useState<Record<string, ClipMark>>(last?.clips ?? {});
+  // Previews are no longer marked here, so a mark on one would ride along unseen in every verdict.
+  const sampleMarks = (from: Record<string, ClipMark> | undefined) => Object.fromEntries(Object.entries(from ?? {}).filter(([key]) => key.startsWith("sample:")));
+  const [clips, setClips] = useState<Record<string, ClipMark>>(sampleMarks(last?.clips));
+  // A removed verdict must not stay preset in the form, one press from coming back.
+  const [formFor, setFormFor] = useState(last?.id);
+  if (formFor !== last?.id) {
+    setFormFor(last?.id);
+    setStatus(last?.status ?? null);
+    setPicked(last?.bestPreview ?? design.chosenPreview ?? null);
+    setClips(sampleMarks(last?.clips));
+  }
   // A re-sample puts new lines behind the same `sample:<n>` keys: a mark on the old line must not
   // carry over to the new one.
   const sampled = design.samples.map((sample) => sample.sha256).join();

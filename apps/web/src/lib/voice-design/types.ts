@@ -66,6 +66,8 @@ export type Design = {
   /** Gemini's description of the voice: its archetype and, for a revision, what it heard. */
   analysis: Record<string, unknown> | null;
   samples: DesignSample[];
+  /** When the sample lines were voiced: a verdict older than this marked other lines. */
+  sampledAt: string | null;
   /** Oldest first: the last is the version's verdict. */
   reviews: Review[];
   createdBy: string | null;

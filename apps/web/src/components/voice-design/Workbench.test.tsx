@@ -36,6 +36,7 @@ function design(slot: string, version: number, review: Design["reviews"][number]
     note: null,
     analysis: null,
     samples: [],
+    sampledAt: null,
     reviews: review ? [{ id: version, status: review, note, bestPreview: null, clips: {}, createdBy: null, createdByName: "Ann", createdAt: "2026-11-26T00:00:00Z" }] : [],
     createdBy: null,
     createdByName: "Ann",
@@ -100,4 +101,22 @@ test("shows the newest version open and folds the older ones", () => {
   expect(within(older).getByText("Prompt of orc-male-shady v1")).toBeTruthy();
   const newest = within(shady).getByText("Prompt of orc-male-shady v2");
   expect(older.contains(newest)).toBe(false);
+});
+
+test("Revise all puts Gemini's draft into a form that was already open", async () => {
+  const sampled = { ...design("orc-male-shady", 2, "needs-work", "too noble"), samples: [{ position: 0, sha256: "a".repeat(64), lineId: "q:1", text: "t", npcName: null, characters: 1, credits: 1 }] };
+  const revisable: GroupView[] = [{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [sampled])] }];
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ revision: { heard: "h", prompt: "Gemini's new prompt", preview_text: "y".repeat(120), archetype: "a" } })));
+  Element.prototype.scrollIntoView = () => {};
+  render(
+    <LangProvider lang="enUS">
+      <Workbench groups={revisable} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
+    </LangProvider>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: /^Needs work/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Edit prompt manually" }));
+  expect((screen.getAllByRole("textbox")[0] as HTMLTextAreaElement).value).toContain("Prompt of orc-male-shady v2");
+
+  await userEvent.click(screen.getByRole("button", { name: /Revise all from reviews/ }));
+  expect(await screen.findByDisplayValue("Gemini's new prompt")).toBeTruthy();
 });

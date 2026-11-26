@@ -108,6 +108,15 @@ describe("reviseDesign", () => {
     expect(audio).toHaveBeenCalledWith("2".repeat(64), "enUS");
   });
 
+  it("ignores marks given before the lines were voiced again", async () => {
+    const lines = [0, 1, 2].map((position) => ({ position, sha256: String(position).repeat(64), lineId: `q:${position}`, text: "t", npcName: null, characters: 1, credits: 1 }));
+    const marked = { ...review("needs-work", "too noble"), clips: { "sample:2": "off" as const } };
+    const audio = vi.fn(async () => Buffer.from("smp"));
+    const resampled = design("troll-male-dark", 1, [marked], { samples: lines, sampledAt: "2026-11-27T00:00:00Z" });
+    await reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, deps(resampled, { audio }));
+    expect(audio).toHaveBeenCalledWith("0".repeat(64), "enUS");
+  });
+
   it("refuses a good version, one without sample lines, and a slot without a reference clip, before asking Gemini", async () => {
     const good = deps(design("troll-male-dark", 1, [review("good", "")]));
     await expect(reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, good)).rejects.toThrow(/good/);

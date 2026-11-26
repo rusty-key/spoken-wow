@@ -64,6 +64,8 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
 
       {formOpen ? (
         <DesignForm
+          // A draft arriving while the form is open replaces what it shows; the form reads it once.
+          key={draft ? `${draft.from}\n${draft.prompt}` : "manual"}
           slot={slot}
           initial={draft ?? (newest ? { prompt: newest.prompt, previewText: newest.previewText, analysisId: newest.analysisId, from: `v${newest.version}` } : null)}
           onDone={close}
