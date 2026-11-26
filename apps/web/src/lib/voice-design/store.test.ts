@@ -87,6 +87,30 @@ describe("a design version", () => {
     expect(await store.isDesignAudio(other, SHA(9))).toBe(false);
   });
 
+  it("removes one verdict, and only from its own version", async () => {
+    const made = await design("orc-female-old");
+    const elsewhere = await design("orc-female-young");
+    await store.addReview(lang, made.id, { status: "needs-work", note: "by mistake", bestPreview: null, clips: {}, userId: user.id });
+    await store.addReview(lang, made.id, { status: "good", note: "", bestPreview: null, clips: {}, userId: user.id });
+    const [mistake] = (await store.readDesign(lang, made.id))!.reviews;
+    expect(await store.removeReview(lang, elsewhere.id, mistake.id)).toBe(false);
+    expect(await store.removeReview(other, made.id, mistake.id)).toBe(false);
+    expect(await store.removeReview(lang, made.id, mistake.id)).toBe(true);
+    expect((await store.readDesign(lang, made.id))!.reviews.map((r) => r.status)).toEqual(["good"]);
+  });
+
+  it("saves a deleted voice again from another preview, without the old voice's lines", async () => {
+    const made = await design("orc-male-peon");
+    await store.saveVoice(lang, made.id, { chosenPreview: 0, voiceId: "v-1", voiceName: "design-orc-male-peon-v1", holderId: user.id });
+    await store.replaceSamples(lang, made.id, [
+      { position: 0, sha256: SHA(8), lineId: "q:1:accept", text: "Hello.", npcName: "Peon", characters: 6, credits: 3 },
+    ], { model: "eleven_v4", settings: {} });
+    await store.markVoiceDeleted(lang, made.id);
+    await store.saveVoice(lang, made.id, { chosenPreview: 1, voiceId: "v-2", voiceName: "design-orc-male-peon-v1", holderId: user.id });
+    const read = (await store.readDesign(lang, made.id))!;
+    expect(read).toMatchObject({ chosenPreview: 1, voiceId: "v-2", voiceDeletedAt: null, sampleModel: null, samples: [] });
+  });
+
   it("reads an id that is not a uuid as no design, not a database error", async () => {
     expect(await store.readDesign(lang, "abc")).toBeNull();
     expect(await store.isOwnAnalysis(lang, "abc")).toBe(false);

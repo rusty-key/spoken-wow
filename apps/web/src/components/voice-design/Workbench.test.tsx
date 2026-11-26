@@ -36,6 +36,7 @@ function design(slot: string, version: number, review: Design["reviews"][number]
     note: null,
     analysis: null,
     samples: [],
+    sampledAt: null,
     reviews: review ? [{ id: version, status: review, note, bestPreview: null, clips: {}, createdBy: null, createdByName: "Ann", createdAt: "2026-11-26T00:00:00Z" }] : [],
     createdBy: null,
     createdByName: "Ann",
@@ -77,12 +78,13 @@ const slotsShown = () => screen.queryAllByRole("heading", { level: 3 }).map((h) 
 
 test("filters by how far each slot's newest version has got, with counts", async () => {
   workbench();
-  expect(screen.getByRole("button", { name: /^Good\s*1$/ })).toBeTruthy();
-  expect(screen.getByRole("button", { name: /^No design\s*1$/ })).toBeTruthy();
+  const chips = within(screen.getByRole("group", { name: "Show slots" }));
+  expect(chips.getByRole("button", { name: /^Good\s*1$/ })).toBeTruthy();
+  expect(chips.getByRole("button", { name: /^No design\s*1$/ })).toBeTruthy();
 
-  await userEvent.click(screen.getByRole("button", { name: /^Good/ }));
+  await userEvent.click(chips.getByRole("button", { name: /^Good/ }));
   expect(slotsShown()).toEqual(["orc-male-guard"]);
-  await userEvent.click(screen.getByRole("button", { name: /^No design/ }));
+  await userEvent.click(chips.getByRole("button", { name: /^No design/ }));
   expect(slotsShown()).toEqual(["orc-male-standard"]);
 });
 
@@ -100,4 +102,47 @@ test("shows the newest version open and folds the older ones", () => {
   expect(within(older).getByText("Prompt of orc-male-shady v1")).toBeTruthy();
   const newest = within(shady).getByText("Prompt of orc-male-shady v2");
   expect(older.contains(newest)).toBe(false);
+});
+
+test("Revise puts Gemini's draft into a form that was already open", async () => {
+  const sampled = { ...design("orc-male-shady", 2, "needs-work", "too noble"), samples: [{ position: 0, sha256: "a".repeat(64), lineId: "q:1", text: "t", npcName: null, characters: 1, credits: 1 }] };
+  const revisable: GroupView[] = [{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [sampled])] }];
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ revision: { heard: "h", prompt: "Gemini's new prompt", preview_text: "y".repeat(120), archetype: "a" } })));
+  Element.prototype.scrollIntoView = () => {};
+  render(
+    <LangProvider lang="enUS">
+      <Workbench groups={revisable} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
+    </LangProvider>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+  await userEvent.click(await screen.findByRole("button", { name: "New version from v2" }));
+  expect(screen.getByDisplayValue(/^Prompt of orc-male-shady v2/)).toBeTruthy();
+
+  await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+  await userEvent.click(await screen.findByRole("button", { name: "Revise from review" }));
+  expect(await screen.findByDisplayValue("Gemini's new prompt")).toBeTruthy();
+});
+
+test("Generate opens the new version with an empty note and closes a draft left from the old one", async () => {
+  const line = { position: 0, sha256: "a".repeat(64), lineId: "q:1", text: "t", npcName: null, characters: 1, credits: 1 };
+  const v2 = { ...design("orc-male-shady", 2, "needs-work", "too noble"), samples: [line] };
+  const v3 = { ...design("orc-male-shady", 3, null), id: "orc-male-shady-3" };
+  const revision = { heard: "h", prompt: "Gemini's new prompt", preview_text: "y".repeat(120), archetype: "a" };
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: v3 })));
+  Element.prototype.scrollIntoView = () => {};
+  render(
+    <LangProvider lang="enUS">
+      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [v2])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
+    </LangProvider>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+  await userEvent.click(await screen.findByRole("button", { name: "Revise from review" }));
+  expect(await screen.findByDisplayValue("Gemini's new prompt")).toBeTruthy();
+  const note = (v: number) => within(screen.getByRole("region", { name: `orc-male-shady v${v}` })).getByRole("textbox", { name: "Note" }) as HTMLInputElement;
+  await userEvent.type(note(2), "half-typed");
+
+  await userEvent.click(screen.getByRole("button", { name: "Generate from review" }));
+  expect(await screen.findByText("Prompt of orc-male-shady v3")).toBeTruthy();
+  expect(note(3).value).toBe("");
+  expect(screen.queryByDisplayValue("Gemini's new prompt")).toBeNull();
 });

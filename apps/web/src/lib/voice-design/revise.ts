@@ -72,7 +72,10 @@ export async function reviseDesign(
       409,
     );
   }
-  const first = design.samples[0];
+  // The line a reviewer marked off is the one worth hearing; else the first. Marks from before
+  // the lines were voiced again name other lines.
+  const marks = last && (!design.sampledAt || last.createdAt >= design.sampledAt) ? last.clips : {};
+  const first = design.samples.find((sample) => marks[`sample:${sample.position}`] === "off") ?? design.samples[0];
 
   const [reference, sample, designs, archetype] = await Promise.all([
     deps.reference(design.slot, input.lang),
@@ -80,8 +83,8 @@ export async function reviseDesign(
     deps.all(input.lang),
     archetypeOf(design, input.lang, deps),
   ]);
-  if (!reference) throw new DesignError(`${design.slot} has no game clip on the site to compare with`, 409);
-  if (!sample) throw new DesignError(`v${design.version}'s first sample line is missing from the archive`, 409);
+  if (!reference) throw new DesignError(`${design.slot} has no reference clip on the site to compare with`, 409);
+  if (!sample) throw new DesignError(`v${design.version}'s sample line is missing from the archive`, 409);
 
   const revision = await deps.revise({
     apiKey: input.apiKey,

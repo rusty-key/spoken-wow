@@ -50,10 +50,10 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
               {t.noGameReference}
             </span>
           )}
-          {viewer.designs && !formOpen ? (
+          {viewer.designs && !newest && !formOpen ? (
             <button type="button" className="bs-btn" onClick={() => setDesigning(true)}>
               <Plus size={14} aria-hidden="true" />
-              {slot.designs.length > 0 ? fill(t.newVersion, { n: (newest?.version ?? 0) + 1 }) : t.firstVersion}
+              {t.firstVersion}
             </button>
           ) : null}
         </div>
@@ -62,15 +62,19 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
         </p>
       </header>
 
-      {formOpen ? (
-        <DesignForm
-          slot={slot}
-          initial={draft ?? (newest ? { prompt: newest.prompt, previewText: newest.previewText, analysisId: newest.analysisId, from: `v${newest.version}` } : null)}
-          onDone={close}
-        />
-      ) : null}
+      {newest ? <VersionCard key={newest.id} design={newest} slot={slot} newest /> : null}
 
-      {newest ? <VersionCard design={newest} slot={slot} /> : null}
+      {formOpen ? (
+        <div id={`design-${slot.name}`}>
+          <DesignForm
+            // A draft arriving while the form is open replaces what it shows; the form reads it once.
+            key={draft ? `${draft.from}\n${draft.prompt}` : "manual"}
+            slot={slot}
+            initial={draft ?? null}
+            onDone={close}
+          />
+        </div>
+      ) : null}
 
       {older.length > 0 ? (
         <details className="vd-older">
@@ -79,7 +83,7 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
             {fill(t.olderVersions, { n: older.length })}
           </summary>
           {older.map((design) => (
-            <VersionCard key={design.id} design={design} slot={slot} />
+            <VersionCard key={design.id} design={design} slot={slot} newest={false} />
           ))}
         </details>
       ) : null}

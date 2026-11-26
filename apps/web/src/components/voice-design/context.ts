@@ -2,7 +2,8 @@
 
 import { createContext, useContext } from "react";
 
-import type { Lang } from "@/lib/lang";
+import { withLang, type Lang } from "@/lib/lang";
+import type { Revision } from "@/lib/voice-design/gemini";
 import type { Analysis, Design } from "@/lib/voice-design/types";
 
 export type Playing = { src: string; title: string; meta?: string; subtitle?: string };
@@ -53,4 +54,31 @@ export async function send<T>(url: string, init: { method?: string; body?: unkno
   const body = (await response.json().catch(() => ({}))) as T & { error?: string };
   if (!response.ok) throw new Error(body.error ?? `${response.status}`);
   return body;
+}
+
+/** `from` labels the draft in the form. */
+export async function requestRevision(lang: Lang, design: Design, from: string): Promise<Draft> {
+  const { revision } = await send<{ revision: Revision & { archetype: string } }>(withLang(lang, `/api/voices/design/${design.id}/revise`));
+  return {
+    prompt: revision.prompt,
+    previewText: revision.preview_text,
+    analysisId: null,
+    heard: revision.heard,
+    archetype: revision.archetype,
+    from,
+  };
+}
+
+export async function designFrom(lang: Lang, slot: string, draft: Draft): Promise<Design> {
+  const { design } = await send<{ design: Design }>(withLang(lang, "/api/voices/design"), {
+    body: {
+      slot,
+      prompt: draft.prompt,
+      previewText: draft.previewText,
+      analysisId: draft.analysisId,
+      revisionHeard: draft.heard ?? null,
+      archetype: draft.archetype ?? null,
+    },
+  });
+  return design;
 }

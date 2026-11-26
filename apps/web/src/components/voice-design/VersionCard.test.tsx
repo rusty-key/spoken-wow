@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test, vi } from "vitest";
 
@@ -37,6 +37,7 @@ const DESIGN: Design = {
   note: null,
   analysis: null,
   samples: [sample(0, "a"), sample(1, "b"), sample(2, "c")],
+  sampledAt: "2026-11-25T00:00:00Z",
   reviews: [{ id: 1, status: "needs-work", note: "", bestPreview: 0, clips: { "sample:2": "off", "preview:0": "good" }, createdBy: "u1", createdByName: "Ann", createdAt: "2026-11-26T00:00:00Z" }],
   createdBy: "u1",
   createdByName: "Ann",
@@ -58,25 +59,27 @@ const context: Workbench = {
   updateAnalysis: () => {},
 };
 
+/** A verdict button: the sample lines' marks are named Good too. */
+const verdict = (name: string) => within(screen.getByRole("textbox", { name: "Note" }).closest(".vd-review-form") as HTMLElement).getByRole("button", { name });
+
 const card = (design: Design) => (
   <WorkbenchContext.Provider value={context}>
-    <VersionCard design={design} slot={{ name: design.slot, sampleChars: 0 } as SlotView} />
+    <VersionCard design={design} slot={{ name: design.slot, sampleChars: 0 } as SlotView} newest />
   </WorkbenchContext.Provider>
 );
 
-test("drops the marks on lines that a re-sample replaced, and keeps the previews'", async () => {
+test("drops the marks on lines that a re-sample replaced, and the preview marks nobody can see", async () => {
   const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
   vi.stubGlobal("fetch", fetchMock);
   const { rerender } = render(card(DESIGN));
-  rerender(card({ ...DESIGN, samples: [sample(0, "d"), sample(1, "e")] }));
+  rerender(card({ ...DESIGN, samples: [sample(0, "d"), sample(1, "e"), sample(2, "f")], sampledAt: "2026-11-27T00:00:00Z" }));
 
-  await userEvent.click(screen.getByRole("radio", { name: "Good" }));
-  await userEvent.click(screen.getByRole("button", { name: "Save verdict" }));
+  await userEvent.click(verdict("Good"));
   const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
-  expect(body.clips).toEqual({ "preview:0": "good" });
+  expect(body.clips).toEqual({});
 });
 
-test("leaves the best preview out of a verdict until the reviewer picks one, though Save starts on the recommended", async () => {
+test("saves the preview whose button is pressed, the recommended one marked out", async () => {
   const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
   vi.stubGlobal("fetch", fetchMock);
   const measured = (ess: number) => ({ ess, decay: -20, level: -12 });
@@ -91,10 +94,73 @@ test("leaves the best preview out of a verdict until the reviewer picks one, tho
     previews: [0, 1, 2].map((n) => ({ generatedVoiceId: `g${n}`, sha256: String(n).repeat(64), measures: measured([0.5, 0.02, 0.4][n]) })),
   };
   render(card(fresh));
-  expect(screen.getByRole("button", { name: "Save preview 2 as a voice" })).toBeTruthy();
+  const saves = screen.getAllByRole("button", { name: "Save as voice" });
+  expect(saves.map((button) => button.classList.contains("bs-btn-primary"))).toEqual([false, true, false]);
 
-  await userEvent.click(screen.getByRole("radio", { name: "Needs work" }));
-  await userEvent.click(screen.getByRole("button", { name: "Save verdict" }));
+  await userEvent.click(saves[2]);
+  const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+  expect(url).toContain(`/api/voices/design/${DESIGN.id}/voice`);
+  expect(JSON.parse(String(init.body))).toEqual({ preview: 2 });
+});
+
+test("removes a verdict only after it is confirmed", async () => {
+  const fetchMock = vi.fn(async () => Response.json({ design: { ...DESIGN, reviews: [] } }));
+  vi.stubGlobal("fetch", fetchMock);
+  render(card(DESIGN));
+
+  await userEvent.click(screen.getByRole("button", { name: "Remove this verdict" }));
+  expect(fetchMock).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+  const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+  expect(url).toContain(`/api/voices/design/${DESIGN.id}/reviews/1`);
+  expect(init.method).toBe("DELETE");
+});
+
+test("offers to save another preview once the voice is deleted from ElevenLabs", () => {
+  render(card({ ...DESIGN, voiceDeletedAt: "2026-11-26T00:00:00Z" }));
+  expect(screen.getAllByRole("button", { name: "Save as voice" })).toHaveLength(DESIGN.previews.length);
+});
+
+test("gives a verdict in one press, with the note, and drops the marks of a verdict that was removed", async () => {
+  const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
+  vi.stubGlobal("fetch", fetchMock);
+  const { rerender } = render(card(DESIGN));
+  rerender(card({ ...DESIGN, reviews: [] }));
+
+  await userEvent.type(screen.getByRole("textbox", { name: "Note" }), "sounds female");
+  await userEvent.click(verdict("Needs work"));
   const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
-  expect(body.bestPreview).toBeNull();
+  expect(body).toMatchObject({ status: "needs-work", note: "sounds female", clips: {} });
+});
+
+test("generates the next version from the review in one press: Gemini's prompt, then Voice Design", async () => {
+  const revision = { heard: "too noble", prompt: "A colder voice.", preview_text: "y".repeat(120), archetype: "Queen" };
+  const fetchMock = vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: { ...DESIGN, id: "d2", version: 3 } }));
+  vi.stubGlobal("fetch", fetchMock);
+  render(card(DESIGN));
+
+  await userEvent.click(screen.getByRole("button", { name: "Generate from review" }));
+  const [designUrl, init] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
+  expect(designUrl).toMatch(/\/api\/voices\/design(\?|$)/);
+  expect(JSON.parse(String(init.body))).toMatchObject({ slot: DESIGN.slot, prompt: "A colder voice.", previewText: "y".repeat(120), revisionHeard: "too noble", archetype: "Queen" });
+});
+
+test("loads only marks that still apply: none from before the lines were voiced again, none on lines that are gone", async () => {
+  const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
+  vi.stubGlobal("fetch", fetchMock);
+  const sent = () => JSON.parse(String((fetchMock.mock.calls.at(-1) as unknown as [string, RequestInit])[1].body)).clips;
+
+  render(card(DESIGN));
+  await userEvent.click(verdict("Good"));
+  expect(sent()).toEqual({ "sample:2": "off" });
+  cleanup();
+
+  render(card({ ...DESIGN, sampledAt: "2026-11-27T00:00:00Z" }));
+  await userEvent.click(verdict("Good"));
+  expect(sent()).toEqual({});
+  cleanup();
+
+  render(card({ ...DESIGN, samples: [], sampledAt: null }));
+  await userEvent.click(verdict("Good"));
+  expect(sent()).toEqual({});
 });

@@ -45,7 +45,7 @@ const DESIGN_SELECT = `
     left join "user" h on h."id" = d."holderId"
     left join "user" c on c."id" = d."createdBy"`;
 
-type SampleRow = DesignSample & { designId: string };
+type SampleRow = DesignSample & { designId: string; createdAt: Date };
 type ReviewRow = Omit<Review, "createdAt" | "id"> & { id: string; designId: string; createdAt: Date };
 
 async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
@@ -54,7 +54,7 @@ async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
   const [samples, reviews] = await Promise.all([
     readAs<SampleRow>(
       lang,
-      `select "designId", "position", "sha256", "lineId", "text", "npcName", "characters", "credits"
+      `select "designId", "position", "sha256", "lineId", "text", "npcName", "characters", "credits", "createdAt"
          from "voice_design_clip" where "designId" = any($1::uuid[]) and "kind" = 'sample'
         order by "position"`,
       [ids],
@@ -69,15 +69,20 @@ async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
       [ids],
     ),
   ]);
-  return rows.map((row) => ({
-    ...row,
-    voiceDeletedAt: row.voiceDeletedAt?.toISOString() ?? null,
-    createdAt: row.createdAt.toISOString(),
-    samples: samples.filter((s) => s.designId === row.id).map(({ designId: _, ...sample }) => sample),
-    reviews: reviews
-      .filter((r) => r.designId === row.id)
-      .map(({ designId: _, ...review }) => ({ ...review, id: Number(review.id), createdAt: review.createdAt.toISOString() })),
-  }));
+  return rows.map((row) => {
+    const own = samples.filter((s) => s.designId === row.id);
+    return {
+      ...row,
+      voiceDeletedAt: row.voiceDeletedAt?.toISOString() ?? null,
+      createdAt: row.createdAt.toISOString(),
+      samples: own.map(({ designId: _, createdAt: __, ...sample }) => sample),
+      // A version's lines are always written together, in one statement's transaction.
+      sampledAt: own[0]?.createdAt.toISOString() ?? null,
+      reviews: reviews
+        .filter((r) => r.designId === row.id)
+        .map(({ designId: _, ...review }) => ({ ...review, id: Number(review.id), createdAt: review.createdAt.toISOString() })),
+    };
+  });
 }
 
 /** Every version of the team's slots in `lang`: by slot, newest version first. */
@@ -114,12 +119,13 @@ async function insertPreviews(client: PoolClient, designId: string, previews: De
   }
 }
 
-async function insertSamples(client: PoolClient, designId: string, samples: DesignSample[]): Promise<void> {
+/** `at` dates imported lines to their version, so its imported verdicts count as given on them. */
+async function insertSamples(client: PoolClient, designId: string, samples: DesignSample[], at: string | null = null): Promise<void> {
   for (const sample of samples) {
     await client.query(
-      `insert into "voice_design_clip" ("designId", "kind", "position", "sha256", "lineId", "text", "npcName", "characters", "credits")
-       values ($1, 'sample', $2, $3, $4, $5, $6, $7, $8)`,
-      [designId, sample.position, sample.sha256, sample.lineId, sample.text, sample.npcName, sample.characters, sample.credits],
+      `insert into "voice_design_clip" ("designId", "kind", "position", "sha256", "lineId", "text", "npcName", "characters", "credits", "createdAt")
+       values ($1, 'sample', $2, $3, $4, $5, $6, $7, $8, coalesce($9::timestamptz, now()))`,
+      [designId, sample.position, sample.sha256, sample.lineId, sample.text, sample.npcName, sample.characters, sample.credits, at],
     );
   }
 }
@@ -206,24 +212,27 @@ export async function importDesign(
     if (!rows[0]) return null;
     const id = rows[0].id;
     await insertPreviews(client, id, input.previews);
-    await insertSamples(client, id, input.samples);
+    await insertSamples(client, id, input.samples, input.createdAt);
     for (const review of input.reviews) await insertReview(client, id, review);
     return id;
   });
 }
 
+/** Saving again after a deletion drops the old voice's sample lines: they are not this voice. */
 export async function saveVoice(
   lang: Lang,
   id: string,
   voice: { chosenPreview: number; voiceId: string; voiceName: string; holderId: string },
 ): Promise<void> {
-  await asTeamOf(lang, (client) =>
-    client.query(
-      `update "voice_design" set "chosenPreview" = $3, "voiceId" = $4, "voiceName" = $5, "holderId" = $6
+  await asTeamOf(lang, async (client) => {
+    await client.query(`delete from "voice_design_clip" where "designId" = $1 and "kind" = 'sample'`, [id]);
+    await client.query(
+      `update "voice_design" set "chosenPreview" = $3, "voiceId" = $4, "voiceName" = $5, "holderId" = $6,
+              "voiceDeletedAt" = null, "sampleModel" = null, "sampleSettings" = null
         where "lang" = $1 and "id" = $2`,
       [lang, id, voice.chosenPreview, voice.voiceId, voice.voiceName, voice.holderId],
-    ),
-  );
+    );
+  });
 }
 
 /** A re-sample replaces the rows; the audio they named stays in the archive. */
@@ -255,6 +264,18 @@ export type NewReview = {
 
 export async function addReview(lang: Lang, id: string, review: NewReview): Promise<void> {
   await asTeamOf(lang, (client) => insertReview(client, id, review));
+}
+
+export async function removeReview(lang: Lang, designId: string, reviewId: number): Promise<boolean> {
+  if (!isUuid(designId)) return false;
+  return asTeamOf(lang, async (client) => {
+    const { rowCount } = await client.query(
+      `delete from "voice_design_review" r using "voice_design" d
+        where r."id" = $3 and r."designId" = $2 and d."id" = r."designId" and d."lang" = $1`,
+      [lang, designId, reviewId],
+    );
+    return (rowCount ?? 0) > 0;
+  });
 }
 
 export async function markVoiceDeleted(lang: Lang, id: string): Promise<void> {

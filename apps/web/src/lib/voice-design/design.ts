@@ -128,7 +128,10 @@ export async function saveDesignVoice(
 ): Promise<Design> {
   return deps.lock(input.id, async () => {
     const design = await found(deps.read, input.lang, input.id);
-    if (design.voiceId) throw new DesignError(`v${design.version} is already saved, in ${design.holderName ?? "someone"}'s account`);
+    // Once its voice is deleted from ElevenLabs, a version may be saved again from another preview.
+    if (design.voiceId && !design.voiceDeletedAt) {
+      throw new DesignError(`v${design.version} is already saved, in ${design.holderName ?? "someone"}'s account`);
+    }
     const preview = design.previews[input.preview];
     if (!Number.isInteger(input.preview) || !preview) throw new DesignError(`v${design.version} has no preview ${input.preview + 1}`, 400);
 
