@@ -17,7 +17,7 @@ import type { Corpus, CorpusLine } from "./corpus";
 import { npcKey } from "./corpus";
 import { baseLineId } from "./contributions/naming";
 import { audioRelPath } from "./audio";
-import { hasNarration, restoresOnlyNarration } from "./generation/narration";
+import { hasNarration, narratorOnly, restoresOnlyNarration } from "./generation/narration";
 import type { NpcType, Source } from "./line-fields";
 import type { LineIgnore } from "./quests/ignores";
 import { overrideOf, type LineOverride } from "./quests/override";
@@ -56,6 +56,11 @@ export type LineFilters = {
   zone?: number;
   /** Only lines carrying a capitalised <stage direction>, which a narrator reads. */
   narration?: boolean;
+  /**
+   * Leave out the lines the narrator reads every word of, by the voice the file is made in.
+   * Not the inverse of `narration`: an NPC's line with a stage direction in it stays.
+   */
+  noNarrator?: boolean;
   /**
    * Which clients' lines (lib/quests/line-client.ts), in the Contributions pages' bins: Era +
    * Forever when absent, the clients the site voices. A lookup by `line` finds a line whatever
@@ -438,6 +443,7 @@ export function matchingLines(
     zone,
     client = DEFAULT_CLIENT_FILTER,
     narration = false,
+    noNarrator = false,
     line: lineId,
     overridden,
     dirty = false,
@@ -503,6 +509,9 @@ export function matchingLines(
     lines = lines.filter((line) =>
       hasNarration(overrideOf(overrides, audioRelPath(line))?.text ?? line.text),
     );
+  }
+  if (noNarrator) {
+    lines = lines.filter((line) => !narratorOnly(line.voice, overrideOf(overrides, audioRelPath(line))?.text ?? line.text));
   }
   // An id the corpus no longer carries matches nothing rather than everything, because a
   // report about a dropped line must not read as "here it is".

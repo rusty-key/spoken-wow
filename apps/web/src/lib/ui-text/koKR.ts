@@ -219,6 +219,7 @@ const koKR: Dictionary = {
         overridden: "재작성",
         dirty: "발음",
         narration: "내레이션",
+        noNarrator: "내레이터 제외",
         ignored: "무시됨",
       },
       /** 알약이 보여 주는 값으로, 코퍼스 이름이 아니라 단어인 경우입니다. */
@@ -248,6 +249,7 @@ const koKR: Dictionary = {
         rewrittenByTeam: "팀이 재작성함",
         pronunciationMoved: "발음 이동됨",
         hasNarration: "내레이션 있음",
+        noNarrator: "내레이터 전용 대사 숨기기",
         onlyIgnored: "무시된 대사만",
         kind: "종류",
         length: "길이",

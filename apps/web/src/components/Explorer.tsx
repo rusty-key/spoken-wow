@@ -80,6 +80,7 @@ function filterParams(filters: LineFilters): URLSearchParams {
   if (filters.zone !== undefined) params.set("zone", String(filters.zone));
   if (filters.client && filters.client !== DEFAULT_CLIENT_FILTER) params.set("client", filters.client);
   if (filters.narration) params.set("narration", "1");
+  if (filters.noNarrator) params.set("nonarrator", "1");
   if (filters.line) params.set("line", filters.line);
   if (filters.overridden) params.set("overridden", "1");
   if (filters.ignored) params.set("ignored", "1");
@@ -161,6 +162,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
       zone: facets.zones.find((zone) => String(zone.uiMapID) === params.get("zone"))?.uiMapID,
       client: clientFilterOf(params.get("client")),
       narration: params.get("narration") === "1",
+      noNarrator: params.get("nonarrator") === "1",
       line: params.get("line") ?? undefined,
       overridden: params.get("overridden") === "1",
       ignored: params.get("ignored") === "1",
@@ -324,6 +326,7 @@ export default function Explorer({ facets, teams, viewed, home }: { facets: Face
         ...("npcType" in next ? { type: next.npcType } : {}),
         ...("zone" in next ? { zone: next.zone === undefined ? undefined : String(next.zone) } : {}),
         ...("narration" in next ? { narration: next.narration ? "1" : undefined } : {}),
+        ...("noNarrator" in next ? { nonarrator: next.noNarrator ? "1" : undefined } : {}),
         ...("client" in next ? { client: next.client === DEFAULT_CLIENT_FILTER ? undefined : next.client } : {}),
         ...("line" in next ? { line: next.line } : {}),
         ...("overridden" in next ? { overridden: next.overridden ? "1" : undefined } : {}),

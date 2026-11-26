@@ -226,6 +226,17 @@ export function hasNarration(text: string): boolean {
 }
 
 /**
+ * Whether the narrator reads every word of a line spoken in `voice`. A marker handing a stretch
+ * to an NPC's slot makes it an NPC's line too, so re-voicing the NPCs must not skip it.
+ */
+export function narratorOnly(voice: string, text: string): boolean {
+  return (
+    voice === NARRATOR_VOICE &&
+    segments(text).every((segment) => segment.speaker === "narrator" || (segment.voice ?? voice) === NARRATOR_VOICE)
+  );
+}
+
+/**
  * Whether an override only puts stage directions back, changing no words.
  *
  * The pipeline stripped 314 directions before synthesis and they were restored as overrides,

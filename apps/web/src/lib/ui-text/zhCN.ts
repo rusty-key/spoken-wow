@@ -209,6 +209,7 @@ const zhCN: Dictionary = {
         overridden: "已改写",
         dirty: "发音",
         narration: "旁白",
+        noNarrator: "不含旁白者",
         ignored: "已忽略",
       },
       values: {
@@ -236,6 +237,7 @@ const zhCN: Dictionary = {
         rewrittenByTeam: "被团队改写过",
         pronunciationMoved: "发音有变动",
         hasNarration: "含旁白",
+        noNarrator: "隐藏仅由旁白朗读的台词",
         onlyIgnored: "仅已忽略的台词",
         kind: "种类",
         length: "长度",

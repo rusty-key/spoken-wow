@@ -6,6 +6,7 @@ import {
   directionFor,
   audioTags,
   hasNarration,
+  narratorOnly,
   npcDirection,
   restoresOnlyNarration,
   segments,
@@ -104,6 +105,23 @@ describe("hasNarration", () => {
     expect(hasNarration("Hello there")).toBe(false);
     expect(hasNarration("What < is this")).toBe(false);
     expect(hasNarration("Ye're brave... <cough>...")).toBe(false);
+  });
+});
+
+describe("narratorOnly", () => {
+  it("is true for a narrator line with no stretch handed to another voice", () => {
+    expect(narratorOnly("narrator-male", "A worn note lies here.")).toBe(true);
+    expect(narratorOnly("narrator-male", "<The box hums.> It is warm.")).toBe(true);
+    expect(narratorOnly("narrator-male", "_narrator-male_ It is warm.")).toBe(true);
+  });
+
+  it("is false for an NPC's line, stage directions or not", () => {
+    expect(narratorOnly("dwarf-male-gruff", "Aye, lad.")).toBe(false);
+    expect(narratorOnly("dwarf-male-gruff", "<He spits.> Aye, lad.")).toBe(false);
+  });
+
+  it("is false for a narrator line a marker hands to an NPC's voice", () => {
+    expect(narratorOnly("narrator-male", "The box crackles. _goblin-male-zany_ Hello, friend!")).toBe(false);
   });
 });
 

@@ -219,6 +219,7 @@ const esES: Dictionary = {
         overridden: "Reescrito",
         dirty: "Pronunciación",
         narration: "Narración",
+        noNarrator: "Sin narrador",
         ignored: "Ignorado",
       },
       /** Lo que muestra una etiqueta cuando el valor es una palabra y no un nombre del corpus. */
@@ -248,6 +249,7 @@ const esES: Dictionary = {
         rewrittenByTeam: "Reescrito por el equipo",
         pronunciationMoved: "Pronunciación movida",
         hasNarration: "Con narración",
+        noNarrator: "Ocultar líneas solo del narrador",
         onlyIgnored: "Solo líneas ignoradas",
         kind: "Tipo",
         length: "Longitud",

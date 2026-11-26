@@ -238,6 +238,7 @@ export const EN = {
         overridden: "Rewritten",
         dirty: "Pronunciation",
         narration: "Narration",
+        noNarrator: "Without narrator",
         ignored: "Ignored",
       },
       /** The values a pill shows, where they are words rather than a corpus name. */
@@ -267,6 +268,7 @@ export const EN = {
         rewrittenByTeam: "Rewritten by the team",
         pronunciationMoved: "Pronunciation moved",
         hasNarration: "Has narration",
+        noNarrator: "Hide narrator-only lines",
         onlyIgnored: "Only ignored lines",
         kind: "Kind",
         length: "Length",

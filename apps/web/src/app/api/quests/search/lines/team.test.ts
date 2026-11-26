@@ -84,3 +84,31 @@ describe("GET /api/quests/search/lines?team=", () => {
     expect(await matched()).toBe(1);
   });
 });
+
+describe("GET /api/quests/search/lines?nonarrator=1", () => {
+  it("leaves out the lines the named team's roster gives the narrator, and only those", async () => {
+    // B reads gameobjects with the narrator and items with an NPC voice of its own.
+    await asSystem.query(
+      `insert into "voice" ("teamId", "name", "race", "gender")
+       values ($1, 'narrator-male', 'narrator', 'male'), ($1, 'test-bitem', 'item', 'male')
+       on conflict do nothing`,
+      [b],
+    );
+    await asSystem.query(
+      `insert into "voice_assignment" ("teamId", "race", "voice") values ($1, 'gameobject', 'narrator-male'), ($1, 'item', 'test-bitem')
+       on conflict ("teamId", "race", coalesce("gender", ''), coalesce("flavor", '')) do update set "voice" = excluded."voice"`,
+      [b],
+    );
+    const matching = async (extra: string) => {
+      const url = `https://example.com/api/quests/search/lines?lang=${lang}&team=${slug}&source=accept,progress,complete${extra}`;
+      return ((await (await GET(new NextRequest(url))).json()) as { matched: number }).matched;
+    };
+    const asB = (await asTeam(lang, b, () => corpus(lang))).lines.filter((each) => each.source !== "gossip");
+    const narrator = asB.filter((each) => each.voice === "narrator-male");
+
+    expect(narrator.length).toBeGreaterThan(0);
+    expect(narrator.every((each) => each.npcType === "gameobject")).toBe(true);
+    expect(asB.some((each) => each.voice === "test-bitem")).toBe(true);
+    expect(await matching("&nonarrator=1")).toBe((await matching("")) - narrator.length);
+  });
+});

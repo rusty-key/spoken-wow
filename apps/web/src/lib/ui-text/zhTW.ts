@@ -212,6 +212,7 @@ const zhTW: Dictionary = {
         overridden: "已改寫",
         dirty: "發音",
         narration: "旁白",
+        noNarrator: "不含旁白者",
         ignored: "已忽略",
       },
       /** The values a pill shows, where they are words rather than a corpus name. */
@@ -242,6 +243,7 @@ const zhTW: Dictionary = {
         rewrittenByTeam: "由團隊改寫",
         pronunciationMoved: "發音已變動",
         hasNarration: "含旁白",
+        noNarrator: "隱藏僅由旁白朗讀的台詞",
         onlyIgnored: "僅已忽略的台詞",
         kind: "種類",
         length: "長度",

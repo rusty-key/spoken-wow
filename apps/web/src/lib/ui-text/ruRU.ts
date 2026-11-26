@@ -219,6 +219,7 @@ const ruRU: Dictionary = {
         overridden: "Переписано",
         dirty: "Произношение",
         narration: "Повествование",
+        noNarrator: "Без рассказчика",
         ignored: "Игнорируется",
       },
       /** Значения, которые показывает плашка, если это слово, а не название из корпуса. */
@@ -248,6 +249,7 @@ const ruRU: Dictionary = {
         rewrittenByTeam: "Переписано командой",
         pronunciationMoved: "Произношение изменилось",
         hasNarration: "С повествованием",
+        noNarrator: "Скрыть реплики только рассказчика",
         onlyIgnored: "Только игнорируемые строки",
         kind: "Вид",
         length: "Длина",

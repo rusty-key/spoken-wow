@@ -23,6 +23,11 @@ describe("filtersFromParams", () => {
     expect((await filtersFromParams(new URLSearchParams("line="), "enUS")).line).toBeUndefined();
   });
 
+  it("reads the filter that leaves out narrator lines", async () => {
+    expect((await filtersFromParams(new URLSearchParams("nonarrator=1"), "enUS")).noNarrator).toBe(true);
+    expect((await filtersFromParams(new URLSearchParams(""), "enUS")).noNarrator).toBe(false);
+  });
+
   it("reads the reported-only filter the explorer writes as fb=open", async () => {
     expect((await filtersFromParams(new URLSearchParams("fb=open"), "enUS")).reports).toBe("open");
     expect((await filtersFromParams(new URLSearchParams("fb=closed"), "enUS")).reports).toBeUndefined();
