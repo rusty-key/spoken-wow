@@ -146,6 +146,25 @@ not only against the reference clip. **Voice the lines again** replaces them. Sa
 - Accounts cap custom voices. **Delete from ElevenLabs** on a version you will not use frees the slot;
   its audio stays here. A voice renamed into a slot since is refused, as it may be live.
 
+## Ask players
+
+Players' opinions help you judge a voice. You make the final call.
+
+- **Show to players** on a sampled version puts its three sample lines on the language's public
+  **Listen** page (`/<lang>/listen`). Anyone, signed in or not, answers **Does this fit the
+  character?** with Fits, Close, Doesn't fit or Skip, and can add a note. Each slot shows one
+  version: the one shown last. Showing an older version again rolls back to it.
+- Every press starts a fresh round of votes. A player's second vote in a round replaces the first.
+- While players hear a version, its sample lines are locked: it cannot be sampled or saved again.
+  Show another version first.
+- Each version card lists every round's counts and notes, which only people who design voices in
+  the language can see. **Hide** removes a spam note; its vote still counts.
+- Listen reads the language's first team (the one with plain packs), whoever is looking.
+- When a slot is shown again, everyone who voted in an earlier round (Skip aside) gets an email,
+  at most one a day listing every voice that changed. Signed-in voters are emailed at their
+  account's address. Anonymous voters give an address on the page and confirm it first. Every email
+  has a one-click unsubscribe. The emails go out from the droplet, every quarter hour.
+
 ## 6. Make it the slot's voice
 
 The workbench never changes a slot's live voice. Once a version is good, rename its voice into the
