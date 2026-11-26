@@ -75,3 +75,26 @@ test("drops the marks on lines that a re-sample replaced, and keeps the previews
   const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
   expect(body.clips).toEqual({ "preview:0": "good" });
 });
+
+test("leaves the best preview out of a verdict until the reviewer picks one, though Save starts on the recommended", async () => {
+  const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
+  vi.stubGlobal("fetch", fetchMock);
+  const measured = (ess: number) => ({ ess, decay: -20, level: -12 });
+  const fresh: Design = {
+    ...DESIGN,
+    voiceId: null,
+    voiceName: null,
+    holderId: null,
+    chosenPreview: null,
+    reviews: [],
+    samples: [],
+    previews: [0, 1, 2].map((n) => ({ generatedVoiceId: `g${n}`, sha256: String(n).repeat(64), measures: measured([0.5, 0.02, 0.4][n]) })),
+  };
+  render(card(fresh));
+  expect(screen.getByRole("button", { name: "Save preview 2 as a voice" })).toBeTruthy();
+
+  await userEvent.click(screen.getByRole("radio", { name: "Needs work" }));
+  await userEvent.click(screen.getByRole("button", { name: "Save verdict" }));
+  const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+  expect(body.bestPreview).toBeNull();
+});
