@@ -40,3 +40,12 @@ describe("how ElevenLabs is sent a line", () => {
     expect(SHAPE.elevenlabs("One.\n\nTwo.", undefined)).toBe("One.\n\nTwo.");
   });
 });
+
+describe("a span in a script with no lowercase letter, on either provider", () => {
+  // It must survive shaping as a direction, so segments() can hand it to the narrator.
+  it("is left whole for the narrator", () => {
+    const line = "唉。<他打开纸条。>好了。";
+    expect(SHAPE.elevenlabs(line, undefined)).toBe(line);
+    expect(SHAPE.fish(line, undefined)).toBe(line);
+  });
+});
