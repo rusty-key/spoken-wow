@@ -81,11 +81,13 @@ test("shows one voice at a time in cards, and moves on with Next", async () => {
   expect(screen.getByText(/^Grunt: Line 0 of /)).toBeTruthy();
 });
 
-test("opens cards on the voices not voted yet, and keeps a card in place once it is voted", async () => {
+test("deals cards from the voices not voted yet, with no filters, and keeps a card in place once it is voted", async () => {
   vi.stubGlobal("fetch", vi.fn(async () => Response.json({ ok: true })));
   render(<Listen lang="enUS" voices={VOICES} votes={{ 2: { verdict: "skip", note: "" } }} />);
+  await userEvent.type(screen.getByRole("searchbox"), "human");
   await userEvent.click(screen.getByRole("button", { name: "One at a time" }));
-  expect(screen.getByRole("button", { name: /Not voted/ }).getAttribute("aria-current")).toBe("page");
+  expect(screen.queryByRole("searchbox")).toBeNull();
+  expect(screen.queryByRole("button", { name: /Not voted/ })).toBeNull();
   expect(screen.getByText("1 of 2")).toBeTruthy();
 
   const name = screen.getByRole("heading", { level: 2 }).textContent;

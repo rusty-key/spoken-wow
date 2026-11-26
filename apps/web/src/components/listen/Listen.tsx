@@ -29,7 +29,15 @@ function shuffled<T>(items: readonly T[]): T[] {
   return copy;
 }
 
-export default function Listen({ lang, voices, votes: initialVotes }: { lang: Lang; voices: PublicVoice[]; votes: Record<number, OwnVote> }) {
+export default function Listen({
+  lang,
+  voices,
+  votes: initialVotes,
+}: {
+  lang: Lang;
+  voices: PublicVoice[];
+  votes: Record<number, OwnVote>;
+}) {
   const t = useUiText().listen;
   const [votes, setVotes] = useState(initialVotes);
   const [query, setQuery] = useState("");
@@ -38,7 +46,8 @@ export default function Listen({ lang, voices, votes: initialVotes }: { lang: La
   // The votes the filter was set against: a voice voted since stays in the list, so its note
   // field does not vanish under the cursor.
   const [filteredBy, setFilteredBy] = useState(initialVotes);
-  const [cardsOpened, setCardsOpened] = useState(false);
+  // Cards deal out what was left to vote on when they were opened, in random order, unfiltered.
+  const [cardsFrom, setCardsFrom] = useState(initialVotes);
   // Shuffled after mount, so the server's render matches the first client one.
   const [order, setOrder] = useState<string[]>(() => voices.map((voice) => voice.slot));
   const [at, setAt] = useState(0);
@@ -68,22 +77,21 @@ export default function Listen({ lang, voices, votes: initialVotes }: { lang: La
     setAt(0);
   }
 
-  /** The first time, cards start on what is left to vote on. */
   function openCards() {
     setView("cards");
-    if (!cardsOpened) {
-      setCardsOpened(true);
-      chooseFilter("unvoted");
-    }
+    setCardsFrom(votes);
+    setAt(0);
   }
 
   const needle = query.trim().toLowerCase();
   const matches = (voice: PublicVoice) =>
     (!needle || [voice.race, voice.gender, voice.flavor ?? ""].join(" ").toLowerCase().includes(needle)) &&
-    (filter === "all" || (filter === "voted") === (voice.showingId in filteredBy));
+    (filter === "all" || (filter === "voted") === voice.showingId in filteredBy);
   const listed = voices.filter(matches);
   const bySlot = useMemo(() => new Map(voices.map((voice) => [voice.slot, voice])), [voices]);
-  const cards = order.map((slot) => bySlot.get(slot)).filter((voice): voice is PublicVoice => voice !== undefined && matches(voice));
+  const cards = order
+    .map((slot) => bySlot.get(slot))
+    .filter((voice): voice is PublicVoice => voice !== undefined && !(voice.showingId in cardsFrom));
   const current = cards[Math.min(at, cards.length - 1)];
 
   const counts: Record<Filter, number> = {
@@ -134,33 +142,37 @@ export default function Listen({ lang, voices, votes: initialVotes }: { lang: La
   return (
     <div className="ls">
       <div className="vd-toolbar">
-        <div className="bs-chips" role="group" aria-label={t.filterLabel}>
-          {(["all", "unvoted", "voted"] as Filter[]).map((value) => (
-            <button
-              key={value}
-              type="button"
-              className="bs-chip"
-              aria-current={filter === value ? "page" : undefined}
-              onClick={() => chooseFilter(value)}
-            >
-              {filterLabel[value]}
-              <span className="bs-count">{counts[value]}</span>
-            </button>
-          ))}
-        </div>
-        <label className="bs-search vd-search">
-          <Search size={15} aria-hidden="true" />
-          <input
-            type="search"
-            value={query}
-            placeholder={t.searchPlaceholder}
-            aria-label={t.searchPlaceholder}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setAt(0);
-            }}
-          />
-        </label>
+        {view === "table" ? (
+          <>
+            <div className="bs-chips" role="group" aria-label={t.filterLabel}>
+              {(["all", "unvoted", "voted"] as Filter[]).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className="bs-chip"
+                  aria-current={filter === value ? "page" : undefined}
+                  onClick={() => chooseFilter(value)}
+                >
+                  {filterLabel[value]}
+                  <span className="bs-count">{counts[value]}</span>
+                </button>
+              ))}
+            </div>
+            <label className="bs-search vd-search">
+              <Search size={15} aria-hidden="true" />
+              <input
+                type="search"
+                value={query}
+                placeholder={t.searchPlaceholder}
+                aria-label={t.searchPlaceholder}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setAt(0);
+                }}
+              />
+            </label>
+          </>
+        ) : null}
         <button type="button" className="bs-btn ls-view" onClick={() => (view === "table" ? openCards() : setView("table"))}>
           {view === "table" ? <SquareStack size={14} aria-hidden="true" /> : <LayoutList size={14} aria-hidden="true" />}
           {view === "table" ? t.cardsView : t.tableView}
@@ -169,8 +181,10 @@ export default function Listen({ lang, voices, votes: initialVotes }: { lang: La
 
       {voices.length === 0 ? (
         <p className="vd-muted">{t.none}</p>
-      ) : listed.length === 0 ? (
+      ) : view === "table" && listed.length === 0 ? (
         <p className="vd-muted">{filter === "unvoted" && !needle ? t.allDone : t.noMatch}</p>
+      ) : view === "cards" && cards.length === 0 ? (
+        <p className="vd-muted">{t.allDone}</p>
       ) : view === "table" ? (
         <table className="ls-table">
           <thead>
@@ -190,7 +204,12 @@ export default function Listen({ lang, voices, votes: initialVotes }: { lang: La
                 </th>
                 <td className="vd-muted">{voice.archetype}</td>
                 <td>{lines(voice, false)}</td>
-                <VoteControls key={voice.showingId} cells vote={votes[voice.showingId]} onVote={(verdict, note) => vote(voice, verdict, note)} />
+                <VoteControls
+                  key={voice.showingId}
+                  cells
+                  vote={votes[voice.showingId]}
+                  onVote={(verdict, note) => vote(voice, verdict, note)}
+                />
               </tr>
             ))}
           </tbody>
