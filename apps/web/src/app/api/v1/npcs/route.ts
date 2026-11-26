@@ -1,7 +1,6 @@
-import { BASE_LANG } from "@/lib/lang";
-import { listLanguageDirections, listResolutions } from "@/lib/npc/store";
+import { listResolutions, parseResolutionKey, resolutionKey } from "@/lib/npc/store";
 import { withToken } from "@/lib/text-api/guard";
-import { npcItem, parseNpcId } from "@/lib/text-api/npcs";
+import { languageDirectionsOf, npcItem } from "@/lib/text-api/npcs";
 import { invalid, PAGE_SIZE } from "@/lib/text-api/respond";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +13,7 @@ export async function GET(request: Request) {
     let directed = false;
     for (const [name, value] of new URL(request.url).searchParams) {
       if (name === "cursor") {
-        cursor = parseNpcId(value);
+        cursor = parseResolutionKey(value);
         if (!cursor) return invalid(`${value} is not a valid cursor`);
       } else if (name === "limit") {
         limit = Number(value);
@@ -31,16 +30,17 @@ export async function GET(request: Request) {
 
     const [all, own] = await Promise.all([
       listResolutions(),
-      context.lang === BASE_LANG ? new Map<string, string>() : listLanguageDirections(context.lang),
+      languageDirectionsOf(context.lang),
     ]);
     // listResolutions' own order, by id then kind, so a cursor is a position in it.
     const after = cursor;
-    const items = all
-      .filter((npc) => !after || npc.npcId > after.npcId || (npc.npcId === after.npcId && npc.npcKind > after.npcKind))
-      .map((npc) => npcItem(npc, own))
-      .filter((item) => !directed || item.direction !== null || item.languageDirection !== null);
-    const page = items.slice(0, limit);
-    const nextCursor = items.length > limit ? page[page.length - 1].id : null;
+    const rows = all.filter(
+      (npc) =>
+        (!after || npc.npcId > after.npcId || (npc.npcId === after.npcId && npc.npcKind > after.npcKind)) &&
+        (!directed || npc.direction != null || own.has(resolutionKey(npc.npcKind, npc.npcId))),
+    );
+    const page = rows.slice(0, limit).map((npc) => npcItem(npc, own));
+    const nextCursor = rows.length > limit ? page[page.length - 1].id : null;
     return Response.json({ lang: context.lang, items: page, nextCursor });
   });
 }

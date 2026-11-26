@@ -1,7 +1,7 @@
 import "server-only";
 
-import { INT32_MAX } from "@/lib/npc/npc";
-import { NPC_ROW_KINDS, resolutionKey, type NpcResolution, type NpcRowKind } from "@/lib/npc/store";
+import { BASE_LANG, type Lang } from "@/lib/lang";
+import { listLanguageDirections, resolutionKey, type NpcResolution } from "@/lib/npc/store";
 
 export type NpcItem = {
   id: string;
@@ -28,14 +28,7 @@ export function npcItem(npc: NpcResolution, own: Map<string, string>): NpcItem {
   };
 }
 
-const ID = /^([a-z]+):(\d+)$/;
-
-/** `creature:123` as its kind and id, or null for anything the npc table cannot hold. */
-export function parseNpcId(id: string): { npcKind: NpcRowKind; npcId: number } | null {
-  const match = ID.exec(id);
-  if (!match || !(NPC_ROW_KINDS as readonly string[]).includes(match[1])) return null;
-  const npcId = Number(match[2]);
-  return npcId <= INT32_MAX ? { npcKind: match[1] as NpcRowKind, npcId } : null;
+/** The language's own directions; English has none, its direction being the global one. */
+export async function languageDirectionsOf(lang: Lang): Promise<Map<string, string>> {
+  return lang === BASE_LANG ? new Map() : listLanguageDirections(lang);
 }
-
-export const NO_LANGUAGE_DIRECTION = "English uses the global direction";

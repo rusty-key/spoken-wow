@@ -130,6 +130,7 @@ describe("/api/v1/npcs/{id}", () => {
     expect((await patch(auth, "dragon:1", { direction: "x" })).status).toBe(404);
     expect((await patch(auth, key, { direction: "<x>" })).status).toBe(400);
     expect((await patch(auth, key, {})).status).toBe(400);
+    expect((await patch(auth, key, "weary")).status).toBe(400);
   });
 
   it("refuses English, whose direction is the global one", async () => {
