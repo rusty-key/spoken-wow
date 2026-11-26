@@ -40,6 +40,8 @@ export const DELETED = [
   "voice_assignment", "voice", "voice_clone", "voice_sample", "fish_reference",
   "generation_setting_locale", "generation_setting", "npc_direction_locale", "lexicon_change",
   "pronunciation_lexicon_locale", "pronunciation_lexicon",
+  // Its voice designs: the account voices stay with their holders, the audio in the bucket.
+  "voice_design_review", "voice_design_clip", "voice_design", "voice_design_analysis",
   "release_run",
   // Rows only: the objects stay in the bucket (AGENTS.md).
   "archive_object", "storage_move", "storage_backend",

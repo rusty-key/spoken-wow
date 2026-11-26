@@ -8,24 +8,46 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ApiKeyStatus } from "@/lib/api-key";
 import { fill } from "@/lib/site-text/format";
-import { PROVIDER_NAME, type Provider } from "@/lib/generation/providers";
+import { KEY_PROVIDER_NAME, type KeyProvider } from "@/lib/generation/providers";
+import type { UiText } from "@/lib/ui-text/en";
 
-/** What differs between the two providers' sections: the words, and where the key goes. */
+type KeyWords = UiText["apiKeys"];
+
+/** What differs between the providers' sections: where the key goes, and which words say what. */
 const COPY: Record<
-  Provider,
-  { endpoint: string; mask: string; placeholder: string; checked: string }
+  KeyProvider,
+  {
+    endpoint: string;
+    mask: string;
+    before: keyof KeyWords;
+    after: keyof KeyWords;
+    placeholder: keyof KeyWords;
+    checked: "keyCheckedEleven" | "keyCheckedFish" | "keyCheckedGemini";
+  }
 > = {
   elevenlabs: {
     endpoint: "/api/profile/api-key",
     mask: "sk_…••••",
-    placeholder: "sk_…",
-    checked: "Checked against ElevenLabs before it is stored, which costs no credits.",
+    before: "elevenLabsBefore",
+    after: "elevenLabsAfter",
+    placeholder: "placeholderEleven",
+    checked: "keyCheckedEleven",
   },
   fish: {
     endpoint: "/api/profile/fish-key",
     mask: "••••",
-    placeholder: "fish.audio API key",
-    checked: "Checked against fish.audio before it is stored, which costs nothing.",
+    before: "fishBefore",
+    after: "fishAfter",
+    placeholder: "placeholderFish",
+    checked: "keyCheckedFish",
+  },
+  gemini: {
+    endpoint: "/api/profile/gemini-key",
+    mask: "••••",
+    before: "geminiBefore",
+    after: "geminiAfter",
+    placeholder: "placeholderGemini",
+    checked: "keyCheckedGemini",
   },
 };
 
@@ -42,7 +64,7 @@ export default function ApiKeySection({
   provider = "elevenlabs",
 }: {
   initial: ApiKeyStatus | null;
-  provider?: Provider;
+  provider?: KeyProvider;
 }) {
   const t = useUiText();
   const words = t.apiKeys;
@@ -101,20 +123,12 @@ export default function ApiKeySection({
   return (
     // Anchored so /voices can send somebody straight to the key its Activate is waiting on.
     <section id={`${provider}-key`} className="max-w-xl scroll-mt-20">
-      <h2 className="mb-1 font-medium">{fill(words.title, { provider: PROVIDER_NAME[provider] })}</h2>
-      {provider === "elevenlabs" ? (
-        <p className="text-muted-foreground mb-4 text-sm">
-          {words.elevenLabsBefore}
-          <strong className="text-foreground">{t.profile.yourOwn}</strong>
-          {words.elevenLabsAfter}
-        </p>
-      ) : (
-        <p className="text-muted-foreground mb-4 text-sm">
-          {words.fishBefore}
-          <strong className="text-foreground">{t.profile.yourOwn}</strong>
-          {words.fishAfter}
-        </p>
-      )}
+      <h2 className="mb-1 font-medium">{fill(words.title, { provider: KEY_PROVIDER_NAME[provider] })}</h2>
+      <p className="text-muted-foreground mb-4 text-sm">
+        {words[copy.before]}
+        <strong className="text-foreground">{t.profile.yourOwn}</strong>
+        {words[copy.after]}
+      </p>
 
       {error && (
         <p role="alert" className="text-destructive mb-3 text-sm">
@@ -143,8 +157,8 @@ export default function ApiKeySection({
             type="password"
             value={entry}
             autoComplete="off"
-            placeholder={provider === "fish" ? words.placeholderFish : words.placeholderEleven}
-            aria-label={fill(t.profile.addKey, { provider: PROVIDER_NAME[provider] })}
+            placeholder={words[copy.placeholder]}
+            aria-label={fill(t.profile.addKey, { provider: KEY_PROVIDER_NAME[provider] })}
             onChange={(event) => setEntry(event.target.value)}
             className="w-80 font-mono"
           />
@@ -165,7 +179,7 @@ export default function ApiKeySection({
             </Button>
           )}
           <span className="text-muted-foreground w-full text-xs">
-            {provider === "fish" ? t.profile.keyCheckedFish : t.profile.keyCheckedEleven}
+            {t.profile[copy.checked]}
           </span>
         </div>
       ) : (

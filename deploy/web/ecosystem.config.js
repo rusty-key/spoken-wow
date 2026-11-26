@@ -123,6 +123,15 @@ module.exports = {
         // file means a slot's next take no longer matches its history.
         SPOKEN_QUESTS_VOICE_REFERENCES: `${SHARED}/voice-references`,
 
+        // Previews and sample lines of the voices designed on /voices/design. ElevenLabs keeps
+        // no copy of a preview once a voice is saved, and none at all of one never saved.
+        SPOKEN_QUESTS_VOICE_DESIGNS: `${SHARED}/voice-designs`,
+
+        // openSMILE for /voices/design: the script ships in the release; the interpreter with
+        // `opensmile` installed is the droplet's, set in shared/app.env as VOICE_ANALYSIS_PYTHON.
+        // Unset, the page shows no measurements.
+        VOICE_ANALYSIS_SCRIPT: `${CURRENT}/apps/web/scripts/voice_measure.py`,
+
         // The seed clips /voices seeds a clone's clips from, English's at the top and each
         // other language's under its code (lib/voices/seedClips.ts). Shared rather than in a
         // release because nothing builds them into one: they are pushed here from a workstation

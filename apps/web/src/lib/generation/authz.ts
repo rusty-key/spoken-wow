@@ -11,7 +11,7 @@
 import { headers } from "next/headers";
 
 import { readApiKey } from "@/lib/api-key";
-import { PROVIDER_NAME, type Provider } from "@/lib/generation/providers";
+import { KEY_PROVIDER_NAME, type KeyProvider, type Provider } from "@/lib/generation/providers";
 import { readPreference } from "@/lib/generation/preference";
 import { speakerFrom } from "@/lib/generation/speakers/for";
 import type { Speaker } from "@/lib/generation/speakers/speaker";
@@ -147,9 +147,9 @@ function noKey(message: string): Response {
  */
 export async function requireApiKey(
   userId: string,
-  provider: Provider = "elevenlabs",
+  provider: KeyProvider = "elevenlabs",
 ): Promise<KeyGuard> {
-  const name = PROVIDER_NAME[provider];
+  const name = KEY_PROVIDER_NAME[provider];
   let key: string | null;
   try {
     key = await readApiKey(userId, provider);
@@ -169,7 +169,9 @@ export async function requireApiKey(
       denied: noKey(
         provider === "elevenlabs"
           ? "This spends ElevenLabs credits, and you have no key set."
-          : "This spends from your fish.audio balance, and you have no fish.audio key set.",
+          : provider === "fish"
+            ? "This spends from your fish.audio balance, and you have no fish.audio key set."
+            : "This spends from your Gemini account, and you have no Gemini key set.",
       ),
     };
   }

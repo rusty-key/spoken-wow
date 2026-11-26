@@ -86,6 +86,8 @@ function objectsQuery(team: TeamId, from: string | null, cursor: string | null):
             select 'references', "sha256" from "fish_reference" where "teamId" = $1 and "sha256" is not null
             union
             select 'samples', "sha256" from "voice_sample" where "teamId" = $1
+            union
+            select 'designs', "sha256" from "voice_design_clip" where "teamId" = $1
           )
           select o."prefix", o."sha256" from "objects" o
            where (o."prefix", o."sha256") > ($2, $3)
