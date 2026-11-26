@@ -340,6 +340,86 @@ do
     _G.CampaignQuestObjectiveTracker = nil
 end
 
+---------------------------------------------------------------- Questie's Tracker
+do
+    local VO, Panel = Boot()
+    VO.Addon.db.profile.TrackerPlayButton = true
+    local tracker = {}
+    local redrawn
+    function tracker:Update()
+        redrawn = _G.Questie.db.profile.trackerShowPlayButtons
+    end
+    local profile = { trackerEnabled = true, trackerShowPlayButtons = false }
+    local questieBox = CreateFrame("CheckButton")
+    local options = {}
+    function options:RefreshStates()
+        questieBox:SetChecked(profile.trackerShowPlayButtons == true or profile.trackerShowPlayButtons == 1)
+    end
+    questieBox:SetScript("OnClick", function(self)
+        profile.trackerShowPlayButtons = self:GetChecked()
+        tracker:Update()
+        options:RefreshStates()
+    end)
+    options:RefreshStates()
+    _G.QuestieLoader = { ImportModule = function(_, name)
+        if name == "QuestieOptionsEngine" then return options end
+        assert(name == "QuestieTracker")
+        return tracker
+    end }
+    local onReady
+    local api = { isReady = false, RegisterOnReady = function(callback) onReady = callback end }
+    _G.Questie = { API = api, db = { profile = profile } }
+    Panel.panel.layout:Refresh()
+    api.isReady = true
+    if onReady then onReady() end
+    local box
+    for _, child in ipairs(Panel.panel.content.children) do
+        if type(child.text) == "table" and child.text.text == "Tracker" then box = child end
+    end
+    Expect("Questie alone shows the Tracker setting", box:IsShown(), true)
+    Expect("Spoken reads Questie's hidden play buttons", box:GetChecked(), false)
+    for _, value in ipairs({true, false}) do
+        box:SetChecked(value)
+        box:GetScript("OnClick")(box)
+        Expect("clicking in Spoken changes Questie's setting", profile.trackerShowPlayButtons, value)
+        Expect("Questie redraws with the new setting", redrawn, value)
+        Expect("Questie's open checkbox follows Spoken", questieBox:GetChecked(), value)
+    end
+    Expect("Questie changes preserve the default tracker preference", VO.Addon.db.profile.TrackerPlayButton, true)
+    for _, value in ipairs({true, false}) do
+        questieBox:SetChecked(value)
+        questieBox:GetScript("OnClick")(questieBox)
+        Expect("Spoken's open checkbox follows Questie", box:GetChecked(), value)
+    end
+    profile.trackerShowPlayButtons = true
+    box:GetScript("OnShow")(box)
+    Expect("reopening Spoken reflects a change in Questie", box:GetChecked(), true)
+
+    _G.CampaignQuestObjectiveTracker = {}
+    profile.trackerEnabled = false
+    redrawn = nil
+    box:SetChecked(false)
+    box:GetScript("OnClick")(box)
+    Expect("disabling Questie's tracker gives Spoken control", VO.Addon.db.profile.TrackerPlayButton, false)
+    Expect("the default tracker has its own choice", profile.trackerShowPlayButtons, true)
+    Expect("the disabled Questie tracker is left alone", redrawn, nil)
+    profile.trackerEnabled = true
+    profile.trackerShowPlayButtons = 1
+    options:RefreshStates()
+    Expect("Spoken reads the numeric checked state accepted by Questie", box:GetChecked(), true)
+    _G.Questie.API.isReady = false
+    Panel.panel.layout:Refresh()
+    Expect("Spoken uses its own setting until Questie is ready", box:GetChecked(), false)
+    _G.Questie.API.isReady = true
+    profile.trackerShowPlayButtons = nil
+    Panel.panel.layout:Refresh()
+    Expect("Questie versions without the play option keep the default tracker setting", box:GetChecked(), false)
+    box:SetChecked(true)
+    box:GetScript("OnClick")(box)
+    Expect("Spoken leaves an unsupported Questie option unset", profile.trackerShowPlayButtons, nil)
+    _G.Questie, _G.QuestieLoader, _G.CampaignQuestObjectiveTracker = nil, nil, nil
+end
+
 ---------------------------------------------------------------- Kaliel's Tracker
 do
     _G.KT_QuestObjectiveTracker = {}

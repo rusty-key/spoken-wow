@@ -19,6 +19,23 @@ local function LanguageName(code)
 end
 local panel
 
+-- Questie's public API signals readiness but has no tracker settings accessor.
+local function ImportQuestieModule(name)
+    if QuestieLoader and type(QuestieLoader.ImportModule) == "function" then
+        return QuestieLoader:ImportModule(name)
+    end
+end
+
+local function ActiveQuestieTracker()
+    if not (Questie and Questie.API and Questie.API.isReady) then return end
+    local profile = Questie.db and Questie.db.profile
+    if not (profile and profile.trackerEnabled) then return end
+    local value = profile.trackerShowPlayButtons
+    if type(value) ~= "boolean" and value ~= 1 then return end
+    local tracker = ImportQuestieModule("QuestieTracker")
+    if tracker and type(tracker.Update) == "function" then return profile, tracker end
+end
+
 function SettingsPanel:Setup()
     if panel then
         return
@@ -97,7 +114,7 @@ function SettingsPanel:Setup()
     local function HasObjectiveTracker()
         return _G.QuestObjectiveTracker ~= nil or _G.CampaignQuestObjectiveTracker ~= nil
             or _G.KT_QuestObjectiveTracker ~= nil or _G.KT_CampaignQuestObjectiveTracker ~= nil
-            or QuestWatch_Update ~= nil
+            or QuestWatch_Update ~= nil or ActiveQuestieTracker() ~= nil
     end
     layout:Section(L.OPT_SECTION_TRACKER)
     local questLogPlay = layout:Checkbox(L.OPT_TRACKER_QUEST_LOG, nil,
@@ -107,13 +124,45 @@ function SettingsPanel:Setup()
             QuestOverlayUI:RefreshQuestLog()
         end)
     layout:ShowWhen(questLogPlay, HasQuestLog)
+    local questieOptions
     local trackerPlay = layout:Checkbox(L.OPT_TRACKER_OBJECTIVE, nil,
-        function() return Addon.db.profile.TrackerPlayButton ~= false end,
+        function()
+            local profile = ActiveQuestieTracker()
+            if profile then return profile.trackerShowPlayButtons end
+            return Addon.db.profile.TrackerPlayButton ~= false
+        end,
         function(value)
-            Addon.db.profile.TrackerPlayButton = value
-            QuestOverlayUI.UpdateTrackerButtons()
+            local profile, tracker = ActiveQuestieTracker()
+            if profile then
+                profile.trackerShowPlayButtons = value
+                tracker:Update()
+                if questieOptions then questieOptions:RefreshStates() end
+            else
+                Addon.db.profile.TrackerPlayButton = value
+                QuestOverlayUI.UpdateTrackerButtons()
+            end
         end)
     layout:ShowWhen(trackerPlay, HasObjectiveTracker)
+
+    local waitingForQuestie
+    layout:OnRefresh(function()
+        if questieOptions or not (Questie and Questie.API) then return end
+        if not Questie.API.isReady then
+            if not waitingForQuestie and Questie.API.RegisterOnReady then
+                waitingForQuestie = true
+                Questie.API.RegisterOnReady(refresh)
+            end
+            return
+        end
+        local options = ImportQuestieModule("QuestieOptionsEngine")
+        if options and type(options.RefreshStates) == "function" then
+            questieOptions = options
+            -- Questie's standalone window can stay open alongside Spoken's settings.
+            hooksecurefunc(options, "RefreshStates", function()
+                if trackerPlay:IsVisible() then trackerPlay.layoutSync() end
+            end)
+        end
+    end)
 
     -- Only with DialogueUI installed, on Spoken's page.
     if DialogueUIBridge and DialogueUIBridge.Problem and IsAddOnLoaded and IsAddOnLoaded("DialogueUI") then
