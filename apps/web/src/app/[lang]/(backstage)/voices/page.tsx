@@ -20,6 +20,7 @@ import { listReferences } from "@/lib/voices/references";
 import { listSamples, type Sample } from "@/lib/voices/samples";
 import { slots } from "@/lib/voices/slots";
 import BackstagePage from "@/components/backstage/BackstagePage";
+import Link from "@/components/LocaleLink";
 import { langName } from "@/lib/lang";
 
 export const metadata: Metadata = { title: "Voices · Spoken" };
@@ -108,6 +109,13 @@ export default async function Page({
     <BackstagePage
       title={fill(t.title, { lang: langName(lang) })}
       description={t.lede}
+      actions={
+        can(viewer, "configure", lang) ? (
+          <Link href="/voices/design" className="bs-btn">
+            {t.designLink}
+          </Link>
+        ) : null
+      }
     >
       <VoicesTabs
         initialTab={isProvider(tab) ? tab : preference.provider}
