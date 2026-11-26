@@ -94,12 +94,12 @@ function questPlan(lines: CorpusLine[], overrides: Parameters<typeof batchPlan>[
 /** Every key `filtersFromParams` reads. */
 export const FILTER_KEYS = new Set([
   "q", "filter", "state", "missing", "outdated", "race", "gender", "flavor", "voice", "source", "type",
-  "narration", "client", "line", "overridden", "ignored", "dirty", "fb", "before", "after",
+  "narration", "nonarrator", "client", "line", "overridden", "ignored", "dirty", "fb", "before", "after",
   "model", "author", "rec", "bt", "minLevel", "maxLevel", "playerGender", "zone",
 ]);
 /** Keys an Explorer URL carries that mean nothing to a batch. */
 const EXPLORER_ONLY = new Set(["page"]);
-const FLAGS = ["narration", "overridden", "ignored", "dirty", "missing", "outdated"];
+const FLAGS = ["narration", "nonarrator", "overridden", "ignored", "dirty", "missing", "outdated"];
 
 /**
  * For the API only: the button's derivation drops what it does not understand, which for a typed

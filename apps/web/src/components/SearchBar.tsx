@@ -166,6 +166,7 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
   });
   add("flavor", f.flavor, filters.flavor && capital(filters.flavor), { flavor: undefined });
   add("voice", f.voice, filters.voice && capital(filters.voice), { voice: undefined });
+  add("noNarrator", f.noNarrator, filters.noNarrator ? v.hidden : undefined, { noNarrator: undefined });
   add("playerGender", f.playerGender, filters.playerGender ? labelOf(playerOptions, filters.playerGender) : undefined, { playerGender: undefined });
   add("model", f.model, filters.model, { model: undefined });
   add("author", f.author, filters.author && labelOf(authors, filters.author), { author: undefined });
@@ -251,6 +252,7 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
             )}
             <FilterSelect label={l.character} value={filters.flavor} options={plain(flavorOptions)} onChange={(flavor) => onFilters({ flavor })} />
             <FilterSelect label={f.voice} value={filters.voice} options={plain(facets.voices)} onChange={(voice) => onFilters({ voice })} />
+            <FilterToggle label={l.noNarrator} checked={filters.noNarrator ?? false} onChange={(noNarrator) => onFilters({ noNarrator })} />
             <FilterSegments
               label={l.playerVersion}
               any={v.both}

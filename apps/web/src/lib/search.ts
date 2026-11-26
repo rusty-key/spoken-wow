@@ -17,7 +17,7 @@ import type { Corpus, CorpusLine } from "./corpus";
 import { npcKey } from "./corpus";
 import { baseLineId } from "./contributions/naming";
 import { audioRelPath } from "./audio";
-import { hasNarration, restoresOnlyNarration } from "./generation/narration";
+import { hasNarration, narratorOnly, restoresOnlyNarration } from "./generation/narration";
 import type { NpcType, Source } from "./line-fields";
 import type { LineIgnore } from "./quests/ignores";
 import { overrideOf, type LineOverride } from "./quests/override";
@@ -56,6 +56,11 @@ export type LineFilters = {
   zone?: number;
   /** Only lines carrying a capitalised <stage direction>, which a narrator reads. */
   narration?: boolean;
+  /**
+   * Leave out the lines the narrator reads every word of, by the voices regeneration will use.
+   * Not the inverse of `narration`: an NPC's line with a stage direction in it stays.
+   */
+  noNarrator?: boolean;
   /**
    * Which clients' lines (lib/quests/line-client.ts), in the Contributions pages' bins: Era +
    * Forever when absent, the clients the site voices. A lookup by `line` finds a line whatever
@@ -438,6 +443,7 @@ export function matchingLines(
     zone,
     client = DEFAULT_CLIENT_FILTER,
     narration = false,
+    noNarrator = false,
     line: lineId,
     overridden,
     dirty = false,
@@ -499,11 +505,9 @@ export function matchingLines(
   // The *effective* text, matching the chip on the row and the text regeneration will send.
   // Reading line.text instead hid every line whose direction was restored by an override -
   // which is 314 of them, and the ones most worth finding.
-  if (narration) {
-    lines = lines.filter((line) =>
-      hasNarration(overrideOf(overrides, audioRelPath(line))?.text ?? line.text),
-    );
-  }
+  const textOf = (line: CorpusLine) => overrideOf(overrides, audioRelPath(line))?.text ?? line.text;
+  if (narration) lines = lines.filter((line) => hasNarration(textOf(line)));
+  if (noNarrator) lines = lines.filter((line) => !narratorOnly(line.voice, textOf(line)));
   // An id the corpus no longer carries matches nothing rather than everything, because a
   // report about a dropped line must not read as "here it is".
   if (lineId) lines = lines.filter((line) => line.lineId === lineId);

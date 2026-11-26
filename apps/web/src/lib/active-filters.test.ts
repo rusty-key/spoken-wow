@@ -50,6 +50,11 @@ describe("counting what is in force", () => {
     expect(activeFilterCount({ state: undefined })).toBe(0);
   });
 
+  it("counts leaving out narrator lines, which narrows", () => {
+    expect(activeFilterCount({ noNarrator: true })).toBe(1);
+    expect(activeFilterCount({ noNarrator: false })).toBe(0);
+  });
+
   it("counts narration, which narrows", () => {
     expect(activeFilterCount({ narration: true })).toBe(1);
     expect(activeFilterCount({ narration: false })).toBe(0);

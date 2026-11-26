@@ -44,6 +44,7 @@ export async function filtersFromParams(params: URLSearchParams, lang: Lang): Pr
     // As written, like every other filter: zone=01411 is no zone.
     zone: Number(oneOf(params.get("zone"), zones.map((zone) => String(zone.uiMapID)))) || undefined,
     narration: params.get("narration") === "1",
+    noNarrator: params.get("nonarrator") === "1",
     // Absent means Era + Forever, the clients the site voices (lib/quests/line-client.ts).
     client: clientFilterOf(params.get("client")),
     line: params.get("line") || undefined,

@@ -552,6 +552,13 @@ it lists them.
 that side's `:m` or `:f` lines and every line that does not branch on the player, and a batch started
 from the page uses it too.
 
+**The narrator filter is for re-voicing the NPCs without paying for the narrator.** `?nonarrator=1`
+(Hide narrator-only lines) leaves out every line `narrator-male` reads every word of, by the voice
+the viewed team's roster gives its speaker, and a batch started from the page uses it too. That
+includes an NPC's line that is nothing but a stage direction. A narrator line that a rewrite hands
+partly to an NPC's voice (`_goblin-male-zany_`) stays, and so does an NPC's line with words beside
+its stage direction.
+
 **Only Era and Forever lines are shown by default.** Other clients send lines too: TBC
 Anniversary, the 1.12, 2.4.3 and 3.3.5a legacy clients, retail, and Wowhead's TBC pages. Those
 lines are accepted and kept, but the explorer, a queued batch and the Missing audio ranking

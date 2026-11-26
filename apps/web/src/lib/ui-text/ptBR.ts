@@ -219,6 +219,7 @@ const ptBR: Dictionary = {
         overridden: "Reescrito",
         dirty: "Pronúncia",
         narration: "Narração",
+        noNarrator: "Falas só do narrador",
         ignored: "Ignorado",
       },
       /** Os valores que uma pílula mostra, quando são palavras e não um nome do corpus. */
@@ -227,6 +228,7 @@ const ptBR: Dictionary = {
         yes: "sim",
         moved: "movida",
         onlyIgnored: "só ignoradas",
+        hidden: "ocultas",
         today: "hoje",
         anyone: "Qualquer um",
         both: "Ambos",
@@ -248,6 +250,7 @@ const ptBR: Dictionary = {
         rewrittenByTeam: "Reescrito pela equipe",
         pronunciationMoved: "Pronúncia movida",
         hasNarration: "Tem narração",
+        noNarrator: "Ocultar falas só do narrador",
         onlyIgnored: "Só falas ignoradas",
         kind: "Tipo",
         length: "Duração",

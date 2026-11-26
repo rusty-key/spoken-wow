@@ -165,6 +165,27 @@ describe("field filters", () => {
     expect(lines.some((l) => l.text.includes("<hic>"))).toBe(false);
   });
 
+  it("leaves out every line only the narrator reads, and nothing else", () => {
+    const kept = all({ noNarrator: true });
+    // The corpus carries no voice markers, so a line has an NPC's words when it has words
+    // outside its stage directions and is not the narrator's.
+    const npcWords = (l: { voice: string; text: string }) =>
+      l.voice !== "narrator-male" && l.text.replace(/<[A-Z][^<>]*>/g, "").trim() !== "";
+    expect(all().some((l) => l.voice === "narrator-male")).toBe(true);
+    expect(kept).toHaveLength(all().filter(npcWords).length);
+    expect(kept.every(npcWords)).toBe(true);
+  });
+
+  it("keeps an NPC's line with a stage direction in it", () => {
+    // "Has narration" is about the line's text; the narrator reading a direction inside an
+    // NPC's line does not make it the narrator's line.
+    const kept = all({ noNarrator: true, narration: true });
+    expect(kept.length).toBeGreaterThan(0);
+    expect(kept).toHaveLength(
+      all({ narration: true }).filter((l) => l.voice !== "narrator-male" && l.text.replace(/<[A-Z][^<>]*>/g, "").trim() !== "").length,
+    );
+  });
+
   it("narrows to progress text by source", () => {
     const lines = all({ source: ["progress"] });
     expect(lines.length).toBeGreaterThan(0);
@@ -417,6 +438,15 @@ describe("overrides", () => {
     expect(
       matchingLines(corpus, store, { narration: true }).some((l) => l.lineId === "q:123:complete"),
     ).toBe(false);
+  });
+
+  it("keeps a narrator line whose rewrite hands a stretch to an NPC's voice", () => {
+    const line = corpus.lines.find((l) => l.voice === "narrator-male" && l.source !== "gossip")!;
+    const context = rewrite(audioRelPath(line), "The box crackles. _goblin-male-zany_ Hello, friend!");
+    const found = matchingLines(corpus, store, { noNarrator: true }, context);
+
+    expect(found.some((l) => l.lineId === line.lineId)).toBe(true);
+    expect(matchingLines(corpus, store, { noNarrator: true }).some((l) => l.lineId === line.lineId)).toBe(false);
   });
 
   it("reports the rewrite beside the corpus text rather than in place of it", () => {

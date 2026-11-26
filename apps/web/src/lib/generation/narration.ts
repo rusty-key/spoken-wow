@@ -226,6 +226,23 @@ export function hasNarration(text: string): boolean {
 }
 
 /**
+ * Whether the narrator reads every word of a line spoken in `voice`. A marker handing a stretch
+ * to an NPC's slot makes it an NPC's line too, so re-voicing the NPCs must not skip it; an NPC's
+ * line that is nothing but a stage direction is the narrator's, whatever its voice.
+ */
+export function narratorOnly(voice: string, text: string): boolean {
+  return segments(text).every((segment) => slotOf(segment, voice) === NARRATOR_VOICE);
+}
+
+/**
+ * The slot that reads a segment of a line spoken in `voice`. By name, because narrator-male is
+ * not a race-gender-flavor slot and a marked slot has no corpus line to read it off.
+ */
+export function slotOf(segment: Segment, voice: string): string {
+  return segment.speaker === "narrator" ? NARRATOR_VOICE : (segment.voice ?? voice);
+}
+
+/**
  * Whether an override only puts stage directions back, changing no words.
  *
  * The pipeline stripped 314 directions before synthesis and they were restored as overrides,

@@ -31,6 +31,7 @@ export function activeFilterCount(filters: LineFilters): number {
     filters.npcType,
     filters.zone,
     filters.narration || undefined,
+    filters.noNarrator || undefined,
     filters.line,
     filters.overridden || undefined,
     filters.ignored || undefined,
