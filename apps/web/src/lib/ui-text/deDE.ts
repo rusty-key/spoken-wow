@@ -219,7 +219,7 @@ const deDE: Dictionary = {
         overridden: "Überschrieben",
         dirty: "Aussprache",
         narration: "Erzählung",
-        noNarrator: "Ohne Erzähler",
+        noNarrator: "Reine Erzählerzeilen",
         ignored: "Ignoriert",
       },
       /** Die Werte, die eine Pille zeigt, wo sie Worte sind und kein Korpusname. */
@@ -228,6 +228,7 @@ const deDE: Dictionary = {
         yes: "ja",
         moved: "verschoben",
         onlyIgnored: "nur ignorierte",
+        hidden: "ausgeblendet",
         today: "heute",
         anyone: "Alle",
         both: "Beide",

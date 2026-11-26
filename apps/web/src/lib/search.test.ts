@@ -167,10 +167,13 @@ describe("field filters", () => {
 
   it("leaves out every line only the narrator reads, and nothing else", () => {
     const kept = all({ noNarrator: true });
-    const narrator = all().filter((l) => l.voice === "narrator-male");
-    expect(narrator.length).toBeGreaterThan(0);
-    expect(kept).toHaveLength(all().length - narrator.length);
-    expect(kept.some((l) => l.voice === "narrator-male")).toBe(false);
+    // The corpus carries no voice markers, so a line has an NPC's words when it has words
+    // outside its stage directions and is not the narrator's.
+    const npcWords = (l: { voice: string; text: string }) =>
+      l.voice !== "narrator-male" && l.text.replace(/<[A-Z][^<>]*>/g, "").trim() !== "";
+    expect(all().some((l) => l.voice === "narrator-male")).toBe(true);
+    expect(kept).toHaveLength(all().filter(npcWords).length);
+    expect(kept.every(npcWords)).toBe(true);
   });
 
   it("keeps an NPC's line with a stage direction in it", () => {
@@ -178,7 +181,9 @@ describe("field filters", () => {
     // NPC's line does not make it the narrator's line.
     const kept = all({ noNarrator: true, narration: true });
     expect(kept.length).toBeGreaterThan(0);
-    expect(kept).toHaveLength(all({ narration: true }).filter((l) => l.voice !== "narrator-male").length);
+    expect(kept).toHaveLength(
+      all({ narration: true }).filter((l) => l.voice !== "narrator-male" && l.text.replace(/<[A-Z][^<>]*>/g, "").trim() !== "").length,
+    );
   });
 
   it("narrows to progress text by source", () => {

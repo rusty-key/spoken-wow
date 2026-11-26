@@ -219,7 +219,7 @@ const frFR: Dictionary = {
         overridden: "Réécrite",
         dirty: "Prononciation",
         narration: "Narration",
-        noNarrator: "Sans narrateur",
+        noNarrator: "Lignes du narrateur seul",
         ignored: "Ignorée",
       },
       /** Les valeurs qu'affiche une pastille, là où ce sont des mots et non un nom du corpus. */
@@ -228,6 +228,7 @@ const frFR: Dictionary = {
         yes: "oui",
         moved: "déplacée",
         onlyIgnored: "uniquement les ignorées",
+        hidden: "masquées",
         today: "aujourd'hui",
         anyone: "N'importe qui",
         both: "Les deux",

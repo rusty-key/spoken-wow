@@ -17,7 +17,7 @@ import type { Corpus, CorpusLine } from "./corpus";
 import { npcKey } from "./corpus";
 import { baseLineId } from "./contributions/naming";
 import { audioRelPath } from "./audio";
-import { hasNarration, NARRATOR_VOICE, narratorOnly, restoresOnlyNarration } from "./generation/narration";
+import { hasNarration, narratorOnly, restoresOnlyNarration } from "./generation/narration";
 import type { NpcType, Source } from "./line-fields";
 import type { LineIgnore } from "./quests/ignores";
 import { overrideOf, type LineOverride } from "./quests/override";
@@ -57,7 +57,7 @@ export type LineFilters = {
   /** Only lines carrying a capitalised <stage direction>, which a narrator reads. */
   narration?: boolean;
   /**
-   * Leave out the lines the narrator reads every word of, by the voice the file is made in.
+   * Leave out the lines the narrator reads every word of, by the voices regeneration will use.
    * Not the inverse of `narration`: an NPC's line with a stage direction in it stays.
    */
   noNarrator?: boolean;
@@ -507,7 +507,7 @@ export function matchingLines(
   // which is 314 of them, and the ones most worth finding.
   const textOf = (line: CorpusLine) => overrideOf(overrides, audioRelPath(line))?.text ?? line.text;
   if (narration) lines = lines.filter((line) => hasNarration(textOf(line)));
-  if (noNarrator) lines = lines.filter((line) => line.voice !== NARRATOR_VOICE || !narratorOnly(line.voice, textOf(line)));
+  if (noNarrator) lines = lines.filter((line) => !narratorOnly(line.voice, textOf(line)));
   // An id the corpus no longer carries matches nothing rather than everything, because a
   // report about a dropped line must not read as "here it is".
   if (lineId) lines = lines.filter((line) => line.lineId === lineId);

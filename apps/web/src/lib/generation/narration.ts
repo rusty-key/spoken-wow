@@ -227,10 +227,11 @@ export function hasNarration(text: string): boolean {
 
 /**
  * Whether the narrator reads every word of a line spoken in `voice`. A marker handing a stretch
- * to an NPC's slot makes it an NPC's line too, so re-voicing the NPCs must not skip it.
+ * to an NPC's slot makes it an NPC's line too, so re-voicing the NPCs must not skip it; an NPC's
+ * line that is nothing but a stage direction is the narrator's, whatever its voice.
  */
 export function narratorOnly(voice: string, text: string): boolean {
-  return voice === NARRATOR_VOICE && segments(text).every((segment) => slotOf(segment, voice) === NARRATOR_VOICE);
+  return segments(text).every((segment) => slotOf(segment, voice) === NARRATOR_VOICE);
 }
 
 /**

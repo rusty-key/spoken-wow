@@ -105,10 +105,13 @@ describe("GET /api/quests/search/lines?nonarrator=1", () => {
     };
     const asB = (await asTeam(lang, b, () => corpus(lang))).lines.filter((each) => each.source !== "gossip");
     const narrator = asB.filter((each) => each.voice === "narrator-male");
+    const directionOnly = asB.filter(
+      (each) => each.voice !== "narrator-male" && each.text.replace(/<[A-Z][^<>]*>/g, "").trim() === "",
+    );
 
     expect(narrator.length).toBeGreaterThan(0);
     expect(narrator.every((each) => each.npcType === "gameobject")).toBe(true);
     expect(asB.some((each) => each.voice === "test-bitem")).toBe(true);
-    expect(await matching("&nonarrator=1")).toBe((await matching("")) - narrator.length);
+    expect(await matching("&nonarrator=1")).toBe((await matching("")) - narrator.length - directionOnly.length);
   });
 });

@@ -120,6 +120,10 @@ describe("narratorOnly", () => {
     expect(narratorOnly("dwarf-male-gruff", "<He spits.> Aye, lad.")).toBe(false);
   });
 
+  it("is true for an NPC's line that is nothing but a stage direction", () => {
+    expect(narratorOnly("dwarf-male-gruff", "<The box hums softly.>")).toBe(true);
+  });
+
   it("is false for a narrator line a marker hands to an NPC's voice", () => {
     expect(narratorOnly("narrator-male", "The box crackles. _goblin-male-zany_ Hello, friend!")).toBe(false);
   });

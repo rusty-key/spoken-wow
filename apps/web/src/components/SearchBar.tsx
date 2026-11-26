@@ -166,7 +166,7 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(function SearchBar(
   });
   add("flavor", f.flavor, filters.flavor && capital(filters.flavor), { flavor: undefined });
   add("voice", f.voice, filters.voice && capital(filters.voice), { voice: undefined });
-  add("noNarrator", f.noNarrator, filters.noNarrator ? v.yes : undefined, { noNarrator: undefined });
+  add("noNarrator", f.noNarrator, filters.noNarrator ? v.hidden : undefined, { noNarrator: undefined });
   add("playerGender", f.playerGender, filters.playerGender ? labelOf(playerOptions, filters.playerGender) : undefined, { playerGender: undefined });
   add("model", f.model, filters.model, { model: undefined });
   add("author", f.author, filters.author && labelOf(authors, filters.author), { author: undefined });

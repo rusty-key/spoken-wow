@@ -209,7 +209,7 @@ const zhCN: Dictionary = {
         overridden: "已改写",
         dirty: "发音",
         narration: "旁白",
-        noNarrator: "不含旁白者",
+        noNarrator: "仅旁白台词",
         ignored: "已忽略",
       },
       values: {
@@ -217,6 +217,7 @@ const zhCN: Dictionary = {
         yes: "是",
         moved: "有变动",
         onlyIgnored: "仅已忽略",
+        hidden: "已隐藏",
         today: "今天",
         anyone: "任何人",
         both: "两者都有",

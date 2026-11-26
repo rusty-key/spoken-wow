@@ -212,7 +212,7 @@ const zhTW: Dictionary = {
         overridden: "已改寫",
         dirty: "發音",
         narration: "旁白",
-        noNarrator: "不含旁白者",
+        noNarrator: "僅旁白台詞",
         ignored: "已忽略",
       },
       /** The values a pill shows, where they are words rather than a corpus name. */
@@ -221,6 +221,7 @@ const zhTW: Dictionary = {
         yes: "是",
         moved: "已變動",
         onlyIgnored: "僅已忽略",
+        hidden: "已隱藏",
         today: "今天",
         anyone: "任何人",
         both: "兩者都有",

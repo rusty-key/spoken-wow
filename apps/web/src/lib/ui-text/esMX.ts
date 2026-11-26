@@ -219,7 +219,7 @@ const esMX: Dictionary = {
         overridden: "Reescrito",
         dirty: "Pronunciación",
         narration: "Narración",
-        noNarrator: "Sin narrador",
+        noNarrator: "Líneas solo del narrador",
         ignored: "Ignorado",
       },
       /** Lo que muestra una etiqueta cuando el valor es una palabra y no un nombre del corpus. */
@@ -228,6 +228,7 @@ const esMX: Dictionary = {
         yes: "sí",
         moved: "movida",
         onlyIgnored: "solo ignoradas",
+        hidden: "ocultas",
         today: "hoy",
         anyone: "Cualquiera",
         both: "Ambos",
