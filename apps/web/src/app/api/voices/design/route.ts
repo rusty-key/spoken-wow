@@ -21,6 +21,7 @@ export async function POST(request: Request) {
       prompt: text("prompt"),
       previewText: text("previewText"),
       analysisId: text("analysisId") || null,
+      revisionHeard: text("revisionHeard") || null,
       userId: session.user.id,
       apiKey: key,
     });

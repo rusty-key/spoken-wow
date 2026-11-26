@@ -4,10 +4,12 @@
  */
 import "server-only";
 
+import fs from "node:fs/promises";
 import path from "node:path";
 
 import { keep } from "@/lib/blobs/keep";
-import { blobOrFile, sha256Of, type Stored } from "@/lib/blobs/store";
+import { blobKey, blobOrFile, readsBlobs, sha256Of, type Stored } from "@/lib/blobs/store";
+import { blobBytes } from "@/lib/blobs/where";
 import type { Lang } from "@/lib/lang";
 import { VOICE_DESIGNS_DIR } from "@/lib/paths";
 
@@ -22,4 +24,9 @@ export async function keepDesignAudio(data: Buffer, lang: Lang): Promise<string>
 
 export function designClip(sha256: string, lang: Lang): Stored {
   return blobOrFile("designs", sha256, diskPath(sha256), lang);
+}
+
+export async function readDesignAudio(sha256: string, lang: Lang): Promise<Buffer | null> {
+  if (readsBlobs()) return blobBytes(blobKey("designs", sha256), lang);
+  return fs.readFile(diskPath(sha256)).catch(() => null);
 }

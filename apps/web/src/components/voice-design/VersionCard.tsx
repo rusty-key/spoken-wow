@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Loader2, Play, Save, Trash2, X } from "lucide-react";
+import { Check, Loader2, Play, Save, Sparkles, Trash2, X } from "lucide-react";
 import { useState } from "react";
 
 import Link from "@/components/LocaleLink";
@@ -9,7 +9,7 @@ import { withLang } from "@/lib/lang";
 import { fill } from "@/lib/site-text/format";
 import { cn } from "@/lib/utils";
 import type { ReviewStatus } from "@/lib/voice-design/groups";
-import { designName } from "@/lib/voice-design/limits";
+import { designName, recommendedPreview } from "@/lib/voice-design/limits";
 import type { ClipMark, Design, Measures } from "@/lib/voice-design/types";
 
 import StatusBadge from "./StatusBadge";
@@ -19,21 +19,25 @@ import type { SlotView } from "./Workbench";
 const day = (iso: string) => iso.slice(0, 10);
 const one = (value: number) => value.toFixed(1);
 
-function deepest(previews: Design["previews"]): number | null {
-  let best: number | null = null;
-  previews.forEach((preview, index) => {
-    const f0 = preview.measures?.f0Hz;
-    if (f0 !== undefined && (best === null || f0 < previews[best].measures!.f0Hz)) best = index;
-  });
-  return best;
-}
+const two = (value: number) => value.toFixed(2);
 
+/** What a preview is chosen by, then openSMILE's voice measures, each only when measured. */
 function MeasureLine({ measures }: { measures: Measures | null }) {
   const t = useUiText().voiceDesign;
   if (!measures) return null;
+  const { ess, decay, level, f0Hz, hnrDb, alphaRatioDb } = measures;
   return (
-    <span className="vd-measures" title={t.measuresTitle}>
-      {fill(t.measures, { f0: Math.round(measures.f0Hz), hnr: one(measures.hnrDb), alpha: one(measures.alphaRatioDb) })}
+    <span className="vd-measure-lines">
+      {ess !== undefined && decay !== undefined && level !== undefined ? (
+        <span className="vd-measures" title={t.previewMetricsTitle}>
+          {fill(t.previewMetrics, { ess: two(ess), decay: one(decay), level: one(level) })}
+        </span>
+      ) : null}
+      {f0Hz !== undefined && hnrDb !== undefined && alphaRatioDb !== undefined ? (
+        <span className="vd-measures" title={t.measuresTitle}>
+          {fill(t.measures, { f0: Math.round(f0Hz), hnr: one(hnrDb), alpha: one(alphaRatioDb) })}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -76,7 +80,8 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
   const last = design.reviews.at(-1);
   const [status, setStatus] = useState<ReviewStatus | null>(last?.status ?? null);
   const [note, setNote] = useState("");
-  const [best, setBest] = useState<number | null>(last?.bestPreview ?? design.chosenPreview ?? null);
+  const recommended = recommendedPreview(design.previews.map((preview) => preview.measures));
+  const [best, setBest] = useState<number | null>(last?.bestPreview ?? design.chosenPreview ?? recommended);
   const [clips, setClips] = useState<Record<string, ClipMark>>(last?.clips ?? {});
   // A re-sample puts new lines behind the same `sample:<n>` keys: a mark on the old line must not
   // carry over to the new one.
@@ -91,7 +96,6 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const audio = (sha: string) => withLang(lang, `/api/voices/design/audio/${sha}`);
-  const low = deepest(design.previews);
   const holds = design.holderId === viewer.id;
   const hasVoice = design.voiceId !== null && design.voiceDeletedAt === null;
   const can = viewer.designs;
@@ -123,6 +127,30 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
 
   const isPlaying = (src: string) => playing?.src === src;
 
+  // Needs work, or not reviewed yet: a sibling's notes may already say what to change.
+  const revisable = last?.status !== "good" && design.samples.length > 0;
+  async function revise() {
+    setBusy("revise");
+    setError(null);
+    try {
+      const { revision } = await send<{ revision: { heard: string; prompt: string; preview_text: string } }>(
+        withLang(lang, `/api/voices/design/${design.id}/revise`),
+      );
+      setDraft(slot.name, {
+        prompt: revision.prompt,
+        previewText: revision.preview_text,
+        analysisId: null,
+        heard: revision.heard,
+        from: fill(t.geminiRevision, { v: tag }),
+      });
+      document.getElementById(`slot-${slot.name}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <section className="vd-version" aria-label={fill(t.versionLabel, { slot: slot.name, v: design.version })}>
       <header className="vd-version-head">
@@ -138,10 +166,22 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
               : fill(t.voiceIn, { name: design.voiceName, who: holds ? t.yourAccount : fill(t.theirAccount, { who: design.holderName ?? t.someone }) })}
           </span>
         ) : null}
-        {can ? (
+        {can && revisable ? (
           <button
             type="button"
             className="bs-btn bs-btn-text vd-push"
+            title={t.reviseCost}
+            disabled={busy !== null || !keys.gemini}
+            onClick={() => void revise()}
+          >
+            {busy === "revise" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Sparkles size={14} aria-hidden="true" />}
+            {busy === "revise" ? t.revising : t.revise}
+          </button>
+        ) : null}
+        {can ? (
+          <button
+            type="button"
+            className={cn("bs-btn bs-btn-text", !revisable && "vd-push")}
             onClick={() => setDraft(slot.name, { prompt: design.prompt, previewText: design.previewText, analysisId: design.analysisId, from: tag })}
           >
             {fill(t.branch, { v: tag })}
@@ -155,6 +195,24 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
           <p className="bs-text">{design.prompt}</p>
           <p className="bs-label vd-gap">{t.previewTextLabel}</p>
           <p className="bs-text bs-text-en">{design.previewText}</p>
+          {typeof design.analysis?.archetype === "string" ? (
+            <>
+              <p className="bs-label vd-gap">{t.archetypeLabel}</p>
+              <p className="bs-text bs-text-en">{design.analysis.archetype}</p>
+            </>
+          ) : null}
+          {typeof design.analysis?.revision_heard === "string" ? (
+            <>
+              <p className="bs-label vd-gap">{t.heardLabel}</p>
+              <p className="bs-text bs-text-en">{design.analysis.revision_heard}</p>
+            </>
+          ) : null}
+          {design.note ? (
+            <>
+              <p className="bs-label vd-gap">{t.designNoteLabel}</p>
+              <p className="bs-text bs-text-en">{design.note}</p>
+            </>
+          ) : null}
         </div>
 
         <div className="vd-clips">
@@ -173,7 +231,11 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
                     <Play size={13} aria-hidden="true" />
                     {fill(t.previewN, { n: index + 1 })}
                   </button>
-                  {low === index && design.previews.length > 1 ? <span className="vd-tag">{t.deepest}</span> : null}
+                  {recommended === index && design.previews.length > 1 ? (
+                    <span className="vd-tag" title={t.recommendedTitle}>
+                      {t.recommended}
+                    </span>
+                  ) : null}
                   {design.chosenPreview === index && design.voiceName ? <span className="vd-tag vd-tag-gold">{t.saved}</span> : null}
                   <MeasureLine measures={preview.measures} />
                   {can ? (

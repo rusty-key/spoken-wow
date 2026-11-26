@@ -46,14 +46,22 @@ older version. Template:
 [Age] [gender] [race], [role: who uses this voice].
 Unmistakably [masculine/feminine], [pitch], [timbre], [texture].
 Speaks [pace], [energy], [attitude]. [What it is NOT, if needed.]
-General American accent, [consonant quality].
-Perfect audio quality, dry close-mic studio recording, no reverb or effects.
+[Accent].
+Soft, gentle s sounds. Clean professional audiobook recording, close to a warm studio microphone, natural and full-bodied, no harshness, no room echo.
 ```
 
-Lessons from round one:
+The last sentence is required, verbatim; the form offers to add it, and Gemini's drafts always end
+with it. Lessons from rounds one and two:
 
-- **Always end with the audio-quality sentence.** Without it, designed voices pick up room echo or a
-  phone-line sound.
+- **Soft s sounds come from the ending and from what you leave out (measured).** Round one's designed
+  voices had s sounds far harsher than the live takes: the 95th percentile of the 5-10 kHz energy
+  share was 0.40 in their sample lines against 0.09 in the live takes. Two things caused it. The old
+  ending ("Perfect audio quality, dry close-mic studio recording, no reverb or effects") and any
+  wording about consonants or sibilants ("crisp", "sharp", "hissing", "sibilant", "snappy
+  consonants"). With the new ending and no such words, the median s-level over 45 slots fell from
+  0.495 to 0.018 (live takes: 0.065). Voice settings do not fix it: speaker boost off and similarity
+  0.4 left it unchanged. Keep `eleven_ttv_v3`: `eleven_multilingual_ttv_v2` had soft s sounds but far
+  more room echo.
 - **Words can shift the perceived gender.** "Higher than most", "slightly nasal", "wiry" and "tight"
   made a male orc sound female. Say "unmistakably masculine" (or feminine) and get attitude from the
   delivery, not from the pitch.
@@ -61,7 +69,8 @@ Lessons from round one:
   a tauren. Use words that fit the race and role, and say what to avoid ("not wise, not mystical").
 - **The preview text shapes the voice as much as the prompt does.** A mentor line makes a mentor.
   Pick one of the slot's own lines under the form (100 characters at least).
-- **Don't describe effects.** Undead echo or elemental reverb come out badly. Design a clean voice.
+- **Don't describe effects or post-processing.** Undead echo, elemental reverb or a pitch shift come
+  out badly. Design a clean voice.
 - **Keep the flavors of one race-gender consistent.** Share a base (age, accent, body) and add a few
   words per flavor, so they sound like one people.
 
@@ -71,15 +80,21 @@ Example (orc-male-guard, accepted on the first try):
 A battle-hardened older male orc soldier, hulking and scarred. Low, dark, hollow voice with
 heavy guttural gravel and an audible throat growl, rough and breathy at the edges. Speaks in
 short, clipped, barked phrases with a slow, simmering menace between them; gruff, impatient
-and intimidating, a guard who expects to be obeyed. General American accent, consonants
-chewed and heavy. Perfect audio quality, dry close-mic studio recording, no reverb or effects.
+and intimidating, a guard who expects to be obeyed. General American accent. Soft, gentle s sounds.
+Clean professional audiobook recording, close to a warm studio microphone, natural and full-bodied,
+no harshness, no room echo.
 ```
 
 ## 3. Design, pick and save
 
-- **Design 3 previews** calls Voice Design (`eleven_ttv_v3`) and keeps all three on the site. With
-  openSMILE, each shows its pitch, roughness (HNR) and brightness (alpha ratio), and the page marks
-  the deepest. Play them beside the slot's **Game clip**.
+- **Design 3 previews** calls Voice Design (`eleven_ttv_v3`) and keeps all three on the site. The
+  three previews of one design differ enormously (s-levels of 0.74, 0.18 and 0.70 on one slot), so
+  each is measured: its **s**-level (how harsh the s sounds are; live takes sit near 0.07), its
+  **room** tail (the echo after a phrase, in dB) and its speech **level**, and, with openSMILE, its
+  pitch, roughness (HNR) and brightness (alpha ratio). Play them beside the slot's **Game clip**.
+- The page marks one **Recommended**: the softest s among the previews whose room tail is at most
+  -17 dB and whose level is within 6 dB of the loudest; if none qualifies, the softest s. It starts
+  as the best preview, and your ears decide.
 - The game clip is there to compare against, by ear. It is never sent anywhere when you design.
 - Mark the best, then **Save preview N as a voice**. It is created in *your* ElevenLabs account as
   `design-<slot>-v<n>`, and you become its holder: only you can voice lines with it or delete it.
@@ -99,6 +114,12 @@ not only against the game clip. Samples are kept with the version and never beco
 - Turn that sentence into prompt changes: remove the words that caused it, add an explicit anchor,
   and change the preview text if it pulled the voice the wrong way. Then **New version from vN**.
   Old versions stay, folded under the newest. Usually 1–3 rounds per voice.
+- Or press **Revise from review** (needs your Gemini key and the version's sample lines). Gemini
+  hears the game clip and the first sample line, reads the verdict and its note, the notes on the
+  race's other flavors, and the old prompt and preview text, and fills in the next version's form
+  with what it heard and a rewritten prompt. Notes travel across a race: write "trolls need a
+  Jamaican accent" on one troll and every troll's revision reads it. It also works on a version
+  nobody has reviewed yet, from its siblings' notes. Edit the draft, then **Design 3 previews**.
 - Filter the page by **No design**, **Pending**, **Needs work** and **Good**, and search slots, NPCs,
   prompts and notes.
 - Accounts cap custom voices. **Delete from ElevenLabs** on a version you will not use frees the slot;
@@ -114,21 +135,26 @@ own decision.
 
 - **Designing:** about the preview text's length in credits for each of the three previews.
 - **Sampling:** the three lines' characters at your model's rate; the page shows both before you press.
-- **Comparing:** a few cents of Gemini. openSMILE is free.
+- **Comparing and revising:** a few cents of Gemini each. Measuring is free.
 - Everything spends through the site with the presser's own keys. Nothing in the repo spends credits.
 
 ## openSMILE on the droplet
 
 Measurements come from `apps/web/scripts/voice_measure.py`, run by the site with the interpreter in
 `VOICE_ANALYSIS_PYTHON` (set in `shared/app.env`; the script path comes from `VOICE_ANALYSIS_SCRIPT`,
-which `deploy/web/ecosystem.config.js` points at the release). That Python needs `opensmile`, and
-ffmpeg on the path for mp3. Unset or failing, the page works without measurements. Test the helper
-where `opensmile` is installed with `python -m pytest apps/web/scripts/test_voice_measure.py`.
+which `deploy/web/ecosystem.config.js` points at the release). That Python needs `opensmile` for
+pitch, roughness and brightness, `librosa` and `numpy` for s-level, room and level, and ffmpeg on
+the path for mp3. Each part runs when its library is there; unset or failing, the page works
+without measurements. Test the helper with `python -m pytest apps/web/scripts/test_voice_measure.py`.
 
 ## Designs made before this page
 
-Round one's designs (made with scratch scripts, one `<slot>-v<n>/` folder each with `meta.json`,
-`preview<k>.mp3` and `line<k>.mp3`, and a `reviews.json` beside them) come in once through the
-**Import** panel at the foot of the page, which only admins see. Pick the folder holding them; each
-version is created with its voice, samples and verdicts, and one already there is skipped. The
-imported voices stay in the admin's account, who is their holder and can delete them from there.
+The designs made with scratch scripts (a `voices/` folder of `<slot>-v<n>/` folders, each with
+`meta.json`, `preview<k>.mp3` and `line<k>.mp3`, and a `reviews.json` beside `voices/`) come in through
+the **Import** panel at the foot of the page, which only admins see. Pick the scratch folder that
+holds both; the page sends one version at a time and skips any already there, so it can be run again.
+Each version keeps its prompt, previews with their measurements, chosen preview, sample lines, note,
+Gemini's description (archetype, and what it heard for a revision) and every verdict in order, with
+best preview and per-clip marks. A version whose voice was deleted from ElevenLabs
+(`voice_deleted`) comes in as deleted. The `live-line` files are ignored: live takes come from the
+site. The imported voices stay in the admin's account, who is their holder.

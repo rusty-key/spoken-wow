@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { blindLabels, buildPrompt, compareBlind, GEMINI_MODEL, verifyGeminiKey } from "./gemini";
+import { blindLabels, buildPrompt, buildRevisePrompt, compareBlind, GEMINI_MODEL, reviseVoice, verifyGeminiKey } from "./gemini";
+import { PROMPT_ENDING } from "./limits";
 
 describe("verifyGeminiKey", () => {
   it("lists the models, which costs nothing, with the key in its header", async () => {
@@ -62,7 +63,7 @@ describe("compareBlind", () => {
       ],
       fetchImpl: fetchImpl as never,
     });
-    expect(result.voices.A.voice_design_prompt).toBe("A gruff orc.");
+    expect(result.voices.A.voice_design_prompt).toBe(`A gruff orc. ${PROMPT_ENDING}`);
     const [url, init] = fetchImpl.mock.calls[0];
     expect(url).toBe(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`);
     expect(GEMINI_MODEL).toBe("gemini-3.1-pro-preview");
@@ -91,7 +92,62 @@ describe("compareBlind", () => {
   });
 
   it("says what Gemini said when it refuses", async () => {
+    const fetchImpl = vi.fn(async () => new Response("bad request", { status: 400 }));
+    await expect(compareBlind({ apiKey: "k", prompt: "p", clips: [{ label: "A", audio: Buffer.from("a") }], fetchImpl })).rejects.toThrow(/400.*bad request/);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits and tries again when Gemini is rate limited, one request at a time", async () => {
+    const sleep = vi.fn(async () => {});
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("quota", { status: 429 }))
+      .mockResolvedValueOnce(answer({ A: voice }));
+    await compareBlind({ apiKey: "k", prompt: "p", clips: [{ label: "A", audio: Buffer.from("a") }], fetchImpl, sleep });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(sleep).toHaveBeenCalledTimes(1);
+  });
+
+  it("gives up after three rate-limited tries", async () => {
     const fetchImpl = vi.fn(async () => new Response("quota exceeded", { status: 429 }));
-    await expect(compareBlind({ apiKey: "k", prompt: "p", clips: [{ label: "A", audio: Buffer.from("a") }], fetchImpl })).rejects.toThrow(/429.*quota/);
+    await expect(
+      compareBlind({ apiKey: "k", prompt: "p", clips: [{ label: "A", audio: Buffer.from("a") }], fetchImpl, sleep: async () => {} }),
+    ).rejects.toThrow(/429.*quota/);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it("asks for no consonant or effect wording, and the agreed ending", () => {
+    const prompt = buildPrompt({ group: "troll-male", flavors: [{ label: "A", npcs: [], measures: null }] });
+    expect(prompt).toContain("Never describe consonants or sibilants");
+    expect(prompt).toContain(PROMPT_ENDING);
+    expect(prompt).not.toContain("Perfect audio quality");
+  });
+});
+
+describe("reviseVoice", () => {
+  const input = {
+    slot: "troll-male-dark",
+    version: 1,
+    status: "needs-work",
+    note: "No accent at all",
+    siblings: { "troll-male-shaman": "Trolls need a Jamaican accent" },
+    archetype: "Shady witch doctor",
+    prompt: "A troll. Perfect audio quality, dry close-mic studio recording, no reverb or effects.",
+    previewText: "Hey mon.",
+  };
+
+  it("tells Gemini the note, the siblings' notes and the old prompt, with both recordings", async () => {
+    const text = buildRevisePrompt(input);
+    for (const part of ["No accent at all", "Trolls need a Jamaican accent", "troll-male-shaman", "A troll.", "Hey mon.", PROMPT_ENDING]) {
+      expect(text).toContain(part);
+    }
+    const fetchImpl = vi.fn(async (_url: string, _init: RequestInit) =>
+      Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify([{ heard: "No accent.", prompt: "A troll, thick Jamaican accent.", preview_text: "Hey mon, welcome." }]) }] } }] }),
+    );
+    const revision = await reviseVoice({ ...input, apiKey: "k", reference: Buffer.from("ref"), sample: Buffer.from("smp"), fetchImpl: fetchImpl as never });
+    // An array answer is read as its first element, and the prompt gets the agreed ending.
+    expect(revision).toEqual({ heard: "No accent.", prompt: `A troll, thick Jamaican accent. ${PROMPT_ENDING}`, preview_text: "Hey mon, welcome." });
+    const parts = JSON.parse(String(fetchImpl.mock.calls[0][1].body)).contents[0].parts;
+    expect(parts.slice(1).map((p: { inline_data: { data: string } }) => Buffer.from(p.inline_data.data, "base64").toString())).toEqual(["ref", "smp"]);
   });
 });

@@ -13,7 +13,7 @@ import { isVoiceSlot } from "@/lib/voices/slots";
 import { DesignError } from "./access";
 import { keepDesignAudio } from "./audio";
 import { importDesign } from "./store";
-import type { ClipMark } from "./types";
+import type { ClipMark, Measures } from "./types";
 
 export type ImportFile = { name: string; data: Buffer };
 
@@ -28,6 +28,12 @@ type Meta = {
   chosen_preview?: number;
   lines?: { file: string; npc?: string; text: string; lineId?: string }[];
   model_id?: string;
+  /** The voice was deleted from the account to free a slot. */
+  voice_deleted?: boolean;
+  /** Per preview, as scripts/voice_measure.py measures them. */
+  preview_metrics?: { ess?: unknown; decay?: unknown; level?: unknown }[];
+  note?: string;
+  analysis?: Record<string, unknown>;
 };
 
 type RoundOneReview = { at?: string; status?: string; note?: string; best_preview?: number | null; clips?: Record<string, string> };
@@ -49,6 +55,14 @@ function clipKey(key: string, lines: { file: string }[]): string | null {
   if (preview) return `preview:${preview[1]}`;
   const position = lines.findIndex((line) => line.file === key);
   return position >= 0 ? `sample:${position}` : null;
+}
+
+const num = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : undefined);
+
+function metricsOf(raw: { ess?: unknown; decay?: unknown; level?: unknown } | undefined): Measures | null {
+  if (!raw) return null;
+  const metrics = { ess: num(raw.ess), decay: num(raw.decay), level: num(raw.level) };
+  return Object.values(metrics).some((v) => v !== undefined) ? metrics : null;
 }
 
 /** One folder, checked. Throws a DesignError naming what is missing. */
@@ -123,7 +137,7 @@ export async function importVersion(version: ImportedVersion, input: { lang: Lan
     version: meta.version,
     prompt: meta.prompt,
     previewText: meta.preview_text,
-    previews: shas.map((sha256, i) => ({ generatedVoiceId: meta.preview_ids?.[i] ?? "", sha256, measures: null })),
+    previews: shas.map((sha256, i) => ({ generatedVoiceId: meta.preview_ids?.[i] ?? "", sha256, measures: metricsOf(meta.preview_metrics?.[i]) })),
     analysisId: null,
     userId: input.userId,
     chosenPreview: Number.isInteger(chosen) && chosen! >= 0 && chosen! < shas.length ? chosen! : null,
@@ -131,6 +145,9 @@ export async function importVersion(version: ImportedVersion, input: { lang: Lan
     voiceName: meta.voice_id ? (meta.name ?? `design-${name}`) : null,
     sampleModel: meta.model_id ?? null,
     createdAt: version.reviews[0]?.at ?? null,
+    note: typeof meta.note === "string" && meta.note.trim() ? meta.note.trim() : null,
+    analysis: meta.analysis && typeof meta.analysis === "object" ? meta.analysis : null,
+    voiceDeleted: meta.voice_deleted === true,
     samples,
     reviews: version.reviews.map((review) => ({ ...review, userId: input.userId })),
   });

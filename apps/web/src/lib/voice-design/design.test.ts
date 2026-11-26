@@ -23,6 +23,8 @@ const DESIGN: Design = {
   voiceDeletedAt: null,
   sampleModel: null,
   analysisId: null,
+  note: null,
+  analysis: null,
   samples: [],
   reviews: [],
   createdBy: "u1",

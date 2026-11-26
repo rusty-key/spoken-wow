@@ -104,7 +104,7 @@ export default function AnalysePanel({ group, analysis, slots }: { group: string
                     <span className="vd-flavor-name">{slot}</span>
                     {voice.archetype ? <span className="vd-muted">{voice.archetype}</span> : null}
                   </header>
-                  {measures ? (
+                  {measures?.f0Hz !== undefined && measures.hnrDb !== undefined && measures.alphaRatioDb !== undefined ? (
                     <p className="vd-measures">
                       {fill(t.measures, { f0: Math.round(measures.f0Hz), hnr: one(measures.hnrDb), alpha: one(measures.alphaRatioDb) })}
                     </p>
