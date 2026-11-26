@@ -29,6 +29,8 @@ type DesignRow = {
   voiceDeletedAt: Date | null;
   sampleModel: string | null;
   analysisId: string | null;
+  note: string | null;
+  analysis: Record<string, unknown> | null;
   createdBy: string | null;
   createdByName: string | null;
   createdAt: Date;
@@ -37,7 +39,7 @@ type DesignRow = {
 const DESIGN_SELECT = `
   select d."id", d."lang", d."slot", d."version", d."prompt", d."previewText", d."previews",
          d."chosenPreview", d."voiceId", d."voiceName", d."holderId", h."name" as "holderName",
-         d."voiceDeletedAt", d."sampleModel", d."analysisId", d."createdBy",
+         d."voiceDeletedAt", d."sampleModel", d."analysisId", d."note", d."analysis", d."createdBy",
          c."name" as "createdByName", d."createdAt"
     from "voice_design" d
     left join "user" h on h."id" = d."holderId"
@@ -98,6 +100,8 @@ export type NewDesign = {
   previewText: string;
   previews: DesignPreview[];
   analysisId: string | null;
+  /** Gemini's description, for a version drafted by a revision. */
+  analysis?: Record<string, unknown> | null;
   userId: string;
 };
 
@@ -133,11 +137,20 @@ export async function createDesign(input: NewDesign): Promise<Design> {
   const id = await asTeamOf(input.lang, async (client) => {
     await client.query(`select pg_advisory_xact_lock(hashtext('voice_design:' || $1 || ':' || $2))`, [input.lang, input.slot]);
     const { rows } = await client.query<{ id: string }>(
-      `insert into "voice_design" ("lang", "slot", "version", "prompt", "previewText", "previews", "analysisId", "createdBy")
-       select $1, $2, coalesce(max("version"), 0) + 1, $3, $4, $5, $6, $7
+      `insert into "voice_design" ("lang", "slot", "version", "prompt", "previewText", "previews", "analysisId", "createdBy", "analysis")
+       select $1, $2, coalesce(max("version"), 0) + 1, $3, $4, $5, $6, $7, $8
          from "voice_design" where "lang" = $1 and "slot" = $2
        returning "id"`,
-      [input.lang, input.slot, input.prompt, input.previewText, JSON.stringify(input.previews), input.analysisId, input.userId],
+      [
+        input.lang,
+        input.slot,
+        input.prompt,
+        input.previewText,
+        JSON.stringify(input.previews),
+        input.analysisId,
+        input.userId,
+        input.analysis ? JSON.stringify(input.analysis) : null,
+      ],
     );
     await insertPreviews(client, rows[0].id, input.previews);
     return rows[0].id;
@@ -157,6 +170,8 @@ export async function importDesign(
     voiceName: string | null;
     sampleModel: string | null;
     createdAt: string | null;
+    note: string | null;
+    voiceDeleted: boolean;
     samples: DesignSample[];
     reviews: NewReview[];
   },
@@ -165,8 +180,9 @@ export async function importDesign(
     const { rows } = await client.query<{ id: string }>(
       `insert into "voice_design"
          ("lang", "slot", "version", "prompt", "previewText", "previews", "chosenPreview", "voiceId", "voiceName",
-          "holderId", "sampleModel", "createdBy", "createdAt")
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $10, coalesce($12::timestamptz, now()))
+          "holderId", "sampleModel", "createdBy", "createdAt", "note", "analysis", "voiceDeletedAt")
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $10, coalesce($12::timestamptz, now()), $13, $14,
+               case when $15 then coalesce($12::timestamptz, now()) end)
        on conflict ("teamId", "lang", "slot", "version") do nothing
        returning "id"`,
       [
@@ -182,6 +198,9 @@ export async function importDesign(
         input.userId,
         input.sampleModel,
         input.createdAt,
+        input.note,
+        input.analysis ? JSON.stringify(input.analysis) : null,
+        input.voiceDeleted,
       ],
     );
     if (!rows[0]) return null;

@@ -52,6 +52,11 @@ describe("measureFiles", () => {
     expect(await measureFiles(["/a.mp3"], { python: fakePython("echo nonsense"), script: "/x.py" })).toBeNull();
   });
 
+  it("keeps what part of a file was measured", async () => {
+    const python = fakePython(`echo '{"/a.mp3": {"ess": 0.05, "decay": -20.1, "level": -13.2}}'`);
+    expect((await measureFiles(["/a.mp3"], { python, script: "/x.py" }))?.get("/a.mp3")).toEqual({ ess: 0.05, decay: -20.1, level: -13.2 });
+  });
+
   it("leaves out a file the helper could not read", async () => {
     const python = fakePython(`echo '{"/a.mp3": {"error": "bad"}}'`);
     expect((await measureFiles(["/a.mp3"], { python, script: "/x.py" }))?.has("/a.mp3")).toBe(false);

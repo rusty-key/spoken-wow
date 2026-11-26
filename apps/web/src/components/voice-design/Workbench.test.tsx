@@ -33,6 +33,8 @@ function design(slot: string, version: number, review: Design["reviews"][number]
     voiceDeletedAt: null,
     sampleModel: null,
     analysisId: null,
+    note: null,
+    analysis: null,
     samples: [],
     reviews: review ? [{ id: version, status: review, note, bestPreview: null, clips: {}, createdBy: null, createdByName: "Ann", createdAt: "2026-11-26T00:00:00Z" }] : [],
     createdBy: null,

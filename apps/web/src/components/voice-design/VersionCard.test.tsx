@@ -34,6 +34,8 @@ const DESIGN: Design = {
   voiceDeletedAt: null,
   sampleModel: "eleven_v4",
   analysisId: null,
+  note: null,
+  analysis: null,
   samples: [sample(0, "a"), sample(1, "b"), sample(2, "c")],
   reviews: [{ id: 1, status: "needs-work", note: "", bestPreview: 0, clips: { "sample:2": "off", "preview:0": "good" }, createdBy: "u1", createdByName: "Ann", createdAt: "2026-11-26T00:00:00Z" }],
   createdBy: "u1",

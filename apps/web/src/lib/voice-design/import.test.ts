@@ -132,6 +132,33 @@ describe("importVersion", () => {
     expect((await listDesigns(lang)).find((d) => d.version === 4)?.chosenPreview).toBeNull();
   });
 
+  it("keeps the folder's metrics, note and analysis, and a deleted voice as deleted", async () => {
+    const meta = {
+      ...META,
+      version: 5,
+      voice_deleted: true,
+      note: "Saved preview 1: softest s with little room.",
+      analysis: { archetype: "Shady dealer", revision_heard: "v1 sounded noble." },
+      preview_metrics: [
+        { ess: 0.5, decay: -21.7, level: -12.1 },
+        { ess: 0.02, decay: -20, level: -14.7 },
+        { ess: 0.6, decay: -23.3, level: -14 },
+      ],
+    };
+    const files = [
+      ...folder(meta),
+      // Live takes come from the site; the folder's copies are ignored, not refused.
+      { name: "voices/orc-male-shady-v2/live-line1.mp3", data: Buffer.from("live") },
+    ];
+    await importVersion(parseVersion(files, REVIEWS), { lang, userId: user.id });
+    const v5 = (await listDesigns(lang)).find((d) => d.version === 5)!;
+    expect(v5.voiceDeletedAt).not.toBeNull();
+    expect(v5.note).toBe("Saved preview 1: softest s with little room.");
+    expect(v5.analysis).toEqual({ archetype: "Shady dealer", revision_heard: "v1 sounded noble." });
+    expect(v5.previews.map((p) => p.measures)).toEqual(meta.preview_metrics);
+    expect(v5.samples.map((s) => s.sha256)).not.toContain(expect.stringMatching(/live/));
+  });
+
   it("refuses a slot not on the roster", async () => {
     await expect(importVersion(parseVersion(folder({ ...META, slot: "elf-male-x" }), []), { lang, userId: user.id })).rejects.toThrow(/elf-male-x/);
   });

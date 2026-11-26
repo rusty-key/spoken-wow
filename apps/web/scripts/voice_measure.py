@@ -1,11 +1,16 @@
-"""Measure voices for /voices/design: openSMILE eGeMAPS functionals over each whole file.
+"""Measure voices for /voices/design.
 
 Usage: python voice_measure.py <audio file>...
 Prints one JSON object, file path to its measures or to {"error": "..."}.
 
-Run by the site (lib/voice-design/measure.ts) with the interpreter named by VOICE_ANALYSIS_PYTHON,
-which needs `opensmile` installed; mp3 needs ffmpeg on PATH. Only the differences between voices
-mean much: game audio is pitch-shifted and processed, so absolute values mislead.
+Two independent parts, each used when its library is installed:
+- openSMILE eGeMAPS functionals over the whole file (pitch, roughness, brightness). Only the
+  differences between voices mean much: game audio is pitch-shifted and processed.
+- librosa: the s-level, room tail and speech level a preview is chosen by (see recommendedPreview
+  in lib/voice-design/limits.ts), measured the way round two measured them.
+
+Run by the site (lib/voice-design/measure.ts) with the interpreter named by VOICE_ANALYSIS_PYTHON;
+mp3 needs ffmpeg on PATH.
 """
 import json
 import sys
@@ -24,26 +29,62 @@ FEATURES = {
 }
 
 
-def measures(row):
+def smile_measures(smile, path):
+    row = smile.process_file(path).iloc[0]
     out = {key: float(row[column]) for key, column in FEATURES.items()}
     # Semitones above 27.5 Hz, as eGeMAPS reports pitch, read back as hertz.
     out["f0Hz"] = 27.5 * 2 ** (out.pop("f0St") / 12)
     return out
 
 
-def main(paths):
-    import opensmile
+def sibilance(path):
+    """ess: 95th percentile of the 5-10 kHz energy share on the loudest 40% of frames, where the
+    s sounds are. decay: mean dB 3-12 hops after a phrase ends, relative to its end: the room.
+    level: 90th percentile RMS in dBFS: how loud the speech is."""
+    import librosa
+    import numpy as np
 
-    smile = opensmile.Smile(
-        feature_set=opensmile.FeatureSet.eGeMAPSv02,
-        feature_level=opensmile.FeatureLevel.Functionals,
-    )
+    y, sr = librosa.load(path, sr=44100, mono=True)
+    power = np.abs(librosa.stft(y, n_fft=2048, hop_length=512)) ** 2
+    freqs = librosa.fft_frequencies(sr=sr, n_fft=2048)
+    total = power.sum(0) + 1e-12
+    high = power[(freqs >= 5000) & (freqs <= 10000)].sum(0) / total
+    loud = total > np.percentile(total, 60)
+    ess = float(np.percentile(high[loud], 95))
+
+    rms = librosa.feature.rms(y=y, hop_length=512)[0]
+    db = 20 * np.log10(rms + 1e-9)
+    ends = np.where((db[:-12] > db.max() - 25) & (db[12:] < db.max() - 45))[0]
+    decay = float(np.mean([db[e + 3 : e + 12].mean() - db[e] for e in ends])) if len(ends) else None
+
+    level = float(np.percentile(20 * np.log10(librosa.feature.rms(y=y)[0] + 1e-9), 90))
+    out = {"ess": round(ess, 3), "level": round(level, 1)}
+    if decay is not None:
+        out["decay"] = round(decay, 1)
+    return out
+
+
+def main(paths):
+    try:
+        import opensmile
+
+        smile = opensmile.Smile(
+            feature_set=opensmile.FeatureSet.eGeMAPSv02,
+            feature_level=opensmile.FeatureLevel.Functionals,
+        )
+    except ImportError:
+        smile = None
+
     result = {}
     for path in paths:
-        try:
-            result[path] = measures(smile.process_file(path).iloc[0])
-        except Exception as error:  # one unreadable clip must not cost the others theirs
-            result[path] = {"error": str(error)[:300]}
+        measured, errors = {}, []
+        # Each part on its own: one unreadable clip or missing library must not cost the rest.
+        for part in ([lambda p: smile_measures(smile, p)] if smile else []) + [sibilance]:
+            try:
+                measured.update(part(path))
+            except Exception as error:
+                errors.append(str(error)[:300])
+        result[path] = measured if measured else {"error": "; ".join(errors) or "nothing measured"}
     json.dump(result, sys.stdout)
 
 

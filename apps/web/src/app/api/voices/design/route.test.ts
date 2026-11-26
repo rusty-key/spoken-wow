@@ -40,7 +40,7 @@ describe("POST /api/voices/design", () => {
   it("designs on the caller's ElevenLabs key", async () => {
     const response = await POST(new Request(url, { method: "POST", body: JSON.stringify(body) }));
     expect(response.status).toBe(200);
-    expect(designVersion).toHaveBeenCalledWith({ lang: "enUS", ...body, userId: "u1", apiKey: "el-key" });
+    expect(designVersion).toHaveBeenCalledWith({ lang: "enUS", ...body, revisionHeard: null, userId: "u1", apiKey: "el-key" });
   });
 
   it("refuses without configure, and without a key", async () => {
