@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Loader2, Search, Sparkles } from "lucide-react";
+import { ChevronRight, Loader2, Search, Wand2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import AudioPlayer from "@/components/AudioPlayer";
@@ -9,12 +9,13 @@ import Link from "@/components/LocaleLink";
 import { useUiText } from "@/components/UiTextProvider";
 import { fill } from "@/lib/site-text/format";
 import { DONENESS, donenessOf, isRevisable, type Doneness } from "@/lib/voice-design/groups";
+import { PREVIEWS_PER_DESIGN } from "@/lib/voice-design/limits";
 import type { Analysis, Design } from "@/lib/voice-design/types";
 
 import AnalysePanel from "./AnalysePanel";
 import ImportForm from "./ImportForm";
 import SlotRow from "./SlotRow";
-import { requestRevision, WorkbenchContext, type Draft, type Playing, type Workbench as WorkbenchState } from "./context";
+import { designFrom, requestRevision, WorkbenchContext, type Draft, type Playing, type Workbench as WorkbenchState } from "./context";
 
 
 export type SlotView = {
@@ -71,8 +72,9 @@ export default function Workbench({
   const [query, setQuery] = useState("");
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [playing, setPlaying] = useState<Playing | null>(null);
-  const [revisingAll, setRevisingAll] = useState<{ done: number; total: number } | null>(null);
-  const [reviseLog, setReviseLog] = useState<string[]>([]);
+  const [generatingAll, setGeneratingAll] = useState<{ done: number; total: number } | null>(null);
+  const [confirmAll, setConfirmAll] = useState(false);
+  const [generateLog, setGenerateLog] = useState<string[]>([]);
   const audio = useRef<HTMLAudioElement | null>(null);
 
   // Started as soon as the bar has the new source: a play button that only loads would need a second press.
@@ -131,25 +133,29 @@ export default function Workbench({
       setGroups((current) => current.map((group) => (group.group === analysis.group ? { ...group, analysis } : group))),
   };
 
-  const toRevise =
-    filter !== "needs-work"
-      ? []
-      : shown.flatMap((group) => group.slots).filter((slot) => slot.designs[0] && isRevisable(slot.designs[0]) && !drafts[slot.name]);
-  async function reviseAll() {
-    setReviseLog([]);
-    // One at a time: Gemini answers a burst of revisions with 429s.
-    for (const [index, slot] of toRevise.entries()) {
-      setRevisingAll({ done: index, total: toRevise.length });
+  const toGenerate =
+    filter !== "needs-work" ? [] : shown.flatMap((group) => group.slots).filter((slot) => slot.designs[0] && isRevisable(slot.designs[0]));
+  // Gemini may change the preview text's length; the old one is the estimate Voice Design bills by.
+  const allCredits = toGenerate.reduce((sum, slot) => sum + slot.designs[0].previewText.length * PREVIEWS_PER_DESIGN, 0);
+  async function generateAll() {
+    setConfirmAll(false);
+    setGenerateLog([]);
+    // One slot at a time: Gemini answers a burst of revisions with 429s.
+    for (const [index, slot] of toGenerate.entries()) {
+      setGeneratingAll({ done: index, total: toGenerate.length });
       const design = slot.designs[0];
+      let draft: Draft | null = null;
       try {
-        // Straight into the drafts: the page stays where it is rather than jumping to each slot.
-        const draft = await requestRevision(lang, design, fill(t.geminiRevision, { v: `v${design.version}` }));
-        setDrafts((current) => ({ ...current, [slot.name]: draft }));
+        draft = await requestRevision(lang, design, fill(t.geminiRevision, { v: `v${design.version}` }));
+        context.updateDesign(await designFrom(lang, slot.name, draft));
+        setDrafts(({ [slot.name]: _, ...rest }) => rest);
       } catch (err) {
-        setReviseLog((lines) => [...lines, `${slot.name}: ${err instanceof Error ? err.message : String(err)}`]);
+        // A paid-for draft whose design failed waits in the slot's form.
+        if (draft) setDrafts((current) => ({ ...current, [slot.name]: draft! }));
+        setGenerateLog((lines) => [...lines, `${slot.name}: ${err instanceof Error ? err.message : String(err)}`]);
       }
     }
-    setRevisingAll(null);
+    setGeneratingAll(null);
   }
 
   const label: Record<Filter, string> = {
@@ -185,20 +191,36 @@ export default function Workbench({
 
       {viewer.designs && filter === "needs-work" ? (
         <div className="vd-revise-all">
-          <button
-            type="button"
-            className="bs-btn vd-btn-go"
-            title={t.reviseAllCost}
-            disabled={revisingAll !== null || toRevise.length === 0 || !keys.gemini}
-            onClick={() => void reviseAll()}
-          >
-            {revisingAll ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Sparkles size={14} aria-hidden="true" />}
-            {revisingAll ? fill(t.reviseAllProgress, { n: revisingAll.done + 1, total: revisingAll.total }) : fill(t.reviseAll, { n: toRevise.length })}
-          </button>
-          <span className="vd-cost">{toRevise.length > 0 ? t.reviseAllCost : t.reviseAllNone}</span>
-          {reviseLog.length > 0 ? (
+          {confirmAll ? (
+            <span className="vd-confirm">
+              {fill(t.generateAllConfirm, { n: toGenerate.length, credits: allCredits })}
+              <button type="button" className="bs-btn vd-btn-go" onClick={() => void generateAll()}>
+                <Wand2 size={14} aria-hidden="true" />
+                {t.generateAllGo}
+              </button>
+              <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmAll(false)}>
+                {t.cancel}
+              </button>
+            </span>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="bs-btn vd-btn-go"
+                disabled={generatingAll !== null || toGenerate.length === 0 || !keys.gemini || !keys.elevenlabs}
+                onClick={() => setConfirmAll(true)}
+              >
+                {generatingAll ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Wand2 size={14} aria-hidden="true" />}
+                {generatingAll
+                  ? fill(t.generateAllProgress, { n: generatingAll.done + 1, total: generatingAll.total })
+                  : fill(t.generateAll, { n: toGenerate.length })}
+              </button>
+              <span className="vd-cost">{toGenerate.length > 0 ? fill(t.generateAllCost, { credits: allCredits }) : t.generateAllNone}</span>
+            </>
+          )}
+          {generateLog.length > 0 ? (
             <ul className="vd-import-log" role="alert">
-              {reviseLog.map((line, index) => (
+              {generateLog.map((line, index) => (
                 <li key={index}>{line}</li>
               ))}
             </ul>
