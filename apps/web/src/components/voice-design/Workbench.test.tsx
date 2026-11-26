@@ -146,3 +146,36 @@ test("Generate opens the new version with an empty note and closes a draft left 
   expect(note(3).value).toBe("");
   expect(screen.queryByDisplayValue("Gemini's new prompt")).toBeNull();
 });
+
+test("Generate all asks first with the cost, then makes each needs-work slot's next version in turn", async () => {
+  const line = { position: 0, sha256: "a".repeat(64), lineId: "q:1", text: "t", npcName: null, characters: 1, credits: 1 };
+  const shady = { ...design("orc-male-shady", 2, "needs-work", "too noble"), samples: [line] };
+  const grunt = { ...design("orc-male-grunt", 1, "needs-work", "too soft"), samples: [line] };
+  const revision = { heard: "h", prompt: "p", preview_text: "y".repeat(120), archetype: "a" };
+  const calls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init: RequestInit) => {
+      if (url.includes("/revise")) {
+        calls.push(`revise ${url.split("/").at(-2)}`);
+        return Response.json({ revision });
+      }
+      const slotName = JSON.parse(String(init.body)).slot as string;
+      calls.push(`design ${slotName}`);
+      return Response.json({ design: { ...design(slotName, slotName === "orc-male-shady" ? 3 : 2, null), id: `${slotName}-new` } });
+    }),
+  );
+  render(
+    <LangProvider lang="enUS">
+      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [shady]), slot("orc-male-grunt", [grunt])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
+    </LangProvider>,
+  );
+  await userEvent.click(within(screen.getByRole("group", { name: "Show slots" })).getByRole("button", { name: /^Needs work/ }));
+  await userEvent.click(screen.getByRole("button", { name: "Generate all from reviews · 2" }));
+  expect(calls).toEqual([]);
+  expect(screen.getByText("Make 2 new versions for about 720 ElevenLabs credits?")).toBeTruthy();
+
+  await userEvent.click(screen.getByRole("button", { name: "Generate" }));
+  await vi.waitFor(() => expect(calls).toHaveLength(4));
+  expect(calls).toEqual(["revise orc-male-shady-2", "design orc-male-shady", "revise orc-male-grunt-1", "design orc-male-grunt"]);
+});
