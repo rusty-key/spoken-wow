@@ -8,7 +8,8 @@ import { useUiText } from "@/components/UiTextProvider";
 import { withLang } from "@/lib/lang";
 import { fill } from "@/lib/site-text/format";
 import { cn } from "@/lib/utils";
-import type { ReviewStatus } from "@/lib/voice-design/groups";
+import { isRevisable, type ReviewStatus } from "@/lib/voice-design/groups";
+import type { Revision } from "@/lib/voice-design/gemini";
 import { designName, recommendedPreview } from "@/lib/voice-design/limits";
 import type { ClipMark, Design, Measures } from "@/lib/voice-design/types";
 
@@ -39,6 +40,16 @@ function MeasureLine({ measures }: { measures: Measures | null }) {
         </span>
       ) : null}
     </span>
+  );
+}
+
+function Field({ label, value }: { label: string; value: unknown }) {
+  if (typeof value !== "string" || !value) return null;
+  return (
+    <>
+      <p className="bs-label vd-gap">{label}</p>
+      <p className="bs-text bs-text-en">{value}</p>
+    </>
   );
 }
 
@@ -102,12 +113,12 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
   const sampleChars = design.samples.length > 0 ? design.samples.reduce((sum, s) => sum + s.text.length, 0) : slot.sampleChars;
   const tag = `v${design.version}`;
 
-  async function act(what: string, url: string, init: { method?: string; body?: unknown } = {}) {
+  /** One action at a time per card, its failure said on the card. */
+  async function run(what: string, work: () => Promise<void>): Promise<boolean> {
     setBusy(what);
     setError(null);
     try {
-      const { design: next } = await send<{ design: Design }>(withLang(lang, url), init);
-      updateDesign(next);
+      await work();
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -116,6 +127,9 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
       setBusy(null);
     }
   }
+
+  const act = (what: string, url: string, init: { method?: string; body?: unknown } = {}) =>
+    run(what, async () => updateDesign((await send<{ design: Design }>(withLang(lang, url), init)).design));
 
   const mark = (key: string, value: ClipMark | undefined) =>
     setClips((current) => {
@@ -127,15 +141,10 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
 
   const isPlaying = (src: string) => playing?.src === src;
 
-  // Needs work, or not reviewed yet: a sibling's notes may already say what to change.
-  const revisable = last?.status !== "good" && design.samples.length > 0;
-  async function revise() {
-    setBusy("revise");
-    setError(null);
-    try {
-      const { revision } = await send<{ revision: { heard: string; prompt: string; preview_text: string } }>(
-        withLang(lang, `/api/voices/design/${design.id}/revise`),
-      );
+  const revisable = isRevisable(design);
+  const revise = () =>
+    run("revise", async () => {
+      const { revision } = await send<{ revision: Revision }>(withLang(lang, `/api/voices/design/${design.id}/revise`));
       setDraft(slot.name, {
         prompt: revision.prompt,
         previewText: revision.preview_text,
@@ -143,13 +152,7 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
         heard: revision.heard,
         from: fill(t.geminiRevision, { v: tag }),
       });
-      document.getElementById(`slot-${slot.name}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setBusy(null);
-    }
-  }
+    });
 
   return (
     <section className="vd-version" aria-label={fill(t.versionLabel, { slot: slot.name, v: design.version })}>
@@ -195,24 +198,9 @@ export default function VersionCard({ design, slot }: { design: Design; slot: Sl
           <p className="bs-text">{design.prompt}</p>
           <p className="bs-label vd-gap">{t.previewTextLabel}</p>
           <p className="bs-text bs-text-en">{design.previewText}</p>
-          {typeof design.analysis?.archetype === "string" ? (
-            <>
-              <p className="bs-label vd-gap">{t.archetypeLabel}</p>
-              <p className="bs-text bs-text-en">{design.analysis.archetype}</p>
-            </>
-          ) : null}
-          {typeof design.analysis?.revision_heard === "string" ? (
-            <>
-              <p className="bs-label vd-gap">{t.heardLabel}</p>
-              <p className="bs-text bs-text-en">{design.analysis.revision_heard}</p>
-            </>
-          ) : null}
-          {design.note ? (
-            <>
-              <p className="bs-label vd-gap">{t.designNoteLabel}</p>
-              <p className="bs-text bs-text-en">{design.note}</p>
-            </>
-          ) : null}
+          <Field label={t.archetypeLabel} value={design.analysis?.archetype} />
+          <Field label={t.heardLabel} value={design.analysis?.revision_heard} />
+          <Field label={t.designNoteLabel} value={design.note} />
         </div>
 
         <div className="vd-clips">

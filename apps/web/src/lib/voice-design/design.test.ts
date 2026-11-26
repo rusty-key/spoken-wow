@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 const { deleteDesignVoice, designVersion, saveDesignVoice } = await import("./design");
-const { designName } = await import("./limits");
+const { designName, PROMPT_ENDING } = await import("./limits");
 import type { DesignDeps } from "./design";
 import type { Design } from "./types";
 
@@ -72,6 +72,18 @@ describe("designVersion", () => {
         ],
       }),
     );
+  });
+
+  it("sends every prompt with the ending that keeps s sounds soft, replacing the old one", async () => {
+    const d = deps();
+    const old = "A gruff orc. Perfect audio quality, dry close-mic studio recording, no reverb or effects.";
+    await designVersion({ ...base, slot: "orc-male-shady", prompt: old, previewText: DESIGN.previewText, analysisId: null }, d);
+    expect(vi.mocked(d.design).mock.calls[0][0].prompt).toBe(`A gruff orc. ${PROMPT_ENDING}`);
+  });
+
+  it("still refuses an empty prompt", async () => {
+    const d = deps();
+    await expect(designVersion({ ...base, slot: "orc-male-shady", prompt: "  ", previewText: DESIGN.previewText, analysisId: null }, d)).rejects.toThrow(/prompt/);
   });
 
   it("refuses a preview text Voice Design would refuse, before spending", async () => {

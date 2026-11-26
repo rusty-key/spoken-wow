@@ -4,14 +4,16 @@
  * Reached over REST with the caller's own key, like ElevenLabs. `fetchImpl` is injectable so no
  * test spends anything.
  */
+import { setTimeout as wait } from "node:timers/promises";
+
 import { failure } from "@/lib/voices/elevenlabs";
 
-import { PROMPT_ENDING, withEnding } from "./limits";
+import { EFFECT_WORDS, PROMPT_ENDING, SIBILANT_WORDS, withEnding } from "./limits";
 import type { GeminiResult } from "./types";
 
 export const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
-export type GeminiOptions = { fetchImpl?: typeof globalThis.fetch; baseUrl?: string };
+export type GeminiOptions = { fetchImpl?: typeof globalThis.fetch; baseUrl?: string; sleep?: (ms: number) => Promise<void> };
 
 /** Listing the models is free, so a key is checked before it is stored. Gemini has no plans. */
 export async function verifyGeminiKey(key: string, options: GeminiOptions = {}): Promise<{ tier: null }> {
@@ -30,8 +32,9 @@ export const GEMINI_MODEL = "gemini-3.1-pro-preview";
  * Wording rules every drafted prompt follows. Round two measured that consonant wording and the
  * old studio sentence made every s harsh, and that effects come out badly from Voice Design.
  */
-const DRAFTING_RULES = `- Never describe consonants or sibilants (no "crisp", "sharp", "hissing", "sibilant", "snappy consonants"): it makes every s harsh.
-- Never describe post-processing (echo, reverb, pitch shift, filters). Describe a clean voice.
+const quoted = (words: readonly string[]) => words.map((word) => `"${word}"`).join(", ");
+const DRAFTING_RULES = `- Never describe consonants or sibilants (no ${quoted(SIBILANT_WORDS)}): it makes every s harsh.
+- Never describe post-processing (${EFFECT_WORDS.join(", ")}, filters). Describe a clean voice.
 - End the prompt exactly with: "${PROMPT_ENDING}"`;
 
 /** Three clips of game barks are a few megabytes; Gemini listening to them takes a while. */
@@ -125,10 +128,10 @@ const RETRIED = new Set([429, 500, 502, 503, 504]);
  * Gemini sometimes wraps the object in an array; the first element is the answer.
  */
 export async function generateJson(
-  input: { apiKey: string; parts: unknown[]; sleep?: (ms: number) => Promise<void> } & GeminiOptions,
+  input: { apiKey: string; parts: unknown[] } & GeminiOptions,
 ): Promise<unknown> {
   const fetchImpl = input.fetchImpl ?? globalThis.fetch;
-  const sleep = input.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const sleep = input.sleep ?? ((ms: number) => wait(ms));
   let response: Response | null = null;
   for (const delay of [...RETRY_DELAYS_MS, null]) {
     response = await fetchImpl(`${input.baseUrl ?? GEMINI_BASE_URL}/models/${GEMINI_MODEL}:generateContent`, {
@@ -161,7 +164,7 @@ const audioPart = (audio: Buffer) => ({ inline_data: { mime_type: "audio/mpeg", 
 
 /** Gemini's blind comparison of the clips. Throws on any answer not about exactly these labels. */
 export async function compareBlind(
-  input: { apiKey: string; prompt: string; clips: { label: string; audio: Buffer }[]; sleep?: (ms: number) => Promise<void> } & GeminiOptions,
+  input: { apiKey: string; prompt: string; clips: { label: string; audio: Buffer }[] } & GeminiOptions,
 ): Promise<GeminiResult> {
   const parts: unknown[] = [{ text: input.prompt }];
   for (const clip of input.clips) parts.push({ text: `Recording ${clip.label}:` }, audioPart(clip.audio));
@@ -217,7 +220,7 @@ Return JSON only: {"heard": "one sentence: how the v${input.version} voice diffe
 
 /** Revise a version: Gemini hears the game reference and the version's first sample line. */
 export async function reviseVoice(
-  input: ReviseInput & { apiKey: string; reference: Buffer; sample: Buffer; sleep?: (ms: number) => Promise<void> } & GeminiOptions,
+  input: ReviseInput & { apiKey: string; reference: Buffer; sample: Buffer } & GeminiOptions,
 ): Promise<Revision> {
   const answer = (await generateJson({
     ...input,

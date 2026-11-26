@@ -57,7 +57,7 @@ def sibilance(path):
     ends = np.where((db[:-12] > db.max() - 25) & (db[12:] < db.max() - 45))[0]
     decay = float(np.mean([db[e + 3 : e + 12].mean() - db[e] for e in ends])) if len(ends) else None
 
-    level = float(np.percentile(20 * np.log10(librosa.feature.rms(y=y)[0] + 1e-9), 90))
+    level = float(np.percentile(db, 90))
     out = {"ess": round(ess, 3), "level": round(level, 1)}
     if decay is not None:
         out["decay"] = round(decay, 1)

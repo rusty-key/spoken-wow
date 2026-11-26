@@ -38,6 +38,7 @@ test("takes every version folder under the pick and the reviews.json nearest its
     at("voice-lab/voices/orc-male-shady-v2/live-line1.mp3"),
     at("voice-lab/voices/troll-male-dark-v1/meta.json"),
     at("voice-lab/refs/orc-male-shady.mp3"),
+    at("voice-lab/out/backup/orc-male-shady-v2/preview1.mp3"),
   ]);
   expect([...picked.folders.keys()].sort()).toEqual(["orc-male-shady-v2", "troll-male-dark-v1"]);
   expect(picked.folders.get("orc-male-shady-v2")!.map((f) => f.name)).toEqual(["meta.json", "preview0.mp3", "line1.mp3"]);

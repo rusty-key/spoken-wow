@@ -19,14 +19,18 @@ export function designName(design: { slot: string; version: number }): string {
 export const PROMPT_ENDING =
   "Soft, gentle s sounds. Clean professional audiobook recording, close to a warm studio microphone, natural and full-bodied, no harshness, no room echo.";
 
-/** Wording that makes s sounds harsh, or asks Voice Design for effects it renders badly. */
-export const HARSH_WORDS = ["crisp", "sharp", "hissing", "sibilant", "snappy consonants", "reverb", "echo", "pitch shift"] as const;
+/** Wording that makes s sounds harsh. */
+export const SIBILANT_WORDS = ["crisp", "sharp", "hissing", "sibilant", "snappy consonants"] as const;
+/** Effects Voice Design renders badly: a clean voice is designed, not a processed one. */
+export const EFFECT_WORDS = ["reverb", "echo", "pitch shift"] as const;
+const HARSH_WORDS = [...SIBILANT_WORDS, ...EFFECT_WORDS];
 
 const OLD_ENDING = /\s*Perfect audio quality[^]*$/i;
 
 /** The prompt with the required ending, replacing the old studio sentence where a draft still has it. */
 export function withEnding(prompt: string): string {
   const body = prompt.trim().replace(OLD_ENDING, "");
+  if (!body.replace(PROMPT_ENDING, "").trim()) return body;
   return body.endsWith(PROMPT_ENDING) ? body : `${body.replace(PROMPT_ENDING, "").trim()} ${PROMPT_ENDING}`;
 }
 
@@ -43,8 +47,8 @@ export function promptProblems(prompt: string): { missingEnding: boolean; words:
 export type PreviewMetrics = { ess?: number; decay?: number; level?: number };
 
 /** A room tail above this sounds like a hall; a preview this far below the loudest is mumbled. */
-export const ROOM_LIMIT_DB = -17;
-export const LEVEL_SPREAD_DB = 6;
+const ROOM_LIMIT_DB = -17;
+const LEVEL_SPREAD_DB = 6;
 
 /**
  * The preview to save: the softest s among those without a long room tail and not much quieter

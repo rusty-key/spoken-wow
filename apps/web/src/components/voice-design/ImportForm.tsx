@@ -21,6 +21,7 @@ type Picked = { folders: Map<string, File[]>; reviews: Record<string, unknown> }
  */
 export async function pick(files: Iterable<File>): Promise<Picked> {
   const folders = new Map<string, File[]>();
+  const copies = new Map<string, { dir: string }>();
   let reviewsFile: { file: File; depth: number } | null = null;
   for (const file of files) {
     const path = file.webkitRelativePath || file.name;
@@ -30,7 +31,16 @@ export async function pick(files: Iterable<File>): Promise<Picked> {
       continue;
     }
     const match = VERSION_DIR.exec(path);
-    if (match) folders.set(match[2], [...(folders.get(match[2]) ?? []), file]);
+    if (!match) continue;
+    // An older copy of a version deeper in the folder is not uploaded beside the real one.
+    const dir = path.slice(0, path.length - match[3].length - 1);
+    const seen = copies.get(match[2]);
+    if (seen && seen.dir !== dir) {
+      if (seen.dir.split("/").length <= dir.split("/").length) continue;
+      folders.delete(match[2]);
+    }
+    copies.set(match[2], { dir });
+    folders.set(match[2], [...(folders.get(match[2]) ?? []), file]);
   }
   const reviews = reviewsFile ? (JSON.parse(await reviewsFile.file.text()) as Record<string, unknown>) : {};
   return { folders, reviews };

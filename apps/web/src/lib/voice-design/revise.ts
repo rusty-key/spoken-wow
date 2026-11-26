@@ -13,18 +13,37 @@ import { gameClip } from "./analyse";
 import { readDesignAudio } from "./audio";
 import { found } from "./design";
 import { reviseVoice, type ReviseInput, type Revision } from "./gemini";
-import { listDesigns, readDesign } from "./store";
-import type { Design } from "./types";
+import { isRevisable } from "./groups";
+import { listDesigns, readAnalysis, readDesign } from "./store";
+import type { Analysis, Design } from "./types";
 
 export type ReviseDeps = {
   read: (lang: Lang, id: string) => Promise<Design | null>;
   all: (lang: Lang) => Promise<Design[]>;
   reference: (slot: string, lang: Lang) => Promise<Buffer | null>;
   audio: (sha256: string, lang: Lang) => Promise<Buffer | null>;
+  analysis: (lang: Lang, id: string) => Promise<Analysis | null>;
   revise: (input: ReviseInput & { apiKey: string; reference: Buffer; sample: Buffer }) => Promise<Revision>;
 };
 
-const LIVE: ReviseDeps = { read: readDesign, all: listDesigns, reference: gameClip, audio: readDesignAudio, revise: reviseVoice };
+const LIVE: ReviseDeps = {
+  read: readDesign,
+  all: listDesigns,
+  reference: gameClip,
+  audio: readDesignAudio,
+  analysis: readAnalysis,
+  revise: reviseVoice,
+};
+
+/** Who the voice is for: the version's own description, else the blind comparison it came from. */
+async function archetypeOf(design: Design, lang: Lang, deps: ReviseDeps): Promise<string> {
+  const own = design.analysis?.archetype;
+  if (typeof own === "string") return own;
+  if (!design.analysisId) return "";
+  const analysis = await deps.analysis(lang, design.analysisId);
+  const label = Object.entries(analysis?.labels ?? {}).find(([, slot]) => slot === design.slot)?.[0];
+  return (label && analysis?.result.voices[label]?.archetype) || "";
+}
 
 const raceOf = (slot: string) => slot.split("-")[0];
 
@@ -46,19 +65,25 @@ export async function reviseDesign(
 ): Promise<Revision> {
   const design = await found(deps.read, input.lang, input.id);
   const last = design.reviews.at(-1);
-  if (last?.status === "good") throw new DesignError(`v${design.version} is marked good; nothing to revise`, 409);
+  if (!isRevisable(design)) {
+    throw new DesignError(
+      last?.status === "good"
+        ? `v${design.version} is marked good; nothing to revise`
+        : `voice v${design.version}'s sample lines first: Gemini listens to one`,
+      409,
+    );
+  }
   const first = design.samples[0];
-  if (!first) throw new DesignError(`voice v${design.version}'s sample lines first: Gemini listens to one`, 409);
 
-  const [reference, sample, designs] = await Promise.all([
+  const [reference, sample, designs, archetype] = await Promise.all([
     deps.reference(design.slot, input.lang),
     deps.audio(first.sha256, input.lang),
     deps.all(input.lang),
+    archetypeOf(design, input.lang, deps),
   ]);
   if (!reference) throw new DesignError(`${design.slot} has no game clip on the site to compare with`, 409);
   if (!sample) throw new DesignError(`v${design.version}'s first sample line is missing from the archive`, 409);
 
-  const archetype = design.analysis?.archetype;
   return deps.revise({
     apiKey: input.apiKey,
     slot: design.slot,
@@ -66,7 +91,7 @@ export async function reviseDesign(
     status: last?.status ?? "not reviewed yet",
     note: last?.note ?? "",
     siblings: siblingNotes(designs, design.slot),
-    archetype: typeof archetype === "string" ? archetype : "",
+    archetype,
     prompt: design.prompt,
     previewText: design.previewText,
     reference,

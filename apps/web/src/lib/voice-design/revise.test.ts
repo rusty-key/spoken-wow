@@ -44,6 +44,7 @@ function deps(target: Design, over: Partial<ReviseDeps> = {}): ReviseDeps {
     all: async () => ALL,
     reference: async () => Buffer.from("ref"),
     audio: async () => Buffer.from("smp"),
+    analysis: async () => ({ labels: { B: "troll-male-dark" }, result: { voices: { B: { archetype: "Shady rogue", voice_design_prompt: "", preview_text: "" } } } }) as never,
     revise: vi.fn(async () => ({ heard: "h", prompt: "p", preview_text: "t" })),
     ...over,
   };
@@ -74,6 +75,12 @@ describe("reviseDesign", () => {
         sample: Buffer.from("smp"),
       }),
     );
+  });
+
+  it("reads who the voice is for from the blind comparison when the version has no description", async () => {
+    const d = deps(design("troll-male-dark", 1, [], { analysis: null, analysisId: "a1" }));
+    await reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, d);
+    expect(d.revise).toHaveBeenCalledWith(expect.objectContaining({ archetype: "Shady rogue" }));
   });
 
   it("revises a version nobody has reviewed yet, from its siblings' notes", async () => {

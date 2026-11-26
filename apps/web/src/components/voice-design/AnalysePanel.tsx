@@ -128,7 +128,6 @@ export default function AnalysePanel({ group, analysis, slots }: { group: string
                           analysisId: analysis.id,
                           from: t.geminiDraft,
                         });
-                        document.getElementById(`slot-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
                       }}
                     >
                       {t.useDraft}

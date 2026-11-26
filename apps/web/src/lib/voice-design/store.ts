@@ -293,6 +293,12 @@ const ANALYSIS_SELECT = `
 
 const toAnalysis = (row: AnalysisRow): Analysis => ({ ...row, createdAt: row.createdAt.toISOString() });
 
+export async function readAnalysis(lang: Lang, id: string): Promise<Analysis | null> {
+  if (!isUuid(id)) return null;
+  const rows = await readAs<AnalysisRow>(lang, `${ANALYSIS_SELECT} where a."id" = $1 and a."lang" = $2`, [id, lang]);
+  return rows[0] ? toAnalysis(rows[0]) : null;
+}
+
 /** Whether the caller's team ran this analysis in `lang`: a foreign key alone would accept another team's. */
 export async function isOwnAnalysis(lang: Lang, id: string): Promise<boolean> {
   if (!isUuid(id)) return false;

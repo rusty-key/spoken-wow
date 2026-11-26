@@ -17,7 +17,7 @@ import { isVoiceSlot } from "@/lib/voices/slots";
 
 import { DesignError } from "./access";
 import { keepDesignAudio } from "./audio";
-import { DESIGN_LIMITS, designName } from "./limits";
+import { DESIGN_LIMITS, designName, withEnding } from "./limits";
 import { withDesignLock } from "./lock";
 import { measureAudio } from "./measure";
 import { createDesign, isOwnAnalysis, markVoiceDeleted, readDesign, saveVoice, type NewDesign } from "./store";
@@ -76,7 +76,8 @@ export async function designVersion(
   },
   deps: DesignDeps = LIVE,
 ): Promise<Design> {
-  const prompt = input.prompt.trim();
+  // The ending keeps s sounds soft, so no prompt reaches ElevenLabs without it, whoever wrote it.
+  const prompt = withEnding(input.prompt);
   const previewText = input.previewText.trim();
   const rejected = rejectDesign(prompt, previewText);
   if (rejected) throw new DesignError(rejected, 400);

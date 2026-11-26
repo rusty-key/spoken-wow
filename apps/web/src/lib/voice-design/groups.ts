@@ -20,6 +20,14 @@ export type Doneness = "none" | "pending" | ReviewStatus;
 
 export const DONENESS: readonly Doneness[] = ["none", "pending", "needs-work", "good"];
 
+/**
+ * Whether Revise from review applies: needs work, or not reviewed yet (a sibling's notes may
+ * already say what to change), and Gemini has a sample line to listen to.
+ */
+export function isRevisable(design: { reviews: readonly { status: ReviewStatus }[]; samples: readonly unknown[] }): boolean {
+  return design.reviews.at(-1)?.status !== "good" && design.samples.length > 0;
+}
+
 /** The newest verdict on the newest version; `reviews` oldest first. */
 export function donenessOf(latest: { reviews: readonly { status: ReviewStatus }[] } | null): Doneness {
   if (!latest) return "none";
