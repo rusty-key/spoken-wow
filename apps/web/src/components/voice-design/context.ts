@@ -30,7 +30,6 @@ export type Workbench = {
   live: Record<string, string>;
   /** Starts the clip, or pauses or resumes it when it is the one already in the player. */
   play: (clip: Playing) => void;
-  /** Whether this clip is in the player and sounding. */
   isPlaying: (src: string) => boolean;
   drafts: Record<string, Draft>;
   setDraft: (slot: string, draft: Draft | null) => void;

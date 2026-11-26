@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import BackstagePage from "@/components/backstage/BackstagePage";
 import Workbench, { type GroupView, type SlotView } from "@/components/voice-design/Workbench";
 import { apiKeyStatus } from "@/lib/api-key";
-import { audioRelPath } from "@/lib/audio";
 import type { CorpusLine } from "@/lib/corpus";
 import { observedRate } from "@/lib/generation/calibration";
 import { readPreference } from "@/lib/generation/preference";
@@ -12,13 +11,13 @@ import { viewerOf } from "@/lib/grants/store";
 import { langName, withLang } from "@/lib/lang";
 import { pageLang, readingLang } from "@/lib/lang-server";
 import { can, canViewVoices, isAdmin } from "@/lib/permissions";
-import { corpus } from "@/lib/quests/catalogue";
+import { corpus, lineIndex } from "@/lib/quests/catalogue";
 import { currentSession } from "@/lib/session";
 import { fill } from "@/lib/site-text/format";
 import { uiText } from "@/lib/ui-text";
 import { groupOf } from "@/lib/voice-design/groups";
 import { defaultSampleLines, previewTextCandidates, slotNpcs } from "@/lib/voice-design/lines";
-import { liveTakes } from "@/lib/voice-design/live";
+import { liveTakes, liveTakeUrl } from "@/lib/voice-design/live";
 import { latestAnalyses, listDesigns } from "@/lib/voice-design/store";
 import type { Design } from "@/lib/voice-design/types";
 import { cloneName } from "@/lib/voices/clone-name";
@@ -39,12 +38,13 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   if (!session || !canViewVoices(viewer, lang)) notFound();
   const userId = session.user.id;
 
-  const [all, designs, analyses, references, { lines }, eleven, gemini, rate] = await Promise.all([
+  const [all, designs, analyses, references, { lines }, index, eleven, gemini, rate] = await Promise.all([
     slots(lang),
     listDesigns(lang),
     latestAnalyses(lang),
     listReferences(lang),
     corpus(lang),
+    lineIndex(lang),
     apiKeyStatus(userId),
     apiKeyStatus(userId, "gemini"),
     readPreference(userId, lang).then(async (preference) => ({
@@ -75,18 +75,20 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   const bySlot = new Map<string, Design[]>();
   for (const design of designs) bySlot.set(design.slot, [...(bySlot.get(design.slot) ?? []), design]);
 
-  const live = await liveTakes(lang, designs.flatMap((design) => design.samples));
+  const live = liveTakes(lang, index, designs.flatMap((design) => design.samples));
 
   const views: SlotView[] = all
     .filter((slot) => slot.name.split("-").length >= 2)
     .map((slot) => {
       const own = byVoice.get(slot.name) ?? [];
       const designed = bySlot.get(slot.name) ?? [];
-      // A preview text picked from the slot's lines is heard against that line's live take.
+      const candidates = previewTextCandidates(own, slot.name);
+      // Candidates too: a version made from one after the page loaded still finds its line.
+      const texts = new Set([...candidates, ...designed.map((design) => design.previewText)]);
       const previewLines: SlotView["previewLines"] = {};
-      for (const design of designed) {
-        const line = own.find((candidate) => candidate.text.trim() === design.previewText);
-        if (line) previewLines[design.previewText] = { lineId: line.lineId, npcName: line.npcName, src: withLang(lang, `/api/quests/audio/${audioRelPath(line)}`) };
+      for (const line of own) {
+        const text = line.text.trim();
+        if (texts.has(text) && !previewLines[text]) previewLines[text] = { lineId: line.lineId, npcName: line.npcName, src: liveTakeUrl(lang, line) };
       }
       return {
         name: slot.name,
@@ -94,7 +96,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
         lineCount: slot.lineCount,
         npcs: slotNpcs(own, slot.name),
         reference: referenceUrl(slot.name),
-        candidates: previewTextCandidates(own, slot.name),
+        candidates,
         sampleChars: defaultSampleLines(own, slot.name).reduce((sum, line) => sum + line.text.length, 0),
         previewLines,
         designs: designed,

@@ -26,7 +26,7 @@ export type SlotView = {
   /** Where the slot's game clip plays, or null when it has none on the site. */
   reference: string | null;
   candidates: string[];
-  /** The slot's own corpus line a version's preview text was taken from, by that text, with its live take. */
+  /** The slot's lines that preview texts were taken from, by text. */
   previewLines: Record<string, { lineId: string; npcName: string; src: string }>;
   /** Characters of the default sample lines, for the cost before Sample is pressed. */
   sampleChars: number;
@@ -78,26 +78,13 @@ export default function Workbench({
   const [generatingAll, setGeneratingAll] = useState<{ done: number; total: number } | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
   const [generateLog, setGenerateLog] = useState<string[]>([]);
-  const [paused, setPaused] = useState(true);
+  const [sounding, setSounding] = useState(false);
   const audio = useRef<HTMLAudioElement | null>(null);
 
   // Started as soon as the bar has the new source: a play button that only loads would need a second press.
   useEffect(() => {
     if (playing) void audio.current?.play().catch(() => {});
   }, [playing]);
-
-  // The bar's own button and a clip's end pause it too; the clip's button must show that.
-  const mounted = playing !== null;
-  useEffect(() => {
-    const el = audio.current;
-    if (!el) return;
-    const sync = () => setPaused(el.paused);
-    for (const event of ["play", "pause", "ended", "error"]) el.addEventListener(event, sync);
-    sync();
-    return () => {
-      for (const event of ["play", "pause", "ended", "error"]) el.removeEventListener(event, sync);
-    };
-  }, [mounted]);
 
   const doneness = (slot: SlotView): Doneness => donenessOf(slot.designs[0] ?? null);
   const counts = useMemo(() => {
@@ -127,7 +114,7 @@ export default function Workbench({
       if (el && playing?.src === clip.src) void (el.paused ? el.play().catch(() => {}) : el.pause());
       else setPlaying(clip);
     },
-    isPlaying: (src: string) => playing?.src === src && !paused,
+    isPlaying: (src: string) => sounding && playing?.src === src,
     drafts,
     setDraft: (slot: string, draft: Draft | null) => {
       setDrafts((current) => {
@@ -305,7 +292,7 @@ export default function Workbench({
 
       {playing ? (
         <div className="fixed inset-x-0 bottom-0 z-40">
-          <AudioPlayer audioRef={audio} src={playing.src} title={playing.title} meta={playing.meta} subtitle={playing.subtitle} />
+          <AudioPlayer audioRef={audio} onPlayingChange={setSounding} src={playing.src} title={playing.title} meta={playing.meta} subtitle={playing.subtitle} />
         </div>
       ) : null}
     </WorkbenchContext.Provider>

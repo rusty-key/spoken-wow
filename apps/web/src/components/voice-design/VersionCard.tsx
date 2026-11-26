@@ -13,7 +13,7 @@ import { isRevisable } from "@/lib/voice-design/groups";
 import { designName, recommendedPreview } from "@/lib/voice-design/limits";
 import type { ClipMark, Design, Measures } from "@/lib/voice-design/types";
 
-import PlayButton from "./PlayButton";
+import PlayButton, { ReferenceClip } from "./PlayButton";
 import StatusBadge from "./StatusBadge";
 import { designFrom, requestRevision, send, useWorkbench } from "./context";
 import type { SlotView } from "./Workbench";
@@ -238,26 +238,14 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
         <div className="vd-clips">
           <p className="bs-label">{t.previewsLabel}</p>
           <ul className="vd-cliplist">
-            {slot.reference ? (
-              <li className="vd-clip">
-                <PlayButton
-                  clip={{ src: slot.reference, title: slot.name, meta: t.gameReference, subtitle: t.gameClipNote }}
-                  className="vd-play vd-play-live"
-                  title={t.gameClipNote}
-                >
-                  {t.gameReference}
-                </PlayButton>
-              </li>
-            ) : (
-              <li className="vd-clip vd-muted" title={t.gameClipNote}>
-                {t.noGameReference}
-              </li>
-            )}
+            <li className="vd-clip">
+              <ReferenceClip slot={slot} />
+            </li>
             {previewLine ? (
               <li className="vd-clip">
                 <PlayButton
                   clip={{ src: previewLine.src, title: previewLine.npcName, meta: `${t.liveTake} · ${previewLine.lineId}`, subtitle: design.previewText }}
-                  className="vd-play vd-play-live"
+                  live
                 >
                   {t.liveTake}
                 </PlayButton>
@@ -320,7 +308,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                     {now ? (
                       <PlayButton
                         clip={{ src: now, title: sample.npcName ?? slot.name, meta: `${t.liveTake} · ${sample.lineId}`, subtitle: sample.text }}
-                        className="vd-play vd-play-live"
+                        live
                       >
                         {t.liveTake}
                       </PlayButton>

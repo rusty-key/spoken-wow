@@ -8,7 +8,7 @@ import { fill } from "@/lib/site-text/format";
 import type { Doneness } from "@/lib/voice-design/groups";
 
 import DesignForm from "./DesignForm";
-import PlayButton from "./PlayButton";
+import { ReferenceClip } from "./PlayButton";
 import StatusBadge from "./StatusBadge";
 import VersionCard from "./VersionCard";
 import { useWorkbench } from "./context";
@@ -37,19 +37,7 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
         </div>
         <div className="vd-slot-actions">
           {/* A version's card plays the clip beside its previews. */}
-          {newest ? null : slot.reference ? (
-            <PlayButton
-              clip={{ src: slot.reference, title: slot.name, meta: t.gameReference, subtitle: t.gameClipNote }}
-              className="vd-play vd-play-live"
-              title={t.gameClipNote}
-            >
-              {t.gameReference}
-            </PlayButton>
-          ) : (
-            <span className="vd-muted" title={t.gameClipNote}>
-              {t.noGameReference}
-            </span>
-          )}
+          {newest ? null : <ReferenceClip slot={slot} />}
           {viewer.designs && !newest && !formOpen ? (
             <button type="button" className="bs-btn" onClick={() => setDesigning(true)}>
               <Plus size={14} aria-hidden="true" />

@@ -1,5 +1,6 @@
 /** Voice a version's sample lines, on the holder's own ElevenLabs key. */
 import { requireApiKey } from "@/lib/generation/authz";
+import { lineIndex } from "@/lib/quests/catalogue";
 import { failed, requireDesigner } from "@/lib/voice-design/access";
 import { liveTakes } from "@/lib/voice-design/live";
 import { sampleDesign } from "@/lib/voice-design/sample";
@@ -18,7 +19,7 @@ export async function POST(request: Request, context: Context) {
   try {
     const design = await sampleDesign({ lang, id, userId: session.user.id, apiKey: key });
     // The page knew live takes only for lines sampled before it loaded.
-    return Response.json({ design, live: await liveTakes(lang, design.samples) });
+    return Response.json({ design, live: liveTakes(lang, await lineIndex(lang), design.samples) });
   } catch (error) {
     return failed(error);
   }
