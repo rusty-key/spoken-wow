@@ -20,11 +20,12 @@ import { DesignError } from "./access";
 import { keepDesignAudio } from "./audio";
 import { withDesignLock } from "./lock";
 import { measureAudio } from "./measure";
-import { createDesign, markVoiceDeleted, readDesign, saveVoice, type NewDesign } from "./store";
+import { createDesign, isOwnAnalysis, markVoiceDeleted, readDesign, saveVoice, type NewDesign } from "./store";
 import type { Design, Measures } from "./types";
 
 export type DesignDeps = {
   isSlot: (slot: string, lang: Lang) => Promise<boolean>;
+  isOwnAnalysis: (lang: Lang, id: string) => Promise<boolean>;
   design: (input: { prompt: string; text: string }, apiKey: string) => Promise<DesignedPreview[]>;
   keepAudio: (data: Buffer, lang: Lang) => Promise<string>;
   measure: (clips: Buffer[]) => Promise<(Measures | null)[] | null>;
@@ -40,6 +41,7 @@ export type DesignDeps = {
 
 const LIVE: DesignDeps = {
   isSlot: isVoiceSlot,
+  isOwnAnalysis,
   design: (input, apiKey) => designPreviews(input, { apiKey }),
   keepAudio: keepDesignAudio,
   measure: (clips) => measureAudio(clips),
@@ -74,6 +76,9 @@ export async function designVersion(
   const rejected = rejectDesign(prompt, previewText);
   if (rejected) throw new DesignError(rejected, 400);
   if (!(await deps.isSlot(input.slot, input.lang))) throw new DesignError(`no voice slot ${input.slot}`, 404);
+  if (input.analysisId !== null && !(await deps.isOwnAnalysis(input.lang, input.analysisId))) {
+    throw new DesignError("no such analysis", 400);
+  }
 
   const made = await deps.design({ prompt, text: previewText }, input.apiKey);
   const [shas, measured] = await Promise.all([

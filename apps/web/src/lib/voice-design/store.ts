@@ -83,7 +83,12 @@ export async function listDesigns(lang: Lang): Promise<Design[]> {
   return assemble(lang, rows);
 }
 
+/** Ids come from URLs and bodies; Postgres answers anything else with an error, not "no such row". */
+export const isUuid = (id: unknown): id is string =>
+  typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
 export async function readDesign(lang: Lang, id: string): Promise<Design | null> {
+  if (!isUuid(id)) return null;
   const rows = await readAs<DesignRow>(lang, `${DESIGN_SELECT} where d."lang" = $1 and d."id" = $2`, [lang, id]);
   return (await assemble(lang, rows))[0] ?? null;
 }
@@ -276,6 +281,13 @@ const ANALYSIS_SELECT = `
     from "voice_design_analysis" a left join "user" u on u."id" = a."createdBy"`;
 
 const toAnalysis = (row: AnalysisRow): Analysis => ({ ...row, createdAt: row.createdAt.toISOString() });
+
+/** Whether the caller's team ran this analysis in `lang`: a foreign key alone would accept another team's. */
+export async function isOwnAnalysis(lang: Lang, id: string): Promise<boolean> {
+  if (!isUuid(id)) return false;
+  const rows = await readAs(lang, `select 1 from "voice_design_analysis" where "id" = $1 and "lang" = $2`, [id, lang]);
+  return rows.length > 0;
+}
 
 export async function saveAnalysis(input: NewAnalysis): Promise<Analysis> {
   const id = await asTeamOf(input.lang, async (client) => {

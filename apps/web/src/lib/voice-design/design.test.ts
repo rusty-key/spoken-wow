@@ -33,6 +33,7 @@ function deps(design: Partial<Design> = {}, over: Partial<DesignDeps> = {}): Des
   const current = { ...DESIGN, ...design };
   return {
     isSlot: async (slot) => slot.startsWith("orc-male"),
+    isOwnAnalysis: async (_lang, id) => id === "a-own",
     design: vi.fn(async () => [
       { generatedVoiceId: "g0", audio: Buffer.from("a") },
       { generatedVoiceId: "g1", audio: Buffer.from("b") },
@@ -75,6 +76,14 @@ describe("designVersion", () => {
     await expect(
       designVersion({ ...base, slot: "orc-male-shady", prompt: DESIGN.prompt, previewText: "Too short.", analysisId: null }, d),
     ).rejects.toThrow(/100/);
+    expect(d.design).not.toHaveBeenCalled();
+  });
+
+  it("refuses an analysis that is not the team's own, before spending", async () => {
+    const d = deps();
+    await expect(
+      designVersion({ ...base, slot: "orc-male-shady", prompt: DESIGN.prompt, previewText: DESIGN.previewText, analysisId: "a-theirs" }, d),
+    ).rejects.toThrow(/analysis/);
     expect(d.design).not.toHaveBeenCalled();
   });
 

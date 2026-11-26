@@ -87,6 +87,11 @@ describe("a design version", () => {
     expect(await store.isDesignAudio(other, SHA(9))).toBe(false);
   });
 
+  it("reads an id that is not a uuid as no design, not a database error", async () => {
+    expect(await store.readDesign(lang, "abc")).toBeNull();
+    expect(await store.isOwnAnalysis(lang, "abc")).toBe(false);
+  });
+
   it("is the team's: another language's team sees none of them", async () => {
     expect((await store.listDesigns(lang)).length).toBeGreaterThan(0);
     expect(await store.listDesigns(other)).toEqual([]);
@@ -100,5 +105,7 @@ describe("an analysis", () => {
     const newer = await store.saveAnalysis({ ...base, group: "orc-male", result: { voices: {}, same_actor_guess: "none" } });
     const latest = await store.latestAnalyses(lang);
     expect(latest.get("orc-male")?.id).toBe(newer.id);
+    expect(await store.isOwnAnalysis(lang, newer.id)).toBe(true);
+    expect(await store.isOwnAnalysis(other, newer.id)).toBe(false);
   });
 });
