@@ -1698,8 +1698,6 @@ function Options:Setup()
     -- under it (Options:RegisterPage).
     FitScroller()
     self.category = Settings.RegisterCanvasLayoutCategory(panel, "Spoken")
-    -- Only a mouse can click the game's + that unfolds an entry, so Spoken's pages start listed.
-    self.category:SetExpanded(true)
     ForController(panel, panel.layout)
     if _G.SettingsPanel and _G.SettingsPanel.FocusContainer then
         hooksecurefunc(_G.SettingsPanel, "FocusContainer", SelectFirstRow)

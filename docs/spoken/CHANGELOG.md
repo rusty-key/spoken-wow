@@ -4,6 +4,7 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Spoken's settings category opens collapsed,** so the AddOns list does not expand every Spoken page automatically. *([anon1231823](https://github.com/anon1231823))*
 - **With Stop When Window Closes on, a quest's progress text keeps reading on its reward page,**
   and gossip and greetings keep reading when the NPC opens its trainer, vendor or quest window. *([anon1231823](https://github.com/anon1231823))*
 - For feature addons: `Spoken:Supports(feature)` says what this Spoken can do, such as
