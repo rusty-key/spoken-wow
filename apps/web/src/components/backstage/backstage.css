@@ -2214,3 +2214,7 @@ body:has(main.bs) {
 .vd-older-head::-webkit-details-marker {
   display: none;
 }
+.vd-clip-note {
+  margin-top: 2px;
+  color: var(--bs-gold);
+}

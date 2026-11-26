@@ -2613,6 +2613,7 @@ const zhCN: Dictionary = {
     unnamed: "未署名",
   },
   voiceDesign: {
+    gameClipNote: "游戏片段仅供比较和参考。切勿克隆，也不要发送给 ElevenLabs。",
     title: "语音设计 · {lang}",
     lede: "用 ElevenLabs Voice Design 为语音槽位设计新语音：盲听比较一个种族的各个变体，写提示词，保存一个预览，在真实台词上试听，然后给出评价。发给 ElevenLabs 的只有文本。",
     filterLabel: "显示槽位",

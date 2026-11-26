@@ -2746,6 +2746,7 @@ export const EN = {
     } satisfies Record<DecodeError, string>,
   },
   voiceDesign: {
+    gameClipNote: "Game clips are for comparison and inspiration only. Never clone them or send them to ElevenLabs.",
     title: "Voice design · {lang}",
     lede: "Design new voices for the voice slots with ElevenLabs Voice Design: compare a race's flavors blind, write a prompt, save a preview, hear it on real lines and give it a verdict. Only text goes to ElevenLabs.",
     filterLabel: "Show slots",

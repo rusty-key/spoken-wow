@@ -2652,6 +2652,7 @@ const zhTW: Dictionary = {
     unnamed: "未署名",
   },
   voiceDesign: {
+    gameClipNote: "遊戲片段僅供比較與參考。切勿複製聲音，也不要傳給 ElevenLabs。",
     title: "語音設計 · {lang}",
     lede: "用 ElevenLabs Voice Design 為語音槽位設計新語音：盲聽比較一個種族的各個變體，撰寫提示詞，儲存一個預覽，在真實台詞上試聽，然後給出評價。傳給 ElevenLabs 的只有文字。",
     filterLabel: "顯示槽位",

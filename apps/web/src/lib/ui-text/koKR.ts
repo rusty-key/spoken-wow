@@ -2660,6 +2660,7 @@ const koKR: Dictionary = {
     unnamed: "이름 없음",
   },
   voiceDesign: {
+    gameClipNote: "게임 클립은 비교와 참고용일 뿐입니다. 절대 복제하거나 ElevenLabs에 보내지 마세요.",
     title: "음성 디자인 · {lang}",
     lede: "ElevenLabs Voice Design으로 음성 슬롯에 쓸 새 음성을 만듭니다: 한 종족의 변형을 블라인드로 비교하고, 프롬프트를 쓰고, 미리 듣기를 저장하고, 실제 대사로 들어 본 뒤 평가를 남깁니다. ElevenLabs에는 텍스트만 보냅니다.",
     filterLabel: "슬롯 표시",

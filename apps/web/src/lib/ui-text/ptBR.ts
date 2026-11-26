@@ -2662,6 +2662,7 @@ const ptBR: Dictionary = {
     unnamed: "sem nome",
   },
   voiceDesign: {
+    gameClipNote: "Os clipes do jogo servem só para comparar e inspirar. Nunca os clone nem os envie ao ElevenLabs.",
     title: "Design de vozes · {lang}",
     lede: "Crie vozes novas para as vagas de voz com o ElevenLabs Voice Design: compare às cegas as variantes de uma raça, escreva um prompt, salve uma prévia, ouça em falas reais e dê um veredito. Só texto vai para o ElevenLabs.",
     filterLabel: "Mostrar vagas",

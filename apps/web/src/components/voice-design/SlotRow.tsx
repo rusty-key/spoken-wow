@@ -39,13 +39,16 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
             <button
               type="button"
               className="bs-btn bs-btn-text"
-              onClick={() => play({ src: slot.reference!, title: slot.name, meta: t.gameReference })}
+              title={t.gameClipNote}
+              onClick={() => play({ src: slot.reference!, title: slot.name, meta: t.gameReference, subtitle: t.gameClipNote })}
             >
               <Play size={14} aria-hidden="true" />
               {t.gameReference}
             </button>
           ) : (
-            <span className="vd-muted">{t.noGameReference}</span>
+            <span className="vd-muted" title={t.gameClipNote}>
+              {t.noGameReference}
+            </span>
           )}
           {viewer.designs && !formOpen ? (
             <button type="button" className="bs-btn" onClick={() => setDesigning(true)}>

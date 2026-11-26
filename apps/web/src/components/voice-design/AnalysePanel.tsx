@@ -71,6 +71,7 @@ export default function AnalysePanel({ group, analysis, slots }: { group: string
                 ? t.analysisNone
                 : t.analysisNeedsClips}
           </p>
+          <p className="vd-muted vd-clip-note">{t.gameClipNote}</p>
         </div>
         {viewer.designs ? (
           <div className="vd-step">

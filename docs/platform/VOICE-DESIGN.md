@@ -3,6 +3,10 @@
 The goal is a voice that suits a WoW character type without copying anyone's real voice. Game
 recordings are only inspiration. ElevenLabs never receives them, only a written description.
 
+**Game clips are for comparison and inspiration only.** Never clone one, remix one, or upload one to
+ElevenLabs (Voice Clone, Voice Remix or design-from-audio). The page says so wherever a game clip
+appears; the only places they go are Gemini's blind comparison and openSMILE.
+
 All of it happens on `/voices/design` (Backstage, "Design new voices" on `/voices`). Anyone with
 `configure` in a language may design and review its slots; anyone who may see `/voices` may listen.
 Every version belongs to the team, so the whole team sees, reviews and builds on it.
@@ -76,6 +80,7 @@ chewed and heavy. Perfect audio quality, dry close-mic studio recording, no reve
 - **Design 3 previews** calls Voice Design (`eleven_ttv_v3`) and keeps all three on the site. With
   openSMILE, each shows its pitch, roughness (HNR) and brightness (alpha ratio), and the page marks
   the deepest. Play them beside the slot's **Game clip**.
+- The game clip is there to compare against, by ear. It is never sent anywhere when you design.
 - Mark the best, then **Save preview N as a voice**. It is created in *your* ElevenLabs account as
   `design-<slot>-v<n>`, and you become its holder: only you can voice lines with it or delete it.
   Teammates see whose account it is in.

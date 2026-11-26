@@ -2662,6 +2662,7 @@ const esES: Dictionary = {
     unnamed: "sin nombre",
   },
   voiceDesign: {
+    gameClipNote: "Los clips del juego son solo para comparar e inspirarse. Nunca los clones ni los envíes a ElevenLabs.",
     title: "Diseño de voces · {lang}",
     lede: "Diseña voces nuevas para los huecos de voz con ElevenLabs Voice Design: compara a ciegas las variantes de una raza, escribe un prompt, guarda una vista previa, escúchala en frases reales y da tu veredicto. A ElevenLabs solo va texto.",
     filterLabel: "Mostrar huecos",

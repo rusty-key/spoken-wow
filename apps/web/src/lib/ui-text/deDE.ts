@@ -2665,6 +2665,7 @@ const deDE: Dictionary = {
     unnamed: "unbenannt",
   },
   voiceDesign: {
+    gameClipNote: "Spielclips dienen nur zum Vergleich und als Anregung. Klone sie nie und schick sie nie an ElevenLabs.",
     title: "Stimmenentwurf · {lang}",
     lede: "Entwirf neue Stimmen für die Stimmplätze mit ElevenLabs Voice Design: Vergleiche die Varianten eines Volkes blind, schreib einen Prompt, speichere eine Vorschau, hör sie an echten Zeilen und gib ein Urteil ab. An ElevenLabs geht nur Text.",
     filterLabel: "Stimmplätze zeigen",

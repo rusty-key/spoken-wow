@@ -2663,6 +2663,7 @@ const frFR: Dictionary = {
     unnamed: "sans nom",
   },
   voiceDesign: {
+    gameClipNote: "Les extraits du jeu servent seulement à comparer et à s'inspirer. Ne les clonez jamais et ne les envoyez jamais à ElevenLabs.",
     title: "Conception de voix · {lang}",
     lede: "Concevez de nouvelles voix pour les emplacements de voix avec ElevenLabs Voice Design : comparez à l'aveugle les variantes d'une race, écrivez un prompt, enregistrez un aperçu, écoutez-le sur de vraies répliques et donnez votre verdict. Seul du texte part chez ElevenLabs.",
     filterLabel: "Afficher les emplacements",
