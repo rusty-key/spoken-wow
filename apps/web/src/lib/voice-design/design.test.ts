@@ -27,6 +27,8 @@ const DESIGN: Design = {
   analysis: null,
   samples: [],
   sampledAt: null,
+  isPublic: false,
+  showings: [],
   reviews: [],
   createdBy: "u1",
   createdByName: "Ann",

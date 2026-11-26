@@ -33,6 +33,31 @@ export type DesignSample = {
 
 export type ClipMark = "good" | "off";
 
+/** A player's answer to "Does this fit the character?" on /listen. */
+export type Verdict = "fits" | "close" | "off" | "skip";
+
+export const VERDICTS: readonly Verdict[] = ["fits", "close", "off", "skip"];
+
+export type FeedbackNote = {
+  /** `u:<userId>` or `a:<uuid>`: what Hide names the note by. */
+  voter: string;
+  /** The account's name; null for an anonymous voter. */
+  who: string | null;
+  verdict: Verdict;
+  note: string;
+  at: string;
+};
+
+/** One press of Show to players and the votes players gave in it. */
+export type Showing = {
+  id: number;
+  createdAt: string;
+  createdByName: string | null;
+  counts: Record<Verdict, number>;
+  /** Newest first; hidden notes are left out, their verdicts still counted. */
+  notes: FeedbackNote[];
+};
+
 export type Review = {
   id: number;
   status: ReviewStatus;
@@ -70,6 +95,10 @@ export type Design = {
   sampledAt: string | null;
   /** Oldest first: the last is the version's verdict. */
   reviews: Review[];
+  /** Whether players hear this version on /listen now: its slot's newest showing is of it. */
+  isPublic: boolean;
+  /** Newest first. */
+  showings: Showing[];
   createdBy: string | null;
   createdByName: string | null;
   createdAt: string;
