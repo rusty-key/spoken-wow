@@ -471,6 +471,44 @@ export async function designPreviews(
   return previews;
 }
 
+/** Voice Remix's settings, as ElevenLabs names them; unset ones take its defaults. */
+export type RemixOptions = {
+  /** 0 keeps the voice, 1 follows the changes; only eleven_ttv_v3 voices take it. */
+  promptStrength?: number | null;
+  /** Lower is freer; high values can sound artificial. ElevenLabs' default is 2. */
+  guidanceScale?: number | null;
+  /** -1 quietest to 1 loudest. ElevenLabs' default is 0.5. */
+  loudness?: number | null;
+  seed?: number | null;
+};
+
+/** Variants of one of the account's own voices, changed as the description says. */
+export async function remixPreviews(
+  input: { voiceId: string; changes: string; text: string } & RemixOptions,
+  options: ElevenLabsOptions = {},
+): Promise<DesignedPreview[]> {
+  const { apiKey, baseUrl, fetchImpl } = config(options);
+  const body: Record<string, unknown> = { voice_description: input.changes, text: input.text };
+  if (input.promptStrength != null) body.prompt_strength = input.promptStrength;
+  if (input.guidanceScale != null) body.guidance_scale = input.guidanceScale;
+  if (input.loudness != null) body.loudness = input.loudness;
+  if (input.seed != null) body.seed = input.seed;
+  const response = await fetchImpl(`${baseUrl}/v1/text-to-voice/${encodeURIComponent(input.voiceId)}/remix`, {
+    method: "POST",
+    headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw await failure(response, "remixing a voice");
+  const answer = (await response.json()) as { previews?: { generated_voice_id?: string; audio_base_64?: string }[] };
+  const previews = (answer.previews ?? []).flatMap((preview) =>
+    preview.generated_voice_id && preview.audio_base_64
+      ? [{ generatedVoiceId: preview.generated_voice_id, audio: Buffer.from(preview.audio_base_64, "base64") }]
+      : [],
+  );
+  if (previews.length === 0) throw new Error("ElevenLabs remixed no previews");
+  return previews;
+}
+
 export async function createDesignedVoice(
   input: { name: string; prompt: string; generatedVoiceId: string },
   options: ElevenLabsOptions = {},

@@ -57,6 +57,8 @@ const context: Workbench = {
   setDraft: () => {},
   updateDesign: () => {},
   updateAnalysis: () => {},
+  remixSettings: { promptStrength: 0.5, guidanceScale: null, loudness: null, seed: 9 },
+  setRemixSettings: () => {},
 };
 
 /** A verdict button: the sample lines' marks are named Good too. */
@@ -163,4 +165,29 @@ test("loads only marks that still apply: none from before the lines were voiced 
   render(card({ ...DESIGN, samples: [], sampledAt: null }));
   await userEvent.click(verdict("Good"));
   expect(sent()).toEqual({});
+});
+
+test("remixes the held voice from the review in one press: Gemini's changes, then Voice Remix with the page's settings", async () => {
+  const revision = { heard: "too noble", prompt: "A colder voice.", preview_text: "y".repeat(120), archetype: "Queen", changes: "Make it colder. Keep the accent." };
+  const fetchMock = vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: { ...DESIGN, id: "d2", version: 3 } }));
+  vi.stubGlobal("fetch", fetchMock);
+  render(card(DESIGN));
+
+  await userEvent.click(screen.getByRole("button", { name: "Remix from review" }));
+  const [remixUrl, init] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
+  expect(remixUrl).toContain(`/api/voices/design/${DESIGN.id}/remix`);
+  expect(JSON.parse(String(init.body))).toEqual({
+    changes: "Make it colder. Keep the accent.",
+    previewText: "y".repeat(120),
+    settings: { promptStrength: 0.5, guidanceScale: null, loudness: null, seed: 9 },
+    revisionHeard: "too noble",
+  });
+});
+
+test("offers remix only to the voice's holder, while the voice is in their account", () => {
+  render(card({ ...DESIGN, holderId: "u2" }));
+  expect(screen.queryByRole("button", { name: "Remix from review" })).toBeNull();
+  cleanup();
+  render(card({ ...DESIGN, voiceDeletedAt: "2026-11-26T00:00:00Z" }));
+  expect(screen.queryByRole("button", { name: "Remix from review" })).toBeNull();
 });

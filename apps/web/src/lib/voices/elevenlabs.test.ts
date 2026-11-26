@@ -5,6 +5,7 @@ import {
   createDesignedVoice,
   deleteVoice,
   designPreviews,
+  remixPreviews,
   getSubscription,
   isRenamable,
   listAccountVoices,
@@ -372,6 +373,26 @@ describe("designPreviews", () => {
   it("says what ElevenLabs said when it refuses", async () => {
     const fetchImpl = respondWith({ detail: "voice_limit_reached" }, { status: 400 });
     await expect(designPreviews({ prompt: "p", text: "t" }, { apiKey: "k", fetchImpl })).rejects.toThrow(/voice_limit_reached/);
+  });
+});
+
+describe("remixPreviews", () => {
+  it("remixes the account's own voice with the changes and only the settings given", async () => {
+    const fetchImpl = respondWith({ previews: [{ generated_voice_id: "r1", audio_base_64: Buffer.from("one").toString("base64") }] });
+    const previews = await remixPreviews(
+      { voiceId: "v/1", changes: "Add a thick Scottish accent.", text: "Hello there.", promptStrength: 0.4, guidanceScale: null, seed: 7 },
+      { apiKey: "k", baseUrl: "https://stub.test", fetchImpl },
+    );
+
+    expect(previews).toEqual([{ generatedVoiceId: "r1", audio: Buffer.from("one") }]);
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe("https://stub.test/v1/text-to-voice/v%2F1/remix");
+    expect(JSON.parse(String(init?.body))).toEqual({ voice_description: "Add a thick Scottish accent.", text: "Hello there.", prompt_strength: 0.4, seed: 7 });
+  });
+
+  it("says what ElevenLabs said when it refuses", async () => {
+    const fetchImpl = respondWith({ detail: "voice_not_found" }, { status: 404 });
+    await expect(remixPreviews({ voiceId: "v", changes: "c", text: "t" }, { apiKey: "k", fetchImpl })).rejects.toThrow(/voice_not_found/);
   });
 });
 

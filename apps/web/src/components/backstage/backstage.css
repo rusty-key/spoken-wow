@@ -2222,6 +2222,74 @@ body:has(main.bs) {
 .vd-btn-go:hover {
   background: rgba(95, 207, 79, 0.28);
 }
+.vd-btn-remix {
+  background: rgba(140, 184, 245, 0.16);
+  color: var(--bs-blue);
+}
+.vd-btn-remix:hover {
+  background: rgba(140, 184, 245, 0.26);
+}
+.vd-split {
+  display: inline-flex;
+  gap: 2px;
+}
+.vd-split > .bs-btn:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.vd-split > .bs-btn:last-child {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  padding: 0 8px;
+}
+/* Popovers render outside the page's .bs scope, so they carry the tokens they use. */
+.vd-pop {
+  --foreground: #f4f5f7;
+  --muted-foreground: #a3a5ab;
+  --bs-text-2: #c9cacf;
+  width: 320px;
+  border: 0;
+  border-radius: 8px;
+  background: #16171c;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.45);
+  color: var(--foreground);
+}
+.vd-remix-settings {
+  display: grid;
+  max-width: 520px;
+  gap: 10px;
+}
+.vd-remix-setting {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 8px;
+}
+.vd-remix-setting input[type="range"] {
+  accent-color: var(--bs-blue, #8cb8f5);
+}
+.vd-remix-value {
+  color: var(--bs-text-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.vd-remix-seed {
+  grid-column: span 2;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: #0c0d10;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+}
+.vd-remix-note {
+  margin: 0;
+  font-size: 12px;
+}
 .vd-btn-again {
   background: rgba(240, 194, 90, 0.16);
   color: var(--bs-gold);

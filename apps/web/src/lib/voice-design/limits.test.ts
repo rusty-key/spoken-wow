@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PROMPT_ENDING, promptLengthProblem, promptProblems, recommendedPreview, withEnding } from "./limits";
+import { parseRemixSettings, PROMPT_ENDING, promptLengthProblem, promptProblems, recommendedPreview, withEnding } from "./limits";
 
 const m = (ess: number, decay: number, level: number) => ({ ess, decay, level });
 
@@ -54,5 +54,18 @@ describe("the prompt's ending", () => {
     expect(PROMPT_ENDING).toBe(
       "Soft, gentle s sounds. Clean professional audiobook recording, close to a warm studio microphone, natural and full-bodied, no harshness, no room echo.",
     );
+  });
+});
+
+describe("parseRemixSettings", () => {
+  it("keeps the settings given, in range, and leaves the rest to ElevenLabs", () => {
+    expect(parseRemixSettings({ promptStrength: 0.2, seed: 3 })).toEqual({ promptStrength: 0.2, guidanceScale: null, loudness: null, seed: 3 });
+    expect(parseRemixSettings(undefined)).toEqual({ promptStrength: null, guidanceScale: null, loudness: null, seed: null });
+  });
+
+  it("names the setting out of range", () => {
+    expect(parseRemixSettings({ promptStrength: 2 })).toMatch(/promptStrength/);
+    expect(parseRemixSettings({ loudness: "loud" })).toMatch(/loudness/);
+    expect(parseRemixSettings({ seed: 1.5 })).toMatch(/seed/);
   });
 });
