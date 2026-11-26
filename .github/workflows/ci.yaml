@@ -169,6 +169,8 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @spoken/web typecheck
+      # Without them the encoding, reference and recording suites skip themselves.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg vorbis-tools
       # Several suites run against a real Postgres on purpose: the invariants they protect
       # live in schema constraints, so a mocked database would stop testing them.
       - run: deploy/web/bin/migrate.sh "$PWD/apps/web"

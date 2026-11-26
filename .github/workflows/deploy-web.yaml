@@ -57,10 +57,51 @@ on:
 # a push that modifies it, so a freshly cloned or recreated repo needs one such push before
 # dispatch works.
 
-# Two jobs, so an approval on the production environment comes after the proof and before the
-# droplet: GitHub can only pause a whole job. build holds no secrets, and ship runs nothing from
-# the repository, only this file and the bundle.
+# ship is its own job, so an approval on the production environment comes after the proof and
+# before the droplet: GitHub can only pause a whole job. test and build hold no secrets, and ship
+# runs nothing from the repository, only this file and the bundle.
 jobs:
+  # The gate, beside the build so a deploy waits for the slower of the two, not their sum.
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      # Without them the encoding, reference and recording suites skip themselves.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg vorbis-tools
+      # A real Postgres: what the suites protect lives in schema constraints a mock would skip.
+      - run: deploy/web/bin/migrate.sh "$PWD/apps/web"
+      - uses: actions/setup-python@v5
+        with:
+          # requirements-extract pins pandas 1.5.3, whose last wheels are cp311.
+          python-version: "3.11"
+          cache: pip
+      - name: Seed the quests corpus
+        working-directory: pipelines/quests
+        run: |
+          pip install -r requirements-extract.txt
+          python cli-main.py import-corpus
+      - name: Test
+        working-directory: apps/web
+        run: pnpm test
+
   build:
     runs-on: ubuntu-latest
     outputs:
@@ -113,10 +154,6 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck
-        working-directory: apps/web
-        run: pnpm typecheck
-
       # The places pipeline's own checks: that the Lua and the JS agree on slugs, locales
       # and normalisation. The addon's report links are built by the Lua half and resolved
       # by the JS half, so a drift here is a link that 404s in a player's browser.
@@ -125,10 +162,6 @@ jobs:
 
       # Applied with the same script the droplet uses, so a migration that only works under
       # a hand-run psql fails here instead of mid-deploy.
-      #
-      # Before the tests, not after: history.test.ts exercises the take table against a
-      # real Postgres, because what it protects -- one live take per file, files never
-      # rewritten -- is exactly what a mocked database would stop testing.
       - name: Migrate
         run: deploy/web/bin/migrate.sh "$PWD/apps/web"
 
@@ -143,19 +176,14 @@ jobs:
         with:
           # requirements-extract pins pandas 1.5.3, whose last wheels are cp311.
           python-version: "3.11"
+          cache: pip
       - name: Seed the quests corpus
         working-directory: pipelines/quests
         run: |
           pip install -r requirements-extract.txt
           python cli-main.py import-corpus
 
-      # The gate. range.test.ts covers Safari's bytes=0-1 probe, and the places catalogue
-      # tests cover the stamp that keeps two workers agreeing; none should reach the
-      # droplet red.
-      - name: Test
-        working-directory: apps/web
-        run: pnpm test
-
+      # Also the typecheck: next build runs tsc over the whole project and fails on an error.
       - name: Build
         working-directory: apps/web
         run: pnpm build
@@ -343,7 +371,7 @@ jobs:
           retention-days: 7
 
   ship:
-    needs: build
+    needs: [build, test]
     runs-on: ubuntu-latest
     environment: production
     # Never let two deploys interleave a symlink swap. The group is shared with the two frozen

@@ -38,12 +38,17 @@ run -c 'create table if not exists schema_migrations (
           name text primary key,
           applied_at timestamptz not null default now())'
 
+# Read once: a psql per migration costs every deploy ten seconds.
+done_names=$(run -tAc 'select name from schema_migrations')
+
 applied=0
 for file in "$DIR"/*.sql; do
   name=$(basename "$file")
   # Recording the name in the same transaction as the DDL is what makes a half-applied
   # migration impossible: psql's --single-transaction rolls back both or commits both.
-  if [ -n "$(run -tAc "select 1 from schema_migrations where name = '$name'")" ]; then
+  # A here-string, not a pipe: grep -q exits on its match, and under pipefail the writer's
+  # broken pipe would read as "not applied" and re-run the migration.
+  if grep -qxF -- "$name" <<<"$done_names"; then
     continue
   fi
   echo "migrate: applying $name"
