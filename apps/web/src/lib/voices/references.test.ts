@@ -197,8 +197,14 @@ describe.skipIf(!hasFfmpeg)("fish.audio as a speaker", () => {
   });
 
   it("sends the reference it resolved, and records what it was made with", async () => {
+    // fish.audio's with-timestamp answer: one SSE message per audio chunk.
+    const chunk = { audio_base64: Buffer.from("ID3fish").toString("base64"), alignment: null, chunk_seq: 0, chunk_audio_offset_sec: 0 };
     const fetchImpl = vi.fn(
-      async () => new Response("ID3fish", { status: 200, headers: { "content-type": "audio/mpeg" } }),
+      async () =>
+        new Response(`event: message\ndata: ${JSON.stringify(chunk)}\n\n`, {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        }),
     );
     const speaker = fishSpeaker({
       apiKey: "k",
