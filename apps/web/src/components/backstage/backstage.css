@@ -2436,19 +2436,25 @@ body:has(main.bs) {
   padding: 0;
   list-style: none;
 }
+/* One column for the buttons, so every line's text starts at the same edge. */
 .ls-lines-spelled {
   display: grid;
-  gap: 8px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 10px 12px;
   margin: 12px 0 16px;
 }
 .ls-lines-spelled li {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
+  display: contents;
 }
+.ls-lines-spelled .vd-play {
+  justify-content: flex-start;
+}
+/* Padded so the first line of text sits level with the 28px button beside it. */
 .ls-line-text {
+  padding-top: 4px;
   color: var(--bs-text-2);
   font-size: 13px;
+  line-height: 20px;
 }
 .ls-vote {
   display: grid;
@@ -2493,18 +2499,29 @@ body:has(main.bs) {
 .ls-verdicts:has([aria-pressed="true"]) .ls-verdict[aria-pressed="false"] {
   opacity: 0.55;
 }
+.ls-note-field {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  justify-self: stretch;
+}
 .ls-note {
   width: 100%;
   min-width: 0;
-  padding: 6px 10px;
+  padding: 8px 10px;
   border: 0;
-  border-radius: 6px;
-  background: #0c0d10;
-  box-shadow: inset 0 0 0 1px var(--input);
+  border-radius: 8px;
+  background: var(--bs-field);
+  box-shadow: inset 0 0 0 1px var(--bs-line);
   color: var(--foreground);
   font: inherit;
-  font-size: 13px;
+  font-size: 13.5px;
+  line-height: 20px;
   resize: vertical;
+  outline: none;
+}
+.ls-note:focus {
+  box-shadow: inset 0 0 0 1px rgba(240, 194, 90, 0.5);
 }
 .ls-note::placeholder {
   color: #73757e;
@@ -2565,4 +2582,5 @@ body:has(main.bs) {
   width: 240px;
   height: 32px;
   padding-block: 0;
+  resize: none;
 }

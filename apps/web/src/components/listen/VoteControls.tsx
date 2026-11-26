@@ -59,7 +59,7 @@ export default function VoteControls({
   );
 
   const noteField = (
-    <div className="ls-vote">
+    <div className="ls-note-field">
       <textarea
         className="ls-note"
         rows={2}
