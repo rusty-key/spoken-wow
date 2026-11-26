@@ -88,6 +88,22 @@ stub.ShowPage({ title = "Ledger of Nothing", number = 4, text = "VALAAS DAWNSIGH
 Expect("a page's name in capitals is keyed as a token",
     B:CaptureContribution():match("\npage=" .. B:ChecksumOf("$N,\n\n$N, keep this. VALAASWOOD waits.") .. "\n") ~= nil, true)
 
+do
+    local locale, w = stub.locale, stub.world
+    local name, class, race = w.playerName, w.playerClass, w.playerRace
+    stub.SetLocale("zhCN")
+    w.playerName, w.playerClass, w.playerRace = "小明", "德鲁伊", "暗夜精灵"
+    local PAGE = "他低声念起德鲁伊咒语，树枝的光芒随之愈发明亮。"
+    stub.ShowPage({ title = "Ledger of Nothing", number = 5, text = PAGE })
+    local captured = B:CaptureContribution()
+    Expect("a Chinese page keys on its class word as written",
+        captured:match("\npage=" .. B:ChecksumOf(PAGE) .. "\n") ~= nil, true)
+    Expect("...and does not key on a class token",
+        captured:match("\npage=" .. B:ChecksumOf("他低声念起$C咒语，树枝的光芒随之愈发明亮。") .. "\n") == nil, true)
+    stub.SetLocale(locale)
+    w.playerName, w.playerClass, w.playerRace = name, class, race
+end
+
 -- Pages kept earlier are left as they were at login, with the name in them and under whatever
 -- source an older version wrote ("books", which the site still reads as readables): the file is
 -- the account's, a page another character kept may hold the same word as a name of its own

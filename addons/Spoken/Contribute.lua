@@ -211,15 +211,27 @@ end
 -- letters), general punctuation and spaces, currency, arrows, shapes, CJK punctuation, fullwidth
 -- ASCII punctuation and emoji. Hangul, kana and Han too: those scripts put no space before a
 -- particle or the next word, so a name runs straight into it ("홍길동님").
+local HAN = { { 0x3400, 0x4DBF }, { 0x4E00, 0x9FFF }, { 0xF900, 0xFAFF } }
 local SEPARATORS = {
     { 0x80, 0xA9 }, { 0xAB, 0xB4 }, { 0xB6, 0xB9 }, { 0xBB, 0xBF }, { 0xD7, 0xD7 }, { 0xF7, 0xF7 },
     { 0x2000, 0x206F }, { 0x20A0, 0x20CF }, { 0x2190, 0x23FF }, { 0x2500, 0x27BF }, { 0x2E00, 0x2E7F },
     { 0x3000, 0x3004 }, { 0x3008, 0x3020 }, { 0x3030, 0x3030 }, { 0x303D, 0x303F },
     { 0xFE30, 0xFE6F }, { 0xFF00, 0xFF0F }, { 0xFF1A, 0xFF20 }, { 0xFF3B, 0xFF40 }, { 0xFF5B, 0xFF65 },
     { 0xFFE0, 0xFFEE }, { 0x1F000, 0x1FAFF },
-    { 0x1100, 0x11FF }, { 0x3040, 0x30FF }, { 0x3130, 0x318F }, { 0x3400, 0x4DBF }, { 0x4E00, 0x9FFF },
-    { 0xAC00, 0xD7AF }, { 0xF900, 0xFAFF },
+    { 0x1100, 0x11FF }, { 0x3040, 0x30FF }, { 0x3130, 0x318F }, { 0xAC00, 0xD7AF },
 }
+for _, range in ipairs(HAN) do
+    SEPARATORS[#SEPARATORS + 1] = range
+end
+
+local function InRanges(point, ranges)
+    for _, range in ipairs(ranges) do
+        if point >= range[1] and point <= range[2] then
+            return true
+        end
+    end
+    return false
+end
 
 --- The code point of the UTF-8 character whose first byte is at i, nil where the bytes are not one.
 local function CodePointAt(text, i)
@@ -240,8 +252,9 @@ local function CodePointAt(text, i)
 end
 
 -- Whether the byte at i belongs to a word. Byte-wise because %w knows only ASCII: a high byte is
--- judged by its whole character, and bytes that are no character count as a letter's.
-local function IsWordByte(text, i)
+-- judged by its whole character, and bytes that are no character count as a letter's. `strict`
+-- makes Han part of the word, so only punctuation ends it.
+local function IsWordByte(text, i, strict)
     local b = byte(text, i)
     if b == nil then
         return false
@@ -258,25 +271,24 @@ local function IsWordByte(text, i)
     if not point then
         return true
     end
-    for _, range in ipairs(SEPARATORS) do
-        if point >= range[1] and point <= range[2] then
-            return false
-        end
+    if strict and InRanges(point, HAN) then
+        return true
     end
-    return true
+    return not InRanges(point, SEPARATORS)
 end
 
 --- Every whole-word occurrence of `word` in `text` replaced by `token`, so a player called Mist
 --- leaves "Mistwood" alone but not "Mist's". A plain find: a pattern would need the player's input
 --- escaped, and %f is not safe on every client's Lua.
-function Contribute:ReplaceWord(text, word, token)
+---@param strict boolean|nil  Han counts as part of the word
+function Contribute:ReplaceWord(text, word, token, strict)
     local out, pos = {}, 1
     while true do
         local first, last = string.find(text, word, pos, true)
         if not first then
             break
         end
-        if IsWordByte(text, first - 1) or IsWordByte(text, last + 1) then
+        if IsWordByte(text, first - 1, strict) or IsWordByte(text, last + 1, strict) then
             out[#out + 1] = string.sub(text, pos, last)
         else
             out[#out + 1] = string.sub(text, pos, first - 1)
@@ -374,20 +386,32 @@ function Contribute:ReaderFields(fields)
     add("readerSex", reader.sex)
 end
 
+--- Whether a page's class or race word takes the strict boundary. Chinese writes one word for a
+--- noun and an address (德鲁伊咒语, 你好，德鲁伊。), and English pages almost never carry a class
+--- token, so there a word against Han is a noun. Quest text and gossip stay loose: Blizzard's
+--- Chinese often puts the address straight after an adjective (尊贵的$c).
+---@return boolean
+function Contribute:StrictClass()
+    local locale = GetLocale and GetLocale()
+    return locale == "zhCN" or locale == "zhTW"
+end
+
 --- The text with this character's name, class and race put back as the game's own tokens, for
 --- the keys a line is kept and named under: the same gossip line or page read on two characters is
 --- one. Not what is sent: the site puts the tokens back in the text (ReaderFields).
-function Contribute:Detemplate(text)
+---@param strict boolean|nil  a class or race takes the strict boundary; a name never does, being
+---                           Han itself and set straight against its neighbours
+function Contribute:Detemplate(text, strict)
     local swaps = {}
-    local function add(word, token)
+    local function add(word, token, words)
         if type(word) == "string" and word ~= "" then
-            swaps[#swaps + 1] = { word, token }
+            swaps[#swaps + 1] = { word, token, words }
         end
     end
-    local function addCased(word, upper, lower)
-        add(word, upper)
+    local function addCased(word, upper, lower, words)
+        add(word, upper, words)
         if type(word) == "string" and string.lower(word) ~= word then
-            add(string.lower(word), lower)
+            add(string.lower(word), lower, words)
         end
     end
 
@@ -396,16 +420,16 @@ function Contribute:Detemplate(text)
     for _, word in ipairs(self:NameWords(reader.name)) do
         add(word, "$N")
     end
-    addCased(reader.class, "$C", "$c")
-    addCased(reader.classMale, "$C", "$c")
-    addCased(reader.classFemale, "$C", "$c")
-    addCased(reader.race, "$R", "$r")
+    addCased(reader.class, "$C", "$c", strict)
+    addCased(reader.classMale, "$C", "$c", strict)
+    addCased(reader.classFemale, "$C", "$c", strict)
+    addCased(reader.race, "$R", "$r", strict)
 
     -- Longest first, so "Night Elf" goes as one race, and a part of the name inside a longer class
     -- ("Hunter" in "Demon Hunter") does not take it first.
     table.sort(swaps, function(a, b) return len(a[1]) > len(b[1]) end)
     for _, pair in ipairs(swaps) do
-        text = self:ReplaceWord(text, pair[1], pair[2])
+        text = self:ReplaceWord(text, pair[1], pair[2], pair[3])
     end
     return text
 end

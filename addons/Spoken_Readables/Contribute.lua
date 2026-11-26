@@ -77,8 +77,10 @@ function SpokenReadables:CaptureContribution()
 
 	-- Once: the page field and Gather's key are the same checksum, and it is a pass over the
 	-- whole page each time.
-	-- Taken with the reader's tokens back, so every character's copy of a page is one page.
-	local sum = self:ChecksumOf(Spoken.Contribute:Detemplate(text))
+	-- Taken with the reader's tokens back, so every character's copy of a page is one page. An
+	-- older Spoken folder has no StrictClass and keeps the loose boundary.
+	local strict = Spoken.Contribute.StrictClass and Spoken.Contribute:StrictClass() or nil
+	local sum = self:ChecksumOf(Spoken.Contribute:Detemplate(text, strict))
 	local fields = BaseFields(self)
 	fields[#fields + 1] = { "page", sum }
 	fields[#fields + 1] = { "book", (ItemTextGetItem and NotSecret(ItemTextGetItem())) or "" }
