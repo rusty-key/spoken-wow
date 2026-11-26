@@ -1958,12 +1958,6 @@ body:has(main.bs) {
   align-items: center;
   gap: 6px 8px;
 }
-.vd-clip-end {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
 .vd-play {
   display: inline-flex;
   align-items: center;

@@ -12,7 +12,7 @@ export async function DELETE(request: Request, context: Context) {
   if (denied) return denied;
   try {
     const review = Number(reviewId);
-    if (!Number.isSafeInteger(review) || !(await readDesign(lang, id)) || !(await removeReview(lang, id, review))) {
+    if (!Number.isSafeInteger(review) || !(await removeReview(lang, id, review))) {
       return Response.json({ error: "no such verdict" }, { status: 404 });
     }
     return Response.json({ design: await readDesign(lang, id) });

@@ -106,7 +106,7 @@ export default function Workbench({
     playing,
     play: (clip: Playing) => setPlaying(clip),
     drafts,
-    setDraft: (slot: string, draft: Draft | null, quiet = false) => {
+    setDraft: (slot: string, draft: Draft | null) => {
       setDrafts((current) => {
         const next = { ...current };
         if (draft) next[slot] = draft;
@@ -114,7 +114,7 @@ export default function Workbench({
         return next;
       });
       // The form opens at the top of the slot, which may be far from the button pressed.
-      if (draft && !quiet) document.getElementById(`slot-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (draft) document.getElementById(`slot-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
     updateDesign: (design: Design) =>
       setGroups((current) =>
@@ -131,16 +131,20 @@ export default function Workbench({
       setGroups((current) => current.map((group) => (group.group === analysis.group ? { ...group, analysis } : group))),
   };
 
-  // One at a time: Gemini answers a burst of revisions with 429s.
-  const toRevise = shown.flatMap((group) => group.slots).filter((slot) => slot.designs[0] && isRevisable(slot.designs[0]) && !drafts[slot.name]);
+  const toRevise =
+    filter !== "needs-work"
+      ? []
+      : shown.flatMap((group) => group.slots).filter((slot) => slot.designs[0] && isRevisable(slot.designs[0]) && !drafts[slot.name]);
   async function reviseAll() {
-    const slots = toRevise;
     setReviseLog([]);
-    for (const [index, slot] of slots.entries()) {
-      setRevisingAll({ done: index, total: slots.length });
+    // One at a time: Gemini answers a burst of revisions with 429s.
+    for (const [index, slot] of toRevise.entries()) {
+      setRevisingAll({ done: index, total: toRevise.length });
       const design = slot.designs[0];
       try {
-        context.setDraft(slot.name, await requestRevision(lang, design, fill(t.geminiRevision, { v: `v${design.version}` })), true);
+        // Straight into the drafts: the page stays where it is rather than jumping to each slot.
+        const draft = await requestRevision(lang, design, fill(t.geminiRevision, { v: `v${design.version}` }));
+        setDrafts((current) => ({ ...current, [slot.name]: draft }));
       } catch (err) {
         setReviseLog((lines) => [...lines, `${slot.name}: ${err instanceof Error ? err.message : String(err)}`]);
       }

@@ -31,8 +31,7 @@ export type Workbench = {
   playing: Playing | null;
   play: (clip: Playing) => void;
   drafts: Record<string, Draft>;
-  /** `quiet` leaves the page where it is, for drafts filled in many at a time. */
-  setDraft: (slot: string, draft: Draft | null, quiet?: boolean) => void;
+  setDraft: (slot: string, draft: Draft | null) => void;
   updateDesign: (design: Design) => void;
   updateAnalysis: (analysis: Analysis) => void;
 };
@@ -57,7 +56,7 @@ export async function send<T>(url: string, init: { method?: string; body?: unkno
   return body;
 }
 
-/** Gemini's draft of the next version from a version's review; `from` labels it in the form. */
+/** `from` labels the draft in the form. */
 export async function requestRevision(lang: Lang, design: Design, from: string): Promise<Draft> {
   const { revision } = await send<{ revision: Revision & { archetype: string } }>(withLang(lang, `/api/voices/design/${design.id}/revise`));
   return {

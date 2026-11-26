@@ -76,7 +76,8 @@ async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
       voiceDeletedAt: row.voiceDeletedAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
       samples: own.map(({ designId: _, createdAt: __, ...sample }) => sample),
-      sampledAt: own.length > 0 ? new Date(Math.max(...own.map((s) => s.createdAt.getTime()))).toISOString() : null,
+      // A version's lines are always written together, in one statement's transaction.
+      sampledAt: own[0]?.createdAt.toISOString() ?? null,
       reviews: reviews
         .filter((r) => r.designId === row.id)
         .map(({ designId: _, ...review }) => ({ ...review, id: Number(review.id), createdAt: review.createdAt.toISOString() })),
@@ -265,8 +266,8 @@ export async function addReview(lang: Lang, id: string, review: NewReview): Prom
   await asTeamOf(lang, (client) => insertReview(client, id, review));
 }
 
-/** Whether the verdict was there to remove. */
 export async function removeReview(lang: Lang, designId: string, reviewId: number): Promise<boolean> {
+  if (!isUuid(designId)) return false;
   return asTeamOf(lang, async (client) => {
     const { rowCount } = await client.query(
       `delete from "voice_design_review" r using "voice_design" d

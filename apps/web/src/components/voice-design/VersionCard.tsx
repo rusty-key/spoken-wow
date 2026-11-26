@@ -1,7 +1,7 @@
 "use client";
 
 import { AudioLines, Check, Loader2, Play, RefreshCw, Save, Sparkles, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import Link from "@/components/LocaleLink";
 import { useUiText } from "@/components/UiTextProvider";
@@ -10,7 +10,7 @@ import { fill } from "@/lib/site-text/format";
 import { cn } from "@/lib/utils";
 import { isRevisable, type ReviewStatus } from "@/lib/voice-design/groups";
 import { designName, recommendedPreview } from "@/lib/voice-design/limits";
-import type { ClipMark, Design, Measures } from "@/lib/voice-design/types";
+import type { ClipMark, Design, Measures, Review } from "@/lib/voice-design/types";
 
 import StatusBadge from "./StatusBadge";
 import { requestRevision, send, useWorkbench } from "./context";
@@ -52,6 +52,53 @@ function Field({ label, value }: { label: string; value: unknown }) {
   );
 }
 
+/**
+ * The verdict form as the newest verdict left it. Previews are no longer marked here, so a mark on
+ * one would ride along unseen in every later verdict.
+ */
+function formFrom(last: Review | undefined, chosenPreview: number | null) {
+  return {
+    status: last?.status ?? null,
+    picked: last?.bestPreview ?? chosenPreview,
+    clips: Object.fromEntries(Object.entries(last?.clips ?? {}).filter(([key]) => key.startsWith("sample:"))) as Record<string, ClipMark>,
+  };
+}
+
+function Confirm({
+  question,
+  label,
+  open,
+  working,
+  disabled,
+  onCancel,
+  onConfirm,
+  trigger,
+}: {
+  question: string;
+  label: string;
+  open: boolean;
+  working: boolean;
+  disabled: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+  trigger: ReactNode;
+}) {
+  const t = useUiText().voiceDesign;
+  if (!open) return trigger;
+  return (
+    <span className="vd-confirm">
+      {question}
+      <button type="button" className="bs-btn bs-btn-danger" disabled={disabled} onClick={onConfirm}>
+        {working ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Trash2 size={14} aria-hidden="true" />}
+        {label}
+      </button>
+      <button type="button" className="bs-btn bs-btn-text" onClick={onCancel}>
+        {t.cancel}
+      </button>
+    </span>
+  );
+}
+
 function Marks({ value, onChange, disabled }: { value: ClipMark | undefined; onChange: (mark: ClipMark | undefined) => void; disabled: boolean }) {
   const t = useUiText().voiceDesign;
   return (
@@ -89,22 +136,21 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const t = useUiText().voiceDesign;
   const { lang, viewer, keys, rate, model, live, play, playing, updateDesign, setDraft } = useWorkbench();
   const last = design.reviews.at(-1);
-  const [status, setStatus] = useState<ReviewStatus | null>(last?.status ?? null);
+  const start = formFrom(last, design.chosenPreview);
+  const [status, setStatus] = useState<ReviewStatus | null>(start.status);
   const [note, setNote] = useState("");
   const recommended = recommendedPreview(design.previews.map((preview) => preview.measures));
   // A person's pick, kept apart from the recommendation: a verdict records only what someone chose.
-  const [picked, setPicked] = useState<number | null>(last?.bestPreview ?? design.chosenPreview ?? null);
+  const [picked, setPicked] = useState<number | null>(start.picked);
   const best = picked ?? recommended;
-  // Previews are no longer marked here, so a mark on one would ride along unseen in every verdict.
-  const sampleMarks = (from: Record<string, ClipMark> | undefined) => Object.fromEntries(Object.entries(from ?? {}).filter(([key]) => key.startsWith("sample:")));
-  const [clips, setClips] = useState<Record<string, ClipMark>>(sampleMarks(last?.clips));
+  const [clips, setClips] = useState<Record<string, ClipMark>>(start.clips);
   // A removed verdict must not stay preset in the form, one press from coming back.
   const [formFor, setFormFor] = useState(last?.id);
   if (formFor !== last?.id) {
     setFormFor(last?.id);
-    setStatus(last?.status ?? null);
-    setPicked(last?.bestPreview ?? design.chosenPreview ?? null);
-    setClips(sampleMarks(last?.clips));
+    setStatus(start.status);
+    setPicked(start.picked);
+    setClips(start.clips);
   }
   // A re-sample puts new lines behind the same `sample:<n>` keys: a mark on the old line must not
   // carry over to the new one.
@@ -112,7 +158,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const [marksFor, setMarksFor] = useState(sampled);
   if (marksFor !== sampled) {
     setMarksFor(sampled);
-    setClips((current) => Object.fromEntries(Object.entries(current).filter(([key]) => !key.startsWith("sample:"))));
+    setClips({});
   }
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +171,8 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const can = viewer.designs;
   const sampleChars = design.samples.length > 0 ? design.samples.reduce((sum, s) => sum + s.text.length, 0) : slot.sampleChars;
   const tag = `v${design.version}`;
+  const again = design.samples.length > 0;
+  const SampleIcon = busy === "sample" ? Loader2 : again ? RefreshCw : AudioLines;
 
   /** One action at a time per card, its failure said on the card. */
   async function run(what: string, work: () => Promise<void>): Promise<boolean> {
@@ -222,7 +270,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                   ) : null}
                   <MeasureLine measures={preview.measures} />
                   {can ? (
-                    <label className="vd-radio vd-clip-end" title={t.bestTitle}>
+                    <label className="vd-radio vd-push" title={t.bestTitle}>
                       <input type="radio" name={`best-${design.id}`} checked={best === index} onChange={() => setPicked(index)} />
                       {t.best}
                     </label>
@@ -296,18 +344,12 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                 <>
                   <button
                     type="button"
-                    className={cn("bs-btn", design.samples.length > 0 && "vd-btn-again")}
+                    className={cn("bs-btn", again && "vd-btn-again")}
                     disabled={busy !== null || !keys.elevenlabs}
                     onClick={() => void act("sample", `/api/voices/design/${design.id}/samples`, { body: {} })}
                   >
-                    {busy === "sample" ? (
-                      <Loader2 size={14} className="animate-spin" aria-hidden="true" />
-                    ) : design.samples.length > 0 ? (
-                      <RefreshCw size={14} aria-hidden="true" />
-                    ) : (
-                      <AudioLines size={14} aria-hidden="true" />
-                    )}
-                    {design.samples.length > 0 ? t.resample : t.sample}
+                    <SampleIcon size={14} className={busy === "sample" ? "animate-spin" : undefined} aria-hidden="true" />
+                    {again ? t.resample : t.sample}
                   </button>
                   <span className="vd-cost">{fill(t.sampleCost, { credits: Math.round(sampleChars * rate), model })}</span>
                 </>
@@ -330,37 +372,30 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
               </span>
               {review.note ? <span className="vd-review-note">{review.note}</span> : null}
               {can ? (
-                removing === review.id ? (
-                  <span className="vd-confirm">
-                    {t.removeReviewConfirm}
+                <Confirm
+                  question={t.removeReviewConfirm}
+                  label={t.removeReview}
+                  open={removing === review.id}
+                  working={busy === "unreview"}
+                  disabled={busy !== null}
+                  onCancel={() => setRemoving(null)}
+                  onConfirm={async () => {
+                    await act("unreview", `/api/voices/design/${design.id}/reviews/${review.id}`, { method: "DELETE" });
+                    setRemoving(null);
+                  }}
+                  trigger={
                     <button
                       type="button"
-                      className="bs-btn bs-btn-danger"
+                      className="vd-mark vd-review-remove"
+                      title={t.removeReviewTitle}
                       disabled={busy !== null}
-                      onClick={async () => {
-                        await act("unreview", `/api/voices/design/${design.id}/reviews/${review.id}`, { method: "DELETE" });
-                        setRemoving(null);
-                      }}
+                      onClick={() => setRemoving(review.id)}
                     >
-                      {busy === "unreview" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Trash2 size={14} aria-hidden="true" />}
-                      {t.removeReview}
+                      <X size={14} aria-hidden="true" />
+                      <span className="sr-only">{t.removeReviewTitle}</span>
                     </button>
-                    <button type="button" className="bs-btn bs-btn-text" onClick={() => setRemoving(null)}>
-                      {t.cancel}
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    className="vd-mark vd-review-remove"
-                    title={t.removeReviewTitle}
-                    disabled={busy !== null}
-                    onClick={() => setRemoving(review.id)}
-                  >
-                    <X size={14} aria-hidden="true" />
-                    <span className="sr-only">{t.removeReviewTitle}</span>
-                  </button>
-                )
+                  }
+                />
               ) : null}
             </li>
           ))}
@@ -415,31 +450,24 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
       {can && (last?.status === "good" || (hasVoice && holds) || (newest && revisable)) ? (
         <div className="vd-version-foot">
           {hasVoice && holds ? (
-            confirmDelete ? (
-              <span className="vd-confirm">
-                {t.deleteConfirm}
-                <button
-                  type="button"
-                  className="bs-btn bs-btn-danger"
-                  disabled={busy !== null}
-                  onClick={async () => {
-                    await act("delete", `/api/voices/design/${design.id}/voice`, { method: "DELETE" });
-                    setConfirmDelete(false);
-                  }}
-                >
-                  {busy === "delete" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Trash2 size={14} aria-hidden="true" />}
+            <Confirm
+              question={t.deleteConfirm}
+              label={t.deleteVoice}
+              open={confirmDelete}
+              working={busy === "delete"}
+              disabled={busy !== null}
+              onCancel={() => setConfirmDelete(false)}
+              onConfirm={async () => {
+                await act("delete", `/api/voices/design/${design.id}/voice`, { method: "DELETE" });
+                setConfirmDelete(false);
+              }}
+              trigger={
+                <button type="button" className="bs-btn bs-btn-danger" title={t.deleteTitle} onClick={() => setConfirmDelete(true)}>
+                  <Trash2 size={14} aria-hidden="true" />
                   {t.deleteVoice}
                 </button>
-                <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmDelete(false)}>
-                  {t.cancel}
-                </button>
-              </span>
-            ) : (
-              <button type="button" className="bs-btn bs-btn-danger" title={t.deleteTitle} onClick={() => setConfirmDelete(true)}>
-                <Trash2 size={14} aria-hidden="true" />
-                {t.deleteVoice}
-              </button>
-            )
+              }
+            />
           ) : null}
           {last?.status === "good" && hasVoice ? (
             <span className="vd-muted">
