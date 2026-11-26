@@ -137,6 +137,12 @@ describe("saveDesignVoice", () => {
     expect(d.createVoice).not.toHaveBeenCalled();
   });
 
+  it("saves again once the voice is deleted from ElevenLabs", async () => {
+    const d = deps({ voiceId: "voice-1", holderId: "u2", voiceDeletedAt: "2026-11-26T00:00:00Z" });
+    await saveDesignVoice({ ...base, id: "d1", preview: 2 }, d);
+    expect(d.createVoice).toHaveBeenCalledWith(expect.objectContaining({ generatedVoiceId: "g2" }), "k");
+  });
+
   it("refuses a preview the version does not have", async () => {
     await expect(saveDesignVoice({ ...base, id: "d1", preview: 3 }, deps())).rejects.toThrow(/preview/);
   });

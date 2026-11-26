@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Play, Plus } from "lucide-react";
+import { ChevronRight, Pencil, Play, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { useUiText } from "@/components/UiTextProvider";
@@ -51,9 +51,9 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
             </span>
           )}
           {viewer.designs && !formOpen ? (
-            <button type="button" className="bs-btn" onClick={() => setDesigning(true)}>
-              <Plus size={14} aria-hidden="true" />
-              {slot.designs.length > 0 ? fill(t.newVersion, { n: (newest?.version ?? 0) + 1 }) : t.firstVersion}
+            <button type="button" className="bs-btn" title={newest ? fill(t.editPromptTitle, { v: `v${newest.version}` }) : undefined} onClick={() => setDesigning(true)}>
+              {newest ? <Pencil size={14} aria-hidden="true" /> : <Plus size={14} aria-hidden="true" />}
+              {newest ? t.editPrompt : t.firstVersion}
             </button>
           ) : null}
         </div>
@@ -70,7 +70,7 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
         />
       ) : null}
 
-      {newest ? <VersionCard design={newest} slot={slot} /> : null}
+      {newest ? <VersionCard design={newest} slot={slot} newest /> : null}
 
       {older.length > 0 ? (
         <details className="vd-older">
@@ -79,7 +79,7 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
             {fill(t.olderVersions, { n: older.length })}
           </summary>
           {older.map((design) => (
-            <VersionCard key={design.id} design={design} slot={slot} />
+            <VersionCard key={design.id} design={design} slot={slot} newest={false} />
           ))}
         </details>
       ) : null}

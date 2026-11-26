@@ -100,13 +100,21 @@ describe("reviseDesign", () => {
     expect(d.revise).toHaveBeenCalledWith(expect.objectContaining({ status: "not reviewed yet", note: "" }));
   });
 
-  it("refuses a good version, one without sample lines, and a slot without a game clip, before asking Gemini", async () => {
+  it("listens to the sample line the newest verdict marked off", async () => {
+    const lines = [0, 1, 2].map((position) => ({ position, sha256: String(position).repeat(64), lineId: `q:${position}`, text: "t", npcName: null, characters: 1, credits: 1 }));
+    const marked = { ...review("needs-work", "too noble"), clips: { "sample:0": "good" as const, "sample:2": "off" as const } };
+    const audio = vi.fn(async () => Buffer.from("smp"));
+    await reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, deps(design("troll-male-dark", 1, [marked], { samples: lines }), { audio }));
+    expect(audio).toHaveBeenCalledWith("2".repeat(64), "enUS");
+  });
+
+  it("refuses a good version, one without sample lines, and a slot without a reference clip, before asking Gemini", async () => {
     const good = deps(design("troll-male-dark", 1, [review("good", "")]));
     await expect(reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, good)).rejects.toThrow(/good/);
     const unsampled = deps(design("troll-male-dark", 1, [], { samples: [] }));
     await expect(reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, unsampled)).rejects.toThrow(/sample lines first/);
     const noClip = deps(ALL[0], { reference: async () => null });
-    await expect(reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, noClip)).rejects.toThrow(/game clip/);
+    await expect(reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, noClip)).rejects.toThrow(/reference clip/);
     for (const d of [good, unsampled, noClip]) expect(d.revise).not.toHaveBeenCalled();
   });
 });

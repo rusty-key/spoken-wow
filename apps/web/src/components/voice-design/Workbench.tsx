@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight, Loader2, Search, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import AudioPlayer from "@/components/AudioPlayer";
@@ -8,13 +8,13 @@ import { useLang } from "@/components/LangProvider";
 import Link from "@/components/LocaleLink";
 import { useUiText } from "@/components/UiTextProvider";
 import { fill } from "@/lib/site-text/format";
-import { DONENESS, donenessOf, type Doneness } from "@/lib/voice-design/groups";
+import { DONENESS, donenessOf, isRevisable, type Doneness } from "@/lib/voice-design/groups";
 import type { Analysis, Design } from "@/lib/voice-design/types";
 
 import AnalysePanel from "./AnalysePanel";
 import ImportForm from "./ImportForm";
 import SlotRow from "./SlotRow";
-import { WorkbenchContext, type Draft, type Playing, type Workbench as WorkbenchState } from "./context";
+import { requestRevision, WorkbenchContext, type Draft, type Playing, type Workbench as WorkbenchState } from "./context";
 
 
 export type SlotView = {
@@ -71,6 +71,8 @@ export default function Workbench({
   const [query, setQuery] = useState("");
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [playing, setPlaying] = useState<Playing | null>(null);
+  const [revisingAll, setRevisingAll] = useState<{ done: number; total: number } | null>(null);
+  const [reviseLog, setReviseLog] = useState<string[]>([]);
   const audio = useRef<HTMLAudioElement | null>(null);
 
   // Started as soon as the bar has the new source: a play button that only loads would need a second press.
@@ -104,7 +106,7 @@ export default function Workbench({
     playing,
     play: (clip: Playing) => setPlaying(clip),
     drafts,
-    setDraft: (slot: string, draft: Draft | null) => {
+    setDraft: (slot: string, draft: Draft | null, quiet = false) => {
       setDrafts((current) => {
         const next = { ...current };
         if (draft) next[slot] = draft;
@@ -112,7 +114,7 @@ export default function Workbench({
         return next;
       });
       // The form opens at the top of the slot, which may be far from the button pressed.
-      if (draft) document.getElementById(`slot-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (draft && !quiet) document.getElementById(`slot-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
     updateDesign: (design: Design) =>
       setGroups((current) =>
@@ -128,6 +130,23 @@ export default function Workbench({
     updateAnalysis: (analysis: Analysis) =>
       setGroups((current) => current.map((group) => (group.group === analysis.group ? { ...group, analysis } : group))),
   };
+
+  // One at a time: Gemini answers a burst of revisions with 429s.
+  const toRevise = shown.flatMap((group) => group.slots).filter((slot) => slot.designs[0] && isRevisable(slot.designs[0]) && !drafts[slot.name]);
+  async function reviseAll() {
+    const slots = toRevise;
+    setReviseLog([]);
+    for (const [index, slot] of slots.entries()) {
+      setRevisingAll({ done: index, total: slots.length });
+      const design = slot.designs[0];
+      try {
+        context.setDraft(slot.name, await requestRevision(lang, design, fill(t.geminiRevision, { v: `v${design.version}` })), true);
+      } catch (err) {
+        setReviseLog((lines) => [...lines, `${slot.name}: ${err instanceof Error ? err.message : String(err)}`]);
+      }
+    }
+    setRevisingAll(null);
+  }
 
   const label: Record<Filter, string> = {
     all: t.filterAll,
@@ -159,6 +178,29 @@ export default function Workbench({
           <input type="search" value={query} placeholder={t.searchPlaceholder} aria-label={t.searchPlaceholder} onChange={(event) => setQuery(event.target.value)} />
         </label>
       </div>
+
+      {viewer.designs && filter === "needs-work" ? (
+        <div className="vd-revise-all">
+          <button
+            type="button"
+            className="bs-btn vd-btn-go"
+            title={t.reviseAllCost}
+            disabled={revisingAll !== null || toRevise.length === 0 || !keys.gemini}
+            onClick={() => void reviseAll()}
+          >
+            {revisingAll ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Sparkles size={14} aria-hidden="true" />}
+            {revisingAll ? fill(t.reviseAllProgress, { n: revisingAll.done + 1, total: revisingAll.total }) : fill(t.reviseAll, { n: toRevise.length })}
+          </button>
+          <span className="vd-cost">{toRevise.length > 0 ? t.reviseAllCost : t.reviseAllNone}</span>
+          {reviseLog.length > 0 ? (
+            <ul className="vd-import-log" role="alert">
+              {reviseLog.map((line, index) => (
+                <li key={index}>{line}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
 
       {viewer.designs && (!keys.elevenlabs || !keys.gemini) ? (
         <p className="vd-note">

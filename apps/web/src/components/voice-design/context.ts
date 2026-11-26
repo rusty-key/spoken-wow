@@ -2,7 +2,8 @@
 
 import { createContext, useContext } from "react";
 
-import type { Lang } from "@/lib/lang";
+import { withLang, type Lang } from "@/lib/lang";
+import type { Revision } from "@/lib/voice-design/gemini";
 import type { Analysis, Design } from "@/lib/voice-design/types";
 
 export type Playing = { src: string; title: string; meta?: string; subtitle?: string };
@@ -30,7 +31,8 @@ export type Workbench = {
   playing: Playing | null;
   play: (clip: Playing) => void;
   drafts: Record<string, Draft>;
-  setDraft: (slot: string, draft: Draft | null) => void;
+  /** `quiet` leaves the page where it is, for drafts filled in many at a time. */
+  setDraft: (slot: string, draft: Draft | null, quiet?: boolean) => void;
   updateDesign: (design: Design) => void;
   updateAnalysis: (analysis: Analysis) => void;
 };
@@ -53,4 +55,17 @@ export async function send<T>(url: string, init: { method?: string; body?: unkno
   const body = (await response.json().catch(() => ({}))) as T & { error?: string };
   if (!response.ok) throw new Error(body.error ?? `${response.status}`);
   return body;
+}
+
+/** Gemini's draft of the next version from a version's review; `from` labels it in the form. */
+export async function requestRevision(lang: Lang, design: Design, from: string): Promise<Draft> {
+  const { revision } = await send<{ revision: Revision & { archetype: string } }>(withLang(lang, `/api/voices/design/${design.id}/revise`));
+  return {
+    prompt: revision.prompt,
+    previewText: revision.preview_text,
+    analysisId: null,
+    heard: revision.heard,
+    archetype: revision.archetype,
+    from,
+  };
 }

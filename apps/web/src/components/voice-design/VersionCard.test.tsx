@@ -60,7 +60,7 @@ const context: Workbench = {
 
 const card = (design: Design) => (
   <WorkbenchContext.Provider value={context}>
-    <VersionCard design={design} slot={{ name: design.slot, sampleChars: 0 } as SlotView} />
+    <VersionCard design={design} slot={{ name: design.slot, sampleChars: 0 } as SlotView} newest />
   </WorkbenchContext.Provider>
 );
 
@@ -71,7 +71,7 @@ test("drops the marks on lines that a re-sample replaced, and keeps the previews
   rerender(card({ ...DESIGN, samples: [sample(0, "d"), sample(1, "e")] }));
 
   await userEvent.click(screen.getByRole("radio", { name: "Good" }));
-  await userEvent.click(screen.getByRole("button", { name: "Save verdict" }));
+  await userEvent.click(screen.getByRole("button", { name: "Add verdict" }));
   const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
   expect(body.clips).toEqual({ "preview:0": "good" });
 });
@@ -97,4 +97,22 @@ test("leaves the best preview out of a verdict until the reviewer picks one, tho
   await userEvent.click(screen.getByRole("button", { name: "Save verdict" }));
   const body = JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body));
   expect(body.bestPreview).toBeNull();
+});
+
+test("removes a verdict only after it is confirmed", async () => {
+  const fetchMock = vi.fn(async () => Response.json({ design: { ...DESIGN, reviews: [] } }));
+  vi.stubGlobal("fetch", fetchMock);
+  render(card(DESIGN));
+
+  await userEvent.click(screen.getByRole("button", { name: "Remove this verdict" }));
+  expect(fetchMock).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+  const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+  expect(url).toContain(`/api/voices/design/${DESIGN.id}/reviews/1`);
+  expect(init.method).toBe("DELETE");
+});
+
+test("offers to save another preview once the voice is deleted from ElevenLabs", () => {
+  render(card({ ...DESIGN, voiceDeletedAt: "2026-11-26T00:00:00Z" }));
+  expect(screen.getByRole("button", { name: /^Save preview \d as a voice$/ })).toBeTruthy();
 });

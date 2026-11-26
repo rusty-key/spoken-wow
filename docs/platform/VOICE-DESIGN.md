@@ -3,8 +3,8 @@
 The goal is a voice that suits a WoW character type without copying anyone's real voice. Game
 recordings are only inspiration. ElevenLabs never receives them, only a written description.
 
-**Game clips are for comparison and inspiration only.** Never clone one, remix one, or upload one to
-ElevenLabs (Voice Clone, Voice Remix or design-from-audio). The page says so wherever a game clip
+**Reference clips (recordings from the game) are for comparison and inspiration only.** Never clone one, remix one, or upload one to
+ElevenLabs (Voice Clone, Voice Remix or design-from-audio). The page says so wherever a reference clip
 appears; the only places they go are Gemini's blind comparison and openSMILE.
 
 All of it happens on `/voices/design` (Backstage, "Design new voices" on `/voices`). Anyone with
@@ -16,7 +16,7 @@ Every version belongs to the team, so the whole team sees, reviews and builds on
 - Add your **ElevenLabs** key on your profile. Designing, saving and sampling spend from it.
 - Add a **Gemini** key on your profile (Google AI Studio, API keys) to use the blind comparison.
   It costs a few cents a run.
-- The comparison listens to each slot's game clip: its fish.audio reference window, else the first
+- The comparison listens to each slot's reference clip: its fish.audio reference window, else the first
   30 seconds of its first stored clip on `/voices`. A slot with neither is left out.
 
 ## 1. Compare the flavors blind
@@ -39,8 +39,8 @@ Slots are grouped by race, then gender. Open a group and press **Compare blind**
 
 ## 2. Write the prompt and the preview text
 
-Press **Use this draft** under a flavor, **Design vN** on a slot, or **New version from vN** on an
-older version. Template:
+Press **Use this draft** under a flavor, **Edit prompt manually** on a slot (it starts from the newest
+version), or **Start from vN's prompt** on an older one. Template:
 
 ```
 [Age] [gender] [race], [role: who uses this voice].
@@ -91,35 +91,40 @@ no harshness, no room echo.
   three previews of one design differ enormously (s-levels of 0.74, 0.18 and 0.70 on one slot), so
   each is measured: its **s**-level (how harsh the s sounds are; live takes sit near 0.07), its
   **room** tail (the echo after a phrase, in dB) and its speech **level**, and, with openSMILE, its
-  pitch, roughness (HNR) and brightness (alpha ratio). Play them beside the slot's **Game clip**.
+  pitch, roughness (HNR) and brightness (alpha ratio). Play them beside the slot's **Reference clip**.
 - The page marks one **Recommended**: the softest s among the previews whose room tail is at most
   -17 dB and whose level is within 6 dB of the loudest; if none qualifies, the softest s. It starts
   as the best preview, and your ears decide.
-- The game clip is there to compare against, by ear. It is never sent anywhere when you design.
-- Mark the best, then **Save preview N as a voice**. It is created in *your* ElevenLabs account as
+- The reference clip is there to compare against, by ear. It is never sent anywhere when you design.
+- Pick the **Best**, then **Save preview N as a voice**. It is created in *your* ElevenLabs account as
   `design-<slot>-v<n>`, and you become its holder: only you can voice lines with it or delete it.
-  Teammates see whose account it is in.
+  Teammates see whose account it is in. To use another preview instead, **Delete from ElevenLabs**,
+  then save the other one; the old voice's sample lines go with it.
 
 ## 4. Hear it on real lines
 
 **Voice 3 lines** voices three lines of NPCs using the slot (a long quest text, a short bark, a
 gossip line) the way regeneration would for you: your model and voice settings for the language,
 and its accent tags. Play each **New** beside **Live**, what players hear now. Judge against that,
-not only against the game clip. Samples are kept with the version and never become takes.
+not only against the reference clip. **Voice the lines again** replaces them. Samples are kept with the version and never become takes.
 
 ## 5. Review and iterate
 
 - Give the version a verdict: **Good**, or **Needs work** plus one sentence on what is wrong ("sounds
-  female", "too wise, like a tauren"). Mark single clips good or off and pick the best preview.
+  female", "too wise, like a tauren"). Mark sample lines that sound right or wrong; the marks go with
+  the verdict. Verdicts stack: **Add verdict** puts a new one under the old, and the newest sets the
+  version's status. Remove one given by mistake with its ✕.
 - Turn that sentence into prompt changes: remove the words that caused it, add an explicit anchor,
-  and change the preview text if it pulled the voice the wrong way. Then **New version from vN**.
+  and change the preview text if it pulled the voice the wrong way. Then **Edit prompt manually**.
   Old versions stay, folded under the newest. Usually 1–3 rounds per voice.
-- Or press **Revise from review** (needs your Gemini key and the version's sample lines). Gemini
-  hears the game clip and the first sample line, reads the verdict and its note, the notes on the
+- Or press **Revise from review** at the foot of the version (needs your Gemini key and the version's
+  sample lines). Gemini hears the reference clip and the sample line marked wrong (else the first), reads the verdict and its note, the notes on the
   race's other flavors, and the old prompt and preview text, and fills in the next version's form
   with what it heard and a rewritten prompt. Notes travel across a race: write "trolls need a
   Jamaican accent" on one troll and every troll's revision reads it. It also works on a version
   nobody has reviewed yet, from its siblings' notes. Edit the draft, then **Design 3 previews**.
+- On the **Needs work** filter, **Revise all from reviews** does that for every slot shown, one at a
+  time, and leaves a draft in each slot's form. Designing stays one slot at a time.
 - Filter the page by **No design**, **Pending**, **Needs work** and **Good**, and search slots, NPCs,
   prompts and notes.
 - Accounts cap custom voices. **Delete from ElevenLabs** on a version you will not use frees the slot;

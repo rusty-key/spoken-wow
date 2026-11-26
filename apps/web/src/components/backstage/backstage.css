@@ -1933,7 +1933,7 @@ body:has(main.bs) {
 }
 .vd-version-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.65fr) minmax(0, 1.4fr);
   gap: 20px;
   padding: 14px;
 }
@@ -2166,9 +2166,41 @@ body:has(main.bs) {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-left: auto;
   color: var(--bs-text-2);
   font-size: 12.5px;
+}
+.vd-btn-go {
+  background: rgba(95, 207, 79, 0.18);
+  color: var(--bs-green-text);
+}
+.vd-btn-go:hover {
+  background: rgba(95, 207, 79, 0.28);
+}
+.vd-btn-again {
+  background: rgba(240, 194, 90, 0.16);
+  color: var(--bs-gold);
+}
+.vd-btn-again:hover {
+  background: rgba(240, 194, 90, 0.26);
+}
+.vd-hint {
+  margin: 2px 0 8px;
+  font-size: 12px;
+}
+.vd-review-remove {
+  width: 22px;
+  height: 22px;
+  align-self: center;
+}
+.vd-revise-all {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+}
+.vd-revise-all .vd-import-log {
+  flex-basis: 100%;
 }
 .vd-version > .vd-error {
   padding: 0 14px 12px;

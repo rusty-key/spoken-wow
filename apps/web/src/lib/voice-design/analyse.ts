@@ -67,7 +67,7 @@ export async function analyseGroup(
   const heard = found.filter((entry): entry is { slot: string; audio: Buffer } => entry.audio !== null);
   const missing = found.filter((entry) => entry.audio === null).map((entry) => entry.slot);
   if (heard.length < 2) {
-    throw new DesignError(`a comparison needs two flavors with game clips; ${group} has ${heard.length}`);
+    throw new DesignError(`a comparison needs two flavors with reference clips; ${group} has ${heard.length}`);
   }
 
   const labels = blindLabels(heard.map((entry) => entry.slot), deps.random);

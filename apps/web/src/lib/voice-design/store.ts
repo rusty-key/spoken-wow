@@ -212,18 +212,21 @@ export async function importDesign(
   });
 }
 
+/** Saving again after a deletion drops the old voice's sample lines: they are not this voice. */
 export async function saveVoice(
   lang: Lang,
   id: string,
   voice: { chosenPreview: number; voiceId: string; voiceName: string; holderId: string },
 ): Promise<void> {
-  await asTeamOf(lang, (client) =>
-    client.query(
-      `update "voice_design" set "chosenPreview" = $3, "voiceId" = $4, "voiceName" = $5, "holderId" = $6
+  await asTeamOf(lang, async (client) => {
+    await client.query(`delete from "voice_design_clip" where "designId" = $1 and "kind" = 'sample'`, [id]);
+    await client.query(
+      `update "voice_design" set "chosenPreview" = $3, "voiceId" = $4, "voiceName" = $5, "holderId" = $6,
+              "voiceDeletedAt" = null, "sampleModel" = null, "sampleSettings" = null
         where "lang" = $1 and "id" = $2`,
       [lang, id, voice.chosenPreview, voice.voiceId, voice.voiceName, voice.holderId],
-    ),
-  );
+    );
+  });
 }
 
 /** A re-sample replaces the rows; the audio they named stays in the archive. */
@@ -255,6 +258,18 @@ export type NewReview = {
 
 export async function addReview(lang: Lang, id: string, review: NewReview): Promise<void> {
   await asTeamOf(lang, (client) => insertReview(client, id, review));
+}
+
+/** Whether the verdict was there to remove. */
+export async function removeReview(lang: Lang, designId: string, reviewId: number): Promise<boolean> {
+  return asTeamOf(lang, async (client) => {
+    const { rowCount } = await client.query(
+      `delete from "voice_design_review" r using "voice_design" d
+        where r."id" = $3 and r."designId" = $2 and d."id" = r."designId" and d."lang" = $1`,
+      [lang, designId, reviewId],
+    );
+    return (rowCount ?? 0) > 0;
+  });
 }
 
 export async function markVoiceDeleted(lang: Lang, id: string): Promise<void> {
