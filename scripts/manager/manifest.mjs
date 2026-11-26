@@ -79,16 +79,26 @@ export function buildManifest({ packId, rev, requires, files }) {
   return { packId, rev, requires, fileCount: files.length, totalSize: files.reduce((n, f) => n + f.size, 0), files };
 }
 
+// A line's clip, whatever its format and whether whole or cut into sentence pieces (<stem>/01.ogg).
+const clipStem = (path) => path.replace(/\.(mp3|ogg)$/i, "").replace(/\/\d{2}$/, "");
+
+// `lost` leaves out lines that come back in another shape: a pack moving from MP3 to Ogg, or
+// to sentence pieces, removes those paths yet loses no line, and the removal guard would refuse it.
 export function diffFiles(before, after) {
   const old = new Map(before.map((f) => [f.path, f.sha256]));
   const now = new Map(after.map((f) => [f.path, f.sha256]));
-  let added = 0, changed = 0, removed = 0;
+  const stems = new Set(after.map((f) => clipStem(f.path)));
+  let added = 0, changed = 0, removed = 0, lost = 0;
   for (const [p, sha] of now) {
     if (!old.has(p)) added++;
     else if (old.get(p) !== sha) changed++;
   }
-  for (const p of old.keys()) if (!now.has(p)) removed++;
-  return { added, changed, removed, same: added + changed + removed === 0 };
+  for (const p of old.keys()) {
+    if (now.has(p)) continue;
+    removed++;
+    if (!stems.has(clipStem(p))) lost++;
+  }
+  return { added, changed, removed, lost, same: added + changed + removed === 0 };
 }
 
 export function revOf(date) {

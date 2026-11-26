@@ -115,6 +115,15 @@ test("a pack losing many of its files is refused until allowed", async () => {
   assert.deepEqual(out.changed, ["SpokenPlacesAudio_deDE"]);
 });
 
+test("a pack re-encoding its clips to another format publishes", async () => {
+  const store = memoryStore();
+  const toc = { "SpokenPlacesAudio_deDE.toc": "toc" };
+  const clips = (ext) => Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`Sounds/${i}.${ext}`, `${ext} ${i}`]));
+  await run(store, dist({ ...toc, ...clips("mp3") }), { now: new Date("2026-01-01T00:00:00Z") });
+  const out = await run(store, dist({ ...toc, ...clips("ogg") }), { now: new Date("2026-01-02T00:00:00Z") });
+  assert.deepEqual(out.changed, ["SpokenPlacesAudio_deDE"]);
+});
+
 test("a pack losing a few files publishes", async () => {
   const store = memoryStore();
   const toc = { "SpokenPlacesAudio_deDE.toc": "toc" };
