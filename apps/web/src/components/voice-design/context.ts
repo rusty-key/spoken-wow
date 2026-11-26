@@ -34,7 +34,8 @@ export type Workbench = {
   isPlaying: (src: string) => boolean;
   drafts: Record<string, Draft>;
   setDraft: (slot: string, draft: Draft | null) => void;
-  updateDesign: (design: Design) => void;
+  /** `live` holds the live takes of lines the design was just voiced on. */
+  updateDesign: (design: Design, live?: Record<string, string>) => void;
   updateAnalysis: (analysis: Analysis) => void;
 };
 

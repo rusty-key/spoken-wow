@@ -196,7 +196,7 @@ test("a clip's button pauses it while it plays and resumes it after", async () =
     paused.set(this, true);
     this.dispatchEvent(new Event("pause"));
   });
-  const voiced = { ...design("orc-male-shady", 1, null), previews: [{ sha256: "a".repeat(64), measures: null }] };
+  const voiced = { ...design("orc-male-shady", 1, null), previews: [{ generatedVoiceId: "g", sha256: "a".repeat(64), measures: null }] };
   render(
     <LangProvider lang="enUS">
       <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [voiced])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
@@ -234,4 +234,18 @@ test("plays the game's clip and the corpus line a preview text came from beside 
   expect(card.getByRole("button", { name: "Live" })).toBeTruthy();
   expect(card.getByText("Grukk")).toBeTruthy();
   expect(screen.getAllByRole("button", { name: "Reference clip" })).toHaveLength(1);
+});
+
+test("lines voiced for the first time show their live takes without a reload", async () => {
+  const saved = { ...design("orc-male-shady", 1, null), voiceId: "v", voiceName: "n", holderId: "u1" };
+  const line = { position: 0, sha256: "a".repeat(64), lineId: "q:9:accept", text: "Lok'tar", npcName: "Grukk", characters: 7, credits: 4 };
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ design: { ...saved, samples: [line], sampledAt: "2026-11-26T01:00:00Z" }, live: { "q:9:accept": "/api/quests/audio/q9.mp3" } })));
+  render(
+    <LangProvider lang="enUS">
+      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [saved])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
+    </LangProvider>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Voice 3 lines" }));
+  expect(await screen.findByText("Lok'tar")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Live" })).toBeTruthy();
 });

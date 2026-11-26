@@ -54,7 +54,7 @@ function haystack(slot: SlotView): string {
 
 export default function Workbench({
   groups: initialGroups,
-  live,
+  live: initialLive,
   viewer,
   keys,
   rate,
@@ -70,6 +70,7 @@ export default function Workbench({
   const t = useUiText().voiceDesign;
   const lang = useLang();
   const [groups, setGroups] = useState(initialGroups);
+  const [live, setLive] = useState(initialLive);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
@@ -138,7 +139,8 @@ export default function Workbench({
       // The form may open far from the button pressed; it exists once this render lands.
       if (draft) setTimeout(() => document.getElementById(`design-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
     },
-    updateDesign: (design: Design) =>
+    updateDesign: (design: Design, takes?: Record<string, string>) => {
+      if (takes) setLive((current) => ({ ...current, ...takes }));
       setGroups((current) =>
         current.map((group) => ({
           ...group,
@@ -148,7 +150,8 @@ export default function Workbench({
             return { ...slot, designs: [...others, design].sort((a, b) => b.version - a.version) };
           }),
         })),
-      ),
+      );
+    },
     updateAnalysis: (analysis: Analysis) =>
       setGroups((current) => current.map((group) => (group.group === analysis.group ? { ...group, analysis } : group))),
   };

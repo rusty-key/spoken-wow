@@ -12,12 +12,13 @@ import { viewerOf } from "@/lib/grants/store";
 import { langName, withLang } from "@/lib/lang";
 import { pageLang, readingLang } from "@/lib/lang-server";
 import { can, canViewVoices, isAdmin } from "@/lib/permissions";
-import { corpus, lineIndex } from "@/lib/quests/catalogue";
+import { corpus } from "@/lib/quests/catalogue";
 import { currentSession } from "@/lib/session";
 import { fill } from "@/lib/site-text/format";
 import { uiText } from "@/lib/ui-text";
 import { groupOf } from "@/lib/voice-design/groups";
 import { defaultSampleLines, previewTextCandidates, slotNpcs } from "@/lib/voice-design/lines";
+import { liveTakes } from "@/lib/voice-design/live";
 import { latestAnalyses, listDesigns } from "@/lib/voice-design/store";
 import type { Design } from "@/lib/voice-design/types";
 import { cloneName } from "@/lib/voices/clone-name";
@@ -38,13 +39,12 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   if (!session || !canViewVoices(viewer, lang)) notFound();
   const userId = session.user.id;
 
-  const [all, designs, analyses, references, { lines }, index, eleven, gemini, rate] = await Promise.all([
+  const [all, designs, analyses, references, { lines }, eleven, gemini, rate] = await Promise.all([
     slots(lang),
     listDesigns(lang),
     latestAnalyses(lang),
     listReferences(lang),
     corpus(lang),
-    lineIndex(lang),
     apiKeyStatus(userId),
     apiKeyStatus(userId, "gemini"),
     readPreference(userId, lang).then(async (preference) => ({
@@ -75,13 +75,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   const bySlot = new Map<string, Design[]>();
   for (const design of designs) bySlot.set(design.slot, [...(bySlot.get(design.slot) ?? []), design]);
 
-  const live: Record<string, string> = {};
-  for (const design of designs) {
-    for (const sample of design.samples) {
-      const line = index.get(sample.lineId)?.[0];
-      if (line) live[sample.lineId] = withLang(lang, `/api/quests/audio/${audioRelPath(line)}`);
-    }
-  }
+  const live = await liveTakes(lang, designs.flatMap((design) => design.samples));
 
   const views: SlotView[] = all
     .filter((slot) => slot.name.split("-").length >= 2)

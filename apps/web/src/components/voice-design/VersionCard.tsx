@@ -177,7 +177,10 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   }
 
   const act = (what: string, url: string, init: { method?: string; body?: unknown } = {}) =>
-    run(what, async () => updateDesign((await send<{ design: Design }>(withLang(lang, url), init)).design));
+    run(what, async () => {
+      const { design, live } = await send<{ design: Design; live?: Record<string, string> }>(withLang(lang, url), init);
+      updateDesign(design, live);
+    });
 
   const mark = (key: string, value: ClipMark | undefined) =>
     setClips((current) => {
