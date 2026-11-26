@@ -2180,6 +2180,7 @@ const zhTW: Dictionary = {
     fishUnusedTitle: "fish.audio 用不了這個詞條：它在英語之外不讀 IPA，而這段 IPA 轉換不了。給它寫個重拼，fish.audio 才能用。",
   },
   profile: {
+    keyCheckedGemini: "儲存前會先向 Gemini 驗證，不會產生費用。",
     tokens: {
       copied: "請現在複製這個權杖，之後不會再顯示。",
       packs: "社群語音包",
@@ -2468,6 +2469,9 @@ const zhTW: Dictionary = {
     shownOf: "{n} / {all}",
   },
   apiKeys: {
+    placeholderGemini: "Gemini API 金鑰",
+    geminiAfter: " Google AI Studio 帳戶扣除，每次比較幾美分。這是選填的，只有語音設計會用到。儲存前會加密且不再顯示。你的金鑰在 Google AI Studio 的 API keys 裡。",
+    geminiBefore: "設計語音時會用 Gemini 比較遊戲片段，費用從 ",
     aboutAfter: "。寫入會立即生效，並以你的名義。如果你在權杖的語言中是文字維護者，它會寫原始文字；否則只寫你團隊的取代內容。權杖在到期、被撤銷，或你在該語言中既沒有文字權限也不能重新產生時停止運作。產生權杖也會排入音訊，這會花用你自己的 ElevenLabs 或 fish.audio 金鑰；一旦在該語言失去重新產生的權限，就無法再排入音訊。",
     aboutBefore: "讓腳本或代理人以你的名義讀取或變更某個語言的文字。把它指向 ",
     access: "存取",

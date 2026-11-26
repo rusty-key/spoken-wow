@@ -47,3 +47,16 @@ describe("a fish.audio key", () => {
     expect(await readApiKey(USER)).toBe("sk_eleven_1234");
   });
 });
+
+describe("a Gemini key", () => {
+  it("is stored apart from the generators' keys", async () => {
+    await storeApiKey(USER, "sk_eleven_1234", "creator");
+    const status = await storeApiKey(USER, "AIza_gemini_5678", null, "gemini");
+
+    expect(status).toMatchObject({ hint: "5678", tier: null });
+    expect(await readApiKey(USER, "gemini")).toBe("AIza_gemini_5678");
+    expect(await readApiKey(USER)).toBe("sk_eleven_1234");
+    await deleteApiKey(USER, "gemini");
+    expect(await apiKeyStatus(USER, "gemini")).toBeNull();
+  });
+});

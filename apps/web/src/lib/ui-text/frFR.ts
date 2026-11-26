@@ -2191,6 +2191,7 @@ const frFR: Dictionary = {
     fishUnusedTitle: "fish.audio ne peut pas utiliser cette entrée : hors de l'anglais il ne lit pas l'IPA, et cet IPA ne se convertit pas. Donne une réécriture pour que fish.audio l'utilise.",
   },
   profile: {
+    keyCheckedGemini: "Vérifiée auprès de Gemini avant enregistrement, ce qui ne coûte rien.",
     tokens: {
       copied: "Copiez ce jeton maintenant. Il ne sera plus affiché.",
       packs: "Packs de la communauté",
@@ -2479,6 +2480,9 @@ const frFR: Dictionary = {
     shownOf: "{n} sur {all}",
   },
   apiKeys: {
+    placeholderGemini: "clé d'API Gemini",
+    geminiAfter: " compte Google AI Studio, quelques centimes par comparaison. C'est facultatif, et seule la conception de voix s'en sert. La clé est chiffrée avant d'être stockée et n'est plus jamais affichée. Vous trouverez la vôtre dans Google AI Studio, sous API keys.",
+    geminiBefore: "La conception de voix fait comparer des extraits du jeu par Gemini, payé sur ",
     aboutAfter: ". Il écrit en direct aussitôt, sous votre nom. Si vous êtes responsable du texte dans la langue du jeton, il écrit le texte original ; sinon, il n'écrit que les remplacements de votre équipe. Un jeton cesse de fonctionner à son expiration, quand il est révoqué, ou quand vous n'avez ni le droit sur le texte ni celui de régénérer dans sa langue. Un jeton de génération met aussi de l'audio en file, ce qui dépense votre propre clé ElevenLabs ou fish.audio, et ne peut plus mettre d'audio en file dès que vous perdez le droit de régénérer dans sa langue.",
     aboutBefore: "Permet à un script ou à un agent de lire ou de modifier du texte dans une langue en votre nom. Pointez-le vers ",
     access: "Accès",

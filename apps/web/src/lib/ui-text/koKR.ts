@@ -2188,6 +2188,7 @@ const koKR: Dictionary = {
     fishUnusedTitle: "fish.audio는 이 항목을 쓸 수 없습니다. 영어 밖에서는 IPA를 읽지 않고, 이 IPA는 변환되지 않습니다. fish.audio가 쓰려면 재표기를 적어 주세요.",
   },
   profile: {
+    keyCheckedGemini: "저장 전에 Gemini로 확인하며, 비용은 들지 않습니다.",
     tokens: {
       copied: "지금 이 토큰을 복사하세요. 다시 표시되지 않습니다.",
       packs: "커뮤니티 팩",
@@ -2476,6 +2477,9 @@ const koKR: Dictionary = {
     shownOf: "{all}개 중 {n}개",
   },
   apiKeys: {
+    placeholderGemini: "Gemini API 키",
+    geminiAfter: " Google AI Studio 계정에서 비교 한 번에 몇 센트씩 나갑니다. 선택 사항이며 음성 디자인에서만 씁니다. 저장 전에 암호화되며 다시 표시되지 않습니다. 내 키는 Google AI Studio의 API keys에서 찾으세요.",
+    geminiBefore: "음성 디자인은 Gemini로 게임 클립을 비교하며, 비용은 ",
     aboutAfter: ". 쓰기는 즉시 적용되며 내 이름으로 남습니다. 토큰의 언어에서 텍스트 관리자라면 원문을 쓰고, 아니라면 우리 팀의 덮어쓴 텍스트만 씁니다. 토큰은 만료되거나, 취소되거나, 그 언어에서 텍스트 권한과 재생성 권한을 모두 잃으면 작동을 멈춥니다. 생성 토큰은 오디오도 대기열에 넣으며, 이때 내 ElevenLabs 또는 fish.audio 키가 소모됩니다. 그 언어에서 재생성 권한을 잃으면 더는 오디오를 대기열에 넣을 수 없습니다.",
     aboutBefore: "스크립트나 에이전트가 내 대신 한 언어의 텍스트를 읽거나 바꿀 수 있게 합니다. 사용할 곳: ",
     access: "접근",

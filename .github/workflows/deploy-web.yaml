@@ -196,6 +196,10 @@ jobs:
           mkdir -p "$R"/pipelines/places/tools/voice
           cp pipelines/places/tools/voice/*.json "$R"/pipelines/places/tools/voice/
 
+          # Run by the app with the droplet's Python to measure voices on /voices/design.
+          mkdir -p "$R"/apps/web/scripts
+          cp apps/web/scripts/voice_measure.py "$R"/apps/web/scripts/
+
           # Migrations ship with the release too: activate.sh runs migrate.sh against the
           # release directory, so without this a deploy has nothing to apply.
           cp -a apps/web/migrations "$R"/migrations
@@ -210,6 +214,7 @@ jobs:
           test -L "$R"/apps/web/node_modules/next   # symlink survived the copy
           test -f "$R"/migrations/0001_auth.sql
           test -f "$R"/migrations/0020_take.sql
+          test -f "$R"/apps/web/scripts/voice_measure.py
           test -f "$R"/pipelines/quests/voice/generation.json
           test -f "$R"/pipelines/quests/voice/pronunciation.json
           test -f "$R"/pipelines/places/tools/voice/pronunciation.json

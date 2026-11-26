@@ -2193,6 +2193,7 @@ const deDE: Dictionary = {
     fishUnusedTitle: "fish.audio kann diesen Eintrag nicht nutzen: außerhalb des Englischen liest es kein IPA, und dieses IPA lässt sich nicht umwandeln. Gib eine Umschrift an, damit fish.audio es nutzen kann.",
   },
   profile: {
+    keyCheckedGemini: "Wird vor dem Speichern gegen Gemini geprüft, das kostet nichts.",
     tokens: {
       copied: "Kopier dieses Token jetzt. Es wird nicht wieder angezeigt.",
       packs: "Community-Pakete",
@@ -2481,6 +2482,9 @@ const deDE: Dictionary = {
     shownOf: "{n} von {all}",
   },
   apiKeys: {
+    placeholderGemini: "Gemini-API-Schlüssel",
+    geminiAfter: " Google-AI-Studio-Konto, ein paar Cent pro Vergleich. Er ist optional und wird nur beim Stimmentwurf genutzt. Er wird vor dem Speichern verschlüsselt und nie wieder angezeigt. Du findest ihn in Google AI Studio unter API keys.",
+    geminiBefore: "Beim Entwerfen von Stimmen vergleicht Gemini Spielclips, bezahlt aus ",
     aboutAfter: ". Das Token schreibt sofort live, unter deinem Namen. Wenn du Textbetreuer der Sprache des Tokens bist, schreibt es den Originaltext; wenn nicht, schreibt es nur die Überschreibungen deines Teams. Ein Token funktioniert nicht mehr, wenn es abläuft, widerrufen wird, oder wenn du weder die Textfreigabe noch das Recht hast, in seiner Sprache neu zu erzeugen. Ein Generate-Token reiht außerdem Audio ein, was deinen eigenen ElevenLabs- oder fish.audio-Schlüssel verbraucht, und kann kein Audio mehr einreihen, sobald du das Recht verlierst, in seiner Sprache neu zu erzeugen.",
     aboutBefore: "Lässt ein Skript oder einen Agenten Text in einer Sprache in deinem Namen lesen oder ändern. Richte es auf ",
     access: "Zugriff",

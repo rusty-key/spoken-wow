@@ -47,6 +47,13 @@ export const VOICE_REFERENCES_DIR =
   process.env.SPOKEN_QUESTS_VOICE_REFERENCES ?? path.join(DATA_ROOT, "voice", "references");
 
 /**
+ * The previews and sample lines of voices designed on /voices/design, as <sha256>.mp3, where
+ * the archive keeps them on the volume. In production in shared/, for the samples' reason.
+ */
+export const VOICE_DESIGNS_DIR =
+  process.env.SPOKEN_QUESTS_VOICE_DESIGNS ?? path.join(DATA_ROOT, "voice", "designs");
+
+/**
  * The clips a voice is seeded from, as `<race-gender>/<flavor>/<Title>.ogg`.
  *
  * Local and gitignored. It is the material every clone is seeded from - which is the only

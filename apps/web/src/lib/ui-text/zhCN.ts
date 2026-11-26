@@ -2141,6 +2141,7 @@ const zhCN: Dictionary = {
     fishUnusedTitle: "fish.audio 用不了这个词条：它在英语之外不读 IPA，而这段 IPA 转换不了。给它写个重拼，fish.audio 才能用。",
   },
   profile: {
+    keyCheckedGemini: "保存前会先向 Gemini 验证，不产生费用。",
     tokens: {
       copied: "请现在复制这个令牌，之后不会再显示。",
       packs: "社区语音包",
@@ -2429,6 +2430,9 @@ const zhCN: Dictionary = {
     shownOf: "{n} / {all}",
   },
   apiKeys: {
+    placeholderGemini: "Gemini API 密钥",
+    geminiAfter: " Google AI Studio 账户扣除，每次比较几美分。它是可选的，只有语音设计会用到。它会在保存前加密，之后不再显示。可以在 Google AI Studio 的 API keys 里找到。",
+    geminiBefore: "设计语音时会用 Gemini 比较游戏片段，费用从 ",
     aboutAfter: "。写入会立即生效，署名是你。如果你是该令牌所属语言的文本维护者，写入的是原始文本；如果不是，只写入你所在团队的改写。令牌在到期、被撤销，或者你既没有文本权限、也没有该语言的重新生成权限时失效。generate 令牌还会把音频排入队列，费用走你自己的 ElevenLabs 或 fish.audio 密钥；一旦失去该语言的重新生成权限，就不能再把音频排入队列。",
     aboutBefore: "让脚本或智能体以你的身份读取或修改某个语言的文本。把它指向 ",
     access: "访问权限",

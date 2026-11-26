@@ -2190,6 +2190,7 @@ const ptBR: Dictionary = {
     fishUnusedTitle: "fish.audio não consegue usar esta entrada: fora do inglês ele não lê IPA, e este IPA não converte. Dê uma reescrita para o fish.audio usar.",
   },
   profile: {
+    keyCheckedGemini: "Verificada no Gemini antes de ser guardada, o que não custa nada.",
     tokens: {
       copied: "Copie este token agora. Ele não será mostrado de novo.",
       packs: "Pacotes da comunidade",
@@ -2478,6 +2479,9 @@ const ptBR: Dictionary = {
     shownOf: "{n} de {all}",
   },
   apiKeys: {
+    placeholderGemini: "chave de API do Gemini",
+    geminiAfter: " conta do Google AI Studio, alguns centavos por comparação. É opcional e só o desenho de vozes usa. Ela é criptografada antes de ser guardada e nunca é mostrada de novo. Encontre a sua no Google AI Studio, em API keys.",
+    geminiBefore: "Ao desenhar vozes, o Gemini compara clipes do jogo, pago com a ",
     aboutAfter: ". As mudanças entram no ar na hora, no seu nome. Se você é mantenedor do texto no idioma do token, ele escreve o texto original; se não, escreve só as substituições da sua equipe. Um token para de funcionar no vencimento, ao ser revogado, ou quando você não tem nem a permissão de texto nem o direito de regerar no idioma dele. Um token de geração também enfileira áudio, o que gasta sua própria chave do ElevenLabs ou do fish.audio, e deixa de poder enfileirar áudio assim que você perde o direito de regerar no idioma dele.",
     aboutBefore: "Deixa um script ou um agente ler ou mudar texto num idioma no seu nome. Aponte para ",
     access: "Acesso",

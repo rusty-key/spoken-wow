@@ -9,9 +9,8 @@
  * Only somebody who spends somewhere may store one: a member has no action a key would
  * unblock, so storing their credential would be collecting a secret this app has no use for.
  */
-import { apiKeyStatus, deleteApiKey, storeApiKey } from "@/lib/api-key";
+import { apiKeyStatus, deleteApiKey, storeApiKey, type KeyProvider } from "@/lib/api-key";
 import { currentSpender } from "@/lib/generation/authz";
-import type { Provider } from "@/lib/generation/providers";
 import { isAdmin } from "@/lib/permissions";
 import { currentSession } from "@/lib/session";
 
@@ -23,7 +22,7 @@ const FORBIDDEN = () => Response.json({ error: "not allowed" }, { status: 403 })
  * as an "auth" failure in the middle of a batch, where it is fatal -- so a bad paste would
  * cost a whole regeneration pass instead of one message here.
  */
-export function keyRoutes(provider: Provider, verify: (key: string) => Promise<{ tier: string | null }>) {
+export function keyRoutes(provider: KeyProvider, verify: (key: string) => Promise<{ tier: string | null }>) {
   return {
     async GET() {
       const session = await currentSpender();

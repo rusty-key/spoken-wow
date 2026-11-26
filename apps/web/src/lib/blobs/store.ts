@@ -19,7 +19,7 @@ import { resolveRange, type Range, type RangeRequest } from "@/lib/range";
 
 export type ArchiveMode = "disk" | "dual" | "r2";
 
-export type BlobPrefix = "takes" | "recordings" | "encodings" | "samples" | "references";
+export type BlobPrefix = "takes" | "recordings" | "encodings" | "samples" | "references" | "designs";
 
 /** Takes are anybody's to hear (docs/platform/PLAN.md decision 1); everything else is behind a grant. */
 const SHARED: ReadonlySet<string> = new Set<BlobPrefix>(["takes", "encodings"]);

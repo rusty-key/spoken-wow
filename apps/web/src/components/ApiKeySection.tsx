@@ -6,13 +6,15 @@ import { useState } from "react";
 import { useUiText } from "@/components/UiTextProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { ApiKeyStatus } from "@/lib/api-key";
+import type { ApiKeyStatus, KeyProvider } from "@/lib/api-key";
 import { fill } from "@/lib/site-text/format";
-import { PROVIDER_NAME, type Provider } from "@/lib/generation/providers";
+import { PROVIDER_NAME } from "@/lib/generation/providers";
 
-/** What differs between the two providers' sections: the words, and where the key goes. */
+const NAME: Record<KeyProvider, string> = { ...PROVIDER_NAME, gemini: "Gemini" };
+
+/** What differs between the providers' sections: the words, and where the key goes. */
 const COPY: Record<
-  Provider,
+  KeyProvider,
   { endpoint: string; mask: string; placeholder: string; checked: string }
 > = {
   elevenlabs: {
@@ -26,6 +28,12 @@ const COPY: Record<
     mask: "••••",
     placeholder: "fish.audio API key",
     checked: "Checked against fish.audio before it is stored, which costs nothing.",
+  },
+  gemini: {
+    endpoint: "/api/profile/gemini-key",
+    mask: "••••",
+    placeholder: "Gemini API key",
+    checked: "Checked against Gemini before it is stored, which costs nothing.",
   },
 };
 
@@ -42,7 +50,7 @@ export default function ApiKeySection({
   provider = "elevenlabs",
 }: {
   initial: ApiKeyStatus | null;
-  provider?: Provider;
+  provider?: KeyProvider;
 }) {
   const t = useUiText();
   const words = t.apiKeys;
@@ -101,12 +109,18 @@ export default function ApiKeySection({
   return (
     // Anchored so /voices can send somebody straight to the key its Activate is waiting on.
     <section id={`${provider}-key`} className="max-w-xl scroll-mt-20">
-      <h2 className="mb-1 font-medium">{fill(words.title, { provider: PROVIDER_NAME[provider] })}</h2>
+      <h2 className="mb-1 font-medium">{fill(words.title, { provider: NAME[provider] })}</h2>
       {provider === "elevenlabs" ? (
         <p className="text-muted-foreground mb-4 text-sm">
           {words.elevenLabsBefore}
           <strong className="text-foreground">{t.profile.yourOwn}</strong>
           {words.elevenLabsAfter}
+        </p>
+      ) : provider === "gemini" ? (
+        <p className="text-muted-foreground mb-4 text-sm">
+          {words.geminiBefore}
+          <strong className="text-foreground">{t.profile.yourOwn}</strong>
+          {words.geminiAfter}
         </p>
       ) : (
         <p className="text-muted-foreground mb-4 text-sm">
@@ -143,8 +157,8 @@ export default function ApiKeySection({
             type="password"
             value={entry}
             autoComplete="off"
-            placeholder={provider === "fish" ? words.placeholderFish : words.placeholderEleven}
-            aria-label={fill(t.profile.addKey, { provider: PROVIDER_NAME[provider] })}
+            placeholder={provider === "fish" ? words.placeholderFish : provider === "gemini" ? words.placeholderGemini : words.placeholderEleven}
+            aria-label={fill(t.profile.addKey, { provider: NAME[provider] })}
             onChange={(event) => setEntry(event.target.value)}
             className="w-80 font-mono"
           />
@@ -165,7 +179,7 @@ export default function ApiKeySection({
             </Button>
           )}
           <span className="text-muted-foreground w-full text-xs">
-            {provider === "fish" ? t.profile.keyCheckedFish : t.profile.keyCheckedEleven}
+            {provider === "fish" ? t.profile.keyCheckedFish : provider === "gemini" ? t.profile.keyCheckedGemini : t.profile.keyCheckedEleven}
           </span>
         </div>
       ) : (

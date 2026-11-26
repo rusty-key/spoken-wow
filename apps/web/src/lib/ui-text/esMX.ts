@@ -2190,6 +2190,7 @@ const esMX: Dictionary = {
     fishUnusedTitle: "fish.audio no puede usar esta entrada: fuera del inglés no lee IPA, y este IPA no se convierte. Dale una transcripción para que fish.audio la use.",
   },
   profile: {
+    keyCheckedGemini: "Se comprueba con Gemini antes de guardarla, lo que no cuesta nada.",
     tokens: {
       copied: "Copia este token ahora. No se volverá a mostrar.",
       packs: "Paquetes de la comunidad",
@@ -2478,6 +2479,9 @@ const esMX: Dictionary = {
     shownOf: "{n} de {all}",
   },
   apiKeys: {
+    placeholderGemini: "clave de API de Gemini",
+    geminiAfter: " cuenta de Google AI Studio, unos centavos por comparación. Es opcional y solo lo usa el diseño de voces. Se cifra antes de guardarse y nunca se vuelve a mostrar. Encuentra la tuya en Google AI Studio, en API keys.",
+    geminiBefore: "Al diseñar voces, Gemini compara clips del juego, y se paga con ",
     aboutAfter: ". Las escrituras se aplican al momento, con tu nombre. Si eres responsable del texto en el idioma del token, escribe el texto original; si no, escribe solo los reemplazos de tu equipo. Un token deja de funcionar al vencer, al revocarlo, o cuando no tienes ni el permiso de texto ni el derecho a regenerar en su idioma. Un token de generación también pone audio en cola, lo que gasta tu propia clave de ElevenLabs o fish.audio, y deja de poder hacerlo cuando pierdes el derecho a regenerar en su idioma.",
     aboutBefore: "Permite que un script o un agente lea o cambie texto de un idioma en tu nombre. Apúntalo a ",
     access: "Acceso",

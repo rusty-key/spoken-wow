@@ -15,11 +15,15 @@ import { open, seal } from "./secrets";
 import type { Provider } from "./generation/providers";
 
 
+/** A key the profile stores: a generator's, or Gemini's, which listens on /voices/design. */
+export type KeyProvider = Provider | "gemini";
+
 // A table per provider (see migration 0040 for why not one table with a column). Written
 // out rather than interpolated from the argument, so no caller can name a table.
-const TABLE: Record<Provider, string> = {
+const TABLE: Record<KeyProvider, string> = {
   elevenlabs: `"elevenlabs_key"`,
   fish: `"fish_key"`,
+  gemini: `"gemini_key"`,
 };
 
 export type ApiKeyStatus = {
@@ -46,7 +50,7 @@ function hintFor(key: string): string {
 
 export async function apiKeyStatus(
   userId: string,
-  provider: Provider = "elevenlabs",
+  provider: KeyProvider = "elevenlabs",
 ): Promise<ApiKeyStatus | null> {
   const rows = await query<{ hint: string; verifiedAt: Date | null; tier: string | null }>(
     `select "hint", "verifiedAt", "tier" from ${TABLE[provider]} where "userId" = $1`,
@@ -71,7 +75,7 @@ export async function apiKeyStatus(
  */
 export async function readApiKey(
   userId: string,
-  provider: Provider = "elevenlabs",
+  provider: KeyProvider = "elevenlabs",
 ): Promise<string | null> {
   const rows = await query<Row>(
     `select "ciphertext", "iv", "tag", "hint", "verifiedAt", "tier"
@@ -88,7 +92,7 @@ export async function storeApiKey(
   userId: string,
   key: string,
   tier: string | null,
-  provider: Provider = "elevenlabs",
+  provider: KeyProvider = "elevenlabs",
 ): Promise<ApiKeyStatus> {
   const sealed = seal(key);
 
@@ -114,7 +118,7 @@ export async function storeApiKey(
 
 export async function deleteApiKey(
   userId: string,
-  provider: Provider = "elevenlabs",
+  provider: KeyProvider = "elevenlabs",
 ): Promise<void> {
   await query(`delete from ${TABLE[provider]} where "userId" = $1`, [userId]);
 }

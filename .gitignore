@@ -46,6 +46,9 @@ superpowers/
 # samples if lost, but a take records the clip's hash, so a re-cut is a different reference.
 /pipelines/quests/voice/references/
 
+# Previews and sample lines of voices designed on /voices/design, kept by the site.
+/pipelines/quests/voice/designs/
+
 # NPC voice lines kept locally while working on voices. Audio never goes in git.
 /pipelines/quests/voice/npc-lines/
 

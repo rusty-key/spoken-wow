@@ -1390,6 +1390,9 @@ export const EN = {
   },
   /** A provider's API key, on the profile page. */
   apiKeys: {
+    placeholderGemini: "Gemini API key",
+    geminiAfter: " Google AI Studio account at a few cents a comparison. It is optional, and only Voice design uses it. It is encrypted before it is stored and never shown again. Find yours in Google AI Studio, under API keys.",
+    geminiBefore: "Designing voices compares game clips with Gemini, spent from ",
     title: "{provider} key",
     elevenLabsBefore: "Regenerating a line, cloning a voice and previewing a pronunciation all spend credits from ",
     elevenLabsAfter:
@@ -1619,6 +1622,7 @@ export const EN = {
   },
   /** A profile's account: who it is, its keys, and the tokens it hands out. */
   profile: {
+    keyCheckedGemini: "Checked against Gemini before it is stored, which costs nothing.",
     title: "Profile",
     email: "Email",
     role: "Role",
