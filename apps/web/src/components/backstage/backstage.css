@@ -2405,3 +2405,120 @@ body:has(main.bs) {
   text-underline-offset: 3px;
   cursor: pointer;
 }
+
+/* /listen: players vote on designed voices. */
+.ls-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ls-table th,
+.ls-table td {
+  padding: 10px 12px 10px 0;
+  text-align: left;
+  vertical-align: top;
+  box-shadow: inset 0 -1px 0 var(--bs-line);
+}
+.ls-table thead th {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+}
+.ls-name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ls-lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ls-lines-spelled {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+.ls-lines-spelled li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.ls-line-text {
+  color: var(--bs-text-2);
+  font-size: 13px;
+}
+.ls-vote {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  min-width: 280px;
+}
+.ls-verdicts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ls-verdict[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1px var(--bs-blue);
+  color: var(--bs-blue);
+}
+.ls-verdict[data-verdict="fits"][aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1px var(--bs-green);
+  color: var(--bs-green-text);
+}
+.ls-verdict[data-verdict="off"][aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1px var(--bs-red);
+  color: var(--bs-red-text);
+}
+.ls-note {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: #0c0d10;
+  box-shadow: inset 0 0 0 1px var(--input);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+.ls-note::placeholder {
+  color: #73757e;
+}
+.ls-error {
+  color: var(--bs-red-text);
+  font-size: 12.5px;
+}
+.ls-card {
+  display: grid;
+  gap: 6px;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 18px;
+  border-radius: 10px;
+  background: var(--bs-panel);
+  box-shadow: inset 0 0 0 1px var(--bs-line);
+}
+.ls-card-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.ls-card .ls-vote {
+  min-width: 0;
+}
+.ls-card-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+@media (max-width: 640px) {
+  .ls-card {
+    padding: 14px;
+  }
+}

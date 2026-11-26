@@ -1,0 +1,83 @@
+"use client";
+
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
+
+import { useUiText } from "@/components/UiTextProvider";
+import { cn } from "@/lib/utils";
+import { VERDICTS, type Verdict } from "@/lib/voice-design/types";
+import type { OwnVote } from "@/lib/voice-feedback/public";
+
+/**
+ * The four answers and the optional note. A note always goes with an answer: typed first, it
+ * rides along with the answer pressed; typed after, Save note sends it with the same answer.
+ */
+export default function VoteControls({
+  vote,
+  onVote,
+}: {
+  vote: OwnVote | undefined;
+  onVote: (verdict: Verdict, note: string) => Promise<void>;
+}) {
+  const t = useUiText().listen;
+  const [note, setNote] = useState(vote?.note ?? "");
+  const [busy, setBusy] = useState<Verdict | "note" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const label: Record<Verdict, string> = { fits: t.fits, close: t.close, off: t.off, skip: t.skip };
+  const noteChanged = note.trim() !== (vote?.note ?? "");
+
+  async function send(what: Verdict | "note", verdict: Verdict) {
+    setBusy(what);
+    setError(null);
+    try {
+      await onVote(verdict, note.trim());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="ls-vote">
+      <div className="ls-verdicts" role="group" aria-label={t.question}>
+        {VERDICTS.map((verdict) => (
+          <button
+            key={verdict}
+            type="button"
+            className={cn("bs-btn ls-verdict")}
+            data-verdict={verdict}
+            aria-pressed={vote?.verdict === verdict}
+            disabled={busy !== null}
+            onClick={() => void send(verdict, verdict)}
+          >
+            {busy === verdict ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : null}
+            {label[verdict]}
+          </button>
+        ))}
+      </div>
+      <textarea
+        className="ls-note"
+        rows={2}
+        maxLength={2000}
+        value={note}
+        placeholder={t.notePlaceholder}
+        aria-label={t.noteLabel}
+        onChange={(event) => setNote(event.target.value)}
+      />
+      {vote && noteChanged ? (
+        <button type="button" className="bs-btn bs-btn-primary ls-save" disabled={busy !== null} onClick={() => void send("note", vote.verdict)}>
+          {busy === "note" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : null}
+          {t.saveNote}
+        </button>
+      ) : !vote && note.trim() ? (
+        <span className="vd-muted">{t.voteFirst}</span>
+      ) : null}
+      {error ? (
+        <p className="ls-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
