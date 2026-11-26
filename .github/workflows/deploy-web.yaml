@@ -61,10 +61,7 @@ on:
 # before the droplet: GitHub can only pause a whole job. test and build hold no secrets, and ship
 # runs nothing from the repository, only this file and the bundle.
 jobs:
-  # The gate, beside the build rather than before it, so a deploy waits for the slower of the
-  # two and not their sum. ship needs both. range.test.ts covers Safari's bytes=0-1 probe, and
-  # the places catalogue tests cover the stamp that keeps two workers agreeing; none should
-  # reach the droplet red.
+  # The gate, beside the build so a deploy waits for the slower of the two, not their sum.
   test:
     runs-on: ubuntu-latest
     services:
@@ -89,9 +86,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Without them the encoding, reference and recording suites skip themselves.
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg vorbis-tools
-      # history.test.ts exercises the take table against a real Postgres, because what it
-      # protects -- one live take per file, files never rewritten -- is exactly what a mocked
-      # database would stop testing.
+      # A real Postgres: what the suites protect lives in schema constraints a mock would skip.
       - run: deploy/web/bin/migrate.sh "$PWD/apps/web"
       - uses: actions/setup-python@v5
         with:
@@ -159,9 +154,6 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      # No separate typecheck: `next build` below runs tsc over the same project and fails on
-      # an error.
-
       # The places pipeline's own checks: that the Lua and the JS agree on slugs, locales
       # and normalisation. The addon's report links are built by the Lua half and resolved
       # by the JS half, so a drift here is a link that 404s in a player's browser.
@@ -184,12 +176,14 @@ jobs:
         with:
           # requirements-extract pins pandas 1.5.3, whose last wheels are cp311.
           python-version: "3.11"
+          cache: pip
       - name: Seed the quests corpus
         working-directory: pipelines/quests
         run: |
           pip install -r requirements-extract.txt
           python cli-main.py import-corpus
 
+      # Also the typecheck: next build runs tsc over the whole project and fails on an error.
       - name: Build
         working-directory: apps/web
         run: pnpm build
