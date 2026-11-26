@@ -2092,6 +2092,31 @@ body:has(main.bs) {
 .vd-review-note {
   color: var(--foreground);
 }
+.vd-feedback {
+  display: grid;
+  gap: 6px;
+  padding: 10px 14px;
+  box-shadow: inset 0 1px 0 var(--bs-line);
+}
+.vd-feedback-round {
+  display: grid;
+  gap: 4px;
+}
+.vd-feedback-notes {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vd-tag[data-verdict="off"] {
+  background: rgba(240, 96, 93, 0.14);
+  color: var(--bs-red-text);
+}
+.vd-tag[data-verdict="fits"] {
+  background: rgba(95, 207, 79, 0.14);
+  color: var(--bs-green-text);
+}
 .vd-review-form {
   display: grid;
   justify-items: start;

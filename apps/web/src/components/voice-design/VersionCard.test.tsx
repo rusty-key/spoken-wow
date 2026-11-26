@@ -195,3 +195,39 @@ test("offers remix only to the voice's holder, while the voice is in their accou
   render(card({ ...DESIGN, voiceDeletedAt: "2026-11-26T00:00:00Z" }));
   expect(screen.queryByRole("button", { name: "Remix from review" })).toBeNull();
 });
+
+test("shows a sampled version to players, and locks its lines once they hear it", async () => {
+  const fetchMock = vi.fn(async () => Response.json({ design: { ...DESIGN, isPublic: true } }));
+  vi.stubGlobal("fetch", fetchMock);
+  const { rerender } = render(card(DESIGN));
+
+  await userEvent.click(screen.getByRole("button", { name: "Show to players" }));
+  const [url] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+  expect(url).toContain(`/api/voices/design/${DESIGN.id}/show`);
+
+  rerender(card({ ...DESIGN, isPublic: true }));
+  expect(screen.getByText("Players hear this")).toBeTruthy();
+  expect((screen.getByRole("button", { name: "Voice the lines again" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.getByRole("button", { name: "Show again" })).toBeTruthy();
+});
+
+test("lists players' votes per showing, and hides a note as spam", async () => {
+  const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
+  vi.stubGlobal("fetch", fetchMock);
+  const showing = {
+    id: 7,
+    createdAt: "2026-11-26T00:00:00Z",
+    createdByName: "Ann",
+    counts: { fits: 2, close: 1, off: 1, skip: 0 },
+    notes: [{ voter: "a:x", who: null, verdict: "off" as const, note: "too old", at: "2026-11-26T00:00:00Z" }],
+  };
+  render(card({ ...DESIGN, isPublic: true, showings: [showing] }));
+
+  expect(screen.getByText(/Fits 2 · Close 1 · Doesn't fit 1 · Skipped 0/)).toBeTruthy();
+  expect(screen.getByText("too old")).toBeTruthy();
+  await userEvent.click(screen.getByRole("button", { name: "Hide" }));
+  const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+  expect(url).toContain(`/api/voices/design/${DESIGN.id}/feedback`);
+  expect(init.method).toBe("DELETE");
+  expect(JSON.parse(String(init.body))).toEqual({ showingId: 7, voter: "a:x" });
+});
