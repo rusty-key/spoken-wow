@@ -7,7 +7,10 @@ export type DirectionRequest = { npc: NpcResolution; npcKind: NpcRowKind; npcId:
 
 /** The NPC on file and its direction, bracketed, or the response refusing them. */
 export async function readDirectionRequest(request: Request): Promise<DirectionRequest | Response> {
-  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  return directionRequest((await request.json().catch(() => ({}))) as Record<string, unknown>);
+}
+
+export async function directionRequest(body: Record<string, unknown>): Promise<DirectionRequest | Response> {
   const npcKind = (NPC_ROW_KINDS as readonly string[]).includes(body.npcKind as string)
     ? (body.npcKind as NpcRowKind)
     : null;
