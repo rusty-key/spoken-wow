@@ -62,6 +62,15 @@ function post(body: Record<string, unknown>, lang = "deDE"): Promise<Response> {
 }
 
 describe("POST /api/npcs/language-direction", () => {
+  it("400, not 500, on a body that is not an object", async () => {
+    const response = await POST(new Request("https://example.com/api/npcs/language-direction?lang=deDE", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "null",
+    }));
+    expect(response.status).toBe(400);
+  });
+
   it("overrides the global direction in its language only, and clears back to it", async () => {
     await setDirection("creature", npcId, "[pirate accent]");
 

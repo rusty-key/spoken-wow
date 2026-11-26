@@ -17,7 +17,7 @@ import { queryAs, readAs } from "@/lib/teams/store";
 // (not just re-exported) so this file can still use them as it always did, and re-exported so
 // every existing import of these from this module keeps working unchanged.
 import {
-  NPC_KINDS, NPC_ROW_KINDS, PROVENANCES, isProvenance, type NpcKind, type NpcRowKind, type Provenance, type Sex,
+  INT32_MAX, NPC_KINDS, NPC_ROW_KINDS, PROVENANCES, isProvenance, type NpcKind, type NpcRowKind, type Provenance, type Sex,
 } from "./npc";
 
 export { NPC_KINDS, NPC_ROW_KINDS, PROVENANCES, isProvenance };
@@ -255,6 +255,16 @@ export async function getResolutionsById(npcIds: number[]): Promise<Map<number, 
 /** The map key getResolutions returns rows under -- the same pair getResolution takes, joined. */
 export function resolutionKey(npcKind: NpcRowKind, npcId: number): string {
   return `${npcKind}:${npcId}`;
+}
+
+const ID = /^([a-z]+):(\d+)$/;
+
+/** `creature:123` as its kind and id, or null for anything the npc table cannot hold. */
+export function parseResolutionKey(id: string): { npcKind: NpcRowKind; npcId: number } | null {
+  const match = ID.exec(id);
+  if (!match || !(NPC_ROW_KINDS as readonly string[]).includes(match[1])) return null;
+  const npcId = Number(match[2]);
+  return npcId <= INT32_MAX ? { npcKind: match[1] as NpcRowKind, npcId } : null;
 }
 
 /**

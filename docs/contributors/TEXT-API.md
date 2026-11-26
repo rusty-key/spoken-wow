@@ -300,6 +300,40 @@ until someone uploads from the lexicon page. Every write that changes something 
 dictionary, so send several fixes as one bulk `PATCH` rather than one request per word.
 Changing an entry marks takes that say the word as outdated; nothing here regenerates them.
 
+## Accents and NPC directions
+
+A direction is a short instruction such as `Scottish accent` that tells the voice how to perform a
+line. It is stored in square brackets, which are added for you. Reading or changing directions
+needs the **configure** grant in the token's language, except reading race tags, which needs any
+token. Changing one marks the takes it voices as outdated; nothing here regenerates them.
+
+```sh
+curl -H "Authorization: Bearer $SPOKEN_TOKEN" "https://spoken.quest/api/v1/race-tags"
+curl -X PATCH -H "Authorization: Bearer $SPOKEN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"raceTags": {"dwarf": "Scottish accent", "troll": "[Caribbean accent]"}}' \
+  "https://spoken.quest/api/v1/race-tags"
+```
+
+Race tags are one map per language, keyed by race or by one voice slot of a race. A `PATCH` replaces
+the whole map, as the Voices page does: a race you leave out loses its tag, so read, change and
+send it back.
+
+```sh
+curl -H "Authorization: Bearer $SPOKEN_TOKEN" "https://spoken.quest/api/v1/npcs?directed=true"
+curl -H "Authorization: Bearer $SPOKEN_TOKEN" "https://spoken.quest/api/v1/npcs/creature:1747"
+curl -X PATCH -H "Authorization: Bearer $SPOKEN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"direction": "weary, gravelly"}' \
+  "https://spoken.quest/api/v1/npcs/creature:1747"
+```
+
+An NPC's id is its kind and number: `creature:1747`, `gameobject:…` or `item:…`. The list pages
+like text, with `cursor` and `limit`; `directed=true` keeps only NPCs with a direction. Each NPC
+gives its `name`, `race`, `gender` and `flavor`, its global `direction`, and the
+`languageDirection` your language speaks it with in place of the global one. A `PATCH` sets
+`languageDirection`; an empty or `null` direction clears it back to the global one. English has
+no language direction: the global direction, and who the NPC is, are set by the site's admin on
+the NPCs page.
+
 ## Undoing a run
 
 ```sh
