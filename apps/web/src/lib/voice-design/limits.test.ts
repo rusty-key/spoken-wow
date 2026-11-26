@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PROMPT_ENDING, promptProblems, recommendedPreview, withEnding } from "./limits";
+import { PROMPT_ENDING, promptLengthProblem, promptProblems, recommendedPreview, withEnding } from "./limits";
 
 const m = (ess: number, decay: number, level: number) => ({ ess, decay, level });
 
@@ -28,6 +28,18 @@ describe("the prompt's ending", () => {
     const old = "A gruff orc. General American accent. Perfect audio quality, dry close-mic studio recording, no reverb or effects.";
     expect(withEnding(old)).toBe(`A gruff orc. General American accent. ${PROMPT_ENDING}`);
     expect(withEnding(`A gruff orc. ${PROMPT_ENDING}`)).toBe(`A gruff orc. ${PROMPT_ENDING}`);
+  });
+
+  it("removes only the old sentence, never what the designer wrote after it", () => {
+    const old = "Perfect audio quality, dry close-mic studio recording, no reverb or effects.";
+    expect(withEnding(`A troll. ${old} Speaks slowly.`)).toBe(`A troll. Speaks slowly. ${PROMPT_ENDING}`);
+  });
+
+  it("checks the typed prompt's minimum and the sent prompt's maximum", () => {
+    expect(promptLengthProblem("Hi")).toMatch(/20/);
+    expect(promptLengthProblem("x".repeat(900))).toMatch(/1000/);
+    expect(promptLengthProblem("x".repeat(500))).toBeNull();
+    expect(promptLengthProblem(`${"x".repeat(840)} ${PROMPT_ENDING}`)).toBeNull();
   });
 
   it("names what makes s sounds harsh, and a missing ending", () => {

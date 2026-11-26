@@ -76,9 +76,9 @@ describe("designVersion", () => {
 
   it("sends every prompt with the ending that keeps s sounds soft, replacing the old one", async () => {
     const d = deps();
-    const old = "A gruff orc. Perfect audio quality, dry close-mic studio recording, no reverb or effects.";
+    const old = "A gruff orc, a back-alley dealer. Perfect audio quality, dry close-mic studio recording, no reverb or effects.";
     await designVersion({ ...base, slot: "orc-male-shady", prompt: old, previewText: DESIGN.previewText, analysisId: null }, d);
-    expect(vi.mocked(d.design).mock.calls[0][0].prompt).toBe(`A gruff orc. ${PROMPT_ENDING}`);
+    expect(vi.mocked(d.design).mock.calls[0][0].prompt).toBe(`A gruff orc, a back-alley dealer. ${PROMPT_ENDING}`);
   });
 
   it("still refuses an empty prompt", async () => {
