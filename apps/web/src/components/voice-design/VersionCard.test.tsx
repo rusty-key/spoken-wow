@@ -181,6 +181,7 @@ test("remixes the held voice from the review in one press: Gemini's changes, the
     previewText: "y".repeat(120),
     settings: { promptStrength: 0.5, guidanceScale: null, loudness: null, seed: 9 },
     revisionHeard: "too noble",
+    archetype: "Queen",
   });
 });
 

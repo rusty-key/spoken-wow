@@ -136,6 +136,7 @@ export async function remixVersion(
     previewText: string;
     settings: RemixSettings;
     revisionHeard?: string | null;
+    archetype?: string | null;
     userId: string;
     apiKey: string;
   },
@@ -152,7 +153,7 @@ export async function remixVersion(
 
   const made = await deps.remix({ voiceId: parent.voiceId!, changes, text: previewText, ...input.settings }, input.apiKey);
   const analysis: Record<string, unknown> = {
-    ...describedBy(input.revisionHeard, typeof parent.analysis?.archetype === "string" ? parent.analysis.archetype : null),
+    ...describedBy(input.revisionHeard, input.archetype || (typeof parent.analysis?.archetype === "string" ? parent.analysis.archetype : null)),
     remix_of: parent.version,
     remix_changes: changes,
     remix_settings: input.settings,

@@ -209,6 +209,12 @@ describe("remixVersion", () => {
     );
   });
 
+  it("keeps the archetype Gemini gave with the changes over the parent's", async () => {
+    const d = deps(saved);
+    await remixVersion({ ...remix, archetype: "City guard" }, d);
+    expect(d.create).toHaveBeenCalledWith(expect.objectContaining({ analysis: expect.objectContaining({ archetype: "City guard" }) }));
+  });
+
   it("refuses anyone but the holder, a deleted voice, and empty changes, before anything is spent", async () => {
     const other = deps({ ...saved, holderId: "u2" });
     await expect(remixVersion(remix, other)).rejects.toThrow(/Ann's ElevenLabs account/);

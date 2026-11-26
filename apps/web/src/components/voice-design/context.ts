@@ -96,7 +96,7 @@ export async function remixFrom(lang: Lang, draft: Draft, settings: RemixSetting
   if (!draft.remix) throw new Error("not a remix");
   if (!draft.changes?.trim()) throw new Error("Gemini said no changes to remix with");
   const { design } = await send<{ design: Design }>(withLang(lang, `/api/voices/design/${draft.remix.id}/remix`), {
-    body: { changes: draft.changes, previewText: draft.previewText, settings, revisionHeard: draft.heard ?? null },
+    body: { changes: draft.changes, previewText: draft.previewText, settings, revisionHeard: draft.heard ?? null, archetype: draft.archetype ?? null },
   });
   return design;
 }

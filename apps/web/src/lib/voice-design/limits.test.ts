@@ -67,5 +67,7 @@ describe("parseRemixSettings", () => {
     expect(parseRemixSettings({ promptStrength: 2 })).toMatch(/promptStrength/);
     expect(parseRemixSettings({ loudness: "loud" })).toMatch(/loudness/);
     expect(parseRemixSettings({ seed: 1.5 })).toMatch(/seed/);
+    expect(parseRemixSettings({ seed: 4294967296 })).toMatch(/seed/);
+    expect(parseRemixSettings({ seed: 4294967295 })).toMatchObject({ seed: 4294967295 });
   });
 });

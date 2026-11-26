@@ -14,6 +14,8 @@ export const REMIX_SETTINGS = {
   loudness: { min: -1, max: 1, step: 0.05, initial: 0.5 },
 } as const;
 export const REMIX_CHANGES_MAX = 500;
+/** ElevenLabs refuses a seed past an unsigned 32-bit integer. */
+export const REMIX_SEED_MAX = 4294967295;
 
 export type RemixSettings = { promptStrength: number | null; guidanceScale: number | null; loudness: number | null; seed: number | null };
 
@@ -30,7 +32,7 @@ export function parseRemixSettings(input: unknown): RemixSettings | string {
   }
   const seed = raw.seed;
   if (seed !== null && seed !== undefined) {
-    if (typeof seed !== "number" || !Number.isSafeInteger(seed) || seed < 0) return "seed must be a whole number, 0 or more";
+    if (typeof seed !== "number" || !Number.isInteger(seed) || seed < 0 || seed > REMIX_SEED_MAX) return `seed must be a whole number, 0 to ${REMIX_SEED_MAX}`;
     settings.seed = seed;
   }
   return settings;

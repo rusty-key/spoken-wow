@@ -1,7 +1,7 @@
 "use client";
 
 import { useUiText } from "@/components/UiTextProvider";
-import { REMIX_SETTINGS, type RemixSettings } from "@/lib/voice-design/limits";
+import { REMIX_SEED_MAX, REMIX_SETTINGS, type RemixSettings } from "@/lib/voice-design/limits";
 
 import { useWorkbench } from "./context";
 
@@ -11,7 +11,7 @@ const RANGES = [
   ["loudness", "loudness", "loudnessHint"],
 ] as const;
 
-/** Voice Remix's settings for the page. A range left at ElevenLabs' default is not sent. */
+/** Voice Remix's settings for the page. Every value shown is sent; only a blank seed is left to ElevenLabs. */
 export default function RemixSettingsFields() {
   const t = useUiText().voiceDesign;
   const { remixSettings: settings, setRemixSettings } = useWorkbench();
@@ -35,11 +35,12 @@ export default function RemixSettingsFields() {
         <input
           type="number"
           min={0}
+          max={REMIX_SEED_MAX}
           step={1}
           className="vd-remix-seed"
           value={settings.seed ?? ""}
           placeholder={t.seedRandom}
-          onChange={(event) => set({ seed: event.target.value === "" ? null : Math.max(0, Math.floor(Number(event.target.value))) })}
+          onChange={(event) => set({ seed: event.target.value === "" ? null : Math.min(REMIX_SEED_MAX, Math.max(0, Math.floor(Number(event.target.value)))) })}
         />
       </label>
       <p className="vd-muted vd-remix-note">{t.remixSettingsNote}</p>

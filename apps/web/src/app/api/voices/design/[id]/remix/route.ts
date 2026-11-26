@@ -28,6 +28,7 @@ export async function POST(request: Request, context: Context) {
       previewText: text("previewText"),
       settings,
       revisionHeard: text("revisionHeard") || null,
+      archetype: text("archetype") || null,
       userId: session.user.id,
       apiKey: key,
     });

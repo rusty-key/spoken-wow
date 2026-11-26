@@ -58,6 +58,16 @@ export function siblingNotes(designs: readonly Design[], slot: string): Record<s
   return notes;
 }
 
+/**
+ * What the version's voice was made from. A remix keeps its parent's prompt, so without its changes
+ * a revision would redesign from the parent and lose what the remix fixed.
+ */
+export function promptOf(design: Pick<Design, "prompt" | "analysis">): string {
+  const changes = design.analysis?.remix_changes;
+  if (typeof changes !== "string" || !changes) return design.prompt;
+  return `${design.prompt} (This voice is that prompt remixed in ElevenLabs Voice Remix with these changes: "${changes}". Carry them into the new prompt.)`;
+}
+
 export async function reviseDesign(
   input: { lang: Lang; id: string; apiKey: string },
   deps: ReviseDeps = LIVE,
@@ -95,7 +105,7 @@ export async function reviseDesign(
     note: [...design.reviews].reverse().find((review) => review.note)?.note ?? "",
     siblings: siblingNotes(designs, design.slot),
     archetype,
-    prompt: design.prompt,
+    prompt: promptOf(design),
     previewText: design.previewText,
     reference,
     sample,
