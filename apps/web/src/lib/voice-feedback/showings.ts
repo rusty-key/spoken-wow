@@ -1,6 +1,6 @@
 /**
  * Show to players (migration 0136): each press is a showing, and a slot's newest showing is the
- * version /listen plays. Written as the caller's team, like every other workbench write.
+ * version /listen plays.
  */
 import "server-only";
 

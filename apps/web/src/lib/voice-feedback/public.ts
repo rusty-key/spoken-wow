@@ -132,7 +132,6 @@ export async function castVote(
   });
 }
 
-/** This voter's votes in `lang`, by showing. */
 export async function votesOf(lang: Lang, voter: string): Promise<Record<number, OwnVote>> {
   const team = await teamOf(lang);
   if (!team) return {};
