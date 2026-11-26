@@ -147,6 +147,17 @@ function strictClass(envelope: Envelope): boolean {
 }
 
 /**
+ * The word Blizzard's own lines use for a race, where `UnitRace` answers the race's full name. A
+ * zhCN client answers 高阶会天裔 or 塑风者天裔, the race and the branch of it the character took,
+ * and the dialogue says 天裔; without this, that word stayed in the text and every player heard
+ * it. Keyed on the client's own answer, so only the client that says the long name takes it.
+ */
+const RACE_WORDS: Record<string, readonly string[]> = {
+  高阶会天裔: ["天裔"],
+  塑风者天裔: ["天裔"],
+};
+
+/**
  * The swaps for the reader `fields` describe, longest first; class and race kept as written unless
  * `tokens`. A word kept as written is still a swap, so a part of the name inside it ("Hunter" in
  * "Demon Hunter") cannot take it.
@@ -167,6 +178,13 @@ function swapsOf(fields: Record<string, string>, tokens: boolean, strict = false
     addCased(readerFact(fields, key), "$C", "$c", classSwapped);
   }
   addCased(readerFact(fields, "readerRace"), "$R", "$r", tokens);
+  // The word the game's own lines say for that race, only where this client answers the long name.
+  // Boundary as the class word takes it: a page is prose where 天裔精灵 is the race's own people,
+  // and quest text and gossip are where Blizzard glues the address to a modifier.
+  if (tokens) {
+    const race = readerFact(fields, "readerRace");
+    for (const word of (race && RACE_WORDS[race]) || []) swaps.push({ word, token: "$R", strict });
+  }
   // Each word once, the first swap given for it kept: a name part said twice is one swap.
   const seen = new Set<string>();
   const unique = swaps.filter(({ word }) => !seen.has(word) && Boolean(seen.add(word)));

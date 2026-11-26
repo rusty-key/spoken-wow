@@ -1228,7 +1228,10 @@ line from two characters is kept once. Class and race are swapped wherever they 
 whole words, so a warrior's "a warrior's discipline" arrives as "a `$c`'s discipline"; that
 false positive is accepted over voicing one player's class at everyone, except on a quest only
 that class can take (`questClasses` is that one class), where the class is left as
-written. A quest whose text names a class as a word of its own ("There's a priest out in the
+written. A zhCN client answers a race by its full name (`高阶会天裔`, `塑风者天裔`) where the
+game's own lines say the short one (`天裔`), so intake swaps that word too, for the languages
+whose client answer names it (`RACE_WORDS` in `lib/contributions/reader.ts`). A quest whose text
+names a class as a word of its own ("There's a priest out in the
 mountains") is marked from its row on the corrections tab, per language (`quest_class_word`,
 migration 0105). From then on that language's intake puts the word back wherever a `$c` (frFR's
 `$cs` too) lines up with one to three plain words in the corpus line, before the row is
