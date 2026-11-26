@@ -32,7 +32,7 @@ import { shapedText } from "./files";
 import { canonicalNpcId, seedFor } from "./seed";
 import { spokenHash } from "./spoken-hash";
 import { currentConfig } from "./settings";
-import { NARRATOR_VOICE, segments, type Segment } from "./narration";
+import { NARRATOR_VOICE, segments, slotOf } from "./narration";
 import { npcDirections } from "./npc-direction";
 import type { Speaker } from "./speakers/speaker";
 import { BUSY, withTakeLock } from "./lock";
@@ -177,11 +177,7 @@ export async function regenerateLine(
     const narrated = parts.some((part) => part.speaker === "narrator");
     const multi = narrated || parts.some((part) => part.voice);
 
-    // Resolved by name, because narrator-male is not a race-gender-flavor slot and so has no
-    // corpus line to read it off - and a marked slot has no corpus line either.
-    const slotOf = (part: Segment) =>
-      part.speaker === "narrator" ? NARRATOR_VOICE : (part.voice ?? line.voice);
-    for (const slot of new Set(parts.map(slotOf))) {
+    for (const slot of new Set(parts.map((part) => slotOf(part, line.voice)))) {
       if (voices.ids.has(slot)) continue;
       const why =
         slot === NARRATOR_VOICE && narrated
@@ -198,7 +194,7 @@ export async function regenerateLine(
 
     const speech = await speaker.speak({
       turns: multi
-        ? parts.map((part) => ({ text: part.text, voiceId: voices.ids.get(slotOf(part))! }))
+        ? parts.map((part) => ({ text: part.text, voiceId: voices.ids.get(slotOf(part, line.voice))! }))
         : [{ text: spokenText, voiceId }],
       lang,
       seed,

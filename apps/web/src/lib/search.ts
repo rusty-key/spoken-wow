@@ -17,7 +17,7 @@ import type { Corpus, CorpusLine } from "./corpus";
 import { npcKey } from "./corpus";
 import { baseLineId } from "./contributions/naming";
 import { audioRelPath } from "./audio";
-import { hasNarration, narratorOnly, restoresOnlyNarration } from "./generation/narration";
+import { hasNarration, NARRATOR_VOICE, narratorOnly, restoresOnlyNarration } from "./generation/narration";
 import type { NpcType, Source } from "./line-fields";
 import type { LineIgnore } from "./quests/ignores";
 import { overrideOf, type LineOverride } from "./quests/override";
@@ -505,14 +505,9 @@ export function matchingLines(
   // The *effective* text, matching the chip on the row and the text regeneration will send.
   // Reading line.text instead hid every line whose direction was restored by an override -
   // which is 314 of them, and the ones most worth finding.
-  if (narration) {
-    lines = lines.filter((line) =>
-      hasNarration(overrideOf(overrides, audioRelPath(line))?.text ?? line.text),
-    );
-  }
-  if (noNarrator) {
-    lines = lines.filter((line) => !narratorOnly(line.voice, overrideOf(overrides, audioRelPath(line))?.text ?? line.text));
-  }
+  const textOf = (line: CorpusLine) => overrideOf(overrides, audioRelPath(line))?.text ?? line.text;
+  if (narration) lines = lines.filter((line) => hasNarration(textOf(line)));
+  if (noNarrator) lines = lines.filter((line) => line.voice !== NARRATOR_VOICE || !narratorOnly(line.voice, textOf(line)));
   // An id the corpus no longer carries matches nothing rather than everything, because a
   // report about a dropped line must not read as "here it is".
   if (lineId) lines = lines.filter((line) => line.lineId === lineId);
