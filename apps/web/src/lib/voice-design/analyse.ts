@@ -21,7 +21,7 @@ import { measureAudio } from "./measure";
 import { saveAnalysis, type NewAnalysis } from "./store";
 import type { Analysis, GeminiResult, Measures } from "./types";
 
-/** Twenty to thirty seconds of barks is what round one compared; more only costs upload time. */
+/** Past thirty seconds of barks a comparison hears nothing new, and only costs upload time. */
 const CLIP_SECONDS = 30;
 
 export type AnalyseDeps = {

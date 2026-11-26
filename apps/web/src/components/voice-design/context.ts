@@ -5,7 +5,6 @@ import { createContext, useContext } from "react";
 import type { Lang } from "@/lib/lang";
 import type { Analysis, Design } from "@/lib/voice-design/types";
 
-/** What the page-wide player is playing. */
 export type Playing = { src: string; title: string; meta?: string; subtitle?: string };
 
 /** A prompt and preview text waiting in a slot's Design form: Gemini's draft, or an old version's. */

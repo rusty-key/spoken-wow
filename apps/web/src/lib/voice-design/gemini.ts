@@ -46,9 +46,8 @@ export type PromptFlavor = { label: string; npcs: string[]; measures: Record<str
 const round = (value: number) => Math.round(value * 100) / 100;
 
 /**
- * Round one's prompt (docs/platform/VOICE-DESIGN.md), for any race-gender. The flavor names stay
- * out: told "shady", a listener hears shady. Who uses each voice goes in, since the voice must
- * suit them.
+ * The flavor names stay out: told "shady", a listener hears shady. Who uses each voice goes in,
+ * since the voice must suit them.
  */
 export function buildPrompt(input: { group: string; flavors: PromptFlavor[] }): string {
   const [race, gender] = input.group.split("-");

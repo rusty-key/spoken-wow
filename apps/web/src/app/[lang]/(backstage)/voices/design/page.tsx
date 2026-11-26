@@ -65,7 +65,6 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   const bySlot = new Map<string, Design[]>();
   for (const design of designs) bySlot.set(design.slot, [...(bySlot.get(design.slot) ?? []), design]);
 
-  // What players hear now for each sampled line: its live take.
   const live: Record<string, string> = {};
   for (const design of designs) {
     for (const sample of design.samples) {

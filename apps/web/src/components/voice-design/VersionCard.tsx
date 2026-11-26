@@ -18,7 +18,6 @@ import type { SlotView } from "./Workbench";
 const day = (iso: string) => iso.slice(0, 10);
 const one = (value: number) => value.toFixed(1);
 
-/** Which preview is pitched lowest: what round one kept asking. */
 function deepest(previews: Design["previews"]): number | null {
   let best: number | null = null;
   previews.forEach((preview, index) => {

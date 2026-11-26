@@ -474,7 +474,6 @@ export async function designPreviews(
   return previews;
 }
 
-/** Save a preview as a voice in the account, and return its id. */
 export async function createDesignedVoice(
   input: { name: string; prompt: string; generatedVoiceId: string },
   options: ElevenLabsOptions = {},

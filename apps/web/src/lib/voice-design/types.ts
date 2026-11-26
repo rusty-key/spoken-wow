@@ -1,4 +1,3 @@
-/** The shapes the workbench's server and page share. */
 import type { ReviewStatus } from "./groups";
 
 /** openSMILE eGeMAPS functionals over a whole clip (scripts/voice_measure.py). */

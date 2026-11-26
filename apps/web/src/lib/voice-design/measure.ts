@@ -63,12 +63,3 @@ export async function measureAudio(clips: Buffer[], options?: MeasureOptions): P
     await fs.rm(dir, { recursive: true, force: true });
   }
 }
-
-/** Which of several voices is pitched lowest, for "deepest" beside the previews. */
-export function deepestIndex(measures: readonly (Measures | null)[]): number | null {
-  let best: number | null = null;
-  measures.forEach((m, index) => {
-    if (m && (best === null || m.f0Hz < measures[best]!.f0Hz)) best = index;
-  });
-  return best;
-}

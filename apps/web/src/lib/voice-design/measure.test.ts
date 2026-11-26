@@ -6,7 +6,7 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const { deepestIndex, measureAudio, measureFiles } = await import("./measure");
+const { measureAudio, measureFiles } = await import("./measure");
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "voice-measure-"));
 afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -62,12 +62,5 @@ describe("measureAudio", () => {
   it("measures buffers in the order given", async () => {
     const result = await measureAudio([Buffer.from("a"), Buffer.from("b")], { python: echoing(), script: "/x.py" });
     expect(result).toEqual([MEASURES, MEASURES]);
-  });
-});
-
-describe("deepestIndex", () => {
-  it("picks the lowest pitch and skips the unmeasured", () => {
-    expect(deepestIndex([{ ...MEASURES, f0Hz: 120 }, null, { ...MEASURES, f0Hz: 90 }])).toBe(2);
-    expect(deepestIndex([null, null])).toBeNull();
   });
 });

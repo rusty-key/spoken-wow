@@ -278,7 +278,6 @@ export async function saveAnalysis(input: NewAnalysis): Promise<Analysis> {
   return toAnalysis(rows[0]);
 }
 
-/** Each group's newest analysis in `lang`. */
 export async function latestAnalyses(lang: Lang): Promise<Map<string, Analysis>> {
   const rows = await readAs<AnalysisRow>(
     lang,

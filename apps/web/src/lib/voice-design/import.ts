@@ -1,7 +1,6 @@
 /**
- * The round-one designs (orc males, made by hand before this page existed), brought in once
- * through the site by an admin, one version folder per request: data only comes home from
- * production, so nothing writes these rows but the site.
+ * Designs made with scratch scripts, brought in once through the site by an admin, one version
+ * folder per request: data only comes home from production, so nothing writes these rows but the site.
  *
  * A folder is `<slot>-v<n>/` holding meta.json, preview<k>.mp3 and line<k>.mp3, as the scratch
  * scripts wrote it; its verdicts are that folder's entry in reviews.json.

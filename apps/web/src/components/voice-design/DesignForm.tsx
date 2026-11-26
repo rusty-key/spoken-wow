@@ -11,7 +11,7 @@ import type { Design } from "@/lib/voice-design/types";
 import { send, useWorkbench, type Draft } from "./context";
 import type { SlotView } from "./Workbench";
 
-/** ElevenLabs' limits for Voice Design (lib/voices/elevenlabs.ts DESIGN_LIMITS). */
+/** Voice Design refuses a prompt or preview text outside these. */
 const PROMPT = { min: 20, max: 1000 };
 const TEXT = { min: 100, max: 1000 };
 /** Voice Design bills about the preview text's length for each of its three previews. */

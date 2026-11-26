@@ -1,8 +1,8 @@
 /**
  * Which corpus lines a designed voice is judged on, and who it has to suit.
  *
- * Round one showed a voice must suit the NPCs who use the slot, not the flavor's name, and that a
- * voice is judged best on varied lines: a long quest text, a short bark, a plain gossip line.
+ * A voice must suit the NPCs who use the slot, not the flavor's name, and is judged best on varied
+ * lines: a long quest text, a short bark, a plain gossip line.
  */
 import type { CorpusLine } from "@/lib/corpus";
 import { segments } from "@/lib/generation/narration";
@@ -17,7 +17,6 @@ export function soloLine(line: CorpusLine, slot: string): boolean {
   return segments(line.text).every((segment) => segment.speaker === "npc" && !segment.voice);
 }
 
-/** The slot's NPCs, busiest first. */
 export function slotNpcs(lines: readonly CorpusLine[], slot: string, limit = 12): string[] {
   const counts = new Map<string, number>();
   for (const line of lines) {

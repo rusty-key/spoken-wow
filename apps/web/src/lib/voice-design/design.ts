@@ -55,7 +55,6 @@ export function designName(design: Pick<Design, "slot" | "version">): string {
   return `design-${design.slot}-v${design.version}`;
 }
 
-/** Why Voice Design would refuse this, or null. */
 export function rejectDesign(prompt: string, previewText: string): string | null {
   const { promptMin, promptMax, textMin, textMax } = DESIGN_LIMITS;
   if (prompt.length < promptMin || prompt.length > promptMax) return `the prompt must be ${promptMin} to ${promptMax} characters`;
