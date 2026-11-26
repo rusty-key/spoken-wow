@@ -46,7 +46,7 @@ export default function ImportForm() {
       try {
         picked = await pick(files);
       } catch (err) {
-        // A reviews.json that does not parse: said, rather than a spinner that stops with no word.
+        // Otherwise a reviews.json that does not parse stops the spinner with no word.
         setLog([`reviews.json: ${err instanceof Error ? err.message : String(err)}`]);
         return;
       }

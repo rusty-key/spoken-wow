@@ -3,7 +3,7 @@
  *
  * Designing and reviewing are `configure` in the language (an admin decision): the result is a
  * slot's voice, which is the language's to decide. Hearing what was designed is open to whoever
- * may see /voices (requireVoiceViewer).
+ * may see /voices.
  */
 import "server-only";
 
