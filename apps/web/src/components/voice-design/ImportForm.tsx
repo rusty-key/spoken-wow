@@ -42,7 +42,15 @@ export default function ImportForm() {
     setBusy(true);
     setLog([]);
     try {
-      const { folders, reviews } = await pick(files);
+      let picked: Picked;
+      try {
+        picked = await pick(files);
+      } catch (err) {
+        // A reviews.json that does not parse: said, rather than a spinner that stops with no word.
+        setLog([`reviews.json: ${err instanceof Error ? err.message : String(err)}`]);
+        return;
+      }
+      const { folders, reviews } = picked;
       if (folders.size === 0) {
         setLog([t.importNothing]);
         return;

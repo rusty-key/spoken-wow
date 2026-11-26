@@ -48,7 +48,8 @@ export const VOICE_REFERENCES_DIR =
 
 /**
  * The previews and sample lines of voices designed on /voices/design, as <sha256>.mp3, where
- * the archive keeps them on the volume. In production in shared/, for the samples' reason.
+ * the archive keeps them on the volume. In production in shared/: a deploy replaces the release
+ * directory, and a preview lost there cannot be made again.
  */
 export const VOICE_DESIGNS_DIR =
   process.env.SPOKEN_QUESTS_VOICE_DESIGNS ?? path.join(DATA_ROOT, "voice", "designs");

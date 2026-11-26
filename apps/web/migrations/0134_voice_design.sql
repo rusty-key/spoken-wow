@@ -8,8 +8,9 @@
 -- it. The ElevenLabs voice a version is saved as lives in one person's account ("holderId"), since
 -- keys are per person.
 
--- One Gemini key per person, sealed like the ElevenLabs and fish.audio keys (0018, 0040). Gemini
--- listens to the game clips for the blind comparison. Its own table for 0040's reason.
+-- One Gemini key per person, for the blind comparison, spent from its owner's account. Sealed, so a
+-- dump of the database holds no usable key. A table of its own because widening the key tables'
+-- primary key to (userId, provider) would break the release before this one.
 create table "gemini_key" (
   "userId" text not null primary key references "user" ("id") on delete cascade,
   "ciphertext" text not null,
