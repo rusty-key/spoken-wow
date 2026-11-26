@@ -19,6 +19,17 @@ local function LanguageName(code)
 end
 local panel
 
+-- Questie's public API signals readiness but has no tracker settings accessor.
+local function ActiveQuestieTracker()
+    if not (Questie and Questie.API and Questie.API.isReady) then return end
+    local profile = Questie.db and Questie.db.profile
+    if profile and profile.trackerEnabled and type(profile.trackerShowPlayButtons) == "boolean"
+        and QuestieLoader and type(QuestieLoader.ImportModule) == "function" then
+        local tracker = QuestieLoader:ImportModule("QuestieTracker")
+        if tracker and type(tracker.Update) == "function" then return profile, tracker end
+    end
+end
+
 function SettingsPanel:Setup()
     if panel then
         return
@@ -97,7 +108,7 @@ function SettingsPanel:Setup()
     local function HasObjectiveTracker()
         return _G.QuestObjectiveTracker ~= nil or _G.CampaignQuestObjectiveTracker ~= nil
             or _G.KT_QuestObjectiveTracker ~= nil or _G.KT_CampaignQuestObjectiveTracker ~= nil
-            or QuestWatch_Update ~= nil
+            or QuestWatch_Update ~= nil or ActiveQuestieTracker() ~= nil
     end
     layout:Section(L.OPT_SECTION_TRACKER)
     local questLogPlay = layout:Checkbox(L.OPT_TRACKER_QUEST_LOG, nil,
@@ -108,10 +119,20 @@ function SettingsPanel:Setup()
         end)
     layout:ShowWhen(questLogPlay, HasQuestLog)
     local trackerPlay = layout:Checkbox(L.OPT_TRACKER_OBJECTIVE, nil,
-        function() return Addon.db.profile.TrackerPlayButton ~= false end,
+        function()
+            local profile = ActiveQuestieTracker()
+            if profile then return profile.trackerShowPlayButtons end
+            return Addon.db.profile.TrackerPlayButton ~= false
+        end,
         function(value)
-            Addon.db.profile.TrackerPlayButton = value
-            QuestOverlayUI.UpdateTrackerButtons()
+            local profile, tracker = ActiveQuestieTracker()
+            if profile then
+                profile.trackerShowPlayButtons = value
+                tracker:Update()
+            else
+                Addon.db.profile.TrackerPlayButton = value
+                QuestOverlayUI.UpdateTrackerButtons()
+            end
         end)
     layout:ShowWhen(trackerPlay, HasObjectiveTracker)
 

@@ -2159,7 +2159,9 @@ own, which is what `SetPlayButtonState` calls instead of swapping the icon.
 
 Play is also on each quest in the objective tracker. The Quests page's Show Play Button section
 switches the two places apart: Quest Log (`QuestLogPlayButton`, which also takes away the log's
-Contribute buttons) and Tracker (`TrackerPlayButton`). Trackers come in two shapes, so
+Contribute buttons) and Tracker. With Questie's tracker enabled, Tracker reads and changes
+Questie's **Show Play Buttons** setting. With the default tracker it uses Spoken's own
+`TrackerPlayButton` preference. Trackers drawn by the client come in two shapes, so
 `Compatibility.lua` has an adapter for each, registered with `RegisterTrackerUpdater`.
 `QuestOverlayUI.UpdateTrackerButtons` sweeps them all at login, when a pack loads, when Quests is
 switched and when the setting changes, and a profile change redraws the quest log and the trackers.
