@@ -32,51 +32,38 @@ function Character({ voice }: { voice: PublicVoice }) {
   );
 }
 
-function shuffled<T>(items: readonly T[]): T[] {
-  const copy = [...items];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
-
 export default function Listen({
   lang,
   voices,
+  dealt = voices,
   votes: initialVotes,
 }: {
   lang: Lang;
   voices: PublicVoice[];
+  /** The cards' order, shuffled by the server so the first card the page shows is the one it keeps. */
+  dealt?: PublicVoice[];
   votes: Record<number, OwnVote>;
 }) {
   const t = useUiText().listen;
   const [votes, setVotes] = useState(initialVotes);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
-  const [view, setView] = useState<View>("table");
+  const [view, setView] = useState<View>("cards");
   // The votes the filter was set against: a voice voted since stays in the list, so its note
   // field does not vanish under the cursor.
   const [filteredBy, setFilteredBy] = useState(initialVotes);
   // Cards deal out what was left to vote on when they were opened, in random order, unfiltered.
   const [cardsFrom, setCardsFrom] = useState(initialVotes);
-  // Shuffled after mount, so the server's render matches the first client one.
-  const [order, setOrder] = useState(voices);
   const [at, setAt] = useState(0);
   const [playing, setPlaying] = useState<Clip | null>(null);
   const [sounding, setSounding] = useState(false);
   const audio = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    setOrder(shuffled(voices));
-  }, [voices]);
-
-  // `#table` and `#cards` pick the view, so a link can open either; without one, phones get cards.
+  // Cards unless the address asks for `#table`, so a link can open either.
   useEffect(() => {
     const follow = () => {
-      const named = viewIn(window.location.hash);
-      if (named === "cards" || (!named && window.matchMedia?.("(max-width: 640px)").matches)) openCards();
-      else if (named === "table") setView("table");
+      if (viewIn(window.location.hash) === "table") setView("table");
+      else openCards();
     };
     follow();
     window.addEventListener("hashchange", follow);
@@ -118,7 +105,7 @@ export default function Listen({
     (!needle || [voice.race, voice.gender, voice.flavor ?? ""].join(" ").toLowerCase().includes(needle)) &&
     (filter === "all" || (filter === "voted") === voice.showingId in filteredBy);
   const listed = voices.filter(matches);
-  const cards = order.filter((voice) => !(voice.showingId in cardsFrom));
+  const cards = dealt.filter((voice) => !(voice.showingId in cardsFrom));
   const current = cards[Math.min(at, cards.length - 1)];
 
   const counts: Record<Filter, number> = {

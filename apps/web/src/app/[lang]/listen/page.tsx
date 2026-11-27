@@ -9,6 +9,7 @@ import Listen from "@/components/listen/Listen";
 import { langName } from "@/lib/lang";
 import { pageLang, readingLang } from "@/lib/lang-server";
 import { currentSession } from "@/lib/session";
+import { shuffle } from "@/lib/shuffle";
 import { fill } from "@/lib/site-text/format";
 import { siteText } from "@/lib/site-text";
 import { UiTextProvider } from "@/components/UiTextProvider";
@@ -65,7 +66,7 @@ export default async function Page({
               </p>
             ) : null}
             <FollowBox lang={lang} initial={follow} />
-            <Listen lang={lang} voices={voices} votes={votes} />
+            <Listen lang={lang} voices={voices} dealt={shuffle(voices)} votes={votes} />
           </BackstagePage>
         </div>
       </UiTextProvider>
