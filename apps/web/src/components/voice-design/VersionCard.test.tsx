@@ -291,6 +291,26 @@ test("voices the lines with a direction typed before pressing, as long as it sta
   expect(sent()).toEqual({ lines: "same", direction: "thick Scottish accent" });
 });
 
+test("asks Gemini what differs between a line's new and live takes, and shows the answer under the line", async () => {
+  const fetchMock = vi.fn(async () =>
+    Response.json({ difference: { summary: "The Scottish accent fades after the first words.", aspects: [{ aspect: "Accent", live: "broad Scots", new: "faint Scots" }] } }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  render(
+    <WorkbenchContext.Provider value={{ ...context, live: { "q:1": "/live/1.mp3" } }}>
+      <VersionCard design={DESIGN} slot={{ name: DESIGN.slot, sampleChars: 0, reference: null, previewLines: {} } as unknown as SlotView} newest />
+    </WorkbenchContext.Provider>,
+  );
+  expect(screen.getAllByRole("button", { name: "What's different?" })).toHaveLength(1);
+
+  await userEvent.click(screen.getByRole("button", { name: "What's different?" }));
+  const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+  expect(url).toContain("/api/voices/design/d1/difference");
+  expect(JSON.parse(String(init.body))).toEqual({ position: 1 });
+  expect(await screen.findByText("The Scottish accent fades after the first words.")).toBeTruthy();
+  expect(screen.getByText(/faint Scots/)).toBeTruthy();
+});
+
 test("sends the player notes ticked with the verdict, and lists them under it", async () => {
   const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
   vi.stubGlobal("fetch", fetchMock);
