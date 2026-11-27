@@ -119,6 +119,28 @@ describe("a design version", () => {
     expect(read).toMatchObject({ chosenPreview: 1, voiceId: "v-2", voiceDeletedAt: null, sampleModel: null, samples: [] });
   });
 
+  it("deletes the newest version while none of its previews is saved, so the one before is current again", async () => {
+    const slot = "orc-male-back";
+    const kept = await design(slot);
+    const bad = await design(slot);
+    await store.addReview(lang, bad.id, { status: "needs-work", note: "all three wrong", bestPreview: null, clips: {}, players: [], userId: user.id });
+    await store.deleteUnsavedVersion(lang, bad.id);
+    expect(await store.readDesign(lang, bad.id)).toBeNull();
+    expect((await store.listDesigns(lang)).filter((d) => d.slot === slot).map((d) => d.version)).toEqual([kept.version]);
+    expect((await design(slot)).version).toBe(kept.version + 1);
+  });
+
+  it("refuses to delete a version with a saved voice, an older one, or a slot's only version", async () => {
+    const slot = "orc-male-keep";
+    const first = await design(slot);
+    await expect(store.deleteUnsavedVersion(lang, first.id)).rejects.toThrow(/only version/);
+    const saved = await design(slot);
+    await store.saveVoice(lang, saved.id, { chosenPreview: 0, voiceId: "v-2", voiceName: "design-orc-male-keep-v2", holderId: user.id });
+    await expect(store.deleteUnsavedVersion(lang, saved.id)).rejects.toThrow(/saved as a voice/);
+    await design(slot);
+    await expect(store.deleteUnsavedVersion(lang, first.id)).rejects.toThrow(/newest/);
+  });
+
   it("reads an id that is not a uuid as no design, not a database error", async () => {
     expect(await store.readDesign(lang, "abc")).toBeNull();
     expect(await store.isOwnAnalysis(lang, "abc")).toBe(false);
