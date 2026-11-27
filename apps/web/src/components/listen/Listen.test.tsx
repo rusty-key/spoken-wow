@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import type { PublicVoice } from "@/lib/voice-feedback/public";
 
@@ -9,10 +9,19 @@ import Listen from "./Listen";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePathname: () => "/", useSearchParams: () => new URLSearchParams() }));
 
+// Most of these look at the table, which the page opens only when the address asks for it.
+beforeEach(() => window.history.replaceState(null, "", "/listen#table"));
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+});
+
+test("lands on the cards when the address names no view", () => {
   window.history.replaceState(null, "", "/listen");
+  render(<Listen lang="enUS" voices={VOICES} votes={{}} />);
+  expect(screen.queryAllByRole("row")).toHaveLength(0);
+  expect(screen.getByText("1 of 3")).toBeTruthy();
 });
 
 const voice = (slot: string, showingId: number, archetype: string | null = null): PublicVoice => {
