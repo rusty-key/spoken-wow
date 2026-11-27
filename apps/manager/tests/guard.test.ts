@@ -278,12 +278,15 @@ describe('running game on macOS and Linux', () => {
 })
 
 describe('what the window may open', () => {
-  it('allows https links on GitHub hosts only', () => {
+  it('allows https links on the site and GitHub hosts only', () => {
+    expect(isAllowedExternalUrl('https://spoken.quest/listen')).toBe(true)
     expect(isAllowedExternalUrl('https://github.com/rusty-key/spoken-wow/releases')).toBe(true)
     expect(isAllowedExternalUrl('https://raw.githubusercontent.com/a/b/c')).toBe(true)
     expect(isAllowedExternalUrl('https://objects.githubusercontent.com/x')).toBe(true)
     for (const bad of [
       'http://github.com/x',
+      'http://spoken.quest/listen',
+      'https://evil.spoken.quest/',
       'https://evil.com/github.com',
       'https://github.com.evil.com/',
       'https://user:pw@github.com/',
