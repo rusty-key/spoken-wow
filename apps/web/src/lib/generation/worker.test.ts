@@ -613,6 +613,17 @@ describe("per-owner queues", () => {
               failure: { kind: "rate-limit", message: "429", status: 429, fatal: false },
             };
           }
+          if (user === other) {
+            // Held until the 429 has settled and then until the lane's four overlap, not for a
+            // fixed time: on a busy machine a short sleep ends before the worker claims the
+            // fourth, and the peak never shows. Bounded, so a narrower lane fails, not hangs.
+            const held = Date.now() + 2_000;
+            while ((limitedAt === null || Date.now() - limitedAt <= 100) && Date.now() < held) await sleep(5);
+            track.enter(user);
+            while ((track.peak.get(other) ?? 0) < 4 && Date.now() < held) await sleep(5);
+            track.leave(user);
+            return OK;
+          }
           // Measured once everything started before the 429 has settled (jobs take 40 ms, and
           // 100 leaves room for a slow claim), so the peak is what the worker chose after it,
           // not what was already in flight.
