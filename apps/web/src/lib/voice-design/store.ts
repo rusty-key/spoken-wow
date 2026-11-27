@@ -24,6 +24,7 @@ import type {
   PlayerNote,
   Review,
   Showing,
+  ShownLine,
   Verdict,
 } from "./types";
 
@@ -66,9 +67,14 @@ type ShowingRow = {
   createdAt: Date;
   createdByName: string | null;
   isPublic: boolean;
-  samples: { sha256: string }[] | null;
+  samples: ShownLine[] | null;
 };
 type FeedbackRow = { showingId: string; voter: string; who: string | null; verdict: Verdict; note: string; hidden: boolean; at: Date };
+
+/** A version's current sample lines as a showing keeps them, for the version id in `design`. */
+export const SAMPLES_OF = (design: string) => `
+  (select jsonb_agg(jsonb_build_object('sha256', c."sha256", 'text', c."text", 'npcName', c."npcName") order by c."position")
+     from "voice_design_clip" c where c."designId" = ${design} and c."kind" = 'sample')`;
 
 /** The newest showing of the slot of the showing aliased `s`: the version players hear. */
 export const NEWEST_SHOWING = `
@@ -84,7 +90,7 @@ function showingsOf(rows: ShowingRow[], byShowing: Map<string, FeedbackRow[]>): 
     const notes: FeedbackNote[] = own
       .filter((f) => f.note && !f.hidden)
       .map((f) => ({ voter: f.voter, who: f.who, verdict: f.verdict, note: f.note, at: f.at.toISOString() }));
-    return { id: Number(row.id), createdAt: row.createdAt.toISOString(), createdByName: row.createdByName, counts, notes };
+    return { id: Number(row.id), createdAt: row.createdAt.toISOString(), createdByName: row.createdByName, counts, notes, samples: row.samples };
   });
 }
 type ReviewRow = Omit<Review, "createdAt" | "id"> & { id: string; designId: string; createdAt: Date };
@@ -351,8 +357,14 @@ export async function replaceSamples(
   made: { model: string; settings: Record<string, unknown> },
 ): Promise<void> {
   await asTeamOf(lang, async (client) => {
-    // A shown version may be voiced again: its showing keeps the lines players hear.
+    // A shown version may be voiced again: its showing keeps the lines players hear. One inserted
+    // without them (by the release before 0138) gets them now, before they are replaced.
     await lockSlot(client, null, id);
+    await client.query(
+      `update "voice_design_showing" s set "samples" = ${SAMPLES_OF("s.\"designId\"")}
+        where s."designId" = $1 and s."samples" is null and s."id" = ${NEWEST_SHOWING}`,
+      [id],
+    );
     await client.query(`delete from "voice_design_clip" where "designId" = $1 and "kind" = 'sample'`, [id]);
     await insertSamples(client, id, samples);
     await client.query(
@@ -398,10 +410,15 @@ export async function markVoiceDeleted(lang: Lang, id: string): Promise<void> {
 
 /** Whether a clip of the caller's team names these bytes: the audio route serves nothing else. */
 export async function isDesignAudio(lang: Lang, sha256: string): Promise<boolean> {
+  // A line a showing kept stays playable after its version is voiced again, beside its votes.
   const rows = await readAs(
     lang,
     `select 1 from "voice_design_clip" c join "voice_design" d on d."id" = c."designId"
-      where c."sha256" = $1 and d."lang" = $2 limit 1`,
+      where c."sha256" = $1 and d."lang" = $2
+     union all
+     select 1 from "voice_design_showing" s
+      where s."lang" = $2 and s."samples" @> jsonb_build_array(jsonb_build_object('sha256', $1::text))
+     limit 1`,
     [sha256, lang],
   );
   return rows.length > 0;

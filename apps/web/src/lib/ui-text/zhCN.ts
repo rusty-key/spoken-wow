@@ -2740,6 +2740,8 @@ const zhCN: Dictionary = {
     showingAgain: "再次展示",
     publicTag: "玩家正在听",
     publicTagTitle: "此版本在试听页面播放展示时的台词。重新配音后，只有按下再次展示，玩家听到的才会改变。",
+    roundLines: "玩家听到的台词",
+    roundLineN: "台词 {n}",
     resampleShownTitle: "在你按下再次展示之前，玩家听到的仍是展示时的台词。",
     playersHearOlder: "玩家仍在听之前的台词。再次展示会换成这些台词，并开始新一轮投票。",
     lockedTitle: "玩家正在听这些台词。请先向玩家展示另一个版本。",

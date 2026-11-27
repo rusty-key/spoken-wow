@@ -56,7 +56,11 @@ export type Showing = {
   counts: Record<Verdict, number>;
   /** Newest first; hidden notes are left out, their verdicts still counted. */
   notes: FeedbackNote[];
+  /** The lines players heard and voted on; null for a round from before they were kept. */
+  samples: ShownLine[] | null;
 };
+
+export type ShownLine = { sha256: string; text: string | null; npcName: string | null };
 
 /** A player's note a reviewer picked to act on, as it read when picked. */
 export type PlayerNote = { verdict: Verdict; note: string };

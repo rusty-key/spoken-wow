@@ -2789,6 +2789,8 @@ const esMX: Dictionary = {
     showingAgain: "Mostrar de nuevo",
     publicTag: "Los jugadores escuchan esto",
     publicTagTitle: "Esta versión suena en la página Escuchar, con las líneas que tenía al mostrarse. Volver a darle voz cambia lo que oyen los jugadores solo cuando presionas Mostrar de nuevo.",
+    roundLines: "Líneas que oyeron los jugadores",
+    roundLineN: "Línea {n}",
     resampleShownTitle: "Los jugadores siguen oyendo las líneas que se les mostraron hasta que presiones Mostrar de nuevo.",
     playersHearOlder: "Los jugadores aún oyen las líneas anteriores. Mostrar de nuevo les pone estas y empieza una nueva ronda de votos.",
     lockedTitle: "Los jugadores escuchan estas líneas. Primero muestra otra versión a los jugadores.",

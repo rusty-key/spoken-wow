@@ -2787,6 +2787,8 @@ const koKR: Dictionary = {
     showingAgain: "다시 공개",
     publicTag: "플레이어에게 공개 중",
     publicTagTitle: "이 버전은 듣기 페이지에서 보여줄 때의 대사로 재생됩니다. 다시 음성화해도 다시 공개를 눌러야 플레이어가 듣는 대사가 바뀝니다.",
+    roundLines: "플레이어가 들은 대사",
+    roundLineN: "대사 {n}",
     resampleShownTitle: "다시 공개를 누르기 전까지 플레이어는 보여준 대사를 계속 듣습니다.",
     playersHearOlder: "플레이어는 아직 이전 대사를 듣습니다. 다시 공개를 누르면 이 대사로 바뀌고 새 투표가 시작됩니다.",
     lockedTitle: "플레이어가 이 대사를 듣고 있습니다. 먼저 다른 버전을 플레이어에게 공개하세요.",

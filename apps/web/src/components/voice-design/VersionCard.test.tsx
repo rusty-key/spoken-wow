@@ -211,8 +211,12 @@ test("shows a sampled version to players, and still voices it again while they h
   expect((screen.getByRole("button", { name: "Voice the lines again" }) as HTMLButtonElement).disabled).toBe(false);
   expect(screen.queryByText(/Players still hear the earlier lines/)).toBeNull();
 
-  rerender(card({ ...DESIGN, isPublic: true, playersHearOlderLines: true }));
+  const earlier = { sha256: "e".repeat(64), text: "Old line.", npcName: "Grunt" };
+  const round = { id: 3, createdAt: "2026-11-26T00:00:00Z", createdByName: "Ann", counts: { fits: 0, close: 0, off: 1, skip: 0 }, notes: [], samples: [earlier] };
+  rerender(card({ ...DESIGN, isPublic: true, playersHearOlderLines: true, showings: [round] }));
   expect(screen.getByText(/Players still hear the earlier lines/)).toBeTruthy();
+  expect(screen.getByText("Lines players heard")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Line 1" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Show again" }).classList.contains("bs-btn-primary")).toBe(true);
 });
 
@@ -224,6 +228,7 @@ test("lists players' votes per showing, and hides a note as spam", async () => {
     createdAt: "2026-11-26T00:00:00Z",
     createdByName: "Ann",
     counts: { fits: 2, close: 1, off: 1, skip: 0 },
+    samples: null,
     notes: [{ voter: "a:x", who: null, verdict: "off" as const, note: "too old", at: "2026-11-26T00:00:00Z" }],
   };
   render(card({ ...DESIGN, isPublic: true, showings: [showing] }));
@@ -279,6 +284,7 @@ test("sends the player notes ticked with the verdict, and lists them under it", 
     createdAt: "2026-11-26T00:00:00Z",
     createdByName: "Ann",
     counts: { fits: 0, close: 1, off: 1, skip: 0 },
+    samples: null,
     notes: [
       { voter: "a:x", who: null, verdict: "off" as const, note: "too soft", at: "2026-11-26T00:00:00Z" },
       { voter: "u:y", who: "Bo", verdict: "close" as const, note: "slower", at: "2026-11-26T00:00:00Z" },
@@ -299,7 +305,7 @@ test("leaves out a ticked note that was hidden since", async () => {
   const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
   vi.stubGlobal("fetch", fetchMock);
   const note = (voter: string, text: string) => ({ voter, who: null, verdict: "off" as const, note: text, at: "2026-11-26T00:00:00Z" });
-  const showing = (notes: ReturnType<typeof note>[]) => ({ id: 7, createdAt: "2026-11-26T00:00:00Z", createdByName: "Ann", counts: { fits: 0, close: 0, off: 2, skip: 0 }, notes });
+  const showing = (notes: ReturnType<typeof note>[]) => ({ id: 7, createdAt: "2026-11-26T00:00:00Z", createdByName: "Ann", counts: { fits: 0, close: 0, off: 2, skip: 0 }, notes, samples: null });
   const { rerender } = render(card({ ...DESIGN, isPublic: true, showings: [showing([note("a:x", "spam"), note("a:y", "too soft")])] }));
   for (const box of screen.getAllByRole("checkbox", { name: "Use for the next version" })) await userEvent.click(box);
 

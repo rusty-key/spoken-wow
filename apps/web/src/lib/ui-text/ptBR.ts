@@ -2789,6 +2789,8 @@ const ptBR: Dictionary = {
     showingAgain: "Mostrar de novo",
     publicTag: "Os jogadores ouvem isto",
     publicTagTitle: "Esta versão toca na página Ouvir, com as falas que tinha quando foi mostrada. Dublá-la de novo só muda o que os jogadores ouvem quando você clica em Mostrar de novo.",
+    roundLines: "Falas que os jogadores ouviram",
+    roundLineN: "Fala {n}",
     resampleShownTitle: "Os jogadores continuam ouvindo as falas que lhes foram mostradas até você clicar em Mostrar de novo.",
     playersHearOlder: "Os jogadores ainda ouvem as falas anteriores. Mostrar de novo coloca estas para eles e começa uma nova rodada de votos.",
     lockedTitle: "Os jogadores ouvem estas falas. Mostre antes outra versão aos jogadores.",

@@ -2792,6 +2792,8 @@ const deDE: Dictionary = {
     showingAgain: "Erneut zeigen",
     publicTag: "Spieler hören das",
     publicTagTitle: "Diese Version läuft auf der Seite Zuhören, mit den Zeilen, die sie beim Zeigen hatte. Neu vertonte Zeilen hören Spieler erst, wenn du auf Erneut zeigen drückst.",
+    roundLines: "Zeilen, die Spieler hörten",
+    roundLineN: "Zeile {n}",
     resampleShownTitle: "Spieler hören weiter die gezeigten Zeilen, bis du auf Erneut zeigen drückst.",
     playersHearOlder: "Spieler hören noch die früheren Zeilen. Erneut zeigen bringt diese vor sie und startet eine neue Abstimmungsrunde.",
     lockedTitle: "Spieler hören diese Zeilen. Zeige zuerst den Spielern eine andere Version.",

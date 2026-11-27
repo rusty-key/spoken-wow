@@ -125,11 +125,24 @@ describe("the Listen page's voices", () => {
     expect(await pub.isPublicClip(lang, SHA(50))).toBe(true);
     expect(await pub.isPublicClip(lang, SHA(500))).toBe(false);
     expect((await asTeam(lang, main, () => store.readDesign(lang, made.id)))!.playersHearOlderLines).toBe(true);
+    // The lines the votes were on stay playable on the workbench.
+    expect(await asTeam(lang, main, () => store.isDesignAudio(lang, SHA(50)))).toBe(true);
 
-    await asTeam(lang, main, () => showVersion(lang, made.id, user.id));
+    // New audio is news to the earlier round's voters, though the version is the same.
+    expect((await asTeam(lang, main, () => showVersion(lang, made.id, user.id))).replaced).toBe(true);
     expect((await heard()).samples.map((line) => line.sha256)).toEqual([SHA(500), SHA(501), SHA(502)]);
     expect(await pub.isPublicClip(lang, SHA(50))).toBe(false);
     expect((await asTeam(lang, main, () => store.readDesign(lang, made.id)))!.playersHearOlderLines).toBe(false);
+  });
+
+  it("keeps the lines of a showing made without them before voicing its version again", async () => {
+    const { made, showingId } = await shown(main, "orc-male-peon", 6);
+    await asSystem.query(`update "voice_design_showing" set "samples" = null where "id" = $1`, [showingId]);
+    const again = [0, 1, 2].map((position) => ({ position, sha256: SHA(600 + position), lineId: `q:${position}:accept`, text: "New.", npcName: "Grunt", characters: 4, credits: 1 }));
+    await asTeam(lang, main, () => store.replaceSamples(lang, made.id, again, { model: "m", settings: {} }));
+
+    const voices = await asTeam(lang, main, () => pub.publicVoices(lang));
+    expect(voices.find((voice) => voice.slot === "orc-male-peon")!.samples.map((line) => line.sha256)).toEqual([SHA(60), SHA(61), SHA(62)]);
   });
 
   it("keeps one vote per voter, the second replacing the first", async () => {

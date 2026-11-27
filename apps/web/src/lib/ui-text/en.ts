@@ -2873,6 +2873,8 @@ export const EN = {
     showingAgain: "Show again",
     publicTag: "Players hear this",
     publicTagTitle: "This version plays on the Listen page, with the lines it had when shown. Voicing it again changes what players hear only when you press Show again.",
+    roundLines: "Lines players heard",
+    roundLineN: "Line {n}",
     resampleShownTitle: "Players keep hearing the lines they were shown until you press Show again.",
     playersHearOlder: "Players still hear the earlier lines. Show again puts these in front of them and starts a fresh round of votes.",
     lockedTitle: "Players hear these lines. Show another version to players first.",
