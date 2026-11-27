@@ -2,7 +2,7 @@
 
 Spoken Player until 3.0.0, when it became Spoken and took its modules into one download.
 
-## Unreleased
+## 3.13.2 — 2026-11-27
 
 - **Help choose the next English voices:** Spoken links to spoken.quest/listen in chat when you log in.
   Turn it off with Hide Voice Feedback Invitation under Contribute & Report. *([rusty-key](https://github.com/rusty-key))*
