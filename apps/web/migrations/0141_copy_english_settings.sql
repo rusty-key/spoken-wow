@@ -1,7 +1,7 @@
 -- English keeps a team's model settings and lexicon in generation_setting and
--- pronunciation_lexicon, not in the _locale tables, so a team joining English with "copy" got
--- neither and voiced with the file defaults and no pronunciations. The dictionary locator is not
--- copied: the new team's first save uploads its own.
+-- pronunciation_lexicon, not in the _locale tables. Without copying them, a team joining English
+-- with "copy" voices with the file defaults and no pronunciations. The dictionary locator stays
+-- behind: the new team's first save uploads its own.
 create or replace function "copy_team_settings"(p_from uuid, p_to uuid, p_lang text) returns void
 language plpgsql security invoker as $$
 begin

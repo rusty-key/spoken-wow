@@ -24,7 +24,7 @@ import { BASE_LANG, type Lang } from "@/lib/lang";
 import type { NpcRowKind } from "@/lib/npc/npc";
 import { getResolution, type NpcResolution } from "@/lib/npc/store";
 import type { Roster } from "@/lib/voices/roster";
-import { loadBaseRoster, loadRoster } from "@/lib/voices/roster-store";
+import { loadBaseRoster } from "@/lib/voices/roster-store";
 
 export const ORD_FLOOR = 1_000_000;
 

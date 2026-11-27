@@ -246,11 +246,15 @@ export async function withTextTeam<T>(
 
 /**
  * For what every team keeps a copy of: a language not switched on yet reads English's, which
- * switching it on copies to its own team. English's plain team, since a reader outside English's
- * teams has no acting one there.
+ * switching it on copies to its own team.
  */
 export async function teamOrEnglish(lang: Lang): Promise<TeamId> {
-  const team = (await ownerOf(lang)) ?? (await plainTeamOf(BASE_LANG));
+  return (await ownerOf(lang)) ?? baseTeam();
+}
+
+/** English's plain team: new teams and unvoiced languages start from it, whoever is asking. */
+export async function baseTeam(): Promise<TeamId> {
+  const team = await plainTeamOf(BASE_LANG);
   if (!team) throw new NoTeamError(BASE_LANG);
   return team;
 }

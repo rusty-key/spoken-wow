@@ -21,7 +21,7 @@
  *
  * ElevenLabs refuses a dictionary the key's account cannot read, and every collaborator generates
  * on their own key. So the row says what the editor last uploaded, and
- * lexicon_account_dictionary says where each account holds it.
+ * team_lexicon_dictionary says where each account holds each team's.
  */
 import { createHash } from "node:crypto";
 
@@ -158,7 +158,8 @@ async function readRow(lang: Lang = BASE_LANG): Promise<Row | undefined> {
 }
 
 export async function readLexicon(lang: Lang = BASE_LANG): Promise<EffectiveLexicon> {
-  return effective(await readRow(lang), await pinned(lang));
+  const [row, isPinned] = await Promise.all([readRow(lang), pinned(lang, await readerOf(lang))]);
+  return effective(row, isPinned);
 }
 
 function effective(row: Row | undefined, isPinned: boolean): EffectiveLexicon {
@@ -253,17 +254,15 @@ function pinnedDictionaryId(): string | undefined {
  * Whether `lang`'s lexicon, as read, is English's first team's. Only that one uploads to the
  * dictionary ../wow-lore pins: another English team's save would overwrite it.
  */
-async function pinned(lang: Lang, team?: TeamId): Promise<boolean> {
-  if (lang !== BASE_LANG) return false;
-  const [reader, plain] = await Promise.all([team ?? readerOf(BASE_LANG), plainTeamOf(BASE_LANG)]);
-  return reader === plain;
+async function pinned(lang: Lang, team: TeamId | undefined): Promise<boolean> {
+  return lang === BASE_LANG && team !== undefined && team === (await plainTeamOf(BASE_LANG));
 }
 
 /**
  * The ids a save may update, best first. The pinned one comes from the environment, because
  * ../wow-lore pins it too. Any of them may be on another collaborator's account.
  */
-function knownIds(isPinned: boolean, mine?: string, rowId?: string | null): (string | null | undefined)[] {
+function knownIds(isPinned: boolean, mine: string | undefined, rowId: string | null | undefined): (string | null | undefined)[] {
   if (!isPinned) return [mine, rowId];
   const pinned = pinnedDictionaryId();
   return pinned ? [pinned, mine, rowId] : [];
@@ -274,14 +273,15 @@ function knownIds(isPinned: boolean, mine?: string, rowId?: string | null): (str
  * dictionary over one would leave the account with a second copy of the lexicon.
  */
 async function uploadRules(
-  ids: (string | null | undefined)[],
+  team: TeamId,
+  lang: Lang,
+  ids: { mine: string | undefined; row: string | null | undefined },
   rules: DictionaryRule[],
   options: ElevenLabsOptions,
-  lang: Lang,
-  isPinned: boolean,
 ): Promise<{ locator: DictionaryLocator; kept: number | null }> {
+  const isPinned = await pinned(lang, team);
   let locator: DictionaryLocator | undefined;
-  for (const id of new Set(ids)) {
+  for (const id of new Set(knownIds(isPinned, ids.mine, ids.row))) {
     if (!id) continue;
     try {
       locator = await updateDictionary(id, rules, options);
@@ -338,13 +338,12 @@ async function bringAccountUpToDate(
     }
 
     const rules = await rulesFor(row.entries, lang);
-    const isPinned = await pinned(lang, team);
     const { locator, kept } = await uploadRules(
-      knownIds(isPinned, mine?.dictionaryId, row.dictionaryId),
+      team,
+      lang,
+      { mine: mine?.dictionaryId, row: row.dictionaryId },
       rules,
       options,
-      lang,
-      isPinned,
     );
     if (kept !== null && kept < rules.length) {
       console.error(`${lang}: ElevenLabs kept only ${kept} of ${rules.length} rules in ${locator.dictionaryId}`);
@@ -535,7 +534,7 @@ export async function editLexicon<T>(
     }
     const before = row?.entries ?? [];
     const { entries, result } = edit(before);
-    if (entries === before) return { lexicon: effective(row, await pinned(lang)), syncError: null, result };
+    if (entries === before) return { lexicon: effective(row, await pinned(lang, await readerOf(lang))), syncError: null, result };
     if (await storeIf(lang, entries, updatedBy, digest)) {
       return { ...(await afterSave(before, entries, updatedBy, options, lang)), result };
     }
@@ -626,14 +625,8 @@ export async function sync(
 
   let uploaded;
   try {
-    const isPinned = await pinned(lang, team);
-    uploaded = await uploadRules(
-      knownIds(isPinned, mine?.dictionaryId, (await readRow(lang))?.dictionaryId),
-      rules,
-      options,
-      lang,
-      isPinned,
-    );
+    const row = (await readRow(lang))?.dictionaryId;
+    uploaded = await uploadRules(team, lang, { mine: mine?.dictionaryId, row }, rules, options);
   } catch (error) {
     return error instanceof Error ? error.message : String(error);
   }

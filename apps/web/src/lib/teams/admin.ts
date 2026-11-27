@@ -14,7 +14,7 @@ import type { Capability } from "@/lib/permissions";
 import type { Settings } from "./found";
 
 import { isSlug } from "./slug";
-import { forgetTeams, TEAM_ORDER, type TeamId } from "./store";
+import { forgetTeams, plainTeamOf, TEAM_ORDER, type TeamId } from "./store";
 
 export type TeamSummary = {
   id: TeamId;
@@ -54,7 +54,7 @@ export function checkSlug(slug: string): void {
 
 export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
   const id = [only ?? null];
-  const [teams, langs, members] = await Promise.all([
+  const [teams, langs, members, base] = await Promise.all([
     // Across teams: a team's runs are its own (row-level security).
     queryIn<{
       id: TeamId; slug: string; name: string; ownStorage: boolean; official: boolean;
@@ -71,8 +71,8 @@ export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
         where $1::uuid is null or t."id" = $1 order by t."slug"`,
       id,
     ),
-    query<{ teamId: TeamId; lang: Lang; packName: string }>(
-      `select "teamId", "lang", "packName" from "team_language"
+    query<{ teamId: TeamId; lang: Lang }>(
+      `select "teamId", "lang" from "team_language"
         where $1::uuid is null or "teamId" = $1 order by "lang"`,
       id,
     ),
@@ -83,12 +83,13 @@ export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
         order by u."email", m."lang", m."capability"`,
       id,
     ),
+    plainTeamOf(BASE_LANG),
   ]);
   return teams.map(({ deletingAt, deleteError, delisted, delists, ...team }) => ({
     ...team,
     deleting: deletingAt ? { delisted, delists, error: deleteError } : null,
     langs: langs.filter((row) => row.teamId === team.id).map((row) => row.lang),
-    base: langs.some((row) => row.teamId === team.id && row.lang === BASE_LANG && row.packName === "plain"),
+    base: team.id === base,
     members: members
       .filter((row) => row.teamId === team.id)
       .map(({ teamId: _team, ...member }) => member),

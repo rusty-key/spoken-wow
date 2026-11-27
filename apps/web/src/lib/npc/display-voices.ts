@@ -20,9 +20,8 @@
  */
 import "server-only";
 
-import { BASE_LANG } from "@/lib/lang";
 import { defaultFlavorFor } from "@/lib/quests/catalogue";
-import { loadBaseRoster, loadRoster } from "@/lib/voices/roster-store";
+import { loadBaseRoster } from "@/lib/voices/roster-store";
 import type { Gender } from "@/lib/voices/voices";
 
 import table from "./display-voices.json";

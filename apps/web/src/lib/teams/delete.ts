@@ -88,7 +88,7 @@ export async function refusalOf(
 ): Promise<string | null> {
   if (team.deletingAt) return `${team.slug} is being deleted already.`;
   const { rows } = await client.query<{ base: boolean; busy: boolean }>(
-    `select exists (select 1 from "team_language" where "teamId" = $1 and "lang" = $2 and "packName" = 'plain') as "base",
+    `select team_of_lang($2) is not distinct from $1 as "base",
             exists (select 1 from "release_run" where "teamId" = $1 and "state" = any($3)) as "busy"`,
     [team.id, BASE_LANG, RELEASE_UNDER_WAY],
   );

@@ -11,8 +11,8 @@ import type { PoolClient } from "pg";
 import { cache } from "react";
 
 import { queryIn, TEAM_ROWS, withTeam } from "@/lib/db";
-import { BASE_LANG, type Lang } from "@/lib/lang";
-import { NoTeamError, plainTeamOf, teamOrEnglish, type TeamId } from "@/lib/teams/store";
+import type { Lang } from "@/lib/lang";
+import { baseTeam, teamOrEnglish, type TeamId } from "@/lib/teams/store";
 
 import { Roster, type Gender, type RosterData } from "./roster";
 
@@ -68,9 +68,7 @@ export async function loadRoster(lang: Lang): Promise<Roster> {
  * voice): whichever English team the caller acts in, they get the same one.
  */
 export async function loadBaseRoster(): Promise<Roster> {
-  const team = await plainTeamOf(BASE_LANG);
-  if (!team) throw new NoTeamError(BASE_LANG);
-  return rosterOf(team);
+  return rosterOf(await baseTeam());
 }
 
 /**
