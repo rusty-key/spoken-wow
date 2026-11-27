@@ -6,6 +6,7 @@
  */
 import { setTimeout as wait } from "node:timers/promises";
 
+import { shuffle } from "@/lib/shuffle";
 import { failure } from "@/lib/voices/elevenlabs";
 
 import { EFFECT_WORDS, PROMPT_ENDING, SIBILANT_WORDS, withEnding } from "./limits";
@@ -39,12 +40,7 @@ const COMPARE_TIMEOUT_MS = 300_000;
 
 /** Letters for the recordings, shuffled, so the order never hints which flavor is which. */
 export function blindLabels(slots: readonly string[], random: () => number = Math.random): Record<string, string> {
-  const shuffled = [...slots];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return Object.fromEntries(shuffled.map((slot, index) => [String.fromCharCode(65 + index), slot]));
+  return Object.fromEntries(shuffle(slots, random).map((slot, index) => [String.fromCharCode(65 + index), slot]));
 }
 
 export type PromptFlavor = { label: string; npcs: string[]; measures: Record<string, number> | null };
