@@ -86,6 +86,8 @@ Defaults = {
             -- One switch for every feature addon's Contribute button, since they all hand
             -- the player the same box and a player who does not want one wants none.
             HideButtons = false,
+            -- The chat line inviting English-voice players to rate upcoming voices (Feedback.lua).
+            HideFeedback = false,
         },
         Transcript = {
             Enabled = true,

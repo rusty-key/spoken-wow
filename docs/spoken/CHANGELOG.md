@@ -4,8 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
-- **Help choose the next English voices:** Spoken links to spoken.quest/listen in chat once. Type
-  /sp feedback to see the link again. *([rusty-key](https://github.com/rusty-key))*
+- **Help choose the next English voices:** Spoken links to spoken.quest/listen in chat when you log in.
+  Turn it off with Hide Voice Feedback Invitation under Contribute & Report. *([rusty-key](https://github.com/rusty-key))*
 - **With Stop When Window Closes on, a quest's progress text keeps reading on its reward page,**
   and gossip and greetings keep reading when the NPC opens its trainer, vendor or quest window. *([anon1231823](https://github.com/anon1231823))*
 - **One more character now shows “Spoken Developer” in its tooltip.** *([anon1231823](https://github.com/anon1231823))*

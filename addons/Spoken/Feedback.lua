@@ -1,15 +1,13 @@
 setfenv(1, SpokenEnv)
 
--- A chat line inviting English-voice players to rate upcoming voices on the site, once per
--- account per announcement, and again on /sp feedback.
+-- A chat line inviting English-voice players to rate upcoming voices on the site, at every load
+-- until Hide Voice Feedback Invitation is on, and again on /sp feedback.
 --
 -- The link is an "addon:" hyperlink: on Forever, Classic Era and TBC Anniversary alike the
 -- client's SetItemRef hands that type to EventRegistry's "SetItemRef" event and stops there.
 -- Any other made-up type falls through to the item tooltip.
 
 Feedback = {
-    -- Change it to show a new announcement once more to everyone who saw the last.
-    ID = "listen-2026-11",
     PATH = "/listen",
     -- Seconds after entering the world: the login burst of addon messages would bury it.
     DELAY = 10,
@@ -23,7 +21,7 @@ local function URL()
 end
 
 -- The tag other addons' announcements wear: gold brackets around the name and icon.
-local TAG = "|cffffff00[|r|cffa0a0ffSpoken|r |TInterface\\AddOns\\Spoken\\icon.tga:0:0:0:0|t|cffffff00]|r "
+local TAG = "|cffffff00[|r|cffffd100Spoken|r |TInterface\\AddOns\\Spoken\\icon.tga:0:0:0:0|t|cffffff00]|r "
 local TEXT, LINK_COLOR = "|cffa0a0ff", "|cff66bbff"
 
 function Feedback:Message()
@@ -44,11 +42,7 @@ function Feedback:HearsEnglish()
 end
 
 function Feedback:Announce()
-    local global = Addon.db and Addon.db.global
-    if not global then return end
-    if type(global.Announcements) ~= "table" then global.Announcements = {} end
-    if global.Announcements[self.ID] or not self:HearsEnglish() then return end
-    global.Announcements[self.ID] = true
+    if not Addon.db or Addon.db.profile.Contribute.HideFeedback or not self:HearsEnglish() then return end
     self:Print()
 end
 

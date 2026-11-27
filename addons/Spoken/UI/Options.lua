@@ -964,6 +964,9 @@ local function Build()
                 Subtitle:Update()
                 Callbacks:Fire("REPORT_SETTINGS_CHANGED")
             end)
+        rows:Checkbox(L.OPT_HIDE_FEEDBACK, nil,
+            function() return Addon.db.profile.Contribute.HideFeedback end,
+            function(v) Addon.db.profile.Contribute.HideFeedback = v end)
     end
     BuildContributePage(function(rows)
         ContributeRows(rows)

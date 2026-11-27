@@ -1,5 +1,6 @@
 -- The invitation to rate upcoming voices on the site: a chat line with a link to the copy box,
--- shown once per account to a player who hears English voices, and again on /sp feedback.
+-- shown at every load to a player who hears English voices until the setting hides it, and
+-- again on /sp feedback.
 -- Run with `make test-player`.
 local here = arg[0]:match("^(.*)/[^/]*$") or "."
 package.path = here .. "/?.lua;" .. package.path
@@ -41,7 +42,7 @@ local function Click(line)
     _G.SetItemRef(link, text, "LeftButton", _G.DEFAULT_CHAT_FRAME)
 end
 
------------------------------------------------------------------- English: once, after a wait
+------------------------------------------------------------------ English: after a wait
 Clean()
 local env = Login()
 Expect("nothing is said while the world is still loading", #Invitations(), 0)
@@ -49,8 +50,7 @@ stub.Advance(env.Feedback.DELAY)
 local said = Invitations()
 Expect("a player hearing English is invited", #said, 1)
 Expect("...with the address as a link", said[1] and said[1]:find("|Haddon:Spoken:feedback|h[spoken.quest/listen]|h", 1, true) ~= nil, true)
-Expect("...tagged with Spoken's name and icon", said[1] and said[1]:find("Spoken|r |TInterface\\AddOns\\Spoken\\icon.tga", 1, true) ~= nil, true)
-Expect("...remembered for the whole account", env.Addon.db.global.Announcements["listen-2026-11"], true)
+Expect("...tagged with Spoken's name, in gold, and icon", said[1] and said[1]:find("|cffffd100Spoken|r |TInterface\\AddOns\\Spoken\\icon.tga", 1, true) ~= nil, true)
 
 Click(said[1])
 local box = env.Spoken.ContributeBox
@@ -63,25 +63,34 @@ box.frame:Hide()
 _G.SetItemRef("addon:OtherAddon:feedback", "[x]", "LeftButton", _G.DEFAULT_CHAT_FRAME)
 Expect("another addon's link does not open it", box.frame:IsShown(), false)
 
------------------------------------------------------------------- the next login says nothing
+------------------------------------------------------------------ every load, until hidden
 stub.Logout()
 env = Login()
 stub.Advance(env.Feedback.DELAY)
-Expect("the next login does not invite again", #Invitations(), 0)
+Expect("the next load invites again", #Invitations(), 1)
 
------------------------------------------------------------------- a new announcement id shows once more
+env.Addon:Enable()
+local hide
+for _, entry in ipairs(_G.SpokenContributeOptionsPanel.layout.entries) do
+    if entry.label == env.L.OPT_HIDE_FEEDBACK then hide = entry.frame end
+end
+Expect("Contribute & Report has Hide Voice Feedback Invitation", hide ~= nil, true)
+Expect("...off by default", hide and hide:GetChecked(), false)
+hide:SetChecked(true)
+hide:GetScript("OnClick")(hide)
 stub.Logout()
-env = Login(function(e) e.Feedback.ID = "listen-next" end)
+env = Login()
 stub.Advance(env.Feedback.DELAY)
-Expect("a new announcement is shown to an account that saw the last", #Invitations(), 1)
+Expect("with it on, a load says nothing", #Invitations(), 0)
+env.Addon:Enable()
+_G.SlashCmdList.SPOKEN("feedback")
+Expect("...but /sp feedback still does", #Invitations(), 1)
 
 ------------------------------------------------------------------ another voice language: never
 Clean()
 env = Login(function(e) e.Spoken:SetVoiceOrder({ "deDE", "enUS" }) end)
 stub.Advance(env.Feedback.DELAY)
 Expect("a player whose first voice is German is not invited", #Invitations(), 0)
-Expect("...and the account is not marked, so a switch to English still gets it",
-    env.Addon.db.global.Announcements["listen-2026-11"], nil)
 
 Clean("deDE")
 env = Login()
