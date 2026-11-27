@@ -227,7 +227,7 @@ export default function Workbench({
       let draft: Draft | null = null;
       try {
         draft = await requestRevision(lang, design, fill(t.geminiRevision, { v: `v${design.version}` }));
-        context.updateDesign(await designFrom(lang, slot.name, draft));
+        for (const made of await designFrom(lang, slot.name, draft)) context.updateDesign(made);
         setDrafts(({ [slot.name]: _, ...rest }) => rest);
       } catch (err) {
         // A paid-for draft whose design failed waits in the slot's form.

@@ -2734,7 +2734,6 @@ const zhTW: Dictionary = {
     firstVersion: "設計 v1",
     usedBy: "使用者：{npcs} · {lines} 句台詞",
     usedByNobody: "還沒有 NPC 使用這個槽位。",
-    olderVersions: "舊版本 · {n}",
     startedFrom: "以{from}為起點。修正不對的地方，再設計新版本。",
     promptLabel: "提示詞",
     previewTextLabel: "預覽文字",

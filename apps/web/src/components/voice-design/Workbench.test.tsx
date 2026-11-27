@@ -120,14 +120,11 @@ test("starts from the filter and the search in the URL", () => {
   expect(slotsShown()).toHaveLength(3);
 });
 
-test("shows the newest version open and folds the older ones", () => {
+test("shows only a slot's newest version: the next one replaces it", () => {
   workbench();
   const shady = screen.getByRole("article", { name: "orc-male-shady" });
-  const older = within(shady).getByText(/Older versions · 1/).closest("details")!;
-  expect(older.open).toBe(false);
-  expect(within(older).getByText("Prompt of orc-male-shady v1")).toBeTruthy();
-  const newest = within(shady).getByText("Prompt of orc-male-shady v2");
-  expect(older.contains(newest)).toBe(false);
+  expect(within(shady).getByText("Prompt of orc-male-shady v2")).toBeTruthy();
+  expect(within(shady).queryByText("Prompt of orc-male-shady v1")).toBeNull();
 });
 
 test("Revise puts Gemini's draft into a form that was already open", async () => {
@@ -154,7 +151,7 @@ test("Generate opens the new version with an empty note and closes a draft left 
   const v2 = { ...design("orc-male-shady", 2, "needs-work", "too noble"), samples: [line] };
   const v3 = { ...design("orc-male-shady", 3, null), id: "orc-male-shady-3" };
   const revision = { heard: "h", prompt: "Gemini's new prompt", preview_text: "y".repeat(120), archetype: "a" };
-  vi.stubGlobal("fetch", vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: v3 })));
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: v3, retired: [] })));
   Element.prototype.scrollIntoView = () => {};
   render(
     <LangProvider lang="enUS">
@@ -188,7 +185,7 @@ test("Generate all asks first with the cost, then makes each needs-work slot's n
       }
       const slotName = JSON.parse(String(init.body)).slot as string;
       calls.push(`design ${slotName}`);
-      return Response.json({ design: { ...design(slotName, slotName === "orc-male-shady" ? 3 : 2, null), id: `${slotName}-new` } });
+      return Response.json({ design: { ...design(slotName, slotName === "orc-male-shady" ? 3 : 2, null), id: `${slotName}-new` }, retired: [] });
     }),
   );
   render(

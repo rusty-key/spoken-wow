@@ -2742,7 +2742,6 @@ const koKR: Dictionary = {
     firstVersion: "v1 디자인",
     usedBy: "사용: {npcs} · 대사 {lines}개",
     usedByNobody: "아직 이 슬롯을 쓰는 NPC가 없습니다.",
-    olderVersions: "이전 버전 · {n}",
     startedFrom: "{from}에서 시작합니다. 문제였던 부분을 고친 뒤 새 버전을 디자인하세요.",
     promptLabel: "프롬프트",
     previewTextLabel: "미리 듣기 텍스트",

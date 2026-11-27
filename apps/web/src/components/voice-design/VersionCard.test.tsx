@@ -139,7 +139,7 @@ test("gives a verdict in one press, with the note, and drops the marks of a verd
 
 test("generates the next version from the review in one press: Gemini's prompt, then Voice Design", async () => {
   const revision = { heard: "too noble", prompt: "A colder voice.", preview_text: "y".repeat(120), archetype: "Queen" };
-  const fetchMock = vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: { ...DESIGN, id: "d2", version: 3 } }));
+  const fetchMock = vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: { ...DESIGN, id: "d2", version: 3 }, retired: [] }));
   vi.stubGlobal("fetch", fetchMock);
   render(card(DESIGN));
 
@@ -171,7 +171,7 @@ test("loads only marks that still apply: none from before the lines were voiced 
 
 test("remixes the held voice from the review in one press: Gemini's changes, then Voice Remix with the page's settings", async () => {
   const revision = { heard: "too noble", prompt: "A colder voice.", preview_text: "y".repeat(120), archetype: "Queen", changes: "Make it colder. Keep the accent." };
-  const fetchMock = vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: { ...DESIGN, id: "d2", version: 3 } }));
+  const fetchMock = vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: { ...DESIGN, id: "d2", version: 3 }, retired: [] }));
   vi.stubGlobal("fetch", fetchMock);
   render(card(DESIGN));
 

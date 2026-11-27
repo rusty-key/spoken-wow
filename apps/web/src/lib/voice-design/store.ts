@@ -148,6 +148,12 @@ export async function listDesigns(lang: Lang): Promise<Design[]> {
   return assemble(lang, rows);
 }
 
+/** One slot's versions, newest first. */
+export async function slotDesigns(lang: Lang, slot: string): Promise<Design[]> {
+  const rows = await readAs<DesignRow>(lang, `${DESIGN_SELECT} where d."lang" = $1 and d."slot" = $2 order by d."version" desc`, [lang, slot]);
+  return assemble(lang, rows);
+}
+
 export async function readDesign(lang: Lang, id: string): Promise<Design | null> {
   // Ids come from URLs and bodies: Postgres answers a malformed one with a cast error, not "no row".
   if (!isUuid(id)) return null;

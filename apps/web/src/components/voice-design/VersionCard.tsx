@@ -220,11 +220,11 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
    * Gemini's revision, then straight to Voice Design or Voice Remix. If that second call fails, the
    * paid-for draft waits in the form; if it succeeds, a draft left open would revise the old version.
    */
-  const fromReview = <D extends Draft>(what: string, toDraft: (revised: Draft) => D, make: (draft: D) => Promise<Design>) =>
+  const fromReview = <D extends Draft>(what: string, toDraft: (revised: Draft) => D, make: (draft: D) => Promise<Design[]>) =>
     run(what, async () => {
       const draft = toDraft(await revision());
       try {
-        updateDesign(await make(draft));
+        for (const version of await make(draft)) updateDesign(version);
         setDraft(slot.name, null);
       } catch (err) {
         setDraft(slot.name, draft);

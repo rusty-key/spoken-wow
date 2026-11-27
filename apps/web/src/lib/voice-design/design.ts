@@ -22,7 +22,7 @@ import { keepDesignAudio } from "./audio";
 import { designName, previewTextProblem, promptLengthProblem, REMIX_CHANGES_MAX, withEnding, type RemixSettings } from "./limits";
 import { withDesignLock } from "./lock";
 import { measureAudio } from "./measure";
-import { createDesign, isOwnAnalysis, markVoiceDeleted, readDesign, saveVoice, type NewDesign } from "./store";
+import { createDesign, isOwnAnalysis, markVoiceDeleted, readDesign, saveVoice, slotDesigns, type NewDesign } from "./store";
 import type { Design, Measures } from "./types";
 
 export type DesignDeps = {
@@ -34,6 +34,7 @@ export type DesignDeps = {
   measure: (clips: Buffer[]) => Promise<(Measures | null)[] | null>;
   create: (input: NewDesign) => Promise<Design>;
   read: (lang: Lang, id: string) => Promise<Design | null>;
+  slotDesigns: (lang: Lang, slot: string) => Promise<Design[]>;
   save: typeof saveVoice;
   createVoice: (input: { name: string; prompt: string; generatedVoiceId: string }, apiKey: string) => Promise<string>;
   accountVoices: (apiKey: string) => Promise<AccountVoice[]>;
@@ -51,6 +52,7 @@ const LIVE: DesignDeps = {
   measure: (clips) => measureAudio(clips),
   create: createDesign,
   read: readDesign,
+  slotDesigns,
   save: saveVoice,
   createVoice: (input, apiKey) => createDesignedVoice(input, { apiKey }),
   accountVoices: (apiKey) => listAccountVoices({ apiKey }),
@@ -226,4 +228,26 @@ export async function deleteDesignVoice(
     await deps.markDeleted(input.lang, input.id);
     return (await deps.read(input.lang, input.id))!;
   });
+}
+
+/**
+ * A slot keeps one version: once the next is made, the older ones' voices leave the caller's
+ * account, as the page no longer offers them. Their rows, audio and reviews stay. A voice held by
+ * someone else, or adopted on /voices, is left alone, and one that fails to go does not fail the
+ * new version, which is already paid for.
+ */
+export async function retireOlder(
+  input: { lang: Lang; kept: Design; userId: string; apiKey: string },
+  deps: DesignDeps = LIVE,
+): Promise<Design[]> {
+  const retired: Design[] = [];
+  for (const design of await deps.slotDesigns(input.lang, input.kept.slot)) {
+    if (design.version >= input.kept.version || holderRefusal(design, input.userId)) continue;
+    try {
+      retired.push(await deleteDesignVoice({ lang: input.lang, id: design.id, userId: input.userId, apiKey: input.apiKey }, deps));
+    } catch (error) {
+      console.warn(`[voice-design] kept ${design.slot} v${design.version}'s voice:`, error);
+    }
+  }
+  return retired;
 }

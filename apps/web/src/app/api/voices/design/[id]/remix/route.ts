@@ -1,7 +1,7 @@
 /** Remix a version's voice into the next version: Voice Remix, spent from the holder's ElevenLabs key. */
 import { requireApiKey } from "@/lib/generation/authz";
 import { failed, requireDesigner } from "@/lib/voice-design/access";
-import { remixVersion } from "@/lib/voice-design/design";
+import { remixVersion, retireOlder } from "@/lib/voice-design/design";
 import { parseRemixSettings } from "@/lib/voice-design/limits";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +33,8 @@ export async function POST(request: Request, context: Context) {
       userId: session.user.id,
       apiKey: key,
     });
-    return Response.json({ design });
+    const retired = await retireOlder({ lang, kept: design, userId: session.user.id, apiKey: key });
+    return Response.json({ design, retired });
   } catch (error) {
     return failed(error);
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 
 import { useUiText } from "@/components/UiTextProvider";
@@ -18,7 +18,8 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
   const t = useUiText().voiceDesign;
   const { viewer, drafts, setDraft } = useWorkbench();
   const draft = drafts[slot.name];
-  const [newest, ...older] = slot.designs;
+  // A slot shows one version: the next replaces it, and the older ones stay only as history.
+  const newest = slot.designs[0];
   const [designing, setDesigning] = useState(false);
   const formOpen = designing || draft !== undefined;
   const close = () => {
@@ -64,17 +65,6 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
         </div>
       ) : null}
 
-      {older.length > 0 ? (
-        <details className="vd-older">
-          <summary className="vd-older-head">
-            <ChevronRight className="vd-chevron" size={14} aria-hidden="true" />
-            {fill(t.olderVersions, { n: older.length })}
-          </summary>
-          {older.map((design) => (
-            <VersionCard key={design.id} design={design} slot={slot} newest={false} />
-          ))}
-        </details>
-      ) : null}
     </article>
   );
 }

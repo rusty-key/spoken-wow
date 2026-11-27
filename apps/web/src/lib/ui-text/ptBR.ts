@@ -2744,7 +2744,6 @@ const ptBR: Dictionary = {
     firstVersion: "Criar v1",
     usedBy: "Usada por {npcs} · {lines} falas",
     usedByNobody: "Nenhum NPC usa esta vaga ainda.",
-    olderVersions: "Versões anteriores · {n}",
     startedFrom: "Partindo de {from}. Mude o que estava errado e crie uma versão nova.",
     promptLabel: "Prompt",
     previewTextLabel: "Texto da prévia",

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const { deleteDesignVoice, designVersion, remixVersion, saveDesignVoice } = await import("./design");
+const { deleteDesignVoice, designVersion, remixVersion, retireOlder, saveDesignVoice } = await import("./design");
 const { designName, PROMPT_ENDING, withEnding } = await import("./limits");
 import type { DesignDeps } from "./design";
 import type { Design } from "./types";
@@ -50,6 +50,7 @@ function deps(design: Partial<Design> = {}, over: Partial<DesignDeps> = {}): Des
     measure: vi.fn(async (clips: Buffer[]) => clips.map((_, i) => ({ f0Hz: 100 - i }) as never)),
     create: vi.fn(async (input) => ({ ...current, ...input, version: 1 })),
     read: vi.fn(async () => current),
+    slotDesigns: vi.fn(async () => [current]),
     save: vi.fn(async () => {}),
     createVoice: vi.fn(async () => "voice-9"),
     accountVoices: vi.fn(async () => [{ voiceId: "voice-9", name: "design-orc-male-shady-v3", category: "generated" }]),
@@ -188,6 +189,43 @@ describe("deleteDesignVoice", () => {
     await deleteDesignVoice({ ...base, id: "d1" }, d);
     expect(d.deleteVoice).not.toHaveBeenCalled();
     expect(d.markDeleted).toHaveBeenCalled();
+  });
+});
+
+describe("retireOlder", () => {
+  const held = (version: number, holderId = "u1"): Design => ({
+    ...DESIGN,
+    id: `d${version}`,
+    version,
+    voiceId: `voice-${version}`,
+    voiceName: `design-orc-male-shady-v${version}`,
+    holderId,
+    holderName: holderId === "u1" ? "Ann" : "Bo",
+  });
+
+  it("deletes every older version's voice the caller holds, and leaves the rest", async () => {
+    const versions = [{ ...DESIGN, id: "d4", version: 4 }, held(3), held(2, "u2"), { ...held(1), voiceDeletedAt: "then" }];
+    const d = deps({}, {
+      slotDesigns: vi.fn(async () => versions),
+      read: vi.fn(async (_lang, id) => versions.find((v) => v.id === id)!),
+      accountVoices: vi.fn(async () => [{ voiceId: "voice-3", name: "design-orc-male-shady-v3", category: "generated" }]),
+    });
+    const retired = await retireOlder({ ...base, kept: versions[0] }, d);
+    expect(d.deleteVoice).toHaveBeenCalledTimes(1);
+    expect(d.deleteVoice).toHaveBeenCalledWith("voice-3", "k");
+    expect(d.markDeleted).toHaveBeenCalledWith("enUS", "d3");
+    expect(retired.map((v) => v.id)).toEqual(["d3"]);
+  });
+
+  it("keeps a voice adopted on /voices, and a newer version made meanwhile, without failing", async () => {
+    const versions = [held(5), { ...DESIGN, id: "d4", version: 4 }, held(3)];
+    const d = deps({}, {
+      slotDesigns: vi.fn(async () => versions),
+      read: vi.fn(async (_lang, id) => versions.find((v) => v.id === id)!),
+      accountVoices: vi.fn(async () => [{ voiceId: "voice-3", name: "orc-male-shady", category: "generated" }]),
+    });
+    await expect(retireOlder({ ...base, kept: versions[1] }, d)).resolves.toEqual([]);
+    expect(d.deleteVoice).not.toHaveBeenCalled();
   });
 });
 
