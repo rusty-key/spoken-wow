@@ -40,6 +40,7 @@ const DESIGN: Design = {
   sampledAt: "2026-11-25T00:00:00Z",
   reviews: [{ id: 1, status: "needs-work", note: "", bestPreview: 0, clips: { "sample:2": "off", "preview:0": "good" }, players: [], createdBy: "u1", createdByName: "Ann", createdAt: "2026-11-26T00:00:00Z" }],
   isPublic: false,
+  playersHearOlderLines: false,
   showings: [],
   createdBy: "u1",
   createdByName: "Ann",
@@ -196,7 +197,7 @@ test("offers remix only to the voice's holder, while the voice is in their accou
   expect(screen.queryByRole("button", { name: "Remix from review" })).toBeNull();
 });
 
-test("shows a sampled version to players, and locks its lines once they hear it", async () => {
+test("shows a sampled version to players, and still voices it again while they hear it", async () => {
   const fetchMock = vi.fn(async () => Response.json({ design: { ...DESIGN, isPublic: true } }));
   vi.stubGlobal("fetch", fetchMock);
   const { rerender } = render(card(DESIGN));
@@ -207,8 +208,12 @@ test("shows a sampled version to players, and locks its lines once they hear it"
 
   rerender(card({ ...DESIGN, isPublic: true }));
   expect(screen.getByText("Players hear this")).toBeTruthy();
-  expect((screen.getByRole("button", { name: "Voice the lines again" }) as HTMLButtonElement).disabled).toBe(true);
-  expect(screen.getByRole("button", { name: "Show again" })).toBeTruthy();
+  expect((screen.getByRole("button", { name: "Voice the lines again" }) as HTMLButtonElement).disabled).toBe(false);
+  expect(screen.queryByText(/Players still hear the earlier lines/)).toBeNull();
+
+  rerender(card({ ...DESIGN, isPublic: true, playersHearOlderLines: true }));
+  expect(screen.getByText(/Players still hear the earlier lines/)).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Show again" }).classList.contains("bs-btn-primary")).toBe(true);
 });
 
 test("lists players' votes per showing, and hides a note as spam", async () => {

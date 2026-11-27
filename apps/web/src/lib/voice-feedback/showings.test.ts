@@ -101,16 +101,18 @@ describe("showing a version to players", () => {
     });
   });
 
-  it("locks a public version's lines until another version is shown", async () => {
+  it("lets a public version be voiced again, but not saved as another voice until another version is shown", async () => {
     const one = await sampled("orc-male-guard", 3);
     const two = await sampled("orc-male-guard", 4);
     await showings.showVersion(lang, one.id, user.id);
-    await expect(store.replaceSamples(lang, one.id, [], { model: "m", settings: {} })).rejects.toThrow(/players hear/i);
+    await expect(store.replaceSamples(lang, one.id, [], { model: "m", settings: {} })).resolves.toBeUndefined();
     await expect(
       store.saveVoice(lang, one.id, { chosenPreview: 0, voiceId: "v-x", voiceName: "x", holderId: user.id }),
     ).rejects.toThrow(/players hear/i);
     await showings.showVersion(lang, two.id, user.id);
-    await expect(store.replaceSamples(lang, one.id, [], { model: "m", settings: {} })).resolves.toBeUndefined();
+    await expect(
+      store.saveVoice(lang, one.id, { chosenPreview: 0, voiceId: "v-x", voiceName: "x", holderId: user.id }),
+    ).resolves.toBeUndefined();
   });
 
   it("counts every verdict, and leaves a hidden note out of the list", async () => {

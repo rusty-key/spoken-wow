@@ -60,7 +60,14 @@ const DESIGN_SELECT = `
     left join "user" c on c."id" = d."createdBy"`;
 
 type SampleRow = DesignSample & { designId: string; createdAt: Date };
-type ShowingRow = { id: string; designId: string; createdAt: Date; createdByName: string | null; isPublic: boolean };
+type ShowingRow = {
+  id: string;
+  designId: string;
+  createdAt: Date;
+  createdByName: string | null;
+  isPublic: boolean;
+  samples: { sha256: string }[] | null;
+};
 type FeedbackRow = { showingId: string; voter: string; who: string | null; verdict: Verdict; note: string; hidden: boolean; at: Date };
 
 /** The newest showing of the slot of the showing aliased `s`: the version players hear. */
@@ -104,7 +111,7 @@ async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
     ),
     readAs<ShowingRow>(
       lang,
-      `select s."id", s."designId", s."createdAt", u."name" as "createdByName", s."id" = ${NEWEST_SHOWING} as "isPublic"
+      `select s."id", s."designId", s."createdAt", u."name" as "createdByName", s."id" = ${NEWEST_SHOWING} as "isPublic", s."samples"
          from "voice_design_showing" s left join "user" u on u."id" = s."createdBy"
         where s."designId" = any($1::uuid[])
         order by s."id" desc`,
@@ -127,6 +134,7 @@ async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
   return rows.map((row) => {
     const shown = showings.filter((s) => s.designId === row.id);
     const own = samples.filter((s) => s.designId === row.id);
+    const heard = shown.find((s) => s.isPublic);
     return {
       ...row,
       voiceDeletedAt: row.voiceDeletedAt?.toISOString() ?? null,
@@ -137,7 +145,8 @@ async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
       reviews: reviews
         .filter((r) => r.designId === row.id)
         .map(({ designId: _, ...review }) => ({ ...review, id: Number(review.id), createdAt: review.createdAt.toISOString() })),
-      isPublic: shown.some((s) => s.isPublic),
+      isPublic: !!heard,
+      playersHearOlderLines: !!heard?.samples && heard.samples.map((line) => line.sha256).join() !== own.map((sample) => sample.sha256).join(),
       showings: showingsOf(shown, byShowing),
     };
   });
@@ -342,7 +351,8 @@ export async function replaceSamples(
   made: { model: string; settings: Record<string, unknown> },
 ): Promise<void> {
   await asTeamOf(lang, async (client) => {
-    await refuseIfPublic(client, id);
+    // A shown version may be voiced again: its showing keeps the lines players hear.
+    await lockSlot(client, null, id);
     await client.query(`delete from "voice_design_clip" where "designId" = $1 and "kind" = 'sample'`, [id]);
     await insertSamples(client, id, samples);
     await client.query(

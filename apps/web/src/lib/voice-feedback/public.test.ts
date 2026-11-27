@@ -107,6 +107,31 @@ describe("the Listen page's voices", () => {
     expect(await pub.isPublicClip(lang, SHA(2))).toBe(false);
   });
 
+  it("plays the lines a version had when shown, after it is voiced again, until it is shown again", async () => {
+    const { made } = await shown(main, "orc-male-guard", 5);
+    const again = [0, 1, 2].map((position) => ({
+      position,
+      sha256: SHA(500 + position),
+      lineId: `q:${position}:accept`,
+      text: `New line ${position}.`,
+      npcName: "Grunt",
+      characters: 11,
+      credits: 3,
+    }));
+    await asTeam(lang, main, () => store.replaceSamples(lang, made.id, again, { model: "m", settings: {} }));
+
+    const heard = () => asTeam(lang, main, async () => (await pub.publicVoices(lang)).find((voice) => voice.slot === "orc-male-guard")!);
+    expect((await heard()).samples.map((line) => line.sha256)).toEqual([SHA(50), SHA(51), SHA(52)]);
+    expect(await pub.isPublicClip(lang, SHA(50))).toBe(true);
+    expect(await pub.isPublicClip(lang, SHA(500))).toBe(false);
+    expect((await asTeam(lang, main, () => store.readDesign(lang, made.id)))!.playersHearOlderLines).toBe(true);
+
+    await asTeam(lang, main, () => showVersion(lang, made.id, user.id));
+    expect((await heard()).samples.map((line) => line.sha256)).toEqual([SHA(500), SHA(501), SHA(502)]);
+    expect(await pub.isPublicClip(lang, SHA(50))).toBe(false);
+    expect((await asTeam(lang, main, () => store.readDesign(lang, made.id)))!.playersHearOlderLines).toBe(false);
+  });
+
   it("keeps one vote per voter, the second replacing the first", async () => {
     const { showingId } = await shown(main, "orc-male-guard", 4);
     await pub.castVote(lang, {

@@ -33,8 +33,13 @@ export async function showVersion(lang: Lang, designId: string, userId: string):
       `select "designId" from "voice_design_showing" where "lang" = $1 and "slot" = $2 order by "id" desc limit 1`,
       [lang, slot],
     );
+    // The lines are kept with the showing: voicing the version again later changes what the
+    // workbench plays, not what players hear and vote on.
     const inserted = await client.query<{ id: string }>(
-      `insert into "voice_design_showing" ("designId", "lang", "slot", "createdBy") values ($1, $2, $3, $4) returning "id"`,
+      `insert into "voice_design_showing" ("designId", "lang", "slot", "createdBy", "samples")
+       select $1, $2, $3, $4, jsonb_agg(jsonb_build_object('sha256', c."sha256", 'text', c."text", 'npcName', c."npcName") order by c."position")
+         from "voice_design_clip" c where c."designId" = $1 and c."kind" = 'sample'
+       returning "id"`,
       [designId, lang, slot, userId],
     );
     const showingId = Number(inserted.rows[0].id);

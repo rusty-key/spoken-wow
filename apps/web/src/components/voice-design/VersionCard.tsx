@@ -375,8 +375,8 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                     <button
                       type="button"
                       className={cn("bs-btn", again && "vd-btn-again")}
-                      title={design.isPublic ? t.lockedTitle : undefined}
-                      disabled={busy !== null || !keys.elevenlabs || design.isPublic}
+                      title={design.isPublic ? t.resampleShownTitle : undefined}
+                      disabled={busy !== null || !keys.elevenlabs}
                       onClick={() => void sample("same")}
                     >
                       <SampleIcon size={14} className={busy === "sample" ? "animate-spin" : undefined} aria-hidden="true" />
@@ -385,7 +385,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                     {again ? (
                       <Popover open={linesMenuOpen} onOpenChange={setLinesMenuOpen}>
                         <PopoverTrigger asChild>
-                          <button type="button" className="bs-btn vd-btn-again" aria-label={t.resampleMore} title={t.resampleMore} disabled={busy !== null || !keys.elevenlabs || design.isPublic}>
+                          <button type="button" className="bs-btn vd-btn-again" aria-label={t.resampleMore} title={t.resampleMore} disabled={busy !== null || !keys.elevenlabs}>
                             <ChevronDown size={14} aria-hidden="true" />
                           </button>
                         </PopoverTrigger>
@@ -415,7 +415,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
             <div className="vd-step">
               <button
                 type="button"
-                className={cn("bs-btn", !design.isPublic && "bs-btn-primary")}
+                className={cn("bs-btn", (!design.isPublic || design.playersHearOlderLines) && "bs-btn-primary")}
                 title={t.showToPlayersTitle}
                 disabled={busy !== null}
                 onClick={() => void show()}
@@ -423,6 +423,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                 {busy === "show" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Eye size={14} aria-hidden="true" />}
                 {design.isPublic ? t.showingAgain : t.showToPlayers}
               </button>
+              {design.playersHearOlderLines ? <span className="vd-cost">{t.playersHearOlder}</span> : null}
             </div>
           ) : null}
         </div>

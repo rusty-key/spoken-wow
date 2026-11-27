@@ -50,9 +50,10 @@ function archetypeIn(labels: Record<string, string>, result: GeminiResult, slot:
 export async function publicVoices(lang: Lang): Promise<PublicVoice[]> {
   const team = await listenTeamOf(lang);
   if (!team) return [];
-  const shown = await queryIn<{ showingId: string; slot: string; designId: string; analysis: Record<string, unknown> | null }>(
+  type Line = { sha256: string; text: string | null; npcName: string | null };
+  const shown = await queryIn<{ showingId: string; slot: string; designId: string; analysis: Record<string, unknown> | null; samples: Line[] | null }>(
     team,
-    `select s."id" as "showingId", s."slot", d."id" as "designId", d."analysis"
+    `select s."id" as "showingId", s."slot", d."id" as "designId", d."analysis", s."samples"
        from "voice_design_showing" s join "voice_design" d on d."id" = s."designId"
       where s."lang" = $1 and s."id" = ${NEWEST_SHOWING}
       order by s."slot"`,
@@ -60,7 +61,8 @@ export async function publicVoices(lang: Lang): Promise<PublicVoice[]> {
   );
   if (shown.length === 0) return [];
   const [samples, analyses, { lines }] = await Promise.all([
-    queryIn<{ designId: string; sha256: string; text: string | null; npcName: string | null }>(
+    // A showing from before its lines were kept with it plays the version's current lines.
+    queryIn<Line & { designId: string }>(
       team,
       `select "designId", "sha256", "text", "npcName" from "voice_design_clip"
         where "designId" = any($1::uuid[]) and "kind" = 'sample' order by "position"`,
@@ -86,9 +88,11 @@ export async function publicVoices(lang: Lang): Promise<PublicVoice[]> {
       archetype: own ?? analyses.map((a) => archetypeIn(a.labels, a.result, row.slot)).find(Boolean) ?? null,
       examples: examples.get(row.slot) ?? [],
       showingId: Number(row.showingId),
-      samples: samples
-        .filter((sample) => sample.designId === row.designId)
-        .map((sample) => ({ sha256: sample.sha256, text: sample.text ?? "", npcName: sample.npcName })),
+      samples: (row.samples ?? samples.filter((sample) => sample.designId === row.designId)).map((sample) => ({
+        sha256: sample.sha256,
+        text: sample.text ?? "",
+        npcName: sample.npcName,
+      })),
     };
   });
 }
@@ -100,8 +104,11 @@ export async function isPublicClip(lang: Lang, sha256: string): Promise<boolean>
   const rows = await queryIn(
     team,
     `select 1 from "voice_design_showing" s
-       join "voice_design_clip" c on c."designId" = s."designId" and c."kind" = 'sample'
-      where s."lang" = $1 and c."sha256" = $2 and s."id" = ${NEWEST_SHOWING}
+      where s."lang" = $1 and s."id" = ${NEWEST_SHOWING}
+        and case when s."samples" is null
+              then exists (select 1 from "voice_design_clip" c where c."designId" = s."designId" and c."kind" = 'sample' and c."sha256" = $2)
+              else exists (select 1 from jsonb_array_elements(s."samples") line where line->>'sha256' = $2)
+            end
       limit 1`,
     [lang, sha256],
   );

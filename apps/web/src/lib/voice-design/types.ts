@@ -101,6 +101,8 @@ export type Design = {
   reviews: Review[];
   /** Whether players hear this version on /listen now: its slot's newest showing is of it. */
   isPublic: boolean;
+  /** Shown, then voiced again: players still hear the lines it had when shown, until it is shown again. */
+  playersHearOlderLines: boolean;
   /** Newest first. */
   showings: Showing[];
   createdBy: string | null;
