@@ -2786,7 +2786,7 @@ const zhCN: Dictionary = {
   },
   listen: {
     title: "试听:{lang}配音",
-    lede: "为《魔兽世界》角色打造的新配音。听听台词,告诉我们每个配音是否适合它的角色。",
+    lede: "帮我们设计贴合角色的声音。",
     question: "这适合这个角色吗?",
     fits: "合适",
     close: "接近",

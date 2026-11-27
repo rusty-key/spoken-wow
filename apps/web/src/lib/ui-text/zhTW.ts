@@ -2825,7 +2825,7 @@ const zhTW: Dictionary = {
   },
   listen: {
     title: "試聽:{lang}配音",
-    lede: "為《魔獸世界》角色打造的新配音。聽聽台詞,告訴我們每個配音是否適合它的角色。",
+    lede: "幫我們設計貼合角色的聲音。",
     question: "這適合這個角色嗎?",
     fits: "合適",
     close: "接近",

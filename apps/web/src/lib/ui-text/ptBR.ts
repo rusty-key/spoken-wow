@@ -2835,7 +2835,7 @@ const ptBR: Dictionary = {
   },
   listen: {
     title: "Ouvir: vozes de {lang}",
-    lede: "Vozes novas para os personagens de World of Warcraft. Ouça as falas e diga se cada voz combina com o personagem.",
+    lede: "Ajude a criar vozes que combinem com os personagens.",
     question: "Isso combina com o personagem?",
     fits: "Combina",
     close: "Quase",

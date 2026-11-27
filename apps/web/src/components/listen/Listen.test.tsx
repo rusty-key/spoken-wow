@@ -12,6 +12,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePat
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  window.history.replaceState(null, "", "/listen");
 });
 
 const voice = (slot: string, showingId: number, archetype: string | null = null): PublicVoice => {
@@ -95,4 +96,13 @@ test("deals cards from the voices not voted yet, with no filters, and keeps a ca
   // Still here, so a note can follow the answer.
   expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(name);
   expect(screen.getByText("1 of 2")).toBeTruthy();
+});
+
+test("opens the view the address names, and names the view chosen", async () => {
+  window.history.replaceState(null, "", "/listen#cards");
+  render(<Listen lang="enUS" voices={VOICES} votes={{}} />);
+  expect(screen.queryAllByRole("row")).toHaveLength(0);
+  await userEvent.click(screen.getByRole("button", { name: "Table" }));
+  expect(window.location.hash).toBe("#table");
+  expect(rows()).toHaveLength(3);
 });

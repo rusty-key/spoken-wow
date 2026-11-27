@@ -13,10 +13,7 @@ import InstallTabs, { type InstallLanguage, type InstallLink, type InstallRow } 
 import { GITHUB, MANAGER_URL, RELEASES, WAGO, githubReleases } from "@/components/landing/links";
 import LoginPanel from "@/components/landing/LoginPanel";
 import ManagerWindow from "@/components/landing/ManagerWindow";
-import NavMenu from "@/components/landing/NavMenu";
-import { NAV } from "@/components/landing/nav";
-import LanguageSelect from "@/components/landing/LanguageSelect";
-import NavSession from "@/components/landing/NavSession";
+import LandingHeader from "@/components/landing/LandingHeader";
 import Showcase from "@/components/landing/Showcase";
 import { heroFor } from "@/components/landing/heroFor";
 import { voicesFor } from "@/components/landing/voicesFor";
@@ -104,26 +101,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
         <a className="bn-skip" href="#main">
           {t.skip}
         </a>
-        <header className="bn-nav">
-          <div className="bn-wrap">
-            <Link href="/" className="bn-brand" aria-label="Spoken">
-              <Image src="/landing/icons/spoken-192.png" alt="" width={96} height={96} priority unoptimized />
-              <span className="bn-brand-name bn-display">Spoken</span>
-            </Link>
-            <nav className="bn-links" aria-label={t.nav.sections}>
-              {NAV.map((link) => (
-                <a key={link.href} href={link.href}>
-                  {t.nav[link.key]}
-                </a>
-              ))}
-            </nav>
-            <div className="bn-nav-end">
-              <LanguageSelect />
-              <NavSession />
-              <NavMenu />
-            </div>
-          </div>
-        </header>
+        <LandingHeader t={t} home />
 
         <main id="main" tabIndex={-1}>
           <section className="bn-hero">

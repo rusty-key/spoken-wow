@@ -2558,6 +2558,13 @@ body:has(main.bs) {
   .ls-card {
     padding: 14px;
   }
+  /* Phones get cards only: a table of four columns does not fit them. */
+  .ls-view {
+    display: none;
+  }
+  .ls-follow-email {
+    width: 100%;
+  }
 }
 .ls-follow {
   display: flex;
@@ -2567,10 +2574,33 @@ body:has(main.bs) {
   margin-bottom: 16px;
   font-size: 13px;
 }
+.ls-follow {
+  max-width: 100%;
+}
+.ls-follow > span,
+.ls-follow-form > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .ls-follow-check {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bs-panel);
+  box-shadow: inset 0 0 0 1px var(--bs-line);
+  color: var(--bs-text-2);
+  line-height: 20px;
+  cursor: pointer;
+}
+.ls-follow-check [data-slot="checkbox"] {
+  margin-top: 2px;
+}
+.ls-follow-check span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .ls-follow-form {
   display: flex;

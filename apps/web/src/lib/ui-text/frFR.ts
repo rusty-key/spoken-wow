@@ -2836,7 +2836,7 @@ const frFR: Dictionary = {
   },
   listen: {
     title: "Écouter : voix {lang}",
-    lede: "De nouvelles voix pour les personnages de World of Warcraft. Écoutez les lignes et dites-nous si chaque voix convient à son personnage.",
+    lede: "Aidez-nous à créer des voix qui conviennent aux personnages.",
     question: "Cela convient-il au personnage ?",
     fits: "Convient",
     close: "Presque",

@@ -2919,7 +2919,7 @@ export const EN = {
   },
   listen: {
     title: "Listen: {lang} voices",
-    lede: "New voices for the characters of World of Warcraft. Play the lines and tell us whether each voice fits its character.",
+    lede: "Help us design voices that fit the characters.",
     question: "Does this fit the character?",
     fits: "Fits",
     close: "Close",

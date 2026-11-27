@@ -20,6 +20,8 @@ type Clip = { src: string; title: string; subtitle: string };
 
 const voiceName = (voice: PublicVoice) => slotLabel(voice.slot);
 
+const viewIn = (hash: string): View | null => (hash === "#table" || hash === "#cards" ? (hash.slice(1) as View) : null);
+
 function shuffled<T>(items: readonly T[]): T[] {
   const copy = [...items];
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -57,8 +59,21 @@ export default function Listen({
 
   useEffect(() => {
     setOrder(shuffled(voices.map((voice) => voice.slot)));
-    if (window.matchMedia?.("(max-width: 640px)").matches) openCards();
   }, [voices]);
+
+  // `#table` and `#cards` pick the view, so a link can open either; without one, phones get cards.
+  useEffect(() => {
+    const follow = () => {
+      const named = viewIn(window.location.hash);
+      if (named === "cards" || (!named && window.matchMedia?.("(max-width: 640px)").matches)) openCards();
+      else if (named === "table") setView("table");
+    };
+    follow();
+    window.addEventListener("hashchange", follow);
+    return () => window.removeEventListener("hashchange", follow);
+    // openCards reads the votes at the moment the view opens; re-subscribing on each vote buys nothing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Started as soon as the bar has the new source: a play button that only loads would need a second press.
   useEffect(() => {
@@ -75,6 +90,12 @@ export default function Listen({
     setFilter(value);
     setFilteredBy(votes);
     setAt(0);
+  }
+
+  function choose(next: View) {
+    window.history.replaceState(null, "", `#${next}`);
+    if (next === "cards") openCards();
+    else setView("table");
   }
 
   function openCards() {
@@ -173,7 +194,7 @@ export default function Listen({
             </label>
           </>
         ) : null}
-        <button type="button" className="bs-btn ls-view" onClick={() => (view === "table" ? openCards() : setView("table"))}>
+        <button type="button" className="bs-btn ls-view" onClick={() => choose(view === "table" ? "cards" : "table")}>
           {view === "table" ? <SquareStack size={14} aria-hidden="true" /> : <LayoutList size={14} aria-hidden="true" />}
           {view === "table" ? t.cardsView : t.tableView}
         </button>

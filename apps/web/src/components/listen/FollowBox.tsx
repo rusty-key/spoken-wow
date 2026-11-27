@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
+import { Checkbox } from "@/components/ui/checkbox";
 import { useUiText } from "@/components/UiTextProvider";
 import { withLang, type Lang } from "@/lib/lang";
 import { fill } from "@/lib/site-text/format";
@@ -41,8 +42,8 @@ export default function FollowBox({ lang, initial }: { lang: Lang; initial: Foll
   if (state.kind === "account") {
     body = (
       <label className="ls-follow-check">
-        <input type="checkbox" checked={state.on} disabled={busy} onChange={(event) => void send("POST", { on: event.target.checked })} />
-        {fill(t.followAccount, { email: state.email })}
+        <Checkbox checked={state.on} disabled={busy} onCheckedChange={(on) => void send("POST", { on: on === true })} />
+        <span>{fill(t.followAccount, { email: state.email })}</span>
       </label>
     );
   } else if (state.email && state.confirmed) {

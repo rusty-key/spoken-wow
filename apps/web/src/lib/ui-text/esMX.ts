@@ -2835,7 +2835,7 @@ const esMX: Dictionary = {
   },
   listen: {
     title: "Escuchar: voces de {lang}",
-    lede: "Voces nuevas para los personajes de World of Warcraft. Escucha las líneas y dinos si cada voz encaja con su personaje.",
+    lede: "Ayúdanos a diseñar voces que encajen con los personajes.",
     question: "¿Encaja con el personaje?",
     fits: "Encaja",
     close: "Cerca",

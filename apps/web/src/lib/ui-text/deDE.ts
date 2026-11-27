@@ -2838,7 +2838,7 @@ const deDE: Dictionary = {
   },
   listen: {
     title: "Zuhören: Stimmen für {lang}",
-    lede: "Neue Stimmen für die Charaktere von World of Warcraft. Hör dir die Zeilen an und sag uns, ob jede Stimme zu ihrem Charakter passt.",
+    lede: "Hilf uns, Stimmen zu gestalten, die zu den Charakteren passen.",
     question: "Passt das zum Charakter?",
     fits: "Passt",
     close: "Fast",
