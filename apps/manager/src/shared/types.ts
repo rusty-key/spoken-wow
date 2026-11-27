@@ -266,6 +266,8 @@ export interface Settings {
    * cannot read the system setting.
    */
   proxy: string
+  /** The last announcement the player closed; one with a new id shows again. */
+  dismissedAnnouncement: string
 }
 
 export const SHARING_CHOICES = ['unset', 'on', 'off'] as const
@@ -307,7 +309,8 @@ export const DEFAULT_SETTINGS: Settings = {
   voiceAuthors: {},
   lastGameId: '',
   sharing: 'unset',
-  proxy: ''
+  proxy: '',
+  dismissedAnnouncement: ''
 }
 
 /** The Author filter's choice that shows every author. Not a slug, so no team can take it. */

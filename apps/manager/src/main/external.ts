@@ -4,10 +4,10 @@ import path from 'node:path'
 import { isInside } from './guard'
 
 // curseforge.com and www.curseforge.com carry the project links of a release, authors.curseforge.com
-// the page a pack too big for the API is uploaded on; github.com a repo's.
-const EXTERNAL_HOSTS = new Set(['github.com', 'raw.githubusercontent.com', 'objects.githubusercontent.com', 'curseforge.com', 'www.curseforge.com', 'authors.curseforge.com'])
+// the page a pack too big for the API is uploaded on; github.com a repo's; spoken.quest the site's pages.
+const EXTERNAL_HOSTS = new Set(['spoken.quest', 'github.com', 'raw.githubusercontent.com', 'objects.githubusercontent.com', 'curseforge.com', 'www.curseforge.com', 'authors.curseforge.com'])
 
-/** Only plain https links to GitHub's and CurseForge's own hosts: no other scheme, no credentials, no odd port. */
+/** Only plain https links to the site's, GitHub's and CurseForge's own hosts: no other scheme, no credentials, no odd port. */
 export function isAllowedExternalUrl(value: unknown): boolean {
   if (typeof value !== 'string' || value.length > 2048) return false
   let u: URL

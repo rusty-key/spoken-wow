@@ -14,7 +14,7 @@ export const S_KO: Dict = {
   appName: 'Spoken Manager',
   tabs: { main: '메인', home: '게임', spoken: 'Spoken', voices: '음성 팩', community: '커뮤니티', release: '배포', settings: '설정' },
   refresh: { idle: '새 버전 확인', last: (time: string) => `마지막 확인: ${time}`, offline: '오프라인: 저장된 목록 표시 중', label: '배포 목록 새로 고침' },
-  banners: { offline: 'GitHub에 연결할 수 없습니다. 마지막 목록을 표시합니다.', updateReady: (v: string) => `업데이트 준비 완료: 재시작하면 ${v} 사용`, updating: (pct: number) => `Manager 업데이트 다운로드 중: ${pct}%`, updateAvailable: (v: string) => `${v} 버전을 사용할 수 있습니다.`, download: '다운로드', restart: '재시작', restartBusy: '진행 중인 다운로드와 설치가 끝나면 사용할 수 있습니다' },
+  banners: { listen: '새로 나올 음성에 대한 의견을 보내 주세요:', offline: 'GitHub에 연결할 수 없습니다. 마지막 목록을 표시합니다.', updateReady: (v: string) => `업데이트 준비 완료: 재시작하면 ${v} 사용`, updating: (pct: number) => `Manager 업데이트 다운로드 중: ${pct}%`, updateAvailable: (v: string) => `${v} 버전을 사용할 수 있습니다.`, download: '다운로드', restart: '재시작', restartBusy: '진행 중인 다운로드와 설치가 끝나면 사용할 수 있습니다' },
   common: { loading: '로드 중', cancel: '취소', retry: '다시 시도', open: '열기', remove: '제거', dismiss: '닫기', keep: '유지', repair: '복구', change: '변경', copy: '클릭하여 복사', copied: '복사됨', newer: '사전 출시', latest: '최신', installed: '설치됨', notReleased: '아직 출시되지 않음', game: '게임', version: '버전', readOnly: '이 계정은 이 폴더를 변경할 수 없습니다.', showIn: (platform: Platform) => `${fileManager(platform)}에서 보기` },
   window: { minimize: '최소화', maximize: '최대화', restore: '복원', close: '닫기' },
   strip: { add: '게임 폴더 추가', missing: (label: string) => `${label}이(가) 이 PC에 설치되어 있지 않습니다` },

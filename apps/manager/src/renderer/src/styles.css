@@ -525,6 +525,22 @@ svg.is-spinning {
   gap: 12px;
 }
 
+.banner-closable {
+  padding-right: 40px;
+}
+
+.banner-closable .link {
+  text-decoration: underline;
+}
+
+.banner-close {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  color: inherit;
+}
+
 .banner-warn {
   background: rgba(245, 179, 53, 0.12);
   color: var(--yellow);

@@ -8,9 +8,10 @@ import { useGame, useStore, useSupportedGames, type Page } from '../store'
 import { S } from '../strings'
 import { flavorLook } from '../catalog'
 import { releaseAvailable } from '../contributor'
+import { ANNOUNCEMENT_ID, LISTEN_URL, showsAnnouncement } from '../announcement'
 import { GameIcon } from './Brand'
 import { RestartButton } from './RestartButton'
-import { IconGear, IconPlus, IconRefresh, IconWinClose, IconWinMaximize, IconWinMinimize, IconWinRestore } from './Icons'
+import { IconGear, IconPlus, IconX, IconRefresh, IconWinClose, IconWinMaximize, IconWinMinimize, IconWinRestore } from './Icons'
 
 /** The tabs are built per draw: a list built at load would keep the first language. */
 export function TopBar(): ReactNode {
@@ -158,8 +159,24 @@ export function GamesStrip(): ReactNode {
   )
 }
 
+export function AnnouncementBanner({ onOpen, onClose }: { onOpen: () => void; onClose: () => void }): ReactNode {
+  return (
+    <div className="banner banner-info banner-action banner-closable" role="status">
+      <span>
+        {S.banners.listen}{' '}
+        <button type="button" className="link" onClick={onOpen}>
+          {LISTEN_URL.replace('https://', '')}
+        </button>
+      </span>
+      <button type="button" className="icon-btn icon-btn-sm banner-close" aria-label={S.common.dismiss} title={S.common.dismiss} onClick={onClose}>
+        <IconX size={14} />
+      </button>
+    </div>
+  )
+}
+
 export function Banners(): ReactNode {
-  const { state } = useStore()
+  const { state, actions } = useStore()
   const { updater, catalog } = state
   return (
     <>
@@ -186,6 +203,12 @@ export function Banners(): ReactNode {
         <div className="banner banner-info" role="status">
           {S.banners.updating(Math.round(updater.percent))}
         </div>
+      )}
+      {state.ready && showsAnnouncement(state.settings, state.products, state.statuses) && (
+        <AnnouncementBanner
+          onOpen={() => void api().openExternal(LISTEN_URL).catch(() => undefined)}
+          onClose={() => void actions.setSettings({ dismissedAnnouncement: ANNOUNCEMENT_ID })}
+        />
       )}
     </>
   )

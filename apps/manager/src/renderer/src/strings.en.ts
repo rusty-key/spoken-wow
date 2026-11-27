@@ -26,6 +26,7 @@ export const S_EN = {
     label: 'Refresh the List of Releases'
   },
   banners: {
+    listen: 'Share feedback on upcoming voices:',
     offline: "Can't reach GitHub. Showing the last list.",
     updateReady: (v: string) => `Update ready: restart to use ${v}`,
     updating: (pct: number) => `Downloading a manager update: ${pct}%`,
