@@ -11,7 +11,9 @@ setfenv(1, SpokenEnv)
 OtherSounds = {}
 
 local CHANNELS = { "Music", "Ambience", "SFX", "Dialog" }
-local FADE_SECONDS, STEP = .8, .05
+-- Four steps a fade: every volume write runs the client's CVar update through every loaded
+-- addon, and twenty a second stalled the game as a line started and after the queue fell quiet.
+local FADE_SECONDS, STEP = .8, .2
 -- How long the queue may sit silent before the volumes come back. Longer than the gap between
 -- two queued lines, which would otherwise pump the music down and up again between them.
 local SETTLE_SECONDS = 1.2
