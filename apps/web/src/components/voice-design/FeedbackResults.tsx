@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 
 import { useUiText } from "@/components/UiTextProvider";
 import { fill } from "@/lib/site-text/format";
-import type { Design, Verdict } from "@/lib/voice-design/types";
+import { VERDICTS, type Design, type Verdict } from "@/lib/voice-design/types";
 
 const day = (iso: string) => iso.slice(0, 10);
 
@@ -30,11 +30,18 @@ export default function FeedbackResults({
         const total = Object.values(showing.counts).reduce((sum, n) => sum + n, 0);
         return (
           <div key={showing.id} className="vd-feedback-round">
-            <p className="vd-muted">
-              {fill(t.shownBy, { who: showing.createdByName ?? t.someone, when: day(showing.createdAt) })}
-              {" · "}
-              {total === 0 ? t.feedbackNone : fill(t.feedbackCounts, showing.counts)}
-            </p>
+            <p className="vd-muted">{fill(t.shownBy, { who: showing.createdByName ?? t.someone, when: day(showing.createdAt) })}</p>
+            {total === 0 ? (
+              <p className="vd-muted">{t.feedbackNone}</p>
+            ) : (
+              <ul className="vd-feedback-counts" aria-label={t.feedbackCountsLabel}>
+                {VERDICTS.map((key) => (
+                  <li key={key} className="vd-tag" data-verdict={key} data-none={showing.counts[key] === 0 || undefined}>
+                    {verdict[key]} <strong>{showing.counts[key]}</strong>
+                  </li>
+                ))}
+              </ul>
+            )}
             {showing.notes.length > 0 ? (
               <ol className="vd-feedback-notes">
                 {showing.notes.map((note) => (

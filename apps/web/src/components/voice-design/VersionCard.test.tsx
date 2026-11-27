@@ -223,7 +223,13 @@ test("lists players' votes per showing, and hides a note as spam", async () => {
   };
   render(card({ ...DESIGN, isPublic: true, showings: [showing] }));
 
-  expect(screen.getByText(/Fits 2 · Close 1 · Doesn't fit 1 · Skipped 0/)).toBeTruthy();
+  const counts = within(screen.getByRole("list", { name: "Votes in this round" }));
+  expect(counts.getAllByRole("listitem").map((item) => [item.getAttribute("data-verdict"), item.textContent])).toEqual([
+    ["fits", "Fits 2"],
+    ["close", "Close 1"],
+    ["off", "Doesn't fit 1"],
+    ["skip", "Skipped 0"],
+  ]);
   expect(screen.getByText("too old")).toBeTruthy();
   await userEvent.click(screen.getByRole("button", { name: "Hide" }));
   const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];

@@ -2877,7 +2877,7 @@ export const EN = {
     lockedTitle: "Players hear these lines. Show another version to players first.",
     feedbackLabel: "Players' votes",
     shownBy: "Shown by {who}, {when}",
-    feedbackCounts: "Fits {fits} · Close {close} · Doesn't fit {off} · Skipped {skip}",
+    feedbackCountsLabel: "Votes in this round",
     feedbackNone: "No votes yet.",
     verdictFits: "Fits",
     verdictClose: "Close",

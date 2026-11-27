@@ -2791,7 +2791,7 @@ const koKR: Dictionary = {
     lockedTitle: "플레이어가 이 대사를 듣고 있습니다. 먼저 다른 버전을 플레이어에게 공개하세요.",
     feedbackLabel: "플레이어 투표",
     shownBy: "{who} 공개, {when}",
-    feedbackCounts: "어울림 {fits} · 비슷함 {close} · 안 어울림 {off} · 건너뜀 {skip}",
+    feedbackCountsLabel: "이번 라운드 투표",
     feedbackNone: "아직 투표가 없습니다.",
     verdictFits: "어울림",
     verdictClose: "비슷함",

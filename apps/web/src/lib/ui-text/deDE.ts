@@ -2796,7 +2796,7 @@ const deDE: Dictionary = {
     lockedTitle: "Spieler hören diese Zeilen. Zeige zuerst den Spielern eine andere Version.",
     feedbackLabel: "Stimmen der Spieler",
     shownBy: "Gezeigt von {who}, {when}",
-    feedbackCounts: "Passt {fits} · Fast {close} · Passt nicht {off} · Übersprungen {skip}",
+    feedbackCountsLabel: "Stimmen in dieser Runde",
     feedbackNone: "Noch keine Stimmen.",
     verdictFits: "Passt",
     verdictClose: "Fast",

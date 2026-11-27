@@ -2793,7 +2793,7 @@ const ptBR: Dictionary = {
     lockedTitle: "Os jogadores ouvem estas falas. Mostre antes outra versão aos jogadores.",
     feedbackLabel: "Votos dos jogadores",
     shownBy: "Mostrada por {who}, {when}",
-    feedbackCounts: "Combina {fits} · Quase {close} · Não combina {off} · Pulados {skip}",
+    feedbackCountsLabel: "Votos nesta rodada",
     feedbackNone: "Ainda não há votos.",
     verdictFits: "Combina",
     verdictClose: "Quase",

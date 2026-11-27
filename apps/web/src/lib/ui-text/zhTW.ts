@@ -2783,7 +2783,7 @@ const zhTW: Dictionary = {
     lockedTitle: "玩家正在聽這些台詞。請先向玩家展示另一個版本。",
     feedbackLabel: "玩家的投票",
     shownBy: "{who} 展示於 {when}",
-    feedbackCounts: "合適 {fits} · 接近 {close} · 不合適 {off} · 跳過 {skip}",
+    feedbackCountsLabel: "本輪投票",
     feedbackNone: "還沒有投票。",
     verdictFits: "合適",
     verdictClose: "接近",

@@ -2117,6 +2117,29 @@ body:has(main.bs) {
   background: rgba(95, 207, 79, 0.14);
   color: var(--bs-green-text);
 }
+.vd-tag[data-verdict="close"] {
+  background: rgba(240, 194, 90, 0.14);
+  color: var(--bs-gold);
+}
+.vd-tag[data-verdict="skip"] {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--bs-text-2);
+}
+.vd-feedback-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vd-feedback-counts .vd-tag {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.vd-feedback-counts .vd-tag[data-none] {
+  opacity: 0.45;
+}
 .vd-review-form {
   display: grid;
   justify-items: start;
