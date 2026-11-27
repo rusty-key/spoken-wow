@@ -30,5 +30,7 @@ export class DesignError extends Error {
 
 export function failed(error: unknown): Response {
   if (error instanceof DesignError) return Response.json({ error: error.message }, { status: error.status });
-  return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 502 });
+  // The page shows only the message; the stack is what finds the call in the pm2 log.
+  console.error("[voice-design]", error);
+  return Response.json({ error: (error instanceof Error ? error.message || error.name : String(error)) || "unknown error" }, { status: 502 });
 }
