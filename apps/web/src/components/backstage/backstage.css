@@ -1907,6 +1907,28 @@ body:has(main.bs) {
   border-radius: 8px;
   box-shadow: inset 0 0 0 1px var(--bs-line);
 }
+.vd-version-fold {
+  display: flex;
+  align-items: center;
+  gap: 6px 12px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--bs-line);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.vd-version-fold:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.vd-version-fold[aria-expanded="true"] .vd-chevron {
+  transform: rotate(90deg);
+}
 .vd-version-head {
   display: flex;
   flex-wrap: wrap;
