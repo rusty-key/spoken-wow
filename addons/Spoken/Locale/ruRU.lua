@@ -277,3 +277,5 @@ L.REASON_COMPENDIUM_OFF = "Включите «Задания», «Места» �
 L.REASON_MODULE_OFF_FMT = "Включите «%1$s» в разделе «Что читает Spoken», чтобы пользоваться этим."
 L.WAITING_TITLE = "Далее"
 L.DIALOGUE_REPORT_PROBLEM = "Сообщить о проблеме"
+L.FEEDBACK_INVITE_FMT = "Оцените будущие голоса: %s"
+L.FEEDBACK_HELP = "Отзыв о будущих голосах"

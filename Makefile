@@ -104,6 +104,7 @@ test-player: ## Run the addons' Lua tests (needs luajit)
 	@$(LUA) tests/lua/client_variant_test.lua
 	@$(LUA) tests/lua/interface_numbers_test.lua
 	@$(LUA) tests/lua/contribute_box_test.lua
+	@$(LUA) tests/lua/feedback_test.lua
 	@$(LUA) tests/lua/quests_contribute_test.lua
 	@$(LUA) tests/lua/npc_model_test.lua
 	@$(LUA) tests/lua/player_frame_test.lua

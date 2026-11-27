@@ -730,6 +730,34 @@ M.SetClient("16001")
 -- What the Places addon's playback and autoplay files reach for.
 M.chat = {}
 _G.DEFAULT_CHAT_FRAME = { AddMessage = function(_, text) table.insert(M.chat, text) end }
+
+-- EventRegistry as CallbackRegistryMixin keeps it: one callback per owner and event, called with
+-- the owner first.
+local registry = {}
+_G.EventRegistry = {
+    RegisterCallback = function(_, event, func, owner)
+        assert(type(event) == "string", "RegisterCallback 'event' requires string type")
+        assert(type(func) == "function", "RegisterCallback 'func' requires function type")
+        registry[event] = registry[event] or {}
+        owner = owner or {}
+        registry[event][owner] = func
+        return owner
+    end,
+    TriggerEvent = function(_, event, ...)
+        for owner, func in pairs(registry[event] or {}) do func(owner, ...) end
+    end,
+}
+-- SetItemRef as Forever, Classic Era and TBC Anniversary have it: only the "addon" type reaches
+-- an addon, through EventRegistry; any other goes to the item tooltip (M.itemRefShown).
+M.itemRefShown = {}
+function _G.SetItemRef(link, text, button, frame)
+    local linkType = link:match("^([^:]*)")
+    if linkType == "addon" then
+        _G.EventRegistry:TriggerEvent("SetItemRef", link, text, button, frame)
+        return
+    end
+    table.insert(M.itemRefShown, link)
+end
 world.inCombat = false
 function _G.UnitAffectingCombat() return world.inCombat end
 function _G.GetSubZoneText() return world.subZone or "" end
@@ -1429,7 +1457,7 @@ function M.LoadSpoken(addonDirectory)
         "UI/MinimalPlayer", "UI/Ellesmere", "UI/DialogueUIPlayer", "UI/DialogueUITransitions", "UI/MinimapButton",
         -- Real LibDeflate, not a hand-faked stub library: Contribute:Encode's round trip through
         -- actual compression is the point of testing it at all.
-        "UI/Options", "UI/DialogueUIOptions", "UI/Welcome", "API", "Libs/LibDeflate/LibDeflate", "Compat", "UI/ContributeBox", "Contribute", "Gather" }) do
+        "UI/Options", "UI/DialogueUIOptions", "UI/Welcome", "API", "Libs/LibDeflate/LibDeflate", "Compat", "UI/ContributeBox", "Contribute", "Gather", "Feedback" }) do
         dofile(addonDirectory .. file .. ".lua")
     end
     -- Azeroth's Compendium, its dungeons and its text view (Compendium.xml).

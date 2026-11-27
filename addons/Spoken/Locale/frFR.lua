@@ -297,3 +297,5 @@ L.REASON_COMPENDIUM_OFF = "Activez Quêtes, Lieux ou Lectures sous Ce que Spoken
 L.REASON_MODULE_OFF_FMT = "Activez %1$s sous Ce que Spoken lit pour utiliser ceci."
 L.WAITING_TITLE = "À suivre"
 L.DIALOGUE_REPORT_PROBLEM = "Signaler un problème"
+L.FEEDBACK_INVITE_FMT = "Donnez votre avis sur les prochaines voix : %s"
+L.FEEDBACK_HELP = "Avis sur les prochaines voix"

@@ -542,6 +542,7 @@ local function RegisterSlashCommand()
         }
         table.insert(lines, { "/sp collect", L.OPT_GATHER })
         table.insert(lines, { "/sp send", L.OPT_GATHER_SHARE })
+        table.insert(lines, { "/sp feedback", L.FEEDBACK_HELP })
         if Developer.provider then table.insert(lines, { "/sp log", "Spoken Developer" }) end
         print("|cff66bbffSpoken|r")
         for _, line in ipairs(lines) do print("  " .. line[1] .. ": " .. line[2]) end
@@ -592,6 +593,8 @@ local function RegisterSlashCommand()
             Options:Open()
         elseif (command == "send" or command == "share") and Gather then
             Spoken:ShowGatherInstructions()
+        elseif command == "feedback" and Feedback then
+            Feedback:Print()
         elseif command == "collect" and Gather then
             Gather:SetEnabled(not Gather:IsEnabled())
             print("Spoken: " .. L.OPT_GATHER .. " " .. (Gather:IsEnabled() and L.ON or L.OFF))

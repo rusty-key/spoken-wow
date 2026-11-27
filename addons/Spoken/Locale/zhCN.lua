@@ -277,3 +277,5 @@ L.REASON_COMPENDIUM_OFF = "在“朗读内容”中开启“任务”、“地�
 L.REASON_MODULE_OFF_FMT = "在“朗读内容”中开启“%1$s”后才能使用。"
 L.WAITING_TITLE = "接下来"
 L.DIALOGUE_REPORT_PROBLEM = "报告问题"
+L.FEEDBACK_INVITE_FMT = "欢迎对即将推出的语音提出反馈：%s"
+L.FEEDBACK_HELP = "对即将推出的语音的反馈"
