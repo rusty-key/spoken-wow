@@ -2731,6 +2731,8 @@ const zhCN: Dictionary = {
     noLiveTake: "没有现用录音",
     sample: "配 3 句台词",
     resample: "重新配这些台词",
+    resampleOther: "改配其他台词",
+    resampleMore: "更多配音选项",
     sampleCost: "约 {credits} 积分，使用 {model} 和你在该语言的设置。",
     holderOnly: "这个语音在 {who} 的 ElevenLabs 账户中，只有对方能用它配台词。",
     reviewsLabel: "评价",

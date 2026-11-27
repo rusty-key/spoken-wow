@@ -17,7 +17,9 @@ export async function POST(request: Request, context: Context) {
   const { key, denied: noKey } = await requireApiKey(session.user.id, "elevenlabs");
   if (noKey) return noKey;
   try {
-    const design = await sampleDesign({ lang, id, userId: session.user.id, apiKey: key });
+    const body = (await request.json().catch(() => ({}))) as { lines?: unknown };
+    const lines = body.lines === "other" ? "other" : "same";
+    const design = await sampleDesign({ lang, id, userId: session.user.id, apiKey: key, lines });
     // The page knew live takes only for lines sampled before it loaded.
     return Response.json({ design, live: liveTakes(lang, await lineIndex(lang), design.samples) });
   } catch (error) {

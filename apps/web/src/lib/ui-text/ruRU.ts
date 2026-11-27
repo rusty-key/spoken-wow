@@ -2781,6 +2781,8 @@ const ruRU: Dictionary = {
     noLiveTake: "Текущей записи нет",
     sample: "Озвучить 3 реплики",
     resample: "Озвучить реплики заново",
+    resampleOther: "Озвучить другие реплики",
+    resampleMore: "Другие варианты озвучки",
     sampleCost: "Около {credits} кредитов с {model}, вашими настройками для этого языка.",
     holderOnly: "Голос в аккаунте ElevenLabs пользователя {who}, поэтому озвучивать им реплики может только он.",
     reviewsLabel: "Вердикты",

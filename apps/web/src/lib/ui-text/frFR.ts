@@ -2781,6 +2781,8 @@ const frFR: Dictionary = {
     noLiveTake: "Aucune prise actuelle",
     sample: "Doubler 3 répliques",
     resample: "Doubler à nouveau",
+    resampleOther: "Doubler d’autres répliques",
+    resampleMore: "Autres options de doublage",
     sampleCost: "Environ {credits} crédits avec {model}, vos réglages pour cette langue.",
     holderOnly: "La voix est dans le compte ElevenLabs de {who}, seule cette personne peut doubler des répliques avec.",
     reviewsLabel: "Verdicts",

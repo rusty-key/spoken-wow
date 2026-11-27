@@ -2780,6 +2780,8 @@ const esMX: Dictionary = {
     noLiveTake: "Sin toma actual",
     sample: "Grabar 3 líneas",
     resample: "Grabar las líneas otra vez",
+    resampleOther: "Grabar otras líneas",
+    resampleMore: "Más opciones de grabación",
     sampleCost: "Unos {credits} créditos con {model}, tus ajustes para este idioma.",
     holderOnly: "La voz está en la cuenta de ElevenLabs de {who}, así que solo esa persona puede grabar líneas con ella.",
     reviewsLabel: "Veredictos",
