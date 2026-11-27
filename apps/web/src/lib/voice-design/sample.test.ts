@@ -25,8 +25,8 @@ const DESIGN = {
   voiceDeletedAt: null,
   holderId: "u1",
   holderName: "Ann",
-  samples: [],
-} as unknown as Design;
+  samples: [] as Design["samples"],
+} as Design;
 
 function deps(design: Partial<Design> = {}): SampleDeps {
   return {
@@ -68,11 +68,11 @@ describe("sampleDesign", () => {
     expect(made).toEqual({ model: "eleven_v4", settings: { stability: 0.4 } });
   });
 
-  it("voices the lines last voiced again, not the default ones", async () => {
+  it("voices the lines last voiced again, topped up to three", async () => {
     const d = deps({ samples: [{ lineId: "g:abc" }, { lineId: "q:1:accept" }] as Design["samples"] });
     await sampleDesign(input, d);
     const [, , samples] = vi.mocked(d.replace).mock.calls[0];
-    expect(samples.map((s) => s.lineId)).toEqual(["g:abc", "q:1:accept"]);
+    expect(samples.map((s) => s.lineId)).toEqual(["g:abc", "q:1:accept", "f:1:orc-male-shady"]);
   });
 
   it("picks other lines when asked, and keeps the old ones only to make up three", async () => {

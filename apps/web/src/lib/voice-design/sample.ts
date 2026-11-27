@@ -21,7 +21,7 @@ import { DesignError } from "./access";
 import { keepDesignAudio } from "./audio";
 import { found, holderRefusal } from "./design";
 import { withDesignLock } from "./lock";
-import { defaultSampleLines, otherSampleLines, sameSampleLines } from "./lines";
+import { otherSampleLines, sameSampleLines } from "./lines";
 import { readDesign, replaceSamples } from "./store";
 import type { Design, DesignSample } from "./types";
 
@@ -74,14 +74,8 @@ async function sampleLocked(input: SampleInput, deps: SampleDeps): Promise<Desig
 
   const corpusLines = await deps.lines(input.lang);
   const heard = design.samples.map((sample) => sample.lineId);
-  const same = sameSampleLines(corpusLines, design.slot, heard);
   // Lines picked by "other" stay for the next "same": a new take of lines just found worth hearing.
-  const chosen =
-    input.lines === "other"
-      ? otherSampleLines(corpusLines, design.slot, new Set(heard))
-      : same.length > 0
-        ? same
-        : defaultSampleLines(corpusLines, design.slot);
+  const chosen = input.lines === "other" ? otherSampleLines(corpusLines, design.slot, heard) : sameSampleLines(corpusLines, design.slot, heard);
   if (chosen.length === 0) throw new DesignError(`${design.slot} has no line to sample`, 409);
 
   const settings = await deps.settings(input.userId, input.lang);
