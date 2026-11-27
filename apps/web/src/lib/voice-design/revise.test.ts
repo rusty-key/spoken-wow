@@ -6,10 +6,11 @@ const { reviseDesign, siblingNotes } = await import("./revise");
 import type { ReviseDeps } from "./revise";
 import type { Design } from "./types";
 
-const review = (status: "good" | "needs-work", note: string) => ({
+const review = (status: "good" | "needs-work", note: string, players: { verdict: "fits" | "close" | "off" | "skip"; note: string }[] = []) => ({
   id: 1,
   status,
   note,
+  players,
   bestPreview: null,
   clips: {},
   createdBy: null,
@@ -87,6 +88,17 @@ describe("reviseDesign", () => {
     const d = deps(design("troll-male-dark", 3, [review("needs-work", "Accent too weak"), review("needs-work", "")]));
     await reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, d);
     expect(d.revise).toHaveBeenCalledWith(expect.objectContaining({ note: "Accent too weak" }));
+  });
+
+  it("sends every player note picked in the version's verdicts, once each", async () => {
+    const d = deps(
+      design("tauren-female", 1, [
+        review("needs-work", "", [{ verdict: "off", note: "Too soft." }]),
+        review("needs-work", "Deeper", [{ verdict: "off", note: "Too soft." }, { verdict: "close", note: "Slower, breathier." }]),
+      ]),
+    );
+    await reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, d);
+    expect(d.revise).toHaveBeenCalledWith(expect.objectContaining({ players: ["Doesn't fit: Too soft.", "Close: Slower, breathier."] }));
   });
 
   it("hands back who the voice is for, so the next version keeps it", async () => {

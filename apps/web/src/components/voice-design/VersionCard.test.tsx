@@ -38,7 +38,7 @@ const DESIGN: Design = {
   analysis: null,
   samples: [sample(0, "a"), sample(1, "b"), sample(2, "c")],
   sampledAt: "2026-11-25T00:00:00Z",
-  reviews: [{ id: 1, status: "needs-work", note: "", bestPreview: 0, clips: { "sample:2": "off", "preview:0": "good" }, createdBy: "u1", createdByName: "Ann", createdAt: "2026-11-26T00:00:00Z" }],
+  reviews: [{ id: 1, status: "needs-work", note: "", bestPreview: 0, clips: { "sample:2": "off", "preview:0": "good" }, players: [], createdBy: "u1", createdByName: "Ann", createdAt: "2026-11-26T00:00:00Z" }],
   isPublic: false,
   showings: [],
   createdBy: "u1",
@@ -264,4 +264,28 @@ test("voices the same lines again in one press, and other lines from the button'
   await userEvent.click(screen.getByRole("button", { name: "More ways to voice" }));
   await userEvent.click(await screen.findByRole("button", { name: "Voice other lines" }));
   expect(JSON.parse(String(sent()[1].body))).toEqual({ lines: "other" });
+});
+
+test("sends the player notes ticked with the verdict, and lists them under it", async () => {
+  const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
+  vi.stubGlobal("fetch", fetchMock);
+  const showing = {
+    id: 7,
+    createdAt: "2026-11-26T00:00:00Z",
+    createdByName: "Ann",
+    counts: { fits: 0, close: 1, off: 1, skip: 0 },
+    notes: [
+      { voter: "a:x", who: null, verdict: "off" as const, note: "too soft", at: "2026-11-26T00:00:00Z" },
+      { voter: "u:y", who: "Bo", verdict: "close" as const, note: "slower", at: "2026-11-26T00:00:00Z" },
+    ],
+  };
+  const { rerender } = render(card({ ...DESIGN, isPublic: true, showings: [showing] }));
+
+  await userEvent.click(screen.getAllByRole("checkbox", { name: "Use for the next version" })[0]);
+  await userEvent.click(verdict("Needs work"));
+  expect(JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body)).players).toEqual([{ showingId: 7, voter: "a:x" }]);
+
+  const reviewed = { ...DESIGN.reviews[0], id: 2, players: [{ verdict: "off" as const, note: "too soft" }] };
+  rerender(card({ ...DESIGN, isPublic: true, showings: [showing], reviews: [reviewed] }));
+  expect(within(screen.getByRole("list", { name: "Verdicts" })).getByText("too soft")).toBeTruthy();
 });

@@ -58,6 +58,9 @@ export type Showing = {
   notes: FeedbackNote[];
 };
 
+/** A player's note a reviewer picked to act on, as it read when picked. */
+export type PlayerNote = { verdict: Verdict; note: string };
+
 export type Review = {
   id: number;
   status: ReviewStatus;
@@ -65,6 +68,7 @@ export type Review = {
   bestPreview: number | null;
   /** `sample:<n>` or `preview:<n>`. */
   clips: Record<string, ClipMark>;
+  players: PlayerNote[];
   createdBy: string | null;
   createdByName: string | null;
   createdAt: string;

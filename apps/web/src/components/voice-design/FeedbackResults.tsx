@@ -2,11 +2,14 @@
 
 import { X } from "lucide-react";
 
+import { Checkbox } from "@/components/ui/checkbox";
 import { useUiText } from "@/components/UiTextProvider";
 import { fill } from "@/lib/site-text/format";
 import { VERDICTS, type Design, type Verdict } from "@/lib/voice-design/types";
 
 const day = (iso: string) => iso.slice(0, 10);
+
+export const pickKey = (showingId: number, voter: string) => `${showingId}|${voter}`;
 
 /** What players said about each showing of a version, newest showing first. */
 export default function FeedbackResults({
@@ -14,11 +17,16 @@ export default function FeedbackResults({
   can,
   disabled,
   onHide,
+  picked,
+  onPick,
 }: {
   design: Design;
   can: boolean;
   disabled: boolean;
   onHide: (showingId: number, voter: string) => void;
+  /** Notes ticked to go with the next verdict, as `<showingId>|<voter>`. */
+  picked: ReadonlySet<string>;
+  onPick: (key: string, on: boolean) => void;
 }) {
   const t = useUiText().voiceDesign;
   if (design.showings.length === 0) return null;
@@ -46,6 +54,16 @@ export default function FeedbackResults({
               <ol className="vd-feedback-notes">
                 {showing.notes.map((note) => (
                   <li key={note.voter} className="vd-review">
+                    {can ? (
+                      <Checkbox
+                        className="vd-pick"
+                        aria-label={t.pickNote}
+                        title={t.pickNoteTitle}
+                        checked={picked.has(pickKey(showing.id, note.voter))}
+                        disabled={disabled}
+                        onCheckedChange={(on) => onPick(pickKey(showing.id, note.voter), on === true)}
+                      />
+                    ) : null}
                     <span className="vd-tag" data-verdict={note.verdict}>
                       {verdict[note.verdict]}
                     </span>

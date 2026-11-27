@@ -2102,6 +2102,18 @@ body:has(main.bs) {
   display: grid;
   gap: 4px;
 }
+.vd-pick {
+  align-self: center;
+}
+.vd-review-players {
+  display: grid;
+  flex-basis: 100%;
+  gap: 2px;
+  margin: 0;
+  padding: 0 0 0 12px;
+  list-style: none;
+  color: var(--bs-text-2);
+}
 .vd-feedback-notes {
   display: grid;
   gap: 4px;

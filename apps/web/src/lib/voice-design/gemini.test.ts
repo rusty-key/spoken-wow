@@ -131,6 +131,7 @@ describe("reviseVoice", () => {
     status: "needs-work",
     note: "No accent at all",
     siblings: { "troll-male-shaman": "Trolls need a Jamaican accent" },
+    players: ["Doesn't fit: sounds like a normal human"],
     archetype: "Shady witch doctor",
     prompt: "A troll. Perfect audio quality, dry close-mic studio recording, no reverb or effects.",
     previewText: "Hey mon.",
@@ -138,7 +139,7 @@ describe("reviseVoice", () => {
 
   it("tells Gemini the note, the siblings' notes and the old prompt, with both recordings", async () => {
     const text = buildRevisePrompt(input);
-    for (const part of ["No accent at all", "Trolls need a Jamaican accent", "troll-male-shaman", "A troll.", "Hey mon.", PROMPT_ENDING]) {
+    for (const part of ["No accent at all", "sounds like a normal human", "Trolls need a Jamaican accent", "troll-male-shaman", "A troll.", "Hey mon.", PROMPT_ENDING]) {
       expect(text).toContain(part);
     }
     const fetchImpl = vi.fn(async (_url: string, _init: RequestInit) =>

@@ -189,6 +189,8 @@ export type ReviseInput = {
   note: string;
   /** The newest note on each other flavor of the same race, by slot. */
   siblings: Record<string, string>;
+  /** Players' notes the reviewer picked to act on, each led by the player's answer. */
+  players: string[];
   archetype: string;
   prompt: string;
   previewText: string;
@@ -198,11 +200,12 @@ export type ReviseInput = {
 export function buildRevisePrompt(input: ReviseInput): string {
   return `You are a casting director revising a designed voice for ${input.slot} (World of Warcraft NPCs; who uses it: ${input.archetype || "(unknown)"}).
 Reviewer verdict on v${input.version}: ${input.status}. Reviewer note: "${input.note || "(none)"}".
+Players' notes on v${input.version} the reviewer chose to act on, as much a part of the review as the reviewer's note: ${JSON.stringify(input.players)}
 Notes on sibling voices of the same race, which this voice must also follow where they speak for the whole race: ${JSON.stringify(input.siblings)}
 The v${input.version} prompt was: "${input.prompt}"
 v${input.version} preview text: "${input.previewText}"
 First recording: the game reference (inspiration only, includes game post-processing). Second: a line in the v${input.version} designed voice.
-Rewrite the ElevenLabs Voice Design prompt (text only, 350-600 characters) so the next version fixes the reviewer's notes.
+Rewrite the ElevenLabs Voice Design prompt (text only, 350-600 characters) so the next version fixes the reviewer's and the chosen players' notes.
 - Keep what the reviewer did not complain about.
 - Put the accent early and make it explicit and strong when the race needs one ("with a thick Scottish accent").
 - State the gender explicitly ("unmistakably masculine/feminine"). For male voices asked to be nasal or higher, keep a clear masculine anchor (adult man, baritone or tenor chest voice).

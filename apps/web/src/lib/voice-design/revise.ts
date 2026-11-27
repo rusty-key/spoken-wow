@@ -14,7 +14,7 @@ import { found } from "./design";
 import { reviseVoice, type ReviseInput, type Revision } from "./gemini";
 import { isRevisable } from "./groups";
 import { listDesigns, readAnalysis, readDesign } from "./store";
-import type { Analysis, Design } from "./types";
+import type { Analysis, Design, Verdict } from "./types";
 
 export type ReviseDeps = {
   read: (lang: Lang, id: string) => Promise<Design | null>;
@@ -58,6 +58,13 @@ export function siblingNotes(designs: readonly Design[], slot: string): Record<s
   return notes;
 }
 
+const ANSWER: Record<Verdict, string> = { fits: "Fits", close: "Close", off: "Doesn't fit", skip: "Skipped" };
+
+/** Every player note picked in the version's verdicts, each once, led by what the player answered. */
+export function pickedNotes(design: Pick<Design, "reviews">): string[] {
+  return [...new Set(design.reviews.flatMap((review) => (review.players ?? []).map((pick) => `${ANSWER[pick.verdict]}: ${pick.note}`)))];
+}
+
 export async function reviseDesign(
   input: { lang: Lang; id: string; apiKey: string },
   deps: ReviseDeps = LIVE,
@@ -94,6 +101,7 @@ export async function reviseDesign(
     // A later verdict without words does not take back what an earlier one said.
     note: [...design.reviews].reverse().find((review) => review.note)?.note ?? "",
     siblings: siblingNotes(designs, design.slot),
+    players: pickedNotes(design),
     archetype,
     prompt: design.prompt,
     previewText: design.previewText,

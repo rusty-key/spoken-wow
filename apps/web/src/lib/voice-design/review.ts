@@ -1,11 +1,11 @@
 /** A verdict as the page sends it, checked before it is kept. */
 import { DesignError } from "./access";
 import type { NewReview } from "./store";
-import type { ClipMark, Design } from "./types";
+import type { ClipMark, Design, PlayerNote } from "./types";
 
 export const MAX_NOTE = 2000;
 
-export function parseReview(body: unknown, design: Pick<Design, "previews" | "samples">, userId: string): NewReview {
+export function parseReview(body: unknown, design: Pick<Design, "previews" | "samples" | "showings">, userId: string): NewReview {
   const input = (body ?? {}) as Record<string, unknown>;
   if (input.status !== "good" && input.status !== "needs-work") throw new DesignError("a verdict is good or needs-work", 400);
   const note = typeof input.note === "string" ? input.note.trim() : "";
@@ -23,5 +23,12 @@ export function parseReview(body: unknown, design: Pick<Design, "previews" | "sa
     if (!match || Number(match[2]) >= count || (mark !== "good" && mark !== "off")) throw new DesignError(`no clip ${key} to mark`, 400);
     clips[key] = mark;
   }
-  return { status: input.status, note, bestPreview: (best as number | null | undefined) ?? null, clips, userId };
+  // Copied as they read now: a note hidden or changed later still says what this verdict acted on.
+  const players: PlayerNote[] = [];
+  for (const pick of Array.isArray(input.players) ? (input.players as { showingId?: unknown; voter?: unknown }[]) : []) {
+    const found = design.showings.find((showing) => showing.id === pick?.showingId)?.notes.find((note) => note.voter === pick?.voter);
+    if (!found) throw new DesignError("no such player note to attach", 400);
+    players.push({ verdict: found.verdict, note: found.note });
+  }
+  return { status: input.status, note, bestPreview: (best as number | null | undefined) ?? null, clips, players, userId };
 }

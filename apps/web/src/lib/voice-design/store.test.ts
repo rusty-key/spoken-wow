@@ -65,11 +65,19 @@ describe("a design version", () => {
 
   it("keeps verdicts in order, the newest last", async () => {
     const made = await design("orc-female");
-    await store.addReview(lang, made.id, { status: "needs-work", note: "sounds wise", bestPreview: 1, clips: { "sample:0": "off" }, userId: user.id });
+    await store.addReview(lang, made.id, {
+      status: "needs-work",
+      note: "sounds wise",
+      bestPreview: 1,
+      clips: { "sample:0": "off" },
+      players: [{ verdict: "off", note: "too soft" }],
+      userId: user.id,
+    });
     await store.addReview(lang, made.id, { status: "good", note: "", bestPreview: null, clips: {}, userId: user.id });
     const read = await store.readDesign(lang, made.id);
     expect(read?.reviews.map((r) => r.status)).toEqual(["needs-work", "good"]);
-    expect(read?.reviews[0]).toMatchObject({ note: "sounds wise", bestPreview: 1, clips: { "sample:0": "off" } });
+    expect(read?.reviews[0]).toMatchObject({ note: "sounds wise", bestPreview: 1, clips: { "sample:0": "off" }, players: [{ verdict: "off", note: "too soft" }] });
+    expect(read?.reviews[1].players).toEqual([]);
   });
 
   it("records the saved voice, its samples and its deletion", async () => {
