@@ -2178,6 +2178,9 @@ body:has(main.bs) {
   font: inherit;
   font-size: 13px;
 }
+.vd-direction-input {
+  width: 260px;
+}
 .vd-note-input::placeholder {
   color: #73757e;
 }
