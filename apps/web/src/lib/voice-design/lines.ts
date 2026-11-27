@@ -2,10 +2,10 @@
  * Which corpus lines a designed voice is judged on, and who it has to suit.
  *
  * A voice must suit the NPCs who use the slot, not the flavor's name, and is judged best on varied
- * lines: a long quest text, a short bark, a plain gossip line.
+ * lines of one sentence each: a quest line, a bark, a plain gossip line.
  */
 import type { CorpusLine } from "@/lib/corpus";
-import { segments } from "@/lib/generation/narration";
+import { isOneSentence, segments } from "@/lib/generation/narration";
 import { shuffle } from "@/lib/shuffle";
 
 /** Longer lines cost credits and tell a listener nothing a 400-character one does not. */
@@ -46,12 +46,17 @@ export function slotExamples(lines: readonly CorpusLine[], slots: readonly strin
 const kind = (line: CorpusLine) => line.lineId.slice(0, 2);
 const byLength = (a: CorpusLine, b: CorpusLine) => a.text.length - b.text.length || a.lineId.localeCompare(b.lineId);
 
-function usableLines(lines: readonly CorpusLine[], slot: string): CorpusLine[] {
+/**
+ * A slot's lines worth sampling, shortest first. Only one-sentence lines are picked: a longer line
+ * costs more and makes a voice harder to judge by ear. `longer` makes up three for a slot short of them.
+ */
+function usableLines(lines: readonly CorpusLine[], slot: string): { usable: CorpusLine[]; longer: CorpusLine[] } {
   const seen = new Set<string>();
-  return lines
+  const all = lines
     .filter((line) => soloLine(line, slot) && line.text.length <= MAX_SAMPLE_CHARS)
     .filter((line) => !seen.has(line.lineId) && seen.add(line.lineId))
     .sort(byLength);
+  return { usable: all.filter((line) => isOneSentence(line.text)), longer: all.filter((line) => !isOneSentence(line.text)) };
 }
 
 const isBark = (line: CorpusLine) => kind(line) === "f:" && line.text.length >= MIN_BARK_CHARS;
@@ -66,13 +71,16 @@ function topUp(picked: (CorpusLine | undefined)[], rest: readonly CorpusLine[]):
   return chosen;
 }
 
-const pickDefaults = (usable: readonly CorpusLine[]): CorpusLine[] => {
+const pickDefaults = ({ usable, longer }: ReturnType<typeof usableLines>): CorpusLine[] => {
   const gossip = usable.filter((line) => kind(line) === "g:");
-  return topUp([usable.filter((line) => kind(line) === "q:").at(-1), usable.find(isBark), gossip[Math.floor(gossip.length / 2)]], [...usable].reverse());
+  return topUp(
+    [usable.filter((line) => kind(line) === "q:").at(-1), usable.find(isBark), gossip[Math.floor(gossip.length / 2)]],
+    [...[...usable].reverse(), ...longer],
+  );
 };
 
 /**
- * Up to three lines: the longest quest text, the shortest bark, a middling gossip line. A slot
+ * Up to three lines: the longest quest line, the shortest bark, a middling gossip line. A slot
  * without one of the kinds gets the next-longest of what it has instead, so it still has three.
  */
 export function defaultSampleLines(lines: readonly CorpusLine[], slot: string): CorpusLine[] {
@@ -81,11 +89,11 @@ export function defaultSampleLines(lines: readonly CorpusLine[], slot: string): 
 
 /** Topped up from the default lines where the corpus lost one, so a new take is judged on the same lines. */
 export function sameSampleLines(lines: readonly CorpusLine[], slot: string, heard: readonly string[]): CorpusLine[] {
-  const usable = usableLines(lines, slot);
-  const byId = new Map(usable.map((line) => [line.lineId, line]));
+  const own = usableLines(lines, slot);
+  const byId = new Map(own.usable.map((line) => [line.lineId, line]));
   return topUp(
     heard.map((id) => byId.get(id)),
-    pickDefaults(usable),
+    pickDefaults(own),
   );
 }
 
@@ -94,13 +102,13 @@ export function sameSampleLines(lines: readonly CorpusLine[], slot: string, hear
  * the voice. A slot with too few lines to avoid every one already heard repeats some.
  */
 export function otherSampleLines(lines: readonly CorpusLine[], slot: string, heard: readonly string[], random = Math.random): CorpusLine[] {
-  const usable = usableLines(lines, slot);
+  const { usable, longer } = usableLines(lines, slot);
   const old = new Set(heard);
   const fresh = usable.filter((line) => !old.has(line.lineId));
   const pick = (list: readonly CorpusLine[]) => list[Math.floor(random() * list.length)];
   return topUp(
     [pick(fresh.filter((line) => kind(line) === "q:")), pick(fresh.filter(isBark)), pick(fresh.filter((line) => kind(line) === "g:"))],
-    [...shuffle(fresh, random), ...shuffle(usable.filter((line) => old.has(line.lineId)), random)],
+    [...shuffle(fresh, random), ...shuffle(usable.filter((line) => old.has(line.lineId)), random), ...longer],
   );
 }
 

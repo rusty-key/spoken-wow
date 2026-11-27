@@ -35,8 +35,9 @@ describe("defaultSampleLines", () => {
   const lines = [
     line("q:1:accept", words(30)),
     line("q:2:accept", words(60)),
-    line("f:1:orc-male-shady", "You dog! Now I'll trap your soul!"),
+    line("f:1:orc-male-shady", "You dog, now I'll trap your soul!"),
     line("f:2:orc-male-shady", "Die!"),
+    line("q:6:accept", `${words(70)}. ${words(5)}.`),
     line("g:a", words(10)),
     line("g:b", words(20)),
     line("g:c", words(25)),
@@ -46,6 +47,15 @@ describe("defaultSampleLines", () => {
 
   it("takes the longest quest text, the shortest bark worth hearing, and a middling gossip line", () => {
     expect(defaultSampleLines(lines, SLOT).map((l) => l.lineId)).toEqual(["q:2:accept", "f:1:orc-male-shady", "g:b"]);
+  });
+
+  it("passes over a line of more than one sentence", () => {
+    expect(defaultSampleLines(lines, SLOT).map((l) => l.lineId)).not.toContain("q:6:accept");
+  });
+
+  it("tops up with the shortest longer lines when a slot has too few of one sentence", () => {
+    const long = [line("q:1:accept", "One. Two."), line("q:2:accept", `${words(20)}. ${words(20)}.`), line("g:a", words(5)), line("g:b", "Aye. Mr. Flint said so.")];
+    expect(defaultSampleLines(long, SLOT).map((l) => l.lineId).sort()).toEqual(["g:a", "g:b", "q:1:accept"]);
   });
 
   it("never picks a line with narration, or another slot's", () => {
