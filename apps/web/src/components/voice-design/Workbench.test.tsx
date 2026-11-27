@@ -68,10 +68,10 @@ const groups: GroupView[] = [
   },
 ];
 
-const workbench = () =>
+const workbench = (url: { initialFilter?: string; initialQuery?: string } = {}) =>
   render(
     <LangProvider lang="enUS">
-      <Workbench groups={groups} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
+      <Workbench groups={groups} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" {...url} />
     </LangProvider>,
   );
 
@@ -93,6 +93,29 @@ test("searches prompts and every version's notes", async () => {
   workbench();
   await userEvent.type(screen.getByRole("searchbox"), "sounds female");
   expect(slotsShown()).toEqual(["orc-male-shady"]);
+});
+
+test("keeps the filter and the search in the URL", async () => {
+  window.history.replaceState(null, "", "/voices/design");
+  workbench();
+  const chips = within(screen.getByRole("group", { name: "Show slots" }));
+  await userEvent.click(chips.getByRole("button", { name: /^Needs work/ }));
+  await userEvent.type(screen.getByRole("searchbox"), "noble");
+  expect(new URLSearchParams(window.location.search).get("status")).toBe("needs-work");
+  expect(new URLSearchParams(window.location.search).get("q")).toBe("noble");
+
+  await userEvent.click(chips.getByRole("button", { name: /^All/ }));
+  await userEvent.clear(screen.getByRole("searchbox"));
+  expect(window.location.search).toBe("");
+});
+
+test("starts from the filter and the search in the URL", () => {
+  workbench({ initialFilter: "needs-work", initialQuery: "female" });
+  expect(slotsShown()).toEqual(["orc-male-shady"]);
+  expect(screen.getByRole("searchbox")).toHaveProperty("value", "female");
+  cleanup();
+  workbench({ initialFilter: "bogus" });
+  expect(slotsShown()).toHaveLength(3);
 });
 
 test("shows the newest version open and folds the older ones", () => {

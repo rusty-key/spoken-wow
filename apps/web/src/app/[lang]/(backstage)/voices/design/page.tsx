@@ -29,8 +29,15 @@ export const metadata: Metadata = { title: "Voice design · Spoken" };
 
 export const dynamic = "force-dynamic";
 
-export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lang: string }>;
+  searchParams: Promise<{ status?: string; q?: string }>;
+}) {
   const lang = await pageLang(params);
+  const { status, q } = await searchParams;
   const t = (await uiText(await readingLang(lang))).voiceDesign;
   const session = await currentSession();
   // 404 rather than a redirect, as /voices: a member has no business learning this page exists.
@@ -117,6 +124,8 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
         keys={{ elevenlabs: eleven !== null, gemini: gemini !== null }}
         rate={rate.perCharacter}
         model={rate.model}
+        initialFilter={status}
+        initialQuery={q}
       />
     </BackstagePage>
   );
