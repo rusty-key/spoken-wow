@@ -397,3 +397,19 @@ test("folds each slot from its header, and every slot at once", async () => {
   expect(screen.getByText("Prompt of orc-male-guard v1")).toBeTruthy();
   expect(screen.getByText("Prompt of orc-male-shady v2")).toBeTruthy();
 });
+
+test("puts Compare blind in the group's header, its explanation in the button's tooltip", async () => {
+  workbench();
+  const head = screen.getByText("Male").closest("summary") as HTMLElement;
+  const button = within(head).getByRole("button", { name: "Compare blind" });
+  expect(button.parentElement?.getAttribute("data-tip")).toContain("never clone them");
+  expect(screen.queryByRole("region", { name: "Blind comparison" })).toBeNull();
+});
+
+test("shows only a folded slot's name, not who uses it", async () => {
+  workbench();
+  const shady = () => screen.getByRole("article", { name: "orc-male-shady" });
+  expect(within(shady()).getByText(/^Used by/)).toBeTruthy();
+  await userEvent.click(within(shady()).getByRole("button", { name: "orc-male-shady" }));
+  expect(within(shady()).queryByText(/^Used by/)).toBeNull();
+});

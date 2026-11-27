@@ -12,7 +12,7 @@ import { DONENESS, donenessOf, isRevisable, onPage, type Doneness, PLAYERS_SAY, 
 import { parseRemixSettings, PREVIEWS_PER_DESIGN, REMIX_DEFAULTS, type RemixSettings } from "@/lib/voice-design/limits";
 import type { Analysis, Design } from "@/lib/voice-design/types";
 
-import AnalysePanel from "./AnalysePanel";
+import AnalysePanel, { CompareBlindButton, useCompareBlind } from "./AnalysePanel";
 import DeleteOlder from "./DeleteOlder";
 import ImportForm from "./ImportForm";
 import SlotRow from "./SlotRow";
@@ -75,6 +75,47 @@ function matches(slot: SlotView, { filter, players, needle }: Narrowing): boolea
 /** The slots a narrowing picks, decided when it is chosen. */
 const picked = (groups: GroupView[], narrowing: Narrowing) =>
   new Set(groups.flatMap((group) => group.slots).filter((slot) => matches(slot, narrowing)).map((slot) => slot.name));
+
+/** A race-gender group: its header carries Compare blind, its body the comparison and the slots. */
+function GroupBlock({
+  group,
+  open,
+  doneness,
+  folded,
+  toggleSlot,
+}: {
+  group: GroupView;
+  open: boolean;
+  doneness: (slot: SlotView) => Doneness;
+  folded: ReadonlySet<string>;
+  toggleSlot: (name: string) => void;
+}) {
+  const t = useUiText().voiceDesign;
+  const compare = useCompareBlind(group.group, group.slots);
+  const states = group.slots.map(doneness);
+  return (
+    <details className="vd-group" open={open || undefined}>
+      <summary className="vd-group-head">
+        <ChevronRight className="vd-chevron" size={16} aria-hidden="true" />
+        <span className="vd-group-title">{capital(group.group.split("-")[1] ?? group.group)}</span>
+        <span className="vd-group-counts">
+          {fill(t.groupCounts, {
+            slots: group.slots.length,
+            good: states.filter((s) => s === "good").length,
+            work: states.filter((s) => s === "needs-work").length,
+          })}
+        </span>
+        <CompareBlindButton compare={compare} analysis={group.analysis} />
+      </summary>
+      <div className="vd-group-body">
+        <AnalysePanel analysis={group.analysis} compare={compare} />
+        {group.slots.map((slot) => (
+          <SlotRow key={slot.name} slot={slot} doneness={doneness(slot)} open={!folded.has(slot.name)} onToggle={() => toggleSlot(slot.name)} />
+        ))}
+      </div>
+    </details>
+  );
+}
 
 export default function Workbench({
   groups: initialGroups,
@@ -400,34 +441,16 @@ export default function Workbench({
           </h2>
           {shown
             .filter((group) => group.group.split("-")[0] === race)
-            .map((group) => {
-              const states = group.slots.map(doneness);
-              return (
-                <details
-                  key={`${group.group}:${narrowed}`}
-                  className="vd-group"
-                  open={narrowed || group.slots.some((slot) => slot.designs.length > 0) || undefined}
-                >
-                  <summary className="vd-group-head">
-                    <ChevronRight className="vd-chevron" size={16} aria-hidden="true" />
-                    <span className="vd-group-title">{capital(group.group.split("-")[1] ?? group.group)}</span>
-                    <span className="vd-group-counts">
-                      {fill(t.groupCounts, {
-                        slots: group.slots.length,
-                        good: states.filter((s) => s === "good").length,
-                        work: states.filter((s) => s === "needs-work").length,
-                      })}
-                    </span>
-                  </summary>
-                  <div className="vd-group-body">
-                    <AnalysePanel group={group.group} analysis={group.analysis} slots={group.slots} />
-                    {group.slots.map((slot) => (
-                      <SlotRow key={slot.name} slot={slot} doneness={doneness(slot)} open={!folded.has(slot.name)} onToggle={() => toggleSlot(slot.name)} />
-                    ))}
-                  </div>
-                </details>
-              );
-            })}
+            .map((group) => (
+              <GroupBlock
+                key={`${group.group}:${narrowed}`}
+                group={group}
+                open={narrowed || group.slots.some((slot) => slot.designs.length > 0)}
+                doneness={doneness}
+                folded={folded}
+                toggleSlot={toggleSlot}
+              />
+            ))}
         </section>
       ))}
 

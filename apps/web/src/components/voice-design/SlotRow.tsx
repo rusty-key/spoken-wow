@@ -57,9 +57,12 @@ export default function SlotRow({ slot, doneness, open, onToggle }: { slot: Slot
             </button>
           ) : null}
         </div>
-        <p className="vd-npcs">
-          {slot.npcs.length > 0 ? fill(t.usedBy, { npcs: slot.npcs.join(", "), lines: slot.lineCount }) : t.usedByNobody}
-        </p>
+        {/* Folded, a slot is just its name: the header is for finding it. */}
+        {shown ? (
+          <p className="vd-npcs">
+            {slot.npcs.length > 0 ? fill(t.usedBy, { npcs: slot.npcs.join(", "), lines: slot.lineCount }) : t.usedByNobody}
+          </p>
+        ) : null}
       </header>
 
       {shown && newest ? <VersionCard key={newest.id} design={newest} slot={slot} newest /> : null}
