@@ -155,11 +155,8 @@ export function langName(lang: Lang): string {
   return languageInfo(lang)?.name ?? lang;
 }
 
-/** Every language but English with its name, for a picker of the languages a team can have. */
 export function languageOptions(): { code: Lang; name: string }[] {
-  return allLangs()
-    .filter((code) => code !== BASE_LANG)
-    .map((code) => ({ code, name: langName(code) }));
+  return allLangs().map((code) => ({ code, name: langName(code) }));
 }
 
 /** The ISO 639-1 code a synthesis request in this language sends as language_code. */

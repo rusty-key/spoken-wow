@@ -242,7 +242,7 @@ describe("a lexicon uploaded to ElevenLabs", () => {
       `select "dictionaryId", "versionId", "syncedDigest" from "pronunciation_lexicon" where "teamId" = (select "id" from "team" where "slug" = 'english')`,
     );
     previous = rows[0];
-    await asSystem.query(`delete from "lexicon_account_dictionary" where "lang" = 'enUS'`);
+    await asSystem.query(`delete from "team_lexicon_dictionary" where "lang" = 'enUS'`);
     await asSystem.query(
       `update "pronunciation_lexicon" set "dictionaryId" = 'dict-abc', "versionId" = 'ver-1',
               "syncedDigest" = md5("entries"::text)
@@ -255,7 +255,7 @@ describe("a lexicon uploaded to ElevenLabs", () => {
       `update "pronunciation_lexicon" set "dictionaryId" = $1, "versionId" = $2, "syncedDigest" = $3 where "teamId" = (select "id" from "team" where "slug" = 'english')`,
       [previous?.dictionaryId ?? null, previous?.versionId ?? null, previous?.syncedDigest ?? null],
     );
-    await asSystem.query(`delete from "lexicon_account_dictionary" where "lang" = 'enUS'`);
+    await asSystem.query(`delete from "team_lexicon_dictionary" where "lang" = 'enUS'`);
   });
 
   // The version alone cannot be looked up: ElevenLabs addresses a version through its

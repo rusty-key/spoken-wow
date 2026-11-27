@@ -3,8 +3,9 @@
  * invalidation, so the short expiry bounds how stale the other worker can be, and a miss is
  * read again so a language the other worker just switched on resolves at once.
  *
- * A language's teams are equal: none is its main team (docs/platform/TEAMS.md). A call works as
- * the acting person's team in the language; where the language has one team, it is that team,
+ * A language's teams are equal: none is its main team (docs/platform/TEAMS.md). English's plain
+ * team is the one exception: new teams and unvoiced languages start from it. A call works as the
+ * acting person's team in the language; where the language has one team, it is that team,
  * whoever is acting.
  */
 import "server-only";
@@ -248,7 +249,14 @@ export async function withTextTeam<T>(
  * switching it on copies to its own team.
  */
 export async function teamOrEnglish(lang: Lang): Promise<TeamId> {
-  return (await ownerOf(lang)) ?? teamOf(BASE_LANG);
+  return (await ownerOf(lang)) ?? baseTeam();
+}
+
+/** English's plain team: new teams and unvoiced languages start from it, whoever is asking. */
+export async function baseTeam(): Promise<TeamId> {
+  const team = await plainTeamOf(BASE_LANG);
+  if (!team) throw new NoTeamError(BASE_LANG);
+  return team;
 }
 
 /** How a per-team write is made, so the row takes its "teamId" from the column default. */

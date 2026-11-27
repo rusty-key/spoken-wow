@@ -12,7 +12,7 @@ import { cache } from "react";
 
 import { queryIn, TEAM_ROWS, withTeam } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
-import { teamOrEnglish, type TeamId } from "@/lib/teams/store";
+import { baseTeam, teamOrEnglish, type TeamId } from "@/lib/teams/store";
 
 import { Roster, type Gender, type RosterData } from "./roster";
 
@@ -61,6 +61,14 @@ async function rosterData(client: PoolClient): Promise<RosterData> {
 /** The roster `lang` is voiced with, as the acting team. */
 export async function loadRoster(lang: Lang): Promise<Roster> {
   return rosterOf(await teamOrEnglish(lang));
+}
+
+/**
+ * English's first team's roster, for answers every language shares (the npc table, a speaker's
+ * voice): whichever English team the caller acts in, they get the same one.
+ */
+export async function loadBaseRoster(): Promise<Roster> {
+  return rosterOf(await baseTeam());
 }
 
 /**

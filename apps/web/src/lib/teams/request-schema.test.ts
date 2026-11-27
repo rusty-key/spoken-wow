@@ -32,9 +32,9 @@ describe("team_request", () => {
     await request(u, LANG);
   });
 
-  it("refuses enUS and a half-named language", async () => {
+  it("takes enUS and refuses a half-named language", async () => {
     const u = await user();
-    await expect(request(u, "enUS")).rejects.toMatchObject({ code: "23514" });
+    await request(u, "enUS");
     await expect(request(u, LANG, { langName: "Xq" })).rejects.toMatchObject({ code: "23514" });
   });
 

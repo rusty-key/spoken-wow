@@ -14,7 +14,7 @@ import type { Capability } from "@/lib/permissions";
 import type { Settings } from "./found";
 
 import { isSlug } from "./slug";
-import { forgetTeams, TEAM_ORDER, type TeamId } from "./store";
+import { forgetTeams, plainTeamOf, TEAM_ORDER, type TeamId } from "./store";
 
 export type TeamSummary = {
   id: TeamId;
@@ -26,6 +26,8 @@ export type TeamSummary = {
   official: boolean;
   /** The languages it voices, beside any other team of each. */
   langs: Lang[];
+  /** English's first team, with its plain packs: every other team starts from it, so it is never deleted. */
+  base: boolean;
   members: { userId: string; email: string; name: string | null; lang: Lang; capability: Capability }[];
   /** While it is being deleted (delete.ts): how far its delistings are, and why it stopped if it did. */
   deleting: { delisted: number; delists: number; error: string | null } | null;
@@ -52,7 +54,7 @@ export function checkSlug(slug: string): void {
 
 export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
   const id = [only ?? null];
-  const [teams, langs, members] = await Promise.all([
+  const [teams, langs, members, base] = await Promise.all([
     // Across teams: a team's runs are its own (row-level security).
     queryIn<{
       id: TeamId; slug: string; name: string; ownStorage: boolean; official: boolean;
@@ -81,11 +83,13 @@ export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
         order by u."email", m."lang", m."capability"`,
       id,
     ),
+    plainTeamOf(BASE_LANG),
   ]);
   return teams.map(({ deletingAt, deleteError, delisted, delists, ...team }) => ({
     ...team,
     deleting: deletingAt ? { delisted, delists, error: deleteError } : null,
     langs: langs.filter((row) => row.teamId === team.id).map((row) => row.lang),
+    base: team.id === base,
     members: members
       .filter((row) => row.teamId === team.id)
       .map(({ teamId: _team, ...member }) => member),
@@ -246,7 +250,6 @@ export async function joinLanguage(
   settings: Settings = "fresh",
   source?: TeamId,
 ): Promise<{ first: boolean; from: string | null; switchedOn: boolean }> {
-  if (lang === BASE_LANG) throw new TeamError("English is one team; no other team can join it.");
   const { rows: teams } = await client.query<{ teamId: TeamId; slug: string }>(
     `select tl."teamId", t."slug" from "team_language" tl join "team" t on t."id" = tl."teamId"
       where tl."lang" = $1
@@ -265,7 +268,7 @@ export async function joinLanguage(
   if (from) {
     await client.query(`select copy_team_settings($1, $2, $3)`, [from.teamId, team, lang]);
   } else {
-    await client.query(`select copy_team_roster((select "id" from "team" where "slug" = 'english'), $1)`, [team]);
+    await client.query(`select copy_team_roster(team_of_lang($1), $2)`, [BASE_LANG, team]);
   }
   const first = teams.length === 0;
   const switchedOn = first && !(await setEnabledOn(client, lang, true, actorId));

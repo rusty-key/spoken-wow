@@ -17,7 +17,7 @@ import NewLanguageFields, { type NewLanguage } from "@/components/NewLanguageFie
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUiText } from "@/components/UiTextProvider";
-import { BASE_LANG, type Lang } from "@/lib/lang";
+import { type Lang } from "@/lib/lang";
 import { send } from "@/lib/send";
 import { fill } from "@/lib/site-text/format";
 import type { TeamSummary } from "@/lib/teams/admin";
@@ -176,28 +176,26 @@ export default function TeamsTable({ initial, languages }: Props) {
                     </li>
                   ))}
                   {team.langs.length === 0 && <li className="text-muted-foreground text-xs">{words.none}</li>}
-                  {!team.langs.includes(BASE_LANG) && (
-                    <li>
-                      <Select
-                        value=""
-                        disabled={busy}
-                        onValueChange={(lang) => setJoining({ lang: lang as Lang, team })}
-                      >
-                        <SelectTrigger size="sm" className="text-xs" aria-label={fill(words.addToLanguage, { slug: team.slug })}>
-                          <SelectValue placeholder={words.addTo} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {languages
-                            .filter((language) => language.code !== BASE_LANG && !team.langs.includes(language.code))
-                            .map((language) => (
-                              <SelectItem key={language.code} value={language.code}>
-                                {language.name} ({language.code})
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </li>
-                  )}
+                  <li>
+                    <Select
+                      value=""
+                      disabled={busy}
+                      onValueChange={(lang) => setJoining({ lang: lang as Lang, team })}
+                    >
+                      <SelectTrigger size="sm" className="text-xs" aria-label={fill(words.addToLanguage, { slug: team.slug })}>
+                        <SelectValue placeholder={words.addTo} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {languages
+                          .filter((language) => !team.langs.includes(language.code))
+                          .map((language) => (
+                            <SelectItem key={language.code} value={language.code}>
+                              {language.name} ({language.code})
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </li>
                 </ul>
               </td>
               <td className="py-2 pr-3">
@@ -264,8 +262,8 @@ export default function TeamsTable({ initial, languages }: Props) {
                     variant="ghost"
                     size="sm"
                     aria-label={fill(words.deleteFor, { slug: team.slug })}
-                    title={team.langs.includes(BASE_LANG) ? words.englishCannotBeDeleted : undefined}
-                    disabled={busy || team.langs.includes(BASE_LANG)}
+                    title={team.base ? words.englishCannotBeDeleted : undefined}
+                    disabled={busy || team.base}
                     onClick={() => setDeleting(team)}
                   >
                     {words.delete}

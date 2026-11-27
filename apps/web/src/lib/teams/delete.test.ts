@@ -289,10 +289,15 @@ describe("deleting a team", () => {
       message: expect.stringContaining("release under way"),
     });
     const english = await plainTeam(BASE_LANG);
-    await expect(startDeletion(english, actor.id, "english", launch)).rejects.toMatchObject({
-      status: 409,
-      message: expect.stringContaining("English's team cannot be deleted"),
-    });
+    await asSystem.query(`update "team" set "slug" = 'enus-renamed' where "id" = $1`, [english]);
+    try {
+      await expect(startDeletion(english, actor.id, "enus-renamed", launch)).rejects.toMatchObject({
+        status: 409,
+        message: expect.stringContaining("English's team cannot be deleted"),
+      });
+    } finally {
+      await asSystem.query(`update "team" set "slug" = 'english' where "id" = $1`, [english]);
+    }
     expect(await exists()).toBe(true);
     expect(await systemRows(`select 1 from "team" where "deletingAt" is not null and "id" in ($1, $2)`, [team, english])).toHaveLength(0);
   });

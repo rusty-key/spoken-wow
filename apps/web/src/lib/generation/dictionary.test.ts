@@ -11,7 +11,8 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { closeDb } = await import("@/lib/db");
-const { asSystem } = await import("@/lib/teams/testing");
+const { asSystem, dropTeam, newTeamIn } = await import("@/lib/teams/testing");
+const { asTeam } = await import("@/lib/teams/acting");
 const { dictionaryFor, readLexicon, resync, sync, writeLexicon } = await import("./dictionary");
 
 const ENTRIES = [
@@ -99,7 +100,7 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-  await asSystem.query(`delete from "lexicon_account_dictionary" where "lang" in ('enUS', 'deDE')`);
+  await asSystem.query(`delete from "team_lexicon_dictionary" where "lang" in ('enUS', 'deDE')`);
   // Every save here diffs ENTRIES against the real lexicon and logs the other ~145 words as
   // removed, and the restore below is a raw write that logs nothing to say they came back.
   // Left behind, those rows told the dirty check every word had just moved -- marking most of
@@ -532,6 +533,24 @@ describe("the pinned dictionary", () => {
     expect(lexicon.entries).toEqual(ENTRIES);
     expect(lexicon.locator).toBeNull();
   });
+
+  it("gives English's other teams a dictionary of their own, on a key that synced the pinned one", async () => {
+    const pinnedOne = holding([]);
+    await writeLexicon(ENTRIES, null as unknown as string, OPTIONS(pinnedOne.fetchImpl));
+    const team = await newTeamIn("enUS", false);
+    try {
+      const { fetchImpl, calls } = accepts("dict-own");
+      const { lexicon, syncError } = await asTeam("enUS", team, () =>
+        writeLexicon(ENTRIES, null as unknown as string, OPTIONS(fetchImpl)),
+      );
+
+      expect(syncError).toBeNull();
+      expect(lexicon.locator?.dictionaryId).toBe("dict-own");
+      expect(calls.mock.calls.map(([url]) => String(url)).filter((url) => url.includes(PINNED))).toEqual([]);
+    } finally {
+      await dropTeam(team);
+    }
+  });
 });
 
 /** A dictionary answers only the key that created it, as ElevenLabs' does across accounts. */
@@ -622,7 +641,7 @@ describe("a lexicon voiced from several accounts", () => {
   it("uses the owner's dictionary as it stands, without minting a version", async () => {
     const service = elevenLabs();
     const owner = await savedBy(service, "owner");
-    await asSystem.query(`delete from "lexicon_account_dictionary" where "lang" = $1`, [LANG]);
+    await asSystem.query(`delete from "team_lexicon_dictionary" where "lang" = $1`, [LANG]);
 
     expect(await dictionaryFor(LANG, service.as("owner"))).toEqual(owner);
     expect(service.ruleWrites).toEqual([]);
@@ -668,7 +687,7 @@ describe("a lexicon voiced from several accounts", () => {
     const service = elevenLabs();
     const owner = await savedBy(service, "owner");
     const other = await dictionaryFor(LANG, service.as("other"));
-    await asSystem.query(`delete from "lexicon_account_dictionary" where "lang" = $1 and "dictionaryId" = $2`, [
+    await asSystem.query(`delete from "team_lexicon_dictionary" where "lang" = $1 and "dictionaryId" = $2`, [
       LANG,
       owner.dictionaryId,
     ]);

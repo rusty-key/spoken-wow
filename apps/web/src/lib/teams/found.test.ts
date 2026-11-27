@@ -181,8 +181,16 @@ describe("foundTeam, new language", () => {
     expect(await systemRows(`select 1 from "language" where "code" = $1`, [lang])).toHaveLength(0);
   });
 
-  it("refuses English", async () => {
-    await expect(found(input("enUS", { language: null }))).rejects.toSatisfy(refused(400));
+  it("adds a team to English beside its first, which keeps the plain packs", async () => {
+    const english = await plainTeam("enUS");
+    const founded = await found(input("enUS", { language: null }));
+    expect(founded).toMatchObject({ branch: "add-team", granted: ["admin"] });
+    expect(
+      await systemRows(`select "teamId", "packName" from "team_language" where "lang" = 'enUS' order by "packName"`),
+    ).toEqual([
+      { teamId: english, packName: "plain" },
+      { teamId: founded.teamId, packName: "slug" },
+    ]);
   });
 });
 
@@ -263,6 +271,19 @@ describe("foundTeam, a known language", () => {
       ]),
     ).toEqual([{ modelId: "eleven_v3" }]);
     expect(await voices(founded.teamId)).toEqual(await voices(a));
+  });
+
+  it("starts a team joining English from its first team's model settings and lexicon when asked to copy", async () => {
+    const english = await plainTeam("enUS");
+    const founded = await found(input("enUS", { language: null, settings: "copy" }));
+    const settings = (team: string) =>
+      systemRows(`select "modelId", "voiceSettings" from "generation_setting" where "teamId" = $1`, [team]);
+    const lexicon = (team: string) =>
+      systemRows(`select "entries", "dictionaryId" from "pronunciation_lexicon" where "teamId" = $1`, [team]);
+    expect(await settings(founded.teamId)).toEqual(await settings(english));
+    const [copied] = await lexicon(founded.teamId);
+    const [first] = await lexicon(english);
+    expect(copied).toEqual({ entries: first.entries, dictionaryId: null });
   });
 
   it.each(["fresh", "copy"] as const)("gives a %s team none of the other team's audio", async (settings) => {

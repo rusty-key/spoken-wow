@@ -39,7 +39,7 @@ export const DELETED = [
   // Its roster, generation settings and lexicon.
   "voice_assignment", "voice", "voice_clone", "voice_sample", "fish_reference",
   "generation_setting_locale", "generation_setting", "npc_direction_locale", "lexicon_change",
-  "pronunciation_lexicon_locale", "pronunciation_lexicon",
+  "pronunciation_lexicon_locale", "pronunciation_lexicon", "team_lexicon_dictionary",
   // Its voice designs: the account voices stay with their holders, the audio in the bucket.
   "voice_feedback", "voice_design_showing", "voice_design_review", "voice_design_clip", "voice_design",
   "voice_design_analysis",
@@ -87,12 +87,12 @@ export async function refusalOf(
   team: { id: TeamId; slug: string; deletingAt: Date | null },
 ): Promise<string | null> {
   if (team.deletingAt) return `${team.slug} is being deleted already.`;
-  const { rows } = await client.query<{ english: boolean; busy: boolean }>(
-    `select exists (select 1 from "team_language" where "teamId" = $1 and "lang" = $2) as "english",
+  const { rows } = await client.query<{ base: boolean; busy: boolean }>(
+    `select team_of_lang($2) is not distinct from $1 as "base",
             exists (select 1 from "release_run" where "teamId" = $1 and "state" = any($3)) as "busy"`,
     [team.id, BASE_LANG, RELEASE_UNDER_WAY],
   );
-  if (rows[0].english) return "English's team cannot be deleted: every other language is built from it.";
+  if (rows[0].base) return "English's team cannot be deleted: every other language is built from it.";
   if (rows[0].busy) return `${team.slug} has a release under way; delete it once that is finished.`;
   return null;
 }

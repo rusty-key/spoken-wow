@@ -177,18 +177,23 @@ describe("teams routes", () => {
     expect(teams.some((team) => team.slug === `list-${tag}`)).toBe(true);
   });
 
-  it("answers 400 to a bad slug, a blank name, an unknown language or enUS, creating nothing", async () => {
+  it("answers 400 to a bad slug, a blank name or an unknown language, creating nothing", async () => {
     for (const body of [
       { slug: "Bad Slug", name: "x", langs: [] },
       { slug: `blank-${tag}`, name: "  ", langs: [] },
       { slug: `unk-${tag}`, name: "x", langs: ["xxXX"] },
-      { slug: `en-${tag}`, name: "x", langs: ["enUS"] },
       { slug: `mal-${tag}`, name: "x", langs: "deDE" },
     ]) {
       expect((await POST(json("POST", body))).status).toBe(400);
     }
     expect((await POST(new Request("http://x", { method: "POST", body: "{" }))).status).toBe(400);
     expect(await systemRows(`select 1 from "team" where "slug" like $1`, [`%-${tag}`])).toHaveLength(0);
+  });
+
+  it("adds a team to English", async () => {
+    const response = await post({ slug: `en-${tag}`, name: "E", langs: ["enUS"] });
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { team: { langs: string[] } }).team.langs).toEqual(["enUS"]);
   });
 
   it("joins a language named twice once", async () => {

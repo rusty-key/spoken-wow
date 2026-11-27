@@ -2,9 +2,10 @@
 import { afterAll, describe, expect, it } from "vitest";
 
 import { closeDb, db } from "@/lib/db";
-import { unowned } from "@/lib/teams/testing";
+import { asTeam } from "@/lib/teams/acting";
+import { dropTeam, newTeamIn, unowned } from "@/lib/teams/testing";
 
-import { loadRoster } from "./roster-store";
+import { loadBaseRoster, loadRoster } from "./roster-store";
 import { isVoiceSlot } from "./slots";
 
 const KEY = `t${Math.floor(Math.random() * 1e9)}`;
@@ -33,6 +34,19 @@ describe("loadRoster", () => {
       expect(await isVoiceSlot("orc-male-shady", "itIT")).toBe(true);
     } finally {
       await italian.restore();
+    }
+  });
+
+  it("reads English's first roster for a language nobody owns while several teams voice English", async () => {
+    const english = await loadRoster("enUS");
+    const [team, italian] = [await newTeamIn("enUS", false), await unowned("itIT")];
+    try {
+      expect(await loadRoster("itIT")).toBe(english);
+      expect(await asTeam("enUS", team, loadBaseRoster)).toBe(english);
+      expect(await asTeam("enUS", team, () => loadRoster("enUS"))).not.toBe(english);
+    } finally {
+      await italian.restore();
+      await dropTeam(team);
     }
   });
 
