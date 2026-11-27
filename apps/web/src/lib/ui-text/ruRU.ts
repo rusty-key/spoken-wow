@@ -2734,6 +2734,8 @@ const ruRU: Dictionary = {
     statusNeedsWork: "Нужна доработка",
     statusGood: "Хороший",
     searchPlaceholder: "Искать слоты, NPC, промпты и заметки",
+    collapseAll: "Свернуть все",
+    expandAll: "Развернуть все",
     needsElevenLabsKey: "Создание, сохранение и пробы тратят ваш собственный аккаунт ElevenLabs, поэтому нужен ваш ключ.",
     needsGeminiKey: "Для сравнения нужен ваш ключ Gemini.",
     profileLink: "Добавьте его в профиле",

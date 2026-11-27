@@ -2817,6 +2817,8 @@ export const EN = {
     statusNeedsWork: "Needs work",
     statusGood: "Good",
     searchPlaceholder: "Search slots, NPCs, prompts and notes",
+    collapseAll: "Collapse all",
+    expandAll: "Expand all",
     needsElevenLabsKey: "Designing, saving and sampling spend from your own ElevenLabs account, so they need your key.",
     needsGeminiKey: "Analyse needs a Gemini key of yours.",
     profileLink: "Add it on your profile",

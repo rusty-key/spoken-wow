@@ -2684,6 +2684,8 @@ const zhCN: Dictionary = {
     statusNeedsWork: "需改进",
     statusGood: "合格",
     searchPlaceholder: "搜索槽位、NPC、提示词和备注",
+    collapseAll: "全部折叠",
+    expandAll: "全部展开",
     needsElevenLabsKey: "设计、保存和试音都从你自己的 ElevenLabs 账户扣费，所以需要你的密钥。",
     needsGeminiKey: "比较需要你自己的 Gemini 密钥。",
     profileLink: "在个人资料中添加",

@@ -2733,6 +2733,8 @@ const ptBR: Dictionary = {
     statusNeedsWork: "Precisa melhorar",
     statusGood: "Boa",
     searchPlaceholder: "Buscar vagas, NPCs, prompts e notas",
+    collapseAll: "Recolher tudo",
+    expandAll: "Expandir tudo",
     needsElevenLabsKey: "Criar, salvar e testar gastam da sua própria conta do ElevenLabs, então precisam da sua chave.",
     needsGeminiKey: "A comparação precisa da sua própria chave do Gemini.",
     profileLink: "Adicione no seu perfil",

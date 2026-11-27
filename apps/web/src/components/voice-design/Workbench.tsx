@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, Loader2, Search, Wand2 } from "lucide-react";
+import { ChevronRight, ChevronsDownUp, ChevronsUpDown, Loader2, Search, Wand2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import AudioPlayer from "@/components/AudioPlayer";
@@ -135,6 +135,14 @@ export default function Workbench({
     keepInUrl("q", value, "");
   };
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  // Slots folded to their header, to find one in a long race quickly; every slot starts open.
+  const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
+  const toggleSlot = (name: string) =>
+    setFolded((current) => {
+      const next = new Set(current);
+      if (!next.delete(name)) next.add(name);
+      return next;
+    });
   const [playing, setPlaying] = useState<Playing | null>(null);
   const [remixSettings, setRemixSettings] = useState<RemixSettings>(REMIX_DEFAULTS);
   // Kept per browser, so a setting that worked carries to the next session; read after mount so
@@ -318,6 +326,14 @@ export default function Workbench({
             ))}
           </div>
         ) : null}
+        <button
+          type="button"
+          className="bs-btn"
+          onClick={() => setFolded(folded.size > 0 ? new Set() : new Set(groups.flatMap((group) => group.slots.map((slot) => slot.name))))}
+        >
+          {folded.size > 0 ? <ChevronsUpDown size={14} aria-hidden="true" /> : <ChevronsDownUp size={14} aria-hidden="true" />}
+          {folded.size > 0 ? t.expandAll : t.collapseAll}
+        </button>
         <label className="bs-search vd-search">
           <Search size={15} aria-hidden="true" />
           <input type="search" value={query} placeholder={t.searchPlaceholder} aria-label={t.searchPlaceholder} onChange={(event) => search(event.target.value)} />
@@ -406,7 +422,7 @@ export default function Workbench({
                   <div className="vd-group-body">
                     <AnalysePanel group={group.group} analysis={group.analysis} slots={group.slots} />
                     {group.slots.map((slot) => (
-                      <SlotRow key={slot.name} slot={slot} doneness={doneness(slot)} />
+                      <SlotRow key={slot.name} slot={slot} doneness={doneness(slot)} open={!folded.has(slot.name)} onToggle={() => toggleSlot(slot.name)} />
                     ))}
                   </div>
                 </details>

@@ -2736,6 +2736,8 @@ const deDE: Dictionary = {
     statusNeedsWork: "Braucht Arbeit",
     statusGood: "Gut",
     searchPlaceholder: "Stimmplätze, NPCs, Prompts und Notizen durchsuchen",
+    collapseAll: "Alle einklappen",
+    expandAll: "Alle ausklappen",
     needsElevenLabsKey: "Entwerfen, Speichern und Probezeilen kosten Guthaben aus deinem eigenen ElevenLabs-Konto, dafür braucht es deinen Schlüssel.",
     needsGeminiKey: "Der Vergleich braucht deinen eigenen Gemini-Schlüssel.",
     profileLink: "Im Profil hinzufügen",
