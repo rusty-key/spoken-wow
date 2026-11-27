@@ -16,6 +16,8 @@ categories:
 license: MIT
 ---
 
+## Share feedback on upcoming voices: [https://spoken.quest/listen](https://spoken.quest/listen)
+
 Voiced NPC gossip — the chatter you get when you talk to someone without a quest to hand in.
 
 Innkeepers, guards, faction quartermasters and the rest saying their piece out loud, in the same voices they use for quests. Purely extra: it adds nothing to a quest you were already hearing, and it costs nothing to skip.
