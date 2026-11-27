@@ -158,8 +158,10 @@ describe("following a voice", () => {
   });
 
   it("signs unsubscribe links, so nobody can unsubscribe someone else", () => {
+    vi.stubEnv("BETTER_AUTH_SECRET", "test-secret");
     const url = new URL(follow.unsubscribeUrl("Someone@Example.invalid"));
     expect(follow.verifyUnsubscribe(url.searchParams.get("email")!, url.searchParams.get("sig")!)).toBe(true);
     expect(follow.verifyUnsubscribe("other@example.invalid", url.searchParams.get("sig")!)).toBe(false);
+    vi.unstubAllEnvs();
   });
 });
