@@ -2831,6 +2831,9 @@ const zhTW: Dictionary = {
     importReload: "重新整理頁面即可看到。",
   },
   listen: {
+    barText: "幫我們設計新聲音",
+    barCta: "試聽並投票",
+    barClose: "關閉",
     title: "試聽:{lang}配音",
     lede: "幫我們設計貼合角色的聲音。",
     question: "這適合這個角色嗎?",

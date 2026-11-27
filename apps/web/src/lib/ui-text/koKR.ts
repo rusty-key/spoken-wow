@@ -2839,6 +2839,9 @@ const koKR: Dictionary = {
     importReload: "보려면 페이지를 새로 고치세요.",
   },
   listen: {
+    barText: "새 음성 디자인을 도와주세요",
+    barCta: "듣고 투표하기",
+    barClose: "닫기",
     title: "듣기: {lang} 음성",
     lede: "캐릭터에 어울리는 음성을 만들 수 있게 도와주세요.",
     question: "캐릭터에 어울리나요?",

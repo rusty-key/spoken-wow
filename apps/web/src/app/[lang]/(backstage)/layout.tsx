@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import ActingBanner, { actingIn } from "@/components/ActingBanner";
 import Link from "@/components/LocaleLink";
+import ListenBar from "@/components/ListenBar";
 import UserMenu from "@/components/UserMenu";
 import { UiTextProvider } from "@/components/UiTextProvider";
 import { pageLang, readingLang } from "@/lib/lang-server";
@@ -24,6 +25,7 @@ export default async function BackstageLayout({
   const [text, acting] = await Promise.all([readingLang(lang).then(uiText), actingIn(lang)]);
   return (
     <UiTextProvider text={text}>
+      <ListenBar text={text.listen.barText} cta={text.listen.barCta} close={text.listen.barClose} />
       <header className="bn-theme bn-nav sn">
         <div className="bn-wrap">
           <div className="sn-brand-group">

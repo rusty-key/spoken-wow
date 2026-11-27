@@ -2792,6 +2792,9 @@ const zhCN: Dictionary = {
     importReload: "刷新页面即可看到。",
   },
   listen: {
+    barText: "帮我们设计新声音",
+    barCta: "试听并投票",
+    barClose: "关闭",
     title: "试听:{lang}配音",
     lede: "帮我们设计贴合角色的声音。",
     question: "这适合这个角色吗?",

@@ -204,3 +204,46 @@
   background: var(--panel);
   color: var(--text-2);
 }
+
+.listen-bar {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 12px;
+  padding: 8px 44px;
+  background: #f0c25a;
+  color: #16171d;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  text-align: center;
+}
+.listen-bar a {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.listen-bar[hidden] {
+  display: none;
+}
+.listen-bar-close {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+.listen-bar-close:hover {
+  background: rgba(22, 23, 29, 0.12);
+}
