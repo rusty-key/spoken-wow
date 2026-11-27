@@ -59,6 +59,27 @@ Expect("once the queue falls quiet the music comes back", Near(Volume("Music"), 
 Expect("...and every other channel with it", Near(Volume("Ambience"), 0.5) and Near(Volume("Dialog"), 0.6), true)
 Expect("...and nothing is left to put back", env.Addon.db.global.LoweredVolumes, nil)
 
+---------------------------------------------------------------- writes per fade
+-- Each volume write runs the client's CVar update for every loaded addon, and a burst of them
+-- as a line starts or the queue falls quiet stalls the game for a moment.
+local function MusicWrites(from)
+    local count = 0
+    for i = from + 1, #world.cvarLog do
+        if world.cvarLog[i][1] == "Sound_MusicVolume" then count = count + 1 end
+    end
+    return count
+end
+local before = #world.cvarLog
+quests:Enqueue(H.Clip({ length = 5 }))
+stub.Advance(1.5)
+Expect("a fade down writes each channel a handful of times", MusicWrites(before) <= 4, true)
+Expect("...and still reaches its level", Near(Volume("Music"), 0.2), true)
+before = #world.cvarLog
+Q:RemoveAllSoundsFromQueue()
+stub.Advance(3)
+Expect("a fade back up writes each channel a handful of times", MusicWrites(before) <= 4, true)
+Expect("...and still reaches the player's volume", Near(Volume("Music"), 0.8), true)
+
 ---------------------------------------------------------------- pause
 quests:Enqueue(H.Clip({ length = 20 }))
 stub.Advance(1.5)

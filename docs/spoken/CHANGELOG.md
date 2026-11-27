@@ -4,6 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **The game no longer stutters as a line starts or a moment after the last one ends.**
+  *([svengabr](https://github.com/svengabr))*
 - **With Stop When Window Closes on, a quest's progress text keeps reading on its reward page,**
   and gossip and greetings keep reading when the NPC opens its trainer, vendor or quest window. *([anon1231823](https://github.com/anon1231823))*
 - **One more character now shows “Spoken Developer” in its tooltip.** *([anon1231823](https://github.com/anon1231823))*
