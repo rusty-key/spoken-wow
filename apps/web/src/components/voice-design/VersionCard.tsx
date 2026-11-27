@@ -13,7 +13,7 @@ import { isRevisable } from "@/lib/voice-design/groups";
 import { designName, recommendedPreview } from "@/lib/voice-design/limits";
 import type { ClipMark, Design, Measures } from "@/lib/voice-design/types";
 
-import FeedbackResults from "./FeedbackResults";
+import FeedbackResults, { pickKey, verdictLabels } from "./FeedbackResults";
 import PlayButton, { ReferenceClip } from "./PlayButton";
 import StatusBadge from "./StatusBadge";
 import { designFrom, remixFrom, requestRevision, send, useWorkbench, type Draft } from "./context";
@@ -147,6 +147,8 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const { lang, viewer, keys, rate, model, live, updateDesign, setDraft, remixSettings } = useWorkbench();
   const last = design.reviews.at(-1);
   const [note, setNote] = useState("");
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  const verdictLabel = verdictLabels(t);
   const previewLine = slot.previewLines[design.previewText];
   const recommended = recommendedPreview(design.previews.map((preview) => preview.measures));
   const [clips, setClips] = useState<Record<string, ClipMark>>(() => currentMarks(design));
@@ -436,6 +438,18 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                 {review.bestPreview !== null ? ` · ${fill(t.bestWas, { n: review.bestPreview + 1 })}` : ""}
               </span>
               {review.note ? <span className="vd-review-note">{review.note}</span> : null}
+              {review.players.length > 0 ? (
+                <ul className="vd-review-players" aria-label={t.pickedNotesLabel}>
+                  {review.players.map((pick, index) => (
+                    <li key={index}>
+                      <span className="vd-tag" data-verdict={pick.verdict}>
+                        {verdictLabel[pick.verdict]}
+                      </span>{" "}
+                      {pick.note}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               {can ? (
                 <Confirm
                   question={t.removeReviewConfirm}
@@ -472,6 +486,15 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
         can={can}
         disabled={busy !== null}
         onHide={(showingId, voter) => void act("hide", `/api/voices/design/${design.id}/feedback`, { method: "DELETE", body: { showingId, voter } })}
+        picked={picked}
+        onPick={(key, on) =>
+          setPicked((current) => {
+            const next = new Set(current);
+            if (on) next.add(key);
+            else next.delete(key);
+            return next;
+          })
+        }
       />
 
       {can ? (
@@ -493,8 +516,15 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                 data-status={value}
                 disabled={busy !== null}
                 onClick={async () => {
-                  const ok = await act(`review-${value}`, `/api/voices/design/${design.id}/reviews`, { body: { status: value, note, clips } });
-                  if (ok) setNote("");
+                  // Only notes still listed: one hidden since it was ticked has no box left to untick.
+                  const players = design.showings.flatMap((showing) =>
+                    showing.notes.filter((n) => picked.has(pickKey(showing.id, n.voter))).map((n) => ({ showingId: showing.id, voter: n.voter })),
+                  );
+                  const ok = await act(`review-${value}`, `/api/voices/design/${design.id}/reviews`, { body: { status: value, note, clips, players } });
+                  if (ok) {
+                    setNote("");
+                    setPicked(new Set());
+                  }
                 }}
               >
                 {busy === `review-${value}` ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : null}

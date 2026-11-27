@@ -10,7 +10,7 @@ import { shuffle } from "@/lib/shuffle";
 import { failure } from "@/lib/voices/elevenlabs";
 
 import { EFFECT_WORDS, PROMPT_ENDING, SIBILANT_WORDS, withEnding } from "./limits";
-import type { GeminiResult } from "./types";
+import type { GeminiResult, PlayerNote, Verdict } from "./types";
 
 export const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -189,20 +189,28 @@ export type ReviseInput = {
   note: string;
   /** The newest note on each other flavor of the same race, by slot. */
   siblings: Record<string, string>;
+  players: PlayerNote[];
   archetype: string;
   prompt: string;
   previewText: string;
 };
 
+/** The player's answer as Gemini reads it: prompt text, so English whatever the page's language. */
+const ANSWER: Record<Verdict, string> = { fits: "Fits", close: "Close", off: "Doesn't fit", skip: "Skipped" };
+
 /** What Gemini is asked when revising a version from its review. */
 export function buildRevisePrompt(input: ReviseInput): string {
   return `You are a casting director revising a designed voice for ${input.slot} (World of Warcraft NPCs; who uses it: ${input.archetype || "(unknown)"}).
-Reviewer verdict on v${input.version}: ${input.status}. Reviewer note: "${input.note || "(none)"}".
+Reviewer verdict on v${input.version}: ${input.status}. Reviewer note: "${input.note || "(none)"}".${
+    input.players.length > 0
+      ? `\nPlayers' notes on v${input.version} the reviewer chose to act on, as much a part of the review as the reviewer's note; keep what they praise and fix what they criticise: ${JSON.stringify(input.players.map((pick) => `${ANSWER[pick.verdict]}: ${pick.note}`))}`
+      : ""
+  }
 Notes on sibling voices of the same race, which this voice must also follow where they speak for the whole race: ${JSON.stringify(input.siblings)}
 The v${input.version} prompt was: "${input.prompt}"
 v${input.version} preview text: "${input.previewText}"
 First recording: the game reference (inspiration only, includes game post-processing). Second: a line in the v${input.version} designed voice.
-Rewrite the ElevenLabs Voice Design prompt (text only, 350-600 characters) so the next version fixes the reviewer's notes.
+Rewrite the ElevenLabs Voice Design prompt (text only, 350-600 characters) so the next version fixes the reviewer's and the chosen players' notes.
 - Keep what the reviewer did not complain about.
 - Put the accent early and make it explicit and strong when the race needs one ("with a thick Scottish accent").
 - State the gender explicitly ("unmistakably masculine/feminine"). For male voices asked to be nasal or higher, keep a clear masculine anchor (adult man, baritone or tenor chest voice).

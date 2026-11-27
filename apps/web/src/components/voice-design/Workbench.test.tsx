@@ -37,7 +37,7 @@ function design(slot: string, version: number, review: Design["reviews"][number]
     analysis: null,
     samples: [],
     sampledAt: null,
-    reviews: review ? [{ id: version, status: review, note, bestPreview: null, clips: {}, createdBy: null, createdByName: "Ann", createdAt: "2026-11-26T00:00:00Z" }] : [],
+    reviews: review ? [{ id: version, status: review, note, bestPreview: null, clips: {}, players: [], createdBy: null, createdByName: "Ann", createdAt: "2026-11-26T00:00:00Z" }] : [],
     isPublic: false,
     showings: [],
     createdBy: null,

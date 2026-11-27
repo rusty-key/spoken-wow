@@ -159,6 +159,9 @@ Players' opinions help you judge a voice. You make the final call.
   Show another version first.
 - Each version card lists every round's counts and notes, which only people who design voices in
   the language can see. **Hide** removes a spam note; its vote still counts.
+- Tick **Use for the next version** on the notes worth acting on, then give your verdict: the
+  ticked notes are kept with it, as they read then, and **Generate** and **Remix from review** hand
+  every note picked in the version's verdicts to Gemini beside your own.
 - Filter the page by what players say about the version they hear now: **Mostly doesn't fit**,
   **Mixed**, **Mostly fits** or **No votes yet**. "Mostly" is more than half of the answers given;
   skips count for nothing.
