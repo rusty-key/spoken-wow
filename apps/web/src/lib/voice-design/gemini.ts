@@ -189,7 +189,6 @@ export type ReviseInput = {
   note: string;
   /** The newest note on each other flavor of the same race, by slot. */
   siblings: Record<string, string>;
-  /** Players' notes the reviewer picked to act on. */
   players: PlayerNote[];
   archetype: string;
   prompt: string;
