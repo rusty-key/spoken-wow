@@ -141,6 +141,10 @@ test("keeps the version players hear on the page, folded, until a newer one is s
 
   await userEvent.click(within(shady).getByRole("button", { name: /^v1/ }));
   expect(within(shady).getByText("Prompt of orc-male-shady v1")).toBeTruthy();
+  // One header for v1, folded or open: the fold is the card's own header.
+  expect(within(shady).getAllByText("v1")).toHaveLength(1);
+  await userEvent.click(within(shady).getByRole("button", { name: /^v1/ }));
+  expect(within(shady).queryByText("Prompt of orc-male-shady v1")).toBeNull();
 });
 
 test("searches only the versions on the page", async () => {
