@@ -28,8 +28,11 @@ import type { Design, DesignSample } from "./types";
 export type SampleDeps = {
   read: (lang: Lang, id: string) => Promise<Design | null>;
   lines: (lang: Lang) => Promise<readonly CorpusLine[]>;
-  /** What the caller's request would send for a line, shaped as regeneration shapes it. */
-  shaper: (lang: Lang, settings: ElevenLabsSettings) => Promise<(line: CorpusLine) => string>;
+  /**
+   * What the caller's request would send for a line, shaped as regeneration shapes it, with
+   * `direction` spoken as the NPC's own would be.
+   */
+  shaper: (lang: Lang, settings: ElevenLabsSettings, direction?: string) => Promise<(line: CorpusLine) => string>;
   settings: (userId: string, lang: Lang) => Promise<ElevenLabsSettings>;
   speak: (input: { text: string; voiceId: string; lang: Lang; apiKey: string; settings: ElevenLabsSettings }) => Promise<Spoken>;
   keepAudio: (data: Buffer, lang: Lang) => Promise<string>;
@@ -37,11 +40,12 @@ export type SampleDeps = {
   lock: <T>(id: string, work: () => Promise<T>) => Promise<T>;
 };
 
-async function shaper(lang: Lang, settings: ElevenLabsSettings): Promise<(line: CorpusLine) => string> {
+async function shaper(lang: Lang, settings: ElevenLabsSettings, direction?: string): Promise<(line: CorpusLine) => string> {
   const [config, overrides, npcDirectionOf] = await Promise.all([speakingConfig(settings, lang), readOverrides(lang), npcDirections(lang)]);
   return (line) => {
     const source = overrideOf(overrides, audioRelPath(line))?.text ?? line.text;
-    return shapedText(source, lang, line, "elevenlabs", config.raceTags, npcDirectionOf(line));
+    const npc = [npcDirectionOf(line), direction].filter(Boolean).join(" ") || undefined;
+    return shapedText(source, lang, line, "elevenlabs", config.raceTags, npc);
   };
 }
 
@@ -60,7 +64,15 @@ const LIVE: SampleDeps = {
 /** `same` voices the lines last voiced again, for a new take; `other` picks different lines. */
 export type SampleLines = "same" | "other";
 
-type SampleInput = { lang: Lang; id: string; userId: string; apiKey: string; lines?: SampleLines };
+type SampleInput = {
+  lang: Lang;
+  id: string;
+  userId: string;
+  apiKey: string;
+  lines?: SampleLines;
+  /** A direction to try on top of what regeneration would send, in its stored, bracketed form. */
+  direction?: string;
+};
 
 /** The holder alone, on their own key: the voice is in their account, and nobody spends a teammate's credits. */
 export async function sampleDesign(input: SampleInput, deps: SampleDeps = LIVE): Promise<Design> {
@@ -79,7 +91,7 @@ async function sampleLocked(input: SampleInput, deps: SampleDeps): Promise<Desig
   if (chosen.length === 0) throw new DesignError(`${design.slot} has no line to sample`, 409);
 
   const settings = await deps.settings(input.userId, input.lang);
-  const shape = await deps.shaper(input.lang, settings);
+  const shape = await deps.shaper(input.lang, settings, input.direction);
   const samples: DesignSample[] = await Promise.all(
     chosen.map(async (line, position) => {
       const text = shape(line);

@@ -277,6 +277,20 @@ test("voices the same lines again in one press, and other lines from the button'
   expect(JSON.parse(String(sent()[1].body))).toEqual({ lines: "other" });
 });
 
+test("voices the lines with a direction typed before pressing, as long as it stays typed", async () => {
+  const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
+  vi.stubGlobal("fetch", fetchMock);
+  render(card(DESIGN));
+  const sent = () => JSON.parse(String((fetchMock.mock.calls.at(-1) as unknown as [string, RequestInit])[1].body));
+
+  await userEvent.type(screen.getByRole("textbox", { name: "Direction" }), "thick Scottish accent");
+  await userEvent.click(screen.getByRole("button", { name: "Voice the lines again" }));
+  expect(sent()).toEqual({ lines: "same", direction: "thick Scottish accent" });
+
+  await userEvent.click(screen.getByRole("button", { name: "Voice the lines again" }));
+  expect(sent()).toEqual({ lines: "same", direction: "thick Scottish accent" });
+});
+
 test("sends the player notes ticked with the verdict, and lists them under it", async () => {
   const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
   vi.stubGlobal("fetch", fetchMock);

@@ -32,7 +32,7 @@ function deps(design: Partial<Design> = {}): SampleDeps {
   return {
     read: vi.fn(async () => ({ ...DESIGN, ...design })),
     lines: async () => LINES,
-    shaper: async () => (l) => `[gruff] ${l.text}`,
+    shaper: async (_lang, _settings, direction) => (l) => `${direction ? `${direction} ` : ""}[gruff] ${l.text}`,
     settings: async () => ({ modelId: "eleven_v4", voiceSettings: { stability: 0.4 } }) as never,
     speak: vi.fn(async ({ text }) => ({
       ok: true as const,
@@ -66,6 +66,13 @@ describe("sampleDesign", () => {
     expect(samples[0].text.startsWith("[gruff] ")).toBe(true);
     expect(samples[0]).toMatchObject({ credits: 7, npcName: "Ulathek" });
     expect(made).toEqual({ model: "eleven_v4", settings: { stability: 0.4 } });
+  });
+
+  it("adds the direction asked for to every line", async () => {
+    const d = deps();
+    await sampleDesign({ ...input, direction: "[thick Scottish accent]" }, d);
+    const [, , samples] = vi.mocked(d.replace).mock.calls[0];
+    expect(samples.every((s) => s.text.startsWith("[thick Scottish accent] [gruff] "))).toBe(true);
   });
 
   it("voices the lines last voiced again, topped up to three", async () => {

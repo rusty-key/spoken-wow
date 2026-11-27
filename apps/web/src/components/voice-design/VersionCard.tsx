@@ -165,6 +165,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const [removing, setRemoving] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [linesMenuOpen, setLinesMenuOpen] = useState(false);
+  const [direction, setDirection] = useState("");
 
   const audio = (sha: string) => designAudioUrl(lang, sha);
   const holds = design.holderId === viewer.id;
@@ -196,7 +197,8 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
       updateDesign(design, live);
     });
 
-  const sample = (lines: "same" | "other") => act("sample", `/api/voices/design/${design.id}/samples`, { body: { lines } });
+  const sample = (lines: "same" | "other") =>
+    act("sample", `/api/voices/design/${design.id}/samples`, { body: { lines, ...(direction.trim() ? { direction: direction.trim() } : {}) } });
 
   // A slot has one public version: the one players heard before is not public any more.
   const show = () =>
@@ -371,6 +373,16 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
             <div className="vd-step">
               {holds ? (
                 <>
+                  <input
+                    className="vd-note-input vd-direction-input"
+                    value={direction}
+                    maxLength={200}
+                    placeholder={t.sampleDirectionPlaceholder}
+                    aria-label={t.sampleDirectionLabel}
+                    title={t.sampleDirectionTitle}
+                    disabled={busy !== null}
+                    onChange={(event) => setDirection(event.target.value)}
+                  />
                   <span className={cn(again && "vd-split")}>
                     <button
                       type="button"
