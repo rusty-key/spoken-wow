@@ -25,9 +25,9 @@
  */
 import { createHash } from "node:crypto";
 
-import { query, TEAM_ROWS } from "@/lib/db";
+import { queryIn, TEAM_ROWS } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { plainTeamOf, queryAs, readAs, readerOf } from "@/lib/teams/store";
+import { NoTeamError, plainTeamOf, queryAs, readAs, readerOf, type TeamId } from "@/lib/teams/store";
 import {
   addDictionaryRules,
   countLexemes,
@@ -204,33 +204,44 @@ function accountOf(apiKey: string): string {
   return createHash("sha256").update(apiKey).digest("hex");
 }
 
+/** The team whose lexicon row `lang` reads and writes, as readAs picks it. */
+async function lexiconTeam(lang: Lang): Promise<TeamId> {
+  const team = await readerOf(lang);
+  if (!team) throw new NoTeamError(lang);
+  return team;
+}
+
 async function readAccountDictionary(
+  team: TeamId,
   lang: Lang,
   account: string,
 ): Promise<AccountDictionary | undefined> {
-  const rows = await query<AccountDictionary>(
+  const rows = await queryIn<AccountDictionary>(
+    team,
     `select "dictionaryId", "versionId", "syncedDigest"
-       from "lexicon_account_dictionary" where "lang" = $1 and "account" = $2`,
-    [lang, account],
+       from "team_lexicon_dictionary" where "teamId" = $1 and "lang" = $2 and "account" = $3`,
+    [team, lang, account],
   );
   return rows[0];
 }
 
 async function saveAccountDictionary(
+  team: TeamId,
   lang: Lang,
   account: string,
   locator: DictionaryLocator,
   digest: string,
 ): Promise<void> {
-  await query(
-    `insert into "lexicon_account_dictionary"
-       ("lang", "account", "dictionaryId", "versionId", "syncedDigest")
-     values ($1, $2, $3, $4, $5)
-     on conflict ("lang", "account") do update set
+  await queryIn(
+    team,
+    `insert into "team_lexicon_dictionary"
+       ("teamId", "lang", "account", "dictionaryId", "versionId", "syncedDigest")
+     values ($1, $2, $3, $4, $5, $6)
+     on conflict ("teamId", "lang", "account") do update set
        "dictionaryId" = excluded."dictionaryId",
        "versionId"    = excluded."versionId",
        "syncedDigest" = excluded."syncedDigest"`,
-    [lang, account, locator.dictionaryId, locator.versionId, digest],
+    [team, lang, account, locator.dictionaryId, locator.versionId, digest],
   );
 }
 
@@ -242,9 +253,9 @@ function pinnedDictionaryId(): string | undefined {
  * Whether `lang`'s lexicon, as read, is English's first team's. Only that one uploads to the
  * dictionary ../wow-lore pins: another English team's save would overwrite it.
  */
-async function pinned(lang: Lang): Promise<boolean> {
+async function pinned(lang: Lang, team?: TeamId): Promise<boolean> {
   if (lang !== BASE_LANG) return false;
-  const [reader, plain] = await Promise.all([readerOf(BASE_LANG), plainTeamOf(BASE_LANG)]);
+  const [reader, plain] = await Promise.all([team ?? readerOf(BASE_LANG), plainTeamOf(BASE_LANG)]);
   return reader === plain;
 }
 
@@ -310,6 +321,7 @@ async function canRead(dictionaryId: string, options: ElevenLabsOptions): Promis
 }
 
 async function bringAccountUpToDate(
+  team: TeamId,
   lang: Lang,
   account: string,
   row: UploadedRow,
@@ -321,12 +333,12 @@ async function bringAccountUpToDate(
     // version identical to the one in force. Its digest stays the upload's, so a pending row
     // reads as older than its entries.
     if (!mine && (await canRead(row.dictionaryId, options))) {
-      await saveAccountDictionary(lang, account, row, row.syncedDigest ?? "");
+      await saveAccountDictionary(team, lang, account, row, row.syncedDigest ?? "");
       return locatorOf(row);
     }
 
     const rules = await rulesFor(row.entries, lang);
-    const isPinned = await pinned(lang);
+    const isPinned = await pinned(lang, team);
     const { locator, kept } = await uploadRules(
       knownIds(isPinned, mine?.dictionaryId, row.dictionaryId),
       rules,
@@ -337,7 +349,7 @@ async function bringAccountUpToDate(
     if (kept !== null && kept < rules.length) {
       console.error(`${lang}: ElevenLabs kept only ${kept} of ${rules.length} rules in ${locator.dictionaryId}`);
     }
-    await saveAccountDictionary(lang, account, locator, row.digest);
+    await saveAccountDictionary(team, lang, account, locator, row.digest);
     return locator;
   } catch (error) {
     // An older version of the lexicon beats failing the line.
@@ -367,16 +379,17 @@ export async function dictionaryFor(
   if (!row || !hasLocator(row) || !row.entries.length || !options.apiKey) return null;
 
   const account = accountOf(options.apiKey);
-  const mine = await readAccountDictionary(lang, account);
+  const team = await lexiconTeam(lang);
+  const mine = await readAccountDictionary(team, lang, account);
   if (mine && (!row.inForce || mine.syncedDigest === row.digest)) {
     return locatorOf(mine);
   }
 
-  const key = `${lang}:${account}`;
+  const key = `${team}:${lang}:${account}`;
   const running = bringing.get(key);
   if (running) return running;
 
-  const work = bringAccountUpToDate(lang, account, row, mine, options).finally(() =>
+  const work = bringAccountUpToDate(team, lang, account, row, mine, options).finally(() =>
     bringing.delete(key),
   );
   bringing.set(key, work);
@@ -608,11 +621,12 @@ export async function sync(
 ): Promise<string | null> {
   const rules = await rulesFor(entries, lang);
   const account = options.apiKey ? accountOf(options.apiKey) : null;
-  const mine = account ? await readAccountDictionary(lang, account) : undefined;
+  const team = await lexiconTeam(lang);
+  const mine = account ? await readAccountDictionary(team, lang, account) : undefined;
 
   let uploaded;
   try {
-    const isPinned = await pinned(lang);
+    const isPinned = await pinned(lang, team);
     uploaded = await uploadRules(
       knownIds(isPinned, mine?.dictionaryId, (await readRow(lang))?.dictionaryId),
       rules,
@@ -648,7 +662,7 @@ export async function sync(
   if (rowCount === 0) {
     return "the lexicon changed while this upload was in flight; the newer save is the one to retry";
   }
-  if (account) await saveAccountDictionary(lang, account, locator, rows[0].syncedDigest);
+  if (account) await saveAccountDictionary(team, lang, account, locator, rows[0].syncedDigest);
 
   if (kept !== null && kept < rules.length) {
     return `ElevenLabs kept only ${kept} of ${rules.length} rules. The dictionary is in force, but incomplete.`;

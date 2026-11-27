@@ -273,6 +273,19 @@ describe("foundTeam, a known language", () => {
     expect(await voices(founded.teamId)).toEqual(await voices(a));
   });
 
+  it("starts a team joining English from its first team's model settings and lexicon when asked to copy", async () => {
+    const english = await plainTeam("enUS");
+    const founded = await found(input("enUS", { language: null, settings: "copy" }));
+    const settings = (team: string) =>
+      systemRows(`select "modelId", "voiceSettings" from "generation_setting" where "teamId" = $1`, [team]);
+    const lexicon = (team: string) =>
+      systemRows(`select "entries", "dictionaryId" from "pronunciation_lexicon" where "teamId" = $1`, [team]);
+    expect(await settings(founded.teamId)).toEqual(await settings(english));
+    const [copied] = await lexicon(founded.teamId);
+    const [first] = await lexicon(english);
+    expect(copied).toEqual({ entries: first.entries, dictionaryId: null });
+  });
+
   it.each(["fresh", "copy"] as const)("gives a %s team none of the other team's audio", async (settings) => {
     const lang = code();
     const a = await known(lang);

@@ -21,7 +21,6 @@ import { type Lang } from "@/lib/lang";
 import { send } from "@/lib/send";
 import { fill } from "@/lib/site-text/format";
 import type { TeamSummary } from "@/lib/teams/admin";
-import { BASE_TEAM_SLUG } from "@/lib/teams/slug";
 import type { UiText } from "@/lib/ui-text/en";
 
 type Props = {
@@ -263,8 +262,8 @@ export default function TeamsTable({ initial, languages }: Props) {
                     variant="ghost"
                     size="sm"
                     aria-label={fill(words.deleteFor, { slug: team.slug })}
-                    title={team.slug === BASE_TEAM_SLUG ? words.englishCannotBeDeleted : undefined}
-                    disabled={busy || team.slug === BASE_TEAM_SLUG}
+                    title={team.base ? words.englishCannotBeDeleted : undefined}
+                    disabled={busy || team.base}
                     onClick={() => setDeleting(team)}
                   >
                     {words.delete}

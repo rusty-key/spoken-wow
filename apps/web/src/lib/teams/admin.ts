@@ -7,7 +7,7 @@ import { ALL_TEAMS, query, queryIn, withTeam } from "@/lib/db";
 import type { ActivityDetail } from "@/lib/activity/kinds";
 import { recordActivities, recordActivity, type ActivityEvent } from "@/lib/activity/store";
 import { addGrants, OtherTeamError, userByEmail } from "@/lib/grants/store";
-import { type Lang } from "@/lib/lang";
+import { BASE_LANG, type Lang } from "@/lib/lang";
 import { setEnabledOn } from "@/lib/languages/store";
 import type { Capability } from "@/lib/permissions";
 
@@ -26,6 +26,8 @@ export type TeamSummary = {
   official: boolean;
   /** The languages it voices, beside any other team of each. */
   langs: Lang[];
+  /** English's first team, with its plain packs: every other team starts from it, so it is never deleted. */
+  base: boolean;
   members: { userId: string; email: string; name: string | null; lang: Lang; capability: Capability }[];
   /** While it is being deleted (delete.ts): how far its delistings are, and why it stopped if it did. */
   deleting: { delisted: number; delists: number; error: string | null } | null;
@@ -69,8 +71,8 @@ export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
         where $1::uuid is null or t."id" = $1 order by t."slug"`,
       id,
     ),
-    query<{ teamId: TeamId; lang: Lang }>(
-      `select "teamId", "lang" from "team_language"
+    query<{ teamId: TeamId; lang: Lang; packName: string }>(
+      `select "teamId", "lang", "packName" from "team_language"
         where $1::uuid is null or "teamId" = $1 order by "lang"`,
       id,
     ),
@@ -86,6 +88,7 @@ export async function listTeams(only?: TeamId): Promise<TeamSummary[]> {
     ...team,
     deleting: deletingAt ? { delisted, delists, error: deleteError } : null,
     langs: langs.filter((row) => row.teamId === team.id).map((row) => row.lang),
+    base: langs.some((row) => row.teamId === team.id && row.lang === BASE_LANG && row.packName === "plain"),
     members: members
       .filter((row) => row.teamId === team.id)
       .map(({ teamId: _team, ...member }) => member),
@@ -264,7 +267,7 @@ export async function joinLanguage(
   if (from) {
     await client.query(`select copy_team_settings($1, $2, $3)`, [from.teamId, team, lang]);
   } else {
-    await client.query(`select copy_team_roster((select "id" from "team" where "slug" = 'english'), $1)`, [team]);
+    await client.query(`select copy_team_roster(team_of_lang($1), $2)`, [BASE_LANG, team]);
   }
   const first = teams.length === 0;
   const switchedOn = first && !(await setEnabledOn(client, lang, true, actorId));

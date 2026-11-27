@@ -12,7 +12,7 @@ import type { ClientBase, PoolClient } from "pg";
 
 import { recordActivities, recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, withTeam } from "@/lib/db";
-import { type Lang } from "@/lib/lang";
+import { BASE_LANG, type Lang } from "@/lib/lang";
 import { setEnabledOn } from "@/lib/languages/store";
 import type { Capability } from "@/lib/permissions";
 import { runsOnDroplet } from "@/lib/releases/droplet";
@@ -23,7 +23,6 @@ import { insertRun, type ReleaseRun } from "@/lib/releases/store";
 import { syncActive } from "@/lib/releases/sync";
 
 import { TeamError } from "./admin";
-import { BASE_TEAM_SLUG } from "./slug";
 import { membersOf } from "./members";
 import { forgetTeams, TEAM_ORDER, type TeamId } from "./store";
 
@@ -40,7 +39,7 @@ export const DELETED = [
   // Its roster, generation settings and lexicon.
   "voice_assignment", "voice", "voice_clone", "voice_sample", "fish_reference",
   "generation_setting_locale", "generation_setting", "npc_direction_locale", "lexicon_change",
-  "pronunciation_lexicon_locale", "pronunciation_lexicon",
+  "pronunciation_lexicon_locale", "pronunciation_lexicon", "team_lexicon_dictionary",
   // Its voice designs: the account voices stay with their holders, the audio in the bucket.
   "voice_feedback", "voice_design_showing", "voice_design_review", "voice_design_clip", "voice_design",
   "voice_design_analysis",
@@ -88,11 +87,12 @@ export async function refusalOf(
   team: { id: TeamId; slug: string; deletingAt: Date | null },
 ): Promise<string | null> {
   if (team.deletingAt) return `${team.slug} is being deleted already.`;
-  if (team.slug === BASE_TEAM_SLUG) return "English's team cannot be deleted: every other language is built from it.";
-  const { rows } = await client.query<{ busy: boolean }>(
-    `select exists (select 1 from "release_run" where "teamId" = $1 and "state" = any($2)) as "busy"`,
-    [team.id, RELEASE_UNDER_WAY],
+  const { rows } = await client.query<{ base: boolean; busy: boolean }>(
+    `select exists (select 1 from "team_language" where "teamId" = $1 and "lang" = $2 and "packName" = 'plain') as "base",
+            exists (select 1 from "release_run" where "teamId" = $1 and "state" = any($3)) as "busy"`,
+    [team.id, BASE_LANG, RELEASE_UNDER_WAY],
   );
+  if (rows[0].base) return "English's team cannot be deleted: every other language is built from it.";
   if (rows[0].busy) return `${team.slug} has a release under way; delete it once that is finished.`;
   return null;
 }

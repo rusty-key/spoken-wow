@@ -152,7 +152,10 @@ async function resolvedSpeaker(
     resolution = lookup.resolution;
   }
 
-  return resolution ? speakerFromResolution(resolution, await loadRoster(lang), observed.npcName) : null;
+  if (!resolution) return null;
+  // English's speakers are every English team's, so they are named by its first roster.
+  const roster = lang === BASE_LANG ? await loadBaseRoster() : await loadRoster(lang);
+  return speakerFromResolution(resolution, roster, observed.npcName);
 }
 
 /**

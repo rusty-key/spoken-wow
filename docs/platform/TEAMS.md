@@ -98,7 +98,7 @@ language has `plain`, else `slug`. One team per language at most has `plain`.
   the team the site owner acts in.
 - Where a language lets its teams appoint text maintainers (`textByTeam`), an admin of any of its
   teams may. *(My call.)*
-- English takes several teams like any other language. Its first team (slug `english`, plain packs)
+- English takes several teams like any other language. Its first team (the one with plain packs)
   stays the one others are built from: a new team starts from its roster, a language nobody voices
   reads its settings, answers every language shares (the npc table, a speaker's voice) use its
   roster, and only its lexicon updates the dictionary `ELEVENLABS_DICTIONARY_ID` pins. It cannot be
@@ -439,7 +439,7 @@ run and cancels it for a newer one, so a press waiting behind a manual build can
 
 ## Deleting a team
 
-A site owner can delete any team but English's first (slug `english`) from its row on `/admin/teams`
+A site owner can delete any team but English's first (the one with plain packs) from its row on `/admin/teams`
 (`lib/teams/delete.ts`). The dialog lists what goes: its packs on the channel, takes and recordings,
 voices and clones, pending generation, overrides, releases, the text reports that move and the
 open voice reports that close, its bucket, its members, and

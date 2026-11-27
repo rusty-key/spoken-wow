@@ -61,6 +61,7 @@ const team = (langs: Lang[]) => ({
   ownStorage: true,
   official: true,
   langs,
+  base: false,
   members: [],
   deleting: null,
 });
@@ -103,7 +104,7 @@ function answer(body: unknown) {
 test("any team can be deleted but English's first", () => {
   render(
     <TeamsTable
-      initial={[team(["enUS" as Lang]), { ...team(["enUS" as Lang]), id: "e", slug: "english" }]}
+      initial={[team(["enUS" as Lang]), { ...team(["enUS" as Lang]), id: "e", slug: "english", base: true }]}
       languages={languages}
     />,
   );
