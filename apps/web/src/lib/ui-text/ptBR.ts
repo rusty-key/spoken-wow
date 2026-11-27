@@ -2841,9 +2841,6 @@ const ptBR: Dictionary = {
     importReload: "Recarregue a página para vê-las.",
   },
   listen: {
-    barText: "Ajude a criar novas vozes",
-    barCta: "Ouça e vote",
-    barClose: "Fechar",
     title: "Ouvir: vozes de {lang}",
     lede: "Ajude a criar vozes que combinem com os personagens.",
     question: "Isso combina com o personagem?",

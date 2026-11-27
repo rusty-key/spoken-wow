@@ -306,6 +306,11 @@ export const EN = {
     help: "Help, bug reports and ideas have their own channels on Discord, in every language Spoken supports.",
     discord: "Join the Discord",
   },
+  listenBar: {
+    text: "Help us design new voices",
+    cta: "Listen and vote",
+    close: "Close",
+  },
   footer: {
     label: "Footer",
     releases: "Releases",

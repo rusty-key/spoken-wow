@@ -304,6 +304,11 @@ const ko: Dictionary = {
     help: "도움 요청, 버그 신고, 아이디어는 Discord에 Spoken이 지원하는 모든 언어로 전용 채널이 있습니다.",
     discord: "Discord 참여하기",
   },
+  listenBar: {
+    text: "새 음성 디자인을 도와주세요",
+    cta: "듣고 투표하기",
+    close: "닫기",
+  },
   footer: {
     label: "푸터",
     releases: "릴리스",

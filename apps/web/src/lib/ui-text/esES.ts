@@ -2841,9 +2841,6 @@ const esES: Dictionary = {
     importReload: "Recarga la página para verlas.",
   },
   listen: {
-    barText: "Ayúdanos a diseñar voces nuevas",
-    barCta: "Escucha y vota",
-    barClose: "Cerrar",
     title: "Escuchar: voces de {lang}",
     lede: "Ayúdanos a diseñar voces que encajen con los personajes.",
     question: "¿Encaja con el personaje?",
