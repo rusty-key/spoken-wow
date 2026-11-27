@@ -2778,6 +2778,7 @@ const koKR: Dictionary = {
     difference: "무엇이 다른가요?",
     differenceTitle: "Gemini가 라이브 테이크와 이 버전의 테이크를 차례로 듣고 목소리가 어떻게 다른지 알려 줍니다. Gemini 계정에서 몇 센트가 듭니다.",
     differenceNoKey: "Gemini에 물어보려면 프로필에 Gemini 키를 추가하세요.",
+    differenceToReview: "리뷰에 추가",
     sample: "대사 3개 녹음",
     resample: "대사 다시 녹음",
     resampleOther: "다른 대사 녹음",

@@ -2780,6 +2780,7 @@ const ptBR: Dictionary = {
     difference: "O que mudou?",
     differenceTitle: "O Gemini ouve a gravação ao vivo, depois a desta versão, e diz como as vozes diferem. Alguns centavos da sua conta do Gemini.",
     differenceNoKey: "Adicione uma chave do Gemini no seu perfil para perguntar ao Gemini.",
+    differenceToReview: "Adicionar à revisão",
     sample: "Gravar 3 falas",
     resample: "Gravar as falas de novo",
     resampleOther: "Gravar outras falas",

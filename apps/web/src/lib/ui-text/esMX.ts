@@ -2780,6 +2780,7 @@ const esMX: Dictionary = {
     difference: "¿Qué cambia?",
     differenceTitle: "Gemini escucha la toma en vivo y luego la de esta versión, y dice en qué se diferencian las voces. Unos centavos de tu cuenta de Gemini.",
     differenceNoKey: "Agrega una clave de Gemini en tu perfil para preguntarle a Gemini.",
+    differenceToReview: "Agregar a la revisión",
     sample: "Grabar 3 líneas",
     resample: "Grabar las líneas otra vez",
     resampleOther: "Grabar otras líneas",

@@ -2780,6 +2780,7 @@ const esES: Dictionary = {
     difference: "¿Qué cambia?",
     differenceTitle: "Gemini escucha la toma en vivo y luego la de esta versión, y dice en qué se diferencian las voces. Unos céntimos de tu cuenta de Gemini.",
     differenceNoKey: "Añade una clave de Gemini en tu perfil para preguntar a Gemini.",
+    differenceToReview: "Añadir a la revisión",
     sample: "Locutar 3 frases",
     resample: "Locutar las frases de nuevo",
     resampleOther: "Locutar otras frases",

@@ -2783,6 +2783,7 @@ const deDE: Dictionary = {
     difference: "Was ist anders?",
     differenceTitle: "Gemini hört die Live-Aufnahme, dann die dieser Version, und sagt, worin sich die Stimmen unterscheiden. Ein paar Cent von deinem Gemini-Konto.",
     differenceNoKey: "Hinterlege in deinem Profil einen Gemini-Schlüssel, um Gemini zu fragen.",
+    differenceToReview: "Zur Bewertung hinzufügen",
     sample: "3 Zeilen vertonen",
     resample: "Zeilen neu vertonen",
     resampleOther: "Andere Zeilen vertonen",

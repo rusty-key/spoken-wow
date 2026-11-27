@@ -1,6 +1,6 @@
 "use client";
 
-import { AudioLines, Blend, Check, ChevronDown, Eye, GitCompare, Loader2, MoreHorizontal, Pencil, RefreshCw, Save, Shuffle, SlidersHorizontal, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { AudioLines, Blend, Check, ChevronDown, Eye, GitCompare, Loader2, MoreHorizontal, Pencil, Plus, RefreshCw, Save, Shuffle, SlidersHorizontal, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import Link from "@/components/LocaleLink";
@@ -204,6 +204,9 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const sample = (lines: "same" | "other") =>
     act("sample", `/api/voices/design/${design.id}/samples`, { body: { lines, ...(direction.trim() ? { direction: direction.trim() } : {}) } });
 
+  // Joined on, so a note already typed is kept.
+  const addToReview = (line: string) => setNote((current) => (current.trim() ? `${current.trim()}; ${line}` : line));
+
   const compare = (position: number) =>
     run(`difference-${position}`, async () => {
       const { difference } = await send<{ difference: Difference }>(withLang(lang, `/api/voices/design/${design.id}/difference`), { body: { position } });
@@ -358,18 +361,6 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                   <div className="vd-sample-text">
                     <span className="vd-npc">{sample.npcName ?? sample.lineId}</span>
                     <p className="bs-text">{sample.text}</p>
-                    {differences[sample.position] ? (
-                      <div className="vd-difference">
-                        <p className="bs-text">{differences[sample.position].summary}</p>
-                        <ul>
-                          {differences[sample.position].aspects.map((aspect) => (
-                            <li key={aspect.aspect}>
-                              <span className="bs-label">{aspect.aspect}</span> {t.liveTake}: {aspect.live} · {t.newTake}: {aspect.new}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
                   </div>
                   <div className="vd-sample-play">
                     <PlayButton clip={{ src: audio(sample.sha256), title: sample.npcName ?? slot.name, meta: `${tag} · ${sample.lineId}`, subtitle: sample.text }}>
@@ -403,6 +394,24 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                     ) : null}
                     {can ? <Marks value={clips[key]} onChange={(m) => mark(key, m)} disabled={busy !== null} /> : null}
                   </div>
+                  {differences[sample.position] ? (
+                    <div className="vd-difference">
+                      <p className="bs-text">{differences[sample.position].summary}</p>
+                      <ul>
+                        {differences[sample.position].aspects.map((aspect) => (
+                          <li key={aspect.aspect}>
+                            <span className="bs-label">{aspect.aspect}</span> {t.liveTake}: {aspect.live} · {t.newTake}: {aspect.new}
+                          </li>
+                        ))}
+                      </ul>
+                      {can && differences[sample.position].note ? (
+                        <button type="button" className="bs-btn" onClick={() => addToReview(differences[sample.position].note)}>
+                          <Plus size={14} aria-hidden="true" />
+                          {t.differenceToReview}
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </li>
               );
             })}

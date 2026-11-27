@@ -2781,6 +2781,7 @@ const frFR: Dictionary = {
     difference: "Qu’est-ce qui change ?",
     differenceTitle: "Gemini écoute la prise en ligne, puis celle de cette version, et dit en quoi les voix diffèrent. Quelques centimes sur votre compte Gemini.",
     differenceNoKey: "Ajoutez une clé Gemini à votre profil pour interroger Gemini.",
+    differenceToReview: "Ajouter à l’avis",
     sample: "Doubler 3 répliques",
     resample: "Doubler à nouveau",
     resampleOther: "Doubler d’autres répliques",
