@@ -7,6 +7,7 @@ import ListenBar from "@/components/ListenBar";
 import UserMenu from "@/components/UserMenu";
 import { UiTextProvider } from "@/components/UiTextProvider";
 import { pageLang, readingLang } from "@/lib/lang-server";
+import { siteText } from "@/lib/site-text";
 import { uiText } from "@/lib/ui-text";
 
 /**
@@ -22,10 +23,11 @@ export default async function BackstageLayout({
   params: Promise<{ lang: string }>;
 }) {
   const lang = await pageLang(params);
-  const [text, acting] = await Promise.all([readingLang(lang).then(uiText), actingIn(lang)]);
+  const reading = readingLang(lang);
+  const [text, bar, acting] = await Promise.all([reading.then(uiText), reading.then(siteText), actingIn(lang)]);
   return (
     <UiTextProvider text={text}>
-      <ListenBar text={text.listen.barText} cta={text.listen.barCta} close={text.listen.barClose} />
+      <ListenBar text={bar.listenBar.text} cta={bar.listenBar.cta} close={bar.listenBar.close} />
       <header className="bn-theme bn-nav sn">
         <div className="bn-wrap">
           <div className="sn-brand-group">

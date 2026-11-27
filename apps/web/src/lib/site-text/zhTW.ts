@@ -295,6 +295,11 @@ const zhTW: Dictionary = {
     help: "求助、錯誤回報和想法在 Discord 上各有頻道，Spoken 支援的每種語言都有。",
     discord: "加入 Discord",
   },
+  listenBar: {
+    text: "幫我們設計新聲音",
+    cta: "試聽並投票",
+    close: "關閉",
+  },
   footer: {
     label: "頁尾",
     releases: "發行版",

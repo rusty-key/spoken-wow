@@ -295,6 +295,11 @@ const zhCN: Dictionary = {
     help: "求助、错误报告和想法在 Discord 上各有频道，Spoken 支持的每种语言都有。",
     discord: "加入 Discord",
   },
+  listenBar: {
+    text: "帮我们设计新声音",
+    cta: "试听并投票",
+    close: "关闭",
+  },
   footer: {
     label: "页脚",
     releases: "发布",

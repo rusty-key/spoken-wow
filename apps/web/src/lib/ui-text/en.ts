@@ -2925,9 +2925,6 @@ export const EN = {
     importReload: "Reload the page to see them.",
   },
   listen: {
-    barText: "Help us design new voices",
-    barCta: "Listen and vote",
-    barClose: "Close",
     title: "Listen: {lang} voices",
     lede: "Help us design voices that fit the characters.",
     question: "Does this fit the character?",

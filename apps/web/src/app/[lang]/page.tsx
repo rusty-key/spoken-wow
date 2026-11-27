@@ -27,7 +27,6 @@ import { SOURCES } from "@/lib/sections";
 import { fill } from "@/lib/site-text/format";
 import WithLink from "@/lib/site-text/WithLink";
 import { siteText, type SiteText } from "@/lib/site-text";
-import { uiText } from "@/lib/ui-text";
 import "@/components/landing/brand.css";
 import "@/components/landing/landing.css";
 
@@ -82,7 +81,7 @@ function installRows(lang: Lang, t: SiteText["install"]): InstallRow[] {
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const lang = await pageLang(params);
-  const [t, ui, acting, voices, heroLines] = await Promise.all([siteText(lang), uiText(lang), actingIn(lang), voicesFor(lang), heroFor(lang)]);
+  const [t, acting, voices, heroLines] = await Promise.all([siteText(lang), actingIn(lang), voicesFor(lang), heroFor(lang)]);
   const newTab = <span className="sr-only">{t.newTab}</span>;
   const languages: InstallLanguage[] = BUILTIN.map(({ code, native }) => ({
     code,
@@ -103,7 +102,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
         <a className="bn-skip" href="#main">
           {t.skip}
         </a>
-        <ListenBar text={ui.listen.barText} cta={ui.listen.barCta} close={ui.listen.barClose} />
+        <ListenBar text={t.listenBar.text} cta={t.listenBar.cta} close={t.listenBar.close} />
         <LandingHeader t={t} home />
 
         <main id="main" tabIndex={-1}>

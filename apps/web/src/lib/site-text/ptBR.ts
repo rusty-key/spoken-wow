@@ -303,6 +303,11 @@ const pt: Dictionary = {
     help: "Ajuda, relatos de bugs e ideias têm canais próprios no Discord, em todos os idiomas que o Spoken oferece.",
     discord: "Entrar no Discord",
   },
+  listenBar: {
+    text: "Ajude a criar novas vozes",
+    cta: "Ouça e vote",
+    close: "Fechar",
+  },
   footer: {
     label: "Rodapé",
     releases: "Versões",

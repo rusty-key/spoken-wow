@@ -306,6 +306,11 @@ const es: Dictionary = {
     help: "La ayuda, los informes de errores y las ideas tienen sus propios canales en Discord, en todos los idiomas que admite Spoken.",
     discord: "Unirse al Discord",
   },
+  listenBar: {
+    text: "Ayúdanos a diseñar voces nuevas",
+    cta: "Escucha y vota",
+    close: "Cerrar",
+  },
   footer: {
     label: "Pie de página",
     releases: "Versiones",

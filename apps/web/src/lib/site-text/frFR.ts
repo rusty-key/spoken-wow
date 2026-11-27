@@ -308,6 +308,11 @@ const fr: Dictionary = {
     help: "L'aide, les rapports de bugs et les idées ont leurs propres salons sur Discord, dans chaque langue prise en charge par Spoken.",
     discord: "Rejoindre le Discord",
   },
+  listenBar: {
+    text: "Aidez-nous à créer de nouvelles voix",
+    cta: "Écoutez et votez",
+    close: "Fermer",
+  },
   footer: {
     label: "Pied de page",
     releases: "Versions",
