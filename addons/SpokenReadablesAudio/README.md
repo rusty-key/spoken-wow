@@ -1,6 +1,6 @@
 <!-- GENERATED from publishers/readables/spoken-readables-audio.md by scripts/descriptions.mjs. Do not edit by hand. -->
 
-Share feedback on upcoming voices: https://spoken.quest/listen
+## Share feedback on upcoming voices: [https://spoken.quest/listen](https://spoken.quest/listen)
 
 Narrated books, letters and notes for **[Spoken](https://www.curseforge.com/wow/addons/spoken)**'s Readables module. This addon is data only — it does nothing on its own.
 

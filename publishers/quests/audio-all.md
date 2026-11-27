@@ -16,7 +16,7 @@ license: MIT
 manager: true
 ---
 
-Share feedback on upcoming voices: https://spoken.quest/listen
+## Share feedback on upcoming voices: [https://spoken.quest/listen](https://spoken.quest/listen)
 
 <!-- only:curseforge -->
 **Install this and get the lot.** It holds no audio itself — it is a few kilobytes that pulls in all four sound packs as dependencies, so your addon manager fetches them for you.

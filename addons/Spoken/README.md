@@ -1,6 +1,6 @@
 <!-- GENERATED from publishers/spoken/spoken.md by scripts/descriptions.mjs. Do not edit by hand. -->
 
-Share feedback on upcoming voices: https://spoken.quest/listen
+## Share feedback on upcoming voices: [https://spoken.quest/listen](https://spoken.quest/listen)
 
 **Expressive, character-driven AI voiceover for WoW Forever.** NPCs speak their quest text and gossip, places tell their stories, and books read themselves aloud.
 

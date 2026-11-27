@@ -10,7 +10,7 @@ categories:
 license: MIT
 ---
 
-Share feedback on upcoming voices: https://spoken.quest/listen
+## Share feedback on upcoming voices: [https://spoken.quest/listen](https://spoken.quest/listen)
 
 ⚠️ NOT for manual download, install only via CurseForge app ⚠️
 

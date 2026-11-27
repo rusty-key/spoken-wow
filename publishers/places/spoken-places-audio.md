@@ -16,7 +16,7 @@ addonReadme: addons/SpokenPlacesAudio/README.md
 manager: true
 ---
 
-Share feedback on upcoming voices: https://spoken.quest/listen
+## Share feedback on upcoming voices: [https://spoken.quest/listen](https://spoken.quest/listen)
 
 Narrated zone lore for **[Spoken](https://www.curseforge.com/wow/addons/spoken)**'s Places module. This addon is data only — it does nothing on its own.
 

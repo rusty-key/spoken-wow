@@ -16,7 +16,7 @@ categories:
 license: MIT
 ---
 
-Share feedback on upcoming voices: https://spoken.quest/listen
+## Share feedback on upcoming voices: [https://spoken.quest/listen](https://spoken.quest/listen)
 
 Voiced dialogue for the quests only an Alliance character can take.
 
