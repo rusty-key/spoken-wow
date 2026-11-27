@@ -24,7 +24,7 @@ import { BASE_LANG, type Lang } from "@/lib/lang";
 import type { NpcRowKind } from "@/lib/npc/npc";
 import { getResolution, type NpcResolution } from "@/lib/npc/store";
 import type { Roster } from "@/lib/voices/roster";
-import { loadRoster } from "@/lib/voices/roster-store";
+import { loadBaseRoster, loadRoster } from "@/lib/voices/roster-store";
 
 export const ORD_FLOOR = 1_000_000;
 
@@ -70,8 +70,8 @@ export function speakerFromResolution(
 /** The speaker an NPC's answer in `npc` makes, or null when it has no type. */
 export async function speakerOf(npcType: NpcRowKind, npcId: number): Promise<Speaker | null> {
   // No language: a speaker is added to a moment in whichever languages it has, from the shared
-  // npc answer, and its voice is named by English's roster -- every team's names the same.
-  const [resolution, roster] = await Promise.all([getResolution(npcType, npcId), loadRoster(BASE_LANG)]);
+  // npc answer, and its voice is named by English's first roster, the one every team starts from.
+  const [resolution, roster] = await Promise.all([getResolution(npcType, npcId), loadBaseRoster()]);
   return resolution ? speakerFromResolution(resolution, roster) : null;
 }
 

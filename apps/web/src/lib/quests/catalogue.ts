@@ -34,7 +34,7 @@ import { BASE_LANG, type Lang } from "@/lib/lang";
 import { baseLineId, momentOf, momentSql, variantFileName, variantLineId } from "@/lib/contributions/naming";
 import { newVoiceName, type Roster } from "@/lib/voices/roster";
 import { teamOrEnglish } from "@/lib/teams/store";
-import { loadRoster, ROSTER_STAMP } from "@/lib/voices/roster-store";
+import { loadBaseRoster, loadRoster, ROSTER_STAMP } from "@/lib/voices/roster-store";
 import { markClients, type LineClientFacts } from "@/lib/quests/line-client";
 
 
@@ -468,7 +468,7 @@ export async function defaultFlavorFor(race: string, gender: string): Promise<st
   // Flavors are every team's, and the answer is for the npc table, which is every language's.
   return (
     (await flavorDefaults()).get(`${race}-${gender}`) ??
-    (await loadRoster(BASE_LANG)).flavorsOf(race, gender)[0] ??
+    (await loadBaseRoster()).flavorsOf(race, gender)[0] ??
     null
   );
 }

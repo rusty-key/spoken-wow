@@ -19,7 +19,6 @@ import type { ClientBase, PoolClient } from "pg";
 import { recordActivities, type ActivityEvent } from "@/lib/activity/store";
 import { ALL_TEAMS, actAs, db } from "@/lib/db";
 import { grantOn, oneTeamPerLanguage } from "@/lib/grants/store";
-import { BASE_LANG } from "@/lib/lang";
 import { forgetLanguages, loadLanguages } from "@/lib/languages/catalogue";
 import { addLanguage, describeNew, giveTextToTeam, LanguageExistsError, setEnabledOn } from "@/lib/languages/store";
 import type { Capability } from "@/lib/permissions";
@@ -112,7 +111,6 @@ export function slugFor(teamName: string, lang: string): string {
  */
 export async function foundTeam(client: PoolClient, input: FoundInput, actorId: string): Promise<Founded> {
   await actAs(client, ALL_TEAMS);
-  if (input.lang === BASE_LANG) throw new TeamError("English is one team; no other team can join it.");
   if (input.team.slug !== null) checkSlug(input.team.slug);
   await client.query(`select 1 from "language" where "code" = $1 for update`, [input.lang]);
   const founded =

@@ -27,7 +27,7 @@ import { createHash } from "node:crypto";
 
 import { query, TEAM_ROWS } from "@/lib/db";
 import { BASE_LANG, type Lang } from "@/lib/lang";
-import { queryAs, readAs } from "@/lib/teams/store";
+import { plainTeamOf, queryAs, readAs, readerOf } from "@/lib/teams/store";
 import {
   addDictionaryRules,
   countLexemes,
@@ -158,16 +158,16 @@ async function readRow(lang: Lang = BASE_LANG): Promise<Row | undefined> {
 }
 
 export async function readLexicon(lang: Lang = BASE_LANG): Promise<EffectiveLexicon> {
-  return effective(await readRow(lang), lang);
+  return effective(await readRow(lang), await pinned(lang));
 }
 
-function effective(row: Row | undefined, lang: Lang): EffectiveLexicon {
+function effective(row: Row | undefined, isPinned: boolean): EffectiveLexicon {
   if (!row) {
     return {
       entries: [],
-      // Another language starts with no entries at all, which is a lexicon nobody has
-      // written yet rather than a failed seed; only English's missing row is the latter.
-      seeded: lang !== BASE_LANG,
+      // Another lexicon starts with no entries at all, which is a lexicon nobody has written yet
+      // rather than a failed seed; only the pinned English one's missing row is the latter.
+      seeded: !isPinned,
       sync: "never",
       locator: null,
       rulesSent: null,
@@ -239,11 +239,21 @@ function pinnedDictionaryId(): string | undefined {
 }
 
 /**
- * The ids a save may update, best first. English's comes from the environment, because
+ * Whether `lang`'s lexicon, as read, is English's first team's. Only that one uploads to the
+ * dictionary ../wow-lore pins: another English team's save would overwrite it.
+ */
+async function pinned(lang: Lang): Promise<boolean> {
+  if (lang !== BASE_LANG) return false;
+  const [reader, plain] = await Promise.all([readerOf(BASE_LANG), plainTeamOf(BASE_LANG)]);
+  return reader === plain;
+}
+
+/**
+ * The ids a save may update, best first. The pinned one comes from the environment, because
  * ../wow-lore pins it too. Any of them may be on another collaborator's account.
  */
-function knownIds(lang: Lang, mine?: string, rowId?: string | null): (string | null | undefined)[] {
-  if (lang !== BASE_LANG) return [mine, rowId];
+function knownIds(isPinned: boolean, mine?: string, rowId?: string | null): (string | null | undefined)[] {
+  if (!isPinned) return [mine, rowId];
   const pinned = pinnedDictionaryId();
   return pinned ? [pinned, mine, rowId] : [];
 }
@@ -257,6 +267,7 @@ async function uploadRules(
   rules: DictionaryRule[],
   options: ElevenLabsOptions,
   lang: Lang,
+  isPinned: boolean,
 ): Promise<{ locator: DictionaryLocator; kept: number | null }> {
   let locator: DictionaryLocator | undefined;
   for (const id of new Set(ids)) {
@@ -268,7 +279,7 @@ async function uploadRules(
       if (!(error instanceof DictionaryUnreadable)) throw error;
     }
   }
-  locator ??= await createDictionary(rules, options, lang);
+  locator ??= await createDictionary(rules, options, lang, isPinned);
 
   // Read it back rather than trusting the 200. This is the check whose absence let 134 phoneme
   // rules upload as 2 and look like success. A failed readback leaves the count unknown, and the
@@ -315,11 +326,13 @@ async function bringAccountUpToDate(
     }
 
     const rules = await rulesFor(row.entries, lang);
+    const isPinned = await pinned(lang);
     const { locator, kept } = await uploadRules(
-      knownIds(lang, mine?.dictionaryId, row.dictionaryId),
+      knownIds(isPinned, mine?.dictionaryId, row.dictionaryId),
       rules,
       options,
       lang,
+      isPinned,
     );
     if (kept !== null && kept < rules.length) {
       console.error(`${lang}: ElevenLabs kept only ${kept} of ${rules.length} rules in ${locator.dictionaryId}`);
@@ -509,7 +522,7 @@ export async function editLexicon<T>(
     }
     const before = row?.entries ?? [];
     const { entries, result } = edit(before);
-    if (entries === before) return { lexicon: effective(row, lang), syncError: null, result };
+    if (entries === before) return { lexicon: effective(row, await pinned(lang)), syncError: null, result };
     if (await storeIf(lang, entries, updatedBy, digest)) {
       return { ...(await afterSave(before, entries, updatedBy, options, lang)), result };
     }
@@ -558,12 +571,13 @@ async function createDictionary(
   rules: DictionaryRule[],
   options: ElevenLabsOptions,
   lang: Lang,
+  isPinned: boolean,
 ): Promise<DictionaryLocator> {
   // Dated, because without a configured id a save creates another of these, and the account
   // list would otherwise be a column of identical names with no way to tell which is live.
   const stamp = new Date().toISOString().slice(0, 19).replace("T", " ");
-  if (lang !== BASE_LANG) {
-    // No environment variable per language: nothing outside this app names these dictionaries.
+  if (!isPinned) {
+    // No environment variable per lexicon: nothing outside this app names these dictionaries.
     return createPronunciationDictionary(`spoken ${lang} ${stamp}`, rules, options);
   }
   const name = `wow-voiceover ${stamp}`;
@@ -598,11 +612,13 @@ export async function sync(
 
   let uploaded;
   try {
+    const isPinned = await pinned(lang);
     uploaded = await uploadRules(
-      knownIds(lang, mine?.dictionaryId, (await readRow(lang))?.dictionaryId),
+      knownIds(isPinned, mine?.dictionaryId, (await readRow(lang))?.dictionaryId),
       rules,
       options,
       lang,
+      isPinned,
     );
   } catch (error) {
     return error instanceof Error ? error.message : String(error);

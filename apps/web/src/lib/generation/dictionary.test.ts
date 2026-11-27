@@ -11,7 +11,8 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { closeDb } = await import("@/lib/db");
-const { asSystem } = await import("@/lib/teams/testing");
+const { asSystem, dropTeam, newTeamIn } = await import("@/lib/teams/testing");
+const { asTeam } = await import("@/lib/teams/acting");
 const { dictionaryFor, readLexicon, resync, sync, writeLexicon } = await import("./dictionary");
 
 const ENTRIES = [
@@ -531,6 +532,22 @@ describe("the pinned dictionary", () => {
     expect(syncError).toMatch(/returned no rules/);
     expect(lexicon.entries).toEqual(ENTRIES);
     expect(lexicon.locator).toBeNull();
+  });
+
+  it("gives English's other teams a dictionary of their own", async () => {
+    const team = await newTeamIn("enUS", false);
+    try {
+      const { fetchImpl, calls } = accepts("dict-own");
+      const { lexicon, syncError } = await asTeam("enUS", team, () =>
+        writeLexicon(ENTRIES, null as unknown as string, OPTIONS(fetchImpl)),
+      );
+
+      expect(syncError).toBeNull();
+      expect(lexicon.locator?.dictionaryId).toBe("dict-own");
+      expect(calls.mock.calls.map(([url]) => String(url)).filter((url) => url.includes(PINNED))).toEqual([]);
+    } finally {
+      await dropTeam(team);
+    }
   });
 });
 

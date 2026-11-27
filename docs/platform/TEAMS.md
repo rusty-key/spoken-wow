@@ -56,7 +56,6 @@ picker, and reports that carry the pack's team. See *Phase 2* below.
   there. Team releases reach players through the Manager only.
 - **Provider accounts per team.** Payment stays as it is: every member brings their own ElevenLabs
   or fish key, and a queued job runs on its owner's key.
-- **Several English teams.** English is one team in phase 1.
 - Quotas, abuse limits, review before a take goes live, terms of service. Still open, as in
   [`PLAN.md`](PLAN.md).
 
@@ -99,6 +98,11 @@ language has `plain`, else `slug`. One team per language at most has `plain`.
   the team the site owner acts in.
 - Where a language lets its teams appoint text maintainers (`textByTeam`), an admin of any of its
   teams may. *(My call.)*
+- English takes several teams like any other language. Its first team (slug `english`, plain packs)
+  stays the one others are built from: a new team starts from its roster, a language nobody voices
+  reads its settings, answers every language shares (the npc table, a speaker's voice) use its
+  roster, and only its lexicon updates the dictionary `ELEVENLABS_DICTIONARY_ID` pins. It cannot be
+  deleted; English's other teams can.
 
 ### Site owners
 
@@ -435,7 +439,7 @@ run and cancels it for a newer one, so a press waiting behind a manual build can
 
 ## Deleting a team
 
-A site owner can delete any team but English's from its row on `/admin/teams`
+A site owner can delete any team but English's first (slug `english`) from its row on `/admin/teams`
 (`lib/teams/delete.ts`). The dialog lists what goes: its packs on the channel, takes and recordings,
 voices and clones, pending generation, overrides, releases, the text reports that move and the
 open voice reports that close, its bucket, its members, and
@@ -550,7 +554,7 @@ Designed now so phase 1 does not paint it into a corner; built when the first su
 Delisting a team's packs (site-owner moderation; no team needs it while teams are today's
 maintainers); per-clip progress; encode-at-commit for sections other than quests; the quests
 builder port;
-team-owned publishing; clients per team; several English teams; team-owned storage, channels and signing keys; CurseForge
+team-owned publishing; clients per team; team-owned storage, channels and signing keys; CurseForge
 releases for teams; quotas and abuse limits; review before a take or release goes live; terms of
 service; publishing community packs (`SpokenCommunity_*`).
 

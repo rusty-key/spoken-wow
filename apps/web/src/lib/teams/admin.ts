@@ -7,7 +7,7 @@ import { ALL_TEAMS, query, queryIn, withTeam } from "@/lib/db";
 import type { ActivityDetail } from "@/lib/activity/kinds";
 import { recordActivities, recordActivity, type ActivityEvent } from "@/lib/activity/store";
 import { addGrants, OtherTeamError, userByEmail } from "@/lib/grants/store";
-import { BASE_LANG, type Lang } from "@/lib/lang";
+import { type Lang } from "@/lib/lang";
 import { setEnabledOn } from "@/lib/languages/store";
 import type { Capability } from "@/lib/permissions";
 
@@ -246,7 +246,6 @@ export async function joinLanguage(
   settings: Settings = "fresh",
   source?: TeamId,
 ): Promise<{ first: boolean; from: string | null; switchedOn: boolean }> {
-  if (lang === BASE_LANG) throw new TeamError("English is one team; no other team can join it.");
   const { rows: teams } = await client.query<{ teamId: TeamId; slug: string }>(
     `select tl."teamId", t."slug" from "team_language" tl join "team" t on t."id" = tl."teamId"
       where tl."lang" = $1

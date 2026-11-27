@@ -114,9 +114,10 @@ describe("addToLanguage", () => {
     expect(log).toEqual([{ teamId: team, detail: { slug: `t-${tag}`, from: null } }]);
   });
 
-  it("refuses English, and a language the team already voices", async () => {
+  it("adds a team to English, and refuses a language the team already voices", async () => {
     const team = await newTeam();
-    await expect(addToLanguage("enUS", team, actor)).rejects.toSatisfy(refused(400));
+    await addToLanguage("enUS", team, actor);
+    await expect(addToLanguage("enUS", team, actor)).rejects.toSatisfy(refused(409));
     await addToLanguage("deDE", team, actor);
     await expect(addToLanguage("deDE", team, actor)).rejects.toSatisfy(refused(409));
   });

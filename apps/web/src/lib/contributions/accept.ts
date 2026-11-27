@@ -57,7 +57,7 @@ import {
   type SpeakerRow,
 } from "@/lib/quests/speakers";
 import type { Roster } from "@/lib/voices/roster";
-import { loadRoster } from "@/lib/voices/roster-store";
+import { loadBaseRoster, loadRoster } from "@/lib/voices/roster-store";
 import { asTeam } from "@/lib/teams/acting";
 import { freshOwners, type TeamId } from "@/lib/teams/store";
 
@@ -265,7 +265,7 @@ async function prepareLine(
   // Whichever of the two comes first in the catalogue, as a scan for either would find.
   const text = contribution.text;
   // English's roster, as the lines matched against are English's corpus.
-  const index = indexOf(lines, await loadRoster(BASE_LANG));
+  const index = indexOf(lines, await loadBaseRoster());
   const byId = (index.byPrefix.get(identity.lineId) ?? []).find(
     (l) => l.source === "gossip" && baseLineId(l.lineId) === identity.lineId,
   );

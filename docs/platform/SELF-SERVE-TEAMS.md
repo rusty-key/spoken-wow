@@ -46,7 +46,7 @@ Takes never leave the site through the API. Nothing downloads audio, English or 
   "New language…" choice takes the code, English name and native name, and creating the team
   adds the language and the team in one step (user, 2026-11-13). It runs the same step approval
   runs.
-- **Deletes a team** from its row on `/admin/teams`, any team but English's, after a dialog that
+- **Deletes a team** from its row on `/admin/teams`, any team but English's first, after a dialog that
   lists what goes and asks for its slug (`TEAMS.md`, *Deleting a team*). Its packs come off the
   channel first, then its rows go, its log with them: the log was the team's alone, and a row with
   no team would be everyone's to read. The site log keeps one `team.deleted` row naming its

@@ -1,6 +1,6 @@
 /** Site owners only. */
 import { objectOf } from "@/lib/api-body";
-import { BASE_LANG, isLang, type Lang } from "@/lib/lang";
+import { isLang, type Lang } from "@/lib/lang";
 import { ALL_TEAMS, withTeam } from "@/lib/db";
 import { loadLanguages } from "@/lib/languages/catalogue";
 import { checkNewLanguage, describedName, NAME_RULE } from "@/lib/languages/validate";
@@ -24,7 +24,6 @@ export const POST = withAdmin(async (request, actorId) => {
     return bad("expected { slug, name, langs: [...], adminEmail? }");
   }
   if (!name.trim()) return bad("A team needs a name.");
-  if (langs.includes(BASE_LANG)) return bad("English stays with its own team.");
   const email = adminEmailOf(adminEmail);
   if (email === undefined) return bad("adminEmail is an email address.");
   // A language named twice would be refused the second time, as already the team's.

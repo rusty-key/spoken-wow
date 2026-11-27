@@ -1,5 +1,5 @@
 import { bad, bodyOf, objectOf } from "@/lib/api-body";
-import { BASE_LANG, isLang } from "@/lib/lang";
+import { isLang } from "@/lib/lang";
 import { loadLanguages } from "@/lib/languages/catalogue";
 import { checkNewLanguage, describedName, LANG_CODE, NAME_RULE } from "@/lib/languages/validate";
 import { isAdmin } from "@/lib/permissions";
@@ -31,7 +31,6 @@ export async function POST(request: Request) {
   if (!body) return bad("Expected { lang, language?, teamName, note? }.");
   const { lang, language, teamName, note } = body;
   if (typeof lang !== "string" || !LANG_CODE.test(lang)) return bad("A language code is two lowercase letters and two capitals.");
-  if (lang === BASE_LANG) return bad("English is one team; it cannot be requested.");
   const team = describedName(teamName);
   if (!team) return bad(`A team needs a name of ${NAME_RULE}.`);
   if (note !== undefined && note !== null && (typeof note !== "string" || note.length > MAX_NOTE)) {

@@ -84,9 +84,12 @@ describe("team requests routes", () => {
     expect(listed.requests.map((r) => r.id)).toEqual([id]);
   });
 
+  it("lets a member ask for a team in English", async () => {
+    expect((await ask({ lang: "enUS", teamName: "Xq Team" })).status).toBe(200);
+  });
+
   it("refuses bad requests", async () => {
     const ok = { language: names, teamName: "Xq Team" };
-    expect((await ask({ lang: "enUS", ...ok })).status).toBe(400);
     expect((await ask({ lang: "deDE", ...ok })).status).toBe(400);
     expect((await ask({ lang: code(), teamName: "Xq Team" })).status).toBe(400);
     expect((await ask({ lang: code(), language: names, teamName: "x".repeat(61) })).status).toBe(400);

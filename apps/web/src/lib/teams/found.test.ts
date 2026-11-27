@@ -181,8 +181,16 @@ describe("foundTeam, new language", () => {
     expect(await systemRows(`select 1 from "language" where "code" = $1`, [lang])).toHaveLength(0);
   });
 
-  it("refuses English", async () => {
-    await expect(found(input("enUS", { language: null }))).rejects.toSatisfy(refused(400));
+  it("adds a team to English beside its first, which keeps the plain packs", async () => {
+    const english = await plainTeam("enUS");
+    const founded = await found(input("enUS", { language: null }));
+    expect(founded).toMatchObject({ branch: "add-team", granted: ["admin"] });
+    expect(
+      await systemRows(`select "teamId", "packName" from "team_language" where "lang" = 'enUS' order by "packName"`),
+    ).toEqual([
+      { teamId: english, packName: "plain" },
+      { teamId: founded.teamId, packName: "slug" },
+    ]);
   });
 });
 

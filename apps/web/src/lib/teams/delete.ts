@@ -12,7 +12,7 @@ import type { ClientBase, PoolClient } from "pg";
 
 import { recordActivities, recordActivity } from "@/lib/activity/store";
 import { ALL_TEAMS, withTeam } from "@/lib/db";
-import { BASE_LANG, type Lang } from "@/lib/lang";
+import { type Lang } from "@/lib/lang";
 import { setEnabledOn } from "@/lib/languages/store";
 import type { Capability } from "@/lib/permissions";
 import { runsOnDroplet } from "@/lib/releases/droplet";
@@ -23,6 +23,7 @@ import { insertRun, type ReleaseRun } from "@/lib/releases/store";
 import { syncActive } from "@/lib/releases/sync";
 
 import { TeamError } from "./admin";
+import { BASE_TEAM_SLUG } from "./slug";
 import { membersOf } from "./members";
 import { forgetTeams, TEAM_ORDER, type TeamId } from "./store";
 
@@ -87,12 +88,11 @@ export async function refusalOf(
   team: { id: TeamId; slug: string; deletingAt: Date | null },
 ): Promise<string | null> {
   if (team.deletingAt) return `${team.slug} is being deleted already.`;
-  const { rows } = await client.query<{ english: boolean; busy: boolean }>(
-    `select exists (select 1 from "team_language" where "teamId" = $1 and "lang" = $2) as "english",
-            exists (select 1 from "release_run" where "teamId" = $1 and "state" = any($3)) as "busy"`,
-    [team.id, BASE_LANG, RELEASE_UNDER_WAY],
+  if (team.slug === BASE_TEAM_SLUG) return "English's team cannot be deleted: every other language is built from it.";
+  const { rows } = await client.query<{ busy: boolean }>(
+    `select exists (select 1 from "release_run" where "teamId" = $1 and "state" = any($2)) as "busy"`,
+    [team.id, RELEASE_UNDER_WAY],
   );
-  if (rows[0].english) return "English's team cannot be deleted: every other language is built from it.";
   if (rows[0].busy) return `${team.slug} has a release under way; delete it once that is finished.`;
   return null;
 }

@@ -100,8 +100,13 @@ function answer(body: unknown) {
   );
 }
 
-test("any team can be deleted but English's", () => {
-  render(<TeamsTable initial={[team(["deDE" as Lang]), { ...team(["enUS" as Lang]), id: "e", slug: "english" }]} languages={languages} />);
+test("any team can be deleted but English's first", () => {
+  render(
+    <TeamsTable
+      initial={[team(["enUS" as Lang]), { ...team(["enUS" as Lang]), id: "e", slug: "english" }]}
+      languages={languages}
+    />,
+  );
   expect((screen.getByRole("button", { name: "Delete spare" }) as HTMLButtonElement).disabled).toBe(false);
   expect((screen.getByRole("button", { name: "Delete english" }) as HTMLButtonElement).disabled).toBe(true);
 });
