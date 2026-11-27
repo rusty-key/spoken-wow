@@ -52,7 +52,7 @@ let batches: string[];
 /** Just before the first job here, so older done jobs on the database never fill the page. */
 let since: string;
 
-async function doneJob(team: TeamId, jobLang: Lang, name: string): Promise<void> {
+async function doneJob(team: TeamId, jobLang: Lang, name: string, id: bigint | null = null): Promise<void> {
   const [batch] = await systemRows<{ id: string }>(
     `insert into "regeneration_batch" ("label", "lang", "teamId") values ($1, $2, $3) returning "id"`,
     [`test-${tag}-${name}`, jobLang, team],
@@ -60,9 +60,10 @@ async function doneJob(team: TeamId, jobLang: Lang, name: string): Promise<void>
   batches.push(batch.id);
   const [job] = await systemRows<{ id: string }>(
     `insert into "regeneration_job"
-       ("batchId", "lineId", "file", "npcName", "preview", "characters", "state", "version", "lang", "teamId")
-     values ($1, $2, $3, '', '', 1, 'done', 1, $4, $5) returning "id"::text`,
-    [batch.id, `g:${tag}-${name}`, `${tag}/${name}.mp3`, jobLang, team],
+       ("id", "batchId", "lineId", "file", "npcName", "preview", "characters", "state", "version", "lang", "teamId")
+     values (coalesce($6::bigint, nextval('regeneration_job_id_seq')), $1, $2, $3, '', '', 1, 'done', 1, $4, $5)
+     returning "id"::text`,
+    [batch.id, `g:${tag}-${name}`, `${tag}/${name}.mp3`, jobLang, team, id === null ? null : String(id)],
   );
   ids[name] = job.id;
   since ??= String(BigInt(job.id) - 1n);
@@ -121,6 +122,15 @@ describe("snapshot with teams", () => {
     const seen = await snapshot(since, { teams: new Map([[lang, b]]) });
     expect(finishedOf(seen)).toEqual([`g:${tag}-b`, `g:${tag}-s`]);
     expect(pausedOf(seen)).toEqual([pausers.b.id]);
+  });
+
+  it("lists finished lines in job order when the ids gain a digit", async () => {
+    // ...9 and the next id, a digit longer: as text, the second sorts first. Ids far above the
+    // sequence, so nothing else is ever handed them.
+    const next = 10n ** BigInt(12 + Math.floor(Math.random() * 6));
+    await doneJob(a, lang, "nine", next - 1n);
+    await doneJob(a, lang, "ten", next);
+    expect(finishedOf(await snapshot(String(next - 2n)))).toEqual([`g:${tag}-nine`, `g:${tag}-ten`]);
   });
 
   it("lists every team's without", async () => {

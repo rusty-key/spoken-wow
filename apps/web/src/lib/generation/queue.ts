@@ -744,7 +744,8 @@ export async function snapshot(
                        then coalesce((select d."throughJobId" from "queue_dismissal" d
                                        where d."teamId" = ($3::jsonb ->> "lang")::uuid), 0)
                        else (select through from dismissal) end)
-          order by "id" limit ${FINISHED_PAGE}
+          -- The table's id, not the text alias above: as text, 1000 sorts before 999.
+          order by "regeneration_job"."id" limit ${FINISHED_PAGE}
        ),
        terminal as (
          select max("id")::text as max from "regeneration_job"
@@ -781,7 +782,7 @@ export async function snapshot(
          jc.*,
          coalesce((select json_agg(r) from running_jobs r), '[]') as running,
          coalesce((select json_agg(f) from recent_failures f), '[]') as failures,
-         coalesce((select json_agg(p) from finished_page p), '[]') as finished,
+         coalesce((select json_agg(p order by p."id"::bigint) from finished_page p), '[]') as finished,
          coalesce((select json_agg(r order by r.rank nulls last, r.name) from ranked_queues r), '[]')
            as queues,
          coalesce((select json_agg(p order by p."lang") from pauses p), '[]') as paused,
