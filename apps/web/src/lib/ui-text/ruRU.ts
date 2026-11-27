@@ -2794,7 +2794,7 @@ const ruRU: Dictionary = {
     lockedTitle: "Игроки слышат эти реплики. Сначала покажите игрокам другую версию.",
     feedbackLabel: "Голоса игроков",
     shownBy: "Показал(а) {who}, {when}",
-    feedbackCounts: "Подходит {fits} · Почти {close} · Не подходит {off} · Пропущено {skip}",
+    feedbackCountsLabel: "Голоса в этом раунде",
     feedbackNone: "Голосов пока нет.",
     verdictFits: "Подходит",
     verdictClose: "Почти",

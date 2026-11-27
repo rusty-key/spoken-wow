@@ -2794,7 +2794,7 @@ const frFR: Dictionary = {
     lockedTitle: "Les joueurs écoutent ces lignes. Montrez d'abord une autre version aux joueurs.",
     feedbackLabel: "Votes des joueurs",
     shownBy: "Montrée par {who}, {when}",
-    feedbackCounts: "Convient {fits} · Presque {close} · Ne convient pas {off} · Passés {skip}",
+    feedbackCountsLabel: "Votes de cette manche",
     feedbackNone: "Pas encore de votes.",
     verdictFits: "Convient",
     verdictClose: "Presque",

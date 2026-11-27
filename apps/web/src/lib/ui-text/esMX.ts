@@ -2793,7 +2793,7 @@ const esMX: Dictionary = {
     lockedTitle: "Los jugadores escuchan estas líneas. Primero muestra otra versión a los jugadores.",
     feedbackLabel: "Votos de los jugadores",
     shownBy: "Mostrada por {who}, {when}",
-    feedbackCounts: "Encaja {fits} · Cerca {close} · No encaja {off} · Omitidos {skip}",
+    feedbackCountsLabel: "Votos en esta ronda",
     feedbackNone: "Todavía no hay votos.",
     verdictFits: "Encaja",
     verdictClose: "Cerca",

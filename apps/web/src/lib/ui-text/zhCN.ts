@@ -2744,7 +2744,7 @@ const zhCN: Dictionary = {
     lockedTitle: "玩家正在听这些台词。请先向玩家展示另一个版本。",
     feedbackLabel: "玩家的投票",
     shownBy: "{who} 展示于 {when}",
-    feedbackCounts: "合适 {fits} · 接近 {close} · 不合适 {off} · 跳过 {skip}",
+    feedbackCountsLabel: "本轮投票",
     feedbackNone: "还没有投票。",
     verdictFits: "合适",
     verdictClose: "接近",
