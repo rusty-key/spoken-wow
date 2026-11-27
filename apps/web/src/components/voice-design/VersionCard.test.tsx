@@ -265,3 +265,20 @@ test("voices the same lines again in one press, and other lines from the button'
   await userEvent.click(await screen.findByRole("button", { name: "Voice other lines" }));
   expect(JSON.parse(String(sent()[1].body))).toEqual({ lines: "other" });
 });
+
+test("says which step failed and what the proxy answered when a call dies without the route's own error", async () => {
+  const revision = { heard: "too noble", prompt: "A colder voice.", preview_text: "y".repeat(120), archetype: "Queen" };
+  const gateway = "<html><head><title>502 Bad Gateway</title></head><body><center><h1>502 Bad Gateway</h1></center><hr><center>nginx</center></body></html>";
+  const fetchMock = vi.fn(async (url: string) =>
+    url.includes("/revise") ? Response.json({ revision }) : new Response(gateway, { status: 502, statusText: "Bad Gateway", headers: { "Content-Type": "text/html" } }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  render(card(DESIGN));
+
+  await userEvent.click(screen.getByRole("button", { name: "Generate from review" }));
+  const alert = await screen.findByRole("alert");
+  expect(alert.textContent).toContain("Voice Design");
+  expect(alert.textContent).toContain("502 Bad Gateway");
+  expect(alert.textContent).toContain("POST /api/voices/design");
+  expect(alert.textContent).toContain("nginx");
+});

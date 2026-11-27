@@ -53,16 +53,31 @@ export function useWorkbench(): Workbench {
   return value;
 }
 
-/** POST or DELETE to a workbench route; the parsed body, or throws with the route's own error. */
+/**
+ * POST or DELETE to a workbench route; the parsed body, or throws with the route's own error.
+ * A failure without one came from nginx or Cloudflare, not the route (the app went away or timed
+ * out mid-request), so the error names the request, the status and what the proxy said.
+ */
 export async function send<T>(url: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+  const method = init.method ?? "POST";
   const response = await fetch(url, {
-    method: init.method ?? "POST",
+    method,
     headers: init.body instanceof FormData || init.body === undefined ? undefined : { "Content-Type": "application/json" },
     body: init.body instanceof FormData ? init.body : init.body === undefined ? undefined : JSON.stringify(init.body),
   });
-  const body = (await response.json().catch(() => ({}))) as T & { error?: string };
-  if (!response.ok) throw new Error(body.error ?? `${response.status}`);
-  return body;
+  const text = await response.text().catch(() => "");
+  let body: T & { error?: string };
+  try {
+    body = JSON.parse(text) as T & { error?: string };
+  } catch {
+    body = {} as T & { error?: string };
+  }
+  if (response.ok) return body;
+  if (body.error) throw new Error(body.error);
+  const path = url.replace(/^https?:\/\/[^/]+/, "").split("?")[0];
+  const said = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300);
+  const status = `${response.status}${response.statusText ? ` ${response.statusText}` : ""}`;
+  throw new Error(`${method} ${path} answered ${status}, not from the route${said ? `: ${said}` : ""} (${new Date().toISOString()})`);
 }
 
 /** `from` labels the draft in the form. */

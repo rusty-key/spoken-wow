@@ -21,6 +21,15 @@ import RemixSettingsFields from "./RemixSettings";
 import type { SlotView } from "./Workbench";
 
 const day = (iso: string) => iso.slice(0, 10);
+
+/** A two-call action's failure names its call: Gemini's and ElevenLabs' errors read alike. */
+async function stage<T>(step: string, work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (err) {
+    throw new Error(`${step} failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
 const one = (value: number) => value.toFixed(1);
 const two = (value: number) => value.toFixed(2);
 
@@ -220,19 +229,19 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
    * Gemini's revision, then straight to Voice Design or Voice Remix. If that second call fails, the
    * paid-for draft waits in the form; if it succeeds, a draft left open would revise the old version.
    */
-  const fromReview = <D extends Draft>(what: string, toDraft: (revised: Draft) => D, make: (draft: D) => Promise<Design[]>) =>
+  const fromReview = <D extends Draft>(what: string, step: string, toDraft: (revised: Draft) => D, make: (draft: D) => Promise<Design[]>) =>
     run(what, async () => {
-      const draft = toDraft(await revision());
+      const draft = toDraft(await stage("Gemini revision", revision));
       try {
-        for (const version of await make(draft)) updateDesign(version);
+        for (const version of await stage(step, () => make(draft))) updateDesign(version);
         setDraft(slot.name, null);
       } catch (err) {
         setDraft(slot.name, draft);
         throw err;
       }
     });
-  const generate = () => fromReview("generate", (draft) => draft, (draft) => designFrom(lang, slot.name, draft));
-  const remixFromReview = () => fromReview("remix", remixDraft, (draft) => remixFrom(lang, draft, remixSettings));
+  const generate = () => fromReview("generate", "Voice Design", (draft) => draft, (draft) => designFrom(lang, slot.name, draft));
+  const remixFromReview = () => fromReview("remix", "Voice Remix", remixDraft, (draft) => remixFrom(lang, draft, remixSettings));
 
   return (
     <section className="vd-version" aria-label={fill(t.versionLabel, { slot: slot.name, v: design.version })}>
