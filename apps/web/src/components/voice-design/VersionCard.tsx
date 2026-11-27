@@ -233,7 +233,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
     run(what, async () => {
       const draft = toDraft(await stage("Gemini revision", revision));
       try {
-        for (const version of await stage(step, () => make(draft))) updateDesign(version);
+        updateDesign(await stage(step, () => make(draft)));
         setDraft(slot.name, null);
       } catch (err) {
         setDraft(slot.name, draft);

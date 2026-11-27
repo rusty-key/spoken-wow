@@ -196,15 +196,17 @@ export default function Workbench({
       // The form may open far from the button pressed; it exists once this render lands.
       if (draft) setTimeout(() => document.getElementById(`design-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
     },
-    updateDesign: (design: Design, takes?: Record<string, string>) => {
+    updateDesign: (changed: Design | Design[], takes?: Record<string, string>) => {
       if (takes) setLive((current) => ({ ...current, ...takes }));
+      const designs = [changed].flat();
       setGroups((current) =>
         current.map((group) => ({
           ...group,
           slots: group.slots.map((slot) => {
-            if (slot.name !== design.slot) return slot;
-            const others = slot.designs.filter((d) => d.id !== design.id);
-            return { ...slot, designs: [...others, design].sort((a, b) => b.version - a.version) };
+            const mine = designs.filter((design) => design.slot === slot.name);
+            if (mine.length === 0) return slot;
+            const others = slot.designs.filter((d) => !mine.some((design) => design.id === d.id));
+            return { ...slot, designs: [...others, ...mine].sort((a, b) => b.version - a.version) };
           }),
         })),
       );
@@ -227,7 +229,7 @@ export default function Workbench({
       let draft: Draft | null = null;
       try {
         draft = await requestRevision(lang, design, fill(t.geminiRevision, { v: `v${design.version}` }));
-        for (const made of await designFrom(lang, slot.name, draft)) context.updateDesign(made);
+        context.updateDesign(await designFrom(lang, slot.name, draft));
         setDrafts(({ [slot.name]: _, ...rest }) => rest);
       } catch (err) {
         // A paid-for draft whose design failed waits in the slot's form.

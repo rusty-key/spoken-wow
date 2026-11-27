@@ -14,8 +14,8 @@ export function flavorOf(slot: string): string | null {
 }
 
 /**
- * The versions a slot's page shows, newest first: the newest, which the next one replaces, and
- * the one players hear while it is an older one, so its votes stay beside the filter that reads them.
+ * The newest version, and an older one players still hear: the players filter reads its votes, so
+ * its card stays beside them.
  */
 export function onPage<D extends { isPublic: boolean }>(designs: readonly D[]): D[] {
   const [newest, ...older] = designs;

@@ -228,6 +228,20 @@ describe("retireOlder", () => {
     expect(d.deleteVoice).not.toHaveBeenCalled();
   });
 
+  it("runs once a version is designed or remixed, and hands back what it freed", async () => {
+    const parent = held(3);
+    const d = deps(parent, {
+      create: vi.fn(async (input) => ({ ...DESIGN, ...input, id: "d4", version: 4 })),
+      slotDesigns: vi.fn(async () => [{ ...DESIGN, id: "d4", version: 4 }, parent]),
+      accountVoices: vi.fn(async () => [{ voiceId: "voice-3", name: "design-orc-male-shady-v3", category: "generated" }]),
+    });
+    const designed = await designVersion({ ...base, slot: "orc-male-shady", prompt: DESIGN.prompt, previewText: DESIGN.previewText, analysisId: null }, d);
+    expect(designed.retired.map((v) => v.id)).toEqual(["d3"]);
+    const remixed = await remixVersion({ ...base, id: "d3", changes: "Colder.", prompt: DESIGN.prompt, previewText: DESIGN.previewText, settings: { promptStrength: 0.5, guidanceScale: null, loudness: null, seed: null } }, d);
+    expect(remixed.design.id).toBe("d4");
+    expect(d.deleteVoice).toHaveBeenCalledWith("voice-3", "k");
+  });
+
   it("never fails the paid-for version, even when the slot cannot be read", async () => {
     const d = deps({}, { slotDesigns: vi.fn(async () => Promise.reject(new Error("connection lost"))) });
     await expect(retireOlder({ ...base, kept: DESIGN }, d)).resolves.toEqual([]);

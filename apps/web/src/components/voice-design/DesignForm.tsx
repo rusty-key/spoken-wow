@@ -40,8 +40,7 @@ export default function DesignForm({ slot, initial, onDone }: { slot: SlotView; 
     setError(null);
     try {
       const draft = { ...initial, prompt, previewText, changes, analysisId: initial?.analysisId ?? null, from: initial?.from ?? "" };
-      const made = remix ? await remixFrom(lang, { ...draft, remix }, remixSettings) : await designFrom(lang, slot.name, draft);
-      for (const version of made) updateDesign(version);
+      updateDesign(remix ? await remixFrom(lang, { ...draft, remix }, remixSettings) : await designFrom(lang, slot.name, draft));
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

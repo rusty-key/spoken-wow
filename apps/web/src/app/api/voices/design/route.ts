@@ -1,7 +1,7 @@
 /** Design a new version of a slot: three Voice Design previews, spent from the caller's ElevenLabs key. */
 import { requireApiKey } from "@/lib/generation/authz";
 import { failed, requireDesigner } from "@/lib/voice-design/access";
-import { designVersion, retireOlder } from "@/lib/voice-design/design";
+import { designVersion } from "@/lib/voice-design/design";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const { key, denied: noKey } = await requireApiKey(session.user.id, "elevenlabs");
   if (noKey) return noKey;
   try {
-    const design = await designVersion({
+    const made = await designVersion({
       lang,
       slot: text("slot"),
       prompt: text("prompt"),
@@ -26,8 +26,7 @@ export async function POST(request: Request) {
       userId: session.user.id,
       apiKey: key,
     });
-    const retired = await retireOlder({ lang, kept: design, userId: session.user.id, apiKey: key });
-    return Response.json({ design, retired });
+    return Response.json(made);
   } catch (error) {
     return failed(error);
   }

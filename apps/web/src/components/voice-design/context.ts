@@ -41,7 +41,7 @@ export type Workbench = {
   remixSettings: RemixSettings;
   setRemixSettings: (settings: RemixSettings) => void;
   /** `live` holds the live takes of lines the design was just voiced on. */
-  updateDesign: (design: Design, live?: Record<string, string>) => void;
+  updateDesign: (designs: Design | Design[], live?: Record<string, string>) => void;
   updateAnalysis: (analysis: Analysis) => void;
 };
 
@@ -94,7 +94,6 @@ export async function requestRevision(lang: Lang, design: Design, from: string):
   };
 }
 
-/** The new version, then the older ones whose voices it retired from the caller's account. */
 export async function designFrom(lang: Lang, slot: string, draft: Draft): Promise<Design[]> {
   const { design, retired } = await send<{ design: Design; retired: Design[] }>(withLang(lang, "/api/voices/design"), {
     body: {
