@@ -23,7 +23,7 @@ function deps(over: Partial<DifferenceDeps> = {}): DifferenceDeps {
     line: async (_lang, lineId) => ({ lineId }) as CorpusLine,
     live: async (line) => Buffer.from(`live ${line.lineId}`),
     audio: async (sha) => Buffer.from(`new ${sha[0]}`),
-    describe: vi.fn(async () => ({ summary: "accent fades", aspects: [] })),
+    describe: vi.fn(async () => ({ summary: "accent fades", note: "accent fades", aspects: [] })),
     ...over,
   };
 }
@@ -33,7 +33,7 @@ const input = { lang: "enUS" as const, id: "d1", position: 1, apiKey: "k" };
 describe("differenceFromLive", () => {
   it("has Gemini hear the chosen line's live take, then this version's take of it", async () => {
     const d = deps();
-    expect(await differenceFromLive(input, d)).toEqual({ summary: "accent fades", aspects: [] });
+    expect(await differenceFromLive(input, d)).toEqual({ summary: "accent fades", note: "accent fades", aspects: [] });
     const [call] = vi.mocked(d.describe).mock.calls[0];
     expect(call).toMatchObject({ apiKey: "k", slot: "dwarf-male-guard", version: 4, text: "Halt." });
     expect([call.live.toString(), call.sample.toString()]).toEqual(["live g:abc", "new b"]);

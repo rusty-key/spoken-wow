@@ -2770,6 +2770,7 @@ const zhTW: Dictionary = {
     difference: "有何不同？",
     differenceTitle: "Gemini 先聽線上版本，再聽這一版，說明兩種聲音有何不同。從你的 Gemini 帳戶花費幾美分。",
     differenceNoKey: "在個人資料中新增 Gemini 金鑰即可詢問 Gemini。",
+    differenceToReview: "加入評審",
     sample: "配 3 句台詞",
     resample: "重新配這些台詞",
     resampleOther: "改配其他台詞",

@@ -2094,6 +2094,9 @@ body:has(main.bs) {
   font-size: 12px;
   line-height: 17px;
 }
+.vd-difference .bs-btn {
+  justify-self: start;
+}
 .vd-difference ul {
   display: grid;
   gap: 2px;

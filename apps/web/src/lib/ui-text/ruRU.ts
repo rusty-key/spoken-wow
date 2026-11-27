@@ -2781,6 +2781,7 @@ const ruRU: Dictionary = {
     difference: "В чём разница?",
     differenceTitle: "Gemini слушает живой дубль, затем дубль этой версии, и говорит, чем отличаются голоса. Несколько центов с вашего аккаунта Gemini.",
     differenceNoKey: "Добавьте ключ Gemini в профиле, чтобы спросить Gemini.",
+    differenceToReview: "Добавить в отзыв",
     sample: "Озвучить 3 реплики",
     resample: "Озвучить реплики заново",
     resampleOther: "Озвучить другие реплики",

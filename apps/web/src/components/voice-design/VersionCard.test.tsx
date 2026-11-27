@@ -293,7 +293,7 @@ test("voices the lines with a direction typed before pressing, as long as it sta
 
 test("asks Gemini what differs between a line's new and live takes, and shows the answer under the line", async () => {
   const fetchMock = vi.fn(async () =>
-    Response.json({ difference: { summary: "The Scottish accent fades after the first words.", aspects: [{ aspect: "Accent", live: "broad Scots", new: "faint Scots" }] } }),
+    Response.json({ difference: { summary: "The Scottish accent fades after the first words.", note: "Scottish accent fades after the first words", aspects: [{ aspect: "Accent", live: "broad Scots", new: "faint Scots" }] } }),
   );
   vi.stubGlobal("fetch", fetchMock);
   render(
@@ -309,6 +309,13 @@ test("asks Gemini what differs between a line's new and live takes, and shows th
   expect(JSON.parse(String(init.body))).toEqual({ position: 1 });
   expect(await screen.findByText("The Scottish accent fades after the first words.")).toBeTruthy();
   expect(screen.getByText(/faint Scots/)).toBeTruthy();
+  const answer = screen.getByText("The Scottish accent fades after the first words.");
+  expect(screen.getByRole("button", { name: "What's different?" }).compareDocumentPosition(answer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+  const note = screen.getByRole("textbox", { name: "Note" }) as HTMLInputElement;
+  await userEvent.type(note, "too young");
+  await userEvent.click(screen.getByRole("button", { name: "Add to review" }));
+  expect(note.value).toBe("too young; Scottish accent fades after the first words");
 });
 
 test("sends the player notes ticked with the verdict, and lists them under it", async () => {

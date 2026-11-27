@@ -241,7 +241,12 @@ export async function reviseVoice(
 }
 
 /** How a designed voice differs from the live take of the same line, aspect by aspect. */
-export type Difference = { summary: string; aspects: { aspect: string; live: string; new: string }[] };
+export type Difference = {
+  summary: string;
+  /** The difference that matters most, said as a reviewer's note on the new voice. */
+  note: string;
+  aspects: { aspect: string; live: string; new: string }[];
+};
 
 export function buildDifferencePrompt(input: { slot: string; version: number; text: string }): string {
   return `You are a voice director. You will hear two recordings of the same line for ${input.slot} (World of Warcraft NPCs).
@@ -251,7 +256,8 @@ Say how the second voice differs from the first, so a voice designer knows what 
 gender and apparent age, pitch, timbre and texture, resonance and size, pace and rhythm, energy, attitude, articulation and
 pronunciation, and recording quality. Leave out aspects where they sound the same. Be concrete ("the Scottish accent fades
 after the first sentence", not "the accent differs").
-Return JSON only: {"summary": "one or two sentences: the differences that matter most", "aspects": [{"aspect": "...", "live": "how the live take sounds", "new": "how v${input.version} sounds"}]}`;
+Also write note: the one difference that matters most, as a reviewer's note on v${input.version}, under 80 characters, lowercase, no full stop ("scottish accent fades after the first words", "sounds younger and thinner").
+Return JSON only: {"summary": "one or two sentences: the differences that matter most", "note": "...", "aspects": [{"aspect": "...", "live": "how the live take sounds", "new": "how v${input.version} sounds"}]}`;
 }
 
 /** Gemini hears the live take, then the version's take, of one line. */
@@ -268,5 +274,5 @@ export async function describeDifference(
         (a): a is Difference["aspects"][number] => typeof a?.aspect === "string" && typeof a.live === "string" && typeof a.new === "string",
       )
     : [];
-  return { summary: answer.summary.trim(), aspects };
+  return { summary: answer.summary.trim(), note: typeof answer.note === "string" ? answer.note.trim() : "", aspects };
 }

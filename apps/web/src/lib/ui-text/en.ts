@@ -2864,6 +2864,7 @@ export const EN = {
     difference: "What's different?",
     differenceTitle: "Gemini hears the live take, then this version's, and says how the voices differ. A few cents from your Gemini account.",
     differenceNoKey: "Add a Gemini key on your profile to ask Gemini.",
+    differenceToReview: "Add to review",
     sample: "Voice 3 lines",
     resample: "Voice the lines again",
     resampleOther: "Voice other lines",

@@ -2731,6 +2731,7 @@ const zhCN: Dictionary = {
     difference: "有何不同？",
     differenceTitle: "Gemini 先听线上版本，再听这一版，说明两种声音有何不同。从你的 Gemini 账户花费几美分。",
     differenceNoKey: "在个人资料中添加 Gemini 密钥即可询问 Gemini。",
+    differenceToReview: "加入评审",
     sample: "配 3 句台词",
     resample: "重新配这些台词",
     resampleOther: "改配其他台词",
