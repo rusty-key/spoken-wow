@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { useUiText } from "@/components/UiTextProvider";
@@ -20,6 +20,8 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
   const draft = drafts[slot.name];
   const [newest, heard] = onPage(slot.designs);
   const [designing, setDesigning] = useState(false);
+  // Folded so the version being worked on is the one in view; the older one is still a click away.
+  const [heardOpen, setHeardOpen] = useState(false);
   const formOpen = designing || draft !== undefined;
   const close = () => {
     setDesigning(false);
@@ -51,7 +53,17 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
       </header>
 
       {newest ? <VersionCard key={newest.id} design={newest} slot={slot} newest /> : null}
-      {heard ? <VersionCard key={heard.id} design={heard} slot={slot} newest={false} /> : null}
+      {heard ? (
+        <>
+          <button type="button" className="vd-version-fold" aria-expanded={heardOpen} onClick={() => setHeardOpen(!heardOpen)}>
+            <ChevronRight className="vd-chevron" size={16} aria-hidden="true" />
+            <span className="vd-version-tag">v{heard.version}</span>
+            <StatusBadge doneness={heard.reviews.at(-1)?.status ?? "pending"} />
+            <span className="vd-tag vd-tag-gold">{t.publicTag}</span>
+          </button>
+          {heardOpen ? <VersionCard key={heard.id} design={heard} slot={slot} newest={false} /> : null}
+        </>
+      ) : null}
 
       {formOpen ? (
         <div id={`design-${slot.name}`}>

@@ -128,7 +128,7 @@ test("shows only a slot's newest version: the next one replaces it", () => {
   expect(within(shady).queryByText("Prompt of orc-male-shady v1")).toBeNull();
 });
 
-test("keeps the version players hear on the page until a newer one is shown", () => {
+test("keeps the version players hear on the page, folded, until a newer one is shown", async () => {
   const heard = { ...design("orc-male-shady", 1, null), isPublic: true };
   render(
     <LangProvider lang="enUS">
@@ -137,6 +137,9 @@ test("keeps the version players hear on the page until a newer one is shown", ()
   );
   const shady = screen.getByRole("article", { name: "orc-male-shady" });
   expect(within(shady).getByText("Prompt of orc-male-shady v2")).toBeTruthy();
+  expect(within(shady).queryByText("Prompt of orc-male-shady v1")).toBeNull();
+
+  await userEvent.click(within(shady).getByRole("button", { name: /^v1/ }));
   expect(within(shady).getByText("Prompt of orc-male-shady v1")).toBeTruthy();
 });
 
