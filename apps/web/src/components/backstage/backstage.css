@@ -2084,6 +2084,20 @@ body:has(main.bs) {
   font-size: 12px;
   font-weight: 500;
 }
+.vd-difference {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+  line-height: 17px;
+}
+.vd-difference ul {
+  display: grid;
+  gap: 2px;
+}
 .vd-sample-play {
   display: flex;
   flex-wrap: wrap;

@@ -239,3 +239,34 @@ export async function reviseVoice(
     changes: typeof answer.changes === "string" ? answer.changes.trim() : "",
   };
 }
+
+/** How a designed voice differs from the live take of the same line, aspect by aspect. */
+export type Difference = { summary: string; aspects: { aspect: string; live: string; new: string }[] };
+
+export function buildDifferencePrompt(input: { slot: string; version: number; text: string }): string {
+  return `You are a voice director. You will hear two recordings of the same line for ${input.slot} (World of Warcraft NPCs).
+First recording: the live take players hear in the game now. Second: the same line in designed voice v${input.version}.
+The line, as sent to the second voice (square-bracketed words are performance directions, not speech): "${input.text}"
+Say how the second voice differs from the first, so a voice designer knows what to change. Compare: accent and its strength,
+gender and apparent age, pitch, timbre and texture, resonance and size, pace and rhythm, energy, attitude, articulation and
+pronunciation, and recording quality. Leave out aspects where they sound the same. Be concrete ("the Scottish accent fades
+after the first sentence", not "the accent differs").
+Return JSON only: {"summary": "one or two sentences: the differences that matter most", "aspects": [{"aspect": "...", "live": "how the live take sounds", "new": "how v${input.version} sounds"}]}`;
+}
+
+/** Gemini hears the live take, then the version's take, of one line. */
+export async function describeDifference(
+  input: { apiKey: string; slot: string; version: number; text: string; live: Buffer; sample: Buffer } & GeminiOptions,
+): Promise<Difference> {
+  const answer = (await generateJson({
+    ...input,
+    parts: [{ text: buildDifferencePrompt(input) }, audioPart(input.live), audioPart(input.sample)],
+  })) as Partial<Difference> | null;
+  if (typeof answer?.summary !== "string") throw new Error("Gemini returned no summary of the difference");
+  const aspects = Array.isArray(answer.aspects)
+    ? answer.aspects.filter(
+        (a): a is Difference["aspects"][number] => typeof a?.aspect === "string" && typeof a.live === "string" && typeof a.new === "string",
+      )
+    : [];
+  return { summary: answer.summary.trim(), aspects };
+}

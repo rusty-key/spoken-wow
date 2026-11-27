@@ -1,6 +1,6 @@
 "use client";
 
-import { AudioLines, Blend, Check, ChevronDown, Eye, Loader2, MoreHorizontal, Pencil, RefreshCw, Save, Shuffle, SlidersHorizontal, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { AudioLines, Blend, Check, ChevronDown, Eye, GitCompare, Loader2, MoreHorizontal, Pencil, RefreshCw, Save, Shuffle, SlidersHorizontal, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import Link from "@/components/LocaleLink";
@@ -11,6 +11,7 @@ import { fill } from "@/lib/site-text/format";
 import { cn } from "@/lib/utils";
 import { isRevisable } from "@/lib/voice-design/groups";
 import { designName, recommendedPreview } from "@/lib/voice-design/limits";
+import type { Difference } from "@/lib/voice-design/gemini";
 import type { ClipMark, Design, Measures } from "@/lib/voice-design/types";
 
 import FeedbackResults, { pickKey, verdictLabels } from "./FeedbackResults";
@@ -155,9 +156,12 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   // A removed verdict or lines voiced again: the marks start over from what still applies.
   const marksBasis = `${last?.id}|${design.samples.map((sample) => sample.sha256).join()}`;
   const [marksFor, setMarksFor] = useState(marksBasis);
+  // Gemini's answers, by sample position; lines voiced again are other takes, so they go too.
+  const [differences, setDifferences] = useState<Record<number, Difference>>({});
   if (marksFor !== marksBasis) {
     setMarksFor(marksBasis);
     setClips(currentMarks(design));
+    setDifferences({});
   }
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -199,6 +203,12 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
 
   const sample = (lines: "same" | "other") =>
     act("sample", `/api/voices/design/${design.id}/samples`, { body: { lines, ...(direction.trim() ? { direction: direction.trim() } : {}) } });
+
+  const compare = (position: number) =>
+    run(`difference-${position}`, async () => {
+      const { difference } = await send<{ difference: Difference }>(withLang(lang, `/api/voices/design/${design.id}/difference`), { body: { position } });
+      setDifferences((current) => ({ ...current, [position]: difference }));
+    });
 
   // A slot has one public version: the one players heard before is not public any more.
   const show = () =>
@@ -348,6 +358,18 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                   <div className="vd-sample-text">
                     <span className="vd-npc">{sample.npcName ?? sample.lineId}</span>
                     <p className="bs-text">{sample.text}</p>
+                    {differences[sample.position] ? (
+                      <div className="vd-difference">
+                        <p className="bs-text">{differences[sample.position].summary}</p>
+                        <ul>
+                          {differences[sample.position].aspects.map((aspect) => (
+                            <li key={aspect.aspect}>
+                              <span className="bs-label">{aspect.aspect}</span> {t.liveTake}: {aspect.live} · {t.newTake}: {aspect.new}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="vd-sample-play">
                     <PlayButton clip={{ src: audio(sample.sha256), title: sample.npcName ?? slot.name, meta: `${tag} · ${sample.lineId}`, subtitle: sample.text }}>
@@ -363,6 +385,22 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                     ) : (
                       <span className="vd-muted">{t.noLiveTake}</span>
                     )}
+                    {now && can ? (
+                      <button
+                        type="button"
+                        className="bs-btn"
+                        title={keys.gemini ? t.differenceTitle : t.differenceNoKey}
+                        disabled={busy !== null || !keys.gemini}
+                        onClick={() => void compare(sample.position)}
+                      >
+                        {busy === `difference-${sample.position}` ? (
+                          <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                        ) : (
+                          <GitCompare size={14} aria-hidden="true" />
+                        )}
+                        {t.difference}
+                      </button>
+                    ) : null}
                     {can ? <Marks value={clips[key]} onChange={(m) => mark(key, m)} disabled={busy !== null} /> : null}
                   </div>
                 </li>
