@@ -154,6 +154,9 @@ export function audioTags(text: string): string {
  */
 const SENTENCE_END = /((?<!\b(?:Mr|Mrs|Ms|Dr|Lt|Sgt|Capt|Prof)|\.\s?)[.!?]["'\u201d\u2019)\]]*)(\s+)(?=[^\s.])/g;
 
+/** Whether `text` is one sentence, by the same sentence ends the NPC's direction is repeated at. */
+export const isOneSentence = (text: string): boolean => text.trim().search(SENTENCE_END) === -1;
+
 /**
  * `raceTags` is the whole map, for a stretch a voice marker hands to another slot; `voice` is
  * the slot already speaking where the text starts; `npc` is the NPC's own direction.

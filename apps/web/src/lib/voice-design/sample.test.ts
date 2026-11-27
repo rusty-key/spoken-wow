@@ -12,8 +12,8 @@ const line = (lineId: string, text: string, voice = SLOT) =>
   ({ lineId, text, voice, npcName: "Ulathek", generatable: true, playerGender: null }) as CorpusLine;
 const LINES = [
   line("q:1:accept", "A long quest text about demons and debts."),
-  line("f:1:orc-male-shady", "You dog! Now I'll trap your soul!"),
-  line("g:abc", "What do you want? Speak quickly."),
+  line("f:1:orc-male-shady", "You dog, now I'll trap your soul!"),
+  line("g:abc", "What do you want, speak quickly."),
   line("q:2:accept", "Guard this gate.", "orc-male-guard"),
 ];
 
