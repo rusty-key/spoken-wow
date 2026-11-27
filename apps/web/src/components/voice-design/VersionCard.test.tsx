@@ -139,7 +139,7 @@ test("gives a verdict in one press, with the note, and drops the marks of a verd
 
 test("generates the next version from the review in one press: Gemini's prompt, then Voice Design", async () => {
   const revision = { heard: "too noble", prompt: "A colder voice.", preview_text: "y".repeat(120), archetype: "Queen" };
-  const fetchMock = vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: { ...DESIGN, id: "d2", version: 3 } }));
+  const fetchMock = vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: { ...DESIGN, id: "d2", version: 3 }, retired: [] }));
   vi.stubGlobal("fetch", fetchMock);
   render(card(DESIGN));
 
@@ -171,7 +171,7 @@ test("loads only marks that still apply: none from before the lines were voiced 
 
 test("remixes the held voice from the review in one press: Gemini's changes, then Voice Remix with the page's settings", async () => {
   const revision = { heard: "too noble", prompt: "A colder voice.", preview_text: "y".repeat(120), archetype: "Queen", changes: "Make it colder. Keep the accent." };
-  const fetchMock = vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: { ...DESIGN, id: "d2", version: 3 } }));
+  const fetchMock = vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: { ...DESIGN, id: "d2", version: 3 }, retired: [] }));
   vi.stubGlobal("fetch", fetchMock);
   render(card(DESIGN));
 
@@ -301,4 +301,21 @@ test("leaves out a ticked note that was hidden since", async () => {
   rerender(card({ ...DESIGN, isPublic: true, showings: [showing([note("a:y", "too soft")])] }));
   await userEvent.click(verdict("Needs work"));
   expect(JSON.parse(String((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body)).players).toEqual([{ showingId: 7, voter: "a:y" }]);
+});
+
+test("says which step failed and what the proxy answered when a call dies without the route's own error", async () => {
+  const revision = { heard: "too noble", prompt: "A colder voice.", preview_text: "y".repeat(120), archetype: "Queen" };
+  const gateway = "<html><head><title>502 Bad Gateway</title></head><body><center><h1>502 Bad Gateway</h1></center><hr><center>nginx</center></body></html>";
+  const fetchMock = vi.fn(async (url: string) =>
+    url.includes("/revise") ? Response.json({ revision }) : new Response(gateway, { status: 502, statusText: "Bad Gateway", headers: { "Content-Type": "text/html" } }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  render(card(DESIGN));
+
+  await userEvent.click(screen.getByRole("button", { name: "Generate from review" }));
+  const alert = await screen.findByRole("alert");
+  expect(alert.textContent).toContain("Voice Design");
+  expect(alert.textContent).toContain("502 Bad Gateway");
+  expect(alert.textContent).toContain("POST /api/voices/design");
+  expect(alert.textContent).toContain("nginx");
 });

@@ -2828,7 +2828,6 @@ export const EN = {
     firstVersion: "Design v1",
     usedBy: "Used by {npcs} · {lines} lines",
     usedByNobody: "No NPC uses this slot yet.",
-    olderVersions: "Older versions · {n}",
     startedFrom: "Starting from {from}. Change what was wrong, then design a new version.",
     promptLabel: "Prompt",
     previewTextLabel: "Preview text",

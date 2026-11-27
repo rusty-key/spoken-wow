@@ -2745,7 +2745,6 @@ const frFR: Dictionary = {
     firstVersion: "Concevoir la v1",
     usedBy: "Utilisée par {npcs} · {lines} répliques",
     usedByNobody: "Aucun PNJ n'utilise encore cet emplacement.",
-    olderVersions: "Versions précédentes · {n}",
     startedFrom: "À partir de {from}. Corrigez ce qui n'allait pas, puis concevez une nouvelle version.",
     promptLabel: "Prompt",
     previewTextLabel: "Texte d'aperçu",

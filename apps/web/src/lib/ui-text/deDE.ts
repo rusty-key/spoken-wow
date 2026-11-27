@@ -2747,7 +2747,6 @@ const deDE: Dictionary = {
     firstVersion: "v1 entwerfen",
     usedBy: "Genutzt von {npcs} · {lines} Zeilen",
     usedByNobody: "Noch kein NPC nutzt diesen Stimmplatz.",
-    olderVersions: "Ältere Versionen · {n}",
     startedFrom: "Ausgehend von {from}. Ändere, was falsch war, und entwirf dann eine neue Version.",
     promptLabel: "Prompt",
     previewTextLabel: "Vorschautext",

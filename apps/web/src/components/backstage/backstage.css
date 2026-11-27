@@ -1669,8 +1669,7 @@ body:has(main.bs) {
   color: var(--muted-foreground);
   transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.vd-group[open] > .vd-group-head .vd-chevron,
-.vd-older[open] > .vd-older-head .vd-chevron {
+.vd-group[open] > .vd-group-head .vd-chevron {
   transform: rotate(90deg);
 }
 .vd-group-title {
@@ -2380,21 +2379,6 @@ body:has(main.bs) {
   padding: 0 14px 12px;
 }
 
-.vd-older {
-  margin-top: 12px;
-}
-.vd-older-head {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--bs-text-2);
-  font-size: 12.5px;
-  cursor: pointer;
-}
-.vd-older-head:hover {
-  color: var(--foreground);
-}
-
 .vd-import {
   margin: 36px 0 96px;
 }
@@ -2413,12 +2397,6 @@ body:has(main.bs) {
   font-size: 12.5px;
   line-height: 19px;
   list-style: none;
-}
-.vd-older-head {
-  list-style: none;
-}
-.vd-older-head::-webkit-details-marker {
-  display: none;
 }
 .vd-clip-note {
   margin-top: 2px;

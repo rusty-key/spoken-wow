@@ -143,9 +143,13 @@ async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
   });
 }
 
-/** Every version of the team's slots in `lang`: by slot, newest version first. */
-export async function listDesigns(lang: Lang): Promise<Design[]> {
-  const rows = await readAs<DesignRow>(lang, `${DESIGN_SELECT} where d."lang" = $1 order by d."slot", d."version" desc`, [lang]);
+/** Every version of the team's slots in `lang`, or of one slot: by slot, newest version first. */
+export async function listDesigns(lang: Lang, slot: string | null = null): Promise<Design[]> {
+  const rows = await readAs<DesignRow>(
+    lang,
+    `${DESIGN_SELECT} where d."lang" = $1 and ($2::text is null or d."slot" = $2) order by d."slot", d."version" desc`,
+    [lang, slot],
+  );
   return assemble(lang, rows);
 }
 

@@ -1,11 +1,11 @@
 "use client";
 
-import { ChevronRight, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 
 import { useUiText } from "@/components/UiTextProvider";
 import { fill } from "@/lib/site-text/format";
-import type { Doneness } from "@/lib/voice-design/groups";
+import { onPage, type Doneness } from "@/lib/voice-design/groups";
 
 import DesignForm from "./DesignForm";
 import { ReferenceClip } from "./PlayButton";
@@ -18,7 +18,7 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
   const t = useUiText().voiceDesign;
   const { viewer, drafts, setDraft } = useWorkbench();
   const draft = drafts[slot.name];
-  const [newest, ...older] = slot.designs;
+  const [newest, heard] = onPage(slot.designs);
   const [designing, setDesigning] = useState(false);
   const formOpen = designing || draft !== undefined;
   const close = () => {
@@ -51,6 +51,7 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
       </header>
 
       {newest ? <VersionCard key={newest.id} design={newest} slot={slot} newest /> : null}
+      {heard ? <VersionCard key={heard.id} design={heard} slot={slot} newest={false} /> : null}
 
       {formOpen ? (
         <div id={`design-${slot.name}`}>
@@ -62,18 +63,6 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
             onDone={close}
           />
         </div>
-      ) : null}
-
-      {older.length > 0 ? (
-        <details className="vd-older">
-          <summary className="vd-older-head">
-            <ChevronRight className="vd-chevron" size={14} aria-hidden="true" />
-            {fill(t.olderVersions, { n: older.length })}
-          </summary>
-          {older.map((design) => (
-            <VersionCard key={design.id} design={design} slot={slot} newest={false} />
-          ))}
-        </details>
       ) : null}
     </article>
   );

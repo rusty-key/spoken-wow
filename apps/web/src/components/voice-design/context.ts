@@ -41,7 +41,7 @@ export type Workbench = {
   remixSettings: RemixSettings;
   setRemixSettings: (settings: RemixSettings) => void;
   /** `live` holds the live takes of lines the design was just voiced on. */
-  updateDesign: (design: Design, live?: Record<string, string>) => void;
+  updateDesign: (designs: Design | Design[], live?: Record<string, string>) => void;
   updateAnalysis: (analysis: Analysis) => void;
 };
 
@@ -53,16 +53,31 @@ export function useWorkbench(): Workbench {
   return value;
 }
 
-/** POST or DELETE to a workbench route; the parsed body, or throws with the route's own error. */
+/**
+ * POST or DELETE to a workbench route; the parsed body, or throws with the route's own error.
+ * A failure without one came from nginx or Cloudflare, not the route (the app went away or timed
+ * out mid-request), so the error names the request, the status and what the proxy said.
+ */
 export async function send<T>(url: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+  const method = init.method ?? "POST";
   const response = await fetch(url, {
-    method: init.method ?? "POST",
+    method,
     headers: init.body instanceof FormData || init.body === undefined ? undefined : { "Content-Type": "application/json" },
     body: init.body instanceof FormData ? init.body : init.body === undefined ? undefined : JSON.stringify(init.body),
   });
-  const body = (await response.json().catch(() => ({}))) as T & { error?: string };
-  if (!response.ok) throw new Error(body.error ?? `${response.status}`);
-  return body;
+  const text = await response.text().catch(() => "");
+  let body: T & { error?: string };
+  try {
+    body = JSON.parse(text) as T & { error?: string };
+  } catch {
+    body = {} as T & { error?: string };
+  }
+  if (response.ok) return body;
+  if (body.error) throw new Error(body.error);
+  const path = url.replace(/^https?:\/\/[^/]+/, "").split("?")[0];
+  const said = text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300);
+  const status = `${response.status}${response.statusText ? ` ${response.statusText}` : ""}`;
+  throw new Error(`${method} ${path} answered ${status}, not from the route${said ? `: ${said}` : ""} (${new Date().toISOString()})`);
 }
 
 /** `from` labels the draft in the form. */
@@ -79,8 +94,8 @@ export async function requestRevision(lang: Lang, design: Design, from: string):
   };
 }
 
-export async function designFrom(lang: Lang, slot: string, draft: Draft): Promise<Design> {
-  const { design } = await send<{ design: Design }>(withLang(lang, "/api/voices/design"), {
+export async function designFrom(lang: Lang, slot: string, draft: Draft): Promise<Design[]> {
+  const { design, retired } = await send<{ design: Design; retired: Design[] }>(withLang(lang, "/api/voices/design"), {
     body: {
       slot,
       prompt: draft.prompt,
@@ -90,12 +105,12 @@ export async function designFrom(lang: Lang, slot: string, draft: Draft): Promis
       archetype: draft.archetype ?? null,
     },
   });
-  return design;
+  return [design, ...retired];
 }
 
-export async function remixFrom(lang: Lang, draft: Draft & Required<Pick<Draft, "remix">>, settings: RemixSettings): Promise<Design> {
+export async function remixFrom(lang: Lang, draft: Draft & Required<Pick<Draft, "remix">>, settings: RemixSettings): Promise<Design[]> {
   if (!draft.changes?.trim()) throw new Error("Gemini said no changes to remix with");
-  const { design } = await send<{ design: Design }>(withLang(lang, `/api/voices/design/${draft.remix.id}/remix`), {
+  const { design, retired } = await send<{ design: Design; retired: Design[] }>(withLang(lang, `/api/voices/design/${draft.remix.id}/remix`), {
     body: {
       changes: draft.changes,
       prompt: draft.prompt,
@@ -105,5 +120,5 @@ export async function remixFrom(lang: Lang, draft: Draft & Required<Pick<Draft, 
       archetype: draft.archetype ?? null,
     },
   });
-  return design;
+  return [design, ...retired];
 }

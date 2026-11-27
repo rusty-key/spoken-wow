@@ -2744,7 +2744,6 @@ const esES: Dictionary = {
     firstVersion: "Diseñar v1",
     usedBy: "La usan {npcs} · {lines} frases",
     usedByNobody: "Ningún PNJ usa todavía este hueco.",
-    olderVersions: "Versiones anteriores · {n}",
     startedFrom: "Partiendo de {from}. Cambia lo que fallaba y diseña una versión nueva.",
     promptLabel: "Prompt",
     previewTextLabel: "Texto de vista previa",

@@ -13,6 +13,17 @@ export function flavorOf(slot: string): string | null {
   return parts.length > 2 ? parts.slice(2).join("-") : null;
 }
 
+/**
+ * The newest version, and an older one players still hear: the players filter reads its votes, so
+ * its card stays beside them.
+ */
+export function onPage<D extends { isPublic: boolean }>(designs: readonly D[]): D[] {
+  const [newest, ...older] = designs;
+  if (!newest) return [];
+  const heard = newest.isPublic ? undefined : older.find((design) => design.isPublic);
+  return heard ? [newest, heard] : [newest];
+}
+
 export type ReviewStatus = "good" | "needs-work";
 
 /** "none": no design yet; "pending": designed, nobody has given a verdict. */

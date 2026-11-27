@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { designVersion, saveDesignVoice, deleteDesignVoice, access, key } = vi.hoisted(() => ({
-  designVersion: vi.fn(async () => ({ id: "d1" })),
+  designVersion: vi.fn(async () => ({ design: { id: "d1" }, retired: [{ id: "d0" }] })),
   saveDesignVoice: vi.fn(async () => ({ id: "d1" })),
   deleteDesignVoice: vi.fn(async () => ({ id: "d1" })),
   access: { allowed: true },
@@ -41,6 +41,7 @@ describe("POST /api/voices/design", () => {
     const response = await POST(new Request(url, { method: "POST", body: JSON.stringify(body) }));
     expect(response.status).toBe(200);
     expect(designVersion).toHaveBeenCalledWith({ lang: "enUS", ...body, revisionHeard: null, archetype: null, userId: "u1", apiKey: "el-key" });
+    expect(await response.json()).toEqual({ design: { id: "d1" }, retired: [{ id: "d0" }] });
   });
 
   it("refuses without configure, and without a key", async () => {
