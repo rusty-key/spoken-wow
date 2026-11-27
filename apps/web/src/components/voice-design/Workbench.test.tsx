@@ -378,3 +378,22 @@ test("narrows to the slots players say mostly don't fit, and keeps it in the URL
   await userEvent.click(players.getByRole("button", { name: /Mostly fits/ }));
   expect(slotsShown()).toEqual(["orc-male-guard"]);
 });
+
+test("folds each slot from its header, and every slot at once", async () => {
+  workbench();
+  const shady = () => screen.getByRole("article", { name: "orc-male-shady" });
+  expect(within(shady()).getByText("Prompt of orc-male-shady v2")).toBeTruthy();
+
+  await userEvent.click(within(shady()).getByRole("button", { name: "orc-male-shady" }));
+  expect(within(shady()).queryByText("Prompt of orc-male-shady v2")).toBeNull();
+  expect(slotsShown()).toHaveLength(3);
+  await userEvent.click(within(shady()).getByRole("button", { name: "orc-male-shady" }));
+  expect(within(shady()).getByText("Prompt of orc-male-shady v2")).toBeTruthy();
+
+  await userEvent.click(screen.getByRole("button", { name: "Collapse all" }));
+  expect(screen.queryByText(/^Prompt of/)).toBeNull();
+  expect(slotsShown()).toHaveLength(3);
+  await userEvent.click(screen.getByRole("button", { name: "Expand all" }));
+  expect(screen.getByText("Prompt of orc-male-guard v1")).toBeTruthy();
+  expect(screen.getByText("Prompt of orc-male-shady v2")).toBeTruthy();
+});

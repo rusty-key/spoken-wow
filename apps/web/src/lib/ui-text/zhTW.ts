@@ -2723,6 +2723,8 @@ const zhTW: Dictionary = {
     statusNeedsWork: "需改進",
     statusGood: "合格",
     searchPlaceholder: "搜尋槽位、NPC、提示詞與備註",
+    collapseAll: "全部摺疊",
+    expandAll: "全部展開",
     needsElevenLabsKey: "設計、儲存與試音都從你自己的 ElevenLabs 帳戶扣款，所以需要你的金鑰。",
     needsGeminiKey: "比較需要你自己的 Gemini 金鑰。",
     profileLink: "到個人資料新增",

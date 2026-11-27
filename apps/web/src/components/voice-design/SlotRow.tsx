@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { useUiText } from "@/components/UiTextProvider";
@@ -14,13 +14,16 @@ import VersionCard from "./VersionCard";
 import { useWorkbench } from "./context";
 import type { SlotView } from "./Workbench";
 
-export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: Doneness }) {
+/** `open` is the workbench's, so Collapse all reaches every slot. */
+export default function SlotRow({ slot, doneness, open, onToggle }: { slot: SlotView; doneness: Doneness; open: boolean; onToggle: () => void }) {
   const t = useUiText().voiceDesign;
   const { viewer, drafts, setDraft } = useWorkbench();
   const draft = drafts[slot.name];
   const [newest, heard] = onPage(slot.designs);
   const [designing, setDesigning] = useState(false);
   const formOpen = designing || draft !== undefined;
+  // An open form stays in view: a draft from Revise or Generate all lands in it.
+  const shown = open || formOpen;
   const close = () => {
     setDesigning(false);
     setDraft(slot.name, null);
@@ -28,8 +31,17 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
 
   return (
     <article className="vd-slot" id={`slot-${slot.name}`} aria-labelledby={`slot-${slot.name}-title`}>
-      <header className="vd-slot-head">
+      <header
+        className="vd-slot-head vd-slot-head-fold"
+        // The header's own buttons, the reference clip and First version, do their own thing.
+        onClick={(event) => {
+          if (!(event.target as HTMLElement).closest("button, a, input")) onToggle();
+        }}
+      >
         <div className="vd-slot-name">
+          <button type="button" className="vd-fold-toggle" aria-expanded={shown} aria-label={slot.name} onClick={onToggle}>
+            <ChevronRight className="vd-chevron" size={16} aria-hidden="true" />
+          </button>
           <h3 id={`slot-${slot.name}-title`} className="vd-slot-title">
             {slot.name}
           </h3>
@@ -50,9 +62,9 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
         </p>
       </header>
 
-      {newest ? <VersionCard key={newest.id} design={newest} slot={slot} newest /> : null}
+      {shown && newest ? <VersionCard key={newest.id} design={newest} slot={slot} newest /> : null}
       {/* Folded so the version being worked on is the one in view; the older one is a click away. */}
-      {heard ? <VersionCard key={heard.id} design={heard} slot={slot} newest={false} folded /> : null}
+      {shown && heard ? <VersionCard key={heard.id} design={heard} slot={slot} newest={false} folded /> : null}
 
       {formOpen ? (
         <div id={`design-${slot.name}`}>

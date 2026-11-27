@@ -2733,6 +2733,8 @@ const esMX: Dictionary = {
     statusNeedsWork: "Por mejorar",
     statusGood: "Buena",
     searchPlaceholder: "Buscar espacios, PNJ, prompts y notas",
+    collapseAll: "Contraer todo",
+    expandAll: "Expandir todo",
     needsElevenLabsKey: "Diseñar, guardar y probar gastan de tu propia cuenta de ElevenLabs, así que hace falta tu clave.",
     needsGeminiKey: "La comparación necesita tu propia clave de Gemini.",
     profileLink: "Añádela en tu perfil",

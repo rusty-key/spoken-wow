@@ -2734,6 +2734,8 @@ const frFR: Dictionary = {
     statusNeedsWork: "À retravailler",
     statusGood: "Bonne",
     searchPlaceholder: "Chercher emplacements, PNJ, prompts et notes",
+    collapseAll: "Tout replier",
+    expandAll: "Tout déplier",
     needsElevenLabsKey: "Concevoir, enregistrer et faire des essais dépensent sur votre propre compte ElevenLabs, il faut donc votre clé.",
     needsGeminiKey: "La comparaison demande votre propre clé Gemini.",
     profileLink: "Ajoutez-la sur votre profil",

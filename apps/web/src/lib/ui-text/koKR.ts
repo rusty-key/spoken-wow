@@ -2731,6 +2731,8 @@ const koKR: Dictionary = {
     statusNeedsWork: "수정 필요",
     statusGood: "좋음",
     searchPlaceholder: "슬롯, NPC, 프롬프트, 메모 검색",
+    collapseAll: "모두 접기",
+    expandAll: "모두 펼치기",
     needsElevenLabsKey: "디자인, 저장, 샘플 생성은 내 ElevenLabs 계정에서 비용이 나가므로 내 키가 필요합니다.",
     needsGeminiKey: "비교하려면 내 Gemini 키가 필요합니다.",
     profileLink: "프로필에서 추가하기",
