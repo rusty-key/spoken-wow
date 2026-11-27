@@ -25,7 +25,8 @@ const DESIGN = {
   voiceDeletedAt: null,
   holderId: "u1",
   holderName: "Ann",
-} as Design;
+  samples: [],
+} as unknown as Design;
 
 function deps(design: Partial<Design> = {}): SampleDeps {
   return {
@@ -65,6 +66,23 @@ describe("sampleDesign", () => {
     expect(samples[0].text.startsWith("[gruff] ")).toBe(true);
     expect(samples[0]).toMatchObject({ credits: 7, npcName: "Ulathek" });
     expect(made).toEqual({ model: "eleven_v4", settings: { stability: 0.4 } });
+  });
+
+  it("voices the lines last voiced again, not the default ones", async () => {
+    const d = deps({ samples: [{ lineId: "g:abc" }, { lineId: "q:1:accept" }] as Design["samples"] });
+    await sampleDesign(input, d);
+    const [, , samples] = vi.mocked(d.replace).mock.calls[0];
+    expect(samples.map((s) => s.lineId)).toEqual(["g:abc", "q:1:accept"]);
+  });
+
+  it("picks other lines when asked, and keeps the old ones only to make up three", async () => {
+    const more = [...LINES, line("g:def", "Another gossip line, a fresh one."), line("q:3:accept", "Another quest text.")];
+    const d = { ...deps({ samples: [{ lineId: "g:abc" }, { lineId: "q:1:accept" }, { lineId: "f:1:orc-male-shady" }] as Design["samples"] }), lines: async () => more };
+    await sampleDesign({ ...input, lines: "other" }, d);
+    const [, , samples] = vi.mocked(d.replace).mock.calls[0];
+    const ids = samples.map((s) => s.lineId);
+    expect(ids).toHaveLength(3);
+    expect(ids).toEqual(expect.arrayContaining(["g:def", "q:3:accept"]));
   });
 
   it("is the holder's alone, and spends nothing for anybody else", async () => {

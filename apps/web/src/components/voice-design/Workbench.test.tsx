@@ -251,3 +251,36 @@ test("lines voiced for the first time show their live takes without a reload", a
   expect(await screen.findByText("Lok'tar")).toBeTruthy();
   expect(screen.getByRole("button", { name: "Live" })).toBeTruthy();
 });
+
+test("Delete older voices asks first, then deletes every older version's voice the viewer holds and says which failed", async () => {
+  const held = (d: Design, holderId = "u1"): Design => ({ ...d, voiceId: `voice-${d.id}`, voiceName: d.id, holderId, holderName: "Ann" });
+  const slots: GroupView[] = [
+    {
+      group: "orc-male",
+      analysis: null,
+      slots: [
+        slot("orc-male-shady", [held(design("orc-male-shady", 3, null)), held(design("orc-male-shady", 2, "needs-work")), held(design("orc-male-shady", 1, "needs-work"))]),
+        slot("orc-male-guard", [held(design("orc-male-guard", 2, null)), held(design("orc-male-guard", 1, "good"), "u2")]),
+      ],
+    },
+  ];
+  const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    expect(init?.method).toBe("DELETE");
+    if (url.includes("orc-male-shady-1")) return Response.json({ error: "the voice is now named \"orc-male-shady\"" }, { status: 400 });
+    return Response.json({ design: { ...held(design("orc-male-shady", 2, "needs-work")), voiceDeletedAt: "2026-11-26T01:00:00Z" } });
+  });
+  vi.stubGlobal("fetch", fetch);
+  render(
+    <LangProvider lang="enUS">
+      <Workbench groups={slots} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
+    </LangProvider>,
+  );
+
+  await userEvent.click(screen.getByRole("button", { name: "Delete older voices · 2" }));
+  expect(fetch).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+  expect(await screen.findByRole("alert")).toHaveProperty("textContent", expect.stringContaining("orc-male-shady v1: the voice is now named"));
+  expect(fetch.mock.calls.map(([url]) => url)).toEqual(["/api/voices/design/orc-male-shady-2/voice", "/api/voices/design/orc-male-shady-1/voice"]);
+  expect(screen.getByRole("button", { name: "Delete older voices · 1" })).toBeTruthy();
+});

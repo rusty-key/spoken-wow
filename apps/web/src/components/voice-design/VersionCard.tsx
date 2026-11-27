@@ -1,6 +1,6 @@
 "use client";
 
-import { AudioLines, Blend, Check, Eye, Loader2, MoreHorizontal, Pencil, RefreshCw, Save, SlidersHorizontal, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { AudioLines, Blend, Check, ChevronDown, Eye, Loader2, MoreHorizontal, Pencil, RefreshCw, Save, Shuffle, SlidersHorizontal, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import Link from "@/components/LocaleLink";
@@ -153,6 +153,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [removing, setRemoving] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [linesMenuOpen, setLinesMenuOpen] = useState(false);
 
   const audio = (sha: string) => withLang(lang, `/api/voices/design/audio/${sha}`);
   const holds = design.holderId === viewer.id;
@@ -183,6 +184,8 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
       const { design, live } = await send<{ design: Design; live?: Record<string, string> }>(withLang(lang, url), init);
       updateDesign(design, live);
     });
+
+  const sample = (lines: "same" | "other") => act("sample", `/api/voices/design/${design.id}/samples`, { body: { lines } });
 
   // A slot has one public version: the one players heard before is not public any more.
   const show = () =>
@@ -357,16 +360,39 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
             <div className="vd-step">
               {holds ? (
                 <>
-                  <button
-                    type="button"
-                    className={cn("bs-btn", again && "vd-btn-again")}
-                    title={design.isPublic ? t.lockedTitle : undefined}
-                    disabled={busy !== null || !keys.elevenlabs || design.isPublic}
-                    onClick={() => void act("sample", `/api/voices/design/${design.id}/samples`, { body: {} })}
-                  >
-                    <SampleIcon size={14} className={busy === "sample" ? "animate-spin" : undefined} aria-hidden="true" />
-                    {again ? t.resample : t.sample}
-                  </button>
+                  <span className={cn(again && "vd-split")}>
+                    <button
+                      type="button"
+                      className={cn("bs-btn", again && "vd-btn-again")}
+                      title={design.isPublic ? t.lockedTitle : undefined}
+                      disabled={busy !== null || !keys.elevenlabs || design.isPublic}
+                      onClick={() => void sample("same")}
+                    >
+                      <SampleIcon size={14} className={busy === "sample" ? "animate-spin" : undefined} aria-hidden="true" />
+                      {again ? t.resample : t.sample}
+                    </button>
+                    {again ? (
+                      <Popover open={linesMenuOpen} onOpenChange={setLinesMenuOpen}>
+                        <PopoverTrigger asChild>
+                          <button type="button" className="bs-btn vd-btn-again" aria-label={t.resampleMore} title={t.resampleMore} disabled={busy !== null || !keys.elevenlabs || design.isPublic}>
+                            <ChevronDown size={14} aria-hidden="true" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" side="top" className="vd-more-menu">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLinesMenuOpen(false);
+                              void sample("other");
+                            }}
+                          >
+                            <Shuffle size={14} aria-hidden="true" />
+                            {t.resampleOther}
+                          </button>
+                        </PopoverContent>
+                      </Popover>
+                    ) : null}
+                  </span>
                   <span className="vd-cost">{fill(t.sampleCost, { credits: Math.round(sampleChars * rate), model })}</span>
                 </>
               ) : (

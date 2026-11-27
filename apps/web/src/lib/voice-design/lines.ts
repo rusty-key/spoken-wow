@@ -32,29 +32,59 @@ export function slotNpcs(lines: readonly CorpusLine[], slot: string, limit = 12)
 const kind = (line: CorpusLine) => line.lineId.slice(0, 2);
 const byLength = (a: CorpusLine, b: CorpusLine) => a.text.length - b.text.length || a.lineId.localeCompare(b.lineId);
 
+function usableLines(lines: readonly CorpusLine[], slot: string): CorpusLine[] {
+  const seen = new Set<string>();
+  return lines
+    .filter((line) => soloLine(line, slot) && line.text.length <= MAX_SAMPLE_CHARS)
+    .filter((line) => !seen.has(line.lineId) && seen.add(line.lineId))
+    .sort(byLength);
+}
+
+const isBark = (line: CorpusLine) => kind(line) === "f:" && line.text.length >= MIN_BARK_CHARS;
+
+/** Tops `picked` up to three from `rest`, in the order given. */
+function topUp(picked: (CorpusLine | undefined)[], rest: readonly CorpusLine[]): CorpusLine[] {
+  const chosen = picked.filter((line): line is CorpusLine => line !== undefined);
+  for (const line of rest) {
+    if (chosen.length >= 3) break;
+    if (!chosen.includes(line)) chosen.push(line);
+  }
+  return chosen;
+}
+
 /**
  * Up to three lines: the longest quest text, the shortest bark, a middling gossip line. A slot
  * without one of the kinds gets the next-longest of what it has instead, so it still has three.
  */
 export function defaultSampleLines(lines: readonly CorpusLine[], slot: string): CorpusLine[] {
-  const seen = new Set<string>();
-  const usable = lines
-    .filter((line) => soloLine(line, slot) && line.text.length <= MAX_SAMPLE_CHARS)
-    .filter((line) => !seen.has(line.lineId) && seen.add(line.lineId))
-    .sort(byLength);
-
-  const quests = usable.filter((line) => kind(line) === "q:");
-  const barks = usable.filter((line) => kind(line) === "f:" && line.text.length >= MIN_BARK_CHARS);
+  const usable = usableLines(lines, slot);
   const gossip = usable.filter((line) => kind(line) === "g:");
-  const picked = [quests.at(-1), barks[0], gossip[Math.floor(gossip.length / 2)]].filter(
-    (line): line is CorpusLine => line !== undefined,
-  );
+  return topUp([usable.filter((line) => kind(line) === "q:").at(-1), usable.find(isBark), gossip[Math.floor(gossip.length / 2)]], [...usable].reverse());
+}
 
-  for (const line of [...usable].reverse()) {
-    if (picked.length >= 3) break;
-    if (!picked.includes(line)) picked.push(line);
-  }
-  return picked;
+/**
+ * Three other lines of the same kinds, picked at random, for when the usual ones say little about
+ * the voice. A slot with too few lines to avoid every one already heard repeats some.
+ */
+export function otherSampleLines(lines: readonly CorpusLine[], slot: string, heard: ReadonlySet<string>, random = Math.random): CorpusLine[] {
+  const usable = usableLines(lines, slot);
+  const fresh = usable.filter((line) => !heard.has(line.lineId));
+  const any = <T>(list: readonly T[]): T | undefined => list[Math.floor(random() * list.length)];
+  const shuffled = (list: readonly CorpusLine[]) =>
+    list
+      .map((line) => ({ line, key: random() }))
+      .sort((a, b) => a.key - b.key)
+      .map(({ line }) => line);
+  return topUp(
+    [any(fresh.filter((line) => kind(line) === "q:")), any(fresh.filter(isBark)), any(fresh.filter((line) => kind(line) === "g:"))],
+    [...shuffled(fresh), ...shuffled(usable.filter((line) => heard.has(line.lineId)))],
+  );
+}
+
+/** The lines a version was last voiced on, in their order, as far as the corpus still has them. */
+export function sameSampleLines(lines: readonly CorpusLine[], slot: string, lineIds: readonly string[]): CorpusLine[] {
+  const usable = new Map(usableLines(lines, slot).map((line) => [line.lineId, line]));
+  return lineIds.map((id) => usable.get(id)).filter((line): line is CorpusLine => line !== undefined);
 }
 
 /** Lines long enough to be Voice Design's preview text, in the character's own register. */

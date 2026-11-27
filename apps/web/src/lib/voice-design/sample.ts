@@ -21,7 +21,7 @@ import { DesignError } from "./access";
 import { keepDesignAudio } from "./audio";
 import { found, holderRefusal } from "./design";
 import { withDesignLock } from "./lock";
-import { defaultSampleLines } from "./lines";
+import { defaultSampleLines, otherSampleLines, sameSampleLines } from "./lines";
 import { readDesign, replaceSamples } from "./store";
 import type { Design, DesignSample } from "./types";
 
@@ -57,7 +57,10 @@ const LIVE: SampleDeps = {
   lock: withDesignLock,
 };
 
-type SampleInput = { lang: Lang; id: string; userId: string; apiKey: string };
+/** `same` voices the lines last voiced again, for a new take; `other` picks different lines. */
+export type SampleLines = "same" | "other";
+
+type SampleInput = { lang: Lang; id: string; userId: string; apiKey: string; lines?: SampleLines };
 
 /** The holder alone, on their own key: the voice is in their account, and nobody spends a teammate's credits. */
 export async function sampleDesign(input: SampleInput, deps: SampleDeps = LIVE): Promise<Design> {
@@ -69,7 +72,16 @@ async function sampleLocked(input: SampleInput, deps: SampleDeps): Promise<Desig
   const refused = holderRefusal(design, input.userId);
   if (refused) throw new DesignError(refused, 403);
 
-  const chosen = defaultSampleLines(await deps.lines(input.lang), design.slot);
+  const corpusLines = await deps.lines(input.lang);
+  const heard = design.samples.map((sample) => sample.lineId);
+  const same = sameSampleLines(corpusLines, design.slot, heard);
+  // Lines picked by "other" stay for the next "same": a new take of lines just found worth hearing.
+  const chosen =
+    input.lines === "other"
+      ? otherSampleLines(corpusLines, design.slot, new Set(heard))
+      : same.length > 0
+        ? same
+        : defaultSampleLines(corpusLines, design.slot);
   if (chosen.length === 0) throw new DesignError(`${design.slot} has no line to sample`, 409);
 
   const settings = await deps.settings(input.userId, input.lang);

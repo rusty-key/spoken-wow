@@ -10,6 +10,7 @@ import {
   readTimedStream,
   type FishSpeechRequest,
 } from "./fish-tts";
+import { sse, stream } from "./fish-testing";
 
 const NPC = { audio: Buffer.from("npc-clip"), text: "Well met, traveller." };
 const NARRATOR = { audio: Buffer.from("narrator-clip"), text: "The dwarf nods." };
@@ -40,34 +41,6 @@ function stub(response: Response) {
   }) as unknown as typeof globalThis.fetch;
   return { calls, fetchImpl };
 }
-
-type Segment = { text: string; start: number; end: number };
-type StreamEvent = {
-  audio: string;
-  seq?: number;
-  offset?: number;
-  segments?: Segment[] | null;
-  duration?: number;
-};
-
-/** fish.audio's with-timestamp answer: one SSE `message` per audio chunk. */
-function sse(events: StreamEvent[]): string {
-  return events
-    .map(({ audio, seq = 0, offset = 0, segments = null, duration = 1 }) => {
-      const payload = {
-        audio_base64: Buffer.from(audio).toString("base64"),
-        content: "",
-        alignment: segments ? { segments, audio_duration: duration } : null,
-        chunk_seq: seq,
-        chunk_audio_offset_sec: offset,
-      };
-      return `event: message\ndata: ${JSON.stringify(payload)}\n\n`;
-    })
-    .join("");
-}
-
-const stream = (events: StreamEvent[]) =>
-  new Response(sse(events), { status: 200, headers: { "content-type": "text/event-stream" } });
 
 const audio = () =>
   stream([{ audio: "ID3fish-mp3", segments: [{ text: "Hiccup", start: 0.1, end: 0.4 }] }]);
