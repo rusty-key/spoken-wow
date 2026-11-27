@@ -1,18 +1,20 @@
 import type { ReactNode } from 'react'
 import type { ProductStatus } from '@shared/types'
 import { S } from '../strings'
+import { formatDate } from '../format'
 import { IconAlert, IconCheck, IconLink } from './Icons'
 
 /** One line saying where Spoken stands on a game. */
 export function SpokenStatus({ status }: { status: ProductStatus | undefined }): ReactNode {
   const state = status?.state ?? 'not-installed'
   const v = status?.installedVersion ?? ''
+  const releaseDate = formatDate(status?.latest?.publishedAt)
   switch (state) {
     case 'up-to-date':
       return (
         <p className="status status-ok">
           <IconCheck size={15} />
-          {S.status.upToDate(v)}
+          {S.status.upToDate(v)}{releaseDate ? ` (${releaseDate})` : ''}
         </p>
       )
     case 'update-available':
