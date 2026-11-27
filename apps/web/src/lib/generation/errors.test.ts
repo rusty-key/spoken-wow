@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { classifyUpstream, failure } from "./errors";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 const WHAT = "generating the line";
 
@@ -123,10 +124,10 @@ describe("classifyUpstream", () => {
 describe("failure", () => {
   it("gives each kind a stable status and stop-or-continue verdict", () => {
     expect(failure("quota", "x")).toMatchObject({ status: 402, fatal: true });
-    expect(failure("auth", "x")).toMatchObject({ status: 502, fatal: true });
+    expect(failure("auth", "x")).toMatchObject({ status: UPSTREAM_FAILED, fatal: true });
     expect(failure("voice-missing", "x")).toMatchObject({ status: 409, fatal: true });
     expect(failure("rate-limit", "x")).toMatchObject({ status: 429, fatal: false });
     expect(failure("bad-request", "x")).toMatchObject({ status: 422, fatal: false });
-    expect(failure("upstream", "x")).toMatchObject({ status: 502, fatal: false });
+    expect(failure("upstream", "x")).toMatchObject({ status: UPSTREAM_FAILED, fatal: false });
   });
 });

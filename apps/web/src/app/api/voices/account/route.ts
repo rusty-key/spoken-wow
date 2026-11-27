@@ -8,6 +8,7 @@ import { requireApiKey } from "@/lib/generation/authz";
 import { requireVoiceViewer } from "@/lib/voices/authz";
 import { isRenamable, listAccountVoices } from "@/lib/voices/elevenlabs";
 import { slotClones } from "@/lib/voices/slots";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
   try {
     voices = await listAccountVoices({ apiKey: key });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 502 });
+    return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: UPSTREAM_FAILED });
   }
 
   const slotted = await slotClones(voices.map((voice) => voice.name));

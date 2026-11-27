@@ -20,6 +20,7 @@ import { requireVoiceViewer } from "@/lib/voices/authz";
 import { recordClone } from "@/lib/voices/clones";
 import { addVoice, deleteVoice, listVoices } from "@/lib/voices/elevenlabs";
 import { listSamples, readSample } from "@/lib/voices/samples";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export async function POST(request: Request, context: Context) {
   try {
     existing = await listVoices({ apiKey: key });
   } catch (error) {
-    return Response.json({ error: message(error) }, { status: 502 });
+    return Response.json({ error: message(error) }, { status: UPSTREAM_FAILED });
   }
 
   const current = existing.get(clone);
@@ -79,7 +80,7 @@ export async function POST(request: Request, context: Context) {
     try {
       await deleteVoice(current, { apiKey: key });
     } catch (error) {
-      return Response.json({ error: `could not replace: ${message(error)}` }, { status: 502 });
+      return Response.json({ error: `could not replace: ${message(error)}` }, { status: UPSTREAM_FAILED });
     }
   }
 
@@ -90,7 +91,7 @@ export async function POST(request: Request, context: Context) {
     // The window that matters: the old voice is gone and the new one failed, so the slot is
     // empty. The clips are all still on disk, so retrying is the fix - say so.
     const lost = current ? " The previous voice was deleted; the clips are intact, so retry." : "";
-    return Response.json({ error: message(error) + lost }, { status: 502 });
+    return Response.json({ error: message(error) + lost }, { status: UPSTREAM_FAILED });
   }
 
   // The explorer asks which voices exist through a memo with a minute-long TTL, and the

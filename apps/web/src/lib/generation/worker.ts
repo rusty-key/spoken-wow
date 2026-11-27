@@ -38,6 +38,7 @@ import { readGenerationSettings, type Preference } from "./preference";
 import { speakerFrom } from "./speakers/for";
 import type { Provider, Speaker } from "./speakers/speaker";
 import { PROVIDER_NAME } from "./providers";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 /**
  * How many times a rate-limited job is retried before it is failed.
@@ -345,7 +346,7 @@ export function startWorker(isLeader: () => boolean, options: WorkerOptions = {}
         failure: {
           kind: "upstream",
           message: error instanceof Error ? error.message : String(error),
-          status: 502,
+          status: UPSTREAM_FAILED,
           fatal: false,
         },
       }),

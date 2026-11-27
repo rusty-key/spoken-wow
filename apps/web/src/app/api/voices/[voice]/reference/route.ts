@@ -21,6 +21,7 @@ import {
   saveTranscript,
 } from "@/lib/voices/references";
 import { isStoredSampleName, withSampleFiles } from "@/lib/voices/samples";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +78,7 @@ export async function POST(request: Request, context: Context) {
   } catch (error) {
     return Response.json(
       { error: error instanceof Error ? error.message : String(error) },
-      { status: 502 },
+      { status: UPSTREAM_FAILED },
     );
   }
 }
