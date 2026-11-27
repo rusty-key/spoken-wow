@@ -22,10 +22,14 @@ local function URL()
     return Spoken.SITE_URL .. Feedback.PATH
 end
 
+-- The tag other addons' announcements wear: gold brackets around the name and icon.
+local TAG = "|cffffff00[|r|cffa0a0ffSpoken|r |TInterface\\AddOns\\Spoken\\icon.tga:0:0:0:0|t|cffffff00]|r "
+local TEXT, LINK_COLOR = "|cffa0a0ff", "|cff66bbff"
+
 function Feedback:Message()
     local shown = URL():gsub("^https?://", "")
-    local link = format("|cff66bbff|H%s|h[%s]|h|r", LINK, shown)
-    return "|cff66bbffSpoken:|r " .. format(L.FEEDBACK_INVITE_FMT, link)
+    local link = format("%s|H%s|h[%s]|h|r%s", LINK_COLOR, LINK, shown, TEXT)
+    return TAG .. TEXT .. format(L.FEEDBACK_INVITE_FMT, link) .. "|r"
 end
 
 function Feedback:Print()

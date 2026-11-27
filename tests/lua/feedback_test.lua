@@ -49,6 +49,7 @@ stub.Advance(env.Feedback.DELAY)
 local said = Invitations()
 Expect("a player hearing English is invited", #said, 1)
 Expect("...with the address as a link", said[1] and said[1]:find("|Haddon:Spoken:feedback|h[spoken.quest/listen]|h", 1, true) ~= nil, true)
+Expect("...tagged with Spoken's name and icon", said[1] and said[1]:find("Spoken|r |TInterface\\AddOns\\Spoken\\icon.tga", 1, true) ~= nil, true)
 Expect("...remembered for the whole account", env.Addon.db.global.Announcements["listen-2026-11"], true)
 
 Click(said[1])
