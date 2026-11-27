@@ -41,7 +41,7 @@ export type Workbench = {
   remixSettings: RemixSettings;
   setRemixSettings: (settings: RemixSettings) => void;
   /** `live` holds the live takes of lines the design was just voiced on. */
-  updateDesign: (design: Design, live?: Record<string, string>) => void;
+  updateDesign: (designs: Design | Design[], live?: Record<string, string>) => void;
   updateAnalysis: (analysis: Analysis) => void;
 };
 
@@ -94,8 +94,8 @@ export async function requestRevision(lang: Lang, design: Design, from: string):
   };
 }
 
-export async function designFrom(lang: Lang, slot: string, draft: Draft): Promise<Design> {
-  const { design } = await send<{ design: Design }>(withLang(lang, "/api/voices/design"), {
+export async function designFrom(lang: Lang, slot: string, draft: Draft): Promise<Design[]> {
+  const { design, retired } = await send<{ design: Design; retired: Design[] }>(withLang(lang, "/api/voices/design"), {
     body: {
       slot,
       prompt: draft.prompt,
@@ -105,12 +105,12 @@ export async function designFrom(lang: Lang, slot: string, draft: Draft): Promis
       archetype: draft.archetype ?? null,
     },
   });
-  return design;
+  return [design, ...retired];
 }
 
-export async function remixFrom(lang: Lang, draft: Draft & Required<Pick<Draft, "remix">>, settings: RemixSettings): Promise<Design> {
+export async function remixFrom(lang: Lang, draft: Draft & Required<Pick<Draft, "remix">>, settings: RemixSettings): Promise<Design[]> {
   if (!draft.changes?.trim()) throw new Error("Gemini said no changes to remix with");
-  const { design } = await send<{ design: Design }>(withLang(lang, `/api/voices/design/${draft.remix.id}/remix`), {
+  const { design, retired } = await send<{ design: Design; retired: Design[] }>(withLang(lang, `/api/voices/design/${draft.remix.id}/remix`), {
     body: {
       changes: draft.changes,
       prompt: draft.prompt,
@@ -120,5 +120,5 @@ export async function remixFrom(lang: Lang, draft: Draft & Required<Pick<Draft, 
       archetype: draft.archetype ?? null,
     },
   });
-  return design;
+  return [design, ...retired];
 }

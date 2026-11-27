@@ -2745,7 +2745,6 @@ const ruRU: Dictionary = {
     firstVersion: "Создать v1",
     usedBy: "Используют {npcs} · реплик: {lines}",
     usedByNobody: "Этот слот пока не использует ни один NPC.",
-    olderVersions: "Прежние версии · {n}",
     startedFrom: "На основе {from}. Исправьте то, что было не так, и создайте новую версию.",
     promptLabel: "Промпт",
     previewTextLabel: "Текст превью",

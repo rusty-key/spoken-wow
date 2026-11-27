@@ -8,7 +8,7 @@ import { useLang } from "@/components/LangProvider";
 import Link from "@/components/LocaleLink";
 import { useUiText } from "@/components/UiTextProvider";
 import { fill } from "@/lib/site-text/format";
-import { DONENESS, donenessOf, isRevisable, type Doneness, PLAYERS_SAY, playersSay, type PlayersSay } from "@/lib/voice-design/groups";
+import { DONENESS, donenessOf, isRevisable, onPage, type Doneness, PLAYERS_SAY, playersSay, type PlayersSay } from "@/lib/voice-design/groups";
 import { parseRemixSettings, PREVIEWS_PER_DESIGN, REMIX_DEFAULTS, type RemixSettings } from "@/lib/voice-design/limits";
 import type { Analysis, Design } from "@/lib/voice-design/types";
 
@@ -51,12 +51,12 @@ const REMIX_KEY = "spoken.voiceDesign.remix";
 
 const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
-/** What a search matches: the slot's name and who uses it, and every version's prompt and notes. */
+/** What a search matches: the slot's name and who uses it, and the prompt and notes of each version on the page. */
 function haystack(slot: SlotView): string {
   return [
     slot.name,
     ...slot.npcs,
-    ...slot.designs.flatMap((design) => [design.prompt, design.previewText, ...design.reviews.map((review) => review.note)]),
+    ...onPage(slot.designs).flatMap((design) => [design.prompt, design.previewText, ...design.reviews.map((review) => review.note)]),
   ]
     .join("\n")
     .toLowerCase();
@@ -196,15 +196,17 @@ export default function Workbench({
       // The form may open far from the button pressed; it exists once this render lands.
       if (draft) setTimeout(() => document.getElementById(`design-${slot}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
     },
-    updateDesign: (design: Design, takes?: Record<string, string>) => {
+    updateDesign: (changed: Design | Design[], takes?: Record<string, string>) => {
       if (takes) setLive((current) => ({ ...current, ...takes }));
+      const designs = [changed].flat();
       setGroups((current) =>
         current.map((group) => ({
           ...group,
           slots: group.slots.map((slot) => {
-            if (slot.name !== design.slot) return slot;
-            const others = slot.designs.filter((d) => d.id !== design.id);
-            return { ...slot, designs: [...others, design].sort((a, b) => b.version - a.version) };
+            const mine = designs.filter((design) => design.slot === slot.name);
+            if (mine.length === 0) return slot;
+            const others = slot.designs.filter((d) => !mine.some((design) => design.id === d.id));
+            return { ...slot, designs: [...others, ...mine].sort((a, b) => b.version - a.version) };
           }),
         })),
       );

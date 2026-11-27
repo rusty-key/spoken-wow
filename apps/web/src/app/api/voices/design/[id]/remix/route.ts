@@ -21,7 +21,7 @@ export async function POST(request: Request, context: Context) {
   const { key, denied: noKey } = await requireApiKey(session.user.id, "elevenlabs");
   if (noKey) return noKey;
   try {
-    const design = await remixVersion({
+    const made = await remixVersion({
       lang,
       id,
       changes: text("changes"),
@@ -33,7 +33,7 @@ export async function POST(request: Request, context: Context) {
       userId: session.user.id,
       apiKey: key,
     });
-    return Response.json({ design });
+    return Response.json(made);
   } catch (error) {
     return failed(error);
   }

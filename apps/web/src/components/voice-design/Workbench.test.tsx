@@ -91,9 +91,9 @@ test("filters by how far each slot's newest version has got, with counts", async
   expect(slotsShown()).toEqual(["orc-male-standard"]);
 });
 
-test("searches prompts and every version's notes", async () => {
+test("searches prompts and the notes of the versions on the page", async () => {
   workbench();
-  await userEvent.type(screen.getByRole("searchbox"), "sounds female");
+  await userEvent.type(screen.getByRole("searchbox"), "too noble");
   expect(slotsShown()).toEqual(["orc-male-shady"]);
 });
 
@@ -112,22 +112,41 @@ test("keeps the filter and the search in the URL", async () => {
 });
 
 test("starts from the filter and the search in the URL", () => {
-  workbench({ initialFilter: "needs-work", initialQuery: "female" });
+  workbench({ initialFilter: "needs-work", initialQuery: "noble" });
   expect(slotsShown()).toEqual(["orc-male-shady"]);
-  expect(screen.getByRole("searchbox")).toHaveProperty("value", "female");
+  expect(screen.getByRole("searchbox")).toHaveProperty("value", "noble");
   cleanup();
   workbench({ initialFilter: "bogus" });
   expect(slotsShown()).toHaveLength(3);
 });
 
-test("shows the newest version open and folds the older ones", () => {
+test("shows only a slot's newest version: the next one replaces it", () => {
   workbench();
   const shady = screen.getByRole("article", { name: "orc-male-shady" });
-  const older = within(shady).getByText(/Older versions · 1/).closest("details")!;
-  expect(older.open).toBe(false);
-  expect(within(older).getByText("Prompt of orc-male-shady v1")).toBeTruthy();
-  const newest = within(shady).getByText("Prompt of orc-male-shady v2");
-  expect(older.contains(newest)).toBe(false);
+  expect(within(shady).getByText("Prompt of orc-male-shady v2")).toBeTruthy();
+  expect(within(shady).queryByText("Prompt of orc-male-shady v1")).toBeNull();
+});
+
+test("keeps the version players hear on the page until a newer one is shown", () => {
+  const heard = { ...design("orc-male-shady", 1, null), isPublic: true };
+  render(
+    <LangProvider lang="enUS">
+      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [design("orc-male-shady", 2, null), heard])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
+    </LangProvider>,
+  );
+  const shady = screen.getByRole("article", { name: "orc-male-shady" });
+  expect(within(shady).getByText("Prompt of orc-male-shady v2")).toBeTruthy();
+  expect(within(shady).getByText("Prompt of orc-male-shady v1")).toBeTruthy();
+});
+
+test("searches only the versions on the page", async () => {
+  render(
+    <LangProvider lang="enUS">
+      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [design("orc-male-shady", 2, null), design("orc-male-shady", 1, null)])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
+    </LangProvider>,
+  );
+  await userEvent.type(screen.getByRole("searchbox"), "orc-male-shady v1");
+  expect(screen.queryByRole("article", { name: "orc-male-shady" })).toBeNull();
 });
 
 test("Revise puts Gemini's draft into a form that was already open", async () => {
@@ -154,7 +173,7 @@ test("Generate opens the new version with an empty note and closes a draft left 
   const v2 = { ...design("orc-male-shady", 2, "needs-work", "too noble"), samples: [line] };
   const v3 = { ...design("orc-male-shady", 3, null), id: "orc-male-shady-3" };
   const revision = { heard: "h", prompt: "Gemini's new prompt", preview_text: "y".repeat(120), archetype: "a" };
-  vi.stubGlobal("fetch", vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: v3 })));
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: v3, retired: [] })));
   Element.prototype.scrollIntoView = () => {};
   render(
     <LangProvider lang="enUS">
@@ -188,7 +207,7 @@ test("Generate all asks first with the cost, then makes each needs-work slot's n
       }
       const slotName = JSON.parse(String(init.body)).slot as string;
       calls.push(`design ${slotName}`);
-      return Response.json({ design: { ...design(slotName, slotName === "orc-male-shady" ? 3 : 2, null), id: `${slotName}-new` } });
+      return Response.json({ design: { ...design(slotName, slotName === "orc-male-shady" ? 3 : 2, null), id: `${slotName}-new` }, retired: [] });
     }),
   );
   render(

@@ -2695,7 +2695,6 @@ const zhCN: Dictionary = {
     firstVersion: "设计 v1",
     usedBy: "使用者：{npcs} · {lines} 条台词",
     usedByNobody: "还没有 NPC 使用这个槽位。",
-    olderVersions: "旧版本 · {n}",
     startedFrom: "基于{from}。改掉不对的地方，再设计一个新版本。",
     promptLabel: "提示词",
     previewTextLabel: "预览文本",

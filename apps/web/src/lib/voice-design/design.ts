@@ -22,7 +22,7 @@ import { keepDesignAudio } from "./audio";
 import { designName, previewTextProblem, promptLengthProblem, REMIX_CHANGES_MAX, withEnding, type RemixSettings } from "./limits";
 import { withDesignLock } from "./lock";
 import { measureAudio } from "./measure";
-import { createDesign, isOwnAnalysis, markVoiceDeleted, readDesign, saveVoice, type NewDesign } from "./store";
+import { createDesign, isOwnAnalysis, listDesigns, markVoiceDeleted, readDesign, saveVoice, type NewDesign } from "./store";
 import type { Design, Measures } from "./types";
 
 export type DesignDeps = {
@@ -34,6 +34,7 @@ export type DesignDeps = {
   measure: (clips: Buffer[]) => Promise<(Measures | null)[] | null>;
   create: (input: NewDesign) => Promise<Design>;
   read: (lang: Lang, id: string) => Promise<Design | null>;
+  slotDesigns: (lang: Lang, slot: string) => Promise<Design[]>;
   save: typeof saveVoice;
   createVoice: (input: { name: string; prompt: string; generatedVoiceId: string }, apiKey: string) => Promise<string>;
   accountVoices: (apiKey: string) => Promise<AccountVoice[]>;
@@ -51,6 +52,7 @@ const LIVE: DesignDeps = {
   measure: (clips) => measureAudio(clips),
   create: createDesign,
   read: readDesign,
+  slotDesigns: listDesigns,
   save: saveVoice,
   createVoice: (input, apiKey) => createDesignedVoice(input, { apiKey }),
   accountVoices: (apiKey) => listAccountVoices({ apiKey }),
@@ -73,6 +75,9 @@ export function rejectDesign(prompt: string, previewText: string): string | null
   return promptLengthProblem(prompt) ?? previewTextProblem(previewText);
 }
 
+/** A new version, and the older ones whose voices it freed from the caller's account. */
+export type Made = { design: Design; retired: Design[] };
+
 export async function designVersion(
   input: {
     lang: Lang;
@@ -87,7 +92,7 @@ export async function designVersion(
     apiKey: string;
   },
   deps: DesignDeps = LIVE,
-): Promise<Design> {
+): Promise<Made> {
   // The ending keeps s sounds soft, so no prompt reaches ElevenLabs without it, whoever wrote it.
   const prompt = withEnding(input.prompt);
   const previewText = input.previewText.trim();
@@ -99,7 +104,7 @@ export async function designVersion(
   }
 
   const made = await deps.design({ prompt, text: previewText }, input.apiKey);
-  return deps.create({
+  const design = await deps.create({
     lang: input.lang,
     slot: input.slot,
     prompt,
@@ -109,6 +114,7 @@ export async function designVersion(
     analysis: describedBy(input.revisionHeard, input.archetype),
     userId: input.userId,
   });
+  return { design, retired: await retireOlder({ ...input, kept: design }, deps) };
 }
 
 async function keptPreviews(made: DesignedPreview[], lang: Lang, deps: DesignDeps) {
@@ -138,7 +144,7 @@ export async function remixVersion(
     apiKey: string;
   },
   deps: DesignDeps = LIVE,
-): Promise<Design> {
+): Promise<Made> {
   const changes = input.changes.trim();
   const prompt = withEnding(input.prompt);
   const previewText = input.previewText.trim();
@@ -157,7 +163,7 @@ export async function remixVersion(
     remix_changes: changes,
     remix_settings: input.settings,
   };
-  return deps.create({
+  const design = await deps.create({
     lang: input.lang,
     slot: parent.slot,
     prompt,
@@ -167,6 +173,7 @@ export async function remixVersion(
     analysis,
     userId: input.userId,
   });
+  return { design, retired: await retireOlder({ ...input, kept: design }, deps) };
 }
 
 export async function found(read: (lang: Lang, id: string) => Promise<Design | null>, lang: Lang, id: string): Promise<Design> {
@@ -226,4 +233,28 @@ export async function deleteDesignVoice(
     await deps.markDeleted(input.lang, input.id);
     return (await deps.read(input.lang, input.id))!;
   });
+}
+
+/**
+ * Frees the caller's account of the older versions' voices; their rows and audio stay. Voices held
+ * by someone else or adopted on /voices are kept, and no failure here fails the paid-for version.
+ */
+export async function retireOlder(
+  input: { lang: Lang; kept: Design; userId: string; apiKey: string },
+  deps: DesignDeps = LIVE,
+): Promise<Design[]> {
+  const retired: Design[] = [];
+  const versions = await deps.slotDesigns(input.lang, input.kept.slot).catch((error: unknown) => {
+    console.warn(`[voice-design] kept ${input.kept.slot}'s older voices:`, error);
+    return [];
+  });
+  for (const design of versions) {
+    if (design.version >= input.kept.version || holderRefusal(design, input.userId)) continue;
+    try {
+      retired.push(await deleteDesignVoice({ lang: input.lang, id: design.id, userId: input.userId, apiKey: input.apiKey }, deps));
+    } catch (error) {
+      console.warn(`[voice-design] kept ${design.slot} v${design.version}'s voice:`, error);
+    }
+  }
+  return retired;
 }
