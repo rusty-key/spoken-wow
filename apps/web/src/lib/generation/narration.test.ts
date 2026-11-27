@@ -33,6 +33,23 @@ describe("audioTags", () => {
   it("leaves an unbalanced bracket alone rather than guessing", () => {
     expect(audioTags("What < is this")).toBe("What < is this");
   });
+
+  it("takes a lowercase letter in any script for a sound", () => {
+    expect(audioTags("<hic>")).toBe("[hic]");
+    // viVN: a lowercase accented first letter is still a lowercase letter.
+    expect(audioTags("<thì thầm>")).toBe("[thì thầm]");
+  });
+
+  it("takes a short word in a script with no case for a sound too", () => {
+    // Every caseless sound in the corpus is three characters or fewer, and its shortest
+    // caseless direction is six.
+    expect(audioTags("<嗝>")).toBe("[嗝]");
+    expect(audioTags("呃。<咳嗽>")).toBe("呃。[咳嗽]");
+    expect(audioTags("<猪哼声>")).toBe("[猪哼声]");
+    expect(audioTags("<콜록>")).toBe("[콜록]");
+    // Past that line: a direction, and it stays bracketed for the narrator.
+    expect(audioTags("<他打开纸条。>")).toBe("<他打开纸条。>");
+  });
 });
 
 describe("segments", () => {
@@ -40,6 +57,25 @@ describe("segments", () => {
     expect(segments("Excellent.\n\n<He opens the note.>")).toEqual([
       { speaker: "npc", text: "Excellent." },
       { speaker: "narrator", text: "He opens the note." },
+    ]);
+  });
+
+  it("hands a bracketed span to the narrator wherever case cannot decide", () => {
+    // zhCN and zhTW: no lowercase letter exists, so no span can be a sound.
+    expect(segments(audioTags("唉。<他打开纸条。>好了。"))).toEqual([
+      { speaker: "npc", text: "唉。" },
+      { speaker: "narrator", text: "他打开纸条。" },
+      { speaker: "npc", text: "好了。" },
+    ]);
+    expect(segments(audioTags("<薩爾低吼着。>"))).toEqual([
+      { speaker: "narrator", text: "薩爾低吼着。" },
+    ]);
+    // ruRU and viVN: case exists, just not in ASCII, so an accented capital is not lowercase.
+    expect(segments(audioTags("<Он разворачивает записку.>"))).toEqual([
+      { speaker: "narrator", text: "Он разворачивает записку." },
+    ]);
+    expect(segments(audioTags("<Ánh mắt nàng…>"))).toEqual([
+      { speaker: "narrator", text: "Ánh mắt nàng…" },
     ]);
   });
 
@@ -68,6 +104,10 @@ describe("segments", () => {
   it("leaves an unbalanced bracket in the spoken text rather than guessing", () => {
     // The gate refuses this line anyway; inventing a closing bracket here would hide that.
     expect(segments("What < is this")).toEqual([{ speaker: "npc", text: "What < is this" }]);
+  });
+
+  it("makes no narrator turn out of <>", () => {
+    expect(segments("A <> B")).toEqual([{ speaker: "npc", text: "A <> B" }]);
   });
 
   it("leaves a lowercase sound with the npc", () => {

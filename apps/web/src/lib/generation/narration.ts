@@ -27,20 +27,28 @@ export const NARRATOR_VOICE = "narrator-male";
 export type Segment = { speaker: "npc" | "narrator"; voice?: string; text: string };
 
 /**
- * A capitalised bracketed span, and nothing else.
+ * A sound's text, inside its brackets: a lowercase first letter, or a short word in a script
+ * with no letter case at all - `<嗝>`, `<咳嗽>`, `<콜록>`, `<猪哼声>`.
  *
- * Blizzard writes both stage directions and NPC sounds in angle brackets, and capitalisation is
- * what separates them - across all 90 spans in the corpus, with no exceptions. A direction
- * names someone: "Eva weeps.", "Motega shrugs his shoulder". A sound is a bare lowercase word:
- * <hic>, <cough>, <sigh>, <mutters>.
+ * Four characters is where the corpus draws the line: every caseless sound in it is three or
+ * fewer, and its shortest caseless direction is six.
+ */
+const SOUND_INNER = String.raw`\p{Ll}[^<>]*|\p{Lo}[^<>]{0,3}`;
+
+/**
+ * A bracketed span that is not a sound: the game narrating, whoever wrote it.
+ *
+ * Blizzard writes both stage directions and NPC sounds in angle brackets. A direction names
+ * someone - "Eva weeps.", "Motega shrugs his shoulder" - and a sound is a bare lowercase word:
+ * <hic>, <cough>, <sigh>, <mutters>. SOUND_INNER decides which, in any script's letters, and
+ * whatever it declines to call a sound is the narrator's to read.
  *
  * Capitalisation alone, note. Also requiring a closing full stop is tempting and wrong -
  * "Motega shrugs his shoulder" has none.
  *
- * A lowercase span stays with the NPC and is handed to audioTags instead: the NPC performs the
- * sound, nobody narrates the word.
+ * Never empty: `<>` is nobody's line, so it is left where it is rather than handed over.
  */
-const DIRECTION = /(<[A-Z][^<>]*>)/;
+const DIRECTION = new RegExp(String.raw`(<(?!(?:${SOUND_INNER})>)[^<>]+>)`, "u");
 
 /**
  * A voice slot named between underscores - `_goblin-male-zany_` - handing the rest of the line,
@@ -60,7 +68,10 @@ const SLOT = String.raw`[a-z][a-z0-9]*(?:-[a-z0-9]+)+`;
 const VOICE_MARKER = new RegExp(String.raw`(?<!\w)_(${SLOT})_(?!\w)`);
 
 /** A direction or a marker, whichever comes first: what a line is cut at. */
-const CUT = new RegExp(String.raw`(<[A-Z][^<>]*>|(?<!\w)_${SLOT}_(?!\w))`);
+const CUT = new RegExp(
+  String.raw`(<(?!(?:${SOUND_INNER})>)[^<>]+>|(?<!\w)_${SLOT}_(?!\w))`,
+  "u",
+);
 
 /** The slot a piece names, when the piece is nothing but a marker. */
 function markedVoice(piece: string): string | undefined {
@@ -113,8 +124,11 @@ export function bareDirection(tag: string): string {
   return match ? match[1].trim() : tag.trim();
 }
 
-/** A lowercase bracketed span: a sound the NPC makes, not the game narrating. */
-const SOUND = /<([a-z][^<>]*)>/g;
+/** A sound the NPC makes, not the game narrating: what SOUND_INNER claims. */
+const SOUND = new RegExp(String.raw`<(${SOUND_INNER})>`, "gu");
+
+/** Every direction in a string: SOUND_INNER's leftovers, for the one caller that strips them all. */
+const DIRECTIONS = new RegExp(String.raw`<(?!(?:${SOUND_INNER})>)[^<>]+>`, "gu");
 
 /**
  * The NPC's own sounds, rewritten into ElevenLabs' audio-tag syntax.
@@ -125,9 +139,9 @@ const SOUND = /<([a-z][^<>]*)>/g;
  * spoken aloud or refused by the gate.
  *
  * Applied to the whole line before segments(), so it reaches the single-voice path too: a line
- * whose only bracket is a sound never goes near the dialogue endpoint. Capitalised directions
- * are left untouched for segments() to hand to the narrator, and an unbalanced bracket is left
- * as damage for the gate to refuse.
+ * whose only bracket is a sound never goes near the dialogue endpoint. What is not a sound is
+ * left bracketed for segments() to hand to the narrator, and an unbalanced bracket is left as
+ * damage for the gate to refuse.
  */
 export function audioTags(text: string): string {
   return text.replace(SOUND, "[$1]");
@@ -255,6 +269,6 @@ export function slotOf(segment: Segment, voice: string): string {
  * restored line and it becomes a rewrite, and starts saying so.
  */
 export function restoresOnlyNarration(overrideText: string, corpusText: string): boolean {
-  return overrideText.replace(/<[A-Z][^<>]*>/g, "").replace(/\s+/g, " ").trim() ===
+  return overrideText.replace(DIRECTIONS, "").replace(/\s+/g, " ").trim() ===
     corpusText.replace(/\s+/g, " ").trim();
 }
