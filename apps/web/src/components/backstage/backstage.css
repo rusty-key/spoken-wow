@@ -2499,6 +2499,17 @@ body:has(main.bs) {
   --ls-tone: var(--bs-red-text);
   --ls-tone-bg: rgba(240, 96, 93, 0.12);
 }
+.ls-verdict {
+  position: relative;
+}
+.ls-verdict[aria-busy="true"] .ls-verdict-label {
+  visibility: hidden;
+}
+.ls-verdict-spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
 .bs-btn.ls-verdict:hover {
   background: var(--ls-tone-bg);
   filter: brightness(1.3);

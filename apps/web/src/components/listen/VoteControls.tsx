@@ -48,11 +48,13 @@ export default function VoteControls({
           className="bs-btn ls-verdict"
           data-verdict={verdict}
           aria-pressed={vote?.verdict === verdict}
+          aria-busy={busy === verdict}
           disabled={busy !== null}
           onClick={() => void send(verdict, verdict)}
         >
-          {busy === verdict ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : null}
-          {label[verdict]}
+          {/* Hidden, not removed, while it sends: the button keeps its width and nothing jumps. */}
+          <span className="ls-verdict-label">{label[verdict]}</span>
+          {busy === verdict ? <Loader2 size={14} className="ls-verdict-spinner animate-spin" aria-hidden="true" /> : null}
         </button>
       ))}
     </div>
