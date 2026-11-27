@@ -3,6 +3,7 @@
  * address and can switch that off; an anonymous voter gives an address and confirms it.
  */
 import { sendFollowConfirmEmail } from "@/lib/email";
+import { normalEmail } from "@/lib/invites/store";
 import { langParam } from "@/lib/lang-server";
 import { clientIp } from "@/lib/reports/client-ip";
 import { currentSession } from "@/lib/session";
@@ -10,8 +11,6 @@ import { followState, requestFollow, setAccountFollow, stopFollow } from "@/lib/
 import { currentVoter, voterFor } from "@/lib/voice-feedback/voter";
 
 export const dynamic = "force-dynamic";
-
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function account() {
   const user = (await currentSession())?.user;
@@ -31,8 +30,8 @@ export async function POST(request: Request) {
     await setAccountFollow(user.email, body.on);
     return Response.json(await followState(`u:${user.id}`, user));
   }
-  const email = typeof body?.email === "string" ? body.email.trim() : "";
-  if (!EMAIL.test(email) || email.length > 254) return Response.json({ error: "Enter an email address." }, { status: 400 });
+  const email = typeof body?.email === "string" ? normalEmail(body.email) : null;
+  if (!email) return Response.json({ error: "Enter an email address." }, { status: 400 });
   const { lang, denied } = await langParam(request);
   if (denied) return denied;
   const voter = await voterFor(null);

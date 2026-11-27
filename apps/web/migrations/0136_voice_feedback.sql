@@ -63,6 +63,7 @@ create table "voice_follower" (
 );
 
 create index "voice_follower_ip_idx" on "voice_follower" ("confirmIp", "confirmSentAt");
+create index "voice_follower_email_idx" on "voice_follower" ("email", "confirmSentAt");
 
 -- Addresses that unsubscribed, lowercased. Covers accounts and anonymous followers alike.
 create table "voice_follow_optout" (

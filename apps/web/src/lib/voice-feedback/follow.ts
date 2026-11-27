@@ -155,7 +155,7 @@ export async function queueNotices(client: PoolClient, showingId: number): Promi
        join "voice_design_showing" s
          on s."teamId" = cur."teamId" and s."lang" = cur."lang" and s."slot" = cur."slot" and s."id" < cur."id"
        join "voice_feedback" f on f."showingId" = s."id" and f."verdict" <> 'skip'
-       left join "user" u on f."voter" = 'u:' || u."id"
+       left join "user" u on u."id" = f."userId"
        left join "voice_follower" fl on fl."voter" = f."voter" and fl."confirmedAt" is not null
       where cur."id" = $1
         and coalesce(u."email", fl."email") is not null

@@ -8,6 +8,7 @@ import { queryIn, withTeam, type TeamId } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { defaultTeamOf } from "@/lib/teams/store";
 import { flavorOf } from "@/lib/voice-design/groups";
+import { NEWEST_SHOWING } from "@/lib/voice-design/store";
 import type { GeminiResult, Verdict } from "@/lib/voice-design/types";
 
 export type PublicVoice = {
@@ -31,13 +32,8 @@ export class VoteError extends Error {
   }
 }
 
-/** The newest showing of the row `s`'s slot. */
-const NEWEST = `
-  (select s2."id" from "voice_design_showing" s2
-    where s2."teamId" = s."teamId" and s2."lang" = s."lang" and s2."slot" = s."slot"
-    order by s2."id" desc limit 1)`;
-
-async function teamOf(lang: Lang): Promise<TeamId | undefined> {
+/** The team whose shown voices /listen plays; Show to players refuses any other. */
+export async function listenTeamOf(lang: Lang): Promise<TeamId | undefined> {
   return (await defaultTeamOf(lang))?.id;
 }
 
@@ -48,13 +44,13 @@ function archetypeIn(labels: Record<string, string>, result: GeminiResult, slot:
 }
 
 export async function publicVoices(lang: Lang): Promise<PublicVoice[]> {
-  const team = await teamOf(lang);
+  const team = await listenTeamOf(lang);
   if (!team) return [];
   const shown = await queryIn<{ showingId: string; slot: string; designId: string; analysis: Record<string, unknown> | null }>(
     team,
     `select s."id" as "showingId", s."slot", d."id" as "designId", d."analysis"
        from "voice_design_showing" s join "voice_design" d on d."id" = s."designId"
-      where s."lang" = $1 and s."id" = ${NEWEST}
+      where s."lang" = $1 and s."id" = ${NEWEST_SHOWING}
       order by s."slot"`,
     [lang],
   );
@@ -92,13 +88,13 @@ export async function publicVoices(lang: Lang): Promise<PublicVoice[]> {
 
 /** Only the lines players hear now are public; drafts and older versions stay private. */
 export async function isPublicClip(lang: Lang, sha256: string): Promise<boolean> {
-  const team = await teamOf(lang);
+  const team = await listenTeamOf(lang);
   if (!team) return false;
   const rows = await queryIn(
     team,
     `select 1 from "voice_design_showing" s
        join "voice_design_clip" c on c."designId" = s."designId" and c."kind" = 'sample'
-      where s."lang" = $1 and c."sha256" = $2 and s."id" = ${NEWEST}
+      where s."lang" = $1 and c."sha256" = $2 and s."id" = ${NEWEST_SHOWING}
       limit 1`,
     [lang, sha256],
   );
@@ -113,11 +109,11 @@ export async function castVote(
   lang: Lang,
   vote: { showingId: number; voter: string; userId: string | null; verdict: Verdict; note: string },
 ): Promise<void> {
-  const team = await teamOf(lang);
+  const team = await listenTeamOf(lang);
   if (!team) throw new VoteError("no such voice", 404);
   await withTeam(team, async (client) => {
     const { rows } = await client.query<{ current: boolean }>(
-      `select s."id" = ${NEWEST} as "current" from "voice_design_showing" s where s."id" = $1 and s."lang" = $2`,
+      `select s."id" = ${NEWEST_SHOWING} as "current" from "voice_design_showing" s where s."id" = $1 and s."lang" = $2`,
       [vote.showingId, lang],
     );
     if (!rows[0]) throw new VoteError("no such voice", 404);
@@ -133,7 +129,7 @@ export async function castVote(
 }
 
 export async function votesOf(lang: Lang, voter: string): Promise<Record<number, OwnVote>> {
-  const team = await teamOf(lang);
+  const team = await listenTeamOf(lang);
   if (!team) return {};
   const rows = await queryIn<{ showingId: string; verdict: Verdict; note: string }>(
     team,

@@ -5,18 +5,19 @@
 import "server-only";
 
 import type { Lang } from "@/lib/lang";
-import { asTeamOf, defaultTeamOf, teamOf } from "@/lib/teams/store";
+import { asTeamOf, teamOf } from "@/lib/teams/store";
 import { isUuid } from "@/lib/uuid";
 import { DesignError } from "@/lib/voice-design/access";
 import { lockSlot } from "@/lib/voice-design/store";
 
 import { queueNotices } from "./follow";
+import { listenTeamOf } from "./public";
 
 /** `replaced` when another version was public, so voters of the earlier round may hear of it. */
 export async function showVersion(lang: Lang, designId: string, userId: string): Promise<{ showingId: number; replaced: boolean }> {
   if (!isUuid(designId)) throw new DesignError("no such design", 404);
   const team = await teamOf(lang);
-  if (team !== (await defaultTeamOf(lang))?.id) {
+  if (team !== (await listenTeamOf(lang))) {
     throw new DesignError("The Listen page plays this language's first team's voices only, so yours cannot be shown there yet.");
   }
   return asTeamOf(lang, async (client) => {

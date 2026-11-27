@@ -9,16 +9,17 @@ import { randomUUID } from "node:crypto";
 
 import { cookies } from "next/headers";
 
+import { isUuid } from "@/lib/uuid";
+
 export const VOTER_COOKIE = "spoken_voter";
 
 const TWO_YEARS_S = 2 * 365 * 24 * 60 * 60;
-const UUID = /^[0-9a-f-]{36}$/;
 
 /** The voter this request votes as; null for an anonymous visitor with no cookie yet. */
 export async function currentVoter(userId: string | null): Promise<string | null> {
   if (userId) return `u:${userId}`;
   const id = (await cookies()).get(VOTER_COOKIE)?.value;
-  return id && UUID.test(id) ? `a:${id}` : null;
+  return id && isUuid(id) ? `a:${id}` : null;
 }
 
 /** As currentVoter, minting the cookie on a first anonymous vote. Route handlers only. */

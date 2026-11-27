@@ -40,12 +40,19 @@ export default async function Page({
 }) {
   const lang = await pageLang(params);
   const { followed } = await searchParams;
-  const [ui, site] = await Promise.all([readingLang(lang).then(uiText), siteText(lang)]);
+  // The voices are the same for everyone, so they load while the visitor is worked out.
+  const [ui, site, voices, visitor] = await Promise.all([
+    readingLang(lang).then(uiText),
+    siteText(lang),
+    publicVoices(lang),
+    currentSession().then(async (session) => {
+      const voter = await currentVoter(session?.user.id ?? null);
+      const account = session ? { email: session.user.email } : null;
+      return Promise.all([voter ? votesOf(lang, voter) : {}, followState(voter, account)]);
+    }),
+  ]);
   const t = ui.listen;
-  const session = await currentSession();
-  const voter = await currentVoter(session?.user.id ?? null);
-  const account = session ? { email: session.user.email } : null;
-  const [voices, votes, follow] = await Promise.all([publicVoices(lang), voter ? votesOf(lang, voter) : {}, followState(voter, account)]);
+  const [votes, follow] = visitor;
   return (
     <SiteTextProvider text={site}>
       <UiTextProvider text={ui}>

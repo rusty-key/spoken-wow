@@ -1,10 +1,11 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, LayoutList, Pause, Play, Search, SquareStack } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import AudioPlayer from "@/components/AudioPlayer";
 import { useUiText } from "@/components/UiTextProvider";
+import { send } from "@/components/voice-design/context";
 import { withLang, type Lang } from "@/lib/lang";
 import { fill } from "@/lib/site-text/format";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,6 @@ type Filter = "all" | "unvoted" | "voted";
 type View = "table" | "cards";
 type Clip = { src: string; title: string; subtitle: string };
 
-const voiceName = (voice: PublicVoice) => slotLabel(voice.slot);
 
 const viewIn = (hash: string): View | null => (hash === "#table" || hash === "#cards" ? (hash.slice(1) as View) : null);
 
@@ -51,14 +51,14 @@ export default function Listen({
   // Cards deal out what was left to vote on when they were opened, in random order, unfiltered.
   const [cardsFrom, setCardsFrom] = useState(initialVotes);
   // Shuffled after mount, so the server's render matches the first client one.
-  const [order, setOrder] = useState<string[]>(() => voices.map((voice) => voice.slot));
+  const [order, setOrder] = useState(voices);
   const [at, setAt] = useState(0);
   const [playing, setPlaying] = useState<Clip | null>(null);
   const [sounding, setSounding] = useState(false);
   const audio = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    setOrder(shuffled(voices.map((voice) => voice.slot)));
+    setOrder(shuffled(voices));
   }, [voices]);
 
   // `#table` and `#cards` pick the view, so a link can open either; without one, phones get cards.
@@ -89,7 +89,6 @@ export default function Listen({
   function chooseFilter(value: Filter) {
     setFilter(value);
     setFilteredBy(votes);
-    setAt(0);
   }
 
   function choose(next: View) {
@@ -109,10 +108,7 @@ export default function Listen({
     (!needle || [voice.race, voice.gender, voice.flavor ?? ""].join(" ").toLowerCase().includes(needle)) &&
     (filter === "all" || (filter === "voted") === voice.showingId in filteredBy);
   const listed = voices.filter(matches);
-  const bySlot = useMemo(() => new Map(voices.map((voice) => [voice.slot, voice])), [voices]);
-  const cards = order
-    .map((slot) => bySlot.get(slot))
-    .filter((voice): voice is PublicVoice => voice !== undefined && !(voice.showingId in cardsFrom));
+  const cards = order.filter((voice) => !(voice.showingId in cardsFrom));
   const current = cards[Math.min(at, cards.length - 1)];
 
   const counts: Record<Filter, number> = {
@@ -122,13 +118,7 @@ export default function Listen({
   };
 
   async function vote(voice: PublicVoice, verdict: Verdict, note: string) {
-    const response = await fetch(withLang(lang, "/api/listen/votes"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ showingId: voice.showingId, verdict, note }),
-    });
-    const body = (await response.json().catch(() => ({}))) as { error?: string };
-    if (!response.ok) throw new Error(body.error ?? `${response.status}`);
+    await send(withLang(lang, "/api/listen/votes"), { body: { showingId: voice.showingId, verdict, note } });
     setVotes((known) => ({ ...known, [voice.showingId]: { verdict, note } }));
   }
 
@@ -146,7 +136,7 @@ export default function Listen({
               className={cn("vd-play", on && "vd-play-on")}
               aria-pressed={on}
               title={spelled ? undefined : said}
-              onClick={() => play({ src, title: voiceName(voice), subtitle: said })}
+              onClick={() => play({ src, title: slotLabel(voice.slot), subtitle: said })}
             >
               <Icon size={13} aria-hidden="true" />
               {fill(t.lineN, { n: index + 1 })}
@@ -186,10 +176,7 @@ export default function Listen({
                 value={query}
                 placeholder={t.searchPlaceholder}
                 aria-label={t.searchPlaceholder}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setAt(0);
-                }}
+                onChange={(event) => setQuery(event.target.value)}
               />
             </label>
           </>
@@ -221,7 +208,7 @@ export default function Listen({
             {listed.map((voice) => (
               <tr key={voice.showingId}>
                 <th scope="row" className="ls-name">
-                  {voiceName(voice)}
+                  {slotLabel(voice.slot)}
                 </th>
                 <td className="vd-muted">{voice.archetype}</td>
                 <td>{lines(voice, false)}</td>
@@ -236,8 +223,8 @@ export default function Listen({
           </tbody>
         </table>
       ) : current ? (
-        <section className="ls-card" aria-label={voiceName(current)}>
-          <h2 className="ls-card-name">{voiceName(current)}</h2>
+        <section className="ls-card" aria-label={slotLabel(current.slot)}>
+          <h2 className="ls-card-name">{slotLabel(current.slot)}</h2>
           {current.archetype ? <p className="vd-muted">{current.archetype}</p> : null}
           {lines(current, true)}
           <p className="bs-label">{t.question}</p>

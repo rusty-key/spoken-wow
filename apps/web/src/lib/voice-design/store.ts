@@ -62,15 +62,15 @@ type SampleRow = DesignSample & { designId: string; createdAt: Date };
 type ShowingRow = { id: string; designId: string; createdAt: Date; createdByName: string | null; isPublic: boolean };
 type FeedbackRow = { showingId: string; voter: string; who: string | null; verdict: Verdict; note: string; hidden: boolean; at: Date };
 
-/** The newest showing of each design's slot: the version players hear. */
-const PUBLIC_SHOWING = `
+/** The newest showing of the slot of the showing aliased `s`: the version players hear. */
+export const NEWEST_SHOWING = `
   (select s2."id" from "voice_design_showing" s2
     where s2."teamId" = s."teamId" and s2."lang" = s."lang" and s2."slot" = s."slot"
     order by s2."id" desc limit 1)`;
 
-function showingsOf(rows: ShowingRow[], feedback: FeedbackRow[]): Showing[] {
+function showingsOf(rows: ShowingRow[], byShowing: Map<string, FeedbackRow[]>): Showing[] {
   return rows.map((row) => {
-    const own = feedback.filter((f) => f.showingId === row.id);
+    const own = byShowing.get(row.id) ?? [];
     const counts: Record<Verdict, number> = { fits: 0, close: 0, off: 0, skip: 0 };
     for (const f of own) counts[f.verdict] += 1;
     const notes: FeedbackNote[] = own
@@ -103,7 +103,7 @@ async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
     ),
     readAs<ShowingRow>(
       lang,
-      `select s."id", s."designId", s."createdAt", u."name" as "createdByName", s."id" = ${PUBLIC_SHOWING} as "isPublic"
+      `select s."id", s."designId", s."createdAt", u."name" as "createdByName", s."id" = ${NEWEST_SHOWING} as "isPublic"
          from "voice_design_showing" s left join "user" u on u."id" = s."createdBy"
         where s."designId" = any($1::uuid[])
         order by s."id" desc`,
@@ -121,6 +121,8 @@ async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
       [ids],
     ),
   ]);
+  const byShowing = new Map<string, FeedbackRow[]>();
+  for (const f of feedback) byShowing.set(f.showingId, [...(byShowing.get(f.showingId) ?? []), f]);
   return rows.map((row) => {
     const shown = showings.filter((s) => s.designId === row.id);
     const own = samples.filter((s) => s.designId === row.id);
@@ -135,7 +137,7 @@ async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
         .filter((r) => r.designId === row.id)
         .map(({ designId: _, ...review }) => ({ ...review, id: Number(review.id), createdAt: review.createdAt.toISOString() })),
       isPublic: shown.some((s) => s.isPublic),
-      showings: showingsOf(shown, feedback),
+      showings: showingsOf(shown, byShowing),
     };
   });
 }
@@ -294,7 +296,7 @@ export async function lockSlot(client: PoolClient, lang: Lang | null, id: string
 async function refuseIfPublic(client: PoolClient, id: string): Promise<void> {
   await lockSlot(client, null, id);
   const { rows } = await client.query(
-    `select 1 from "voice_design_showing" s where s."designId" = $1 and s."id" = ${PUBLIC_SHOWING}`,
+    `select 1 from "voice_design_showing" s where s."designId" = $1 and s."id" = ${NEWEST_SHOWING}`,
     [id],
   );
   if (rows.length > 0) throw new DesignError("Players hear this version. Show another version to players first.");

@@ -12,7 +12,7 @@ import { useSiteText } from "./SiteTextProvider";
  * The section links in a menu, for the widths where the top bar has no room for them. Off the
  * front page they lead back to its sections.
  */
-export default function NavMenu({ home = true }: { home?: boolean }) {
+export default function NavMenu({ home = false }: { home?: boolean }) {
   const t = useSiteText();
   const lang = useLang();
   const menu = useRef<HTMLDetailsElement>(null);
