@@ -172,6 +172,80 @@ describe("a Chinese class or race word on a page", () => {
   });
 });
 
+describe("a race a Chinese line names by a shorter word", () => {
+  const skyborne = { readerRace: "高阶会天裔" };
+  const gossip = (text: string, fields: Record<string, string> = {}): Envelope => ({
+    source: "quests",
+    fields: { npc: "12345", shown: "1", locale: "zhCN", reader: "小明", ...skyborne, ...fields },
+    text,
+  });
+  const page = (text: string, fields: Record<string, string> = {}): Envelope => ({
+    source: "readables",
+    fields: { page: "1", shown: "1", locale: "zhCN", reader: "小明", ...skyborne, ...fields },
+    text,
+  });
+
+  // UnitRace answers 高阶会天裔, the game's own lines say 天裔, and intake swapped only the
+  // long name, so the word stayed in the text and every player would hear it.
+  it("is the reader in gossip: 你好，天裔。", () => {
+    expect(detemplated(gossip("你好，天裔。我们出发吧。"))).toBe("你好，$R。我们出发吧。");
+  });
+
+  // Intake takes the name out first and detemplates what is left (submission.ts), so the fields
+  // the swap reads are the ones that survive that.
+  it("is still the reader after the name has been taken out", () => {
+    expect(detemplated(nameless(gossip("小明，你好，天裔。")))).toBe("$N，你好，$R。");
+  });
+
+  it("is the reader in quest text, behind a modifier, as the class word is", () => {
+    expect(detemplated(gossip("年轻的天裔，我们出发吧。"))).toBe("年轻的$R，我们出发吧。");
+  });
+
+  it("is the other branch of the race, 塑风者天裔, on the same word", () => {
+    expect(detemplated(gossip("你好，天裔。", { readerRace: "塑风者天裔" }))).toBe("你好，$R。");
+  });
+
+  it("is the reader on a page when a pause surrounds it", () => {
+    expect(detemplated(page("你好，天裔。"))).toBe("你好，$R。");
+  });
+
+  // A page is prose: 天裔精灵 is a creature's kind, not the reader, and a strict boundary keeps
+  // it. The cost is the same one the class word pays, an address behind a glued modifier.
+  it("is a noun on a page: 天裔精灵 and 年轻的天裔 stay", () => {
+    expect(detemplated(page("天裔精灵从林中走出来。"))).toBe("天裔精灵从林中走出来。");
+    expect(detemplated(page("年轻的天裔走进了酒馆。"))).toBe("年轻的天裔走进了酒馆。");
+  });
+
+  it("leaves another race's name the only word it swaps", () => {
+    const other = { readerRace: "暗夜精灵" };
+    expect(detemplated(gossip("你好，天裔。", other))).toBe("你好，天裔。");
+    expect(detemplated(gossip("你好，暗夜精灵。", other))).toBe("你好，$R。");
+  });
+
+  it("still swaps the full name whole, where a line has it", () => {
+    expect(detemplated(gossip("你好，高阶会天裔。"))).toBe("你好，$R。");
+  });
+
+  // The other branch's name is not 天裔 alone: its own half would be taken by the loose boundary
+  // and the name would come apart as 塑风者$R.
+  it("keeps the other branch's name whole, whichever branch reads it", () => {
+    const other = "塑风者天裔的长老说：天裔应当远行。";
+    expect(detemplated(gossip(other))).toBe("塑风者天裔的长老说：$R应当远行。");
+    expect(detemplated(gossip(other, { readerRace: "塑风者天裔" }))).toBe("$R的长老说：$R应当远行。");
+    expect(detemplated(gossip("高阶会天裔的长老说：天裔应当远行。", { readerRace: "塑风者天裔" }))).toBe(
+      "高阶会天裔的长老说：$R应当远行。",
+    );
+  });
+
+  // The envelope is a public paste, so a `readerRace` no client sends must not reach an object's
+  // prototype and throw the batch.
+  it("takes a race no client sends as no race word at all", () => {
+    for (const readerRace of ["constructor", "__proto__", "toString"]) {
+      expect(detemplated(gossip("你好，天裔。", { readerRace }))).toBe("你好，天裔。");
+    }
+  });
+});
+
 describe("a Chinese class word on quest text or in gossip", () => {
   const quest = (text: string): Envelope => ({
     source: "quests",
