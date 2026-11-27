@@ -8,7 +8,9 @@ import type { Lang } from "@/lib/lang";
 import { asTeamOf, teamOf } from "@/lib/teams/store";
 import { isUuid } from "@/lib/uuid";
 import { DesignError } from "@/lib/voice-design/access";
+import { sameLines } from "@/lib/voice-design/groups";
 import { lockSlot } from "@/lib/voice-design/store";
+import type { ShownLine } from "@/lib/voice-design/types";
 
 import { queueNotices } from "./follow";
 import { listenTeamOf } from "./public";
@@ -29,17 +31,20 @@ export async function showVersion(lang: Lang, designId: string, userId: string):
     );
     // Players vote on these lines; a version without them has nothing to play.
     if (rows[0].samples === 0) throw new DesignError("Voice the sample lines before showing this version to players.");
-    const previous = await client.query<{ designId: string }>(
-      `select "designId" from "voice_design_showing" where "lang" = $1 and "slot" = $2 order by "id" desc limit 1`,
+    const previous = await client.query<{ designId: string; samples: ShownLine[] | null }>(
+      `select "designId", "samples" from "voice_design_showing" where "lang" = $1 and "slot" = $2 order by "id" desc limit 1`,
       [lang, slot],
     );
-    const inserted = await client.query<{ id: string }>(
-      `insert into "voice_design_showing" ("designId", "lang", "slot", "createdBy") values ($1, $2, $3, $4) returning "id"`,
+    // The trigger of migration 0138 keeps the version's lines with the showing.
+    const inserted = await client.query<{ id: string; samples: ShownLine[] }>(
+      `insert into "voice_design_showing" ("designId", "lang", "slot", "createdBy") values ($1, $2, $3, $4) returning "id", "samples"`,
       [designId, lang, slot, userId],
     );
     const showingId = Number(inserted.rows[0].id);
-    // Showing the same version again is a fresh round on the same lines: nothing new to tell voters.
-    const replaced = previous.rows.length > 0 && previous.rows[0].designId !== designId;
+    // Voters hear of new audio: another version, or this one voiced again. The same lines shown
+    // again are only a fresh round.
+    const before = previous.rows[0];
+    const replaced = before !== undefined && (before.designId !== designId || !sameLines(before.samples ?? [], inserted.rows[0].samples));
     if (replaced) await queueNotices(client, showingId);
     return { showingId, replaced };
   });

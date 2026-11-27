@@ -28,6 +28,7 @@ const DESIGN: Design = {
   samples: [],
   sampledAt: null,
   isPublic: false,
+  playersHearOlderLines: false,
   showings: [],
   reviews: [],
   createdBy: "u1",

@@ -39,6 +39,7 @@ function design(slot: string, version: number, review: Design["reviews"][number]
     sampledAt: null,
     reviews: review ? [{ id: version, status: review, note, bestPreview: null, clips: {}, players: [], createdBy: null, createdByName: "Ann", createdAt: "2026-11-26T00:00:00Z" }] : [],
     isPublic: false,
+    playersHearOlderLines: false,
     showings: [],
     createdBy: null,
     createdByName: "Ann",
@@ -331,7 +332,7 @@ test("narrows to the slots players say mostly don't fit, and keeps it in the URL
   const voted = (name: string, counts: Design["showings"][number]["counts"]): Design => ({
     ...design(name, 1, null),
     isPublic: true,
-    showings: [{ id: 1, createdAt: "2026-11-26T00:00:00Z", createdByName: "Ann", counts, notes: [] }],
+    showings: [{ id: 1, createdAt: "2026-11-26T00:00:00Z", createdByName: "Ann", counts, notes: [], samples: null, linesChanged: false }],
   });
   render(
     <LangProvider lang="enUS">

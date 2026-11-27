@@ -155,8 +155,10 @@ Players' opinions help you judge a voice. You make the final call.
   character?** with Fits, Close, Doesn't fit or Skip, and can add a note. Each slot shows one
   version: the one shown last. Showing an older version again rolls back to it.
 - Every press starts a fresh round of votes. A player's second vote in a round replaces the first.
-- While players hear a version, its sample lines are locked: it cannot be sampled or saved again.
-  Show another version first.
+- A showing keeps the lines it played. A version players hear can still be voiced again: the new
+  lines show on the workbench, players keep hearing and voting on the shown ones, and **Show again**
+  puts the new lines in front of them as a fresh round. It cannot be saved as another voice while
+  shown; show another version first.
 - Each version card lists every round's counts and notes, which only people who design voices in
   the language can see. **Hide** removes a spam note; its vote still counts.
 - Tick **Use for the next version** on the notes worth acting on, then give your verdict: the

@@ -56,7 +56,13 @@ export type Showing = {
   counts: Record<Verdict, number>;
   /** Newest first; hidden notes are left out, their verdicts still counted. */
   notes: FeedbackNote[];
+  /** The lines players heard and voted on; null for a round from before they were kept. */
+  samples: ShownLine[] | null;
+  /** The version has been voiced again since: its votes are about `samples`, not its lines now. */
+  linesChanged: boolean;
 };
+
+export type ShownLine = { sha256: string; text: string | null; npcName: string | null };
 
 /** A player's note a reviewer picked to act on, as it read when picked. */
 export type PlayerNote = { verdict: Verdict; note: string };
@@ -101,6 +107,8 @@ export type Design = {
   reviews: Review[];
   /** Whether players hear this version on /listen now: its slot's newest showing is of it. */
   isPublic: boolean;
+  /** Shown, then voiced again: players still hear the lines it had when shown, until it is shown again. */
+  playersHearOlderLines: boolean;
   /** Newest first. */
   showings: Showing[];
   createdBy: string | null;

@@ -7,6 +7,9 @@ import { useUiText } from "@/components/UiTextProvider";
 import { fill } from "@/lib/site-text/format";
 import { VERDICTS, type Design, type Verdict } from "@/lib/voice-design/types";
 
+import { designAudioUrl, useWorkbench } from "./context";
+import PlayButton from "./PlayButton";
+
 const day = (iso: string) => iso.slice(0, 10);
 
 export const pickKey = (showingId: number, voter: string) => `${showingId}|${voter}`;
@@ -36,6 +39,7 @@ export default function FeedbackResults({
   onPick: (key: string, on: boolean) => void;
 }) {
   const t = useUiText().voiceDesign;
+  const { lang } = useWorkbench();
   if (design.showings.length === 0) return null;
   const verdict = verdictLabels(t);
   return (
@@ -46,6 +50,20 @@ export default function FeedbackResults({
         return (
           <div key={showing.id} className="vd-feedback-round">
             <p className="vd-muted">{fill(t.shownBy, { who: showing.createdByName ?? t.someone, when: day(showing.createdAt) })}</p>
+            {/* Votes and notes are about these lines; once voiced again, the card's own lines are others. */}
+            {showing.samples && showing.linesChanged ? (
+              <div className="vd-round-lines">
+                <span className="vd-muted">{t.roundLines}</span>
+                {showing.samples.map((line, index) => (
+                  <PlayButton
+                    key={line.sha256 + index}
+                    clip={{ src: designAudioUrl(lang, line.sha256), title: line.npcName ?? design.slot, meta: t.roundLines, subtitle: line.text ?? "" }}
+                  >
+                    {fill(t.roundLineN, { n: index + 1 })}
+                  </PlayButton>
+                ))}
+              </div>
+            ) : null}
             {total === 0 ? (
               <p className="vd-muted">{t.feedbackNone}</p>
             ) : (
