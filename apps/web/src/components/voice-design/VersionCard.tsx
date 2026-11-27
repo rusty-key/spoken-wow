@@ -1,6 +1,6 @@
 "use client";
 
-import { AudioLines, Blend, Check, ChevronDown, ChevronRight, Eye, GitCompare, Loader2, MoreHorizontal, Pencil, Plus, RefreshCw, Save, Shuffle, SlidersHorizontal, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { AudioLines, Blend, Check, ChevronDown, ChevronRight, Eye, GitCompare, Loader2, MoreHorizontal, Pencil, Plus, RefreshCw, Save, Shuffle, SlidersHorizontal, Sparkles, Trash2, Undo2, Wand2, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import Link from "@/components/LocaleLink";
@@ -147,7 +147,7 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
   const t = useUiText().voiceDesign;
   // A folded card is its header alone, opened from the header.
   const [open, setOpen] = useState(!folded);
-  const { lang, viewer, keys, rate, model, live, updateDesign, setDraft, remixSettings } = useWorkbench();
+  const { lang, viewer, keys, rate, model, live, updateDesign, removeDesign, setDraft, remixSettings } = useWorkbench();
   const last = design.reviews.at(-1);
   const [note, setNote] = useState("");
   const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
@@ -168,6 +168,7 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmBack, setConfirmBack] = useState(false);
   const [removing, setRemoving] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [linesMenuOpen, setLinesMenuOpen] = useState(false);
@@ -365,6 +366,31 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
                   </li>
                 ))}
               </ul>
+              {/* Before a preview is saved, a version whose previews are all wrong can simply go. */}
+              {can && newest && design.voiceId === null && slot.designs[1] ? (
+                <div className="vd-step">
+                  <Confirm
+                    question={fill(t.backConfirm, { v: tag, previous: `v${slot.designs[1].version}` })}
+                    label={fill(t.backDelete, { v: tag })}
+                    open={confirmBack}
+                    working={busy === "back"}
+                    disabled={busy !== null}
+                    onCancel={() => setConfirmBack(false)}
+                    onConfirm={() =>
+                      void run("back", async () => {
+                        await send(withLang(lang, `/api/voices/design/${design.id}`), { method: "DELETE" });
+                        removeDesign(design);
+                      })
+                    }
+                    trigger={
+                      <button type="button" className="bs-btn" title={t.backTitle} disabled={busy !== null} onClick={() => setConfirmBack(true)}>
+                        <Undo2 size={14} aria-hidden="true" />
+                        {fill(t.back, { previous: `v${slot.designs[1].version}` })}
+                      </button>
+                    }
+                  />
+                </div>
+              ) : null}
             </div>
 
             <div className="vd-samples">

@@ -43,6 +43,8 @@ export type Workbench = {
   /** `live` holds the live takes of lines the design was just voiced on. */
   updateDesign: (designs: Design | Design[], live?: Record<string, string>) => void;
   updateAnalysis: (analysis: Analysis) => void;
+  /** Drops a deleted version from its slot, so the one before is the slot's newest again. */
+  removeDesign: (design: Design) => void;
 };
 
 export const WorkbenchContext = createContext<Workbench | null>(null);

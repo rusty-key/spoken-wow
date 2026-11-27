@@ -230,6 +230,15 @@ export default function Workbench({
         })),
       );
     },
+    removeDesign: (removed: Design) =>
+      setGroups((current) =>
+        current.map((group) => ({
+          ...group,
+          slots: group.slots.map((slot) =>
+            slot.name === removed.slot ? { ...slot, designs: slot.designs.filter((design) => design.id !== removed.id) } : slot,
+          ),
+        })),
+      ),
     updateAnalysis: (analysis: Analysis) =>
       setGroups((current) => current.map((group) => (group.group === analysis.group ? { ...group, analysis } : group))),
   };
