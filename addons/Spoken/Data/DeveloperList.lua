@@ -5,6 +5,8 @@ DeveloperCharacters = {
     -- Anon
     ["Player-5149-04564413"] = true,
     ["Player-5149-04987F43"] = true,
+    -- Brock
+    ["Player-6930-0019D2DA"] = true,
     ["Player-6921-001E5110"] = true,
     ["Player-6921-02CAC851"] = true,
     -- Loukky
