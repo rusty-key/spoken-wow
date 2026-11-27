@@ -277,3 +277,6 @@ L.REASON_COMPENDIUM_OFF = "在「朗讀內容」中開啟「任務」、「地�
 L.REASON_MODULE_OFF_FMT = "在「朗讀內容」中開啟「%1$s」才能使用。"
 L.WAITING_TITLE = "接下來"
 L.DIALOGUE_REPORT_PROBLEM = "回報問題"
+L.FEEDBACK_INVITE_FMT = "歡迎對即將推出的語音提供意見：%s"
+L.FEEDBACK_HELP = "對即將推出的語音的意見"
+L.OPT_HIDE_FEEDBACK = "隱藏語音意見邀請"

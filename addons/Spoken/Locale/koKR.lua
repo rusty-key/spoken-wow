@@ -277,3 +277,6 @@ L.REASON_COMPENDIUM_OFF = "이 기능을 쓰려면 'Spoken이 읽는 것'에서 
 L.REASON_MODULE_OFF_FMT = "이 기능을 쓰려면 'Spoken이 읽는 것'에서 '%1$s'을(를) 켜세요."
 L.WAITING_TITLE = "다음 대사"
 L.DIALOGUE_REPORT_PROBLEM = "문제 신고"
+L.FEEDBACK_INVITE_FMT = "곧 나올 목소리에 의견을 남겨 주세요: %s"
+L.FEEDBACK_HELP = "곧 나올 목소리 의견"
+L.OPT_HIDE_FEEDBACK = "목소리 의견 초대 숨기기"

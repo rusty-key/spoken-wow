@@ -257,6 +257,9 @@ L = {
     OPT_LINE_GAP = "Pause Between Lines",
     -- Over the "+N" count: the lines waiting.
     WAITING_TITLE = "Up Next",
+    FEEDBACK_INVITE_FMT = "Share your feedback on upcoming voices: %s",
+    FEEDBACK_HELP = "Feedback on Upcoming Voices",
+    OPT_HIDE_FEEDBACK = "Hide Voice Feedback Invitation",
     DIALOGUE_REPORT_PROBLEM = "Report a Problem",
     OPT_CUE_BETWEEN = "Chime Between Lines",
     OPT_BACKGROUND_SOUND = "Keep Reading in Background",

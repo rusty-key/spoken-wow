@@ -4,6 +4,8 @@ Spoken Player until 3.0.0, when it became Spoken and took its modules into one d
 
 ## Unreleased
 
+- **Help choose the next English voices:** Spoken links to spoken.quest/listen in chat when you log in.
+  Turn it off with Hide Voice Feedback Invitation under Contribute & Report. *([rusty-key](https://github.com/rusty-key))*
 - **The game no longer stutters as a line starts or a moment after the last one ends.**
   *([svengabr](https://github.com/svengabr))*
 - **With Stop When Window Closes on, a quest's progress text keeps reading on its reward page,**

@@ -277,3 +277,6 @@ L.REASON_COMPENDIUM_OFF = "Schalte „Quests“, „Orte“ oder „Lesestoff“
 L.REASON_MODULE_OFF_FMT = "Schalte „%1$s“ unter „Was Spoken vorliest“ ein, um dies zu nutzen."
 L.WAITING_TITLE = "Als Nächstes"
 L.DIALOGUE_REPORT_PROBLEM = "Problem melden"
+L.FEEDBACK_INVITE_FMT = "Gib uns Feedback zu kommenden Stimmen: %s"
+L.FEEDBACK_HELP = "Feedback zu kommenden Stimmen"
+L.OPT_HIDE_FEEDBACK = "Stimmen-Feedback ausblenden"

@@ -300,3 +300,6 @@ L.REASON_COMPENDIUM_OFF = "Activa «Misiones», «Lugares» o «Lecturas» en «
 L.REASON_MODULE_OFF_FMT = "Activa «%1$s» en «Qué lee Spoken» para usar esto."
 L.WAITING_TITLE = "A continuación"
 L.DIALOGUE_REPORT_PROBLEM = "Informar de un problema"
+L.FEEDBACK_INVITE_FMT = "Danos tu opinión sobre las próximas voces: %s"
+L.FEEDBACK_HELP = "Opinión sobre las próximas voces"
+L.OPT_HIDE_FEEDBACK = "Ocultar opinión sobre voces"

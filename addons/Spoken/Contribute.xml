@@ -3,4 +3,5 @@
     <Include file="UI\ContributeBox.lua"/>
     <Include file="Contribute.lua"/>
     <Include file="Gather.lua"/>
+    <Include file="Feedback.lua"/>
 </Ui>
