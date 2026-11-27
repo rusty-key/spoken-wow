@@ -159,6 +159,9 @@ Players' opinions help you judge a voice. You make the final call.
   Show another version first.
 - Each version card lists every round's counts and notes, which only people who design voices in
   the language can see. **Hide** removes a spam note; its vote still counts.
+- Filter the page by what players say about the version they hear now: **Mostly doesn't fit**,
+  **Mixed**, **Mostly fits** or **No votes yet**. "Mostly" is more than half of the answers given;
+  skips count for nothing.
 - Listen reads the language's first team (the one with plain packs), whoever is looking.
 - When a slot is shown again, everyone who voted in an earlier round (Skip aside) gets an email,
   at most one a day listing every voice that changed. Signed-in voters are emailed at their

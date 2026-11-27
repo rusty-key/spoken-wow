@@ -307,3 +307,39 @@ test("Delete older voices asks first, then deletes every older version's voice t
   expect(fetch.mock.calls.map(([url]) => url)).toEqual(["/api/voices/design/orc-male-shady-2/voice", "/api/voices/design/orc-male-shady-1/voice"]);
   expect(screen.getByRole("button", { name: "Delete older voices · 1" })).toBeTruthy();
 });
+
+test("narrows to the slots players say mostly don't fit, and keeps it in the URL", async () => {
+  const voted = (name: string, counts: Design["showings"][number]["counts"]): Design => ({
+    ...design(name, 1, null),
+    isPublic: true,
+    showings: [{ id: 1, createdAt: "2026-11-26T00:00:00Z", createdByName: "Ann", counts, notes: [] }],
+  });
+  render(
+    <LangProvider lang="enUS">
+      <Workbench
+        groups={[
+          {
+            group: "orc-male",
+            analysis: null,
+            slots: [
+              slot("orc-male-guard", [voted("orc-male-guard", { fits: 4, close: 0, off: 1, skip: 0 })]),
+              slot("orc-male-shady", [voted("orc-male-shady", { fits: 0, close: 1, off: 3, skip: 2 })]),
+              slot("orc-male-standard", []),
+            ],
+          },
+        ]}
+        live={{}}
+        viewer={{ id: "u1", designs: true, admin: false }}
+        keys={{ elevenlabs: true, gemini: true }}
+        rate={0.5}
+        model="eleven_v4"
+      />
+    </LangProvider>,
+  );
+  const players = within(screen.getByRole("group", { name: "Players say" }));
+  await userEvent.click(players.getByRole("button", { name: /Mostly doesn't fit/ }));
+  expect(slotsShown()).toEqual(["orc-male-shady"]);
+  expect(new URL(window.location.href).searchParams.get("players")).toBe("off");
+  await userEvent.click(players.getByRole("button", { name: /Mostly fits/ }));
+  expect(slotsShown()).toEqual(["orc-male-guard"]);
+});

@@ -33,3 +33,25 @@ export function donenessOf(latest: { reviews: readonly { status: ReviewStatus }[
   if (!latest) return "none";
   return latest.reviews.at(-1)?.status ?? "pending";
 }
+
+/** What players make of a slot: by majority of the answers given, so a few votes count like many. */
+export type PlayersSay = "fits" | "mixed" | "off" | "no-votes";
+
+export const PLAYERS_SAY: readonly PlayersSay[] = ["off", "mixed", "fits", "no-votes"];
+
+/**
+ * The round players vote in now: the public version's newest showing. Skips are no opinion, so
+ * they count for nothing; null when players hear none of the slot's versions.
+ */
+export function playersSay(
+  designs: readonly { isPublic: boolean; showings: readonly { counts: Record<"fits" | "close" | "off" | "skip", number> }[] }[],
+): PlayersSay | null {
+  const round = designs.find((design) => design.isPublic)?.showings[0];
+  if (!round) return null;
+  const { fits, close, off } = round.counts;
+  const answered = fits + close + off;
+  if (answered === 0) return "no-votes";
+  if (fits * 2 > answered) return "fits";
+  if (off * 2 > answered) return "off";
+  return "mixed";
+}
