@@ -22,6 +22,16 @@ type Clip = { src: string; title: string; subtitle: string };
 
 const viewIn = (hash: string): View | null => (hash === "#table" || hash === "#cards" ? (hash.slice(1) as View) : null);
 
+/** Who the voice is for: Gemini's archetype when it wrote one, and the NPCs players hear it from. */
+function Character({ voice }: { voice: PublicVoice }) {
+  return (
+    <>
+      {voice.archetype ? <p className="ls-archetype">{voice.archetype}</p> : null}
+      {voice.examples.length > 0 ? <p className="vd-muted">{voice.examples.join(", ")}</p> : null}
+    </>
+  );
+}
+
 function shuffled<T>(items: readonly T[]): T[] {
   const copy = [...items];
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -210,7 +220,9 @@ export default function Listen({
                 <th scope="row" className="ls-name">
                   {slotLabel(voice.slot)}
                 </th>
-                <td className="vd-muted">{voice.archetype}</td>
+                <td className="ls-character">
+                  <Character voice={voice} />
+                </td>
                 <td>{lines(voice, false)}</td>
                 <VoteControls
                   key={voice.showingId}
@@ -225,7 +237,9 @@ export default function Listen({
       ) : current ? (
         <section className="ls-card" aria-label={slotLabel(current.slot)}>
           <h2 className="ls-card-name">{slotLabel(current.slot)}</h2>
-          {current.archetype ? <p className="vd-muted">{current.archetype}</p> : null}
+          <div className="ls-character">
+            <Character voice={current} />
+          </div>
           {lines(current, true)}
           <p className="bs-label">{t.question}</p>
           <VoteControls key={current.showingId} vote={votes[current.showingId]} onVote={(verdict, note) => vote(current, verdict, note)} />

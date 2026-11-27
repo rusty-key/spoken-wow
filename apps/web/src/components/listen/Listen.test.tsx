@@ -23,6 +23,7 @@ const voice = (slot: string, showingId: number, archetype: string | null = null)
     gender,
     flavor: rest.length ? rest.join("-") : null,
     archetype,
+    examples: ["Grunt", "Zug", "Mok"],
     showingId,
     samples: [0, 1, 2].map((n) => ({ sha256: `${showingId}${n}`.padEnd(64, "0"), text: `Line ${n} of ${slot}`, npcName: "Grunt" })),
   };
@@ -38,6 +39,7 @@ test("lists every voice with its character, three lines and the vote buttons", (
   const first = within(rows()[0]);
   expect(first.getByText("Orc · Male · Shady")).toBeTruthy();
   expect(first.getByText("Back-alley fence")).toBeTruthy();
+  expect(first.getByText("Grunt, Zug, Mok")).toBeTruthy();
   expect(first.getAllByRole("button", { name: /Line \d/ })).toHaveLength(3);
   for (const name of ["Fits", "Close", "Doesn't fit", "Skip"]) expect(first.getByRole("button", { name })).toBeTruthy();
 });

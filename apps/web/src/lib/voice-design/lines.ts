@@ -30,6 +30,19 @@ export function slotNpcs(lines: readonly CorpusLine[], slot: string, limit = 12)
     .map(([name]) => name);
 }
 
+/** slotNpcs for many slots at once: one pass over the corpus rather than one per slot. */
+export function slotExamples(lines: readonly CorpusLine[], slots: readonly string[], limit = 3): Map<string, string[]> {
+  const wanted = new Set(slots);
+  const bySlot = new Map<string, CorpusLine[]>();
+  for (const line of lines) {
+    if (!wanted.has(line.voice)) continue;
+    const own = bySlot.get(line.voice);
+    if (own) own.push(line);
+    else bySlot.set(line.voice, [line]);
+  }
+  return new Map(slots.map((slot) => [slot, slotNpcs(bySlot.get(slot) ?? [], slot, limit)]));
+}
+
 const kind = (line: CorpusLine) => line.lineId.slice(0, 2);
 const byLength = (a: CorpusLine, b: CorpusLine) => a.text.length - b.text.length || a.lineId.localeCompare(b.lineId);
 
