@@ -108,3 +108,16 @@ test("opens the view the address names, and names the view chosen", async () => 
   expect(window.location.hash).toBe("#table");
   expect(rows()).toHaveLength(3);
 });
+
+test("keeps an answer's label in place while the vote sends, so the button does not change width", async () => {
+  let answer: (value: Response) => void = () => {};
+  vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => (answer = resolve))));
+  render(<Listen lang="enUS" voices={VOICES} votes={{}} />);
+  const fits = within(rows()[0]).getByRole("button", { name: "Fits" });
+  await userEvent.click(fits);
+  expect(fits.getAttribute("aria-busy")).toBe("true");
+  // The label stays, hidden under the spinner, rather than the spinner pushing in beside it.
+  expect(fits.querySelector(".ls-verdict-label")?.textContent).toBe("Fits");
+  expect(fits.querySelector("svg")?.classList.contains("ls-verdict-spinner")).toBe(true);
+  answer(Response.json({ ok: true }));
+});
