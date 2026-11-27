@@ -8,7 +8,7 @@ import NavMenu from "./NavMenu";
 import NavSession from "./NavSession";
 import { NAV } from "./nav";
 
-/** The front page's bar. Off the front page its section links lead back to the front page's sections. */
+/** Off the front page, the section links lead back to the front page's sections. */
 export default function LandingHeader({ t, home = false }: { t: SiteText; home?: boolean }) {
   return (
     <header className="bn-nav">

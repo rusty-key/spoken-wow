@@ -85,7 +85,6 @@ export default function VoteControls({
     </div>
   );
 
-  // A table row gives the answers and the note a column each; a card stacks them.
   if (cells) {
     return (
       <>
