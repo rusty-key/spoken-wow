@@ -18,6 +18,7 @@ import { requireVoiceViewer } from "@/lib/voices/authz";
 import { cloneName } from "@/lib/voices/clone-name";
 import { recordClone } from "@/lib/voices/clones";
 import { isRenamable, listAccountVoices, renameVoice } from "@/lib/voices/elevenlabs";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,7 @@ export async function POST(request: Request, context: Context) {
   try {
     account = await listAccountVoices({ apiKey: key });
   } catch (error) {
-    return Response.json({ error: message(error) }, { status: 502 });
+    return Response.json({ error: message(error) }, { status: UPSTREAM_FAILED });
   }
 
   const picked = account.find((candidate) => candidate.voiceId === voiceId);
@@ -72,7 +73,7 @@ export async function POST(request: Request, context: Context) {
     try {
       await renameVoice(occupant.voiceId, `${clone} (replaced)`, { apiKey: key });
     } catch (error) {
-      return Response.json({ error: `could not replace: ${message(error)}` }, { status: 502 });
+      return Response.json({ error: `could not replace: ${message(error)}` }, { status: UPSTREAM_FAILED });
     }
   }
 
@@ -82,7 +83,7 @@ export async function POST(request: Request, context: Context) {
     const moved = current.length
       ? ` The previous voice is now "${clone} (replaced)"; rename it back in ElevenLabs or retry.`
       : "";
-    return Response.json({ error: message(error) + moved }, { status: 502 });
+    return Response.json({ error: message(error) + moved }, { status: UPSTREAM_FAILED });
   }
 
   invalidateStatus();

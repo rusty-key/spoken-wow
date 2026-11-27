@@ -23,11 +23,12 @@ import { tellPresser } from "./notify";
 import { pendingChanges, stagedChanges } from "./pending";
 import { isReleaseSection, type LiveTeamPack, type PendingView, type ReleaseSection, type WaitingVersion } from "./sections";
 import { COLUMNS, insertRun, type ReleaseRun } from "./store";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 export class ReviewError extends Error {
   constructor(
     message: string,
-    readonly status: 400 | 404 | 409 | 502,
+    readonly status: 400 | 404 | 409 | typeof UPSTREAM_FAILED,
   ) {
     super(message);
     this.name = "ReviewError";
@@ -74,12 +75,12 @@ export async function approve(runId: string, actorId: string): Promise<ReleaseRu
   }));
 }
 
-/** launchNew, with a job that could not start as a 502. */
+/** launchNew, with a job that could not start as UPSTREAM_FAILED. */
 async function launched(insert: () => Promise<ReleaseRun>): Promise<ReleaseRun> {
   try {
     return await launchNew(insert);
   } catch (error) {
-    if (error instanceof LaunchError) throw new ReviewError(`It could not start: ${error.message}`, 502);
+    if (error instanceof LaunchError) throw new ReviewError(`It could not start: ${error.message}`, UPSTREAM_FAILED);
     throw error;
   }
 }

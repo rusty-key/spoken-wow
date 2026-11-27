@@ -33,6 +33,7 @@ vi.mock("@/lib/grants/store", async (importOriginal) => ({
 
 import { DELETE } from "./route";
 import { POST } from "./resend/route";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 let inviter: Awaited<ReturnType<typeof testUser>>;
 let id = "";
@@ -108,7 +109,7 @@ describe("/api/invites/[id]", () => {
     mail.delivers = false;
     try {
       const response = await resend();
-      expect(response.status).toBe(502);
+      expect(response.status).toBe(UPSTREAM_FAILED);
       expect((await response.json()).error).toBe("The email could not be sent; try again later.");
     } finally {
       mail.delivers = true;

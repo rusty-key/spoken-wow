@@ -30,6 +30,7 @@ const encode = vi.hoisted(() => ({ encodeMissingForPack: vi.fn() }));
 vi.mock("@/lib/takes/encode", () => encode);
 
 import { GET, POST } from "./route";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 let user: Awaited<ReturnType<typeof testUser>>;
 let fr: Awaited<ReturnType<typeof ownTeam>>;
@@ -131,12 +132,12 @@ describe("release route", () => {
     }
   });
 
-  it("answers 502 with the reason when the job cannot start, and frees the lock", async () => {
+  it("answers an upstream failure with the reason when the job cannot start, and frees the lock", async () => {
     vi.stubEnv("SPOKEN_RELEASE_ENV", "/srv/spoken/shared/release.env");
     try {
       droplet.startDropletRun.mockRejectedValueOnce(new Error("spawn setsid ENOENT"));
       const failed = await press("frFR", { section: "bosses" });
-      expect(failed.status).toBe(502);
+      expect(failed.status).toBe(UPSTREAM_FAILED);
       expect((await failed.json()).error).toBe("spawn setsid ENOENT");
       expect((await press("frFR", { section: "bosses" })).status).toBe(202);
     } finally {
@@ -144,10 +145,10 @@ describe("release route", () => {
     }
   });
 
-  it("answers 502 without dispatching when encoding the missing takes throws, and frees the lock", async () => {
+  it("answers an upstream failure without dispatching when encoding the missing takes throws, and frees the lock", async () => {
     encode.encodeMissingForPack.mockRejectedValueOnce(new Error("connection terminated"));
     const failed = await press("frFR", { section: "quests" });
-    expect(failed.status).toBe(502);
+    expect(failed.status).toBe(UPSTREAM_FAILED);
     expect((await failed.json()).error).toBe("connection terminated");
     expect(github.dispatchRelease).not.toHaveBeenCalled();
     const { recent } = await (await read("frFR")).json();
@@ -179,10 +180,10 @@ describe("release route", () => {
     }
   });
 
-  it("answers 502 with the reason when dispatch throws, and the next press works", async () => {
+  it("answers an upstream failure with the reason when dispatch throws, and the next press works", async () => {
     github.dispatchRelease.mockRejectedValueOnce(new Error("GitHub answered 403: nope"));
     const failed = await press("frFR", { section: "quests" });
-    expect(failed.status).toBe(502);
+    expect(failed.status).toBe(UPSTREAM_FAILED);
     expect((await failed.json()).error).toBe("GitHub answered 403: nope");
     const { recent } = await (await read("frFR")).json();
     expect(recent[0]).toMatchObject({ state: "failed", error: "GitHub answered 403: nope" });

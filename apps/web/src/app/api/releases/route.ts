@@ -9,6 +9,7 @@ import { ReleaseBusyError, lastReleasedAt, startRun } from "@/lib/releases/store
 import { deletingResponse } from "@/lib/teams/deleting";
 import { releaseView } from "@/lib/releases/view";
 import { actingTeamRow, NoTeamError } from "@/lib/teams/store";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
       return fail(409, `A release is already running: ${error.active.section} in ${langName(error.active.lang)}.`);
     }
     if (error instanceof NoTeamError) return fail(400, `${lang} has no team to release for.`);
-    if (error instanceof LaunchError) return fail(502, error.message);
+    if (error instanceof LaunchError) return fail(UPSTREAM_FAILED, error.message);
     const deleting = deletingResponse(error);
     if (deleting) return deleting;
     throw error;

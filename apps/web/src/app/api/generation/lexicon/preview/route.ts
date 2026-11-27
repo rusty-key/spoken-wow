@@ -19,6 +19,7 @@ import { LexiconError, validateEntry } from "@/lib/generation/lexicon";
 import { isPreviewMode, renderPreview, voicePicker } from "@/lib/generation/preview";
 import { readGenerationSettings, speakingConfig } from "@/lib/generation/preference";
 import { generationStatus } from "@/lib/generation/status";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
   ]);
   const config = await speakingConfig(preference.elevenlabs, BASE_LANG);
   if (status.error && status.voiceIds.size === 0) {
-    return Response.json({ error: status.error }, { status: 502 });
+    return Response.json({ error: status.error }, { status: UPSTREAM_FAILED });
   }
 
   const result = await renderPreview(
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
   if (!result.ok) {
     return Response.json(
       { error: result.failure.message },
-      { status: result.failure.status ?? 502 },
+      { status: result.failure.status ?? UPSTREAM_FAILED },
     );
   }
 

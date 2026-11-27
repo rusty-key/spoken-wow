@@ -26,6 +26,7 @@ import { knownLang } from "@/lib/languages/catalogue";
 import { isAdmin, isCapability, removesOwnAdmin, type Viewer } from "@/lib/permissions";
 import { teamIn } from "@/lib/teams/acting";
 import { ownerOf } from "@/lib/teams/store";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +102,7 @@ export async function PUT(request: Request) {
       deliver: emailInvite,
     });
   } catch (error) {
-    if (error instanceof InviteSendError) return Response.json({ error: error.message }, { status: 502 });
+    if (error instanceof InviteSendError) return Response.json({ error: error.message }, { status: UPSTREAM_FAILED });
     const deleting = deletingResponse(error);
     if (deleting) return deleting;
     if (error instanceof InviteExistsError || error instanceof InviteRateError) {

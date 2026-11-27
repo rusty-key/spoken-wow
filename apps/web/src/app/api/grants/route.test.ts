@@ -42,6 +42,7 @@ import { grantsOf } from "@/lib/grants/store";
 import { createInvite, lookupInvite, openInvite } from "@/lib/invites/store";
 
 import { DELETE, GET, PUT } from "./route";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 let target: Awaited<ReturnType<typeof testUser>>;
 let granter: Awaited<ReturnType<typeof testUser>>;
@@ -162,7 +163,7 @@ describe("/api/grants", () => {
       mail.delivers = false;
       try {
         const response = await putTo(to, ["edit"]);
-        expect(response.status).toBe(502);
+        expect(response.status).toBe(UPSTREAM_FAILED);
         expect((await response.json()).error).toBe("The email could not be sent; try again later.");
       } finally {
         mail.delivers = true;

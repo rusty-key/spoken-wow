@@ -33,6 +33,7 @@ vi.mock("@/lib/voices/elevenlabs", () => ({
 }));
 
 import { POST } from "./route";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 const SLOT = "spirithealer";
 const CLONE = "spirithealer@deDE";
@@ -97,9 +98,9 @@ describe("POST /api/voices/[voice]/adopt", () => {
     expect((await adopt({ voiceId: "elsewhere" })).status).toBe(404);
   });
 
-  it("answers 502 when ElevenLabs refuses the rename", async () => {
+  it("answers an upstream failure when ElevenLabs refuses the rename", async () => {
     renameVoice.mockRejectedValueOnce(new Error("voice_not_editable"));
-    expect((await adopt({ voiceId: "lib1" })).status).toBe(502);
+    expect((await adopt({ voiceId: "lib1" })).status).toBe(UPSTREAM_FAILED);
     expect(recordClone).not.toHaveBeenCalled();
   });
 });

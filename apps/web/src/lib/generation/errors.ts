@@ -14,6 +14,8 @@
  * become a 500 - that would replace a diagnosable upstream failure with an opaque local one.
  */
 
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
+
 export type FailureKind =
   | "quota"
   | "auth"
@@ -35,11 +37,11 @@ export type Failure = {
 /** 402 is not one of ElevenLabs' statuses; it is ours, and the client keys "stop" off it. */
 const STATUS: Record<FailureKind, number> = {
   quota: 402,
-  auth: 502,
+  auth: UPSTREAM_FAILED,
   "rate-limit": 429,
   "voice-missing": 409,
   "bad-request": 422,
-  upstream: 502,
+  upstream: UPSTREAM_FAILED,
 };
 
 // A batch shares one voice and one key, so anything about the account or the voice will

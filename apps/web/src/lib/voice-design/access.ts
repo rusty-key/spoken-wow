@@ -10,6 +10,7 @@ import "server-only";
 import { requireCapability, type Session } from "@/lib/generation/authz";
 import type { Lang } from "@/lib/lang";
 import { langParam } from "@/lib/lang-server";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 export async function requireDesigner(
   request: Request,
@@ -32,5 +33,5 @@ export function failed(error: unknown): Response {
   if (error instanceof DesignError) return Response.json({ error: error.message }, { status: error.status });
   // The page shows only the message; the stack is what finds the call in the pm2 log.
   console.error("[voice-design]", error);
-  return Response.json({ error: (error instanceof Error ? error.message || error.name : String(error)) || "unknown error" }, { status: 502 });
+  return Response.json({ error: (error instanceof Error ? error.message || error.name : String(error)) || "unknown error" }, { status: UPSTREAM_FAILED });
 }

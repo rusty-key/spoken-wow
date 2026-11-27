@@ -42,6 +42,7 @@ vi.mock("@/lib/lang-server", () => ({
 }));
 
 import { DELETE, POST } from "./route";
+import { UPSTREAM_FAILED } from "@/lib/upstream-failed";
 
 const SAMPLE = "1700000000000-abc.mp3";
 
@@ -70,9 +71,9 @@ describe("POST /api/voices/[voice]/reference", () => {
     );
   });
 
-  it("answers 502 when the cut fails", async () => {
+  it("answers an upstream failure when the cut fails", async () => {
     saveReference.mockRejectedValueOnce(new Error("fish.audio heard nothing in that window"));
-    expect((await cut()).status).toBe(502);
+    expect((await cut()).status).toBe(UPSTREAM_FAILED);
   });
 });
 
