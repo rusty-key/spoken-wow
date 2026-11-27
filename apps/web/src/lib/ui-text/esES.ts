@@ -2780,6 +2780,8 @@ const esES: Dictionary = {
     noLiveTake: "Sin toma actual",
     sample: "Locutar 3 frases",
     resample: "Locutar las frases de nuevo",
+    resampleOther: "Locutar otras frases",
+    resampleMore: "Más opciones de locución",
     sampleCost: "Unos {credits} créditos con {model}, tus ajustes para este idioma.",
     holderOnly: "La voz está en la cuenta de ElevenLabs de {who}, así que solo esa persona puede locutar frases con ella.",
     reviewsLabel: "Veredictos",

@@ -2783,6 +2783,8 @@ const deDE: Dictionary = {
     noLiveTake: "Keine Live-Aufnahme",
     sample: "3 Zeilen vertonen",
     resample: "Zeilen neu vertonen",
+    resampleOther: "Andere Zeilen vertonen",
+    resampleMore: "Weitere Optionen zum Vertonen",
     sampleCost: "Etwa {credits} Credits mit {model}, deinen Einstellungen für diese Sprache.",
     holderOnly: "Die Stimme liegt im ElevenLabs-Konto von {who}, nur diese Person kann damit Zeilen vertonen.",
     reviewsLabel: "Urteile",

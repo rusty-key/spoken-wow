@@ -2778,6 +2778,8 @@ const koKR: Dictionary = {
     noLiveTake: "현재 녹음 없음",
     sample: "대사 3개 녹음",
     resample: "대사 다시 녹음",
+    resampleOther: "다른 대사 녹음",
+    resampleMore: "녹음 옵션 더 보기",
     sampleCost: "{model}과 이 언어의 내 설정으로 약 {credits} 크레딧.",
     holderOnly: "음성이 {who}의 ElevenLabs 계정에 있어서 그 사람만 이 음성으로 대사를 녹음할 수 있습니다.",
     reviewsLabel: "평가",

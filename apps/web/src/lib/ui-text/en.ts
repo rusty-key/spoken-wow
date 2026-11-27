@@ -2864,6 +2864,8 @@ export const EN = {
     noLiveTake: "No live take",
     sample: "Voice 3 lines",
     resample: "Voice the lines again",
+    resampleOther: "Voice other lines",
+    resampleMore: "More ways to voice",
     sampleCost: "About {credits} credits with {model}, your settings for this language.",
     holderOnly: "The voice is in {who}'s ElevenLabs account, so only they can voice lines with it.",
     reviewsLabel: "Verdicts",

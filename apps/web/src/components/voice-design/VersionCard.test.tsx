@@ -193,3 +193,18 @@ test("offers remix only to the voice's holder, while the voice is in their accou
   render(card({ ...DESIGN, voiceDeletedAt: "2026-11-26T00:00:00Z" }));
   expect(screen.queryByRole("button", { name: "Remix from review" })).toBeNull();
 });
+
+test("voices the same lines again in one press, and other lines from the button's menu", async () => {
+  const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
+  vi.stubGlobal("fetch", fetchMock);
+  render(card(DESIGN));
+  const sent = () => (fetchMock.mock.calls.at(-1) as unknown as [string, RequestInit]);
+
+  await userEvent.click(screen.getByRole("button", { name: "Voice the lines again" }));
+  expect(sent()[0]).toContain("/api/voices/design/d1/samples");
+  expect(JSON.parse(String(sent()[1].body))).toEqual({ lines: "same" });
+
+  await userEvent.click(screen.getByRole("button", { name: "More ways to voice" }));
+  await userEvent.click(await screen.findByRole("button", { name: "Voice other lines" }));
+  expect(JSON.parse(String(sent()[1].body))).toEqual({ lines: "other" });
+});

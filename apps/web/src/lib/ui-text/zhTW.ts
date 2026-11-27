@@ -2770,6 +2770,8 @@ const zhTW: Dictionary = {
     noLiveTake: "沒有現用錄音",
     sample: "配 3 句台詞",
     resample: "重新配這些台詞",
+    resampleOther: "改配其他台詞",
+    resampleMore: "更多配音選項",
     sampleCost: "約 {credits} 點數，使用 {model} 與你在此語言的設定。",
     holderOnly: "這個語音在 {who} 的 ElevenLabs 帳戶中，只有對方能用它配台詞。",
     reviewsLabel: "評價",

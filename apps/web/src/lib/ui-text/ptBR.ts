@@ -2780,6 +2780,8 @@ const ptBR: Dictionary = {
     noLiveTake: "Sem gravação atual",
     sample: "Gravar 3 falas",
     resample: "Gravar as falas de novo",
+    resampleOther: "Gravar outras falas",
+    resampleMore: "Mais opções de gravação",
     sampleCost: "Cerca de {credits} créditos com {model}, suas configurações para este idioma.",
     holderOnly: "A voz está na conta do ElevenLabs de {who}, então só essa pessoa pode gravar falas com ela.",
     reviewsLabel: "Vereditos",
