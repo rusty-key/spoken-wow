@@ -10,7 +10,7 @@ import { shuffle } from "@/lib/shuffle";
 import { failure } from "@/lib/voices/elevenlabs";
 
 import { EFFECT_WORDS, PROMPT_ENDING, SIBILANT_WORDS, withEnding } from "./limits";
-import type { GeminiResult } from "./types";
+import type { GeminiResult, PlayerNote, Verdict } from "./types";
 
 export const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -189,19 +189,22 @@ export type ReviseInput = {
   note: string;
   /** The newest note on each other flavor of the same race, by slot. */
   siblings: Record<string, string>;
-  /** Players' notes the reviewer picked to act on, each led by the player's answer. */
-  players: string[];
+  /** Players' notes the reviewer picked to act on. */
+  players: PlayerNote[];
   archetype: string;
   prompt: string;
   previewText: string;
 };
+
+/** The player's answer as Gemini reads it: prompt text, so English whatever the page's language. */
+const ANSWER: Record<Verdict, string> = { fits: "Fits", close: "Close", off: "Doesn't fit", skip: "Skipped" };
 
 /** What Gemini is asked when revising a version from its review. */
 export function buildRevisePrompt(input: ReviseInput): string {
   return `You are a casting director revising a designed voice for ${input.slot} (World of Warcraft NPCs; who uses it: ${input.archetype || "(unknown)"}).
 Reviewer verdict on v${input.version}: ${input.status}. Reviewer note: "${input.note || "(none)"}".${
     input.players.length > 0
-      ? `\nPlayers' notes on v${input.version} the reviewer chose to act on, as much a part of the review as the reviewer's note; keep what they praise and fix what they criticise: ${JSON.stringify(input.players)}`
+      ? `\nPlayers' notes on v${input.version} the reviewer chose to act on, as much a part of the review as the reviewer's note; keep what they praise and fix what they criticise: ${JSON.stringify(input.players.map((pick) => `${ANSWER[pick.verdict]}: ${pick.note}`))}`
       : ""
   }
 Notes on sibling voices of the same race, which this voice must also follow where they speak for the whole race: ${JSON.stringify(input.siblings)}

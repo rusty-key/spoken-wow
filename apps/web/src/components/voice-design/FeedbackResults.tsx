@@ -11,6 +11,13 @@ const day = (iso: string) => iso.slice(0, 10);
 
 export const pickKey = (showingId: number, voter: string) => `${showingId}|${voter}`;
 
+export const verdictLabels = (t: ReturnType<typeof useUiText>["voiceDesign"]): Record<Verdict, string> => ({
+  fits: t.verdictFits,
+  close: t.verdictClose,
+  off: t.verdictOff,
+  skip: t.verdictSkip,
+});
+
 /** What players said about each showing of a version, newest showing first. */
 export default function FeedbackResults({
   design,
@@ -30,7 +37,7 @@ export default function FeedbackResults({
 }) {
   const t = useUiText().voiceDesign;
   if (design.showings.length === 0) return null;
-  const verdict: Record<Verdict, string> = { fits: t.verdictFits, close: t.verdictClose, off: t.verdictOff, skip: t.verdictSkip };
+  const verdict = verdictLabels(t);
   return (
     <section className="vd-feedback" aria-label={t.feedbackLabel}>
       <p className="bs-label">{t.feedbackLabel}</p>

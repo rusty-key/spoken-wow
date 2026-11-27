@@ -14,7 +14,7 @@ import { found } from "./design";
 import { reviseVoice, type ReviseInput, type Revision } from "./gemini";
 import { isRevisable } from "./groups";
 import { listDesigns, readAnalysis, readDesign } from "./store";
-import type { Analysis, Design, Verdict } from "./types";
+import type { Analysis, Design, PlayerNote } from "./types";
 
 export type ReviseDeps = {
   read: (lang: Lang, id: string) => Promise<Design | null>;
@@ -58,11 +58,11 @@ export function siblingNotes(designs: readonly Design[], slot: string): Record<s
   return notes;
 }
 
-const ANSWER: Record<Verdict, string> = { fits: "Fits", close: "Close", off: "Doesn't fit", skip: "Skipped" };
-
-/** Every player note picked in the version's verdicts, each once, led by what the player answered. */
-export function pickedNotes(design: Pick<Design, "reviews">): string[] {
-  return [...new Set(design.reviews.flatMap((review) => (review.players ?? []).map((pick) => `${ANSWER[pick.verdict]}: ${pick.note}`)))];
+/** Every player note picked in the version's verdicts, each once. */
+export function pickedNotes(design: Pick<Design, "reviews">): PlayerNote[] {
+  const seen = new Map<string, PlayerNote>();
+  for (const pick of design.reviews.flatMap((review) => review.players)) seen.set(`${pick.verdict}|${pick.note}`, pick);
+  return [...seen.values()];
 }
 
 export async function reviseDesign(

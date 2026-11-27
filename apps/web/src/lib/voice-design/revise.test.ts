@@ -98,7 +98,9 @@ describe("reviseDesign", () => {
       ]),
     );
     await reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, d);
-    expect(d.revise).toHaveBeenCalledWith(expect.objectContaining({ players: ["Doesn't fit: Too soft.", "Close: Slower, breathier."] }));
+    expect(d.revise).toHaveBeenCalledWith(
+      expect.objectContaining({ players: [{ verdict: "off", note: "Too soft." }, { verdict: "close", note: "Slower, breathier." }] }),
+    );
   });
 
   it("hands back who the voice is for, so the next version keeps it", async () => {
