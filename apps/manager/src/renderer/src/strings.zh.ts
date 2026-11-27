@@ -24,6 +24,7 @@ export const S_ZH: Dict = {
     label: '刷新版本列表'
   },
   banners: {
+    listen: '对即将推出的语音提出反馈：',
     offline: '连不上 GitHub，显示上次的列表。',
     updateReady: (v: string) => `更新已就绪：重启后即可使用 ${v}`,
     updating: (pct: number) => `正在下载管理器更新：${pct}%`,

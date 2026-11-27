@@ -14,7 +14,7 @@ export const S_ZH_TW: Dict = {
   appName: 'Spoken 管理器',
   tabs: { main: '主頁', home: '遊戲', spoken: 'Spoken', voices: '語音包', community: '社群', release: '發佈', settings: '設定' },
   refresh: { idle: '檢查新版本', last: (time: string) => `上次檢查：${time}`, offline: '離線：顯示已保留的內容', label: '重新整理發佈清單' },
-  banners: { offline: '無法連線到 GitHub，顯示上次的清單。', updateReady: (v: string) => `更新已準備好：重新啟動即可使用 ${v}`, updating: (pct: number) => `正在下載管理器更新：${pct}%`, updateAvailable: (v: string) => `${v} 版本可用。`, download: '下載', restart: '重新啟動', restartBusy: '目前的下載與安裝完成後即可使用' },
+  banners: { listen: '對即將推出的語音提供意見：', offline: '無法連線到 GitHub，顯示上次的清單。', updateReady: (v: string) => `更新已準備好：重新啟動即可使用 ${v}`, updating: (pct: number) => `正在下載管理器更新：${pct}%`, updateAvailable: (v: string) => `${v} 版本可用。`, download: '下載', restart: '重新啟動', restartBusy: '目前的下載與安裝完成後即可使用' },
   common: { loading: '載入中', cancel: '取消', retry: '重試', open: '開啟', remove: '移除', dismiss: '關閉', keep: '保留', repair: '修復', change: '變更', copy: '點擊複製', copied: '已複製', newer: '預發行版', latest: '最新', installed: '已安裝', notReleased: '尚未發佈', game: '遊戲', version: '版本', readOnly: '你的帳戶無法修改這個資料夾。', showIn: (platform: Platform) => `在${fileManager(platform)}中顯示` },
   window: { minimize: '最小化', maximize: '最大化', restore: '還原', close: '關閉' },
   strip: { add: '新增遊戲資料夾', missing: (label: string) => `這台電腦尚未安裝 ${label}` },

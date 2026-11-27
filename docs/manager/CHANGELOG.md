@@ -2,6 +2,12 @@
 
 Spoken Launcher until 0.1.2, when it became Spoken Manager.
 
+## Unreleased
+
+- **Share feedback on upcoming English voices** from the new line at the top of the Manager. Close
+  it with the X. *([rusty-key](https://github.com/rusty-key))*
+- **The spoken.quest button in Settings opens the site.** *([rusty-key](https://github.com/rusty-key))*
+
 ## 0.2.5 — 2026-11-25
 
 - **Enter a missing CurseForge project id right on the Release page,** beside the pack that
