@@ -40,6 +40,8 @@ export type GroupView = { group: string; analysis: Analysis | null; slots: SlotV
 
 type Filter = "all" | Doneness;
 
+const isFilter = (value: string | undefined): value is Filter => value === "all" || DONENESS.includes(value as Doneness);
+
 const REMIX_KEY = "spoken.voiceDesign.remix";
 
 const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
@@ -62,6 +64,8 @@ export default function Workbench({
   keys,
   rate,
   model,
+  initialFilter,
+  initialQuery,
 }: {
   groups: GroupView[];
   live: Record<string, string>;
@@ -69,13 +73,31 @@ export default function Workbench({
   keys: { elevenlabs: boolean; gemini: boolean };
   rate: number;
   model: string;
+  /** From the URL, so a reload or a shared link keeps what was being looked at. */
+  initialFilter?: string;
+  initialQuery?: string;
 }) {
   const t = useUiText().voiceDesign;
   const lang = useLang();
   const [groups, setGroups] = useState(initialGroups);
   const [live, setLive] = useState(initialLive);
-  const [filter, setFilter] = useState<Filter>("all");
-  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<Filter>(isFilter(initialFilter) ? initialFilter : "all");
+  const [query, setQuery] = useState(initialQuery ?? "");
+  // Written without a navigation: a navigation would re-render the page, which reads the whole corpus.
+  const keepInUrl = (name: string, value: string, unset: string) => {
+    const url = new URL(window.location.href);
+    if (value === unset) url.searchParams.delete(name);
+    else url.searchParams.set(name, value);
+    window.history.replaceState(null, "", url);
+  };
+  const chooseFilter = (value: Filter) => {
+    setFilter(value);
+    keepInUrl("status", value, "all");
+  };
+  const search = (value: string) => {
+    setQuery(value);
+    keepInUrl("q", value, "");
+  };
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [playing, setPlaying] = useState<Playing | null>(null);
   const [remixSettings, setRemixSettings] = useState<RemixSettings>(REMIX_DEFAULTS);
@@ -210,7 +232,7 @@ export default function Workbench({
               type="button"
               className="bs-chip"
               aria-current={filter === value ? "page" : undefined}
-              onClick={() => setFilter(value)}
+              onClick={() => chooseFilter(value)}
             >
               {label[value]}
               <span className="bs-count">{counts[value]}</span>
@@ -219,7 +241,7 @@ export default function Workbench({
         </div>
         <label className="bs-search vd-search">
           <Search size={15} aria-hidden="true" />
-          <input type="search" value={query} placeholder={t.searchPlaceholder} aria-label={t.searchPlaceholder} onChange={(event) => setQuery(event.target.value)} />
+          <input type="search" value={query} placeholder={t.searchPlaceholder} aria-label={t.searchPlaceholder} onChange={(event) => search(event.target.value)} />
         </label>
       </div>
 
