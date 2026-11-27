@@ -330,6 +330,29 @@ async function refuseIfPublic(client: PoolClient, id: string): Promise<void> {
   if (rows.length > 0) throw new DesignError("Players hear this version. Show another version to players first.");
 }
 
+/**
+ * Back to the version before: the slot's newest version goes, with its verdicts, while none of its
+ * previews was ever saved. A saved one names a voice in somebody's ElevenLabs account and has lines
+ * players may have voted on. The archived preview audio stays, and the next version takes its number.
+ */
+export async function deleteUnsavedVersion(lang: Lang, id: string): Promise<void> {
+  await asTeamOf(lang, async (client) => {
+    if (!(await lockSlot(client, lang, id))) throw new DesignError("no such design version", 404);
+    const { rows } = await client.query<{ version: number; voiceId: string | null; newest: number; versions: number }>(
+      `select d."version", d."voiceId",
+              (select max(o."version") from "voice_design" o where o."teamId" = d."teamId" and o."lang" = d."lang" and o."slot" = d."slot")::int as "newest",
+              (select count(*) from "voice_design" o where o."teamId" = d."teamId" and o."lang" = d."lang" and o."slot" = d."slot")::int as "versions"
+         from "voice_design" d where d."id" = $1`,
+      [id],
+    );
+    const row = rows[0];
+    if (row.voiceId !== null) throw new DesignError(`v${row.version} was saved as a voice, so it stays`, 409);
+    if (row.version !== row.newest) throw new DesignError(`only the newest version can be deleted, and v${row.version} is not it`, 409);
+    if (row.versions < 2) throw new DesignError(`v${row.version} is the slot's only version, with none to go back to`, 409);
+    await client.query(`delete from "voice_design" where "id" = $1`, [id]);
+  });
+}
+
 /** Saving again after a deletion drops the old voice's sample lines: they are not this voice. */
 export async function saveVoice(
   lang: Lang,

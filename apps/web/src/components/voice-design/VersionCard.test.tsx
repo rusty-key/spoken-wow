@@ -60,6 +60,7 @@ const context: Workbench = {
   setDraft: () => {},
   updateDesign: () => {},
   updateAnalysis: () => {},
+  removeDesign: () => {},
   remixSettings: { promptStrength: 0.5, guidanceScale: null, loudness: null, seed: 9 },
   setRemixSettings: () => {},
 };
@@ -69,7 +70,7 @@ const verdict = (name: string) => within(screen.getByRole("textbox", { name: "No
 
 const card = (design: Design) => (
   <WorkbenchContext.Provider value={context}>
-    <VersionCard design={design} slot={{ name: design.slot, sampleChars: 0, reference: null, previewLines: {} } as unknown as SlotView} newest />
+    <VersionCard design={design} slot={{ name: design.slot, sampleChars: 0, reference: null, previewLines: {}, designs: [design] } as unknown as SlotView} newest />
   </WorkbenchContext.Provider>
 );
 
@@ -316,6 +317,39 @@ test("asks Gemini what differs between a line's new and live takes, and shows th
   await userEvent.type(note, "too young");
   await userEvent.click(screen.getByRole("button", { name: "Add to review" }));
   expect(note.value).toBe("too young; Scottish accent fades after the first words");
+});
+
+test("goes back to the version before, after asking, when none of the previews is worth saving", async () => {
+  const fetchMock = vi.fn(async () => Response.json({ deleted: "d1" }));
+  vi.stubGlobal("fetch", fetchMock);
+  const removeDesign = vi.fn();
+  const unsaved = { ...DESIGN, voiceId: null, voiceName: null, holderId: null, chosenPreview: null, samples: [], sampledAt: null };
+  const older = { ...DESIGN, id: "d0", version: 1 };
+  render(
+    <WorkbenchContext.Provider value={{ ...context, removeDesign }}>
+      <VersionCard design={unsaved} slot={{ name: DESIGN.slot, sampleChars: 0, reference: null, previewLines: {}, designs: [unsaved, older] } as unknown as SlotView} newest />
+    </WorkbenchContext.Provider>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Back to v1" }));
+  expect(fetchMock).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole("button", { name: "Delete v2" }));
+  const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+  expect(url).toContain("/api/voices/design/d1");
+  expect(init.method).toBe("DELETE");
+  expect(removeDesign).toHaveBeenCalledWith(unsaved);
+});
+
+test("offers no way back once a preview is saved, or with no version before", () => {
+  render(card(DESIGN));
+  expect(screen.queryByRole("button", { name: /^Back to/ })).toBeNull();
+  cleanup();
+  const unsaved = { ...DESIGN, voiceId: null, voiceName: null, holderId: null, chosenPreview: null, samples: [] };
+  render(
+    <WorkbenchContext.Provider value={context}>
+      <VersionCard design={unsaved} slot={{ name: DESIGN.slot, sampleChars: 0, reference: null, previewLines: {}, designs: [unsaved] } as unknown as SlotView} newest />
+    </WorkbenchContext.Provider>,
+  );
+  expect(screen.queryByRole("button", { name: /^Back to/ })).toBeNull();
 });
 
 test("sends the player notes ticked with the verdict, and lists them under it", async () => {
