@@ -225,6 +225,25 @@ describe("a race a Chinese line names by a shorter word", () => {
   it("still swaps the full name whole, where a line has it", () => {
     expect(detemplated(gossip("你好，高阶会天裔。"))).toBe("你好，$R。");
   });
+
+  // The other branch's name is not 天裔 alone: its own half would be taken by the loose boundary
+  // and the name would come apart as 塑风者$R.
+  it("keeps the other branch's name whole, whichever branch reads it", () => {
+    const other = "塑风者天裔的长老说：天裔应当远行。";
+    expect(detemplated(gossip(other))).toBe("塑风者天裔的长老说：$R应当远行。");
+    expect(detemplated(gossip(other, { readerRace: "塑风者天裔" }))).toBe("$R的长老说：$R应当远行。");
+    expect(detemplated(gossip("高阶会天裔的长老说：天裔应当远行。", { readerRace: "塑风者天裔" }))).toBe(
+      "高阶会天裔的长老说：$R应当远行。",
+    );
+  });
+
+  // The envelope is a public paste, so a `readerRace` no client sends must not reach an object's
+  // prototype and throw the batch.
+  it("takes a race no client sends as no race word at all", () => {
+    for (const readerRace of ["constructor", "__proto__", "toString"]) {
+      expect(detemplated(gossip("你好，天裔。", { readerRace }))).toBe("你好，天裔。");
+    }
+  });
 });
 
 describe("a Chinese class word on quest text or in gossip", () => {
