@@ -34,10 +34,10 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ status?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; players?: string }>;
 }) {
   const lang = await pageLang(params);
-  const { status, q } = await searchParams;
+  const { status, q, players } = await searchParams;
   const t = (await uiText(await readingLang(lang))).voiceDesign;
   const session = await currentSession();
   // 404 rather than a redirect, as /voices: a member has no business learning this page exists.
@@ -131,6 +131,7 @@ export default async function Page({
         model={rate.model}
         initialFilter={status}
         initialQuery={q}
+        initialPlayers={players}
       />
     </BackstagePage>
   );

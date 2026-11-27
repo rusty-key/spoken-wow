@@ -8,7 +8,7 @@ import { useLang } from "@/components/LangProvider";
 import Link from "@/components/LocaleLink";
 import { useUiText } from "@/components/UiTextProvider";
 import { fill } from "@/lib/site-text/format";
-import { DONENESS, donenessOf, isRevisable, type Doneness } from "@/lib/voice-design/groups";
+import { DONENESS, donenessOf, isRevisable, type Doneness, PLAYERS_SAY, playersSay, type PlayersSay } from "@/lib/voice-design/groups";
 import { parseRemixSettings, PREVIEWS_PER_DESIGN, REMIX_DEFAULTS, type RemixSettings } from "@/lib/voice-design/limits";
 import type { Analysis, Design } from "@/lib/voice-design/types";
 
@@ -42,6 +42,11 @@ type Filter = "all" | Doneness;
 
 const isFilter = (value: string | undefined): value is Filter => value === "all" || DONENESS.includes(value as Doneness);
 
+type PlayersFilter = "all" | PlayersSay;
+
+const isPlayersFilter = (value: string | undefined): value is PlayersFilter =>
+  value === "all" || PLAYERS_SAY.includes(value as PlayersSay);
+
 const REMIX_KEY = "spoken.voiceDesign.remix";
 
 const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
@@ -66,6 +71,7 @@ export default function Workbench({
   model,
   initialFilter,
   initialQuery,
+  initialPlayers,
 }: {
   groups: GroupView[];
   live: Record<string, string>;
@@ -76,6 +82,7 @@ export default function Workbench({
   /** From the URL, so a reload or a shared link keeps what was being looked at. */
   initialFilter?: string;
   initialQuery?: string;
+  initialPlayers?: string;
 }) {
   const t = useUiText().voiceDesign;
   const lang = useLang();
@@ -83,6 +90,7 @@ export default function Workbench({
   const [live, setLive] = useState(initialLive);
   const [filter, setFilter] = useState<Filter>(isFilter(initialFilter) ? initialFilter : "all");
   const [query, setQuery] = useState(initialQuery ?? "");
+  const [players, setPlayers] = useState<PlayersFilter>(isPlayersFilter(initialPlayers) ? initialPlayers : "all");
   // Written without a navigation: a navigation would re-render the page, which reads the whole corpus.
   const keepInUrl = (name: string, value: string, unset: string) => {
     const url = new URL(window.location.href);
@@ -93,6 +101,10 @@ export default function Workbench({
   const chooseFilter = (value: Filter) => {
     setFilter(value);
     keepInUrl("status", value, "all");
+  };
+  const choosePlayers = (value: PlayersFilter) => {
+    setPlayers(value);
+    keepInUrl("players", value, "all");
   };
   const search = (value: string) => {
     setQuery(value);
@@ -135,16 +147,28 @@ export default function Workbench({
     const all = groups.flatMap((group) => group.slots);
     return Object.fromEntries([["all", all.length], ...DONENESS.map((d) => [d, all.filter((slot) => doneness(slot) === d).length])]) as Record<Filter, number>;
   }, [groups]);
+  const playerCounts = useMemo(() => {
+    const said = groups.flatMap((group) => group.slots).map((slot) => playersSay(slot.designs)).filter((say) => say !== null);
+    return Object.fromEntries([["all", said.length], ...PLAYERS_SAY.map((say) => [say, said.filter((s) => s === say).length])]) as Record<
+      PlayersFilter,
+      number
+    >;
+  }, [groups]);
 
   const needle = query.trim().toLowerCase();
   const shown = groups
     .map((group) => ({
       ...group,
-      slots: group.slots.filter((slot) => (filter === "all" || doneness(slot) === filter) && (!needle || haystack(slot).includes(needle))),
+      slots: group.slots.filter(
+        (slot) =>
+          (filter === "all" || doneness(slot) === filter) &&
+          (players === "all" || playersSay(slot.designs) === players) &&
+          (!needle || haystack(slot).includes(needle)),
+      ),
     }))
     .filter((group) => group.slots.length > 0);
   const races = [...new Set(shown.map((group) => group.group.split("-")[0]))];
-  const narrowed = filter !== "all" || needle !== "";
+  const narrowed = filter !== "all" || players !== "all" || needle !== "";
 
   const context = {
     lang,
@@ -214,6 +238,14 @@ export default function Workbench({
     setGeneratingAll(null);
   }
 
+  const playersLabel: Record<PlayersFilter, string> = {
+    all: t.playersAll,
+    off: t.playersOff,
+    mixed: t.playersMixed,
+    fits: t.playersFits,
+    "no-votes": t.playersNoVotes,
+  };
+
   const label: Record<Filter, string> = {
     all: t.filterAll,
     none: t.statusNone,
@@ -239,6 +271,23 @@ export default function Workbench({
             </button>
           ))}
         </div>
+        {playerCounts.all > 0 ? (
+          <div className="bs-chips" role="group" aria-label={t.playersLabel}>
+            {(["all", ...PLAYERS_SAY] as PlayersFilter[]).map((value) => (
+              <button
+                key={value}
+                type="button"
+                className="bs-chip"
+                data-players={value}
+                aria-current={players === value ? "page" : undefined}
+                onClick={() => choosePlayers(value)}
+              >
+                {playersLabel[value]}
+                <span className="bs-count">{playerCounts[value]}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
         <label className="bs-search vd-search">
           <Search size={15} aria-hidden="true" />
           <input type="search" value={query} placeholder={t.searchPlaceholder} aria-label={t.searchPlaceholder} onChange={(event) => search(event.target.value)} />
