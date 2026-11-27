@@ -2842,6 +2842,8 @@ const frFR: Dictionary = {
     importReload: "Rechargez la page pour les voir.",
   },
   listen: {
+    barText: "Aidez-nous à créer de nouvelles voix",
+    barCta: "Écoutez et votez",
     title: "Écouter : voix {lang}",
     lede: "Aidez-nous à créer des voix qui conviennent aux personnages.",
     question: "Cela convient-il au personnage ?",
