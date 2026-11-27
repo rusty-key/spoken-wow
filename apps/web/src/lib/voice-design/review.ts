@@ -27,7 +27,8 @@ export function parseReview(body: unknown, design: Pick<Design, "previews" | "sa
   const players: PlayerNote[] = [];
   for (const pick of Array.isArray(input.players) ? (input.players as { showingId?: unknown; voter?: unknown }[]) : []) {
     const found = design.showings.find((showing) => showing.id === pick?.showingId)?.notes.find((note) => note.voter === pick?.voter);
-    if (!found) throw new DesignError("no such player note to attach", 400);
+    // Hidden since it was ticked, by this reviewer or another: the verdict still stands without it.
+    if (!found) continue;
     players.push({ verdict: found.verdict, note: found.note });
   }
   return { status: input.status, note, bestPreview: (best as number | null | undefined) ?? null, clips, players, userId };

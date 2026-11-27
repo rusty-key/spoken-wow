@@ -20,13 +20,17 @@ describe("parseReview", () => {
     expect(review.players).toEqual([{ verdict: "close", note: "slower" }]);
   });
 
+  it("drops a pick whose note was hidden since, and keeps the verdict", () => {
+    const review = parseReview({ status: "needs-work", players: [{ showingId: 7, voter: "a:nobody" }, { showingId: 7, voter: "a:x" }] }, design, "u1");
+    expect(review.players).toEqual([{ verdict: "off", note: "too soft" }]);
+  });
+
   it.each([
     [{ status: "great" }, /verdict/],
     [{ status: "good", bestPreview: 5 }, /preview/],
     [{ status: "good", clips: { "sample:2": "off" } }, /sample:2/],
     [{ status: "good", clips: { "sample:0": "meh" } }, /sample:0/],
     [{ status: "good", note: "x".repeat(2001) }, /2000/],
-    [{ status: "needs-work", players: [{ showingId: 7, voter: "a:nobody" }] }, /player/],
   ])("refuses %j", (body, error) => {
     expect(() => parseReview(body, design, "u1")).toThrow(error);
   });

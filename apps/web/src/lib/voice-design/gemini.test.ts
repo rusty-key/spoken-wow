@@ -131,7 +131,7 @@ describe("reviseVoice", () => {
     status: "needs-work",
     note: "No accent at all",
     siblings: { "troll-male-shaman": "Trolls need a Jamaican accent" },
-    players: ["Doesn't fit: sounds like a normal human"],
+    players: ["Doesn't fit: sounds like a normal human", "Fits: perfect gruffness"],
     archetype: "Shady witch doctor",
     prompt: "A troll. Perfect audio quality, dry close-mic studio recording, no reverb or effects.",
     previewText: "Hey mon.",
@@ -142,6 +142,9 @@ describe("reviseVoice", () => {
     for (const part of ["No accent at all", "sounds like a normal human", "Trolls need a Jamaican accent", "troll-male-shaman", "A troll.", "Hey mon.", PROMPT_ENDING]) {
       expect(text).toContain(part);
     }
+    // Praise is kept, not fixed.
+    expect(text).toMatch(/keep what they praise/i);
+    expect(buildRevisePrompt({ ...input, players: [] })).not.toContain("Players' notes");
     const fetchImpl = vi.fn(async (_url: string, _init: RequestInit) =>
       Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify([{ heard: "No accent.", prompt: "A troll, thick Jamaican accent.", preview_text: "Hey mon, welcome." }]) }] } }] }),
     );

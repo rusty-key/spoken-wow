@@ -199,8 +199,11 @@ export type ReviseInput = {
 /** What Gemini is asked when revising a version from its review. */
 export function buildRevisePrompt(input: ReviseInput): string {
   return `You are a casting director revising a designed voice for ${input.slot} (World of Warcraft NPCs; who uses it: ${input.archetype || "(unknown)"}).
-Reviewer verdict on v${input.version}: ${input.status}. Reviewer note: "${input.note || "(none)"}".
-Players' notes on v${input.version} the reviewer chose to act on, as much a part of the review as the reviewer's note: ${JSON.stringify(input.players)}
+Reviewer verdict on v${input.version}: ${input.status}. Reviewer note: "${input.note || "(none)"}".${
+    input.players.length > 0
+      ? `\nPlayers' notes on v${input.version} the reviewer chose to act on, as much a part of the review as the reviewer's note; keep what they praise and fix what they criticise: ${JSON.stringify(input.players)}`
+      : ""
+  }
 Notes on sibling voices of the same race, which this voice must also follow where they speak for the whole race: ${JSON.stringify(input.siblings)}
 The v${input.version} prompt was: "${input.prompt}"
 v${input.version} preview text: "${input.previewText}"

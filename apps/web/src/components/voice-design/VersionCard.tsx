@@ -13,7 +13,7 @@ import { isRevisable } from "@/lib/voice-design/groups";
 import { designName, recommendedPreview } from "@/lib/voice-design/limits";
 import type { ClipMark, Design, Measures, Verdict } from "@/lib/voice-design/types";
 
-import FeedbackResults from "./FeedbackResults";
+import FeedbackResults, { pickKey } from "./FeedbackResults";
 import PlayButton, { ReferenceClip } from "./PlayButton";
 import StatusBadge from "./StatusBadge";
 import { designFrom, remixFrom, requestRevision, send, useWorkbench, type Draft } from "./context";
@@ -507,10 +507,10 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                 data-status={value}
                 disabled={busy !== null}
                 onClick={async () => {
-                  const players = [...picked].map((key) => {
-                    const at = key.indexOf("|");
-                    return { showingId: Number(key.slice(0, at)), voter: key.slice(at + 1) };
-                  });
+                  // Only notes still listed: one hidden since it was ticked has no box left to untick.
+                  const players = design.showings.flatMap((showing) =>
+                    showing.notes.filter((n) => picked.has(pickKey(showing.id, n.voter))).map((n) => ({ showingId: showing.id, voter: n.voter })),
+                  );
                   const ok = await act(`review-${value}`, `/api/voices/design/${design.id}/reviews`, { body: { status: value, note, clips, players } });
                   if (ok) {
                     setNote("");
