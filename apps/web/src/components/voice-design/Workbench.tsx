@@ -8,7 +8,7 @@ import { useLang } from "@/components/LangProvider";
 import Link from "@/components/LocaleLink";
 import { useUiText } from "@/components/UiTextProvider";
 import { fill } from "@/lib/site-text/format";
-import { DONENESS, donenessOf, isRevisable, type Doneness, PLAYERS_SAY, playersSay, type PlayersSay } from "@/lib/voice-design/groups";
+import { DONENESS, donenessOf, isRevisable, onPage, type Doneness, PLAYERS_SAY, playersSay, type PlayersSay } from "@/lib/voice-design/groups";
 import { parseRemixSettings, PREVIEWS_PER_DESIGN, REMIX_DEFAULTS, type RemixSettings } from "@/lib/voice-design/limits";
 import type { Analysis, Design } from "@/lib/voice-design/types";
 
@@ -51,12 +51,12 @@ const REMIX_KEY = "spoken.voiceDesign.remix";
 
 const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
 
-/** What a search matches: the slot's name and who uses it, and every version's prompt and notes. */
+/** What a search matches: the slot's name and who uses it, and the prompt and notes of each version on the page. */
 function haystack(slot: SlotView): string {
   return [
     slot.name,
     ...slot.npcs,
-    ...slot.designs.flatMap((design) => [design.prompt, design.previewText, ...design.reviews.map((review) => review.note)]),
+    ...onPage(slot.designs).flatMap((design) => [design.prompt, design.previewText, ...design.reviews.map((review) => review.note)]),
   ]
     .join("\n")
     .toLowerCase();

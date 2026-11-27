@@ -241,7 +241,11 @@ export async function retireOlder(
   deps: DesignDeps = LIVE,
 ): Promise<Design[]> {
   const retired: Design[] = [];
-  for (const design of await deps.slotDesigns(input.lang, input.kept.slot)) {
+  const versions = await deps.slotDesigns(input.lang, input.kept.slot).catch((error: unknown) => {
+    console.warn(`[voice-design] kept ${input.kept.slot}'s older voices:`, error);
+    return [];
+  });
+  for (const design of versions) {
     if (design.version >= input.kept.version || holderRefusal(design, input.userId)) continue;
     try {
       retired.push(await deleteDesignVoice({ lang: input.lang, id: design.id, userId: input.userId, apiKey: input.apiKey }, deps));

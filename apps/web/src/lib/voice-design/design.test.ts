@@ -227,6 +227,11 @@ describe("retireOlder", () => {
     await expect(retireOlder({ ...base, kept: versions[1] }, d)).resolves.toEqual([]);
     expect(d.deleteVoice).not.toHaveBeenCalled();
   });
+
+  it("never fails the paid-for version, even when the slot cannot be read", async () => {
+    const d = deps({}, { slotDesigns: vi.fn(async () => Promise.reject(new Error("connection lost"))) });
+    await expect(retireOlder({ ...base, kept: DESIGN }, d)).resolves.toEqual([]);
+  });
 });
 
 describe("remixVersion", () => {

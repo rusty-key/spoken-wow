@@ -91,9 +91,9 @@ test("filters by how far each slot's newest version has got, with counts", async
   expect(slotsShown()).toEqual(["orc-male-standard"]);
 });
 
-test("searches prompts and every version's notes", async () => {
+test("searches prompts and the notes of the versions on the page", async () => {
   workbench();
-  await userEvent.type(screen.getByRole("searchbox"), "sounds female");
+  await userEvent.type(screen.getByRole("searchbox"), "too noble");
   expect(slotsShown()).toEqual(["orc-male-shady"]);
 });
 
@@ -112,9 +112,9 @@ test("keeps the filter and the search in the URL", async () => {
 });
 
 test("starts from the filter and the search in the URL", () => {
-  workbench({ initialFilter: "needs-work", initialQuery: "female" });
+  workbench({ initialFilter: "needs-work", initialQuery: "noble" });
   expect(slotsShown()).toEqual(["orc-male-shady"]);
-  expect(screen.getByRole("searchbox")).toHaveProperty("value", "female");
+  expect(screen.getByRole("searchbox")).toHaveProperty("value", "noble");
   cleanup();
   workbench({ initialFilter: "bogus" });
   expect(slotsShown()).toHaveLength(3);
@@ -125,6 +125,28 @@ test("shows only a slot's newest version: the next one replaces it", () => {
   const shady = screen.getByRole("article", { name: "orc-male-shady" });
   expect(within(shady).getByText("Prompt of orc-male-shady v2")).toBeTruthy();
   expect(within(shady).queryByText("Prompt of orc-male-shady v1")).toBeNull();
+});
+
+test("keeps the version players hear on the page until a newer one is shown", () => {
+  const heard = { ...design("orc-male-shady", 1, null), isPublic: true };
+  render(
+    <LangProvider lang="enUS">
+      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [design("orc-male-shady", 2, null), heard])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
+    </LangProvider>,
+  );
+  const shady = screen.getByRole("article", { name: "orc-male-shady" });
+  expect(within(shady).getByText("Prompt of orc-male-shady v2")).toBeTruthy();
+  expect(within(shady).getByText("Prompt of orc-male-shady v1")).toBeTruthy();
+});
+
+test("searches only the versions on the page", async () => {
+  render(
+    <LangProvider lang="enUS">
+      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [design("orc-male-shady", 2, null), design("orc-male-shady", 1, null)])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true }} rate={0.5} model="eleven_v4" />
+    </LangProvider>,
+  );
+  await userEvent.type(screen.getByRole("searchbox"), "orc-male-shady v1");
+  expect(screen.queryByRole("article", { name: "orc-male-shady" })).toBeNull();
 });
 
 test("Revise puts Gemini's draft into a form that was already open", async () => {

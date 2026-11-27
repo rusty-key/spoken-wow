@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { useUiText } from "@/components/UiTextProvider";
 import { fill } from "@/lib/site-text/format";
-import type { Doneness } from "@/lib/voice-design/groups";
+import { onPage, type Doneness } from "@/lib/voice-design/groups";
 
 import DesignForm from "./DesignForm";
 import { ReferenceClip } from "./PlayButton";
@@ -18,8 +18,7 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
   const t = useUiText().voiceDesign;
   const { viewer, drafts, setDraft } = useWorkbench();
   const draft = drafts[slot.name];
-  // A slot shows one version: the next replaces it, and the older ones stay only as history.
-  const newest = slot.designs[0];
+  const [newest, heard] = onPage(slot.designs);
   const [designing, setDesigning] = useState(false);
   const formOpen = designing || draft !== undefined;
   const close = () => {
@@ -52,6 +51,7 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
       </header>
 
       {newest ? <VersionCard key={newest.id} design={newest} slot={slot} newest /> : null}
+      {heard ? <VersionCard key={heard.id} design={heard} slot={slot} newest={false} /> : null}
 
       {formOpen ? (
         <div id={`design-${slot.name}`}>
@@ -64,7 +64,6 @@ export default function SlotRow({ slot, doneness }: { slot: SlotView; doneness: 
           />
         </div>
       ) : null}
-
     </article>
   );
 }
