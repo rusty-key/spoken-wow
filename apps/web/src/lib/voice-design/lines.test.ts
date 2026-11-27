@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { CorpusLine } from "@/lib/corpus";
 
-import { defaultSampleLines, otherSampleLines, previewTextCandidates, sameSampleLines, slotNpcs } from "./lines";
+import { defaultSampleLines, otherSampleLines, previewTextCandidates, sameSampleLines, slotExamples, slotNpcs } from "./lines";
 
 const SLOT = "orc-male-shady";
 
@@ -113,5 +113,19 @@ describe("previewTextCandidates", () => {
   it("offers lines of 100 to 300 characters", () => {
     const texts = previewTextCandidates([line("q:1", words(5)), line("q:2", words(30)), line("q:3", words(80))], SLOT);
     expect(texts).toEqual([words(30)]);
+  });
+});
+
+describe("slotExamples", () => {
+  it("names each slot's three busiest NPCs, in one pass over the corpus", () => {
+    const lines = [
+      ...["Grunt", "Grunt", "Grunt", "Zug", "Zug", "Mok", "Pip"].map((npcName, n) => line(`q:${n}:accept`, "Hi.", { npcName })),
+      line("q:9:accept", "Hi.", { npcName: "Elsewhere", voice: "orc-female" }),
+      line("q:10:accept", "Hi.", { npcName: "Muted", generatable: false }),
+    ];
+    const examples = slotExamples(lines, [SLOT, "orc-female", "troll-male"]);
+    expect(examples.get(SLOT)).toEqual(["Grunt", "Zug", "Mok"]);
+    expect(examples.get("orc-female")).toEqual(["Elsewhere"]);
+    expect(examples.get("troll-male")).toEqual([]);
   });
 });

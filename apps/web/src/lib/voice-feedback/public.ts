@@ -7,7 +7,9 @@ import "server-only";
 import { queryIn, withTeam, type TeamId } from "@/lib/db";
 import type { Lang } from "@/lib/lang";
 import { defaultTeamOf } from "@/lib/teams/store";
+import { corpus } from "@/lib/quests/catalogue";
 import { flavorOf } from "@/lib/voice-design/groups";
+import { slotExamples } from "@/lib/voice-design/lines";
 import { NEWEST_SHOWING } from "@/lib/voice-design/store";
 import type { GeminiResult, Verdict } from "@/lib/voice-design/types";
 
@@ -17,6 +19,8 @@ export type PublicVoice = {
   gender: string;
   flavor: string | null;
   archetype: string | null;
+  /** The NPCs who speak the most lines in this voice: who players will hear it from. */
+  examples: string[];
   showingId: number;
   samples: { sha256: string; text: string; npcName: string | null }[];
 };
@@ -55,7 +59,7 @@ export async function publicVoices(lang: Lang): Promise<PublicVoice[]> {
     [lang],
   );
   if (shown.length === 0) return [];
-  const [samples, analyses] = await Promise.all([
+  const [samples, analyses, { lines }] = await Promise.all([
     queryIn<{ designId: string; sha256: string; text: string | null; npcName: string | null }>(
       team,
       `select "designId", "sha256", "text", "npcName" from "voice_design_clip"
@@ -68,7 +72,9 @@ export async function publicVoices(lang: Lang): Promise<PublicVoice[]> {
         where "lang" = $1 order by "group", "createdAt" desc`,
       [lang],
     ),
+    corpus(lang),
   ]);
+  const examples = slotExamples(lines, shown.map((row) => row.slot));
   return shown.map((row) => {
     const [race, gender] = row.slot.split("-");
     const own = typeof row.analysis?.archetype === "string" && row.analysis.archetype ? row.analysis.archetype : null;
@@ -78,6 +84,7 @@ export async function publicVoices(lang: Lang): Promise<PublicVoice[]> {
       gender,
       flavor: flavorOf(row.slot),
       archetype: own ?? analyses.map((a) => archetypeIn(a.labels, a.result, row.slot)).find(Boolean) ?? null,
+      examples: examples.get(row.slot) ?? [],
       showingId: Number(row.showingId),
       samples: samples
         .filter((sample) => sample.designId === row.designId)

@@ -93,6 +93,7 @@ describe("the Listen page's voices", () => {
         gender: "male",
         flavor: "shady",
         archetype: "Smooth smuggler",
+        examples: [],
         showingId: latest.showingId,
         samples: [0, 1, 2].map((p) => ({
           sha256: SHA(20 + p),

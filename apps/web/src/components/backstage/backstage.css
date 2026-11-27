@@ -2424,6 +2424,17 @@ body:has(main.bs) {
   font-size: 12px;
   font-weight: 500;
 }
+.ls-character {
+  min-width: 180px;
+  max-width: 280px;
+}
+.ls-character p {
+  margin: 0;
+  line-height: 19px;
+}
+.ls-archetype {
+  color: var(--bs-text-2);
+}
 .ls-name {
   font-weight: 600;
   white-space: nowrap;
