@@ -70,7 +70,7 @@ describe("otherSampleLines", () => {
     line("g:b", words(20)),
     line("q:3:accept", `${words(80)} <He laughs.> ${words(3)}`),
   ];
-  const heard = new Set(["q:2:accept", "f:1:orc-male-shady", "g:b"]);
+  const heard = ["q:2:accept", "f:1:orc-male-shady", "g:b"];
 
   it("takes one quest text, one bark and one gossip line that were not heard yet", () => {
     for (const roll of [0, 0.5, 0.99]) {
@@ -80,20 +80,25 @@ describe("otherSampleLines", () => {
 
   it("repeats heard lines only when the slot has nothing else", () => {
     const few = [line("q:1:accept", words(30)), line("q:2:accept", words(60)), line("g:a", words(10))];
-    const ids = otherSampleLines(few, SLOT, new Set(["q:1:accept", "q:2:accept"]), () => 0).map((l) => l.lineId);
+    const ids = otherSampleLines(few, SLOT, ["q:1:accept", "q:2:accept"], () => 0).map((l) => l.lineId);
     expect(ids[0]).toBe("g:a");
     expect(ids).toHaveLength(3);
   });
 
   it("never picks a line with narration", () => {
-    expect(otherSampleLines(lines, SLOT, new Set(), () => 0.99).map((l) => l.lineId)).not.toContain("q:3:accept");
+    expect(otherSampleLines(lines, SLOT, [], () => 0.99).map((l) => l.lineId)).not.toContain("q:3:accept");
   });
 });
 
 describe("sameSampleLines", () => {
-  it("keeps the order given and drops lines the corpus no longer has", () => {
-    const lines = [line("q:1:accept", words(30)), line("g:a", words(10))];
-    expect(sameSampleLines(lines, SLOT, ["g:a", "q:9:accept", "q:1:accept"]).map((l) => l.lineId)).toEqual(["g:a", "q:1:accept"]);
+  it("keeps the order given, and tops up from the default lines where the corpus lost one", () => {
+    const lines = [line("q:1:accept", words(30)), line("g:a", words(10)), line("g:b", words(20))];
+    expect(sameSampleLines(lines, SLOT, ["g:a", "q:9:accept", "q:1:accept"]).map((l) => l.lineId)).toEqual(["g:a", "q:1:accept", "g:b"]);
+  });
+
+  it("is the default lines for a version never voiced", () => {
+    const lines = [line("q:1:accept", words(30)), line("g:a", words(10)), line("g:b", words(20))];
+    expect(sameSampleLines(lines, SLOT, [])).toEqual(defaultSampleLines(lines, SLOT));
   });
 });
 

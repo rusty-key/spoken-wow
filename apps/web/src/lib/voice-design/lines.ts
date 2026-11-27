@@ -6,6 +6,7 @@
  */
 import type { CorpusLine } from "@/lib/corpus";
 import { segments } from "@/lib/generation/narration";
+import { shuffle } from "@/lib/shuffle";
 
 /** Longer lines cost credits and tell a listener nothing a 400-character one does not. */
 export const MAX_SAMPLE_CHARS = 400;
@@ -52,39 +53,42 @@ function topUp(picked: (CorpusLine | undefined)[], rest: readonly CorpusLine[]):
   return chosen;
 }
 
+const pickDefaults = (usable: readonly CorpusLine[]): CorpusLine[] => {
+  const gossip = usable.filter((line) => kind(line) === "g:");
+  return topUp([usable.filter((line) => kind(line) === "q:").at(-1), usable.find(isBark), gossip[Math.floor(gossip.length / 2)]], [...usable].reverse());
+};
+
 /**
  * Up to three lines: the longest quest text, the shortest bark, a middling gossip line. A slot
  * without one of the kinds gets the next-longest of what it has instead, so it still has three.
  */
 export function defaultSampleLines(lines: readonly CorpusLine[], slot: string): CorpusLine[] {
+  return pickDefaults(usableLines(lines, slot));
+}
+
+/** Topped up from the default lines where the corpus lost one, so a new take is judged on the same lines. */
+export function sameSampleLines(lines: readonly CorpusLine[], slot: string, heard: readonly string[]): CorpusLine[] {
   const usable = usableLines(lines, slot);
-  const gossip = usable.filter((line) => kind(line) === "g:");
-  return topUp([usable.filter((line) => kind(line) === "q:").at(-1), usable.find(isBark), gossip[Math.floor(gossip.length / 2)]], [...usable].reverse());
+  const byId = new Map(usable.map((line) => [line.lineId, line]));
+  return topUp(
+    heard.map((id) => byId.get(id)),
+    pickDefaults(usable),
+  );
 }
 
 /**
  * Three other lines of the same kinds, picked at random, for when the usual ones say little about
  * the voice. A slot with too few lines to avoid every one already heard repeats some.
  */
-export function otherSampleLines(lines: readonly CorpusLine[], slot: string, heard: ReadonlySet<string>, random = Math.random): CorpusLine[] {
+export function otherSampleLines(lines: readonly CorpusLine[], slot: string, heard: readonly string[], random = Math.random): CorpusLine[] {
   const usable = usableLines(lines, slot);
-  const fresh = usable.filter((line) => !heard.has(line.lineId));
-  const any = <T>(list: readonly T[]): T | undefined => list[Math.floor(random() * list.length)];
-  const shuffled = (list: readonly CorpusLine[]) =>
-    list
-      .map((line) => ({ line, key: random() }))
-      .sort((a, b) => a.key - b.key)
-      .map(({ line }) => line);
+  const old = new Set(heard);
+  const fresh = usable.filter((line) => !old.has(line.lineId));
+  const pick = (list: readonly CorpusLine[]) => list[Math.floor(random() * list.length)];
   return topUp(
-    [any(fresh.filter((line) => kind(line) === "q:")), any(fresh.filter(isBark)), any(fresh.filter((line) => kind(line) === "g:"))],
-    [...shuffled(fresh), ...shuffled(usable.filter((line) => heard.has(line.lineId)))],
+    [pick(fresh.filter((line) => kind(line) === "q:")), pick(fresh.filter(isBark)), pick(fresh.filter((line) => kind(line) === "g:"))],
+    [...shuffle(fresh, random), ...shuffle(usable.filter((line) => old.has(line.lineId)), random)],
   );
-}
-
-/** The lines a version was last voiced on, in their order, as far as the corpus still has them. */
-export function sameSampleLines(lines: readonly CorpusLine[], slot: string, lineIds: readonly string[]): CorpusLine[] {
-  const usable = new Map(usableLines(lines, slot).map((line) => [line.lineId, line]));
-  return lineIds.map((id) => usable.get(id)).filter((line): line is CorpusLine => line !== undefined);
 }
 
 /** Lines long enough to be Voice Design's preview text, in the character's own register. */
