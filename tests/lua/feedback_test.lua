@@ -13,7 +13,7 @@ local Expect, Failures = H.Expecter(print)
 local URL = "https://spoken.quest/listen"
 
 local function Clean(locale)
-    stub.SetClient("16001"); stub.ResetTimers(); stub.ResetUIActions()
+    stub.SetClient("16001"); stub.ResetTimers()
     stub.SetLocale(locale or "enUS")
     _G.SpokenSettings = nil
 end
