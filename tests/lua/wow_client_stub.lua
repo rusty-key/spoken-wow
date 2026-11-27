@@ -714,6 +714,7 @@ _G.UIDropDownMenu_Initialize = nil
 M.settingsCategories = {}
 -- A category folds its subcategories until something expands it (Blizzard_Category.lua).
 local function SettingsCategory(c)
+    c.expanded = false
     function c:SetExpanded(expanded) self.expanded = expanded end
     function c:IsExpanded() return self.expanded end
     return c
