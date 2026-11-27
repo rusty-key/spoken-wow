@@ -16,6 +16,8 @@ categories:
 license: MIT
 ---
 
+Share feedback on upcoming voices: https://spoken.quest/listen
+
 Voiced dialogue for the quests **both factions** can take. Neutral hubs like Booty Bay, Gadgetzan, Everlook and Ratchet live here, along with every other quest whose giver talks to either side.
 
 **Everyone wants this pack**, and on its own it is only part of the story. Pair it with your side, and with the player:

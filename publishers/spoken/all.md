@@ -10,6 +10,8 @@ categories:
 license: MIT
 ---
 
+Share feedback on upcoming voices: https://spoken.quest/listen
+
 ⚠️ NOT for manual download, install only via CurseForge app ⚠️
 
 **Install this and everything is voiced.** It holds no audio and no code — it is a few kilobytes that names Spoken and every English sound pack as a dependency, so your addon manager fetches the lot.

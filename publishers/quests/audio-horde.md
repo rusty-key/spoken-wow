@@ -16,6 +16,8 @@ categories:
 license: MIT
 ---
 
+Share feedback on upcoming voices: https://spoken.quest/listen
+
 Voiced dialogue for the quests only a Horde character can take.
 
 **You need two more addons for this to do anything:**

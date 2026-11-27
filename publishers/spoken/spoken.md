@@ -12,6 +12,8 @@ license: MIT
 addonReadme: addons/Spoken/README.md
 ---
 
+Share feedback on upcoming voices: https://spoken.quest/listen
+
 **Expressive, character-driven AI voiceover for WoW Forever.** NPCs speak their quest text and gossip, places tell their stories, and books read themselves aloud.
 
 Spoken is made and tested on WoW Forever. It also installs on Classic Era and Anniversary, as it is.

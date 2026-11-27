@@ -1,5 +1,7 @@
 <!-- GENERATED from publishers/bosses/spoken-bosses-audio.md by scripts/descriptions.mjs. Do not edit by hand. -->
 
+Share feedback on upcoming voices: https://spoken.quest/listen
+
 Narrated boss stories for **[Spoken](https://www.curseforge.com/wow/addons/spoken)**'s Bosses module. This addon is data only: it does nothing on its own.
 
 ## Installing
