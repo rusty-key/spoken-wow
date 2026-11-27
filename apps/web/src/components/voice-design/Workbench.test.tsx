@@ -332,7 +332,7 @@ test("narrows to the slots players say mostly don't fit, and keeps it in the URL
   const voted = (name: string, counts: Design["showings"][number]["counts"]): Design => ({
     ...design(name, 1, null),
     isPublic: true,
-    showings: [{ id: 1, createdAt: "2026-11-26T00:00:00Z", createdByName: "Ann", counts, notes: [], samples: null }],
+    showings: [{ id: 1, createdAt: "2026-11-26T00:00:00Z", createdByName: "Ann", counts, notes: [], samples: null, linesChanged: false }],
   });
   render(
     <LangProvider lang="enUS">

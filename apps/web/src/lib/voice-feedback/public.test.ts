@@ -135,14 +135,14 @@ describe("the Listen page's voices", () => {
     expect((await asTeam(lang, main, () => store.readDesign(lang, made.id)))!.playersHearOlderLines).toBe(false);
   });
 
-  it("keeps the lines of a showing made without them before voicing its version again", async () => {
-    const { made, showingId } = await shown(main, "orc-male-peon", 6);
-    await asSystem.query(`update "voice_design_showing" set "samples" = null where "id" = $1`, [showingId]);
-    const again = [0, 1, 2].map((position) => ({ position, sha256: SHA(600 + position), lineId: `q:${position}:accept`, text: "New.", npcName: "Grunt", characters: 4, credits: 1 }));
-    await asTeam(lang, main, () => store.replaceSamples(lang, made.id, again, { model: "m", settings: {} }));
-
-    const voices = await asTeam(lang, main, () => pub.publicVoices(lang));
-    expect(voices.find((voice) => voice.slot === "orc-male-peon")!.samples.map((line) => line.sha256)).toEqual([SHA(60), SHA(61), SHA(62)]);
+  it("keeps a showing's lines when the release before inserts it without them", async () => {
+    const { made } = await shown(main, "orc-male-peon", 6);
+    // What the previous release's Show to players runs: no samples column.
+    const { rows } = await asSystem.query<{ samples: { sha256: string }[] }>(
+      `insert into "voice_design_showing" ("designId", "teamId", "lang", "slot") values ($1, $2, $3, 'orc-male-peon') returning "samples"`,
+      [made.id, main, lang],
+    );
+    expect(rows[0].samples.map((line) => line.sha256)).toEqual([SHA(60), SHA(61), SHA(62)]);
   });
 
   it("keeps one vote per voter, the second replacing the first", async () => {

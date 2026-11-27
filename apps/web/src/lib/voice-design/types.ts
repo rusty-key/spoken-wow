@@ -58,6 +58,8 @@ export type Showing = {
   notes: FeedbackNote[];
   /** The lines players heard and voted on; null for a round from before they were kept. */
   samples: ShownLine[] | null;
+  /** The version has been voiced again since: its votes are about `samples`, not its lines now. */
+  linesChanged: boolean;
 };
 
 export type ShownLine = { sha256: string; text: string | null; npcName: string | null };

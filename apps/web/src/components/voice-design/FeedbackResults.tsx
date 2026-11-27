@@ -4,11 +4,10 @@ import { X } from "lucide-react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { useUiText } from "@/components/UiTextProvider";
-import { withLang } from "@/lib/lang";
 import { fill } from "@/lib/site-text/format";
 import { VERDICTS, type Design, type Verdict } from "@/lib/voice-design/types";
 
-import { useWorkbench } from "./context";
+import { designAudioUrl, useWorkbench } from "./context";
 import PlayButton from "./PlayButton";
 
 const day = (iso: string) => iso.slice(0, 10);
@@ -42,7 +41,6 @@ export default function FeedbackResults({
   const t = useUiText().voiceDesign;
   const { lang } = useWorkbench();
   if (design.showings.length === 0) return null;
-  const current = design.samples.map((sample) => sample.sha256).join();
   const verdict = verdictLabels(t);
   return (
     <section className="vd-feedback" aria-label={t.feedbackLabel}>
@@ -53,13 +51,13 @@ export default function FeedbackResults({
           <div key={showing.id} className="vd-feedback-round">
             <p className="vd-muted">{fill(t.shownBy, { who: showing.createdByName ?? t.someone, when: day(showing.createdAt) })}</p>
             {/* Votes and notes are about these lines; once voiced again, the card's own lines are others. */}
-            {showing.samples && showing.samples.map((line) => line.sha256).join() !== current ? (
+            {showing.samples && showing.linesChanged ? (
               <div className="vd-round-lines">
                 <span className="vd-muted">{t.roundLines}</span>
                 {showing.samples.map((line, index) => (
                   <PlayButton
                     key={line.sha256 + index}
-                    clip={{ src: withLang(lang, `/api/voices/design/audio/${line.sha256}`), title: line.npcName ?? design.slot, meta: t.roundLines, subtitle: line.text ?? "" }}
+                    clip={{ src: designAudioUrl(lang, line.sha256), title: line.npcName ?? design.slot, meta: t.roundLines, subtitle: line.text ?? "" }}
                   >
                     {fill(t.roundLineN, { n: index + 1 })}
                   </PlayButton>

@@ -53,6 +53,9 @@ export function useWorkbench(): Workbench {
   return value;
 }
 
+/** A version's preview or sample line, or a line a showing kept. */
+export const designAudioUrl = (lang: Lang, sha256: string) => withLang(lang, `/api/voices/design/audio/${sha256}`);
+
 /**
  * POST or DELETE to a workbench route; the parsed body, or throws with the route's own error.
  * A failure without one came from nginx or Cloudflare, not the route (the app went away or timed

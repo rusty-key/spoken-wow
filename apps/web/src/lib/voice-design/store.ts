@@ -11,7 +11,7 @@ import { asTeamOf, readAs } from "@/lib/teams/store";
 import { isUuid } from "@/lib/uuid";
 
 import { DesignError } from "./access";
-import type { ReviewStatus } from "./groups";
+import { sameLines, type ReviewStatus } from "./groups";
 import type {
   Analysis,
   ClipMark,
@@ -71,18 +71,13 @@ type ShowingRow = {
 };
 type FeedbackRow = { showingId: string; voter: string; who: string | null; verdict: Verdict; note: string; hidden: boolean; at: Date };
 
-/** A version's current sample lines as a showing keeps them, for the version id in `design`. */
-export const SAMPLES_OF = (design: string) => `
-  (select jsonb_agg(jsonb_build_object('sha256', c."sha256", 'text', c."text", 'npcName', c."npcName") order by c."position")
-     from "voice_design_clip" c where c."designId" = ${design} and c."kind" = 'sample')`;
-
 /** The newest showing of the slot of the showing aliased `s`: the version players hear. */
 export const NEWEST_SHOWING = `
   (select s2."id" from "voice_design_showing" s2
     where s2."teamId" = s."teamId" and s2."lang" = s."lang" and s2."slot" = s."slot"
     order by s2."id" desc limit 1)`;
 
-function showingsOf(rows: ShowingRow[], byShowing: Map<string, FeedbackRow[]>): Showing[] {
+function showingsOf(rows: ShowingRow[], byShowing: Map<string, FeedbackRow[]>, current: readonly { sha256: string }[]): Showing[] {
   return rows.map((row) => {
     const own = byShowing.get(row.id) ?? [];
     const counts: Record<Verdict, number> = { fits: 0, close: 0, off: 0, skip: 0 };
@@ -90,7 +85,11 @@ function showingsOf(rows: ShowingRow[], byShowing: Map<string, FeedbackRow[]>): 
     const notes: FeedbackNote[] = own
       .filter((f) => f.note && !f.hidden)
       .map((f) => ({ voter: f.voter, who: f.who, verdict: f.verdict, note: f.note, at: f.at.toISOString() }));
-    return { id: Number(row.id), createdAt: row.createdAt.toISOString(), createdByName: row.createdByName, counts, notes, samples: row.samples };
+    return { id: Number(row.id), createdAt: row.createdAt.toISOString(), createdByName: row.createdByName, counts,
+      notes,
+      samples: row.samples,
+      linesChanged: row.samples !== null && !sameLines(row.samples, current),
+    };
   });
 }
 type ReviewRow = Omit<Review, "createdAt" | "id"> & { id: string; designId: string; createdAt: Date };
@@ -152,8 +151,8 @@ async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
         .filter((r) => r.designId === row.id)
         .map(({ designId: _, ...review }) => ({ ...review, id: Number(review.id), createdAt: review.createdAt.toISOString() })),
       isPublic: !!heard,
-      playersHearOlderLines: !!heard?.samples && heard.samples.map((line) => line.sha256).join() !== own.map((sample) => sample.sha256).join(),
-      showings: showingsOf(shown, byShowing),
+      playersHearOlderLines: !!heard?.samples && !sameLines(heard.samples, own),
+      showings: showingsOf(shown, byShowing, own),
     };
   });
 }
@@ -357,14 +356,8 @@ export async function replaceSamples(
   made: { model: string; settings: Record<string, unknown> },
 ): Promise<void> {
   await asTeamOf(lang, async (client) => {
-    // A shown version may be voiced again: its showing keeps the lines players hear. One inserted
-    // without them (by the release before 0138) gets them now, before they are replaced.
+    // A shown version may be voiced again: its showing keeps the lines players hear.
     await lockSlot(client, null, id);
-    await client.query(
-      `update "voice_design_showing" s set "samples" = ${SAMPLES_OF("s.\"designId\"")}
-        where s."designId" = $1 and s."samples" is null and s."id" = ${NEWEST_SHOWING}`,
-      [id],
-    );
     await client.query(`delete from "voice_design_clip" where "designId" = $1 and "kind" = 'sample'`, [id]);
     await insertSamples(client, id, samples);
     await client.query(

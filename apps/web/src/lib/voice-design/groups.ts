@@ -66,3 +66,8 @@ export function playersSay(
   if (off * 2 > answered) return "off";
   return "mixed";
 }
+
+/** Whether two sets of lines are the same audio, by the takes' hashes in order. */
+export function sameLines(a: readonly { sha256: string }[], b: readonly { sha256: string }[]): boolean {
+  return a.length === b.length && a.every((line, i) => line.sha256 === b[i].sha256);
+}

@@ -16,7 +16,7 @@ import type { ClipMark, Design, Measures } from "@/lib/voice-design/types";
 import FeedbackResults, { pickKey, verdictLabels } from "./FeedbackResults";
 import PlayButton, { ReferenceClip } from "./PlayButton";
 import StatusBadge from "./StatusBadge";
-import { designFrom, remixFrom, requestRevision, send, useWorkbench, type Draft } from "./context";
+import { designAudioUrl, designFrom, remixFrom, requestRevision, send, useWorkbench, type Draft } from "./context";
 import RemixSettingsFields from "./RemixSettings";
 import type { SlotView } from "./Workbench";
 
@@ -166,7 +166,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
   const [menuOpen, setMenuOpen] = useState(false);
   const [linesMenuOpen, setLinesMenuOpen] = useState(false);
 
-  const audio = (sha: string) => withLang(lang, `/api/voices/design/audio/${sha}`);
+  const audio = (sha: string) => designAudioUrl(lang, sha);
   const holds = design.holderId === viewer.id;
   const hasVoice = design.voiceId !== null && design.voiceDeletedAt === null;
   const can = viewer.designs;
