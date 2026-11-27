@@ -62,6 +62,20 @@ function haystack(slot: SlotView): string {
     .toLowerCase();
 }
 
+type Narrowing = { filter: Filter; players: PlayersFilter; needle: string };
+
+function matches(slot: SlotView, { filter, players, needle }: Narrowing): boolean {
+  return (
+    (filter === "all" || donenessOf(slot.designs[0] ?? null) === filter) &&
+    (players === "all" || playersSay(slot.designs) === players) &&
+    (!needle || haystack(slot).includes(needle))
+  );
+}
+
+/** The slots a narrowing picks, decided when it is chosen. */
+const picked = (groups: GroupView[], narrowing: Narrowing) =>
+  new Set(groups.flatMap((group) => group.slots).filter((slot) => matches(slot, narrowing)).map((slot) => slot.name));
+
 export default function Workbench({
   groups: initialGroups,
   live: initialLive,
@@ -91,6 +105,11 @@ export default function Workbench({
   const [filter, setFilter] = useState<Filter>(isFilter(initialFilter) ? initialFilter : "all");
   const [query, setQuery] = useState(initialQuery ?? "");
   const [players, setPlayers] = useState<PlayersFilter>(isPlayersFilter(initialPlayers) ? initialPlayers : "all");
+  // Chosen once per filter or search: a slot reviewed or given a new version stays put, rather than
+  // vanishing from under the hand that changed it.
+  const [kept, setKept] = useState(() =>
+    picked(initialGroups, { filter, players, needle: query.trim().toLowerCase() }),
+  );
   // Written without a navigation: a navigation would re-render the page, which reads the whole corpus.
   const keepInUrl = (name: string, value: string, unset: string) => {
     const url = new URL(window.location.href);
@@ -98,16 +117,21 @@ export default function Workbench({
     else url.searchParams.set(name, value);
     window.history.replaceState(null, "", url);
   };
+  const narrow = (changed: Partial<Narrowing>) =>
+    setKept(picked(groups, { filter, players, needle: query.trim().toLowerCase(), ...changed }));
   const chooseFilter = (value: Filter) => {
     setFilter(value);
+    narrow({ filter: value });
     keepInUrl("status", value, "all");
   };
   const choosePlayers = (value: PlayersFilter) => {
     setPlayers(value);
+    narrow({ players: value });
     keepInUrl("players", value, "all");
   };
   const search = (value: string) => {
     setQuery(value);
+    narrow({ needle: value.trim().toLowerCase() });
     keepInUrl("q", value, "");
   };
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
@@ -159,12 +183,7 @@ export default function Workbench({
   const shown = groups
     .map((group) => ({
       ...group,
-      slots: group.slots.filter(
-        (slot) =>
-          (filter === "all" || doneness(slot) === filter) &&
-          (players === "all" || playersSay(slot.designs) === players) &&
-          (!needle || haystack(slot).includes(needle)),
-      ),
+      slots: group.slots.filter((slot) => kept.has(slot.name)),
     }))
     .filter((group) => group.slots.length > 0);
   const races = [...new Set(shown.map((group) => group.group.split("-")[0]))];

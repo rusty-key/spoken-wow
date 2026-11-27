@@ -224,6 +224,14 @@ test("Generate all asks first with the cost, then makes each needs-work slot's n
   await userEvent.click(screen.getByRole("button", { name: "Generate" }));
   await vi.waitFor(() => expect(calls).toHaveLength(4));
   expect(calls).toEqual(["revise orc-male-shady-2", "design orc-male-shady", "revise orc-male-grunt-1", "design orc-male-grunt"]);
+
+  // Both now wait for a review, yet stay under Needs work until the filter is chosen again.
+  await screen.findByText("Prompt of orc-male-grunt v2");
+  expect(slotsShown()).toEqual(["orc-male-shady", "orc-male-grunt"]);
+  const chips = within(screen.getByRole("group", { name: "Show slots" }));
+  await userEvent.click(chips.getByRole("button", { name: /^Pending/ }));
+  await userEvent.click(chips.getByRole("button", { name: /^Needs work/ }));
+  expect(slotsShown()).toEqual([]);
 });
 
 test("a clip's button pauses it while it plays and resumes it after", async () => {
