@@ -2,12 +2,19 @@
 
 import { useEffect, useRef } from "react";
 
+import { useLang } from "@/components/LangProvider";
+import { localeHref } from "@/lib/lang";
+
 import { NAV } from "./nav";
 import { useSiteText } from "./SiteTextProvider";
 
-/** The section links in a menu, for the widths where the top bar has no room for them. */
-export default function NavMenu() {
+/**
+ * The section links in a menu, for the widths where the top bar has no room for them. Off the
+ * front page they lead back to its sections.
+ */
+export default function NavMenu({ home = false }: { home?: boolean }) {
   const t = useSiteText();
+  const lang = useLang();
   const menu = useRef<HTMLDetailsElement>(null);
   const close = () => {
     if (menu.current) menu.current.open = false;
@@ -40,7 +47,7 @@ export default function NavMenu() {
       </summary>
       <nav aria-label={t.nav.menu}>
         {NAV.map((link) => (
-          <a key={link.href} href={link.href} onClick={close}>
+          <a key={link.href} href={home ? link.href : localeHref(lang, `/${link.href}`)} onClick={close}>
             {t.nav[link.key]}
           </a>
         ))}

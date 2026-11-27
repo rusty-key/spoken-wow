@@ -2092,6 +2092,31 @@ body:has(main.bs) {
 .vd-review-note {
   color: var(--foreground);
 }
+.vd-feedback {
+  display: grid;
+  gap: 6px;
+  padding: 10px 14px;
+  box-shadow: inset 0 1px 0 var(--bs-line);
+}
+.vd-feedback-round {
+  display: grid;
+  gap: 4px;
+}
+.vd-feedback-notes {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vd-tag[data-verdict="off"] {
+  background: rgba(240, 96, 93, 0.14);
+  color: var(--bs-red-text);
+}
+.vd-tag[data-verdict="fits"] {
+  background: rgba(95, 207, 79, 0.14);
+  color: var(--bs-green-text);
+}
 .vd-review-form {
   display: grid;
   justify-items: start;
@@ -2379,4 +2404,213 @@ body:has(main.bs) {
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
+}
+
+/* /listen: players vote on designed voices. */
+.ls-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ls-table th,
+.ls-table td {
+  padding: 10px 12px 10px 0;
+  text-align: left;
+  vertical-align: top;
+  box-shadow: inset 0 -1px 0 var(--bs-line);
+}
+.ls-table thead th {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+}
+.ls-name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ls-lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* One column for the buttons, so every line's text starts at the same edge. */
+.ls-lines-spelled {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 10px 12px;
+  margin: 12px 0 16px;
+}
+.ls-lines-spelled li {
+  display: contents;
+}
+.ls-lines-spelled .vd-play {
+  justify-content: flex-start;
+}
+/* Padded so the first line of text sits level with the 28px button beside it. */
+.ls-line-text {
+  padding-top: 4px;
+  color: var(--bs-text-2);
+  font-size: 13px;
+  line-height: 20px;
+}
+.ls-vote {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+.ls-note-cell {
+  min-width: 260px;
+  width: 30%;
+}
+.ls-verdicts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ls-verdict {
+  --ls-tone: var(--bs-text-2);
+  --ls-tone-bg: rgba(255, 255, 255, 0.06);
+  background: var(--ls-tone-bg);
+  color: var(--ls-tone);
+}
+.ls-verdict[data-verdict="fits"] {
+  --ls-tone: var(--bs-green-text);
+  --ls-tone-bg: rgba(95, 207, 79, 0.12);
+}
+.ls-verdict[data-verdict="close"] {
+  --ls-tone: var(--bs-gold);
+  --ls-tone-bg: rgba(240, 194, 90, 0.12);
+}
+.ls-verdict[data-verdict="off"] {
+  --ls-tone: var(--bs-red-text);
+  --ls-tone-bg: rgba(240, 96, 93, 0.12);
+}
+.bs-btn.ls-verdict:hover {
+  background: var(--ls-tone-bg);
+  filter: brightness(1.3);
+}
+.ls-verdict[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1.5px var(--ls-tone);
+  font-weight: 600;
+}
+.ls-verdicts:has([aria-pressed="true"]) .ls-verdict[aria-pressed="false"] {
+  opacity: 0.55;
+}
+.ls-note-field {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  justify-self: stretch;
+}
+.ls-note {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--bs-field);
+  box-shadow: inset 0 0 0 1px var(--bs-line);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 20px;
+  resize: vertical;
+  outline: none;
+}
+.ls-note:focus {
+  box-shadow: inset 0 0 0 1px rgba(240, 194, 90, 0.5);
+}
+.ls-note::placeholder {
+  color: #73757e;
+}
+.ls-error {
+  color: var(--bs-red-text);
+  font-size: 12.5px;
+}
+.ls-card {
+  display: grid;
+  gap: 6px;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 18px;
+  border-radius: 10px;
+  background: var(--bs-panel);
+  box-shadow: inset 0 0 0 1px var(--bs-line);
+}
+.ls-card-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.ls-card .ls-vote {
+  min-width: 0;
+}
+.ls-card-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+@media (max-width: 640px) {
+  .ls-card {
+    padding: 14px;
+  }
+  /* Phones get cards only: a table of four columns does not fit them. */
+  .ls-view {
+    display: none;
+  }
+  .ls-follow-email {
+    width: 100%;
+  }
+}
+.ls-follow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.ls-follow {
+  max-width: 100%;
+}
+.ls-follow > span,
+.ls-follow-form > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ls-follow-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bs-panel);
+  box-shadow: inset 0 0 0 1px var(--bs-line);
+  color: var(--bs-text-2);
+  line-height: 20px;
+  cursor: pointer;
+}
+.ls-follow-check [data-slot="checkbox"] {
+  margin-top: 2px;
+}
+.ls-follow-check span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ls-follow-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.ls-follow-email {
+  width: 240px;
+  height: 32px;
+  padding-block: 0;
+  resize: none;
 }

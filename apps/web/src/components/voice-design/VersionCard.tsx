@@ -1,6 +1,6 @@
 "use client";
 
-import { AudioLines, Blend, Check, ChevronDown, Loader2, MoreHorizontal, Pencil, RefreshCw, Save, Shuffle, SlidersHorizontal, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { AudioLines, Blend, Check, ChevronDown, Eye, Loader2, MoreHorizontal, Pencil, RefreshCw, Save, Shuffle, SlidersHorizontal, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import Link from "@/components/LocaleLink";
@@ -13,6 +13,7 @@ import { isRevisable } from "@/lib/voice-design/groups";
 import { designName, recommendedPreview } from "@/lib/voice-design/limits";
 import type { ClipMark, Design, Measures } from "@/lib/voice-design/types";
 
+import FeedbackResults from "./FeedbackResults";
 import PlayButton, { ReferenceClip } from "./PlayButton";
 import StatusBadge from "./StatusBadge";
 import { designFrom, remixFrom, requestRevision, send, useWorkbench, type Draft } from "./context";
@@ -186,6 +187,14 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
 
   const sample = (lines: "same" | "other") => act("sample", `/api/voices/design/${design.id}/samples`, { body: { lines } });
 
+  // A slot has one public version: the one players heard before is not public any more.
+  const show = () =>
+    run("show", async () => {
+      const { design: shown } = await send<{ design: Design }>(withLang(lang, `/api/voices/design/${design.id}/show`), { body: {} });
+      updateDesign(shown);
+      for (const other of slot.designs) if (other.id !== shown.id && other.isPublic) updateDesign({ ...other, isPublic: false });
+    });
+
   const mark = (key: string, value: ClipMark | undefined) =>
     setClips((current) => {
       const next = { ...current };
@@ -230,6 +239,11 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
       <header className="vd-version-head">
         <span className="vd-version-tag">{tag}</span>
         <StatusBadge doneness={last?.status ?? "pending"} />
+        {design.isPublic ? (
+          <span className="vd-tag vd-tag-gold" title={t.publicTagTitle}>
+            {t.publicTag}
+          </span>
+        ) : null}
         <span className="vd-muted">
           {fill(t.madeBy, { who: design.createdByName ?? t.someone, when: day(design.createdAt) })}
         </span>
@@ -284,8 +298,8 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                   <button
                     type="button"
                     className={cn("bs-btn vd-tip", recommended === index && "bs-btn-primary")}
-                    data-tip={fill(t.saveCost, { name: designName(design) })}
-                    disabled={busy !== null || !keys.elevenlabs}
+                    data-tip={design.isPublic ? t.lockedTitle : fill(t.saveCost, { name: designName(design) })}
+                    disabled={busy !== null || !keys.elevenlabs || design.isPublic}
                     onClick={() => void act(`save-${index}`, `/api/voices/design/${design.id}/voice`, { body: { preview: index } })}
                   >
                     {busy === `save-${index}` ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Save size={14} aria-hidden="true" />}
@@ -350,7 +364,8 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                     <button
                       type="button"
                       className={cn("bs-btn", again && "vd-btn-again")}
-                      disabled={busy !== null || !keys.elevenlabs}
+                      title={design.isPublic ? t.lockedTitle : undefined}
+                      disabled={busy !== null || !keys.elevenlabs || design.isPublic}
                       onClick={() => void sample("same")}
                     >
                       <SampleIcon size={14} className={busy === "sample" ? "animate-spin" : undefined} aria-hidden="true" />
@@ -359,7 +374,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                     {again ? (
                       <Popover open={linesMenuOpen} onOpenChange={setLinesMenuOpen}>
                         <PopoverTrigger asChild>
-                          <button type="button" className="bs-btn vd-btn-again" aria-label={t.resampleMore} title={t.resampleMore} disabled={busy !== null || !keys.elevenlabs}>
+                          <button type="button" className="bs-btn vd-btn-again" aria-label={t.resampleMore} title={t.resampleMore} disabled={busy !== null || !keys.elevenlabs || design.isPublic}>
                             <ChevronDown size={14} aria-hidden="true" />
                           </button>
                         </PopoverTrigger>
@@ -383,6 +398,20 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
               ) : (
                 <span className="vd-muted">{fill(t.holderOnly, { who: design.holderName ?? t.someone })}</span>
               )}
+            </div>
+          ) : null}
+          {can && design.samples.length > 0 ? (
+            <div className="vd-step">
+              <button
+                type="button"
+                className={cn("bs-btn", !design.isPublic && "bs-btn-primary")}
+                title={t.showToPlayersTitle}
+                disabled={busy !== null}
+                onClick={() => void show()}
+              >
+                {busy === "show" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Eye size={14} aria-hidden="true" />}
+                {design.isPublic ? t.showingAgain : t.showToPlayers}
+              </button>
             </div>
           ) : null}
         </div>
@@ -428,6 +457,13 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
           ))}
         </ol>
       ) : null}
+
+      <FeedbackResults
+        design={design}
+        can={can}
+        disabled={busy !== null}
+        onHide={(showingId, voter) => void act("hide", `/api/voices/design/${design.id}/feedback`, { method: "DELETE", body: { showingId, voter } })}
+      />
 
       {can ? (
         <div className="vd-review-form">

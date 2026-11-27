@@ -79,8 +79,13 @@ export default async function Page({
     return file ? withLang(lang, `/api/voices/${slot}/samples/${encodeURIComponent(file)}`) : null;
   };
 
+  // Players' votes are for the people who design the language's voices, not every viewer of /voices.
+  const designer = can(viewer, "configure", lang);
   const bySlot = new Map<string, Design[]>();
-  for (const design of designs) bySlot.set(design.slot, [...(bySlot.get(design.slot) ?? []), design]);
+  for (const found of designs) {
+    const design = designer ? found : { ...found, showings: [] };
+    bySlot.set(design.slot, [...(bySlot.get(design.slot) ?? []), design]);
+  }
 
   const live = liveTakes(lang, index, designs.flatMap((design) => design.samples));
 
@@ -120,7 +125,7 @@ export default async function Page({
       <Workbench
         groups={groups}
         live={live}
-        viewer={{ id: userId, designs: can(viewer, "configure", lang), admin: isAdmin(session.user.role) }}
+        viewer={{ id: userId, designs: designer, admin: isAdmin(session.user.role) }}
         keys={{ elevenlabs: eleven !== null, gemini: gemini !== null }}
         rate={rate.perCharacter}
         model={rate.model}

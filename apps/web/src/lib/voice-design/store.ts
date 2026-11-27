@@ -10,8 +10,21 @@ import type { Lang } from "@/lib/lang";
 import { asTeamOf, readAs } from "@/lib/teams/store";
 import { isUuid } from "@/lib/uuid";
 
+import { DesignError } from "./access";
 import type { ReviewStatus } from "./groups";
-import type { Analysis, ClipMark, Design, DesignPreview, DesignSample, GeminiResult, Measures, Review } from "./types";
+import type {
+  Analysis,
+  ClipMark,
+  Design,
+  DesignPreview,
+  DesignSample,
+  FeedbackNote,
+  GeminiResult,
+  Measures,
+  Review,
+  Showing,
+  Verdict,
+} from "./types";
 
 type DesignRow = {
   id: string;
@@ -46,12 +59,32 @@ const DESIGN_SELECT = `
     left join "user" c on c."id" = d."createdBy"`;
 
 type SampleRow = DesignSample & { designId: string; createdAt: Date };
+type ShowingRow = { id: string; designId: string; createdAt: Date; createdByName: string | null; isPublic: boolean };
+type FeedbackRow = { showingId: string; voter: string; who: string | null; verdict: Verdict; note: string; hidden: boolean; at: Date };
+
+/** The newest showing of the slot of the showing aliased `s`: the version players hear. */
+export const NEWEST_SHOWING = `
+  (select s2."id" from "voice_design_showing" s2
+    where s2."teamId" = s."teamId" and s2."lang" = s."lang" and s2."slot" = s."slot"
+    order by s2."id" desc limit 1)`;
+
+function showingsOf(rows: ShowingRow[], byShowing: Map<string, FeedbackRow[]>): Showing[] {
+  return rows.map((row) => {
+    const own = byShowing.get(row.id) ?? [];
+    const counts: Record<Verdict, number> = { fits: 0, close: 0, off: 0, skip: 0 };
+    for (const f of own) counts[f.verdict] += 1;
+    const notes: FeedbackNote[] = own
+      .filter((f) => f.note && !f.hidden)
+      .map((f) => ({ voter: f.voter, who: f.who, verdict: f.verdict, note: f.note, at: f.at.toISOString() }));
+    return { id: Number(row.id), createdAt: row.createdAt.toISOString(), createdByName: row.createdByName, counts, notes };
+  });
+}
 type ReviewRow = Omit<Review, "createdAt" | "id"> & { id: string; designId: string; createdAt: Date };
 
 async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
   if (rows.length === 0) return [];
   const ids = rows.map((row) => row.id);
-  const [samples, reviews] = await Promise.all([
+  const [samples, reviews, showings, feedback] = await Promise.all([
     readAs<SampleRow>(
       lang,
       `select "designId", "position", "sha256", "lineId", "text", "npcName", "characters", "credits", "createdAt"
@@ -68,8 +101,30 @@ async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
         order by r."createdAt", r."id"`,
       [ids],
     ),
+    readAs<ShowingRow>(
+      lang,
+      `select s."id", s."designId", s."createdAt", u."name" as "createdByName", s."id" = ${NEWEST_SHOWING} as "isPublic"
+         from "voice_design_showing" s left join "user" u on u."id" = s."createdBy"
+        where s."designId" = any($1::uuid[])
+        order by s."id" desc`,
+      [ids],
+    ),
+    readAs<FeedbackRow>(
+      lang,
+      `select f."showingId", f."voter", u."name" as "who", f."verdict", f."note", f."hiddenAt" is not null as "hidden",
+              f."updatedAt" as "at"
+         from "voice_feedback" f
+         join "voice_design_showing" s on s."id" = f."showingId"
+         left join "user" u on u."id" = f."userId"
+        where s."designId" = any($1::uuid[])
+        order by f."updatedAt" desc`,
+      [ids],
+    ),
   ]);
+  const byShowing = new Map<string, FeedbackRow[]>();
+  for (const f of feedback) byShowing.set(f.showingId, [...(byShowing.get(f.showingId) ?? []), f]);
   return rows.map((row) => {
+    const shown = showings.filter((s) => s.designId === row.id);
     const own = samples.filter((s) => s.designId === row.id);
     return {
       ...row,
@@ -81,6 +136,8 @@ async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
       reviews: reviews
         .filter((r) => r.designId === row.id)
         .map(({ designId: _, ...review }) => ({ ...review, id: Number(review.id), createdAt: review.createdAt.toISOString() })),
+      isPublic: shown.some((s) => s.isPublic),
+      showings: showingsOf(shown, byShowing),
     };
   });
 }
@@ -218,6 +275,33 @@ export async function importDesign(
   });
 }
 
+/**
+ * Holds the design's slot until the transaction ends, so a Show to players and a re-voice of the
+ * same slot cannot interleave. The slot, or null when there is no such design.
+ */
+export async function lockSlot(client: PoolClient, lang: Lang | null, id: string): Promise<string | null> {
+  const { rows } = await client.query<{ lang: string; slot: string }>(
+    `select "lang", "slot" from "voice_design" where "id" = $1 and ($2::text is null or "lang" = $2)`,
+    [id, lang],
+  );
+  if (!rows[0]) return null;
+  await client.query(`select pg_advisory_xact_lock(hashtext('voice_design:' || $1 || ':' || $2))`, [rows[0].lang, rows[0].slot]);
+  return rows[0].slot;
+}
+
+/**
+ * Players vote on the lines they hear: replacing a public version's lines would leave their votes
+ * on audio that no longer plays. Showing another version lifts it.
+ */
+async function refuseIfPublic(client: PoolClient, id: string): Promise<void> {
+  await lockSlot(client, null, id);
+  const { rows } = await client.query(
+    `select 1 from "voice_design_showing" s where s."designId" = $1 and s."id" = ${NEWEST_SHOWING}`,
+    [id],
+  );
+  if (rows.length > 0) throw new DesignError("Players hear this version. Show another version to players first.");
+}
+
 /** Saving again after a deletion drops the old voice's sample lines: they are not this voice. */
 export async function saveVoice(
   lang: Lang,
@@ -225,6 +309,7 @@ export async function saveVoice(
   voice: { chosenPreview: number; voiceId: string; voiceName: string; holderId: string },
 ): Promise<void> {
   await asTeamOf(lang, async (client) => {
+    await refuseIfPublic(client, id);
     await client.query(`delete from "voice_design_clip" where "designId" = $1 and "kind" = 'sample'`, [id]);
     await client.query(
       `update "voice_design" set "chosenPreview" = $3, "voiceId" = $4, "voiceName" = $5, "holderId" = $6,
@@ -243,6 +328,7 @@ export async function replaceSamples(
   made: { model: string; settings: Record<string, unknown> },
 ): Promise<void> {
   await asTeamOf(lang, async (client) => {
+    await refuseIfPublic(client, id);
     await client.query(`delete from "voice_design_clip" where "designId" = $1 and "kind" = 'sample'`, [id]);
     await insertSamples(client, id, samples);
     await client.query(

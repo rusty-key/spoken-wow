@@ -2,7 +2,7 @@
  * Runs once when a Next server process starts, before it serves a request: fills lib/lang.ts's
  * registry from the `language` table, so the synchronous isLang knows a language created at
  * runtime from the first request on; and on the droplet, starts the tick that moves the release
- * queue on (lib/releases/tick.ts).
+ * queue on (lib/releases/tick.ts) and the one that sends voice follow-up emails.
  *
  * The import sits inside `if (process.env.NEXT_RUNTIME === "nodejs")` and nowhere else: Next
  * also compiles this file for the edge runtime, and only that exact condition lets the bundler
