@@ -274,10 +274,25 @@ export async function importDesign(
 }
 
 /**
+ * Holds the design's slot until the transaction ends, so a Show to players and a re-voice of the
+ * same slot cannot interleave. The slot, or null when there is no such design.
+ */
+export async function lockSlot(client: PoolClient, lang: Lang | null, id: string): Promise<string | null> {
+  const { rows } = await client.query<{ lang: string; slot: string }>(
+    `select "lang", "slot" from "voice_design" where "id" = $1 and ($2::text is null or "lang" = $2)`,
+    [id, lang],
+  );
+  if (!rows[0]) return null;
+  await client.query(`select pg_advisory_xact_lock(hashtext('voice_design:' || $1 || ':' || $2))`, [rows[0].lang, rows[0].slot]);
+  return rows[0].slot;
+}
+
+/**
  * Players vote on the lines they hear: replacing a public version's lines would leave their votes
  * on audio that no longer plays. Showing another version lifts it.
  */
 async function refuseIfPublic(client: PoolClient, id: string): Promise<void> {
+  await lockSlot(client, null, id);
   const { rows } = await client.query(
     `select 1 from "voice_design_showing" s where s."designId" = $1 and s."id" = ${PUBLIC_SHOWING}`,
     [id],

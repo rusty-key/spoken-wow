@@ -184,6 +184,14 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
       updateDesign(design, live);
     });
 
+  // A slot has one public version: the one players heard before is not public any more.
+  const show = () =>
+    run("show", async () => {
+      const { design: shown } = await send<{ design: Design }>(withLang(lang, `/api/voices/design/${design.id}/show`), { body: {} });
+      updateDesign(shown);
+      for (const other of slot.designs) if (other.id !== shown.id && other.isPublic) updateDesign({ ...other, isPublic: false });
+    });
+
   const mark = (key: string, value: ClipMark | undefined) =>
     setClips((current) => {
       const next = { ...current };
@@ -373,7 +381,7 @@ export default function VersionCard({ design, slot, newest }: { design: Design; 
                 className={cn("bs-btn", !design.isPublic && "bs-btn-primary")}
                 title={t.showToPlayersTitle}
                 disabled={busy !== null}
-                onClick={() => void act("show", `/api/voices/design/${design.id}/show`, { body: {} })}
+                onClick={() => void show()}
               >
                 {busy === "show" ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Eye size={14} aria-hidden="true" />}
                 {design.isPublic ? t.showingAgain : t.showToPlayers}

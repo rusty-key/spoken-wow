@@ -3,6 +3,8 @@
  * address and can switch that off; an anonymous voter gives an address and confirms it.
  */
 import { sendFollowConfirmEmail } from "@/lib/email";
+import { langParam } from "@/lib/lang-server";
+import { clientIp } from "@/lib/reports/client-ip";
 import { currentSession } from "@/lib/session";
 import { followState, requestFollow, setAccountFollow, stopFollow } from "@/lib/voice-feedback/follow";
 import { currentVoter, voterFor } from "@/lib/voice-feedback/voter";
@@ -31,8 +33,11 @@ export async function POST(request: Request) {
   }
   const email = typeof body?.email === "string" ? body.email.trim() : "";
   if (!EMAIL.test(email) || email.length > 254) return Response.json({ error: "Enter an email address." }, { status: 400 });
+  const { lang, denied } = await langParam(request);
+  if (denied) return denied;
   const voter = await voterFor(null);
-  const outcome = await requestFollow(voter, email, new Date(), sendFollowConfirmEmail);
+  const outcome = await requestFollow({ voter, email, ip: clientIp(request), lang }, new Date(), sendFollowConfirmEmail);
+  if (outcome === "limited") return Response.json({ error: "Too many emails asked for from here. Try again in an hour." }, { status: 429 });
   return Response.json({ ...(await followState(voter, null)), outcome });
 }
 

@@ -82,7 +82,7 @@ describe("the Listen page's voices", () => {
     const latest = await shown(main, "orc-male-shady", 2, {
       archetype: "Smooth smuggler",
     });
-    await shown(second, "orc-female", 3);
+    await expect(shown(second, "orc-female", 3)).rejects.toThrow(/Listen/);
 
     const voices = await asTeam(lang, second, () => pub.publicVoices(lang));
 

@@ -56,9 +56,13 @@ create table "voice_follower" (
   "email"         text        not null,
   "confirmToken"  text        not null unique,
   "confirmSentAt" timestamptz,
+  -- Who asked, so one sender cannot mail confirmations to address after address.
+  "confirmIp"     text,
   "confirmedAt"   timestamptz,
   "createdAt"     timestamptz not null default now()
 );
+
+create index "voice_follower_ip_idx" on "voice_follower" ("confirmIp", "confirmSentAt");
 
 -- Addresses that unsubscribed, lowercased. Covers accounts and anonymous followers alike.
 create table "voice_follow_optout" (

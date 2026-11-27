@@ -10,31 +10,42 @@ const { closeDb } = await import("@/lib/db");
 const { asSystem, dropLang, dropTeam, newTeamIn, testUser, uniqueLang } = await import("@/lib/teams/testing");
 const store = await import("@/lib/voice-design/store");
 const showings = await import("./showings");
+const { asTeam } = await import("@/lib/teams/acting");
 
 const SHA = (n: number) => n.toString(16).padStart(64, "0");
 
 let lang: Awaited<ReturnType<typeof uniqueLang>>;
 let team: string;
+let shared: Awaited<ReturnType<typeof uniqueLang>>;
+let first: string;
+let second: string;
 let user: Awaited<ReturnType<typeof testUser>>;
 
 beforeAll(async () => {
   lang = await uniqueLang();
   team = await newTeamIn(lang, true);
+  shared = await uniqueLang();
+  first = await newTeamIn(shared, true, "first");
+  second = await newTeamIn(shared, false, "second");
   user = await testUser("voice-feedback");
 });
 
 afterAll(async () => {
-  for (const table of ["voice_feedback", "voice_design_showing", "voice_design_review", "voice_design_clip", "voice_design"]) {
-    await asSystem.query(`delete from "${table}" where "teamId" = $1`, [team]);
+  for (const id of [team, first, second]) {
+    for (const table of ["voice_feedback", "voice_design_showing", "voice_design_review", "voice_design_clip", "voice_design"]) {
+      await asSystem.query(`delete from "${table}" where "teamId" = $1`, [id]);
+    }
+    await dropTeam(id);
   }
-  await dropTeam(team);
   await dropLang(lang);
+  await dropLang(shared);
   await user.cleanup();
   await closeDb();
 });
 
 /** A version with its voice saved and one sample line, ready to show. */
-async function sampled(slot: string, n: number) {
+async function sampled(slot: string, n: number, inLang = lang) {
+  const lang = inLang;
   const made = await store.createDesign({
     lang,
     slot,
@@ -75,6 +86,19 @@ describe("showing a version to players", () => {
     await showings.showVersion(lang, one.id, user.id);
     expect((await store.readDesign(lang, one.id))!.isPublic).toBe(true);
     expect((await store.readDesign(lang, one.id))!.showings).toHaveLength(2);
+  });
+
+  it("counts showing the public version again as a fresh round, not a new version", async () => {
+    const one = await sampled("orc-female-sage", 6);
+    await showings.showVersion(lang, one.id, user.id);
+    expect((await showings.showVersion(lang, one.id, user.id)).replaced).toBe(false);
+  });
+
+  it("refuses a team whose voices the Listen page does not read", async () => {
+    await asTeam(shared, second, async () => {
+      const theirs = await sampled("orc-female-wise", 8, shared);
+      await expect(showings.showVersion(shared, theirs.id, user.id)).rejects.toThrow(/Listen/);
+    });
   });
 
   it("locks a public version's lines until another version is shown", async () => {

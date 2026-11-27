@@ -231,3 +231,16 @@ test("lists players' votes per showing, and hides a note as spam", async () => {
   expect(init.method).toBe("DELETE");
   expect(JSON.parse(String(init.body))).toEqual({ showingId: 7, voter: "a:x" });
 });
+
+test("takes the tag off the version players heard before, once another is shown", async () => {
+  const before = { ...DESIGN, id: "d0", version: 1, isPublic: true };
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ design: { ...DESIGN, isPublic: true } })));
+  const updateDesign = vi.fn();
+  render(
+    <WorkbenchContext.Provider value={{ ...context, updateDesign }}>
+      <VersionCard design={DESIGN} slot={{ name: DESIGN.slot, sampleChars: 0, reference: null, previewLines: {}, designs: [DESIGN, before] } as unknown as SlotView} newest />
+    </WorkbenchContext.Provider>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Show to players" }));
+  expect(updateDesign).toHaveBeenCalledWith(expect.objectContaining({ id: "d0", isPublic: false }));
+});

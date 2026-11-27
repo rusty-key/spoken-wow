@@ -61,7 +61,7 @@ async function sampledVersion(slot: string, n: number) {
 async function confirmedFollower(name: string): Promise<string> {
   const voter = `a:${randomUUID()}`;
   const sent: string[] = [];
-  await follow.requestFollow(voter, mail(name), new Date(), async (_to, url) => {
+  await follow.requestFollow({ voter, email: mail(name), ip: `ip-${tag}-${name}`, lang }, new Date(), async (_to, url) => {
     sent.push(url);
     return true;
   });
@@ -77,7 +77,7 @@ describe("following a voice", () => {
     const fan = await confirmedFollower("fan");
     const skipper = await confirmedFollower("skipper");
     const unconfirmed = `a:${randomUUID()}`;
-    await follow.requestFollow(unconfirmed, mail("unconfirmed"), new Date(), async () => true);
+    await follow.requestFollow({ voter: unconfirmed, email: mail("unconfirmed"), ip: `ip-${tag}-u`, lang }, new Date(), async () => true);
     await follow.unsubscribe(`${quitter.id}@example.invalid`);
 
     await castVote(lang, { showingId, voter: `u:${user.id}`, userId: user.id, verdict: "off", note: "too old" });
@@ -118,12 +118,43 @@ describe("following a voice", () => {
       return true;
     };
     const now = new Date();
-    expect(await follow.requestFollow(voter, mail("Once"), now, send)).toBe("sent");
-    expect(await follow.requestFollow(voter, mail("once"), new Date(now.getTime() + 60_000), send)).toBe("wait");
+    expect(await follow.requestFollow({ voter, email: mail("Once"), ip: `ip-${tag}-once`, lang }, now, send)).toBe("sent");
+    expect(await follow.requestFollow({ voter, email: mail("once"), ip: `ip-${tag}-once`, lang }, new Date(now.getTime() + 60_000), send)).toBe(
+      "wait",
+    );
+    // The link brings the player back to their own language's page.
+    expect(new URL(urls[0]).searchParams.get("lang")).toBe(lang);
     expect(urls).toHaveLength(1);
     expect(await follow.followState(voter, null)).toEqual({ kind: "anonymous", email: mail("once"), confirmed: false });
     expect(await follow.confirmFollow(new URL(urls[0]).searchParams.get("token")!)).toBe(true);
     expect(await follow.followState(voter, null)).toEqual({ kind: "anonymous", email: mail("once"), confirmed: true });
+  });
+
+  it("caps how many addresses one sender can have mailed in an hour", async () => {
+    const ip = `ip-${tag}-flood`;
+    const sent: string[] = [];
+    const send = async (to: string) => {
+      sent.push(to);
+      return true;
+    };
+    const now = new Date();
+    const outcomes = [];
+    for (let n = 0; n < follow.CONFIRMS_PER_IP_HOUR + 1; n += 1) {
+      outcomes.push(await follow.requestFollow({ voter: `a:${randomUUID()}`, email: mail(`flood${n}`), ip, lang }, now, send));
+    }
+    expect(outcomes.at(-1)).toBe("limited");
+    expect(sent).toHaveLength(follow.CONFIRMS_PER_IP_HOUR);
+    // Another sender is not held back by it.
+    expect(await follow.requestFollow({ voter: `a:${randomUUID()}`, email: mail("other"), ip: `ip-${tag}-other`, lang }, now, send)).toBe("sent");
+  });
+
+  it("drops what was waiting for an address when it unsubscribes", async () => {
+    const one = await sampledVersion("orc-male-quiet", 7);
+    const { showingId } = await showVersion(lang, one.id, user.id);
+    const quiet = mail("quiet");
+    await asSystem.query(`insert into "voice_follow_notice" ("email", "showingId") values ($1, $2)`, [quiet, showingId]);
+    await follow.unsubscribe(quiet);
+    expect((await asSystem.query(`select 1 from "voice_follow_notice" where "email" = $1`, [quiet])).rows).toEqual([]);
   });
 
   it("signs unsubscribe links, so nobody can unsubscribe someone else", () => {

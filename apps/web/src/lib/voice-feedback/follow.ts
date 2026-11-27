@@ -10,7 +10,7 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { PoolClient } from "pg";
 
 import { ALL_TEAMS, queryIn, withTeam } from "@/lib/db";
-import { localeHref, type Lang } from "@/lib/lang";
+import { localeHref, withLang, type Lang } from "@/lib/lang";
 import { SITE } from "@/lib/site";
 
 export type FollowState =
@@ -20,6 +20,9 @@ export type FollowState =
 export type ChangedVoice = { lang: string; slot: string };
 
 const HOUR_MS = 60 * 60 * 1000;
+
+/** Confirmations one IP can have sent in an hour: a person needs one or two, a script would send thousands. */
+export const CONFIRMS_PER_IP_HOUR = 5;
 const DAY_MS = 24 * HOUR_MS;
 
 const normal = (email: string) => email.trim().toLowerCase();
@@ -46,8 +49,12 @@ export function verifyUnsubscribe(email: string, sig: string): boolean {
   return want.length === got.length && timingSafeEqual(want, got);
 }
 
+/** Drops what was waiting too, so subscribing again later does not send a backlog at once. */
 export async function unsubscribe(email: string): Promise<void> {
-  await system((client) => client.query(`insert into "voice_follow_optout" ("email") values ($1) on conflict do nothing`, [normal(email)]));
+  await system(async (client) => {
+    await client.query(`insert into "voice_follow_optout" ("email") values ($1) on conflict do nothing`, [normal(email)]);
+    await client.query(`delete from "voice_follow_notice" where "email" = $1 and "sentAt" is null`, [normal(email)]);
+  });
 }
 
 export async function followState(voter: string | null, account: { email: string } | null): Promise<FollowState> {
@@ -72,16 +79,16 @@ export async function setAccountFollow(email: string, on: boolean): Promise<void
 
 /**
  * Keeps the address against the anonymous voter and mails a confirmation link. One confirmation
- * per address an hour, so the form cannot be used to flood a stranger's inbox. Asking again
- * clears an earlier unsubscribe of the address: confirming is asking for the emails.
+ * per address an hour, and a few per sender, so the form cannot be used to flood inboxes. Asking
+ * again clears an earlier unsubscribe of the address: confirming is asking for the emails.
  */
 export async function requestFollow(
-  voter: string,
-  rawEmail: string,
+  ask: { voter: string; email: string; ip: string; lang: Lang },
   now: Date,
   send: (to: string, url: string) => Promise<boolean>,
-): Promise<"sent" | "wait" | "confirmed"> {
-  const email = normal(rawEmail);
+): Promise<"sent" | "wait" | "confirmed" | "limited"> {
+  const { voter, ip, lang } = ask;
+  const email = normal(ask.email);
   const token = randomBytes(24).toString("base64url");
   const outcome = await system(async (client) => {
     await client.query(`select pg_advisory_xact_lock(hashtext('voice_follow:' || $1))`, [email]);
@@ -90,26 +97,33 @@ export async function requestFollow(
       [voter],
     );
     if (rows[0]?.email === email && rows[0].confirmedAt) return { kind: "confirmed" } as const;
+    const hourAgo = new Date(now.getTime() - HOUR_MS);
+    const fromHere = await client.query<{ n: number }>(
+      `select count(*)::int as "n" from "voice_follower" where "confirmIp" = $1 and "confirmSentAt" > $2`,
+      [ip, hourAgo],
+    );
+    if (fromHere.rows[0].n >= CONFIRMS_PER_IP_HOUR) return { kind: "limited" } as const;
     const recent = await client.query(
       `select 1 from "voice_follower" where "email" = $1 and "confirmSentAt" > $2`,
-      [email, new Date(now.getTime() - HOUR_MS)],
+      [email, hourAgo],
     );
     const wait = recent.rows.length > 0;
     // The same address keeps its token, so a link already sent still works after asking again.
     const kept = await client.query<{ confirmToken: string }>(
-      `insert into "voice_follower" ("voter", "email", "confirmToken", "confirmSentAt")
-       values ($1, $2, $3, $4)
+      `insert into "voice_follower" ("voter", "email", "confirmToken", "confirmSentAt", "confirmIp")
+       values ($1, $2, $3, $4, $5)
        on conflict ("voter") do update
          set "confirmToken" = case when "voice_follower"."email" = excluded."email"
                                    then "voice_follower"."confirmToken" else excluded."confirmToken" end,
              "email" = excluded."email", "confirmedAt" = null,
-             "confirmSentAt" = coalesce(excluded."confirmSentAt", "voice_follower"."confirmSentAt")
+             "confirmSentAt" = coalesce(excluded."confirmSentAt", "voice_follower"."confirmSentAt"),
+             "confirmIp" = case when excluded."confirmSentAt" is null then "voice_follower"."confirmIp" else excluded."confirmIp" end
        returning "confirmToken"`,
-      [voter, email, token, wait ? null : now],
+      [voter, email, token, wait ? null : now, ip],
     );
     return wait ? ({ kind: "wait" } as const) : ({ kind: "sent", token: kept.rows[0].confirmToken } as const);
   });
-  if (outcome.kind === "sent") await send(email, `${SITE}/api/listen/confirm?token=${outcome.token}`);
+  if (outcome.kind === "sent") await send(email, `${SITE}${withLang(lang, `/api/listen/confirm?token=${outcome.token}`)}`);
   return outcome.kind;
 }
 
