@@ -106,6 +106,18 @@ The whole set is listed on `/voices`, which is also the easiest way to build it 
 `voice/seed-clips/<race-gender>/<flavor>/`, and a language other than English has its own
 set under `voice/seed-clips/<lang>/`, the layout `/<lang>/voices` seeds from. That directory is gitignored and local-only.
 
+### The game's own greetings
+
+As you open an NPC's window the game plays a short clip in the NPC's voice set (greeting), another
+as you close it (farewell), and a third when you click it again and again (pissed). A voice of ours
+that does not sound like the game's meets the game's in these clips, so a pack that voices them
+mutes the game's files with `MuteSoundFile` and plays its own at the same moments.
+`voice/npc-sounds.json` lists those files per NPCSounds row, from Forever's NPCSounds and
+SoundKitEntry tables; `make npc-sounds` rebuilds it. A shopkeeper has a row of its own, whose
+greeting holds the plain greetings and the shop lines together. A row's `voice` is the voice that
+reads it, where `apps/web/src/lib/npc/display-voices.json` names one; the rows without one are the
+named NPCs' own sets and the Skybourne ones. A file missing from the list plays the game's voice.
+
 ## Usage
 
 ```bash
