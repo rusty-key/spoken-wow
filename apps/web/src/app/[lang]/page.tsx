@@ -103,7 +103,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
         <a className="bn-skip" href="#main">
           {t.skip}
         </a>
-        <ListenBar text={ui.listen.barText} cta={ui.listen.barCta} />
+        <ListenBar text={ui.listen.barText} cta={ui.listen.barCta} close={ui.listen.barClose} />
         <LandingHeader t={t} home />
 
         <main id="main" tabIndex={-1}>

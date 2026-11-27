@@ -2846,6 +2846,7 @@ const deDE: Dictionary = {
   listen: {
     barText: "Hilf uns, neue Stimmen zu gestalten",
     barCta: "Anhören und abstimmen",
+    barClose: "Schließen",
     title: "Zuhören: Stimmen für {lang}",
     lede: "Hilf uns, Stimmen zu gestalten, die zu den Charakteren passen.",
     question: "Passt das zum Charakter?",

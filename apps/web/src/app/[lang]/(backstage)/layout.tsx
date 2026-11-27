@@ -25,7 +25,7 @@ export default async function BackstageLayout({
   const [text, acting] = await Promise.all([readingLang(lang).then(uiText), actingIn(lang)]);
   return (
     <UiTextProvider text={text}>
-      <ListenBar text={text.listen.barText} cta={text.listen.barCta} />
+      <ListenBar text={text.listen.barText} cta={text.listen.barCta} close={text.listen.barClose} />
       <header className="bn-theme bn-nav sn">
         <div className="bn-wrap">
           <div className="sn-brand-group">
