@@ -3,7 +3,6 @@ import WowheadLink from "@/components/WowheadLink";
 import type { InstanceFacet } from "@/lib/bosses/catalogue";
 import { FIELDS, filterParams, filtersFromParams, type LineFilters } from "@/lib/bosses/filters";
 import type { ResultLine } from "@/lib/bosses/search";
-import { wowheadEntityUrl } from "@/lib/wowhead";
 
 export type BossesSection = ExplorerSection<ResultLine, LineFilters>;
 
@@ -35,7 +34,7 @@ export function bossesSection(instances: InstanceFacet[] = [], words: SectionWor
         {line.creatureId !== null && (
           <>
             {" "}
-            · npc {line.creatureId} <WowheadLink href={wowheadEntityUrl("creature", line.creatureId)} />
+            · npc {line.creatureId} <WowheadLink npcType="creature" npcId={line.creatureId} />
           </>
         )}
       </>

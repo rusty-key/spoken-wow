@@ -749,7 +749,7 @@ export default function NpcEditor({
                       <span className="text-muted-foreground">{words.object}</span>
                     ) : null}{" "}
                     <a
-                      href={wowheadEntityUrl(npc.npcKind ?? "creature", npc.npcId)}
+                      href={wowheadEntityUrl(lang, npc.npcKind ?? "creature", npc.npcId)}
                       target="_blank"
                       rel="noreferrer"
                       title={words.wowhead}
