@@ -481,7 +481,13 @@ export default async function Page({
           // accept may take it, and its group: what "Keep all" and "Drop all" act on.
           matching={(show === "corrections" ? [] : matching).map((row) => {
             const match = bookMatches.get(row.id);
-            return { id: row.id, status: row.status, bulk: !match || bulkAcceptable(match), verdict: checks.get(row.id)?.verdict ?? "look" };
+            return {
+              id: row.id,
+              status: row.status,
+              bulk: !match || bulkAcceptable(match),
+              verdict: checks.get(row.id)?.verdict ?? "look",
+              count: row.count,
+            };
           })}
           page={page}
           pages={show === "corrections" ? 1 : pages}

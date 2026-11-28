@@ -27,6 +27,7 @@ import { CheckIcon, ChevronDownIcon, CircleAlertIcon, ClockIcon, SearchIcon, Wre
 import { useRouter } from "next/navigation";
 import { memo, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 
+import BulkKeepDialog, { type BulkKeepMode } from "@/components/BulkKeepDialog";
 import ClientSelect from "@/components/ClientSelect";
 import { SEARCH_IN_OPTIONS, STAGE_CHIP_OPTIONS, STAGE_LABELS } from "@/components/contribution-chips";
 import FilterChip, { type ChipOption } from "@/components/FilterChip";
@@ -39,6 +40,7 @@ import DropReasons from "@/components/backstage/DropReasons";
 import Panel, { type PanelTone } from "@/components/backstage/Panel";
 import { Chips, Tabs } from "@/components/backstage/Tabs";
 import TokenText from "@/components/backstage/TokenText";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { usePendingPush } from "@/components/usePendingPush";
 import { useLocalDates } from "@/components/useLocalDates";
 import { useSearchBox } from "@/components/useSearchBox";
@@ -201,7 +203,7 @@ export default function ContributionTable({
   /** This page's rows. */
   initial: ContributionRow[];
   /** Every row the filters match, on any page, with its group -- what "Keep all" and "Drop all" act on. */
-  matching: { id: number; status: ContributionStatus; bulk: boolean; verdict: Verdict }[];
+  matching: { id: number; status: ContributionStatus; bulk: boolean; verdict: Verdict; count: number }[];
   page: number;
   pages: number;
   status: ContributionStatus;
@@ -553,6 +555,9 @@ export default function ContributionTable({
   // round. A row reopened since is waiting again and stays.
   const undecided = (ids: number[] | null) =>
     ids?.filter((id) => (resolved[id] ?? "new") === "new" && !busy.has(id)) ?? null;
+  const [keepBy, setKeepBy] = useState<BulkKeepMode | null>(null);
+  const [keepMenu, setKeepMenu] = useState(false);
+  const bulkKeepable = matching.filter((row) => row.bulk && stillNew(row) && !busy.has(row.id));
   const keepConfirmed = undecided(confirmAll);
   const dropConfirmed = undecided(confirmDrop);
   const [showFilters, setShowFilters] = useState(Boolean(build || stage.length > 0 || searchIn !== "any"));
@@ -792,9 +797,38 @@ export default function ContributionTable({
                     </button>
                   </>
                 ) : (
-                  <button type="button" className="bs-btn bs-btn-primary" disabled={bulk !== null} onClick={() => setConfirmAll(cleanToKeep)}>
-                    {fill(t.contributions.keepAllCount, { n: cleanToKeep.length })}
-                  </button>
+                  <>
+                    <button type="button" className="bs-btn bs-btn-primary" disabled={bulk !== null} onClick={() => setConfirmAll(cleanToKeep)}>
+                      {fill(t.contributions.keepAllCount, { n: cleanToKeep.length })}
+                    </button>
+                    <Popover open={keepMenu} onOpenChange={setKeepMenu}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="bs-btn bs-btn-primary px-2"
+                          disabled={bulk !== null}
+                          aria-label={t.contributions.bulkKeep.more}
+                        >
+                          <ChevronDownIcon className="size-4" aria-hidden />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="flex w-56 flex-col p-1">
+                        {(["confident", "clean"] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            className="bs-btn bs-btn-text justify-start"
+                            onClick={() => {
+                              setKeepMenu(false);
+                              setKeepBy(mode);
+                            }}
+                          >
+                            {mode === "confident" ? t.contributions.bulkKeep.confident : t.contributions.bulkKeep.looksRight}
+                          </button>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+                  </>
                 )
               ) : group.verdict === "drop" && dropToReject.length > 1 ? (
                 dropConfirmed ? (
@@ -858,6 +892,18 @@ export default function ContributionTable({
         )}
       </div>
 
+      {keepBy ? (
+        <BulkKeepDialog
+          mode={keepBy}
+          rows={bulkKeepable}
+          everyPage={pages > 1}
+          onClose={() => setKeepBy(null)}
+          onConfirm={(ids) => {
+            setKeepBy(null);
+            void resolveMany(ids, "accepted");
+          }}
+        />
+      ) : null}
       <datalist id={READABLES_LIST}>
         {[...labels].map(([label, choice]) => (
           <option key={label} value={label}>
