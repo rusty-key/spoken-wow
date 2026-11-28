@@ -2189,6 +2189,14 @@ body:has(main.bs) {
   padding: 0;
   list-style: none;
 }
+.vd-tag[data-matters="high"] {
+  background: rgba(240, 96, 93, 0.14);
+  color: var(--bs-red-text);
+}
+.vd-tag[data-matters="medium"] {
+  background: rgba(240, 194, 90, 0.14);
+  color: var(--bs-gold);
+}
 .vd-tag[data-verdict="off"] {
   background: rgba(240, 96, 93, 0.14);
   color: var(--bs-red-text);

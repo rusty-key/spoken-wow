@@ -188,12 +188,49 @@ describe("reviseVoice", () => {
 });
 
 describe("describeDifference", () => {
-  it("reads the observation and its opposite as the wish, kept apart", async () => {
-    const fetchImpl = vi.fn(async () =>
-      Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify({ summary: "Slower.", note: "slower and breathier", wish: "faster, less breathy", aspects: [] }) }] } }] }),
-    );
-    const said = await describeDifference({ apiKey: "k", slot: "bloodelf-female", version: 3, text: "t", live: Buffer.from("l"), sample: Buffer.from("s"), fetchImpl: fetchImpl as never });
-    expect(said).toEqual({ summary: "Slower.", note: "slower and breathier", wish: "faster, less breathy", aspects: [] });
-    expect(buildDifferencePrompt({ slot: "bloodelf-female", version: 3, text: "t" })).toMatch(/as an observation of how v3 sounds next to the live take \(not a wish\)/);
+  const reply = (answer: unknown) => vi.fn(async (_url: string, _init: RequestInit) => Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(answer) }] } }] }));
+  const heard = (fetchImpl: ReturnType<typeof reply>) =>
+    JSON.parse(String(fetchImpl.mock.calls[0][1].body))
+      .contents[0].parts.slice(1)
+      .map((p: { inline_data: { data: string } }) => Buffer.from(p.inline_data.data, "base64").toString());
+  const input = { apiKey: "k", slot: "bloodelf-female", version: 3, text: "t", live: Buffer.from("live"), sample: Buffer.from("new") };
+
+  it("reads the observation and its opposite as the wish, kept apart, and each aspect's weight", async () => {
+    const fetchImpl = reply({
+      summary: "Slower.",
+      note: "slower and breathier",
+      wish: "faster, less breathy",
+      aspects: [
+        { aspect: "Cadence", reference: "clipped, short pauses", live: "brisk", new: "long pauses after every phrase", matters: "high" },
+        { aspect: "Recording", reference: "", live: "clean", new: "clean", matters: "whatever" },
+        { aspect: "Broken" },
+      ],
+    });
+    const said = await describeDifference({ ...input, reference: Buffer.from("ref"), fetchImpl: fetchImpl as never });
+    expect(said).toEqual({
+      summary: "Slower.",
+      note: "slower and breathier",
+      wish: "faster, less breathy",
+      aspects: [
+        { aspect: "Cadence", reference: "clipped, short pauses", live: "brisk", new: "long pauses after every phrase", matters: "high" },
+        { aspect: "Recording", live: "clean", new: "clean" },
+      ],
+    });
+    expect(heard(fetchImpl)).toEqual(["ref", "live", "new"]);
+  });
+
+  it("compares the two takes alone when the slot has no reference clip", async () => {
+    const fetchImpl = reply({ summary: "s", note: "n", wish: "w", aspects: [] });
+    await describeDifference({ ...input, reference: null, fetchImpl: fetchImpl as never });
+    expect(heard(fetchImpl)).toEqual(["live", "new"]);
+    expect(JSON.parse(String(fetchImpl.mock.calls[0][1].body)).contents[0].parts[0].text).not.toContain("original game voice");
+  });
+
+  it("asks for the observation apart from the wish, and goes through what a director listens for", () => {
+    const text = buildDifferencePrompt({ slot: "bloodelf-female", version: 3, text: "t", hasReference: true });
+    expect(text).toMatch(/as an observation of how v3 sounds next to the live take \(not a wish\)/);
+    for (const part of ["accent: which one, how strong", "cadence and phrasing", "intonation", "emphasis", "emotional tone", "persona", "delivery style", "high, medium or low", "First recording: the original game voice"]) {
+      expect(text).toContain(part);
+    }
   });
 });

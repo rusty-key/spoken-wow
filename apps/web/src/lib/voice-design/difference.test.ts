@@ -44,13 +44,19 @@ function deps(over: Partial<DifferenceDeps> = {}): DifferenceDeps {
 const input = { lang: "enUS" as const, id: "d1", position: 1, apiKey: "k", by: "gemini" as const };
 
 describe("differenceFromLive", () => {
-  it("has Gemini hear the chosen line's live take, then this version's take of it", async () => {
+  it("has Gemini hear the game reference, the chosen line's live take, then this version's take of it", async () => {
     const d = deps();
     expect(await differenceFromLive(input, d)).toEqual({ ...SAID, by: "gemini" });
     const [call] = vi.mocked(d.describe).mock.calls[0];
     expect(call).toMatchObject({ apiKey: "k", slot: "dwarf-male-guard", version: 4, text: "Halt." });
-    expect([call.live.toString(), call.sample.toString()]).toEqual(["live g:abc", "new b"]);
+    expect([call.reference?.toString(), call.live.toString(), call.sample.toString()]).toEqual(["ref", "live g:abc", "new b"]);
     expect(d.describeClaude).not.toHaveBeenCalled();
+  });
+
+  it("still asks Gemini when the slot has no reference clip", async () => {
+    const d = deps({ reference: async () => null });
+    await differenceFromLive(input, d);
+    expect(vi.mocked(d.describe).mock.calls[0][0].reference).toBeNull();
   });
 
   it("gives Claude the picture, the numbers, who uses the voice, the prompt and the reviewers' own notes", async () => {

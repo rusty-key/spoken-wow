@@ -12,6 +12,8 @@ Two independent parts, each used when its library is installed:
   differences between voices mean much: game audio is pitch-shifted and processed.
 - librosa: the s-level, room tail and speech level a preview is chosen by. Changing how they are
   measured changes what the page recommends, and makes old previews incomparable with new ones.
+- librosa again: rhythm and intonation (pauses, pitch movement, phrase ends, loudness swing), which
+  Claude reads for cadence because it cannot hear.
 
 Run by the site (lib/voice-design/measure.ts) with the interpreter named by VOICE_ANALYSIS_PYTHON;
 mp3 needs ffmpeg on PATH.
@@ -68,6 +70,66 @@ def sibilance(path):
     out = {"ess": round(ess, 3), "level": round(level, 1), "durationSec": round(len(y) / sr, 2)}
     if decay is not None:
         out["decay"] = round(decay, 1)
+    return out
+
+
+HOP = 512
+# Below the loudest frame by this much is a pause: game clips and takes both sit 40+ dB above their noise.
+PAUSE_DB = 35
+# Shorter gaps are between syllables, not phrases.
+MIN_PAUSE_SEC = 0.15
+# A phrase end is the last quarter second of a phrase's voiced frames against the quarter second before.
+END_SEC = 0.25
+
+
+def runs(mask):
+    """(start, end) frame indices of each run of True."""
+    import numpy as np
+
+    edges = np.diff(np.concatenate([[0], mask.astype(int), [0]]))
+    return list(zip(np.where(edges == 1)[0], np.where(edges == -1)[0]))
+
+
+def prosody(path):
+    """pauseRate: pauses of 150 ms or more per second of speech. pauseMeanSec: their mean length.
+    f0SdSt: how much the pitch moves, in semitones. phraseEndSt: mean pitch change at the end of a
+    phrase, in semitones (below 0 falls, above 0 rises). loudnessSdDb: how much the loudness swings
+    while speaking, which stress and emphasis make."""
+    import librosa
+    import numpy as np
+
+    y, sr = librosa.load(path, sr=22050, mono=True)
+    db = 20 * np.log10(librosa.feature.rms(y=y, hop_length=HOP)[0] + 1e-9)
+    speech = db > db.max() - PAUSE_DB
+    if speech.sum() < 10:
+        return {}
+    sec = HOP / sr
+    first, last = np.where(speech)[0][[0, -1]]
+    gaps = [(a, b) for a, b in runs(~speech[first : last + 1]) if (b - a) * sec >= MIN_PAUSE_SEC]
+    speaking = speech.sum() * sec
+    out = {
+        "pauseRate": round(len(gaps) / speaking, 2),
+        "pauseMeanSec": round(float(np.mean([(b - a) * sec for a, b in gaps])), 2) if gaps else 0.0,
+        "loudnessSdDb": round(float(np.std(db[speech])), 1),
+    }
+
+    # pyin's voicing decision keeps s sounds and breaths out; yin gives every frame a pitch.
+    f0, voiced, _ = librosa.pyin(y, fmin=50, fmax=600, sr=sr, hop_length=HOP)
+    f0, voiced = f0[: len(db)], voiced[: len(db)]
+    st = np.where(voiced & speech[: len(f0)], 12 * np.log2(f0 / 55.0), np.nan)
+    # An octave jump is the tracker's error, not the voice's.
+    st[np.abs(st - np.nanmedian(st)) > 9] = np.nan
+    if np.isfinite(st).sum() >= 10:
+        out["f0SdSt"] = round(float(np.nanstd(st)), 2)
+    end = int(END_SEC / sec)
+    ends = []
+    for a, b in runs(speech[: len(st)]):
+        # A phrase often ends on a breath or an s: its last voiced frames are where the pitch lands.
+        pitch = st[a:b][np.isfinite(st[a:b])]
+        if len(pitch) >= 2 * end:
+            ends.append(np.median(pitch[-end:]) - np.median(pitch[-2 * end : -end]))
+    if ends:
+        out["phraseEndSt"] = round(float(np.mean(ends)), 2)
     return out
 
 
@@ -145,7 +207,7 @@ def main(paths):
     for path in paths:
         measured, errors = {}, []
         # Each part on its own: one unreadable clip or missing library must not cost the rest.
-        for part in ([lambda p: smile_measures(smile, p)] if smile else []) + [sibilance]:
+        for part in ([lambda p: smile_measures(smile, p)] if smile else []) + [sibilance, prosody]:
             try:
                 measured.update(part(path))
             except Exception as error:

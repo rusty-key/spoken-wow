@@ -22,8 +22,8 @@ const SCOURGE = {
   note: "cleaner and higher than the live take, no rasp",
   wish: "lower, raspier, breathier, undead",
   aspects: [
-    { aspect: "Pitch", live: "110 Hz", new: "136 Hz", reference: "89 Hz" },
-    { aspect: "Breathiness", live: "H1-H2 11 dB", new: "H1-H2 5.8 dB, clean and pressed", reference: "" },
+    { aspect: "Pitch", live: "110 Hz", new: "136 Hz", reference: "89 Hz", matters: "high" },
+    { aspect: "Breathiness", live: "H1-H2 11 dB", new: "H1-H2 5.8 dB, clean and pressed", reference: "", matters: "medium" },
   ],
   fixes: ["Remove 'articulate' and 'clear'.", "Add 'hollow, rasping, breathy undead voice, low in pitch'."],
 };
@@ -32,7 +32,7 @@ describe("parseClaudeDifference", () => {
   it("reads Claude's answer into Gemini's shape plus its fixes, dropping an empty reference", () => {
     expect(parseClaudeDifference(JSON.stringify(SCOURGE))).toEqual({
       ...SCOURGE,
-      aspects: [SCOURGE.aspects[0], { aspect: "Breathiness", live: "H1-H2 11 dB", new: "H1-H2 5.8 dB, clean and pressed" }],
+      aspects: [SCOURGE.aspects[0], { aspect: "Breathiness", live: "H1-H2 11 dB", new: "H1-H2 5.8 dB, clean and pressed", matters: "medium" }],
     });
   });
 
@@ -52,6 +52,10 @@ describe("parseClaudeDifference", () => {
 describe("the prompt", () => {
   it("tells Claude how to read the evidence, with the trial's findings as examples", () => {
     for (const part of ["F1/F2/F3", "under 150 Hz", "2.5-3 kHz", "above 4-5 kHz", "H1-H2", "HNR", "136 vs 89 Hz", "F1 636 vs 481 Hz", "cartoony twang", PROMPT_ENDING]) {
+      expect(CLAUDE_SYSTEM).toContain(part);
+    }
+    // Rhythm and intonation are read from the numbers; what needs ears is left to Gemini.
+    for (const part of ["pauses per second", "phrase ends", "loudness swing", "Gemini's call", "accent, pronunciation, emotional tone, persona and delivery style need ears"]) {
       expect(CLAUDE_SYSTEM).toContain(part);
     }
     // note observes, wish asks: the two must not be confused downstream.

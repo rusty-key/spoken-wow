@@ -5,8 +5,8 @@ import { durationRatio, evidenceTable } from "./evidence";
 // The manual trial on tauren-female-shaman v2: higher, smaller (F1 up) and slower than the reference.
 const TAUREN = {
   reference: { f0Hz: 129, f1Hz: 481, h1h2Db: 9.1, durationSec: 7 },
-  live: { f0Hz: 141, f1Hz: 520, durationSec: 4.4 },
-  sample: { f0Hz: 167, f1Hz: 636, durationSec: 4.88 },
+  live: { f0Hz: 141, f1Hz: 520, durationSec: 4.4, phraseEndSt: -1.6 },
+  sample: { f0Hz: 167, f1Hz: 636, durationSec: 4.88, phraseEndSt: 5.3 },
   label: "v2",
 };
 
@@ -18,6 +18,7 @@ describe("evidenceTable", () => {
     expect(table).toContain("| F1 (Hz) | 481 | 520 | 636 |");
     // Measured on one clip only: the others say so rather than vanish.
     expect(table).toContain("| H1-H2 (dB; high = breathy) | 9.1 | - | - |");
+    expect(table).toContain("| phrase ends (semitones; below 0 falls, above 0 rises) | - | -1.6 | 5.3 |");
     expect(table).not.toContain("HNR");
     expect(table).toContain("v2 / live take: 1.11 (above 1 is slower)");
   });

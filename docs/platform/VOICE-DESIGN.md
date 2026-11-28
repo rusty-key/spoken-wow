@@ -116,13 +116,19 @@ not only against the reference clip. **Voice the lines again** replaces them. Sa
 **What's different?** beside a line asks two judges at once, each on your own key, and shows their
 answers side by side. Without a key, that judge is left out.
 
-- **Gemini** hears the live take, then the version's, and says how the voices differ.
+- **Gemini** hears the game reference, the live take and the version's take, and goes through what a
+  director listens for, one by one: accent (which, how strong, whether it holds), pronunciation of
+  names, cadence and phrasing, intonation, emphasis, emotional tone, persona, delivery style, then
+  gender, age, timbre, body, pace and recording quality. For each it says how the three sound and how
+  much the difference matters. A slot without a reference clip gets the two takes alone.
 - **Claude** cannot hear. The site draws a picture of the game reference (its first 7 seconds), the
   live take and the version's take: a spectrogram with the pitch track for each, then their
   long-term spectra. Claude reads it beside their measurements (pitch, pace, formants, breathiness,
-  roughness, brightness, s-level, room, level, and the version's duration over the live take's),
-  the slot's users, the version's prompt and the reviewers' notes. It says what differs by how
-  much, and which prompt words to change. In the first trial this was more precise than listening:
+  roughness, brightness, s-level, room, level, the version's duration over the live take's, and for
+  cadence and intonation: pauses, pitch movement, whether phrases end rising or falling, and the
+  loudness swing of emphasis), the slot's users, the version's prompt and the reviewers' notes. It
+  says what differs by how much, and which prompt words to change. Accent, emotion, persona and
+  delivery need ears, so it leaves those to Gemini. In the first trial this was more precise than listening:
   scourge-male-standard v2 was 136 Hz against the reference's 89, 10-15 dB louder at 1-4 kHz and far
   less breathy, an articulate elf rather than an undead. Look at the picture under its answer.
 
@@ -220,8 +226,8 @@ own decision.
 Measurements come from `apps/web/scripts/voice_measure.py`, run by the site with the interpreter in
 `VOICE_ANALYSIS_PYTHON` (set in `shared/app.env`; the script path comes from `VOICE_ANALYSIS_SCRIPT`,
 which `deploy/web/ecosystem.config.js` points at the release). That Python needs `opensmile` for
-pitch, roughness, brightness and formants, `librosa` and `numpy` for s-level, room, level and
-duration, `matplotlib` for the picture Claude reads, and ffmpeg on the path for mp3. Each part runs
+pitch, roughness, brightness and formants, `librosa` and `numpy` for s-level, room, level,
+duration, pauses and intonation, `matplotlib` for the picture Claude reads, and ffmpeg on the path for mp3. Each part runs
 when its library is there; unset or failing, the page works without measurements, and Claude asks
 with whichever of the picture and the numbers it has, or not at all. Test the helper with `python -m pytest apps/web/scripts/test_voice_measure.py`.
 

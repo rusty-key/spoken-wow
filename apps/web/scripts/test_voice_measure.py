@@ -116,3 +116,36 @@ def test_says_why_the_view_failed(tmp_path):
         capture_output=True, text=True, check=True,
     )
     assert "error" in json.loads(done.stdout)
+
+
+def phrases(path, hz_from, hz_to, gaps, rate=22050):
+    """Buzzed phrases of 1 s, each gliding from hz_from to hz_to, with `gaps` seconds of silence between."""
+    parts = []
+    for gap in gaps + [0]:
+        t = np.arange(rate) / rate
+        f = np.linspace(hz_from, hz_to, t.size)
+        phase = 2 * np.pi * np.cumsum(f) / rate
+        parts.append(sum(np.sin(phase * k) / k for k in range(1, 8)) * 0.5)
+        parts.append(np.zeros(int(gap * rate)))
+    signal = np.concatenate(parts)
+    samples = (signal / np.abs(signal).max() * 0.5 * 32767).astype("<i2")
+    with wave.open(str(path), "wb") as out:
+        out.setnchannels(1)
+        out.setsampwidth(2)
+        out.setframerate(rate)
+        out.writeframes(samples.tobytes())
+
+
+def test_measures_pauses_and_phrase_ends(tmp_path):
+    pytest.importorskip("librosa")
+    falling, rising, run_on = tmp_path / "falling.wav", tmp_path / "rising.wav", tmp_path / "run_on.wav"
+    phrases(falling, 160, 110, [0.6, 0.6, 0.6])
+    phrases(rising, 110, 160, [0.6, 0.6, 0.6])
+    phrases(run_on, 160, 110, [])
+    result = run(falling, rising, run_on)
+    assert result[str(falling)]["pauseRate"] == pytest.approx(0.75, abs=0.15)
+    assert result[str(falling)]["pauseMeanSec"] == pytest.approx(0.6, abs=0.1)
+    assert result[str(run_on)]["pauseRate"] == 0
+    assert result[str(falling)]["phraseEndSt"] < -1
+    assert result[str(rising)]["phraseEndSt"] > 1
+    assert result[str(falling)]["f0SdSt"] > 1

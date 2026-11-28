@@ -306,42 +306,83 @@ export async function reviseVoice(
 }
 
 /** How a designed voice differs from the live take of the same line, aspect by aspect. */
+/** How much an aspect's difference matters for directing the voice. */
+export type Weight = "high" | "medium" | "low";
+
+export const WEIGHTS: readonly Weight[] = ["high", "medium", "low"];
+
+export type Aspect = { aspect: string; live: string; new: string; reference?: string; matters?: Weight };
+
 export type Difference = {
   summary: string;
   /** The difference that matters most, as an observation of how the new voice sounds. */
   note: string;
   /** The same point as what the next version should do: the reviewer edits it into the note. */
   wish: string;
-  aspects: { aspect: string; live: string; new: string; reference?: string }[];
+  aspects: Aspect[];
 };
 
-export function buildDifferencePrompt(input: { slot: string; version: number; text: string }): string {
-  return `You are a voice director. You will hear two recordings of the same line for ${input.slot} (World of Warcraft NPCs).
-First recording: the live take players hear in the game now. Second: the same line in designed voice v${input.version}.
-The line, as sent to the second voice (square-bracketed words are performance directions, not speech): "${input.text}"
-Say how the second voice differs from the first, so a voice designer knows what to change. Compare: accent and its strength,
-gender and apparent age, pitch, timbre and texture, resonance and size, pace and rhythm, energy, attitude, articulation and
-pronunciation, and recording quality. Leave out aspects where they sound the same. Be concrete ("the Scottish accent fades
-after the first sentence", not "the accent differs").
+/**
+ * What a voice director listens for, named one by one: a listener asked only for "the differences"
+ * reports timbre and pitch and skips accent, cadence and delivery.
+ */
+export const DIRECTION_ASPECTS = [
+  "accent: which one, how strong, and whether it holds through the line or fades",
+  "pronunciation of names and fantasy words",
+  "cadence and phrasing: where the pauses fall and how long, drawl or clipped, run-on or measured",
+  "intonation: the pitch contour, phrase ends rising or falling, monotone or sing-song",
+  "emphasis: which words are stressed and how hard",
+  "emotional tone and subtext",
+  "persona: who this sounds like (authority, menace, warmth, age, status)",
+  "delivery style: acted or read, theatrical or natural, intimate or projected",
+  "gender and apparent age",
+  "pitch, timbre and texture (rasp, breath, nasality)",
+  "resonance and body size",
+  "pace and energy",
+  "recording quality",
+] as const;
+
+export function buildDifferencePrompt(input: { slot: string; version: number; text: string; hasReference: boolean }): string {
+  const v = `v${input.version}`;
+  const recordings = input.hasReference
+    ? `First recording: the original game voice for this kind of character (the reference: other lines, and game audio is processed; listen to it for accent, cadence, persona and delivery). Second: the live take players hear in the game now. Third: the same line as the second, in designed voice ${v}.`
+    : `First recording: the live take players hear in the game now. Second: the same line in designed voice ${v}.`;
+  return `You are a voice director. You will hear recordings for ${input.slot} (World of Warcraft NPCs).
+${recordings}
+The line, as sent to ${v} (square-bracketed words are performance directions, not speech): "${input.text}"
+Say how ${v} differs from the live take${input.hasReference ? ", and where the reference stands," : ""} so a voice designer knows what to change. Go through each of these, as a director would:
+${DIRECTION_ASPECTS.map((aspect) => `- ${aspect}`).join("\n")}
+Leave out an aspect only where they sound the same. Be concrete ("the Scottish accent fades after the first sentence", not "the accent differs"; "every phrase ends rising, like a question", not "different intonation").
+For each aspect, say how much the difference matters for directing this character: high, medium or low. Order the aspects from the one that matters most.
 Also write note: the one difference that matters most, as an observation of how v${input.version} sounds next to the live take (not a wish), under 80 characters, lowercase, no full stop ("scottish accent fades after the first words", "sounds younger and thinner").
 And wish: the same point said as what the next version should do, the opposite direction, under 80 characters, lowercase, no full stop ("keep the scottish accent strong throughout", "older and fuller").
-Return JSON only: {"summary": "one or two sentences: the differences that matter most", "note": "...", "wish": "...", "aspects": [{"aspect": "...", "live": "how the live take sounds", "new": "how v${input.version} sounds"}]}`;
+Return JSON only: {"summary": "one or two sentences: the differences that matter most", "note": "...", "wish": "...", "aspects": [{"aspect": "...", "reference": "${input.hasReference ? "how the reference sounds" : ""}", "live": "how the live take sounds", "new": "how v${input.version} sounds", "matters": "high|medium|low"}]}`;
 }
 
-/** Gemini hears the live take, then the version's take, of one line. */
+const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+
+/** A judge's aspects, checked: ones missing a side are dropped, an empty reference or unknown weight left out. */
+export function parseAspects(value: unknown): Aspect[] {
+  return (Array.isArray(value) ? (value as Record<string, unknown>[]) : [])
+    .filter((a) => text(a?.aspect) && typeof a.live === "string" && typeof a.new === "string")
+    .map((a) => ({
+      aspect: text(a.aspect),
+      live: text(a.live),
+      new: text(a.new),
+      ...(text(a.reference) ? { reference: text(a.reference) } : {}),
+      ...(WEIGHTS.includes(a.matters as Weight) ? { matters: a.matters as Weight } : {}),
+    }));
+}
+
+/** Gemini hears the reference if there is one, the live take, then the version's take of one line. */
 export async function describeDifference(
-  input: { apiKey: string; slot: string; version: number; text: string; live: Buffer; sample: Buffer } & GeminiOptions,
+  input: { apiKey: string; slot: string; version: number; text: string; reference: Buffer | null; live: Buffer; sample: Buffer } & GeminiOptions,
 ): Promise<Difference> {
+  const audio = [...(input.reference ? [input.reference] : []), input.live, input.sample].map(audioPart);
   const answer = (await generateJson({
     ...input,
-    parts: [{ text: buildDifferencePrompt(input) }, audioPart(input.live), audioPart(input.sample)],
+    parts: [{ text: buildDifferencePrompt({ ...input, hasReference: input.reference !== null }) }, ...audio],
   })) as Partial<Difference> | null;
   if (typeof answer?.summary !== "string") throw new Error("Gemini returned no summary of the difference");
-  const aspects = Array.isArray(answer.aspects)
-    ? answer.aspects.filter(
-        (a): a is Difference["aspects"][number] => typeof a?.aspect === "string" && typeof a.live === "string" && typeof a.new === "string",
-      )
-    : [];
-  const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
-  return { summary: answer.summary.trim(), note: text(answer.note), wish: text(answer.wish), aspects };
+  return { summary: answer.summary.trim(), note: text(answer.note), wish: text(answer.wish), aspects: parseAspects(answer.aspects) };
 }

@@ -302,7 +302,7 @@ test("asks Gemini and Claude what differs, side by side, and adds a finding as a
           summary: "The Scottish accent fades after the first words.",
           note: "scottish accent fades after the first words",
           wish: "keep the scottish accent strong throughout",
-          aspects: [{ aspect: "Accent", live: "broad Scots", new: "faint Scots" }],
+          aspects: [{ aspect: "Accent", live: "broad Scots", new: "faint Scots", matters: "high" }],
         },
       });
     }
@@ -339,6 +339,7 @@ test("asks Gemini and Claude what differs, side by side, and adds a finding as a
   const claude = await screen.findByRole("region", { name: "Claude read" });
   expect(within(gemini).getByText("The Scottish accent fades after the first words.")).toBeTruthy();
   expect(within(gemini).getByText(/faint Scots/)).toBeTruthy();
+  expect(within(gemini).getByText("Matters a lot")).toBeTruthy();
   expect(within(claude).getByText(/reference: 89 Hz/)).toBeTruthy();
   expect(within(claude).getByText("Add 'deep chest voice'.")).toBeTruthy();
   expect((within(claude).getByRole("img") as HTMLImageElement).src).toBe("data:image/png;base64,iVBORw0KGgo=");

@@ -5,9 +5,18 @@ import { Plus } from "lucide-react";
 import { useUiText } from "@/components/UiTextProvider";
 import { fill } from "@/lib/site-text/format";
 import type { JudgedDifference } from "@/lib/voice-design/difference";
+import type { Weight } from "@/lib/voice-design/gemini";
 import type { Judge } from "@/lib/voice-design/types";
 
 export const JUDGE_NAME: Record<Judge, string> = { gemini: "Gemini", claude: "Claude" };
+
+type Words = ReturnType<typeof useUiText>["voiceDesign"];
+
+const MATTERS: Record<Weight, (t: Words) => string> = {
+  high: (t) => t.mattersHigh,
+  medium: (t) => t.mattersMedium,
+  low: (t) => t.mattersLow,
+};
 
 export type Answer = { difference: JudgedDifference } | { error: string };
 
@@ -42,6 +51,11 @@ export default function DifferencePanel({
                 <ul>
                   {answer.difference.aspects.map((aspect) => (
                     <li key={aspect.aspect}>
+                      {aspect.matters ? (
+                        <span className="vd-tag" data-matters={aspect.matters}>
+                          {MATTERS[aspect.matters](t)}
+                        </span>
+                      ) : null}{" "}
                       <span className="bs-label">{aspect.aspect}</span> {t.liveTake}: {aspect.live} · {t.newTake}: {aspect.new}
                       {aspect.reference ? ` · ${t.differenceReference}: ${aspect.reference}` : ""}
                     </li>

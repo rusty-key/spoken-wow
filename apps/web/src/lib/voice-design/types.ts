@@ -21,6 +21,11 @@ export type Measures = PreviewMetrics & {
   loudness?: number;
   voicedPerSec?: number;
   durationSec?: number;
+  pauseRate?: number;
+  pauseMeanSec?: number;
+  f0SdSt?: number;
+  phraseEndSt?: number;
+  loudnessSdDb?: number;
 };
 
 export type DesignPreview = { generatedVoiceId: string; sha256: string; measures: Measures | null };

@@ -6,8 +6,8 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 
+import { parseAspects, type Difference } from "./gemini";
 import { EFFECT_WORDS, PROMPT_ENDING, SIBILANT_WORDS } from "./limits";
-import type { Difference } from "./gemini";
 
 export const CLAUDE_MODEL = "claude-opus-5-5";
 
@@ -65,8 +65,13 @@ How to read the evidence:
 - High H1-H2 means breathy, airy; low means clean, pressed.
 - Low HNR and harmonics that dissolve in the spectrogram mean rasp, growl, undead.
 - F0 and voiced segments per second are pitch and pace; the duration ratio is pace on the same text.
+- Cadence and phrasing: pauses per second and their mean length, and the gaps in the spectrogram. Few, long pauses are measured or ponderous; none is run-on.
+- Intonation: pitch movement in semitones (low is monotone, high is sing-song) and phrase ends (below 0 falls, above 0 rises, like a question). Check them against the cyan line's shape.
+- Emphasis: the loudness swing while speaking, and where the spectrogram brightens and the pitch peaks.
 - Compare the columns with each other rather than reading absolute values. Say by how much: Hz, dB, a ratio.
 - Pitch tracking fails on growled voices. Where the cyan line breaks up or jumps, trust the spectrogram.
+
+What you cannot judge: accent, pronunciation, emotional tone, persona and delivery style need ears. Do not guess them. Where one bears on the reviewers' notes, name it as an aspect whose live, new and reference are "needs listening; Gemini's call". Spend your answer on what the evidence shows: pitch, body, chest, nasality, breathiness, roughness, brightness, recording quality, pace, cadence, intonation and emphasis.
 
 Findings from earlier reviews, as examples of the precision wanted:
 - scourge-male-standard v2 against the reference: F0 136 vs 89 Hz, 1-4 kHz 10-15 dB louder, H1-H2 5.8 vs 13.2 dB (clean and pressed vs breathy and raspy): "an articulate elf, not undead".
@@ -77,7 +82,7 @@ Return:
 - summary: one or two sentences, the differences that matter most, with numbers.
 - note: the difference that matters most, as an observation of how the designed version sounds next to the live take, not as a wish. Under 80 characters, lowercase, no full stop ("higher and thinner than the live take, no chest").
 - wish: the same point said as what the next version should do, the opposite direction ("lower, rounder, more chest"). Under 80 characters, lowercase, no full stop.
-- aspects: one per aspect that differs (pitch, pace, body and resonance, chest, nasality, breathiness, roughness, brightness, recording quality...): how the live take is, how the designed version is, and how the reference is where it tells something ("" otherwise). Concrete, with numbers.
+- aspects: one per aspect that differs (pitch, pace, cadence, intonation, emphasis, body and resonance, chest, nasality, breathiness, roughness, brightness, recording quality...): how the live take is, how the designed version is, and how the reference is where it tells something ("" otherwise). Concrete, with numbers. Say how much each matters for directing this character (high, medium or low), and order them from the one that matters most.
 - fixes: one to four concrete changes to the version's Voice Design prompt: which words to remove and which to add. They must keep these rules:
   - Never describe consonants or sibilants (no ${quoted(SIBILANT_WORDS)}): it makes every s harsh.
   - Never describe post-processing (${EFFECT_WORDS.join(", ")}, filters). Describe a clean voice.
@@ -105,8 +110,14 @@ const SCHEMA = {
       type: "array",
       items: {
         type: "object",
-        properties: { aspect: { type: "string" }, live: { type: "string" }, new: { type: "string" }, reference: { type: "string" } },
-        required: ["aspect", "live", "new", "reference"],
+        properties: {
+          aspect: { type: "string" },
+          live: { type: "string" },
+          new: { type: "string" },
+          reference: { type: "string" },
+          matters: { type: "string", enum: ["high", "medium", "low"] },
+        },
+        required: ["aspect", "live", "new", "reference", "matters"],
         additionalProperties: false,
       },
     },
@@ -127,9 +138,7 @@ export function parseClaudeDifference(raw: string): ClaudeDifference {
     throw new Error(`Claude did not answer in JSON: ${raw.slice(0, 200)}`);
   }
   if (!text(answer?.summary)) throw new Error("Claude returned no summary of the difference");
-  const aspects = (Array.isArray(answer!.aspects) ? (answer!.aspects as Record<string, unknown>[]) : [])
-    .filter((a) => text(a?.aspect) && typeof a.live === "string" && typeof a.new === "string")
-    .map((a) => ({ aspect: text(a.aspect), live: text(a.live), new: text(a.new), ...(text(a.reference) ? { reference: text(a.reference) } : {}) }));
+  const aspects = parseAspects(answer!.aspects);
   return {
     summary: text(answer!.summary),
     note: text(answer!.note),
