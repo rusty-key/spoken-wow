@@ -1007,7 +1007,6 @@ const koKR: Dictionary = {
       willKeep: "대사 {n}개를 유지합니다.",
       willKeepEvery: "모든 페이지에서 대사 {n}개를 유지합니다.",
       final: "유지한 대사는 기록되면 다시 열 수 없습니다.",
-      cancel: "취소",
       keep: "{n}개 유지",
     },
     dropCount: "{n}개 버리기",

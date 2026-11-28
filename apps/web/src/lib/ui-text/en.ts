@@ -2383,7 +2383,6 @@ export const EN = {
       willKeep: "{n} lines will be kept.",
       willKeepEvery: "{n} lines will be kept, on every page.",
       final: "A kept line can't be reopened once it is written.",
-      cancel: "Cancel",
       keep: "Keep {n}",
     },
     pickPageFirst: "Pick the page first",

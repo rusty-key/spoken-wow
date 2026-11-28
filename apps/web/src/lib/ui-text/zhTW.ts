@@ -1237,7 +1237,6 @@ const zhTW: Dictionary = {
       willKeep: "將採用 {n} 句台詞。",
       willKeepEvery: "將採用 {n} 句台詞（每一頁都適用）。",
       final: "一旦寫入，採用的台詞就無法重新開啟。",
-      cancel: "取消",
       keep: "採用 {n} 句",
     },
     dropCount: "丟棄 {n} 筆",

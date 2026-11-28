@@ -1208,7 +1208,6 @@ const esES: Dictionary = {
       willKeep: "Se conservarán {n} líneas.",
       willKeepEvery: "Se conservarán {n} líneas, en todas las páginas.",
       final: "Una línea conservada no se puede reabrir una vez escrita.",
-      cancel: "Cancelar",
       keep: "Conservar {n}",
     },
     dropCount: "Descartar {n}",

@@ -1208,7 +1208,6 @@ const frFR: Dictionary = {
       willKeep: "{n} répliques seront conservées.",
       willKeepEvery: "{n} répliques seront conservées, sur toutes les pages.",
       final: "Une réplique conservée ne peut plus être rouverte une fois écrite.",
-      cancel: "Annuler",
       keep: "Conserver {n}",
     },
     dropCount: "Écarter {n}",

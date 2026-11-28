@@ -3,13 +3,14 @@
 import { useState } from "react";
 
 import { useUiText } from "@/components/UiTextProvider";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { fill } from "@/lib/site-text/format";
 
 export type BulkKeepRow = { id: number; count: number };
 
-export const CONFIDENT_DEFAULT = 10;
+const CONFIDENT_DEFAULT = 10;
 
 /** Every group counts, Probably drop included: enough players sending the same words outweighs the checks. */
 export function confidentIds(rows: BulkKeepRow[], moreThan: number): number[] {
@@ -21,7 +22,7 @@ export function confidentIds(rows: BulkKeepRow[], moreThan: number): number[] {
  * would select every line in the queue, Probably drop included, one click from keeping them all.
  */
 export function parseThreshold(typed: string): number | null {
-  return /^\s*\d+\s*$/.test(typed) && Number(typed) >= 1 ? Number(typed) : null;
+  return /^\s*[1-9]\d*\s*$/.test(typed) ? Number(typed) : null;
 }
 
 /** Says how many lines Keep confident takes before it runs, since a kept line can't be reopened. */
@@ -37,7 +38,8 @@ export default function BulkKeepDialog({
   onConfirm: (ids: number[]) => void;
   onClose: () => void;
 }) {
-  const t = useUiText().contributions.bulkKeep;
+  const text = useUiText().contributions;
+  const t = text.bulkKeep;
   const [typed, setTyped] = useState(String(CONFIDENT_DEFAULT));
   const moreThan = parseThreshold(typed);
   const ids = moreThan === null ? [] : confidentIds(rows, moreThan);
@@ -66,17 +68,12 @@ export default function BulkKeepDialog({
           {fill(everyPage ? t.willKeepEvery : t.willKeep, { n: ids.length })} {t.final}
         </p>
         <DialogFooter>
-          <button type="button" className="bs-btn bs-btn-text" onClick={onClose}>
-            {t.cancel}
-          </button>
-          <button
-            type="button"
-            className="bs-btn bs-btn-primary"
-            disabled={ids.length === 0}
-            onClick={() => onConfirm(ids)}
-          >
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            {text.cancel}
+          </Button>
+          <Button size="sm" disabled={ids.length === 0} onClick={() => onConfirm(ids)}>
             {fill(t.keep, { n: ids.length })}
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

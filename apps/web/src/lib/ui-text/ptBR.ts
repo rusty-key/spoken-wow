@@ -1008,7 +1008,6 @@ const ptBR: Dictionary = {
       willKeep: "{n} falas serão mantidas.",
       willKeepEvery: "{n} falas serão mantidas, em todas as páginas.",
       final: "Uma fala mantida não pode ser reaberta depois de gravada.",
-      cancel: "Cancelar",
       keep: "Manter {n}",
     },
     dropCount: "Descartar {n}",

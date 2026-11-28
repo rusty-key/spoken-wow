@@ -1212,7 +1212,6 @@ const deDE: Dictionary = {
       willKeep: "{n} Zeilen werden behalten.",
       willKeepEvery: "{n} Zeilen werden behalten, auf jeder Seite.",
       final: "Eine behaltene Zeile lässt sich nicht wieder öffnen, sobald sie geschrieben ist.",
-      cancel: "Abbrechen",
       keep: "{n} behalten",
     },
     dropCount: "{n} verwerfen",

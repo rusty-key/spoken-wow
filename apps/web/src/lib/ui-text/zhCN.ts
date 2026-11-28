@@ -1200,7 +1200,6 @@ const zhCN: Dictionary = {
       willKeep: "将采纳 {n} 条台词。",
       willKeepEvery: "将采纳 {n} 条台词（跨所有页面）。",
       final: "采纳后的台词一旦写入就无法重新打开。",
-      cancel: "取消",
       keep: "采纳 {n} 条",
     },
     dropCount: "丢弃这 {n} 条",
