@@ -47,8 +47,8 @@ body:has(main.bs) {
 }
 
 /*
- * Set by the backstage layout's marker, on body so the portalled dialogs inherit it. It rides on
- * --font-sans so the font-sans utility keeps the CJK face; --font-latin is that token's old value.
+ * On body, so the dialogs portalled out of the page get the face too, and on the token, which the
+ * font-sans utility reads by name.
  */
 html {
   --font-latin: var(--font-sans, ui-sans-serif, system-ui);

@@ -6,7 +6,7 @@ import Link from "@/components/LocaleLink";
 import ListenBar from "@/components/ListenBar";
 import UserMenu from "@/components/UserMenu";
 import { UiTextProvider } from "@/components/UiTextProvider";
-import { cjkFace } from "@/lib/lang";
+import { interfaceFace } from "@/lib/lang";
 import { pageLang, readingLang } from "@/lib/lang-server";
 import { siteText } from "@/lib/site-text";
 import { uiText } from "@/lib/ui-text";
@@ -26,10 +26,10 @@ export default async function BackstageLayout({
   const lang = await pageLang(params);
   const reading = readingLang(lang);
   const [text, bar, acting] = await Promise.all([reading.then(uiText), reading.then(siteText), actingIn(lang)]);
-  const face = cjkFace(await reading);
+  const face = interfaceFace(lang, await reading);
   return (
     <UiTextProvider text={text}>
-      {/* Hoisted to <head>. Only for the reader's interface language, which the address does not carry. */}
+      {/* Only for the reader's interface language, which the address does not carry. */}
       {face && (
         <>
           <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -41,7 +41,6 @@ export default async function BackstageLayout({
           />
         </>
       )}
-      {/* Only marks the script; backstage.css takes the face from it on body, which reaches the portalled dialogs. */}
       <div className={face ? `ui-cjk-${face.toLowerCase()}` : undefined}>
         <ListenBar text={bar.listenBar.text} cta={bar.listenBar.cta} close={bar.listenBar.close} />
         <header className="bn-theme bn-nav sn">
