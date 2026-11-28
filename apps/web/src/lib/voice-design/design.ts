@@ -125,26 +125,21 @@ async function keptPreviews(made: DesignedPreview[], lang: Lang, deps: DesignDep
   return made.map((preview, i) => ({ generatedVoiceId: preview.generatedVoiceId, sha256: shas[i], measures: measured?.[i] ?? null }));
 }
 
-/**
- * The next version as a Voice Remix of this one: the voice is kept and only the changes are made.
- * Its prompt is the whole new description (Gemini's rewrite, or the form's), so everything that
- * reads a version's prompt reads this voice. Only the holder may remix, on their own key.
- */
-export async function remixVersion(
-  input: {
-    lang: Lang;
-    id: string;
-    changes: string;
-    prompt: string;
-    previewText: string;
-    settings: RemixSettings;
-    revisionHeard?: string | null;
-    archetype?: string | null;
-    userId: string;
-    apiKey: string;
-  },
-  deps: DesignDeps = LIVE,
-): Promise<Made> {
+type RemixInput = {
+  lang: Lang;
+  id: string;
+  changes: string;
+  prompt: string;
+  previewText: string;
+  settings: RemixSettings;
+  revisionHeard?: string | null;
+  archetype?: string | null;
+  userId: string;
+  apiKey: string;
+};
+
+/** The remix's checks, all before anything is spent, and what the new version records of it. */
+async function prepareRemix(input: RemixInput, deps: DesignDeps) {
   const changes = input.changes.trim();
   const prompt = withEnding(input.prompt);
   const previewText = input.previewText.trim();
@@ -154,15 +149,21 @@ export async function remixVersion(
   const parent = await found(deps.read, input.lang, input.id);
   const refused = holderRefusal(parent, input.userId);
   if (refused) throw new DesignError(refused, 403);
-
-  const made = await deps.remix({ voiceId: parent.voiceId!, changes, text: previewText, ...input.settings }, input.apiKey);
   const parentArchetype = typeof parent.analysis?.archetype === "string" ? parent.analysis.archetype : null;
-  const analysis: Record<string, unknown> = {
-    ...describedBy(input.revisionHeard, input.archetype || parentArchetype),
-    remix_of: parent.version,
-    remix_changes: changes,
-    remix_settings: input.settings,
-  };
+  const described = describedBy(input.revisionHeard, input.archetype || parentArchetype);
+  const remix = () => deps.remix({ voiceId: parent.voiceId!, changes, text: previewText, ...input.settings }, input.apiKey);
+  const remixAnalysis = { remix_of: parent.version, remix_changes: changes, remix_settings: input.settings };
+  return { parent, prompt, previewText, described, remix, remixAnalysis };
+}
+
+/**
+ * The next version as a Voice Remix of this one: the voice is kept and only the changes are made.
+ * Its prompt is the whole new description (Gemini's rewrite, or the form's), so everything that
+ * reads a version's prompt reads this voice. Only the holder may remix, on their own key.
+ */
+export async function remixVersion(input: RemixInput, deps: DesignDeps = LIVE): Promise<Made> {
+  const { parent, prompt, previewText, described, remix, remixAnalysis } = await prepareRemix(input, deps);
+  const made = await remix();
   const design = await deps.create({
     lang: input.lang,
     slot: parent.slot,
@@ -170,11 +171,43 @@ export async function remixVersion(
     previewText,
     previews: await keptPreviews(made, input.lang, deps),
     analysisId: parent.analysisId,
-    analysis,
+    analysis: { ...described, ...remixAnalysis },
     userId: input.userId,
   });
   return { design, retired: await retireOlder({ ...input, kept: design }, deps) };
 }
+
+/**
+ * The next version from Voice Design and Voice Remix at once, so the previews of a fresh voice and
+ * of this one changed sit side by side. Design's come first; `remix_from` is where Remix's start.
+ * Both calls are paid for as they finish, so when one fails the other's previews are still kept.
+ */
+export async function designAndRemixVersion(input: RemixInput, deps: DesignDeps = LIVE): Promise<Made & { problem: string | null }> {
+  const { parent, prompt, previewText, described, remix, remixAnalysis } = await prepareRemix(input, deps);
+  const [designed, remixed] = await Promise.allSettled([deps.design({ prompt, text: previewText }, input.apiKey), remix()]);
+  if (designed.status === "rejected" && remixed.status === "rejected") throw designed.reason;
+  const fromDesign = designed.status === "fulfilled" ? designed.value : [];
+  const fromRemix = remixed.status === "fulfilled" ? remixed.value : [];
+  const problem =
+    designed.status === "rejected"
+      ? `Voice Design failed, so only the remix's previews were kept: ${reason(designed.reason)}`
+      : remixed.status === "rejected"
+        ? `Voice Remix failed, so only Voice Design's previews were kept: ${reason(remixed.reason)}`
+        : null;
+  const design = await deps.create({
+    lang: input.lang,
+    slot: parent.slot,
+    prompt,
+    previewText,
+    previews: await keptPreviews([...fromDesign, ...fromRemix], input.lang, deps),
+    analysisId: parent.analysisId,
+    analysis: fromRemix.length > 0 ? { ...described, ...remixAnalysis, remix_from: fromDesign.length } : described,
+    userId: input.userId,
+  });
+  return { design, retired: await retireOlder({ ...input, kept: design }, deps), problem };
+}
+
+const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 export async function found(read: (lang: Lang, id: string) => Promise<Design | null>, lang: Lang, id: string): Promise<Design> {
   const design = await read(lang, id);

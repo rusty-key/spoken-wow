@@ -190,6 +190,23 @@ test("remixes the held voice from the review in one press: Gemini's changes, the
   });
 });
 
+test("designs and remixes from the review in one press, and names each preview for the call that made it", async () => {
+  const revision = { heard: "too noble", prompt: "A colder voice.", preview_text: "y".repeat(120), archetype: "Queen", changes: "Make it colder." };
+  const fetchMock = vi.fn(async (url: string) => Response.json(url.includes("/revise") ? { revision } : { design: { ...DESIGN, id: "d2", version: 3 }, retired: [], problem: null }));
+  vi.stubGlobal("fetch", fetchMock);
+  render(card(DESIGN));
+
+  await userEvent.click(screen.getByRole("button", { name: "Generate and remix" }));
+  const [url, init] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
+  expect(url).toContain(`/api/voices/design/${DESIGN.id}/design-and-remix`);
+  expect(JSON.parse(String(init.body))).toMatchObject({ changes: "Make it colder.", prompt: "A colder voice.", settings: context.remixSettings });
+  cleanup();
+
+  const previews = [0, 1, 2, 3].map((n) => ({ generatedVoiceId: `g${n}`, sha256: String(n).repeat(64), measures: null }));
+  render(card({ ...DESIGN, previews, analysis: { remix_of: 1, remix_from: 2 } }));
+  for (const name of ["Preview 1", "Preview 2", "Remix 1", "Remix 2"]) expect(screen.getByRole("button", { name })).toBeTruthy();
+});
+
 test("offers remix only to the voice's holder, while the voice is in their account", () => {
   render(card({ ...DESIGN, holderId: "u2" }));
   expect(screen.queryByRole("button", { name: "Remix from review" })).toBeNull();

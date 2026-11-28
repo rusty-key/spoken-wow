@@ -17,7 +17,7 @@ import type { ClipMark, Design, Measures } from "@/lib/voice-design/types";
 import FeedbackResults, { pickKey, verdictLabels } from "./FeedbackResults";
 import PlayButton, { ReferenceClip } from "./PlayButton";
 import StatusBadge from "./StatusBadge";
-import { designAudioUrl, designFrom, remixFrom, requestRevision, send, useWorkbench, type Draft } from "./context";
+import { designAndRemixFrom, designAudioUrl, designFrom, remixFrom, requestRevision, send, useWorkbench, type Draft } from "./context";
 import RemixSettingsFields from "./RemixSettings";
 import type { SlotView } from "./Workbench";
 
@@ -262,6 +262,16 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
     });
   const generate = () => fromReview("generate", "Voice Design", (draft) => draft, (draft) => designFrom(lang, slot.name, draft));
   const remixFromReview = () => fromReview("remix", "Voice Remix", remixDraft, (draft) => remixFrom(lang, draft, remixSettings));
+  const bothFromReview = () =>
+    fromReview("both", "Voice Design and Voice Remix", remixDraft, async (draft) => {
+      const { designs, problem } = await designAndRemixFrom(lang, draft, remixSettings);
+      if (problem) setError(problem);
+      return designs;
+    });
+  // Where a version made by both calls has its remixed previews, so each is named for its call.
+  const remixStart = typeof design.analysis?.remix_from === "number" ? design.analysis.remix_from : null;
+  const previewName = (index: number) =>
+    remixStart !== null && index >= remixStart ? fill(t.remixPreviewN, { n: index - remixStart + 1 }) : fill(t.previewN, { n: index + 1 });
 
   return (
     <section className="vd-version" aria-label={fill(t.versionLabel, { slot: slot.name, v: design.version })}>
@@ -336,9 +346,9 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
                 {design.previews.map((preview, index) => (
                   <li key={preview.sha256 + index} className="vd-clip">
                     <PlayButton
-                      clip={{ src: audio(preview.sha256), title: `${slot.name} ${tag}`, meta: fill(t.previewN, { n: index + 1 }), subtitle: design.previewText }}
+                      clip={{ src: audio(preview.sha256), title: `${slot.name} ${tag}`, meta: previewName(index), subtitle: design.previewText }}
                     >
-                      {fill(t.previewN, { n: index + 1 })}
+                      {previewName(index)}
                     </PlayButton>
                     {can && !hasVoice ? (
                       <button
@@ -677,6 +687,25 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
                     </PopoverContent>
                   </Popover>
                 </span>
+              ) : null}
+              {newest && revisable && remixable ? (
+                <button
+                  type="button"
+                  className="bs-btn vd-btn-remix"
+                  title={t.bothCost}
+                  disabled={busy !== null || !keys.gemini || !keys.elevenlabs}
+                  onClick={() => void bothFromReview()}
+                >
+                  {busy === "both" ? (
+                    <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                  ) : (
+                    <>
+                      <Wand2 size={14} aria-hidden="true" />
+                      <Blend size={14} aria-hidden="true" />
+                    </>
+                  )}
+                  {busy === "both" ? t.bothWorking : t.both}
+                </button>
               ) : null}
               <Popover open={menuOpen} onOpenChange={setMenuOpen}>
                 <PopoverTrigger asChild>
