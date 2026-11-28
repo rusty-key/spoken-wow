@@ -139,10 +139,10 @@ package-audio: check-synced sounds lookup
 	@version=$$(sed -n 's/^## Version: //p' addons/SpokenReadablesAudio/SpokenReadablesAudio.toc); \
 	 zip_path="$$PWD/dist/SpokenReadablesAudio-$$version.zip"; \
 	 rm -f "$$zip_path"; \
-	 (cd addons && zip -r -0 -q -X "$$zip_path" SpokenReadablesAudio \
-	   -x '*.DS_Store' '*/.*'); \
 	 rm -rf dist/SpokenReadablesAudio && \
 	 rsync -a --exclude '.[!.]*' addons/SpokenReadablesAudio/ dist/SpokenReadablesAudio/ && \
+	 cp -p addons/Spoken/Data/DeveloperList.lua dist/SpokenReadablesAudio/Developers.lua && \
+	 (cd dist && zip -r -0 -q -X "$$zip_path" SpokenReadablesAudio -x '*.DS_Store' '*/.*') && \
 	 touch dist/SpokenReadablesAudio/SpokenReadablesAudio.toc || exit 1; \
 	 printf '%s\n' "built dist/SpokenReadablesAudio-$$version.zip"; \
 	 printf '  %s ogg, %s\n' \

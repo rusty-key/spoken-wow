@@ -17,6 +17,8 @@ copy=(
   pipelines/bosses/assets
   publishers
   addons/SpokenPlacesAudio addons/SpokenReadablesAudio addons/SpokenBossesAudio
+  # Every pack carries Spoken's developer list.
+  addons/Spoken/Data/DeveloperList.lua
   # The places lookup reads its zones and subzones from these.
   addons/Spoken_Places/Data
   pipelines/quests/cli-main.py pipelines/quests/tts_cli pipelines/quests/corpus pipelines/quests/assets/icon

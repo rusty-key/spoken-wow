@@ -42,6 +42,8 @@ on:
       - "addons/SpokenPlacesAudio/**"
       - "addons/SpokenReadablesAudio/**"
       - "addons/SpokenBossesAudio/**"
+      # Every pack carries it, so a developer added without a deploy misses the next release.
+      - "addons/Spoken/Data/DeveloperList.lua"
       - "pipelines/quests/cli-main.py"
       - "pipelines/quests/tts_cli/**"
       - "pipelines/quests/assets/icon/**"
