@@ -193,6 +193,7 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmBack, setConfirmBack] = useState(false);
+  const [confirmReplace, setConfirmReplace] = useState<number | null>(null);
   const [removing, setRemoving] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [linesMenuOpen, setLinesMenuOpen] = useState(false);
@@ -227,6 +228,21 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
       const { design, live } = await send<{ design: Design; live?: Record<string, string> }>(withLang(lang, url), init);
       updateDesign(design, live);
     });
+
+  const save = (index: number) => act(`save-${index}`, `/api/voices/design/${design.id}/voice`, { body: { preview: index } });
+
+  const saveButton = (index: number, primary: boolean, onClick: () => void) => (
+    <button
+      type="button"
+      className={cn("bs-btn vd-tip", primary && "bs-btn-primary")}
+      data-tip={design.isPublic ? t.lockedTitle : fill(hasVoice ? t.replaceCost : t.saveCost, { name: designName(design) })}
+      disabled={busy !== null || !keys.elevenlabs || design.isPublic}
+      onClick={onClick}
+    >
+      {busy === `save-${index}` ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Save size={14} aria-hidden="true" />}
+      {t.saveAsVoice}
+    </button>
+  );
 
   const sample = (lines: "same" | "other") =>
     act("sample", `/api/voices/design/${design.id}/samples`, { body: { lines, ...(direction.trim() ? { direction: direction.trim() } : {}) } });
@@ -390,17 +406,22 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
                     >
                       {previewName(index)}
                     </PlayButton>
-                    {can && !hasVoice ? (
-                      <button
-                        type="button"
-                        className={cn("bs-btn vd-tip", recommended === index && "bs-btn-primary")}
-                        data-tip={design.isPublic ? t.lockedTitle : fill(t.saveCost, { name: designName(design) })}
-                        disabled={busy !== null || !keys.elevenlabs || design.isPublic}
-                        onClick={() => void act(`save-${index}`, `/api/voices/design/${design.id}/voice`, { body: { preview: index } })}
-                      >
-                        {busy === `save-${index}` ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Save size={14} aria-hidden="true" />}
-                        {t.saveAsVoice}
-                      </button>
+                    {!can ? null : !hasVoice ? (
+                      saveButton(index, recommended === index, () => void save(index))
+                    ) : holds && design.chosenPreview !== index ? (
+                      <Confirm
+                        question={fill(t.replaceConfirm, { n: index + 1 })}
+                        label={t.replaceVoice}
+                        open={confirmReplace === index}
+                        working={busy === `save-${index}`}
+                        disabled={busy !== null}
+                        onCancel={() => setConfirmReplace(null)}
+                        onConfirm={async () => {
+                          await save(index);
+                          setConfirmReplace(null);
+                        }}
+                        trigger={saveButton(index, false, () => setConfirmReplace(index))}
+                      />
                     ) : null}
                     {recommended === index && design.previews.length > 1 ? (
                       <span className="vd-tag" title={t.recommendedTitle}>

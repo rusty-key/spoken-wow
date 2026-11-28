@@ -323,13 +323,15 @@ export async function lockSlot(client: PoolClient, lang: Lang | null, id: string
  * Players vote on the lines they hear: replacing a public version's lines would leave their votes
  * on audio that no longer plays. Showing another version lifts it.
  */
+export const SHOWN_REFUSAL = "Players hear this version. Show another version to players first.";
+
 async function refuseIfPublic(client: PoolClient, id: string): Promise<void> {
   await lockSlot(client, null, id);
   const { rows } = await client.query(
     `select 1 from "voice_design_showing" s where s."designId" = $1 and s."id" = ${NEWEST_SHOWING}`,
     [id],
   );
-  if (rows.length > 0) throw new DesignError("Players hear this version. Show another version to players first.");
+  if (rows.length > 0) throw new DesignError(SHOWN_REFUSAL);
 }
 
 /**
