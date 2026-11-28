@@ -46,7 +46,13 @@ body:has(main.bs) {
   background: #101216;
 }
 
-/* Set by the backstage layout's marker. On body, not the marker, so portalled dialogs inherit it. */
+/*
+ * Set by the backstage layout's marker, on body so the portalled dialogs inherit it. It rides on
+ * --font-sans so the font-sans utility keeps the CJK face; --font-latin is that token's old value.
+ */
+html {
+  --font-latin: var(--font-sans, ui-sans-serif, system-ui);
+}
 body:has(.ui-cjk-sc) {
   --cjk-face: "Noto Sans SC";
 }
@@ -57,7 +63,13 @@ body:has(.ui-cjk-jp) {
   --cjk-face: "Noto Sans JP";
 }
 body:has(.ui-cjk-sc, .ui-cjk-tc, .ui-cjk-jp) {
-  font-family: var(--font-sans), var(--cjk-face), sans-serif;
+  --font-sans: var(--font-latin), var(--cjk-face), sans-serif;
+  font-family: var(--font-sans);
+}
+/* Neither the capitals nor the tracking the Latin labels are set in survive translation. */
+body:has(.ui-cjk-sc, .ui-cjk-tc, .ui-cjk-jp) :is(.sn-area, .sn-item, .bn-btn) {
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .bs ::selection {

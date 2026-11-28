@@ -171,8 +171,7 @@ export function langTag(lang: Lang): string {
 /** The CJK face a language's glyphs need: Simplified, Traditional and Japanese disagree on how a codepoint is drawn. */
 export function cjkFace(lang: Lang): "SC" | "TC" | "JP" | null {
   const tag = langTag(lang);
-  if (tag.startsWith("zh-TW") || tag.startsWith("zh-HK")) return "TC";
-  if (tag.startsWith("zh")) return "SC";
+  if (tag.startsWith("zh")) return /-(TW|HK|MO|Hant)/.test(tag) ? "TC" : "SC";
   if (tag.startsWith("ja")) return "JP";
   return null;
 }

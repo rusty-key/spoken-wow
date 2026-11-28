@@ -67,7 +67,7 @@
   border-radius: 4px;
   background: var(--btn);
   color: var(--text);
-  font: 700 14px/16px var(--bn-body), sans-serif;
+  font: 700 14px/16px var(--bn-body), var(--cjk-face, "Segoe UI"), sans-serif;
   letter-spacing: 0.04em;
   text-decoration: none;
   text-transform: uppercase;
