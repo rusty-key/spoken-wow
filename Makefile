@@ -23,7 +23,7 @@ LUA ?= $(shell command -v luajit || command -v lua5.1)
         package-spoken package-spoken-all release-spoken release-spoken-dry \
         release-spoken-all release-spoken-all-dry \
         descriptions descriptions-check descriptions-published \
-        character-models dungeons bosses-extract bosses-export bosses-check bosses-sync bosses-check-synced \
+        character-models dungeons npc-sounds bosses-extract bosses-export bosses-check bosses-sync bosses-check-synced \
         bosses-cameras bosses-nudges \
         bosses-pull-live bosses-sounds bosses-lookup bosses-validate-audio bosses-package-audio \
         bosses-full-release bosses-upload-dry bosses-upload bosses-icon \
@@ -259,6 +259,12 @@ descriptions-published: ## Record the current descriptions as pasted into the si
 # that file, then the exporters that read it.
 dungeons: ## Rebuild addons/Spoken/Data/Dungeons.lua from pipelines/lib/dungeons.json and the client's Map table
 	@node pipelines/lib/dungeons.mjs
+
+# Every NPC's own greeting, farewell and pissed clips, as file ids, from Forever's NPCSounds and
+# SoundKitEntry tables. A pack that voices those moments mutes the game's clips from this list, and
+# a file missing from it plays the game's voice beside ours. Run it when the Forever pin moves.
+npc-sounds: ## Rebuild pipelines/quests/voice/npc-sounds.json from the client's NPC voice tables
+	@node pipelines/lib/npc-sounds.mjs
 
 # The bosses of those dungeons and raids, from the client's DungeonEncounter table, for the bosses'
 # tab. It writes the boss tables, not Spoken_Bosses/Data/Bosses.lua: run bosses-export after it.

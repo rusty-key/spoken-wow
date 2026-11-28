@@ -7,7 +7,7 @@
 //
 // Moving a pin is deliberate: the area names change, so the files derived from them (the places'
 // seeds and alias tables, ForeverAreas.lua, the Compendium and Places.lua) are regenerated and
-// reviewed together.
+// reviewed together, and so is the NPC voice clip list (make npc-sounds).
 
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
