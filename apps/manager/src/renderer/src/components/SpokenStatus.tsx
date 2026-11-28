@@ -14,7 +14,7 @@ export function SpokenStatus({ status }: { status: ProductStatus | undefined }):
       return (
         <p className="status status-ok">
           <IconCheck size={15} />
-          {S.status.upToDate(v)}{releaseDate ? ` (${releaseDate})` : ''}
+          {S.status.upToDate(v)}{releaseDate ? ` · ${releaseDate}` : ''}
         </p>
       )
     case 'update-available':
