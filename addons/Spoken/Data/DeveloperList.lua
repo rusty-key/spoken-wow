@@ -5,12 +5,15 @@ DeveloperCharacters = {
     -- Anon
     ["Player-5149-04564413"] = true,
     ["Player-5149-04987F43"] = true,
-    -- Brock
-    ["Player-6930-0019D2DA"] = true,
     ["Player-6921-001E5110"] = true,
     ["Player-6921-02CAC851"] = true,
+    -- Brock
+    ["Player-6930-0019D2DA"] = true,
     -- Loukky
     ["Player-7124-0158514C"] = true,
+    -- Juudal
+    ["Player-6785-00B1F74A"] = true,
+    ["Player-6785-000D9EDD"] = true,
     -- Ranfred (conoar)
     ["Player-6949-00219DC4"] = true,
     ["Player-6949-0021AECE"] = true,
