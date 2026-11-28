@@ -1230,11 +1230,8 @@ const zhTW: Dictionary = {
     bulkKeep: {
       more: "更多採用方式",
       confident: "採用可信台詞…",
-      looksRight: "採用看起來正確的…",
       confidentTitle: "採用許多玩家送出的台詞",
-      confidentBody: "採用待審核中送出人數超過此數的每句台詞，不分群組，包括大概要丟棄。",
-      looksRightTitle: "採用看起來正確的台詞",
-      looksRightBody: "採用待審核中通過所有檢查的每句台詞。",
+      confidentBody: "採用符合這些篩選條件、送出人數超過此數的每句台詞，不分群組，包括大概要丟棄。",
       sentByMoreThan: "送出人數超過",
       players: "人",
       willKeep: "將採用 {n} 句台詞。",

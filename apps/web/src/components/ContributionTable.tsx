@@ -27,7 +27,7 @@ import { CheckIcon, ChevronDownIcon, CircleAlertIcon, ClockIcon, SearchIcon, Wre
 import { useRouter } from "next/navigation";
 import { memo, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 
-import BulkKeepDialog, { type BulkKeepMode } from "@/components/BulkKeepDialog";
+import BulkKeepDialog from "@/components/BulkKeepDialog";
 import ClientSelect from "@/components/ClientSelect";
 import { SEARCH_IN_OPTIONS, STAGE_CHIP_OPTIONS, STAGE_LABELS } from "@/components/contribution-chips";
 import FilterChip, { type ChipOption } from "@/components/FilterChip";
@@ -555,10 +555,13 @@ export default function ContributionTable({
   // round. A row reopened since is waiting again and stays.
   const undecided = (ids: number[] | null) =>
     ids?.filter((id) => (resolved[id] ?? "new") === "new" && !busy.has(id)) ?? null;
-  const [keepBy, setKeepBy] = useState<BulkKeepMode | null>(null);
+  const [keepConfident, setKeepConfident] = useState(false);
   const [keepMenu, setKeepMenu] = useState(false);
   const bulkKeepable = matching.filter((row) => row.bulk && stillNew(row) && !busy.has(row.id));
   const keepConfirmed = undecided(confirmAll);
+  // The first group on the page carries Keep confident when Keep all, and its menu, are not shown.
+  const keepAllShown = cleanToKeep.length > 1 && rows.some((row) => row.check.verdict === "clean");
+  const confidentHost = keepAllShown ? null : GROUPS.find((group) => rows.some((row) => row.check.verdict === group.verdict))?.verdict;
   const dropConfirmed = undecided(confirmDrop);
   const [showFilters, setShowFilters] = useState(Boolean(build || stage.length > 0 || searchIn !== "any"));
 
@@ -772,7 +775,7 @@ export default function ContributionTable({
           GROUPS.map((group) => {
             const members = rows.filter((row) => row.check.verdict === group.verdict);
             if (members.length === 0) return null;
-            const action =
+            const groupAction =
               group.verdict === "clean" && cleanToKeep.length > 1 ? (
                 keepConfirmed ? (
                   <>
@@ -813,19 +816,16 @@ export default function ContributionTable({
                         </button>
                       </PopoverTrigger>
                       <PopoverContent className="bs-menu flex w-auto flex-col p-1">
-                        {(["confident", "clean"] as const).map((mode) => (
-                          <button
-                            key={mode}
-                            type="button"
-                            className="bs-btn bs-btn-text"
-                            onClick={() => {
-                              setKeepMenu(false);
-                              setKeepBy(mode);
-                            }}
-                          >
-                            {mode === "confident" ? t.contributions.bulkKeep.confident : t.contributions.bulkKeep.looksRight}
-                          </button>
-                        ))}
+                        <button
+                          type="button"
+                          className="bs-btn bs-btn-text"
+                          onClick={() => {
+                            setKeepMenu(false);
+                            setKeepConfident(true);
+                          }}
+                        >
+                          {t.contributions.bulkKeep.confident}
+                        </button>
                       </PopoverContent>
                     </Popover>
                   </span>
@@ -859,6 +859,14 @@ export default function ContributionTable({
                   </button>
                 )
               ) : null;
+            // Keep confident reaches past Looks right, so it can't depend on Keep all being shown.
+            const confident =
+              group.verdict === confidentHost && bulkKeepable.length > 0 ? (
+                <button type="button" className="bs-btn" disabled={bulk !== null} onClick={() => setKeepConfident(true)}>
+                  {t.contributions.bulkKeep.confident}
+                </button>
+              ) : null;
+            const action = confident && groupAction ? <>{confident}{groupAction}</> : (confident ?? groupAction);
             return (
               <Panel
                 key={group.verdict}
@@ -892,14 +900,13 @@ export default function ContributionTable({
         )}
       </div>
 
-      {keepBy ? (
+      {keepConfident ? (
         <BulkKeepDialog
-          mode={keepBy}
           rows={bulkKeepable}
           everyPage={pages > 1}
-          onClose={() => setKeepBy(null)}
+          onClose={() => setKeepConfident(false)}
           onConfirm={(ids) => {
-            setKeepBy(null);
+            setKeepConfident(false);
             void resolveMany(ids, "accepted");
           }}
         />

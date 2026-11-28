@@ -1201,11 +1201,8 @@ const frFR: Dictionary = {
     bulkKeep: {
       more: "Autres façons de conserver",
       confident: "Conserver les sûres…",
-      looksRight: "Conserver les correctes…",
       confidentTitle: "Conserver les répliques envoyées par beaucoup de joueurs",
-      confidentBody: "Conserve chaque réplique de À relire envoyée par plus de joueurs que ce nombre, dans tous les groupes, À écarter probablement compris.",
-      looksRightTitle: "Conserver les répliques qui semblent correctes",
-      looksRightBody: "Conserve chaque réplique de À relire qui passe toutes les vérifications.",
+      confidentBody: "Conserve chaque réplique qui correspond à ces filtres et envoyée par plus de joueurs que ce nombre, dans tous les groupes, À écarter probablement compris.",
       sentByMoreThan: "Envoyée par plus de",
       players: "joueurs",
       willKeep: "{n} répliques seront conservées.",

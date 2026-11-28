@@ -1000,11 +1000,8 @@ const koKR: Dictionary = {
     bulkKeep: {
       more: "다른 유지 방법",
       confident: "확실한 대사 유지…",
-      looksRight: "정상 대사 유지…",
       confidentTitle: "많은 플레이어가 보낸 대사 유지",
-      confidentBody: "검토 대기에서 이 수보다 많은 플레이어가 보낸 모든 대사를 그룹과 관계없이 유지합니다. 버릴 가능성 높음도 포함됩니다.",
-      looksRightTitle: "정상으로 보이는 대사 유지",
-      looksRightBody: "검토 대기에서 모든 검사를 통과한 대사를 모두 유지합니다.",
+      confidentBody: "이 필터에 맞고 이 수보다 많은 플레이어가 보낸 모든 대사를 그룹과 관계없이 유지합니다. 버릴 가능성 높음도 포함됩니다.",
       sentByMoreThan: "보낸 플레이어 수",
       players: "명 초과",
       willKeep: "대사 {n}개를 유지합니다.",

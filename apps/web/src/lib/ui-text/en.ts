@@ -2376,11 +2376,8 @@ export const EN = {
     bulkKeep: {
       more: "More ways to keep",
       confident: "Keep confident…",
-      looksRight: "Keep looks right…",
       confidentTitle: "Keep lines many players sent",
-      confidentBody: "Keeps every line in To review that more than this many players sent, in any group, Probably drop included.",
-      looksRightTitle: "Keep lines that look right",
-      looksRightBody: "Keeps every line in To review that passes every check.",
+      confidentBody: "Keeps every line these filters match that more than this many players sent, in any group, Probably drop included.",
       sentByMoreThan: "Sent by more than",
       players: "players",
       willKeep: "{n} lines will be kept.",

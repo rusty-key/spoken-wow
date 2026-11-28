@@ -1201,11 +1201,8 @@ const esMX: Dictionary = {
     bulkKeep: {
       more: "Más formas de conservar",
       confident: "Conservar las seguras…",
-      looksRight: "Conservar las correctas…",
       confidentTitle: "Conservar líneas que enviaron muchos jugadores",
-      confidentBody: "Conserva cada línea de Por revisar que enviaron más jugadores que este número, en cualquier grupo, incluido Probablemente descartar.",
-      looksRightTitle: "Conservar líneas que parecen correctas",
-      looksRightBody: "Conserva cada línea de Por revisar que pasa todas las comprobaciones.",
+      confidentBody: "Conserva cada línea que coincide con estos filtros y que enviaron más jugadores que este número, en cualquier grupo, incluido Probablemente descartar.",
       sentByMoreThan: "Enviada por más de",
       players: "jugadores",
       willKeep: "Se conservarán {n} líneas.",

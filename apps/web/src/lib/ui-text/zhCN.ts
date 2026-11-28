@@ -1193,11 +1193,8 @@ const zhCN: Dictionary = {
     bulkKeep: {
       more: "更多采纳方式",
       confident: "采纳可信台词…",
-      looksRight: "采纳看起来正确的…",
       confidentTitle: "采纳许多玩家发送的台词",
-      confidentBody: "采纳待审核中发送人数超过此数的每条台词，不分分组，包括大概要丢弃。",
-      looksRightTitle: "采纳看起来正确的台词",
-      looksRightBody: "采纳待审核中通过所有检查的每条台词。",
+      confidentBody: "采纳符合这些筛选条件、发送人数超过此数的每条台词，不分分组，包括大概要丢弃。",
       sentByMoreThan: "发送人数超过",
       players: "人",
       willKeep: "将采纳 {n} 条台词。",

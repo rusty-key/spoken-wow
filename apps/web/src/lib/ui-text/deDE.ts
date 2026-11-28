@@ -1205,11 +1205,8 @@ const deDE: Dictionary = {
     bulkKeep: {
       more: "Weitere Arten zu behalten",
       confident: "Sichere behalten…",
-      looksRight: "Stimmige behalten…",
       confidentTitle: "Zeilen behalten, die viele Spieler geschickt haben",
-      confidentBody: "Behält jede Zeile unter Zu prüfen, die mehr Spieler als diese Zahl geschickt haben, in jeder Gruppe, auch Wahrscheinlich verwerfen.",
-      looksRightTitle: "Zeilen behalten, die stimmig aussehen",
-      looksRightBody: "Behält jede Zeile unter Zu prüfen, die jede Prüfung besteht.",
+      confidentBody: "Behält jede Zeile, auf die diese Filter passen und die mehr Spieler als diese Zahl geschickt haben, in jeder Gruppe, auch Wahrscheinlich verwerfen.",
       sentByMoreThan: "Geschickt von mehr als",
       players: "Spielern",
       willKeep: "{n} Zeilen werden behalten.",

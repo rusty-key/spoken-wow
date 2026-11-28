@@ -1001,11 +1001,8 @@ const ptBR: Dictionary = {
     bulkKeep: {
       more: "Mais formas de manter",
       confident: "Manter as confiáveis…",
-      looksRight: "Manter as corretas…",
       confidentTitle: "Manter falas que muitos jogadores enviaram",
-      confidentBody: "Mantém cada fala em Para revisar enviada por mais jogadores que este número, em qualquer grupo, inclusive Provavelmente descartar.",
-      looksRightTitle: "Manter falas que parecem corretas",
-      looksRightBody: "Mantém cada fala em Para revisar que passa em todas as verificações.",
+      confidentBody: "Mantém cada fala que corresponde a estes filtros e foi enviada por mais jogadores que este número, em qualquer grupo, inclusive Provavelmente descartar.",
       sentByMoreThan: "Enviada por mais de",
       players: "jogadores",
       willKeep: "{n} falas serão mantidas.",
