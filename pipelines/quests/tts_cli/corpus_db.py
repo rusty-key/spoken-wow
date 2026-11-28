@@ -1227,3 +1227,78 @@ def export_gossip_text(out_dir, aliases_path, verbose=True):
             print(f"wrote {lang}.lua: {count} texts, "
                   f"{len(wordings[lang])} quest moments in several wordings")
         print(f"wrote Aliases.lua: {len(aliases)} stems with aliases")
+
+
+def import_barks(sounds_path, transcripts_path, verbose=True) -> dict:
+    """The game's voice sets into npc_bark_set, and a bark per clip per voiced type into npc_bark.
+    Rerunnable: an unchanged transcript writes nothing, a changed one becomes a new version, and an
+    edited bark is never replaced (barks.decide_bark)."""
+    import psycopg2.extras
+
+    from tts_cli.barks import bark_rows, decide_bark, set_rows
+
+    with open(sounds_path, encoding="utf-8") as f:
+        sounds = json.load(f)
+    with open(transcripts_path, encoding="utf-8") as f:
+        transcripts = json.load(f)
+    sets = set_rows(sounds["sets"])
+    counts = {"sets": len(sets), "typed sets": sum(1 for row in sets if row["race"]),
+              "inserted": 0, "versioned": 0, "skipped": 0}
+
+    conn = connect()
+    try:
+        with conn, conn.cursor() as cur:
+            psycopg2.extras.execute_values(
+                cur, """insert into "npc_bark_set" ("setId", "race", "gender", "flavor",
+                          "greeting", "farewell", "pissed", "build") values %s
+                        on conflict ("setId") do update set
+                          "race" = excluded."race", "gender" = excluded."gender",
+                          "flavor" = excluded."flavor", "greeting" = excluded."greeting",
+                          "farewell" = excluded."farewell", "pissed" = excluded."pissed",
+                          "build" = excluded."build" """,
+                [(row["setId"], row["race"], row["gender"], row["flavor"], row["greeting"],
+                  row["farewell"], row["pissed"], sounds["build"]) for row in sets])
+
+            types = sorted({(row["race"], row["gender"], row["flavor"]) for row in sets
+                            if row["race"]}, key=str)
+            voiced = {}
+            for type_ in types:
+                cur.execute('select "voice_for"(%s, %s, %s) is not null', type_)
+                voiced[type_] = cur.fetchone()[0]
+            barks = bark_rows(sets, transcripts, lambda *type_: voiced[type_])
+
+            cur.execute("""select "gameFile", "race", "gender", "flavor", "origin", "originalText",
+                                  "isCurrent", "version"
+                             from "npc_bark" where "lang" = %s""", (LANG,))
+            current, highest = {}, {}
+            for game_file, race, gender, flavor, origin, original, is_current, version in cur:
+                key = (game_file, race, gender, flavor)
+                highest[key] = max(highest.get(key, 0), version)
+                if is_current:
+                    current[key] = {"origin": origin, "originalText": original}
+
+            for bark in barks:
+                key = (bark["gameFile"], bark["race"], bark["gender"], bark["flavor"])
+                action = decide_bark(current.get(key), bark["text"])
+                if action == "skip":
+                    counts["skipped"] += 1
+                    continue
+                if action == "version":
+                    cur.execute("""update "npc_bark" set "isCurrent" = false
+                                    where "gameFile" = %s and "race" = %s and "gender" = %s
+                                      and "flavor" is not distinct from %s and "lang" = %s
+                                      and "isCurrent" """, (*key, LANG))
+                cur.execute("""insert into "npc_bark" ("gameFile", "race", "gender", "flavor",
+                                 "kind", "lang", "version", "isCurrent", "origin", "text",
+                                 "originalText")
+                               values (%s, %s, %s, %s, %s, %s, %s, true, 'extracted', %s, %s)""",
+                            (*key, bark["kind"], LANG, highest.get(key, 0) + 1, bark["text"],
+                             bark["text"]))
+                counts["inserted" if action == "insert" else "versioned"] += 1
+            counts["unvoiced types"] = sum(1 for ok in voiced.values() if not ok)
+    finally:
+        conn.close()
+    if verbose:
+        for what, n in counts.items():
+            print(f"  {what:<16} {n:>5}")
+    return counts

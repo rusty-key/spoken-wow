@@ -59,7 +59,7 @@ endef
         package-meta icon \
         downloads-status \
         factions followup-lines compendium-text compendium release release-audio release-audio-dry release-wago release-curse \
-        release-dry import-corpus import-locale import-npc-bodies fill-locales export-corpus export-ignores export-locale-text export-giver-names export-gossip-text export-chatter-lines \
+        release-dry import-corpus import-locale import-npc-bodies import-barks import-npc-types fill-locales export-corpus export-ignores export-locale-text export-giver-names export-gossip-text export-chatter-lines \
         sync check-synced full-release upload upload-dry
 
 help: ## Show this help
@@ -386,6 +386,12 @@ import-locale: ## vmangos *_locN -> quest_line + entity_name (LOCALE=deDE; needs
 # answer is kept.
 import-npc-bodies: ## vmangos creature displays -> npc_body, splitting each NPC drawn as two or more bodies (needs MySQL and DATABASE_URL)
 	@$(QUESTS_CLI) import-npc-bodies
+
+# The transcript is made locally from the game's audio and stays out of the repo; only its text
+# reaches the database.
+import-barks: ## The game's NPC voice sets and their clips' text -> npc_bark_set, npc_bark (TRANSCRIPTS=…; needs DATABASE_URL)
+	@test -n "$(TRANSCRIPTS)" || { echo "import-barks: set TRANSCRIPTS to the clips' text by file id"; exit 2; }
+	@$(QUESTS_CLI) import-barks --transcripts $(TRANSCRIPTS)
 
 # The gaps vmangos leaves -- esMX, zhTW and zhCN text it lacks, and ptBR, which it has no
 # column for -- filled in the local dump from TrinityCore's releases, before import-locale.
