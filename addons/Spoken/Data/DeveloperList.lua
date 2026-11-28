@@ -1,7 +1,8 @@
-setfenv(1, SpokenEnv)
-
 -- Add a character by the GUID that /dump UnitGUID("player") prints in game.
-DeveloperCharacters = {
+-- Every generated sound pack ships a copy as Developers.lua, so a pack released after Spoken can
+-- tag a newer developer. No setfenv: a pack may load before Spoken's environment exists. Copies
+-- only add, so a removed character stays tagged until no installed pack still lists it.
+local developers = {
     -- Anon
     ["Player-5149-04564413"] = true,
     ["Player-5149-04987F43"] = true,
@@ -20,3 +21,8 @@ DeveloperCharacters = {
     ["Player-6949-0021A0D8"] = true,
     ["Player-6949-05E29238"] = true,
 }
+
+SpokenDeveloperCharacters = SpokenDeveloperCharacters or {}
+for guid in pairs(developers) do
+    SpokenDeveloperCharacters[guid] = true
+end

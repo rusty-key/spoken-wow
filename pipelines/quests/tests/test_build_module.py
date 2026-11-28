@@ -10,7 +10,7 @@ import shutil
 
 import pytest
 
-from tts_cli.build import GOSSIP_TEXT_TABLES, build_module, icon_source
+from tts_cli.build import DEVELOPER_LIST, GOSSIP_TEXT_TABLES, build_module, icon_source
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 
@@ -653,3 +653,12 @@ def test_a_pack_named_by_an_identifier_keeps_its_bare_global(tmp_path):
     assert "\nMod.SoundLengthLookupByFileName = {\n" in _sound_length_table(tmp_path)
     assert "\nMod.ClientLocaleLookups = Mod.ClientLocaleLookups or {}\n" in \
         _generated(tmp_path, "esMX", "npc_gossip_file_lookups.lua")
+
+
+def test_a_pack_carries_spokens_developer_list(tmp_path):
+    build_module(CORPUS, _store(tmp_path, "quests/5-accept.mp3"), str(tmp_path / "dist"), "Mod")
+
+    module = tmp_path / "dist" / "Mod"
+    with open(DEVELOPER_LIST, encoding="utf-8") as f:
+        assert (module / "Developers.lua").read_text(encoding="utf-8") == f.read()
+    assert "\nDevelopers.lua\n" in (module / "Mod.toc").read_text(encoding="utf-8")

@@ -121,6 +121,19 @@ for _, mode in ipairs({ "modern", "legacy" }) do
     end
 end
 
+-- A sound pack ships the list too, built from a newer master than the Spoken the player runs, and
+-- may load before Spoken or after it. Neither load may drop what the other added.
+_G.SpokenDeveloperCharacters = { ["Player-1111-00000001"] = true }
+do
+    local _, Clear, Show = Boot("modern")
+    dofile(SPOKEN .. "Data/DeveloperList.lua")
+    for _, guid in ipairs({ "Player-1111-00000001", "Player-6921-001E5110" }) do
+        Clear()
+        Expect("every loaded copy of the list tags its developers: " .. guid, Show(guid), ICON .. "Spoken Developer")
+    end
+end
+_G.SpokenDeveloperCharacters = nil
+
 for _, mode in ipairs({ "modern", "legacy" }) do
     local _, Clear, Show = Boot(mode, "enUS", true)
     Clear()

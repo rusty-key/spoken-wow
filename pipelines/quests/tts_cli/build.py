@@ -124,6 +124,10 @@ ICON_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
                         "assets", "icon")
 ICON_NAME = "icon.tga"
 
+DEVELOPER_LIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..",
+                              "addons", "Spoken", "Data", "DeveloperList.lua")
+DEVELOPER_LIST_NAME = "Developers.lua"
+
 
 def icon_source(language: str = None) -> str:
     """English's mark, or the language's: the same mark with its badge, so a language's packs
@@ -151,6 +155,7 @@ TOC_HEADER = """## Interface: 11509, 20506, 16001
 ## X-VoiceOver-DataModule-Priority: 100
 
 Module.lua
+Developers.lua
 """
 
 
@@ -641,6 +646,7 @@ def build_module(corpus: dict, store_dir: str, dist_dir: str = DEFAULT_DIST_DIR,
 
     shutil.copy2(icon_source(icon_language or language), os.path.join(module_dir, ICON_NAME))
 
+    shutil.copy2(DEVELOPER_LIST, os.path.join(module_dir, DEVELOPER_LIST_NAME))
     with open(os.path.join(module_dir, "Module.lua"), "w", encoding="utf-8") as f:
         f.write(module_lua(module_name, extension))
         if language:

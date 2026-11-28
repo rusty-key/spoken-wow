@@ -76,6 +76,7 @@ mkdir -p "$staging/$folder/Data"
 rsync -a --exclude 'Sounds/' --exclude 'Data/Sounds.lua' --exclude '.DS_Store' "$SRC/" "$staging/$folder/"
 english || cp "$REPO/pipelines/bosses/assets/spoken-bosses-$LOCALE.tga" "$staging/$folder/Textures/AddonIcon.tga"
 cp -p "$LOOKUP" "$staging/$folder/Data/Sounds.lua"
+cp -p "$REPO/addons/Spoken/Data/DeveloperList.lua" "$staging/$folder/Developers.lua"
 # The .toc is named after its folder; English's already is, and mv onto itself is an error.
 [[ "$folder" == SpokenBossesAudio ]] || mv "$staging/$folder/SpokenBossesAudio.toc" "$staging/$folder/$folder.toc"
 cp "$REPO/dist/descriptions/$slug.md" "$staging/$folder/README.md"

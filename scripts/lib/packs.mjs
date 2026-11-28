@@ -30,6 +30,9 @@ export const PUBLISHERS_DIR = join(ROOT, "publishers");
 
 export const SECTIONS = ["quests", "places", "readables", "bosses"];
 
+export const DEVELOPER_LIST = "addons/Spoken/Data/DeveloperList.lua";
+export const PACK_DEVELOPER_LIST = "Developers.lua";
+
 // tts_cli/factions.py PACK_SUFFIXES, for the four that ship to CurseForge.
 const QUESTS_PACKS = { alliance: "Alliance", horde: "Horde", shared: "Shared", gossip: "Gossip" };
 // Every language's `all` is a BUNDLE, released on GitHub alone: one zip holding the four split
