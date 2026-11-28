@@ -13,7 +13,7 @@
  *
  * A page links in its own language, so a maintainer reads the quest the way their client shows it.
  * English is the bare path, and a language Wowhead has no edition of falls back to it rather than
- * to a 404. Both Spanish clients share Wowhead's one Spanish edition.
+ * to a 404.
  *
  * No node imports: the row renders in the browser.
  */
@@ -29,7 +29,7 @@ const SEGMENT: Record<NpcType, string> = {
 const EDITION: Record<string, string> = {
   deDE: "de",
   esES: "es",
-  esMX: "es",
+  esMX: "mx",
   frFR: "fr",
   itIT: "it",
   ptBR: "pt",

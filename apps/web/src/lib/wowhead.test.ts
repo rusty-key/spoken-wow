@@ -28,9 +28,10 @@ describe("wowhead links", () => {
     expect(wowheadQuestUrl("zhTW", 8516)).toBe("https://www.wowhead.com/forever/tw/quest=8516");
   });
 
-  it("sends both Spanish clients to Wowhead's one Spanish edition", () => {
-    expect(wowheadQuestUrl("esMX", 8516)).toBe("https://www.wowhead.com/forever/es/quest=8516");
-    expect(wowheadQuestUrl("esES", 8516)).toBe("https://www.wowhead.com/forever/es/quest=8516");
+  it("keeps the two Spanish editions apart", () => {
+    // Quest 95775 is "La Ciudad Sumergida" on /es/ and "La Ciudad Anegada" on /mx/.
+    expect(wowheadQuestUrl("esES", 95775)).toBe("https://www.wowhead.com/forever/es/quest=95775");
+    expect(wowheadQuestUrl("esMX", 95775)).toBe("https://www.wowhead.com/forever/mx/quest=95775");
   });
 
   it("falls back to English for a language Wowhead has no edition of", () => {
