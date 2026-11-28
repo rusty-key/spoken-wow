@@ -71,10 +71,12 @@ module.exports = {
       instances: 2,
       exec_mode: "cluster",
 
-      // loadCorpus() memoises 15 MB of parsed JSON per worker for the process lifetime,
-      // measured at ~200 MB RSS, and the places catalogue adds ~1,353 derived entries beside
-      // it. A safety net for a leak, not an expected limit.
-      max_memory_restart: "600M",
+      // A safety net for a leak, not an expected limit. Each worker memoises every section's
+      // catalogue per language and team (lib/memo.ts), which now passes 600 MB in normal use:
+      // at 600M pm2 restarted workers 240 times a day, often both at once, and every request
+      // in flight answered 502. Two workers at 900M still fit beside Postgres on the 4 GB
+      // droplet.
+      max_memory_restart: "900M",
 
       // The queue leader finishes its in-flight ElevenLabs calls before releasing the
       // advisory lock (see src/lib/generation/boot.ts), and NEXT_MANUAL_SIG_HANDLE below is
