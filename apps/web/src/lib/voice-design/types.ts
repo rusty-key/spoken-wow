@@ -81,6 +81,10 @@ export type Judge = "gemini" | "claude";
 
 export const JUDGES: readonly Judge[] = ["gemini", "claude"];
 
+export const JUDGE_NAME: Record<Judge, string> = { gemini: "Gemini", claude: "Claude" };
+
+export const JUDGE_KEY: Record<Judge, "gemini" | "anthropic"> = { gemini: "gemini", claude: "anthropic" };
+
 /**
  * A What's different finding added to a verdict: how the version's take sounds next to the live
  * take. A description of the version, never a wish: "slower" here means the reviewer may want faster.

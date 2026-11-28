@@ -5,18 +5,11 @@ import { Plus } from "lucide-react";
 import { useUiText } from "@/components/UiTextProvider";
 import { fill } from "@/lib/site-text/format";
 import type { JudgedDifference } from "@/lib/voice-design/difference";
-import type { Weight } from "@/lib/voice-design/gemini";
-import type { Judge } from "@/lib/voice-design/types";
+import type { Weight } from "@/lib/voice-design/judging";
+import { JUDGES, type Judge } from "@/lib/voice-design/types";
 
-export const JUDGE_NAME: Record<Judge, string> = { gemini: "Gemini", claude: "Claude" };
-
-type Words = ReturnType<typeof useUiText>["voiceDesign"];
-
-const MATTERS: Record<Weight, (t: Words) => string> = {
-  high: (t) => t.mattersHigh,
-  medium: (t) => t.mattersMedium,
-  low: (t) => t.mattersLow,
-};
+const MATTERS = { high: "mattersHigh", medium: "mattersMedium", low: "mattersLow" } as const satisfies Record<Weight, string>;
+const HEADING = { gemini: "differenceGemini", claude: "differenceClaude" } as const satisfies Record<Judge, string>;
 
 export type Answer = { difference: JudgedDifference } | { error: string };
 
@@ -32,15 +25,16 @@ export default function DifferencePanel({
   onAdd: (difference: JudgedDifference) => void;
 }) {
   const t = useUiText().voiceDesign;
-  const judges = (["gemini", "claude"] as const).filter((judge) => answers[judge]);
+  const judges = JUDGES.filter((judge) => answers[judge]);
   if (judges.length === 0) return null;
   return (
     <div className="vd-difference">
       {judges.map((judge) => {
         const answer = answers[judge]!;
+        const heading = t[HEADING[judge]];
         return (
-          <section key={judge} className="vd-difference-judge" aria-label={judge === "gemini" ? t.differenceGemini : t.differenceClaude}>
-            <p className="bs-label">{judge === "gemini" ? t.differenceGemini : t.differenceClaude}</p>
+          <section key={judge} className="vd-difference-judge" aria-label={heading}>
+            <p className="bs-label">{heading}</p>
             {"error" in answer ? (
               <p role="alert" className="vd-error">
                 {answer.error}
@@ -53,7 +47,7 @@ export default function DifferencePanel({
                     <li key={index}>
                       {aspect.matters ? (
                         <span className="vd-tag" data-matters={aspect.matters}>
-                          {MATTERS[aspect.matters](t)}
+                          {t[MATTERS[aspect.matters]]}
                         </span>
                       ) : null}{" "}
                       <span className="bs-label">{aspect.aspect}</span> {t.liveTake}: {aspect.live} · {t.newTake}: {aspect.new}
@@ -61,7 +55,7 @@ export default function DifferencePanel({
                     </li>
                   ))}
                 </ul>
-                {answer.difference.by === "claude" && answer.difference.fixes.length > 0 ? (
+                {answer.difference.fixes?.length ? (
                   <>
                     <p className="bs-label">{t.differenceFixes}</p>
                     <ul>
@@ -71,12 +65,12 @@ export default function DifferencePanel({
                     </ul>
                   </>
                 ) : null}
-                {answer.difference.by === "claude" && answer.difference.image ? (
+                {answer.difference.image ? (
                   <details>
                     <summary>{t.differencePicture}</summary>
                     {/* A data URL the route made from the clips; next/image has nothing to optimise. */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img className="vd-difference-picture" src={`data:image/png;base64,${answer.difference.image}`} alt={t.differencePicture} />
+                    <img className="vd-difference-picture" loading="lazy" src={`data:image/png;base64,${answer.difference.image}`} alt={t.differencePicture} />
                   </details>
                 ) : null}
                 {can && answer.difference.note ? (

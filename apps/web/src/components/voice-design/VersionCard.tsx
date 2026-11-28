@@ -12,9 +12,9 @@ import { cn } from "@/lib/utils";
 import { isRevisable } from "@/lib/voice-design/groups";
 import { designName, recommendedPreview } from "@/lib/voice-design/limits";
 import type { JudgedDifference } from "@/lib/voice-design/difference";
-import type { ClipMark, Design, Judge, Measures, Observation } from "@/lib/voice-design/types";
+import { JUDGE_KEY, JUDGE_NAME, JUDGES, type ClipMark, type Design, type Judge, type Measures, type Observation } from "@/lib/voice-design/types";
 
-import DifferencePanel, { JUDGE_NAME, type Answer } from "./DifferencePanel";
+import DifferencePanel, { type Answer } from "./DifferencePanel";
 import FeedbackResults, { pickKey, verdictLabels } from "./FeedbackResults";
 import PlayButton, { ReferenceClip } from "./PlayButton";
 import StatusBadge from "./StatusBadge";
@@ -236,7 +236,7 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
    * observed means the reviewer likely wants faster. Its opposite joins the note, to edit, as the wish.
    */
   const addToReview = (difference: JudgedDifference) => {
-    const fixes = difference.by === "claude" && difference.fixes.length > 0 ? { fixes: difference.fixes } : {};
+    const fixes = difference.fixes?.length ? { fixes: difference.fixes } : {};
     setObservations((current) =>
       current.some((seen) => seen.by === difference.by && seen.note === difference.note) ? current : [...current, { by: difference.by, note: difference.note, ...fixes }],
     );
@@ -244,7 +244,7 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
   };
 
   // Every judge the viewer has a key for, side by side; one failing leaves the other's answer.
-  const judges = (["gemini", "claude"] as const).filter((judge) => (judge === "gemini" ? keys.gemini : keys.anthropic));
+  const judges = JUDGES.filter((judge) => keys[JUDGE_KEY[judge]]);
   const compare = (position: number) =>
     run(`difference-${position}`, async () => {
       setDifferences((current) => ({ ...current, [position]: {} }));

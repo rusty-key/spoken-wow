@@ -92,7 +92,6 @@ describe("describeDifferenceClaude", () => {
     notes: [],
     numbers: "| F0 | 89 | 110 | 136 |",
     image: Buffer.from("png"),
-    maxRetries: 0,
   };
 
   it("sends the picture and the numbers to the model, with fallbacks on, and reads the answer", async () => {
@@ -114,8 +113,7 @@ describe("describeDifferenceClaude", () => {
 
   it("asks once: a retry past the request's end would bill for an answer nobody sees", async () => {
     const overloaded = vi.fn(async () => Response.json({ type: "error", error: { type: "overloaded_error", message: "busy" } }, { status: 529 }));
-    const { maxRetries: _, ...asked } = input;
-    await expect(describeDifferenceClaude({ ...asked, fetchImpl: overloaded as never })).rejects.toThrow();
+    await expect(describeDifferenceClaude({ ...input, fetchImpl: overloaded as never })).rejects.toThrow();
     expect(overloaded).toHaveBeenCalledTimes(1);
   });
 

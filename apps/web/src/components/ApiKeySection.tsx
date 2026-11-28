@@ -22,7 +22,7 @@ const COPY: Record<
     before: keyof KeyWords;
     after: keyof KeyWords;
     placeholder: keyof KeyWords;
-    checked: "keyCheckedEleven" | "keyCheckedFish" | "keyCheckedGemini" | "keyCheckedAnthropic";
+    checked: `keyChecked${string}` & keyof UiText["profile"];
   }
 > = {
   elevenlabs: {

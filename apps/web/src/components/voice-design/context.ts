@@ -3,6 +3,7 @@
 import { createContext, useContext } from "react";
 
 import { withLang, type Lang } from "@/lib/lang";
+import type { KeyProvider } from "@/lib/generation/providers";
 import type { Revision } from "@/lib/voice-design/gemini";
 import type { RemixSettings } from "@/lib/voice-design/limits";
 import type { Analysis, Design } from "@/lib/voice-design/types";
@@ -26,7 +27,7 @@ export type Draft = {
 export type Workbench = {
   lang: Lang;
   viewer: { id: string; designs: boolean; admin: boolean };
-  keys: { elevenlabs: boolean; gemini: boolean; anthropic: boolean };
+  keys: Record<Exclude<KeyProvider, "fish">, boolean>;
   /** Credits per character the caller's model has been billed at. */
   rate: number;
   model: string;

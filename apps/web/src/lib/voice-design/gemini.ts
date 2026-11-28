@@ -9,8 +9,9 @@ import { setTimeout as wait } from "node:timers/promises";
 import { shuffle } from "@/lib/shuffle";
 import { failure } from "@/lib/voices/elevenlabs";
 
-import { EFFECT_WORDS, PROMPT_ENDING, SIBILANT_WORDS, withEnding } from "./limits";
-import type { GeminiResult, Observation, PlayerNote, Verdict } from "./types";
+import { DRAFTING_RULES, parseAspects, TARGET_RULE, text, type Difference } from "./judging";
+import { withEnding } from "./limits";
+import { JUDGE_NAME, type GeminiResult, type PlayerNote, type Review, type Verdict } from "./types";
 
 export const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -28,12 +29,6 @@ export async function verifyGeminiKey(key: string, options: GeminiOptions = {}):
 }
 
 export const GEMINI_MODEL = "gemini-3.1-pro-preview";
-
-/** Consonant wording and the old studio sentence make every s harsh; effects come out badly. */
-const quoted = (words: readonly string[]) => words.map((word) => `"${word}"`).join(", ");
-const DRAFTING_RULES = `- Never describe consonants or sibilants (no ${quoted(SIBILANT_WORDS)}): it makes every s harsh.
-- Never describe post-processing (${EFFECT_WORDS.join(", ")}, filters). Describe a clean voice.
-- End the prompt exactly with: "${PROMPT_ENDING}"`;
 
 /** Three clips of game barks are a few megabytes; Gemini listening to them takes a while. */
 const COMPARE_TIMEOUT_MS = 300_000;
@@ -182,7 +177,7 @@ export async function compareBlind(
 export type Revision = { heard: string; prompt: string; preview_text: string; changes: string };
 
 /** One verdict as revise reads it: the reviewer's own words apart from what a judge observed. */
-export type HistoryReview = { status: string; note: string; observations: Observation[]; players: PlayerNote[] };
+type HistoryReview = Pick<Review, "status" | "note" | "observations" | "players">;
 
 export type HistoryVersion = {
   version: number;
@@ -216,8 +211,6 @@ export type ReviseInput = {
 
 /** The player's answer as Gemini reads it: prompt text, so English whatever the page's language. */
 const ANSWER: Record<Verdict, string> = { fits: "Fits", close: "Close", off: "Doesn't fit", skip: "Skipped" };
-
-const JUDGE_NAME: Record<Observation["by"], string> = { gemini: "Gemini", claude: "Claude" };
 
 /** How long an old version's prompt is shown: enough to see what it tried. */
 const OLD_PROMPT_CHARS = 200;
@@ -305,33 +298,11 @@ export async function reviseVoice(
   };
 }
 
-/** How much an aspect's difference matters for directing the voice. */
-export type Weight = "high" | "medium" | "low";
-
-export const WEIGHTS: readonly Weight[] = ["high", "medium", "low"];
-
-export type Aspect = { aspect: string; live: string; new: string; reference?: string; matters?: Weight };
-
-export type Difference = {
-  summary: string;
-  /** The difference that matters most, as an observation of how the new voice sounds. */
-  note: string;
-  /** The same point as what the next version should do: the reviewer edits it into the note. */
-  wish: string;
-  aspects: Aspect[];
-};
-
-/**
- * Told only "compare", a judge treats the game reference as the ideal and finds the live take
- * lacking. The live take is what the team chose; the reference only says what kind of character it is.
- */
-export const TARGET_RULE = `The live take is the target: it is how this character should sound, and the designed version should sound like it. Judge the designed version against it. Never criticise the live take or say it lacks anything. The game reference is the original actor, processed by the game: background only, for what kind of character this is. Where the reference and the live take differ, the live take wins: never ask the designed version for something the live take does not have.`;
-
 /**
  * What a voice director listens for, named one by one: a listener asked only for "the differences"
  * reports timbre and pitch and skips accent, cadence and delivery.
  */
-export const DIRECTION_ASPECTS = [
+const DIRECTION_ASPECTS = [
   "accent: which one, how strong, and whether it holds through the line or fades",
   "pronunciation of names and fantasy words",
   "cadence and phrasing: where the pauses fall and how long, drawl or clipped, run-on or measured",
@@ -363,21 +334,6 @@ For each aspect, say how much the difference matters for directing this characte
 Also write note: the one difference that matters most, as an observation of how v${input.version} sounds next to the live take (not a wish), under 80 characters, lowercase, no full stop ("scottish accent fades after the first words", "sounds younger and thinner").
 And wish: the same point said as what the next version should do to come closer to the live take, under 80 characters, lowercase, no full stop ("keep the scottish accent strong throughout", "older and fuller").
 Return JSON only: {"summary": "one or two sentences: the differences that matter most", "note": "...", "wish": "...", "aspects": [{"aspect": "...", "reference": "${input.hasReference ? "how the reference sounds, only where it explains the live take; else empty" : ""}", "live": "how the live take sounds", "new": "how v${input.version} sounds", "matters": "high|medium|low"}]}`;
-}
-
-const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
-
-/** A judge's aspects, checked: ones missing a side are dropped, an empty reference or unknown weight left out. */
-export function parseAspects(value: unknown): Aspect[] {
-  return (Array.isArray(value) ? (value as Record<string, unknown>[]) : [])
-    .filter((a) => text(a?.aspect) && typeof a.live === "string" && typeof a.new === "string")
-    .map((a) => ({
-      aspect: text(a.aspect),
-      live: text(a.live),
-      new: text(a.new),
-      ...(text(a.reference) ? { reference: text(a.reference) } : {}),
-      ...(WEIGHTS.includes(a.matters as Weight) ? { matters: a.matters as Weight } : {}),
-    }));
 }
 
 /** Gemini hears the reference if there is one, the live take, then the version's take of one line. */

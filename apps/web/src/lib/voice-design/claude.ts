@@ -6,12 +6,11 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 
-import { parseAspects, TARGET_RULE, type Difference } from "./gemini";
-import { EFFECT_WORDS, PROMPT_ENDING, SIBILANT_WORDS } from "./limits";
+import { DRAFTING_RULES, parseAspects, TARGET_RULE, text, WEIGHTS, type Difference } from "./judging";
 
 export const CLAUDE_MODEL = "claude-opus-5-5";
 
-export type ClaudeOptions = { fetchImpl?: typeof globalThis.fetch; baseURL?: string; maxRetries?: number };
+export type ClaudeOptions = { fetchImpl?: typeof globalThis.fetch; baseURL?: string };
 
 /**
  * nginx and the route give /api/voices/ 300 s, and measuring and drawing take up to 120 s first.
@@ -20,13 +19,13 @@ export type ClaudeOptions = { fetchImpl?: typeof globalThis.fetch; baseURL?: str
 const CLAUDE_TIMEOUT_MS = 150_000;
 
 function client(apiKey: string, options: ClaudeOptions, timeout = CLAUDE_TIMEOUT_MS): Anthropic {
-  return new Anthropic({ apiKey, fetch: options.fetchImpl, baseURL: options.baseURL, maxRetries: options.maxRetries ?? 0, timeout });
+  return new Anthropic({ apiKey, fetch: options.fetchImpl, baseURL: options.baseURL, maxRetries: 0, timeout });
 }
 
 /** Listing the models is free, so a key is checked before it is stored. */
 export async function verifyAnthropicKey(key: string, options: ClaudeOptions = {}): Promise<{ tier: null }> {
   try {
-    await client(key, { ...options, maxRetries: 0 }, 10_000).models.list({ limit: 1 });
+    await client(key, options, 10_000).models.list({ limit: 1 });
   } catch (error) {
     if (error instanceof Anthropic.APIError) throw new Error(`checking the Anthropic key failed (${error.status ?? "no answer"}): ${error.message.slice(0, 300)}`);
     throw error;
@@ -36,7 +35,7 @@ export async function verifyAnthropicKey(key: string, options: ClaudeOptions = {
 
 export type ClaudeDifference = Difference & { fixes: string[] };
 
-export type ClaudeDifferenceInput = {
+type ClaudeDifferenceInput = {
   slot: string;
   version: number;
   /** The line as sent to the designed voice. */
@@ -50,8 +49,6 @@ export type ClaudeDifferenceInput = {
   /** The PNG; null when the site could not draw it. */
   image: Buffer | null;
 };
-
-const quoted = (words: readonly string[]) => words.map((word) => `"${word}"`).join(", ");
 
 export const CLAUDE_SYSTEM = `You are the acoustic analyst on a voice design team. The team designs ElevenLabs voices for World of Warcraft NPC types and compares them with what players hear now.
 You cannot hear audio. You read a picture and measurements of three recordings:
@@ -88,9 +85,7 @@ Return:
 - wish: the same point said as what the next version should do to come closer to the live take ("lower, rounder, more chest"). Under 80 characters, lowercase, no full stop.
 - aspects: one per aspect that differs (pitch, pace, cadence, intonation, emphasis, body and resonance, chest, nasality, breathiness, roughness, brightness, recording quality...): how the live take is, how the designed version is, and how the reference is only where it explains the live take ("" otherwise). Concrete, with numbers. Say how much each matters for directing this character (high, medium or low), and order them from the one that matters most.
 - fixes: one to four concrete changes to the version's Voice Design prompt: which words to remove and which to add. They must keep these rules:
-  - Never describe consonants or sibilants (no ${quoted(SIBILANT_WORDS)}): it makes every s harsh.
-  - Never describe post-processing (${EFFECT_WORDS.join(", ")}, filters). Describe a clean voice.
-  - Keep the prompt's ending: "${PROMPT_ENDING}"
+${DRAFTING_RULES.replace(/^/gm, "  ")}
 The reviewers' notes say what they want. Point out the evidence that bears on them.`;
 
 export function buildClaudeDifferenceText(input: Omit<ClaudeDifferenceInput, "image"> & { hasImage: boolean }): string {
@@ -119,7 +114,7 @@ const SCHEMA = {
           live: { type: "string" },
           new: { type: "string" },
           reference: { type: "string" },
-          matters: { type: "string", enum: ["high", "medium", "low"] },
+          matters: { type: "string", enum: [...WEIGHTS] },
         },
         required: ["aspect", "live", "new", "reference", "matters"],
         additionalProperties: false,
@@ -130,8 +125,6 @@ const SCHEMA = {
   required: ["summary", "note", "wish", "aspects", "fixes"],
   additionalProperties: false,
 };
-
-const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
 
 /** A fenced answer is read too; malformed aspects and fixes are dropped. */
 export function parseClaudeDifference(raw: string): ClaudeDifference {

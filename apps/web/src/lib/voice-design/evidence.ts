@@ -4,7 +4,7 @@
  */
 import type { Measures } from "./types";
 
-export type Evidence = {
+type Evidence = {
   reference: Measures | null;
   live: Measures | null;
   sample: Measures | null;
