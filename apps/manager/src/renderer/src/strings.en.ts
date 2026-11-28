@@ -17,6 +17,7 @@ function gameFolderExample(platform: Platform): string {
 }
 
 export const S_EN = {
+  voicePackChangelog: { added: 'New voiced lines', updated: 'Updated voiced lines', removed: 'Removed voiced lines', dataChanged: 'Pack data updated' },
   appName: 'Spoken Manager',
   tabs: { main: 'Main', home: 'Home', spoken: 'Spoken', voices: 'Voice Packs', community: 'Community', release: 'Release', settings: 'Settings' },
   refresh: {

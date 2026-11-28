@@ -5,7 +5,7 @@ import { createHash, createPublicKey, verify } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { PRODUCTS } from '../shared/products'
-import { LANG_CODE, QUESTS_SIDES, SECTIONS, TEAM_SLUG, type ChannelTeam, type QuestsSide, type Section } from '../shared/types'
+import { LANG_CODE, QUESTS_SIDES, SECTIONS, TEAM_SLUG, type ChannelTeam, type QuestsSide, type Section, type VoicePackChanges } from '../shared/types'
 import { PlainError } from './errors'
 import { PACKS_BASE_URL, PACKS_PUBLIC_KEY } from './packs-key'
 import { log } from './state'
@@ -35,6 +35,7 @@ export interface ChannelPack {
   fileCount: number
   totalSize: number
   requires: ChannelRequires
+  changes?: VoicePackChanges
 }
 export interface ChannelAddon {
   version: string
@@ -115,6 +116,13 @@ function isRequires(r: unknown): r is ChannelRequires {
   return typeof r === 'object' && r !== null && typeof (r as ChannelRequires).Spoken === 'string' && REQUIRES.test((r as ChannelRequires).Spoken)
 }
 const isCount = (n: unknown): n is number => typeof n === 'number' && Number.isSafeInteger(n) && n >= 0
+
+function parsePackChanges(value: unknown): VoicePackChanges | undefined {
+  if (typeof value !== 'object' || value === null) return undefined
+  const { added, updated, removed, dataChanged } = value as Partial<VoicePackChanges>
+  if (!isCount(added) || !isCount(updated) || !isCount(removed) || typeof dataChanged !== 'boolean') return undefined
+  return { added, updated, removed, dataChanged }
+}
 
 // Dropped rather than refused, unlike a bad pack entry: GitHub still has the file, and refusing would hide every voice pack.
 function parseAddons(raw: unknown): Record<string, ChannelAddon[]> {
@@ -199,7 +207,8 @@ export function parseIndexV2(signed: string, report: (line: string) => void = (l
       report(`Voice pack index: left out ${JSON.stringify(id).slice(0, 80)}, whose entry fails its checks.`)
       continue
     }
-    packs[id] = { ...base, lang: x.lang, section, pack: side, team }
+    const changes = parsePackChanges(x.changes)
+    packs[id] = { ...base, lang: x.lang, section, pack: side, team, ...(changes ? { changes } : {}) }
   }
   const languages: ChannelIndexV2['languages'] = {}
   if (typeof raw.languages === 'object' && raw.languages !== null) {

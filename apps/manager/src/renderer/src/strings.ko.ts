@@ -11,6 +11,7 @@ function gameFolderExample(platform: Platform): string {
 }
 
 export const S_KO: Dict = {
+  voicePackChangelog: { added: '새 음성 대사', updated: '업데이트된 음성 대사', removed: '삭제된 음성 대사', dataChanged: '팩 데이터 업데이트됨' },
   appName: 'Spoken Manager',
   tabs: { main: '메인', home: '게임', spoken: 'Spoken', voices: '음성 팩', community: '커뮤니티', release: '배포', settings: '설정' },
   refresh: { idle: '새 버전 확인', last: (time: string) => `마지막 확인: ${time}`, offline: '오프라인: 저장된 목록 표시 중', label: '배포 목록 새로 고침' },

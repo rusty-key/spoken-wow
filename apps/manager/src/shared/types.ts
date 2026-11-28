@@ -163,7 +163,13 @@ export interface CommunityCatalog {
   packs: CommunityPack[]
 }
 
-/** One GitHub release of a product. */
+export interface VoicePackChanges {
+  added: number
+  updated: number
+  removed: number
+  dataChanged: boolean
+}
+
 export interface ReleaseInfo {
   productId: string
   tag: string
@@ -173,6 +179,7 @@ export interface ReleaseInfo {
   publishedAt: string
   /** The release notes, markdown. */
   notes: string
+  voicePackChanges?: VoicePackChanges
   assetName: string
   assetSize: number
   assetUrl: string
