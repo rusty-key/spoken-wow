@@ -47,6 +47,8 @@ function design(slot: string, version: number, review: Design["reviews"][number]
   };
 }
 
+const KEYS = { elevenlabs: true, gemini: true, anthropic: false };
+
 const slot = (name: string, designs: Design[]): SlotView => ({
   name,
   group: name.split("-").slice(0, 2).join("-"),
@@ -74,7 +76,7 @@ const groups: GroupView[] = [
 const workbench = (url: { initialFilter?: string; initialQuery?: string } = {}) =>
   render(
     <LangProvider lang="enUS">
-      <Workbench groups={groups} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true, anthropic: false }} rate={0.5} model="eleven_v4" {...url} />
+      <Workbench groups={groups} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={KEYS} rate={0.5} model="eleven_v4" {...url} />
     </LangProvider>,
   );
 
@@ -132,7 +134,7 @@ test("keeps the version players hear on the page, folded, until a newer one is s
   const heard = { ...design("orc-male-shady", 1, null), isPublic: true };
   render(
     <LangProvider lang="enUS">
-      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [design("orc-male-shady", 2, null), heard])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true, anthropic: false }} rate={0.5} model="eleven_v4" />
+      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [design("orc-male-shady", 2, null), heard])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={KEYS} rate={0.5} model="eleven_v4" />
     </LangProvider>,
   );
   const shady = screen.getByRole("article", { name: "orc-male-shady" });
@@ -150,7 +152,7 @@ test("keeps the version players hear on the page, folded, until a newer one is s
 test("searches only the versions on the page", async () => {
   render(
     <LangProvider lang="enUS">
-      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [design("orc-male-shady", 2, null), design("orc-male-shady", 1, null)])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true, anthropic: false }} rate={0.5} model="eleven_v4" />
+      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [design("orc-male-shady", 2, null), design("orc-male-shady", 1, null)])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={KEYS} rate={0.5} model="eleven_v4" />
     </LangProvider>,
   );
   await userEvent.type(screen.getByRole("searchbox"), "orc-male-shady v1");
@@ -164,7 +166,7 @@ test("Revise puts Gemini's draft into a form that was already open", async () =>
   Element.prototype.scrollIntoView = () => {};
   render(
     <LangProvider lang="enUS">
-      <Workbench groups={revisable} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true, anthropic: false }} rate={0.5} model="eleven_v4" />
+      <Workbench groups={revisable} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={KEYS} rate={0.5} model="eleven_v4" />
     </LangProvider>,
   );
   await userEvent.click(screen.getByRole("button", { name: "More actions" }));
@@ -185,7 +187,7 @@ test("Generate opens the new version with an empty note and closes a draft left 
   Element.prototype.scrollIntoView = () => {};
   render(
     <LangProvider lang="enUS">
-      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [v2])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true, anthropic: false }} rate={0.5} model="eleven_v4" />
+      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [v2])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={KEYS} rate={0.5} model="eleven_v4" />
     </LangProvider>,
   );
   await userEvent.click(screen.getByRole("button", { name: "More actions" }));
@@ -220,7 +222,7 @@ test("Generate all asks first with the cost, then makes each needs-work slot's n
   );
   render(
     <LangProvider lang="enUS">
-      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [shady]), slot("orc-male-grunt", [grunt])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true, anthropic: false }} rate={0.5} model="eleven_v4" />
+      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [shady]), slot("orc-male-grunt", [grunt])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={KEYS} rate={0.5} model="eleven_v4" />
     </LangProvider>,
   );
   await userEvent.click(within(screen.getByRole("group", { name: "Show slots" })).getByRole("button", { name: /^Needs work/ }));
@@ -259,7 +261,7 @@ test("a clip's button pauses it while it plays and resumes it after", async () =
   const voiced = { ...design("orc-male-shady", 1, null), previews: [{ generatedVoiceId: "g", sha256: "a".repeat(64), measures: null }] };
   render(
     <LangProvider lang="enUS">
-      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [voiced])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true, anthropic: false }} rate={0.5} model="eleven_v4" />
+      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [voiced])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={KEYS} rate={0.5} model="eleven_v4" />
     </LangProvider>,
   );
   const preview = screen.getByRole("button", { name: "Preview 1" });
@@ -283,7 +285,7 @@ test("plays the game's clip and the corpus line a preview text came from beside 
         groups={[{ group: "orc-male", analysis: null, slots: [{ ...slot("orc-male-shady", [picked]), reference: "/ref.mp3", previewLines: { [picked.previewText]: line } }] }]}
         live={{}}
         viewer={{ id: "u1", designs: true, admin: false }}
-        keys={{ elevenlabs: true, gemini: true, anthropic: false }}
+        keys={KEYS}
         rate={0.5}
         model="eleven_v4"
       />
@@ -302,7 +304,7 @@ test("lines voiced for the first time show their live takes without a reload", a
   vi.stubGlobal("fetch", vi.fn(async () => Response.json({ design: { ...saved, samples: [line], sampledAt: "2026-11-26T01:00:00Z" }, live: { "q:9:accept": "/api/quests/audio/q9.mp3" } })));
   render(
     <LangProvider lang="enUS">
-      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [saved])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true, anthropic: false }} rate={0.5} model="eleven_v4" />
+      <Workbench groups={[{ group: "orc-male", analysis: null, slots: [slot("orc-male-shady", [saved])] }]} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={KEYS} rate={0.5} model="eleven_v4" />
     </LangProvider>,
   );
   await userEvent.click(screen.getByRole("button", { name: "Voice 3 lines" }));
@@ -330,7 +332,7 @@ test("Delete older voices asks first, then deletes every older version's voice t
   vi.stubGlobal("fetch", fetch);
   render(
     <LangProvider lang="enUS">
-      <Workbench groups={slots} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={{ elevenlabs: true, gemini: true, anthropic: false }} rate={0.5} model="eleven_v4" />
+      <Workbench groups={slots} live={{}} viewer={{ id: "u1", designs: true, admin: false }} keys={KEYS} rate={0.5} model="eleven_v4" />
     </LangProvider>,
   );
 
@@ -365,7 +367,7 @@ test("narrows to the slots players say mostly don't fit, and keeps it in the URL
         ]}
         live={{}}
         viewer={{ id: "u1", designs: true, admin: false }}
-        keys={{ elevenlabs: true, gemini: true, anthropic: false }}
+        keys={KEYS}
         rate={0.5}
         model="eleven_v4"
       />

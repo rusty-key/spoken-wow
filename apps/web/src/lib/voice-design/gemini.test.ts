@@ -124,15 +124,23 @@ describe("compareBlind", () => {
   });
 });
 
+const reply = (answer: unknown) =>
+  vi.fn(async (_url: string, _init: RequestInit) => Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(answer) }] } }] }));
+
+const heard = (fetchImpl: ReturnType<typeof reply>, call = 0) =>
+  JSON.parse(String(fetchImpl.mock.calls[call][1].body))
+    .contents[0].parts.slice(1)
+    .map((p: { inline_data: { data: string } }) => Buffer.from(p.inline_data.data, "base64").toString());
+
 describe("reviseVoice", () => {
   const history = [
-    { version: 1, prompt: "A troll. ".repeat(40), reviews: [{ status: "needs-work", note: "Sounds female", observations: [], players: [] }], satisfiedBy: 2 },
+    { version: 1, prompt: "A troll. ".repeat(40), reviews: [{ status: "needs-work" as const, note: "Sounds female", observations: [], players: [] }], satisfiedBy: 2 },
     {
       version: 2,
       prompt: "A troll, unmistakably masculine.",
       reviews: [
         {
-          status: "needs-work",
+          status: "needs-work" as const,
           note: "No accent at all",
           observations: [],
           players: [
@@ -169,30 +177,19 @@ describe("reviseVoice", () => {
   });
 
   it("hears the reference, the live take and the version's take, in that order", async () => {
-    const fetchImpl = vi.fn(async (_url: string, _init: RequestInit) =>
-      Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify([{ heard: "No accent.", prompt: "A troll, thick Jamaican accent.", preview_text: "Hey mon, welcome." }]) }] } }] }),
-    );
-    const heard = (call: number) =>
-      JSON.parse(String(fetchImpl.mock.calls[call][1].body))
-        .contents[0].parts.slice(1)
-        .map((p: { inline_data: { data: string } }) => Buffer.from(p.inline_data.data, "base64").toString());
+    const fetchImpl = reply([{ heard: "No accent.", prompt: "A troll, thick Jamaican accent.", preview_text: "Hey mon, welcome." }]);
     const revision = await reviseVoice({ ...input, apiKey: "k", reference: Buffer.from("ref"), live: Buffer.from("live"), sample: Buffer.from("smp"), fetchImpl: fetchImpl as never });
     // An array answer is read as its first element, and the prompt gets the agreed ending.
     expect(revision).toEqual({ heard: "No accent.", prompt: `A troll, thick Jamaican accent. ${PROMPT_ENDING}`, preview_text: "Hey mon, welcome.", changes: "" });
-    expect(heard(0)).toEqual(["ref", "live", "smp"]);
+    expect(heard(fetchImpl)).toEqual(["ref", "live", "smp"]);
 
     await reviseVoice({ ...input, apiKey: "k", reference: Buffer.from("ref"), live: null, sample: Buffer.from("smp"), fetchImpl: fetchImpl as never });
-    expect(heard(1)).toEqual(["ref", "smp"]);
+    expect(heard(fetchImpl, 1)).toEqual(["ref", "smp"]);
     expect(JSON.parse(String(fetchImpl.mock.calls[1][1].body)).contents[0].parts[0].text).toContain("This line has no live take");
   });
 });
 
 describe("describeDifference", () => {
-  const reply = (answer: unknown) => vi.fn(async (_url: string, _init: RequestInit) => Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(answer) }] } }] }));
-  const heard = (fetchImpl: ReturnType<typeof reply>) =>
-    JSON.parse(String(fetchImpl.mock.calls[0][1].body))
-      .contents[0].parts.slice(1)
-      .map((p: { inline_data: { data: string } }) => Buffer.from(p.inline_data.data, "base64").toString());
   const input = { apiKey: "k", slot: "bloodelf-female", version: 3, text: "t", live: Buffer.from("live"), sample: Buffer.from("new") };
 
   it("reads the observation and its opposite as the wish, kept apart, and each aspect's weight", async () => {

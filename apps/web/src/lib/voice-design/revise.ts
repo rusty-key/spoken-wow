@@ -27,9 +27,9 @@ export type ReviseDeps = {
   audio: (sha256: string, lang: Lang) => Promise<Buffer | null>;
   line: (lang: Lang, lineId: string) => Promise<CorpusLine | null>;
   live: (line: CorpusLine, lang: Lang) => Promise<Buffer | null>;
-  measure: (clips: Buffer[]) => Promise<(Measures | null)[] | null>;
+  measure: typeof measureAudio;
   analysis: (lang: Lang, id: string) => Promise<Analysis | null>;
-  revise: (input: Omit<ReviseInput, "hasLive"> & { apiKey: string; reference: Buffer; live: Buffer | null; sample: Buffer }) => Promise<Revision>;
+  revise: typeof reviseVoice;
 };
 
 const LIVE: ReviseDeps = {
@@ -39,7 +39,7 @@ const LIVE: ReviseDeps = {
   audio: readDesignAudio,
   line: corpusLine,
   live: liveTake,
-  measure: (clips) => measureAudio(clips),
+  measure: measureAudio,
   analysis: readAnalysis,
   revise: reviseVoice,
 };
@@ -67,12 +67,7 @@ export function slotHistory(designs: readonly Design[], slot: string, upTo = Inf
   return versions.map((design) => ({
     version: design.version,
     prompt: design.prompt,
-    reviews: design.reviews.map((review) => ({
-      status: review.status,
-      note: review.note,
-      observations: review.observations ?? [],
-      players: review.players,
-    })),
+    reviews: design.reviews,
     satisfiedBy: versions.find((later) => later.version > design.version && later.reviews.some((review) => review.status === "good"))?.version ?? null,
   }));
 }
@@ -96,17 +91,16 @@ export async function reviseDesign(
   const marks = last && (!design.sampledAt || last.createdAt >= design.sampledAt) ? last.clips : {};
   const chosen = design.samples.find((sample) => marks[`sample:${sample.position}`] === "off") ?? design.samples[0];
 
-  const [reference, sample, line, designs, archetype] = await Promise.all([
+  const [reference, sample, live, designs, archetype] = await Promise.all([
     deps.reference(design.slot, input.lang),
     deps.audio(chosen.sha256, input.lang),
-    deps.line(input.lang, chosen.lineId),
+    // A line gone from the corpus or never voiced still has its take in the version to hear.
+    deps.line(input.lang, chosen.lineId).then((line) => (line ? deps.live(line, input.lang) : null)),
     deps.all(input.lang),
     archetypeOf(design, input.lang, deps.analysis),
   ]);
   if (!reference) throw new DesignError(`${design.slot} has no reference clip on the site to compare with`, 409);
   if (!sample) throw new DesignError(`v${design.version}'s sample line is missing from the archive`, 409);
-  // A line gone from the corpus or never voiced still has its take in the version to hear.
-  const live = line ? await deps.live(line, input.lang) : null;
 
   const label = `v${design.version}`;
   const measured = await deps.measure(live ? [reference, live, sample] : [reference, sample]);
