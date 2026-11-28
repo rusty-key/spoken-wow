@@ -116,6 +116,10 @@ not only against the reference clip. **Voice the lines again** replaces them. Sa
 **What's different?** beside a line asks two judges at once, each on your own key, and shows their
 answers side by side. Without a key, that judge is left out.
 
+Both judge the version against the **live take**, which is the target: what the character should
+sound like. The game reference only says what kind of character it is, and neither judge will call
+the live take lacking or ask the version for something the live take does not have.
+
 - **Gemini** hears the game reference, the live take and the version's take, and goes through what a
   director listens for, one by one: accent (which, how strong, whether it holds), pronunciation of
   names, cadence and phrasing, intonation, emphasis, emotional tone, persona, delivery style, then

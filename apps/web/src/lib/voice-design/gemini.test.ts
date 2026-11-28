@@ -164,7 +164,7 @@ describe("reviseVoice", () => {
     }
     // An old version's prompt is cut short; the one revised is given whole.
     expect(text).toContain(`v1 prompt: "${"A troll. ".repeat(40).slice(0, 200)}…"`);
-    expect(text).toContain("Second: the live take of the line below");
+    expect(text).toContain("Second: the live take of the line below, what players hear now: the target");
     expect(buildRevisePrompt({ ...input, hasLive: false })).toContain("This line has no live take");
   });
 
@@ -229,6 +229,10 @@ describe("describeDifference", () => {
   it("asks for the observation apart from the wish, and goes through what a director listens for", () => {
     const text = buildDifferencePrompt({ slot: "bloodelf-female", version: 3, text: "t", hasReference: true });
     expect(text).toMatch(/as an observation of how v3 sounds next to the live take \(not a wish\)/);
+    // The live take is the goal: the reference never makes it "lack" anything.
+    expect(text).toContain("The live take is the target");
+    expect(text).toContain("Never criticise the live take or say it lacks anything");
+    expect(text).toContain("never ask the designed version for something the live take does not have");
     for (const part of ["accent: which one, how strong", "cadence and phrasing", "intonation", "emphasis", "emotional tone", "persona", "delivery style", "high, medium or low", "First recording: the original game voice"]) {
       expect(text).toContain(part);
     }

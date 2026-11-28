@@ -6,7 +6,7 @@
  */
 import Anthropic from "@anthropic-ai/sdk";
 
-import { parseAspects, type Difference } from "./gemini";
+import { parseAspects, TARGET_RULE, type Difference } from "./gemini";
 import { EFFECT_WORDS, PROMPT_ENDING, SIBILANT_WORDS } from "./limits";
 
 export const CLAUDE_MODEL = "claude-opus-5-5";
@@ -55,6 +55,7 @@ You cannot hear audio. You read a picture and measurements of three recordings:
 1. the game reference: the original game voice for this kind of character (inspiration only; game audio is pitch-shifted and processed; the picture shows its first 7 seconds),
 2. the live take: one line as players hear it now,
 3. the same line in the designed version under review.
+${TARGET_RULE}
 The picture has one row per recording, in that order: a mel spectrogram 0-8 kHz with the pitch track in cyan. The last row overlays their long-term average spectra, in dB normalised to each one's peak, on a log frequency axis from 60 Hz to 10 kHz.
 
 How to read the evidence:
@@ -74,15 +75,15 @@ How to read the evidence:
 What you cannot judge: accent, pronunciation, emotional tone, persona and delivery style need ears. Do not guess them. Where one bears on the reviewers' notes, name it as an aspect whose live, new and reference are "needs listening; Gemini's call". Spend your answer on what the evidence shows: pitch, body, chest, nasality, breathiness, roughness, brightness, recording quality, pace, cadence, intonation and emphasis.
 
 Findings from earlier reviews, as examples of the precision wanted:
-- scourge-male-standard v2 against the reference: F0 136 vs 89 Hz, 1-4 kHz 10-15 dB louder, H1-H2 5.8 vs 13.2 dB (clean and pressed vs breathy and raspy): "an articulate elf, not undead".
+- scourge-male-standard v2: F0 136 vs 89 Hz, 1-4 kHz 10-15 dB louder, H1-H2 5.8 vs 13.2 dB (clean and pressed vs breathy and raspy): "an articulate elf, not undead".
 - tauren-female-shaman v2: F0 167 vs 129 Hz, F1 636 vs 481 Hz, 10-15 dB less under 150 Hz, 15 dB less above 4 kHz: "small, thin, muffled, not round".
 - orc-male-shady v3: 15 dB more at 2.5-3 kHz than both the reference and the live take: "a cartoony twang".
 
 Return:
 - summary: one or two sentences, the differences that matter most, with numbers.
-- note: the difference that matters most, as an observation of how the designed version sounds next to the live take, not as a wish. Under 80 characters, lowercase, no full stop ("higher and thinner than the live take, no chest").
-- wish: the same point said as what the next version should do, the opposite direction ("lower, rounder, more chest"). Under 80 characters, lowercase, no full stop.
-- aspects: one per aspect that differs (pitch, pace, cadence, intonation, emphasis, body and resonance, chest, nasality, breathiness, roughness, brightness, recording quality...): how the live take is, how the designed version is, and how the reference is where it tells something ("" otherwise). Concrete, with numbers. Say how much each matters for directing this character (high, medium or low), and order them from the one that matters most.
+- note: the difference that matters most, as an observation of how the designed version departs from the live take, not as a wish. Under 80 characters, lowercase, no full stop ("higher and thinner than the live take, no chest").
+- wish: the same point said as what the next version should do to come closer to the live take ("lower, rounder, more chest"). Under 80 characters, lowercase, no full stop.
+- aspects: one per aspect that differs (pitch, pace, cadence, intonation, emphasis, body and resonance, chest, nasality, breathiness, roughness, brightness, recording quality...): how the live take is, how the designed version is, and how the reference is only where it explains the live take ("" otherwise). Concrete, with numbers. Say how much each matters for directing this character (high, medium or low), and order them from the one that matters most.
 - fixes: one to four concrete changes to the version's Voice Design prompt: which words to remove and which to add. They must keep these rules:
   - Never describe consonants or sibilants (no ${quoted(SIBILANT_WORDS)}): it makes every s harsh.
   - Never describe post-processing (${EFFECT_WORDS.join(", ")}, filters). Describe a clean voice.
@@ -97,7 +98,7 @@ ${v}'s Voice Design prompt: "${input.prompt}"
 Reviewers' notes on ${v}, oldest first: ${input.notes.length > 0 ? JSON.stringify(input.notes) : "(none yet)"}
 ${input.hasImage ? "The picture is above." : "No picture this time: the measurements alone."}
 ${input.numbers ? `Measurements (openSMILE eGeMAPS means over each recording, and the site's s-level, room and level):\n${input.numbers}` : "No measurements this time: the picture alone."}
-How does ${v} differ from the live take, and where does the reference stand?`;
+How does ${v} depart from the live take, the target?`;
 }
 
 const SCHEMA = {

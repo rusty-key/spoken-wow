@@ -58,6 +58,8 @@ describe("the prompt", () => {
     for (const part of ["pauses per second", "phrase ends", "loudness swing", "Gemini's call", "accent, pronunciation, emotional tone, persona and delivery style need ears"]) {
       expect(CLAUDE_SYSTEM).toContain(part);
     }
+    expect(CLAUDE_SYSTEM).toContain("The live take is the target");
+    expect(CLAUDE_SYSTEM).toContain("Never criticise the live take");
     // note observes, wish asks: the two must not be confused downstream.
     expect(CLAUDE_SYSTEM).toMatch(/note: .*not as a wish/);
   });

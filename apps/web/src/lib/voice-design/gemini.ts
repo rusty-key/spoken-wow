@@ -249,7 +249,7 @@ export function buildRevisePrompt(input: ReviseInput): string {
     ? input.siblings.map((sibling) => `- ${sibling.slot} v${sibling.version}: "${sibling.note}"`).join("\n")
     : "(none)";
   const recordings = input.hasLive
-    ? `First recording: the game reference (inspiration only, includes game post-processing). Second: the live take of the line below, what players hear now. Third: the same line in ${v}.`
+    ? `First recording: the game reference (inspiration only, includes game post-processing). Second: the live take of the line below, what players hear now: the target, which the next version should sound like except where the notes ask otherwise. Third: the same line in ${v}.`
     : `First recording: the game reference (inspiration only, includes game post-processing). Second: the line below in ${v}. This line has no live take.`;
   return `You are a casting director revising a designed voice for ${input.slot} (World of Warcraft NPCs; who uses it: ${input.archetype || "(unknown)"}).
 ${v}'s verdict: ${input.status}.
@@ -282,7 +282,7 @@ Rewrite the ElevenLabs Voice Design prompt (text only, 350-600 characters) so th
 ${DRAFTING_RULES}
 Also return a preview_text (120-400 characters, in the character's normal register; keep the old one unless it fights the notes).
 Also return changes: the same fix said only as changes to the ${v} voice, for ElevenLabs Voice Remix, which keeps the voice and alters what you name (20-300 characters, e.g. "Add a thick Scottish accent. Keep the timbre, age and pace."). Name what to keep when the reviewer liked it.
-Return JSON only: {"heard": "one sentence: how the ${v} voice differs from the reference and the live take, and which open notes it still misses", "prompt": "...", "preview_text": "...", "changes": "..."}`;
+Return JSON only: {"heard": "one sentence: how the ${v} voice departs from the live take, and which open notes it still misses", "prompt": "...", "preview_text": "...", "changes": "..."}`;
 }
 
 /** Revise a version: Gemini hears the game reference, the line's live take if any, and the line in the version. */
@@ -323,6 +323,12 @@ export type Difference = {
 };
 
 /**
+ * Told only "compare", a judge treats the game reference as the ideal and finds the live take
+ * lacking. The live take is what the team chose; the reference only says what kind of character it is.
+ */
+export const TARGET_RULE = `The live take is the target: it is how this character should sound, and the designed version should sound like it. Judge the designed version against it. Never criticise the live take or say it lacks anything. The game reference is the original actor, processed by the game: background only, for what kind of character this is. Where the reference and the live take differ, the live take wins: never ask the designed version for something the live take does not have.`;
+
+/**
  * What a voice director listens for, named one by one: a listener asked only for "the differences"
  * reports timbre and pitch and skips accent, cadence and delivery.
  */
@@ -345,18 +351,19 @@ export const DIRECTION_ASPECTS = [
 export function buildDifferencePrompt(input: { slot: string; version: number; text: string; hasReference: boolean }): string {
   const v = `v${input.version}`;
   const recordings = input.hasReference
-    ? `First recording: the original game voice for this kind of character (the reference: other lines, and game audio is processed; listen to it for accent, cadence, persona and delivery). Second: the live take players hear in the game now. Third: the same line as the second, in designed voice ${v}.`
+    ? `First recording: the original game voice for this kind of character (the reference: other lines, processed by the game). Second: the live take players hear in the game now. Third: the same line as the second, in designed voice ${v}.`
     : `First recording: the live take players hear in the game now. Second: the same line in designed voice ${v}.`;
   return `You are a voice director. You will hear recordings for ${input.slot} (World of Warcraft NPCs).
 ${recordings}
+${TARGET_RULE}
 The line, as sent to ${v} (square-bracketed words are performance directions, not speech): "${input.text}"
-Say how ${v} differs from the live take${input.hasReference ? ", and where the reference stands," : ""} so a voice designer knows what to change. Go through each of these, as a director would:
+Say how ${v} departs from the live take, so a voice designer knows what to change to bring it closer. Go through each of these, as a director would:
 ${DIRECTION_ASPECTS.map((aspect) => `- ${aspect}`).join("\n")}
 Leave out an aspect only where they sound the same. Be concrete ("the Scottish accent fades after the first sentence", not "the accent differs"; "every phrase ends rising, like a question", not "different intonation").
 For each aspect, say how much the difference matters for directing this character: high, medium or low. Order the aspects from the one that matters most.
 Also write note: the one difference that matters most, as an observation of how v${input.version} sounds next to the live take (not a wish), under 80 characters, lowercase, no full stop ("scottish accent fades after the first words", "sounds younger and thinner").
-And wish: the same point said as what the next version should do, the opposite direction, under 80 characters, lowercase, no full stop ("keep the scottish accent strong throughout", "older and fuller").
-Return JSON only: {"summary": "one or two sentences: the differences that matter most", "note": "...", "wish": "...", "aspects": [{"aspect": "...", "reference": "${input.hasReference ? "how the reference sounds" : ""}", "live": "how the live take sounds", "new": "how v${input.version} sounds", "matters": "high|medium|low"}]}`;
+And wish: the same point said as what the next version should do to come closer to the live take, under 80 characters, lowercase, no full stop ("keep the scottish accent strong throughout", "older and fuller").
+Return JSON only: {"summary": "one or two sentences: the differences that matter most", "note": "...", "wish": "...", "aspects": [{"aspect": "...", "reference": "${input.hasReference ? "how the reference sounds, only where it explains the live take; else empty" : ""}", "live": "how the live take sounds", "new": "how v${input.version} sounds", "matters": "high|medium|low"}]}`;
 }
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
