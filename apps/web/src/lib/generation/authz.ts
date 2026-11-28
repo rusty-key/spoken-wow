@@ -171,7 +171,7 @@ export async function requireApiKey(
           ? "This spends ElevenLabs credits, and you have no key set."
           : provider === "fish"
             ? "This spends from your fish.audio balance, and you have no fish.audio key set."
-            : "This spends from your Gemini account, and you have no Gemini key set.",
+            : `This spends from your ${name} account, and you have no ${name} key set.`,
       ),
     };
   }

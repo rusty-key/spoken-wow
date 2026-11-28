@@ -71,13 +71,16 @@ describe("a design version", () => {
       bestPreview: 1,
       clips: { "sample:0": "off" },
       players: [{ verdict: "off", note: "too soft" }],
+      observations: [{ by: "claude", note: "higher than the live take", fixes: ["Add 'deep'."] }],
       userId: user.id,
     });
     await store.addReview(lang, made.id, { status: "good", note: "", bestPreview: null, clips: {}, userId: user.id });
     const read = await store.readDesign(lang, made.id);
     expect(read?.reviews.map((r) => r.status)).toEqual(["needs-work", "good"]);
     expect(read?.reviews[0]).toMatchObject({ note: "sounds wise", bestPreview: 1, clips: { "sample:0": "off" }, players: [{ verdict: "off", note: "too soft" }] });
+    expect(read?.reviews[0].observations).toEqual([{ by: "claude", note: "higher than the live take", fixes: ["Add 'deep'."] }]);
     expect(read?.reviews[1].players).toEqual([]);
+    expect(read?.reviews[1].observations).toEqual([]);
   });
 
   it("records the saved voice, its samples and its deletion", async () => {

@@ -1,28 +1,35 @@
 /**
- * Revise: Gemini drafts a slot's next version from its review. The race's other flavors' notes go
- * with it, since "trolls need a Jamaican accent" holds for every troll. Nothing is spent at
- * ElevenLabs until Design is pressed.
+ * Revise: Gemini drafts a slot's next version from every version's review, so what an earlier
+ * note fixed stays fixed. The race's other flavors' notes go with it, since "trolls need a
+ * Jamaican accent" holds for every troll. Nothing is spent at ElevenLabs until Design is pressed.
  */
 import "server-only";
 
+import type { CorpusLine } from "@/lib/corpus";
 import type { Lang } from "@/lib/lang";
 
 import { DesignError } from "./access";
 import { gameClip } from "./analyse";
 import { readDesignAudio } from "./audio";
 import { found } from "./design";
-import { reviseVoice, type ReviseInput, type Revision } from "./gemini";
+import { evidenceTable } from "./evidence";
+import { reviseVoice, type HistoryVersion, type ReviseInput, type Revision, type SiblingNote } from "./gemini";
 import { isRevisable } from "./groups";
+import { measureAudio } from "./measure";
+import { archetypeOf, corpusLine, liveTake } from "./sources";
 import { listDesigns, readAnalysis, readDesign } from "./store";
-import type { Analysis, Design, PlayerNote } from "./types";
+import type { Analysis, Design, Measures } from "./types";
 
 export type ReviseDeps = {
   read: (lang: Lang, id: string) => Promise<Design | null>;
   all: (lang: Lang) => Promise<Design[]>;
   reference: (slot: string, lang: Lang) => Promise<Buffer | null>;
   audio: (sha256: string, lang: Lang) => Promise<Buffer | null>;
+  line: (lang: Lang, lineId: string) => Promise<CorpusLine | null>;
+  live: (line: CorpusLine, lang: Lang) => Promise<Buffer | null>;
+  measure: (clips: Buffer[]) => Promise<(Measures | null)[] | null>;
   analysis: (lang: Lang, id: string) => Promise<Analysis | null>;
-  revise: (input: ReviseInput & { apiKey: string; reference: Buffer; sample: Buffer }) => Promise<Revision>;
+  revise: (input: Omit<ReviseInput, "hasLive"> & { apiKey: string; reference: Buffer; live: Buffer | null; sample: Buffer }) => Promise<Revision>;
 };
 
 const LIVE: ReviseDeps = {
@@ -30,39 +37,41 @@ const LIVE: ReviseDeps = {
   all: listDesigns,
   reference: gameClip,
   audio: readDesignAudio,
+  line: corpusLine,
+  live: liveTake,
+  measure: (clips) => measureAudio(clips),
   analysis: readAnalysis,
   revise: reviseVoice,
 };
 
-/** Who the voice is for: the version's own description, else the blind comparison it came from. */
-async function archetypeOf(design: Design, lang: Lang, deps: ReviseDeps): Promise<string> {
-  const own = design.analysis?.archetype;
-  if (typeof own === "string") return own;
-  if (!design.analysisId) return "";
-  const analysis = await deps.analysis(lang, design.analysisId);
-  const label = Object.entries(analysis?.labels ?? {}).find(([, slot]) => slot === design.slot)?.[0];
-  return (label && analysis?.result.voices[label]?.archetype) || "";
-}
-
 const raceOf = (slot: string) => slot.split("-")[0];
 
-/** Each other flavor of the race's newest note, from its newest version back. */
-export function siblingNotes(designs: readonly Design[], slot: string): Record<string, string> {
-  const notes: Record<string, string> = {};
+/** Each other flavor of the race's newest note, from its newest version back, labelled with its slot. */
+export function siblingNotes(designs: readonly Design[], slot: string): SiblingNote[] {
+  const notes = new Map<string, SiblingNote>();
   // Each slot's versions arrive newest first, so the first note found per slot is its newest.
   for (const design of designs) {
-    if (design.slot === slot || raceOf(design.slot) !== raceOf(slot) || design.slot in notes) continue;
+    if (design.slot === slot || raceOf(design.slot) !== raceOf(slot) || notes.has(design.slot)) continue;
     const note = [...design.reviews].reverse().find((review) => review.note)?.note;
-    if (note) notes[design.slot] = note;
+    if (note) notes.set(design.slot, { slot: design.slot, version: design.version, note });
   }
-  return notes;
+  return [...notes.values()];
 }
 
-/** Every player note picked in the version's verdicts, each once. */
-export function pickedNotes(design: Pick<Design, "reviews">): PlayerNote[] {
-  const seen = new Map<string, PlayerNote>();
-  for (const pick of design.reviews.flatMap((review) => review.players)) seen.set(`${pick.verdict}|${pick.note}`, pick);
-  return [...seen.values()];
+/** The slot's versions oldest first, each with its verdicts and the first later version marked good. */
+export function slotHistory(designs: readonly Design[], slot: string): HistoryVersion[] {
+  const versions = designs.filter((design) => design.slot === slot).sort((a, b) => a.version - b.version);
+  return versions.map((design) => ({
+    version: design.version,
+    prompt: design.prompt,
+    reviews: design.reviews.map((review) => ({
+      status: review.status,
+      note: review.note,
+      observations: review.observations ?? [],
+      players: review.players,
+    })),
+    satisfiedBy: versions.find((later) => later.version > design.version && later.reviews.some((review) => review.status === "good"))?.version ?? null,
+  }));
 }
 
 export async function reviseDesign(
@@ -82,30 +91,40 @@ export async function reviseDesign(
   // The line a reviewer marked off is the one worth hearing; else the first. Marks from before
   // the lines were voiced again name other lines.
   const marks = last && (!design.sampledAt || last.createdAt >= design.sampledAt) ? last.clips : {};
-  const first = design.samples.find((sample) => marks[`sample:${sample.position}`] === "off") ?? design.samples[0];
+  const chosen = design.samples.find((sample) => marks[`sample:${sample.position}`] === "off") ?? design.samples[0];
 
-  const [reference, sample, designs, archetype] = await Promise.all([
+  const [reference, sample, line, designs, archetype] = await Promise.all([
     deps.reference(design.slot, input.lang),
-    deps.audio(first.sha256, input.lang),
+    deps.audio(chosen.sha256, input.lang),
+    deps.line(input.lang, chosen.lineId),
     deps.all(input.lang),
-    archetypeOf(design, input.lang, deps),
+    archetypeOf(design, input.lang, deps.analysis),
   ]);
   if (!reference) throw new DesignError(`${design.slot} has no reference clip on the site to compare with`, 409);
   if (!sample) throw new DesignError(`v${design.version}'s sample line is missing from the archive`, 409);
+  // A line gone from the corpus or never voiced still has its take in the version to hear.
+  const live = line ? await deps.live(line, input.lang) : null;
+
+  const label = `v${design.version}`;
+  const measured = await deps.measure(live ? [reference, live, sample] : [reference, sample]);
+  const numbers = measured
+    ? evidenceTable({ reference: measured[0], live: live ? measured[1] : null, sample: measured.at(-1) ?? null, label })
+    : "";
 
   const revision = await deps.revise({
     apiKey: input.apiKey,
     slot: design.slot,
     version: design.version,
     status: last?.status ?? "not reviewed yet",
-    // A later verdict without words does not take back what an earlier one said.
-    note: [...design.reviews].reverse().find((review) => review.note)?.note ?? "",
+    history: slotHistory(designs, design.slot),
     siblings: siblingNotes(designs, design.slot),
-    players: pickedNotes(design),
     archetype,
     prompt: design.prompt,
     previewText: design.previewText,
+    line: chosen.text,
+    numbers,
     reference,
+    live,
     sample,
   });
   // Handed back so the version it becomes keeps it: a revision of a revision has no comparison to ask.

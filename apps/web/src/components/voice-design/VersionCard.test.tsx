@@ -38,7 +38,7 @@ const DESIGN: Design = {
   analysis: null,
   samples: [sample(0, "a"), sample(1, "b"), sample(2, "c")],
   sampledAt: "2026-11-25T00:00:00Z",
-  reviews: [{ id: 1, status: "needs-work", note: "", bestPreview: 0, clips: { "sample:2": "off", "preview:0": "good" }, players: [], createdBy: "u1", createdByName: "Ann", createdAt: "2026-11-26T00:00:00Z" }],
+  reviews: [{ id: 1, status: "needs-work", note: "", bestPreview: 0, clips: { "sample:2": "off", "preview:0": "good" }, players: [], observations: [], createdBy: "u1", createdByName: "Ann", createdAt: "2026-11-26T00:00:00Z" }],
   isPublic: false,
   playersHearOlderLines: false,
   showings: [],
@@ -50,7 +50,7 @@ const DESIGN: Design = {
 const context: Workbench = {
   lang: "enUS",
   viewer: { id: "u1", designs: true, admin: false },
-  keys: { elevenlabs: true, gemini: true },
+  keys: { elevenlabs: true, gemini: true, anthropic: false },
   rate: 0.5,
   model: "eleven_v4",
   live: {},
@@ -292,31 +292,116 @@ test("voices the lines with a direction typed before pressing, as long as it sta
   expect(sent()).toEqual({ lines: "same", direction: "thick Scottish accent" });
 });
 
-test("asks Gemini what differs between a line's new and live takes, and shows the answer under the line", async () => {
-  const fetchMock = vi.fn(async () =>
-    Response.json({ difference: { summary: "The Scottish accent fades after the first words.", note: "Scottish accent fades after the first words", aspects: [{ aspect: "Accent", live: "broad Scots", new: "faint Scots" }] } }),
-  );
+test("asks Gemini and Claude what differs, side by side, and adds a finding as an observation with its opposite as the wish", async () => {
+  const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+    const body = JSON.parse(String(init.body));
+    if (body.by === "gemini") {
+      return Response.json({
+        difference: {
+          by: "gemini",
+          summary: "The Scottish accent fades after the first words.",
+          note: "scottish accent fades after the first words",
+          wish: "keep the scottish accent strong throughout",
+          aspects: [{ aspect: "Accent", live: "broad Scots", new: "faint Scots" }],
+        },
+      });
+    }
+    if (body.by === "claude") {
+      return Response.json({
+        difference: {
+          by: "claude",
+          summary: "F0 136 vs 89 Hz in the reference.",
+          note: "higher and thinner than the live take",
+          wish: "lower and fuller",
+          aspects: [{ aspect: "Pitch", live: "110 Hz", new: "136 Hz", reference: "89 Hz" }],
+          fixes: ["Add 'deep chest voice'."],
+          image: "iVBORw0KGgo=",
+        },
+      });
+    }
+    return Response.json({ design: DESIGN });
+  });
   vi.stubGlobal("fetch", fetchMock);
   render(
-    <WorkbenchContext.Provider value={{ ...context, live: { "q:1": "/live/1.mp3" } }}>
+    <WorkbenchContext.Provider value={{ ...context, keys: { ...context.keys, anthropic: true }, live: { "q:1": "/live/1.mp3" } }}>
       <VersionCard design={DESIGN} slot={{ name: DESIGN.slot, sampleChars: 0, reference: null, previewLines: {} } as unknown as SlotView} newest />
     </WorkbenchContext.Provider>,
   );
   expect(screen.getAllByRole("button", { name: "What's different?" })).toHaveLength(1);
 
   await userEvent.click(screen.getByRole("button", { name: "What's different?" }));
-  const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-  expect(url).toContain("/api/voices/design/d1/difference");
-  expect(JSON.parse(String(init.body))).toEqual({ position: 1 });
-  expect(await screen.findByText("The Scottish accent fades after the first words.")).toBeTruthy();
-  expect(screen.getByText(/faint Scots/)).toBeTruthy();
-  const answer = screen.getByText("The Scottish accent fades after the first words.");
-  expect(screen.getByRole("button", { name: "What's different?" }).compareDocumentPosition(answer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  const asked = fetchMock.mock.calls.map(([url, init]) => [url.replace(/\?.*/, ""), JSON.parse(String(init.body))]);
+  expect(asked).toEqual([
+    ["/api/voices/design/d1/difference", { position: 1, by: "gemini" }],
+    ["/api/voices/design/d1/difference", { position: 1, by: "claude" }],
+  ]);
+  const gemini = await screen.findByRole("region", { name: "Gemini heard" });
+  const claude = await screen.findByRole("region", { name: "Claude read" });
+  expect(within(gemini).getByText("The Scottish accent fades after the first words.")).toBeTruthy();
+  expect(within(gemini).getByText(/faint Scots/)).toBeTruthy();
+  expect(within(claude).getByText(/reference: 89 Hz/)).toBeTruthy();
+  expect(within(claude).getByText("Add 'deep chest voice'.")).toBeTruthy();
+  expect((within(claude).getByRole("img") as HTMLImageElement).src).toBe("data:image/png;base64,iVBORw0KGgo=");
+  expect(screen.getByRole("button", { name: "What's different?" }).compareDocumentPosition(gemini) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
   const note = screen.getByRole("textbox", { name: "Note" }) as HTMLInputElement;
   await userEvent.type(note, "too young");
-  await userEvent.click(screen.getByRole("button", { name: "Add to review" }));
-  expect(note.value).toBe("too young; Scottish accent fades after the first words");
+  await userEvent.click(within(gemini).getByRole("button", { name: "Add to review" }));
+  await userEvent.click(within(claude).getByRole("button", { name: "Add to review" }));
+  // The observation never lands in the note: only its opposite does, for the reviewer to edit.
+  expect(note.value).toBe("too young; keep the scottish accent strong throughout; lower and fuller");
+  const observations = screen.getByRole("list", { name: "Observations" });
+  expect(within(observations).getByText("scottish accent fades after the first words")).toBeTruthy();
+  expect(within(observations).getByText("Claude, v2 vs live")).toBeTruthy();
+
+  await userEvent.click(verdict("Needs work"));
+  const [, init] = fetchMock.mock.calls.at(-1)!;
+  expect(JSON.parse(String(init.body))).toMatchObject({
+    status: "needs-work",
+    note: "too young; keep the scottish accent strong throughout; lower and fuller",
+    observations: [
+      { by: "gemini", note: "scottish accent fades after the first words" },
+      { by: "claude", note: "higher and thinner than the live take", fixes: ["Add 'deep chest voice'."] },
+    ],
+  });
+});
+
+test("shows one judge's failure beside the other's answer, and asks only the judges the viewer has a key for", async () => {
+  const fetchMock = vi.fn(async (_url: string, init: RequestInit) =>
+    JSON.parse(String(init.body)).by === "claude"
+      ? Response.json({ error: "Claude reads a picture and measurements of the takes, and the site could not make either" }, { status: 503 })
+      : Response.json({ difference: { by: "gemini", summary: "Faster.", note: "faster", wish: "slower", aspects: [] } }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  const { rerender } = render(
+    <WorkbenchContext.Provider value={{ ...context, keys: { ...context.keys, anthropic: true }, live: { "q:1": "/live/1.mp3" } }}>
+      <VersionCard design={DESIGN} slot={{ name: DESIGN.slot, sampleChars: 0, reference: null, previewLines: {} } as unknown as SlotView} newest />
+    </WorkbenchContext.Provider>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "What's different?" }));
+  expect(await screen.findByText("Faster.")).toBeTruthy();
+  expect(within(await screen.findByRole("region", { name: "Claude read" })).getByRole("alert").textContent).toMatch(/^Claude: .*could not make either/);
+
+  fetchMock.mockClear();
+  rerender(
+    <WorkbenchContext.Provider value={{ ...context, keys: { ...context.keys, gemini: false, anthropic: true }, live: { "q:1": "/live/1.mp3" } }}>
+      <VersionCard design={DESIGN} slot={{ name: DESIGN.slot, sampleChars: 0, reference: null, previewLines: {} } as unknown as SlotView} newest />
+    </WorkbenchContext.Provider>,
+  );
+  await userEvent.click(screen.getByRole("button", { name: "What's different?" }));
+  expect(fetchMock.mock.calls.map(([, init]) => JSON.parse(String(init.body)).by)).toEqual(["claude"]);
+});
+
+test("labels a verdict's observations apart from the reviewer's note", () => {
+  const reviewed = {
+    ...DESIGN,
+    reviews: [{ ...DESIGN.reviews[0], note: "faster, more assertive", observations: [{ by: "gemini" as const, note: "slower pace and breathier texture" }] }],
+  };
+  render(card(reviewed));
+  const observations = screen.getByRole("list", { name: "Observations" });
+  expect(within(observations).getByText("Gemini, v2 vs live")).toBeTruthy();
+  expect(within(observations).getByText("slower pace and breathier texture")).toBeTruthy();
+  expect(screen.getByText("faster, more assertive").closest("ul")).toBeNull();
 });
 
 test("goes back to the version before, after asking, when none of the previews is worth saving", async () => {

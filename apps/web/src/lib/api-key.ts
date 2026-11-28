@@ -23,6 +23,7 @@ const TABLE: Record<KeyProvider, string> = {
   elevenlabs: `"elevenlabs_key"`,
   fish: `"fish_key"`,
   gemini: `"gemini_key"`,
+  anthropic: `"anthropic_key"`,
 };
 
 export type ApiKeyStatus = {

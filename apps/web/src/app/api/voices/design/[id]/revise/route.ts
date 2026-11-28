@@ -4,7 +4,7 @@ import { failed, requireDesigner } from "@/lib/voice-design/access";
 import { reviseDesign } from "@/lib/voice-design/revise";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 type Context = { params: Promise<{ id: string }> };
 

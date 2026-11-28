@@ -6,7 +6,7 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const { measureAudio, measureFiles } = await import("./measure");
+const { measureAudio, measureFiles, viewAudio } = await import("./measure");
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "voice-measure-"));
 afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -67,5 +67,21 @@ describe("measureAudio", () => {
   it("measures buffers in the order given", async () => {
     const result = await measureAudio([Buffer.from("a"), Buffer.from("b")], { python: echoing(), script: "/x.py" });
     expect(result).toEqual([MEASURES, MEASURES]);
+  });
+});
+
+describe("viewAudio", () => {
+  const clips = { reference: Buffer.from("r"), live: Buffer.from("l"), sample: Buffer.from("n"), label: "v3" };
+
+  it("reads back the PNG the helper drew", async () => {
+    // $2 is --view's output path; the clips and label follow it.
+    const python = fakePython(`printf 'PNG %s %s' "$7" "$(cat "$6")" > "$3"; echo '{"image": true}'`);
+    expect((await viewAudio(clips, { python, script: "/x.py" }))?.toString()).toBe("PNG v3 n");
+  });
+
+  it("draws nothing without the helper, or when it fails", async () => {
+    expect(await viewAudio(clips, { python: undefined })).toBeNull();
+    expect(await viewAudio(clips, { python: fakePython(`echo '{"error": "no matplotlib"}'`), script: "/x.py" })).toBeNull();
+    expect(await viewAudio(clips, { python: fakePython("exit 1"), script: "/x.py" })).toBeNull();
   });
 });

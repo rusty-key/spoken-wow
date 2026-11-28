@@ -2092,12 +2092,37 @@ body:has(main.bs) {
   font-size: 12px;
   line-height: 17px;
 }
+.vd-difference:has(> .vd-difference-judge + .vd-difference-judge) {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+.vd-difference-judge {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+}
 .vd-difference .bs-btn {
   justify-self: start;
 }
 .vd-difference ul {
   display: grid;
   gap: 2px;
+}
+.vd-difference summary {
+  cursor: pointer;
+  color: var(--bs-text-2);
+}
+.vd-difference-picture {
+  width: 100%;
+  margin-top: 4px;
+  border-radius: 4px;
+}
+.vd-observations li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
 }
 .vd-sample-play {
   display: flex;

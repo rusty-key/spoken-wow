@@ -22,7 +22,7 @@ const COPY: Record<
     before: keyof KeyWords;
     after: keyof KeyWords;
     placeholder: keyof KeyWords;
-    checked: "keyCheckedEleven" | "keyCheckedFish" | "keyCheckedGemini";
+    checked: "keyCheckedEleven" | "keyCheckedFish" | "keyCheckedGemini" | "keyCheckedAnthropic";
   }
 > = {
   elevenlabs: {
@@ -48,6 +48,14 @@ const COPY: Record<
     after: "geminiAfter",
     placeholder: "placeholderGemini",
     checked: "keyCheckedGemini",
+  },
+  anthropic: {
+    endpoint: "/api/profile/anthropic-key",
+    mask: "sk-ant-…••••",
+    before: "anthropicBefore",
+    after: "anthropicAfter",
+    placeholder: "placeholderAnthropic",
+    checked: "keyCheckedAnthropic",
   },
 };
 

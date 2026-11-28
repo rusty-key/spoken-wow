@@ -45,7 +45,7 @@ export default async function Page({
   if (!session || !canViewVoices(viewer, lang)) notFound();
   const userId = session.user.id;
 
-  const [all, designs, analyses, references, { lines }, index, eleven, gemini, rate] = await Promise.all([
+  const [all, designs, analyses, references, { lines }, index, eleven, gemini, anthropic, rate] = await Promise.all([
     slots(lang),
     listDesigns(lang),
     latestAnalyses(lang),
@@ -54,6 +54,7 @@ export default async function Page({
     lineIndex(lang),
     apiKeyStatus(userId),
     apiKeyStatus(userId, "gemini"),
+    apiKeyStatus(userId, "anthropic"),
     readPreference(userId, lang).then(async (preference) => ({
       model: preference.elevenlabs.modelId,
       perCharacter: (await observedRate(preference.elevenlabs.modelId)).rate,
@@ -126,7 +127,7 @@ export default async function Page({
         groups={groups}
         live={live}
         viewer={{ id: userId, designs: designer, admin: isAdmin(session.user.role) }}
-        keys={{ elevenlabs: eleven !== null, gemini: gemini !== null }}
+        keys={{ elevenlabs: eleven !== null, gemini: gemini !== null, anthropic: anthropic !== null }}
         rate={rate.perCharacter}
         model={rate.model}
         initialFilter={status}

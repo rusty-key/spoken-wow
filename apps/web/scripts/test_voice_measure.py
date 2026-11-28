@@ -79,3 +79,40 @@ def test_measures_s_level_room_and_level(tmp_path):
     result = run(soft, harsh)
     assert result[str(harsh)]["ess"] > result[str(soft)]["ess"] + 0.2
     assert -60 < result[str(soft)]["level"] < 0
+
+
+def test_measures_formants_and_duration(tmp_path):
+    pytest.importorskip("opensmile")
+    pytest.importorskip("librosa")
+    clip = tmp_path / "clip.wav"
+    tone(clip, 120, seconds=2.5, rate=44100)
+    result = run(clip)[str(clip)]
+    assert {"f1Hz", "f2Hz", "f3Hz"} <= set(result)
+    assert result["durationSec"] == pytest.approx(2.5, abs=0.05)
+
+
+def test_draws_the_view_as_a_png(tmp_path):
+    pytest.importorskip("matplotlib")
+    pytest.importorskip("librosa")
+    reference, live, new = (tmp_path / f"{name}.wav" for name in ("reference", "live", "new"))
+    tone(reference, 90, seconds=9, rate=22050)
+    tone(live, 110, rate=22050)
+    tone(new, 140, rate=22050)
+    out = tmp_path / "view.png"
+    done = subprocess.run(
+        [sys.executable, str(SCRIPT), "--view", str(out), str(reference), str(live), str(new), "v3"],
+        capture_output=True, text=True, check=True,
+    )
+    assert json.loads(done.stdout) == {"image": True}
+    assert out.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_says_why_the_view_failed(tmp_path):
+    pytest.importorskip("matplotlib")
+    bad = tmp_path / "bad.wav"
+    bad.write_bytes(b"not audio")
+    done = subprocess.run(
+        [sys.executable, str(SCRIPT), "--view", str(tmp_path / "view.png"), str(bad), str(bad), str(bad)],
+        capture_output=True, text=True, check=True,
+    )
+    assert "error" in json.loads(done.stdout)

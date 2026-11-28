@@ -49,9 +49,7 @@ export async function measureFiles(paths: string[], options?: MeasureOptions): P
   }
 }
 
-/** Measures for audio in memory, in the order given; null as measureFiles. */
-export async function measureAudio(clips: Buffer[], options?: MeasureOptions): Promise<(Measures | null)[] | null> {
-  if (!locate(options).python || clips.length === 0) return null;
+async function withFiles<T>(clips: Buffer[], work: (paths: string[], dir: string) => Promise<T>): Promise<T> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "spoken-measure-"));
   try {
     const paths = await Promise.all(
@@ -61,9 +59,41 @@ export async function measureAudio(clips: Buffer[], options?: MeasureOptions): P
         return file;
       }),
     );
-    const measured = await measureFiles(paths, options);
-    return measured ? paths.map((file) => measured.get(file) ?? null) : null;
+    return await work(paths, dir);
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }
+}
+
+/** Measures for audio in memory, in the order given; null as measureFiles. */
+export async function measureAudio(clips: Buffer[], options?: MeasureOptions): Promise<(Measures | null)[] | null> {
+  if (!locate(options).python || clips.length === 0) return null;
+  return withFiles(clips, async (paths) => {
+    const measured = await measureFiles(paths, options);
+    return measured ? paths.map((file) => measured.get(file) ?? null) : null;
+  });
+}
+
+/**
+ * The PNG Claude reads for What's different: each clip's spectrogram with its pitch track, then
+ * their long-term spectra. Null without the helper or matplotlib, or when drawing failed.
+ */
+export async function viewAudio(
+  clips: { reference: Buffer; live: Buffer; sample: Buffer; label: string },
+  options?: MeasureOptions,
+): Promise<Buffer | null> {
+  const { python, script } = locate(options);
+  if (!python) return null;
+  return withFiles([clips.reference, clips.live, clips.sample], async (paths, dir) => {
+    const out = path.join(dir, "view.png");
+    try {
+      const { stdout } = await run(python, [script, "--view", out, ...paths, clips.label], { timeout: TIMEOUT_MS, maxBuffer: 1024 * 1024 });
+      const answer = JSON.parse(stdout) as { image?: boolean; error?: string };
+      if (!answer.image) throw new Error(answer.error ?? "no image");
+      return await fs.readFile(out);
+    } catch (error) {
+      console.error("voice view failed:", error instanceof Error ? error.message : error);
+      return null;
+    }
+  });
 }

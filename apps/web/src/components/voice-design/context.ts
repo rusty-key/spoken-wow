@@ -26,7 +26,7 @@ export type Draft = {
 export type Workbench = {
   lang: Lang;
   viewer: { id: string; designs: boolean; admin: boolean };
-  keys: { elevenlabs: boolean; gemini: boolean };
+  keys: { elevenlabs: boolean; gemini: boolean; anthropic: boolean };
   /** Credits per character the caller's model has been billed at. */
   rate: number;
   model: string;

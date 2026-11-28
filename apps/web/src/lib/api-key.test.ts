@@ -60,3 +60,17 @@ describe("a Gemini key", () => {
     expect(await apiKeyStatus(USER, "gemini")).toBeNull();
   });
 });
+
+describe("an Anthropic key", () => {
+  it("is stored apart from Gemini's and the generators' keys", async () => {
+    await storeApiKey(USER, "AIza_gemini_5678", null, "gemini");
+    const status = await storeApiKey(USER, "sk-ant-api03-9abc", null, "anthropic");
+
+    expect(status).toMatchObject({ hint: "9abc", tier: null });
+    expect(await readApiKey(USER, "anthropic")).toBe("sk-ant-api03-9abc");
+    expect(await readApiKey(USER, "gemini")).toBe("AIza_gemini_5678");
+    await deleteApiKey(USER, "anthropic");
+    expect(await apiKeyStatus(USER, "anthropic")).toBeNull();
+    expect(await readApiKey(USER, "gemini")).toBe("AIza_gemini_5678");
+  });
+});

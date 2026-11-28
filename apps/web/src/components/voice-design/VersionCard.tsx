@@ -1,6 +1,6 @@
 "use client";
 
-import { AudioLines, Blend, Check, ChevronDown, ChevronRight, Eye, GitCompare, Loader2, MoreHorizontal, Pencil, Plus, RefreshCw, Save, Shuffle, SlidersHorizontal, Sparkles, Trash2, Undo2, Wand2, X } from "lucide-react";
+import { AudioLines, Blend, Check, ChevronDown, ChevronRight, Eye, GitCompare, Loader2, MoreHorizontal, Pencil, RefreshCw, Save, Shuffle, SlidersHorizontal, Sparkles, Trash2, Undo2, Wand2, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import Link from "@/components/LocaleLink";
@@ -11,9 +11,10 @@ import { fill } from "@/lib/site-text/format";
 import { cn } from "@/lib/utils";
 import { isRevisable } from "@/lib/voice-design/groups";
 import { designName, recommendedPreview } from "@/lib/voice-design/limits";
-import type { Difference } from "@/lib/voice-design/gemini";
-import type { ClipMark, Design, Measures } from "@/lib/voice-design/types";
+import type { JudgedDifference } from "@/lib/voice-design/difference";
+import type { ClipMark, Design, Judge, Measures, Observation } from "@/lib/voice-design/types";
 
+import DifferencePanel, { JUDGE_NAME, type Answer } from "./DifferencePanel";
 import FeedbackResults, { pickKey, verdictLabels } from "./FeedbackResults";
 import PlayButton, { ReferenceClip } from "./PlayButton";
 import StatusBadge from "./StatusBadge";
@@ -142,6 +143,26 @@ function Marks({ value, onChange, disabled }: { value: ClipMark | undefined; onC
   );
 }
 
+/** What's different's findings on a verdict, labelled as what a judge observed rather than what the reviewer wants. */
+function Observations({ items, version, onRemove }: { items: Observation[]; version: string; onRemove?: (index: number) => void }) {
+  const t = useUiText().voiceDesign;
+  return (
+    <ul className="vd-review-players vd-observations" aria-label={t.observationsLabel}>
+      {items.map((seen, index) => (
+        <li key={`${seen.by}|${seen.note}`}>
+          <span className="vd-tag">{fill(t.observedBy, { judge: JUDGE_NAME[seen.by], v: version })}</span> {seen.note}
+          {onRemove ? (
+            <button type="button" className="vd-mark vd-review-remove" title={t.removeObservation} onClick={() => onRemove(index)}>
+              <X size={14} aria-hidden="true" />
+              <span className="sr-only">{t.removeObservation}</span>
+            </button>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** The newest version carries the slot's next step; an older one can only be started from again. */
 export default function VersionCard({ design, slot, newest, folded = false }: { design: Design; slot: SlotView; newest: boolean; folded?: boolean }) {
   const t = useUiText().voiceDesign;
@@ -158,8 +179,9 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
   // A removed verdict or lines voiced again: the marks start over from what still applies.
   const marksBasis = `${last?.id}|${design.samples.map((sample) => sample.sha256).join()}`;
   const [marksFor, setMarksFor] = useState(marksBasis);
-  // Gemini's answers, by sample position; lines voiced again are other takes, so they go too.
-  const [differences, setDifferences] = useState<Record<number, Difference>>({});
+  // Each judge's answer, by sample position; lines voiced again are other takes, so they go too.
+  const [differences, setDifferences] = useState<Record<number, Partial<Record<Judge, Answer>>>>({});
+  const [observations, setObservations] = useState<Observation[]>([]);
   if (marksFor !== marksBasis) {
     setMarksFor(marksBasis);
     setClips(currentMarks(design));
@@ -207,13 +229,34 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
   const sample = (lines: "same" | "other") =>
     act("sample", `/api/voices/design/${design.id}/samples`, { body: { lines, ...(direction.trim() ? { direction: direction.trim() } : {}) } });
 
-  // Joined on, so a note already typed is kept.
-  const addToReview = (line: string) => setNote((current) => (current.trim() ? `${current.trim()}; ${line}` : line));
+  /**
+   * The finding goes in as an observation of how the version sounds, never as the note: "slower"
+   * observed means the reviewer likely wants faster. Its opposite joins the note, to edit, as the wish.
+   */
+  const addToReview = (difference: JudgedDifference) => {
+    const fixes = difference.by === "claude" && difference.fixes.length > 0 ? { fixes: difference.fixes } : {};
+    setObservations((current) =>
+      current.some((seen) => seen.by === difference.by && seen.note === difference.note) ? current : [...current, { by: difference.by, note: difference.note, ...fixes }],
+    );
+    if (difference.wish) setNote((current) => (current.trim() ? `${current.trim()}; ${difference.wish}` : difference.wish));
+  };
 
+  // Every judge the viewer has a key for, side by side; one failing leaves the other's answer.
+  const judges = (["gemini", "claude"] as const).filter((judge) => (judge === "gemini" ? keys.gemini : keys.anthropic));
   const compare = (position: number) =>
     run(`difference-${position}`, async () => {
-      const { difference } = await send<{ difference: Difference }>(withLang(lang, `/api/voices/design/${design.id}/difference`), { body: { position } });
-      setDifferences((current) => ({ ...current, [position]: difference }));
+      setDifferences((current) => ({ ...current, [position]: {} }));
+      await Promise.all(
+        judges.map(async (by) => {
+          let answer: Answer;
+          try {
+            answer = await send<{ difference: JudgedDifference }>(withLang(lang, `/api/voices/design/${design.id}/difference`), { body: { position, by } });
+          } catch (err) {
+            answer = { error: `${JUDGE_NAME[by]}: ${err instanceof Error ? err.message : String(err)}` };
+          }
+          setDifferences((current) => ({ ...current, [position]: { ...current[position], [by]: answer } }));
+        }),
+      );
     });
 
   // A slot has one public version: the one players heard before is not public any more.
@@ -425,8 +468,8 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
                           <button
                             type="button"
                             className="bs-btn"
-                            title={keys.gemini ? t.differenceTitle : t.differenceNoKey}
-                            disabled={busy !== null || !keys.gemini}
+                            title={judges.length > 0 ? t.differenceTitle : t.differenceNoKey}
+                            disabled={busy !== null || judges.length === 0}
                             onClick={() => void compare(sample.position)}
                           >
                             {busy === `difference-${sample.position}` ? (
@@ -440,22 +483,7 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
                         {can ? <Marks value={clips[key]} onChange={(m) => mark(key, m)} disabled={busy !== null} /> : null}
                       </div>
                       {differences[sample.position] ? (
-                        <div className="vd-difference">
-                          <p className="bs-text">{differences[sample.position].summary}</p>
-                          <ul>
-                            {differences[sample.position].aspects.map((aspect) => (
-                              <li key={aspect.aspect}>
-                                <span className="bs-label">{aspect.aspect}</span> {t.liveTake}: {aspect.live} · {t.newTake}: {aspect.new}
-                              </li>
-                            ))}
-                          </ul>
-                          {can && differences[sample.position].note ? (
-                            <button type="button" className="bs-btn" onClick={() => addToReview(differences[sample.position].note)}>
-                              <Plus size={14} aria-hidden="true" />
-                              {t.differenceToReview}
-                            </button>
-                          ) : null}
-                        </div>
+                        <DifferencePanel answers={differences[sample.position]} version={tag} can={can} onAdd={addToReview} />
                       ) : null}
                     </li>
                   );
@@ -543,6 +571,7 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
                     {review.bestPreview !== null ? ` · ${fill(t.bestWas, { n: review.bestPreview + 1 })}` : ""}
                   </span>
                   {review.note ? <span className="vd-review-note">{review.note}</span> : null}
+                  {review.observations.length > 0 ? <Observations items={review.observations} version={tag} /> : null}
                   {review.players.length > 0 ? (
                     <ul className="vd-review-players" aria-label={t.pickedNotesLabel}>
                       {review.players.map((pick, index) => (
@@ -604,6 +633,9 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
 
           {can ? (
             <div className="vd-review-form">
+              {observations.length > 0 ? (
+                <Observations items={observations} version={tag} onRemove={(index) => setObservations((current) => current.filter((_, i) => i !== index))} />
+              ) : null}
               <input
                 className="vd-note-input"
                 value={note}
@@ -625,10 +657,11 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
                       const players = design.showings.flatMap((showing) =>
                         showing.notes.filter((n) => picked.has(pickKey(showing.id, n.voter))).map((n) => ({ showingId: showing.id, voter: n.voter })),
                       );
-                      const ok = await act(`review-${value}`, `/api/voices/design/${design.id}/reviews`, { body: { status: value, note, clips, players } });
+                      const ok = await act(`review-${value}`, `/api/voices/design/${design.id}/reviews`, { body: { status: value, note, clips, players, observations } });
                       if (ok) {
                         setNote("");
                         setPicked(new Set());
+                        setObservations([]);
                       }
                     }}
                   >
