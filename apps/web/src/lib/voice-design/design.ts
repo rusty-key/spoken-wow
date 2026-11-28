@@ -194,7 +194,7 @@ export async function saveDesignVoice(
     const design = await found(deps.read, input.lang, input.id);
     const preview = design.previews[input.preview];
     if (!Number.isInteger(input.preview) || !preview) throw new DesignError(`v${design.version} has no preview ${input.preview + 1}`, 400);
-    // Once its voice is deleted from ElevenLabs, a version may be saved again from another preview.
+    // A voice already deleted from ElevenLabs leaves nothing to replace.
     const replacing = design.voiceId !== null && !design.voiceDeletedAt;
     if (replacing) {
       if (design.holderId !== input.userId || design.chosenPreview === input.preview) {
@@ -206,17 +206,29 @@ export async function saveDesignVoice(
     }
 
     const voiceName = designName(design);
-    let voiceId: string;
+    let voiceId: string | null = null;
     try {
       voiceId = await deps.createVoice({ name: voiceName, prompt: design.prompt, generatedVoiceId: preview.generatedVoiceId }, input.apiKey);
+      await deps.save(input.lang, input.id, { chosenPreview: input.preview, voiceId, voiceName, holderId: input.userId });
     } catch (error) {
-      // The old voice is gone, so the version must not keep naming it.
-      if (replacing) await deps.markDeleted(input.lang, input.id);
+      await undoSave(input, voiceId, replacing, deps);
       throw error;
     }
-    await deps.save(input.lang, input.id, { chosenPreview: input.preview, voiceId, voiceName, holderId: input.userId });
     return (await deps.read(input.lang, input.id))!;
   });
+}
+
+/**
+ * A voice no row names would hold an account slot unseen, and a row naming the deleted voice
+ * would send samples and remixes to it. Cleanup failures are logged so the cause stays the error.
+ */
+async function undoSave(input: { lang: Lang; id: string; apiKey: string }, created: string | null, replaced: boolean, deps: DesignDeps) {
+  if (created) {
+    await deps.deleteVoice(created, input.apiKey).catch((error: unknown) => console.warn(`[voice-design] left voice ${created} in the account:`, error));
+  }
+  if (replaced) {
+    await deps.markDeleted(input.lang, input.id).catch((error: unknown) => console.warn(`[voice-design] ${input.id} still names its deleted voice:`, error));
+  }
 }
 
 /** Whether the caller may act on the version's account voice, or the refusal naming whose it is. */

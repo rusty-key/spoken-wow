@@ -2786,6 +2786,8 @@ const ptBR: Dictionary = {
     measuresTitle: "openSMILE: tom médio, relação harmônicos-ruído (mais baixo, mais áspera) e razão alfa (mais baixo, mais escura)",
     saveCost: "Cria {name} na sua conta do ElevenLabs, ocupando uma das vagas de voz dela.",
     replaceCost: "Salva esta prévia como {name} no lugar da voz salva, na mesma vaga de voz. As falas precisarão ser dubladas de novo.",
+    replaceConfirm: "Apaga a voz salva da ElevenLabs e salva a prévia {n} no lugar dela.",
+    replaceVoice: "Substituir",
     samplesLabel: "Falas de teste",
     noSamples: "Ainda não há falas de teste.",
     saveFirst: "Salve uma prévia como voz para ouvi-la em falas.",

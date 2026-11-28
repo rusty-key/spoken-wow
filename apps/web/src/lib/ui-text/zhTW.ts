@@ -2776,6 +2776,8 @@ const zhTW: Dictionary = {
     measuresTitle: "openSMILE：平均音高、諧噪比（越低越粗糙）與 alpha 比（越低越暗）",
     saveCost: "在你的 ElevenLabs 帳戶建立 {name}，會占用一個語音位。",
     replaceCost: "將此預覽儲存為 {name}，取代已儲存的語音，占用同一個語音位。其台詞需要重新配音。",
+    replaceConfirm: "從 ElevenLabs 刪除已儲存的語音，並在其位置儲存預覽 {n}。",
+    replaceVoice: "取代",
     samplesLabel: "試音台詞",
     noSamples: "還沒有試音台詞。",
     saveFirst: "先把一個預覽儲存為語音，才能在台詞上試聽。",

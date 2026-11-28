@@ -2787,6 +2787,8 @@ const frFR: Dictionary = {
     measuresTitle: "openSMILE : hauteur moyenne, rapport harmoniques/bruit (plus bas, plus rauque) et rapport alpha (plus bas, plus sombre)",
     saveCost: "Crée {name} dans votre compte ElevenLabs, ce qui occupe un de ses emplacements de voix.",
     replaceCost: "Enregistre cet aperçu comme {name} à la place de la voix enregistrée, dans le même emplacement de voix. Ses lignes devront être revoicées.",
+    replaceConfirm: "Supprime la voix enregistrée d'ElevenLabs et enregistre l'aperçu {n} à sa place.",
+    replaceVoice: "Remplacer",
     samplesLabel: "Répliques d'essai",
     noSamples: "Pas encore de répliques d'essai.",
     saveFirst: "Enregistrez un aperçu comme voix pour l'entendre sur des répliques.",

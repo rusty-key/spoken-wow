@@ -2870,6 +2870,8 @@ export const EN = {
     measuresTitle: "openSMILE: mean pitch, harmonics-to-noise (lower is rougher) and alpha ratio (lower is darker)",
     saveCost: "Creates {name} in your ElevenLabs account, which uses one of its voice slots.",
     replaceCost: "Saves this preview as {name} in place of the saved voice, in the same voice slot. Its lines will need voicing again.",
+    replaceConfirm: "Deletes the saved voice from ElevenLabs and saves Preview {n} in its place.",
+    replaceVoice: "Replace",
     samplesLabel: "Sample lines",
     noSamples: "No sample lines yet.",
     saveFirst: "Save a preview as a voice to hear it on lines.",

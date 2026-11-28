@@ -2786,6 +2786,8 @@ const esES: Dictionary = {
     measuresTitle: "openSMILE: tono medio, relación armónicos-ruido (más bajo, más áspera) y relación alfa (más bajo, más oscura)",
     saveCost: "Crea {name} en tu cuenta de ElevenLabs, lo que ocupa uno de sus huecos de voz.",
     replaceCost: "Guarda esta vista previa como {name} en lugar de la voz guardada, en el mismo hueco de voz. Habrá que volver a locutar sus líneas.",
+    replaceConfirm: "Borra la voz guardada de ElevenLabs y guarda la vista previa {n} en su lugar.",
+    replaceVoice: "Reemplazar",
     samplesLabel: "Frases de prueba",
     noSamples: "Aún no hay frases de prueba.",
     saveFirst: "Guarda una vista previa como voz para oírla en frases.",

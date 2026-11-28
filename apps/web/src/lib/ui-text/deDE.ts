@@ -2789,6 +2789,8 @@ const deDE: Dictionary = {
     measuresTitle: "openSMILE: mittlere Tonhöhe, Harmonie-Rausch-Verhältnis (niedriger ist rauer) und Alpha-Verhältnis (niedriger ist dunkler)",
     saveCost: "Legt {name} in deinem ElevenLabs-Konto an und belegt dort einen Stimmplatz.",
     replaceCost: "Speichert diese Vorschau als {name} anstelle der gespeicherten Stimme, im selben Stimmplatz. Ihre Zeilen müssen neu vertont werden.",
+    replaceConfirm: "Löscht die gespeicherte Stimme bei ElevenLabs und speichert Vorschau {n} an ihrer Stelle.",
+    replaceVoice: "Ersetzen",
     samplesLabel: "Probezeilen",
     noSamples: "Noch keine Probezeilen.",
     saveFirst: "Speichere eine Vorschau als Stimme, um sie an Zeilen zu hören.",

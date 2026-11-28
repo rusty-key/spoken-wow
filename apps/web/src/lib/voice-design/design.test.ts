@@ -171,6 +171,20 @@ describe("saveDesignVoice", () => {
     expect(d.createVoice).not.toHaveBeenCalled();
   });
 
+  it("deletes the new voice and counts the old one deleted when the save fails after a replace", async () => {
+    const d = deps(
+      { voiceId: "voice-9", voiceName: "design-orc-male-shady-v3", chosenPreview: 0, holderId: "u1" },
+      {
+        createVoice: vi.fn(async () => "voice-10"),
+        save: vi.fn(async () => Promise.reject(new Error("Players hear this version"))),
+        markDeleted: vi.fn(async () => Promise.reject(new Error("db down"))),
+      },
+    );
+    await expect(saveDesignVoice({ ...base, id: "d1", preview: 1 }, d)).rejects.toThrow(/Players hear/);
+    expect(d.deleteVoice).toHaveBeenCalledWith("voice-10", "k");
+    expect(d.markDeleted).toHaveBeenCalledWith("enUS", "d1");
+  });
+
   it("counts the old voice as deleted when its replacement fails", async () => {
     const d = deps(
       { voiceId: "voice-9", voiceName: "design-orc-male-shady-v3", chosenPreview: 0, holderId: "u1" },

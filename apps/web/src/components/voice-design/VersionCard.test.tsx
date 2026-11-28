@@ -131,6 +131,8 @@ test("lets the holder save another preview in place of the saved one", async () 
   expect(saves).toHaveLength(2);
 
   await userEvent.click(saves[1]);
+  expect(fetchMock).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole("button", { name: "Replace" }));
   const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
   expect(url).toContain(`/api/voices/design/${DESIGN.id}/voice`);
   expect(JSON.parse(String(init.body))).toEqual({ preview: 1 });

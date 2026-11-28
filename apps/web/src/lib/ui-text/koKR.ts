@@ -2784,6 +2784,8 @@ const koKR: Dictionary = {
     measuresTitle: "openSMILE: 평균 음높이, 배음 대 잡음비(낮을수록 거칢), 알파 비율(낮을수록 어두움)",
     saveCost: "내 ElevenLabs 계정에 {name}을 만들며, 음성 슬롯 하나를 씁니다.",
     replaceCost: "이 미리 듣기를 저장된 음성 대신 같은 음성 슬롯에 {name}(으)로 저장합니다. 대사는 다시 녹음해야 합니다.",
+    replaceConfirm: "ElevenLabs에서 저장된 음성을 삭제하고 그 자리에 미리 듣기 {n}을 저장합니다.",
+    replaceVoice: "교체",
     samplesLabel: "샘플 대사",
     noSamples: "아직 샘플 대사가 없습니다.",
     saveFirst: "미리 듣기를 음성으로 저장해야 대사로 들어 볼 수 있습니다.",

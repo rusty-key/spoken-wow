@@ -1,6 +1,7 @@
 /**
- * A version's voice in ElevenLabs: POST saves the chosen preview into the caller's account,
- * DELETE removes it from the holder's account to free a slot. The audio stays either way.
+ * A version's voice in ElevenLabs: POST saves the chosen preview into the caller's account, in
+ * place of the holder's saved voice if there is one; DELETE removes it from the holder's account
+ * to free a slot. The audio stays either way.
  */
 import { requireApiKey } from "@/lib/generation/authz";
 import { failed, requireDesigner } from "@/lib/voice-design/access";
