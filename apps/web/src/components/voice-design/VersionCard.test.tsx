@@ -68,8 +68,8 @@ const context: Workbench = {
 /** A verdict button: the sample lines' marks are named Good too. */
 const verdict = (name: string) => within(screen.getByRole("textbox", { name: "Note" }).closest(".vd-review-form") as HTMLElement).getByRole("button", { name });
 
-const card = (design: Design) => (
-  <WorkbenchContext.Provider value={context}>
+const card = (design: Design, over: Partial<Workbench> = {}) => (
+  <WorkbenchContext.Provider value={{ ...context, ...over }}>
     <VersionCard design={design} slot={{ name: design.slot, sampleChars: 0, reference: null, previewLines: {}, designs: [design] } as unknown as SlotView} newest />
   </WorkbenchContext.Provider>
 );
@@ -323,9 +323,7 @@ test("asks Gemini and Claude what differs, side by side, and adds a finding as a
   });
   vi.stubGlobal("fetch", fetchMock);
   render(
-    <WorkbenchContext.Provider value={{ ...context, keys: { ...context.keys, anthropic: true }, live: { "q:1": "/live/1.mp3" } }}>
-      <VersionCard design={DESIGN} slot={{ name: DESIGN.slot, sampleChars: 0, reference: null, previewLines: {} } as unknown as SlotView} newest />
-    </WorkbenchContext.Provider>,
+    card(DESIGN, { keys: { ...context.keys, anthropic: true }, live: { "q:1": "/live/1.mp3" } }),
   );
   expect(screen.getAllByRole("button", { name: "What's different?" })).toHaveLength(1);
 
@@ -375,9 +373,7 @@ test("drops the observations added to a review when the lines are voiced again",
   );
   vi.stubGlobal("fetch", fetchMock);
   const view = (design: Design) => (
-    <WorkbenchContext.Provider value={{ ...context, live: { "q:1": "/live/1.mp3" } }}>
-      <VersionCard design={design} slot={{ name: DESIGN.slot, sampleChars: 0, reference: null, previewLines: {} } as unknown as SlotView} newest />
-    </WorkbenchContext.Provider>
+    card(design, { live: { "q:1": "/live/1.mp3" } })
   );
   const { rerender } = render(view(DESIGN));
   await userEvent.click(screen.getByRole("button", { name: "What's different?" }));
@@ -396,9 +392,7 @@ test("shows one judge's failure beside the other's answer, and asks only the jud
   );
   vi.stubGlobal("fetch", fetchMock);
   const { rerender } = render(
-    <WorkbenchContext.Provider value={{ ...context, keys: { ...context.keys, anthropic: true }, live: { "q:1": "/live/1.mp3" } }}>
-      <VersionCard design={DESIGN} slot={{ name: DESIGN.slot, sampleChars: 0, reference: null, previewLines: {} } as unknown as SlotView} newest />
-    </WorkbenchContext.Provider>,
+    card(DESIGN, { keys: { ...context.keys, anthropic: true }, live: { "q:1": "/live/1.mp3" } }),
   );
   await userEvent.click(screen.getByRole("button", { name: "What's different?" }));
   expect(await screen.findByText("Faster.")).toBeTruthy();
@@ -406,9 +400,7 @@ test("shows one judge's failure beside the other's answer, and asks only the jud
 
   fetchMock.mockClear();
   rerender(
-    <WorkbenchContext.Provider value={{ ...context, keys: { ...context.keys, gemini: false, anthropic: true }, live: { "q:1": "/live/1.mp3" } }}>
-      <VersionCard design={DESIGN} slot={{ name: DESIGN.slot, sampleChars: 0, reference: null, previewLines: {} } as unknown as SlotView} newest />
-    </WorkbenchContext.Provider>,
+    card(DESIGN, { keys: { ...context.keys, gemini: false, anthropic: true }, live: { "q:1": "/live/1.mp3" } }),
   );
   await userEvent.click(screen.getByRole("button", { name: "What's different?" }));
   expect(fetchMock.mock.calls.map(([, init]) => JSON.parse(String(init.body)).by)).toEqual(["claude"]);
