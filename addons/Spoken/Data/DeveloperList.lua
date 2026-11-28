@@ -1,7 +1,7 @@
 -- Add a character by the GUID that /dump UnitGUID("player") prints in game.
--- Every generated sound pack ships a copy as Developers.lua, so a pack released after Spoken can tag a newer
--- developer. No setfenv: a pack may load before Spoken's environment exists. Copies only add, so
--- a removed character stays tagged until no installed pack still lists it.
+-- Every generated sound pack ships a copy as Developers.lua, so a pack released after Spoken can
+-- tag a newer developer. No setfenv: a pack may load before Spoken's environment exists. Copies
+-- only add, so a removed character stays tagged until no installed pack still lists it.
 local developers = {
     -- Anon
     ["Player-5149-04564413"] = true,

@@ -124,8 +124,6 @@ ICON_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
                         "assets", "icon")
 ICON_NAME = "icon.tga"
 
-#: Every pack carries Spoken's developer list: packs release more often than Spoken, so a
-#: developer merged since Spoken's release is tagged sooner.
 DEVELOPER_LIST = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..",
                               "addons", "Spoken", "Data", "DeveloperList.lua")
 DEVELOPER_LIST_NAME = "Developers.lua"

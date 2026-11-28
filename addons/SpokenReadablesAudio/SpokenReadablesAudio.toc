@@ -12,6 +12,5 @@
 
 Data/Sounds.lua
 
-# Spoken's developer list, which the packager copies in, so a pack can tag a developer added since
-# Spoken's release. A checkout's folder has no copy and the client skips the line.
+# Copied in from Spoken's developer list when packaged. A checkout has none and the client skips it.
 Developers.lua

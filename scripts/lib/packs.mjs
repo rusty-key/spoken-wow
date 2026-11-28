@@ -30,8 +30,6 @@ export const PUBLISHERS_DIR = join(ROOT, "publishers");
 
 export const SECTIONS = ["quests", "places", "readables", "bosses"];
 
-// Every pack carries Spoken's developer list: packs release more often than Spoken, so a
-// developer merged since Spoken's release is tagged sooner.
 export const DEVELOPER_LIST = "addons/Spoken/Data/DeveloperList.lua";
 export const PACK_DEVELOPER_LIST = "Developers.lua";
 

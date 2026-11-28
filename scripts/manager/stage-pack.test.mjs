@@ -15,7 +15,6 @@ function tree(root, files) {
 
 const DEVELOPERS = "SpokenDeveloperCharacters = {}\n";
 
-// A checkout's root holding Spoken's developer list, which every pack carries.
 function stageRoot() {
   const root = mkdtempSync(join(tmpdir(), "stage-"));
   tree(root, { "addons/Spoken/Data/DeveloperList.lua": DEVELOPERS });
