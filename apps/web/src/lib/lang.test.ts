@@ -7,6 +7,7 @@ import {
   BASE_LANG,
   BUILTIN,
   clientLang,
+  cjkFace,
   elevenLabsCode,
   isClientLang,
   isLang,
@@ -64,6 +65,7 @@ describe("the language registry", () => {
   afterEach(() => registerLanguages([]));
 
   const japanese = { code: "jaJP", name: "Japanese", native: "日本語", bcp47: "ja-JP", provider: "ja", client: false };
+  const hongKong = { code: "zhHK", name: "Chinese (HK)", native: "繁體中文", bcp47: "zh-HK", provider: "zh", client: false };
 
   it("accepts a language registered at runtime", () => {
     registerLanguages([japanese]);
@@ -75,6 +77,16 @@ describe("the language registry", () => {
     expect(clientLang("jaJP")).toBeNull();
     expect(allLangs().at(-1)).toBe("jaJP");
     expect(allLangs().slice(0, BUILTIN.length)).toEqual(BUILTIN.map((l) => l.code));
+  });
+
+  it("names the face a script needs, and none for the rest", () => {
+    registerLanguages([japanese, hongKong]);
+    expect(cjkFace("jaJP")).toBe("JP");
+    expect(cjkFace("zhCN")).toBe("SC");
+    expect(cjkFace("zhTW")).toBe("TC");
+    expect(cjkFace("zhHK")).toBe("TC");
+    expect(cjkFace("enUS")).toBeNull();
+    expect(cjkFace("ruRU")).toBeNull();
   });
 
   it("never lets a registration overwrite a built-in", () => {
