@@ -18,6 +18,11 @@ deliberately not the filename, so references survive a naming change.
     g:b{broadcastTextID}-{voice}[:{m|f}]
     g:{lang}-{hash}[:{m|f}]
     f:{broadcastTextID}:{voice}[:{m|f}]
+    n:{gameFile}:{race}-{gender}[-{flavor}]    file {gameFile}-{voice}, in barks/
+
+A bark is an NPC type's own reading of one of the game's greeting, farewell or pissed clips,
+named after the clip's file id. Its id names the type and its file the voice that reads the
+type, as a follow-up's does, so a type moved to another voice gets new files.
 
 A gossip line's stem is whatever follows `g:`, in all three forms. The hash form is every
 line that exists today. The other two are only minted for lines that have no English text to
@@ -55,11 +60,29 @@ named the same way, for the same reason: the words have a broadcast_text id and 
 the follow-up's id, file and folder, so a chat line and a follow-up line of the same words in the
 same voice are one recording.
 """
+from __future__ import annotations
+
 
 FOLLOWUP = "followup"
+BARKS = "barks"
 CHATTER = "chatter"
 #: The sources named after their broadcast_text id and voice: f:{broadcastTextId}:{voice}.
 BROADCAST_SOURCES = frozenset({FOLLOWUP, CHATTER})
+
+
+def bark_type(race: str, gender: str, flavor: str | None) -> str:
+    """An NPC type as one word, e.g. 'orc-female-standard', or 'bloodelf-female' with no flavor."""
+    return "-".join(part for part in (race, gender, flavor) if part)
+
+
+def bark_line_id(game_file, race: str, gender: str, flavor: str | None) -> str:
+    """A bark's id, e.g. 'n:557779:orc-female-standard'."""
+    return f"n:{int(game_file)}:{bark_type(race, gender, flavor)}"
+
+
+def bark_file_name(game_file, voice: str) -> str:
+    """A bark's file, e.g. '557779-orc-female-standard'."""
+    return f"{int(game_file)}-{voice}"
 
 
 def followup_stem(broadcast_text_id, voice: str) -> str:
@@ -211,6 +234,9 @@ def filename_from_line_id(line_id: str) -> str:
     elif kind == "f":
         broadcast, voice, *gender = rest
         base = followup_stem(broadcast, voice)
+    elif kind == "n":
+        raise ValueError(f"a bark's file needs its voice, which {line_id!r} does not name: "
+                         "use bark_file_name")
     else:
         raise ValueError(f"unknown lineId kind {kind!r} in {line_id!r}")
     if gender:
@@ -256,4 +282,6 @@ def subfolder_from_line_id(line_id: str) -> str:
         return "gossip"
     if kind == "f":
         return FOLLOWUP
+    if kind == "n":
+        return BARKS
     raise ValueError(f"unknown lineId kind {kind!r} in {line_id!r}")

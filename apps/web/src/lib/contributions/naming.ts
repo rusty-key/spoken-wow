@@ -20,6 +20,16 @@ export type QuestEvent = "accept" | "progress" | "complete";
 
 export const QUEST_EVENTS: readonly QuestEvent[] = ["accept", "progress", "complete"];
 
+/** A bark's id, e.g. 'n:557779:orc-female-standard': the game clip and the NPC type reading it. */
+export function barkLineId(gameFile: number, race: string, gender: string, flavor: string | null): string {
+  return `n:${gameFile}:${[race, gender, flavor].filter(Boolean).join("-")}`;
+}
+
+/** A bark's file, named after the voice rather than the type, as a follow-up's is. */
+export function barkFileName(gameFile: number, voice: string): string {
+  return `${gameFile}-${voice}`;
+}
+
 /** md5(originalText + race + gender), unprefixed -- get_hash/templateText_race_gender_hash. */
 export function gossipHash(originalText: string, race: string, gender: string): string {
   return createHash("md5").update(originalText + race + gender).digest("hex");

@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { corpus } from "@/lib/quests/catalogue";
 
 import {
+  barkFileName,
+  barkLineId,
   answersQuestMoment,
   baseLineId,
   broadcastGossipStem,
@@ -108,5 +110,13 @@ describe("quest wordings", () => {
       "m-5-accept-w2",
       "f-5-accept-w2",
     ]);
+  });
+});
+
+describe("barks", () => {
+  it("names a bark as naming.py does", () => {
+    expect(barkLineId(557779, "orc", "female", "standard")).toBe("n:557779:orc-female-standard");
+    expect(barkLineId(7744795, "bloodelf", "female", null)).toBe("n:7744795:bloodelf-female");
+    expect(barkFileName(557779, "orc-female-standard")).toBe("557779-orc-female-standard");
   });
 });

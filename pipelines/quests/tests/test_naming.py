@@ -1,6 +1,8 @@
 import pytest
 
 from tts_cli.naming import (
+    bark_file_name,
+    bark_line_id,
     broadcast_gossip_stem,
     filename_for_row,
     filename_from_line_id,
@@ -172,3 +174,15 @@ def test_a_quest_line_s_stem_and_moment():
     assert quest_stem_from_line_id("q:5:accept:w3:f") == "5-accept-w3"
     assert quest_moment_stem("q:5:accept:w3:f") == "5-accept"
     assert quest_moment_stem("q:5:complete") == "5-complete"
+
+
+def test_bark_ids():
+    assert bark_line_id(557779, "orc", "female", "standard") == "n:557779:orc-female-standard"
+    assert bark_line_id(7744795, "bloodelf", "female", None) == "n:7744795:bloodelf-female"
+    assert bark_file_name(557779, "orc-female-standard") == "557779-orc-female-standard"
+    assert subfolder_from_line_id("n:557779:orc-female-standard") == "barks"
+
+
+def test_bark_file_needs_its_voice():
+    with pytest.raises(ValueError, match="voice"):
+        filename_from_line_id("n:557779:orc-female-standard")
