@@ -17,10 +17,7 @@ export function confidentIds(rows: BulkKeepRow[], moreThan: number): number[] {
   return rows.filter((row) => row.count > moreThan).map((row) => row.id);
 }
 
-/**
- * Null until the box holds a whole number of at least 1. Read as 0, a box emptied to retype it
- * would select every line in the queue, Probably drop included, one click from keeping them all.
- */
+/** Null below 1: read as 0, a box emptied to retype it would select the whole queue. */
 export function parseThreshold(typed: string): number | null {
   return /^\s*[1-9]\d*\s*$/.test(typed) ? Number(typed) : null;
 }

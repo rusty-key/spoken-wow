@@ -337,7 +337,6 @@ body:has(main.bs) {
   color: var(--foreground);
 }
 
-/* A button and the menu of its variants, read as one control. */
 .bs-split {
   display: inline-flex;
 }

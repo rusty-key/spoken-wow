@@ -2372,7 +2372,6 @@ export const EN = {
     cancel: "Cancel",
     dropAllCount: "Drop all {n}",
     dropAllWarning: "?",
-    /** The keep-many choices beside Keep all, each confirmed in a window. */
     bulkKeep: {
       more: "More ways to keep",
       confident: "Keep confident…",
