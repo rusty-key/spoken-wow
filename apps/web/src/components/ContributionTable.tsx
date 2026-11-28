@@ -27,6 +27,7 @@ import { CheckIcon, ChevronDownIcon, CircleAlertIcon, ClockIcon, SearchIcon, Wre
 import { useRouter } from "next/navigation";
 import { memo, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 
+import BulkKeepDialog from "@/components/BulkKeepDialog";
 import ClientSelect from "@/components/ClientSelect";
 import { SEARCH_IN_OPTIONS, STAGE_CHIP_OPTIONS, STAGE_LABELS } from "@/components/contribution-chips";
 import FilterChip, { type ChipOption } from "@/components/FilterChip";
@@ -39,6 +40,7 @@ import DropReasons from "@/components/backstage/DropReasons";
 import Panel, { type PanelTone } from "@/components/backstage/Panel";
 import { Chips, Tabs } from "@/components/backstage/Tabs";
 import TokenText from "@/components/backstage/TokenText";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { usePendingPush } from "@/components/usePendingPush";
 import { useLocalDates } from "@/components/useLocalDates";
 import { useSearchBox } from "@/components/useSearchBox";
@@ -201,7 +203,7 @@ export default function ContributionTable({
   /** This page's rows. */
   initial: ContributionRow[];
   /** Every row the filters match, on any page, with its group -- what "Keep all" and "Drop all" act on. */
-  matching: { id: number; status: ContributionStatus; bulk: boolean; verdict: Verdict }[];
+  matching: { id: number; status: ContributionStatus; bulk: boolean; verdict: Verdict; count: number }[];
   page: number;
   pages: number;
   status: ContributionStatus;
@@ -553,7 +555,11 @@ export default function ContributionTable({
   // round. A row reopened since is waiting again and stays.
   const undecided = (ids: number[] | null) =>
     ids?.filter((id) => (resolved[id] ?? "new") === "new" && !busy.has(id)) ?? null;
+  const [keepConfident, setKeepConfident] = useState(false);
+  const [keepMenu, setKeepMenu] = useState(false);
+  const bulkKeepable = matching.filter((row) => row.bulk && stillNew(row) && !busy.has(row.id));
   const keepConfirmed = undecided(confirmAll);
+  const keepAllShown = cleanToKeep.length > 1 && rows.some((row) => row.check.verdict === "clean");
   const dropConfirmed = undecided(confirmDrop);
   const [showFilters, setShowFilters] = useState(Boolean(build || stage.length > 0 || searchIn !== "any"));
 
@@ -764,82 +770,118 @@ export default function ContributionTable({
             description={status === "new" ? t.contributions.newLinesArrive : t.contributions.linesYouDecide}
           />
         ) : status === "new" && bucket === "ready" ? (
-          GROUPS.map((group) => {
-            const members = rows.filter((row) => row.check.verdict === group.verdict);
-            if (members.length === 0) return null;
-            const action =
-              group.verdict === "clean" && cleanToKeep.length > 1 ? (
-                keepConfirmed ? (
-                  <>
-                    <span className="text-sm">
-                      {fill(t.contributions.keepAllCount, { n: keepConfirmed.length })}
-                      {pages > 1 ? t.contributions.keepAllEvery : ""}
-                      {t.contributions.keepAllWarning}
+          <>
+            {/* Keep confident reaches past Looks right, so it can't depend on Keep all being shown. */}
+            {!keepAllShown && bulkKeepable.length > 0 ? (
+              <div className="flex justify-end">
+                <button type="button" className="bs-btn" disabled={bulk !== null} onClick={() => setKeepConfident(true)}>
+                  {t.contributions.bulkKeep.confident}
+                </button>
+              </div>
+            ) : null}
+            {GROUPS.map((group) => {
+              const members = rows.filter((row) => row.check.verdict === group.verdict);
+              if (members.length === 0) return null;
+              const action =
+                group.verdict === "clean" && cleanToKeep.length > 1 ? (
+                  keepConfirmed ? (
+                    <>
+                      <span className="text-sm">
+                        {fill(t.contributions.keepAllCount, { n: keepConfirmed.length })}
+                        {pages > 1 ? t.contributions.keepAllEvery : ""}
+                        {t.contributions.keepAllWarning}
+                      </span>
+                      <button
+                        type="button"
+                        className="bs-btn bs-btn-primary"
+                        disabled={bulk !== null || keepConfirmed.length === 0}
+                        onClick={() => {
+                          setConfirmAll(null);
+                          void resolveMany(keepConfirmed, "accepted");
+                        }}
+                      >
+                        {fill(t.contributions.keepCount, { n: keepConfirmed.length })}
+                      </button>
+                      <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmAll(null)}>
+                        {t.contributions.cancel}
+                      </button>
+                    </>
+                  ) : (
+                    <span className="bs-split">
+                      <button type="button" className="bs-btn bs-btn-primary" disabled={bulk !== null} onClick={() => setConfirmAll(cleanToKeep)}>
+                        {fill(t.contributions.keepAllCount, { n: cleanToKeep.length })}
+                      </button>
+                      <Popover open={keepMenu} onOpenChange={setKeepMenu}>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="bs-btn bs-btn-primary"
+                            disabled={bulk !== null}
+                            aria-label={t.contributions.bulkKeep.more}
+                          >
+                            <ChevronDownIcon className="size-4" aria-hidden />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="bs-menu flex w-auto flex-col p-1">
+                          <button
+                            type="button"
+                            className="bs-btn bs-btn-text"
+                            onClick={() => {
+                              setKeepMenu(false);
+                              setKeepConfident(true);
+                            }}
+                          >
+                            {t.contributions.bulkKeep.confident}
+                          </button>
+                        </PopoverContent>
+                      </Popover>
                     </span>
-                    <button
-                      type="button"
-                      className="bs-btn bs-btn-primary"
-                      disabled={bulk !== null || keepConfirmed.length === 0}
-                      onClick={() => {
-                        setConfirmAll(null);
-                        void resolveMany(keepConfirmed, "accepted");
-                      }}
-                    >
-                      {fill(t.contributions.keepCount, { n: keepConfirmed.length })}
+                  )
+                ) : group.verdict === "drop" && dropToReject.length > 1 ? (
+                  dropConfirmed ? (
+                    <>
+                      <span className="text-sm">
+                        {fill(t.contributions.dropAllCount, { n: dropConfirmed.length })}
+                        {pages > 1 ? t.contributions.keepAllEvery : ""}
+                        {t.contributions.dropAllWarning}
+                      </span>
+                      <button
+                        type="button"
+                        className="bs-btn bs-btn-danger"
+                        disabled={bulk !== null || dropConfirmed.length === 0}
+                        onClick={() => {
+                          setConfirmDrop(null);
+                          void resolveMany(dropConfirmed, "rejected", t.contributions.failedChecks);
+                        }}
+                      >
+                        {fill(t.contributions.dropCount, { n: dropConfirmed.length })}
+                      </button>
+                      <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmDrop(null)}>
+                        {t.contributions.cancel}
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="bs-btn bs-btn-danger" disabled={bulk !== null} onClick={() => setConfirmDrop(dropToReject)}>
+                      {fill(t.contributions.dropAllCount, { n: dropToReject.length })}
                     </button>
-                    <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmAll(null)}>
-                      {t.contributions.cancel}
-                    </button>
-                  </>
-                ) : (
-                  <button type="button" className="bs-btn bs-btn-primary" disabled={bulk !== null} onClick={() => setConfirmAll(cleanToKeep)}>
-                    {fill(t.contributions.keepAllCount, { n: cleanToKeep.length })}
-                  </button>
-                )
-              ) : group.verdict === "drop" && dropToReject.length > 1 ? (
-                dropConfirmed ? (
-                  <>
-                    <span className="text-sm">
-                      {fill(t.contributions.dropAllCount, { n: dropConfirmed.length })}
-                      {pages > 1 ? t.contributions.keepAllEvery : ""}
-                      {t.contributions.dropAllWarning}
-                    </span>
-                    <button
-                      type="button"
-                      className="bs-btn bs-btn-danger"
-                      disabled={bulk !== null || dropConfirmed.length === 0}
-                      onClick={() => {
-                        setConfirmDrop(null);
-                        void resolveMany(dropConfirmed, "rejected", t.contributions.failedChecks);
-                      }}
-                    >
-                      {fill(t.contributions.dropCount, { n: dropConfirmed.length })}
-                    </button>
-                    <button type="button" className="bs-btn bs-btn-text" onClick={() => setConfirmDrop(null)}>
-                      {t.contributions.cancel}
-                    </button>
-                  </>
-                ) : (
-                  <button type="button" className="bs-btn bs-btn-danger" disabled={bulk !== null} onClick={() => setConfirmDrop(dropToReject)}>
-                    {fill(t.contributions.dropAllCount, { n: dropToReject.length })}
-                  </button>
-                )
-              ) : null;
-            return (
-              <Panel
-                key={group.verdict}
-                id={`group-${group.verdict}`}
-                tone={group.tone}
-                icon={GROUP_ICONS[group.verdict]}
-                title={t.contributions.groups[group.verdict].title}
-                count={members.length}
-                description={t.contributions.groups[group.verdict].description}
-                action={action}
-              >
-                {members.map((row) => renderRow(row))}
-              </Panel>
-            );
-          })
+                  )
+                ) : null;
+              return (
+                <Panel
+                  key={group.verdict}
+                  id={`group-${group.verdict}`}
+                  tone={group.tone}
+                  icon={GROUP_ICONS[group.verdict]}
+                  title={t.contributions.groups[group.verdict].title}
+                  count={members.length}
+                  description={t.contributions.groups[group.verdict].description}
+                  action={action}
+                >
+                  {members.map((row) => renderRow(row))}
+                </Panel>
+              );
+            })}
+          </>
         ) : (
           <Panel
             tone={status === "rejected" ? "drop" : status === "accepted" ? "good" : "neutral"}
@@ -858,6 +900,17 @@ export default function ContributionTable({
         )}
       </div>
 
+      {keepConfident ? (
+        <BulkKeepDialog
+          rows={bulkKeepable}
+          everyPage={pages > 1}
+          onClose={() => setKeepConfident(false)}
+          onConfirm={(ids) => {
+            setKeepConfident(false);
+            void resolveMany(ids, "accepted");
+          }}
+        />
+      ) : null}
       <datalist id={READABLES_LIST}>
         {[...labels].map(([label, choice]) => (
           <option key={label} value={label}>

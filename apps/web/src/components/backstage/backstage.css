@@ -337,6 +337,24 @@ body:has(main.bs) {
   color: var(--foreground);
 }
 
+.bs-split {
+  display: inline-flex;
+}
+.bs-split > .bs-btn:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.bs-split > .bs-btn:last-child {
+  padding: 0 8px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.bs-menu > .bs-btn {
+  justify-content: flex-start;
+}
+
 /* ---------- Fields ---------- */
 
 .bs-search {
