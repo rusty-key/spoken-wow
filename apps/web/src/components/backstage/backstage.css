@@ -46,6 +46,20 @@ body:has(main.bs) {
   background: #101216;
 }
 
+/* Set by the backstage layout's marker. On body, not the marker, so portalled dialogs inherit it. */
+body:has(.ui-cjk-sc) {
+  --cjk-face: "Noto Sans SC";
+}
+body:has(.ui-cjk-tc) {
+  --cjk-face: "Noto Sans TC";
+}
+body:has(.ui-cjk-jp) {
+  --cjk-face: "Noto Sans JP";
+}
+body:has(.ui-cjk-sc, .ui-cjk-tc, .ui-cjk-jp) {
+  font-family: var(--font-sans), var(--cjk-face), sans-serif;
+}
+
 .bs ::selection {
   background: var(--bs-gold);
   color: #16171d;

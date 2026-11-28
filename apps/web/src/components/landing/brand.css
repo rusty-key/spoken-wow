@@ -33,7 +33,7 @@
 }
 
 .bn-theme {
-  font-family: var(--bn-body), "Segoe UI", sans-serif;
+  font-family: var(--bn-body), var(--cjk-face, "Segoe UI"), sans-serif;
 }
 
 .bn-display {

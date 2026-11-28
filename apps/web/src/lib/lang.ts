@@ -168,6 +168,15 @@ export function langTag(lang: Lang): string {
   return languageInfo(lang)?.bcp47 ?? "en-US";
 }
 
+/** The CJK face a language's glyphs need: Simplified, Traditional and Japanese disagree on how a codepoint is drawn. */
+export function cjkFace(lang: Lang): "SC" | "TC" | "JP" | null {
+  const tag = langTag(lang);
+  if (tag.startsWith("zh-TW") || tag.startsWith("zh-HK")) return "TC";
+  if (tag.startsWith("zh")) return "SC";
+  if (tag.startsWith("ja")) return "JP";
+  return null;
+}
+
 /**
  * A page's address in a language: the bare path for English, `/ptBR/...` for the rest.
  *

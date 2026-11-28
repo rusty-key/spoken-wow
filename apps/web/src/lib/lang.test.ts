@@ -7,6 +7,7 @@ import {
   BASE_LANG,
   BUILTIN,
   clientLang,
+  cjkFace,
   elevenLabsCode,
   isClientLang,
   isLang,
@@ -75,6 +76,15 @@ describe("the language registry", () => {
     expect(clientLang("jaJP")).toBeNull();
     expect(allLangs().at(-1)).toBe("jaJP");
     expect(allLangs().slice(0, BUILTIN.length)).toEqual(BUILTIN.map((l) => l.code));
+  });
+
+  it("names the face a script needs, and none for the rest", () => {
+    registerLanguages([japanese]);
+    expect(cjkFace("jaJP")).toBe("JP");
+    expect(cjkFace("zhCN")).toBe("SC");
+    expect(cjkFace("zhTW")).toBe("TC");
+    expect(cjkFace("enUS")).toBeNull();
+    expect(cjkFace("ruRU")).toBeNull();
   });
 
   it("never lets a registration overwrite a built-in", () => {
