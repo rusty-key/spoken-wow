@@ -16,10 +16,10 @@ const one = (value: number) => value.toFixed(1);
 const RANKINGS = ["deepest_to_highest", "roughest_to_smoothest", "most_to_least_menacing", "most_to_least_authoritative"] as const;
 const DESCRIBED = ["apparent_age", "pitch", "timbre", "texture", "attitude_persona", "processing"] as const;
 
-/** A group's Compare blind run: the button in the group's header starts it, the panel shows how it went. */
-export type CompareBlind = { busy: boolean; error: string | null; missing: string[]; withClips: number; run: () => Promise<void> };
+/** Shared by the button in the group's header and the panel below it. */
+export type CompareBlind = { busy: boolean; error: string | null; missing: string[]; run: () => Promise<void> };
 
-export function useCompareBlind(group: string, slots: SlotView[]): CompareBlind {
+export function useCompareBlind(group: string): CompareBlind {
   const { lang, updateAnalysis } = useWorkbench();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,21 +37,22 @@ export function useCompareBlind(group: string, slots: SlotView[]): CompareBlind 
       setBusy(false);
     }
   }
-  return { busy, error, missing, withClips: slots.filter((slot) => slot.reference).length, run };
+  return { busy, error, missing, run };
 }
 
-/** Sits in the group's header, a summary: pressing it must not also fold the group. */
-export function CompareBlindButton({ compare, analysis }: { compare: CompareBlind; analysis: Analysis | null }) {
+/** Inside the group's summary, where a press would also fold the group. */
+export function CompareBlindButton({ compare, analysis, slots }: { compare: CompareBlind; analysis: Analysis | null; slots: SlotView[] }) {
   const t = useUiText().voiceDesign;
   const { viewer, keys } = useWorkbench();
   if (!viewer.designs) return null;
-  const tip = [compare.withClips >= 2 ? t.analysisNone : t.analysisNeedsClips, t.gameClipNote, t.analyseCost].join("\n\n");
+  const withClips = slots.filter((slot) => slot.reference).length;
+  const tip = [withClips >= 2 ? t.analysisNone : t.analysisNeedsClips, t.gameClipNote, t.analyseCost].join("\n\n");
   return (
-    <span className="vd-tip vd-group-action" data-tip={tip} tabIndex={0}>
+    <span className="vd-tip vd-tip-below vd-group-action" data-tip={tip} tabIndex={0}>
       <button
         type="button"
         className="bs-btn"
-        disabled={compare.busy || !keys.gemini || compare.withClips < 2}
+        disabled={compare.busy || !keys.gemini || withClips < 2}
         onClick={(event) => {
           event.preventDefault();
           void compare.run();
@@ -65,10 +66,9 @@ export function CompareBlindButton({ compare, analysis }: { compare: CompareBlin
 }
 
 /** Gemini's blind comparison; its letters are revealed here, after the fact. */
-export default function AnalysePanel({ analysis, compare }: { analysis: Analysis | null; compare: CompareBlind }) {
+export default function AnalysePanel({ analysis, compare: { error, missing } }: { analysis: Analysis | null; compare: CompareBlind }) {
   const t = useUiText().voiceDesign;
   const { viewer, setDraft } = useWorkbench();
-  const { error, missing } = compare;
   const name = (label: string) => {
     const slot = analysis?.labels[label];
     return slot ? (flavorOf(slot) ?? slot) : label;
@@ -93,11 +93,9 @@ export default function AnalysePanel({ analysis, compare }: { analysis: Analysis
   return (
     <section className="vd-analysis" aria-label={t.analysisLabel}>
       {analysis ? (
-        <div className="vd-analysis-head">
-          <div>
-            <p className="vd-analysis-title">{t.analysisLabel}</p>
-            <p className="vd-muted">{fill(t.analysedBy, { who: analysis.createdByName ?? t.someone, when: analysis.createdAt.slice(0, 10) })}</p>
-          </div>
+        <div>
+          <p className="vd-analysis-title">{t.analysisLabel}</p>
+          <p className="vd-muted">{fill(t.analysedBy, { who: analysis.createdByName ?? t.someone, when: analysis.createdAt.slice(0, 10) })}</p>
         </div>
       ) : null}
 

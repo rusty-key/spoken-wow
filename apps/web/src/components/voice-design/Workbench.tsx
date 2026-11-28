@@ -76,7 +76,6 @@ function matches(slot: SlotView, { filter, players, needle }: Narrowing): boolea
 const picked = (groups: GroupView[], narrowing: Narrowing) =>
   new Set(groups.flatMap((group) => group.slots).filter((slot) => matches(slot, narrowing)).map((slot) => slot.name));
 
-/** A race-gender group: its header carries Compare blind, its body the comparison and the slots. */
 function GroupBlock({
   group,
   open,
@@ -91,7 +90,7 @@ function GroupBlock({
   toggleSlot: (name: string) => void;
 }) {
   const t = useUiText().voiceDesign;
-  const compare = useCompareBlind(group.group, group.slots);
+  const compare = useCompareBlind(group.group);
   const states = group.slots.map(doneness);
   return (
     <details className="vd-group" open={open || undefined}>
@@ -105,7 +104,7 @@ function GroupBlock({
             work: states.filter((s) => s === "needs-work").length,
           })}
         </span>
-        <CompareBlindButton compare={compare} analysis={group.analysis} />
+        <CompareBlindButton compare={compare} analysis={group.analysis} slots={group.slots} />
       </summary>
       <div className="vd-group-body">
         <AnalysePanel analysis={group.analysis} compare={compare} />
