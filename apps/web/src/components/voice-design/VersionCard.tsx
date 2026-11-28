@@ -262,13 +262,7 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
     });
   const generate = () => fromReview("generate", "Voice Design", (draft) => draft, (draft) => designFrom(lang, slot.name, draft));
   const remixFromReview = () => fromReview("remix", "Voice Remix", remixDraft, (draft) => remixFrom(lang, draft, remixSettings));
-  const bothFromReview = () =>
-    fromReview("both", "Voice Design and Voice Remix", remixDraft, async (draft) => {
-      const { designs, problem } = await designAndRemixFrom(lang, draft, remixSettings);
-      if (problem) setError(problem);
-      return designs;
-    });
-  // Where a version made by both calls has its remixed previews, so each is named for its call.
+  const bothFromReview = () => fromReview("both", "Voice Design and Voice Remix", remixDraft, (draft) => designAndRemixFrom(lang, draft, remixSettings));
   const remixStart = typeof design.analysis?.remix_from === "number" ? design.analysis.remix_from : null;
   const previewName = (index: number) =>
     remixStart !== null && index >= remixStart ? fill(t.remixPreviewN, { n: index - remixStart + 1 }) : fill(t.previewN, { n: index + 1 });
@@ -323,6 +317,7 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
               {typeof design.analysis?.remix_of === "number" ? (
                 <Field label={fill(t.remixOf, { v: `v${design.analysis.remix_of}` })} value={design.analysis.remix_changes} />
               ) : null}
+              <Field label={t.madeProblemLabel} value={design.analysis?.made_problem} />
               <Field label={t.designNoteLabel} value={design.note} />
             </div>
 
@@ -550,7 +545,7 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
                   <StatusBadge doneness={review.status} />
                   <span className="vd-muted">
                     {fill(t.reviewedBy, { who: review.createdByName ?? t.someone, when: day(review.createdAt) })}
-                    {review.bestPreview !== null ? ` · ${fill(t.bestWas, { n: review.bestPreview + 1 })}` : ""}
+                    {review.bestPreview !== null ? ` · ${fill(t.bestWas, { name: previewName(review.bestPreview) })}` : ""}
                   </span>
                   {review.note ? <span className="vd-review-note">{review.note}</span> : null}
                   {review.players.length > 0 ? (

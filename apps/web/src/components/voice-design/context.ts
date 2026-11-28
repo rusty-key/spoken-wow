@@ -115,7 +115,7 @@ export async function designFrom(lang: Lang, slot: string, draft: Draft): Promis
 
 type RemixDraft = Draft & Required<Pick<Draft, "remix">>;
 
-function sendRemix<T>(lang: Lang, route: string, draft: RemixDraft, settings: RemixSettings) {
+function sendRemix<T = object>(lang: Lang, route: string, draft: RemixDraft, settings: RemixSettings) {
   if (!draft.changes?.trim()) throw new Error("Gemini said no changes to remix with");
   return send<T & { design: Design; retired: Design[] }>(withLang(lang, `/api/voices/design/${draft.remix.id}/${route}`), {
     body: {
@@ -134,8 +134,7 @@ export async function remixFrom(lang: Lang, draft: RemixDraft, settings: RemixSe
   return [design, ...retired];
 }
 
-/** `problem` names the call that failed when only the other's previews were kept. */
-export async function designAndRemixFrom(lang: Lang, draft: RemixDraft, settings: RemixSettings): Promise<{ designs: Design[]; problem: string | null }> {
-  const { design, retired, problem } = await sendRemix<{ problem: string | null }>(lang, "design-and-remix", draft, settings);
-  return { designs: [design, ...retired], problem };
+export async function designAndRemixFrom(lang: Lang, draft: RemixDraft, settings: RemixSettings): Promise<Design[]> {
+  const { design, retired } = await sendRemix(lang, "design-and-remix", draft, settings);
+  return [design, ...retired];
 }

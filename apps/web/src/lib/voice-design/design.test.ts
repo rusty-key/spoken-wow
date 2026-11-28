@@ -294,27 +294,28 @@ describe("designAndRemixVersion", () => {
 
   it("keeps Voice Design's previews, then Voice Remix's, in one version", async () => {
     const d = deps(saved, { remix: vi.fn(async () => remixed) });
-    const made = await designAndRemixVersion(both, d);
+    await designAndRemixVersion(both, d);
     expect(d.design).toHaveBeenCalledWith({ prompt: withEnding("A cold orc, a back-alley dealer."), text: "x".repeat(120) }, "k");
     expect(d.remix).toHaveBeenCalledWith({ voiceId: "voice-9", changes: "Colder.", text: "x".repeat(120), ...settings }, "k");
     const input = vi.mocked(d.create).mock.calls[0][0];
     expect(input.previews.map((p) => p.generatedVoiceId)).toEqual(["g0", "g1", "g2", "r0", "r1", "r2"]);
     expect(input.analysis).toEqual({ remix_of: 3, remix_changes: "Colder.", remix_settings: settings, remix_from: 3 });
-    expect(made.problem).toBeNull();
   });
 
   it("keeps the previews one call paid for when the other fails, and says which failed", async () => {
     const d = deps(saved, { remix: vi.fn(async () => Promise.reject(new Error("remix down"))) });
-    const made = await designAndRemixVersion(both, d);
+    await designAndRemixVersion(both, d);
     const input = vi.mocked(d.create).mock.calls[0][0];
     expect(input.previews.map((p) => p.generatedVoiceId)).toEqual(["g0", "g1", "g2"]);
-    expect(input.analysis).toBeNull();
-    expect(made.problem).toMatch(/Voice Remix failed.*remix down/);
+    expect(input.analysis).toEqual({ made_problem: expect.stringMatching(/Voice Remix failed.*remix down/) });
 
     const noDesign = deps(saved, { design: vi.fn(async () => Promise.reject(new Error("design down"))), remix: vi.fn(async () => remixed) });
-    const fromRemix = await designAndRemixVersion(both, noDesign);
-    expect(vi.mocked(noDesign.create).mock.calls[0][0].analysis).toMatchObject({ remix_of: 3, remix_from: 0 });
-    expect(fromRemix.problem).toMatch(/Voice Design failed.*design down/);
+    await designAndRemixVersion(both, noDesign);
+    expect(vi.mocked(noDesign.create).mock.calls[0][0].analysis).toMatchObject({
+      remix_of: 3,
+      remix_from: 0,
+      made_problem: expect.stringMatching(/Voice Design failed.*design down/),
+    });
   });
 
   it("makes no version when both fail", async () => {

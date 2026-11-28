@@ -182,7 +182,7 @@ export async function remixVersion(input: RemixInput, deps: DesignDeps = LIVE): 
  * of this one changed sit side by side. Design's come first; `remix_from` is where Remix's start.
  * Both calls are paid for as they finish, so when one fails the other's previews are still kept.
  */
-export async function designAndRemixVersion(input: RemixInput, deps: DesignDeps = LIVE): Promise<Made & { problem: string | null }> {
+export async function designAndRemixVersion(input: RemixInput, deps: DesignDeps = LIVE): Promise<Made> {
   const { parent, prompt, previewText, described, remix, remixAnalysis } = await prepareRemix(input, deps);
   const [designed, remixed] = await Promise.allSettled([deps.design({ prompt, text: previewText }, input.apiKey), remix()]);
   if (designed.status === "rejected" && remixed.status === "rejected") throw designed.reason;
@@ -201,12 +201,18 @@ export async function designAndRemixVersion(input: RemixInput, deps: DesignDeps 
     previewText,
     previews: await keptPreviews([...fromDesign, ...fromRemix], input.lang, deps),
     analysisId: parent.analysisId,
-    analysis: fromRemix.length > 0 ? { ...described, ...remixAnalysis, remix_from: fromDesign.length } : described,
+    // Kept on the version: the card that pressed the button is replaced by this one, and so is its error.
+    analysis: nonEmpty({
+      ...described,
+      ...(fromRemix.length > 0 ? { ...remixAnalysis, remix_from: fromDesign.length } : {}),
+      ...(problem ? { made_problem: problem } : {}),
+    }),
     userId: input.userId,
   });
-  return { design, retired: await retireOlder({ ...input, kept: design }, deps), problem };
+  return { design, retired: await retireOlder({ ...input, kept: design }, deps) };
 }
 
+const nonEmpty = (analysis: Record<string, unknown>) => (Object.keys(analysis).length > 0 ? analysis : null);
 const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 export async function found(read: (lang: Lang, id: string) => Promise<Design | null>, lang: Lang, id: string): Promise<Design> {
