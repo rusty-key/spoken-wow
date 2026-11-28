@@ -589,6 +589,22 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
             </div>
           </div>
 
+          <FeedbackResults
+            design={design}
+            can={can}
+            disabled={busy !== null}
+            onHide={(showingId, voter) => void act("hide", `/api/voices/design/${design.id}/feedback`, { method: "DELETE", body: { showingId, voter } })}
+            picked={picked}
+            onPick={(key, on) =>
+              setPicked((current) => {
+                const next = new Set(current);
+                if (on) next.add(key);
+                else next.delete(key);
+                return next;
+              })
+            }
+          />
+
           {design.reviews.length > 0 ? (
             <ol className="vd-reviews" aria-label={t.reviewsLabel}>
               {design.reviews.map((review) => (
@@ -642,22 +658,6 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
               ))}
             </ol>
           ) : null}
-
-          <FeedbackResults
-            design={design}
-            can={can}
-            disabled={busy !== null}
-            onHide={(showingId, voter) => void act("hide", `/api/voices/design/${design.id}/feedback`, { method: "DELETE", body: { showingId, voter } })}
-            picked={picked}
-            onPick={(key, on) =>
-              setPicked((current) => {
-                const next = new Set(current);
-                if (on) next.add(key);
-                else next.delete(key);
-                return next;
-              })
-            }
-          />
 
           {can ? (
             <div className="vd-review-form">
