@@ -92,7 +92,8 @@ say in the PR which database change and which export are needed.
 (`make/droplet.mk`) locally and from the `DO_*` secrets in CI.
 
 **Ids and filenames are frozen.** `q:{questID}:{accept|progress|complete}` (and its other wordings, `…:w{n}`), `g:{md5}`,
-`g:b{broadcastTextID}-{voice}`, `g:{lang}-{md5}`, `f:{broadcastTextID}:{voice}` (each with an optional `:m`/`:f` suffix), `z:{mapID}`,
+`g:b{broadcastTextID}-{voice}`, `g:{lang}-{md5}`, `f:{broadcastTextID}:{voice}` (each with an optional `:m`/`:f` suffix), the bark
+`n:{gameFile}:{race}-{gender}[-{flavor}]` (file `{gameFile}-{voice}`), `z:{mapID}`,
 `s:{mapID}:{key}`, `b:{pageTextID}`, the minted `b:n{uuid}` (a page only a player's client has
 shown) and its book's `n{uuid}`, and the paths derived from them. A minted page later found in
 the world database folds into the real one, and its id stays behind as an alias. Renaming one

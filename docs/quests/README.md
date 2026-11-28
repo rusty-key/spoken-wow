@@ -118,6 +118,25 @@ greeting holds the plain greetings and the shop lines together. A row's `voice` 
 reads it, where `apps/web/src/lib/npc/display-voices.json` names one; the rows without one are the
 named NPCs' own sets and the Skybourne ones. A file missing from the list plays the game's voice.
 
+Our text for those clips lives in two tables (migration 0142). `npc_bark_set` is the game's sets
+as `npc-sounds.json` lists them, each with the NPC type that reads it; a set with no type whose
+files all belong to one typed set takes that set's type, or muting the typed set would silence
+its NPCs. `npc_bark` holds one versioned line per game clip per type, `n:{gameFile}:{type}`, read
+by `voice_for` of its type, its file `barks/{gameFile}-{voice}`. A bark belongs to a type, not to
+an NPC, so it has no speakers.
+
+```bash
+make quests-import-barks TRANSCRIPTS=~/.cache/npc-greetings/transcripts-enUS.json
+make quests-import-npc-types    # needs the vmangos MySQL
+```
+
+The transcript is each clip's text by file id, made locally from the game's audio; the audio
+never enters the repo or the database. `import-barks` reruns safely: unchanged text is skipped, a
+changed transcript becomes a new version, and an edited bark is never replaced.
+`import-npc-types` gives every one-body creature of the world database that `npc` lacks its type
+from its displays, as provenance `display`, and never changes a row that exists: the vendors,
+guards and trainers with no lines greet the player too.
+
 ## Usage
 
 ```bash
