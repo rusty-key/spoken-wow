@@ -46,13 +46,14 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   }));
   // The status, never the key. Sent to a client component as props, so this is the shape
   // that decides what the browser can possibly learn.
-  // Gemini listens on /voices/design, which is for whoever configures a language.
+  // Gemini and Claude judge voices on /voices/design, which is for whoever configures a language.
   const designs = langsWhere(viewer, "configure").length > 0;
-  const [tokens, status, fishStatus, geminiStatus, uiLang] = await Promise.all([
+  const [tokens, status, fishStatus, geminiStatus, anthropicStatus, uiLang] = await Promise.all([
     listTokens(session.user.id),
     spends ? apiKeyStatus(session.user.id) : null,
     spends ? apiKeyStatus(session.user.id, "fish") : null,
     designs ? apiKeyStatus(session.user.id, "gemini") : null,
+    designs ? apiKeyStatus(session.user.id, "anthropic") : null,
     uiLangOf(session.user.id),
   ]);
 
@@ -94,6 +95,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
             <ApiKeySection initial={status} />
             <ApiKeySection initial={fishStatus} provider="fish" />
             {designs ? <ApiKeySection initial={geminiStatus} provider="gemini" /> : null}
+            {designs ? <ApiKeySection initial={anthropicStatus} provider="anthropic" /> : null}
           </div>
         ) : (
           // Said rather than hidden: a member who has been told "go and regenerate that line"

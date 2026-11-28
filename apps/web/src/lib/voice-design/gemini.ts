@@ -10,7 +10,7 @@ import { shuffle } from "@/lib/shuffle";
 import { failure } from "@/lib/voices/elevenlabs";
 
 import { EFFECT_WORDS, PROMPT_ENDING, SIBILANT_WORDS, withEnding } from "./limits";
-import type { GeminiResult, PlayerNote, Verdict } from "./types";
+import type { GeminiResult, Observation, PlayerNote, Verdict } from "./types";
 
 export const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -181,53 +181,118 @@ export async function compareBlind(
 /** `changes` is the same fix said as a change to the existing voice, for Voice Remix. */
 export type Revision = { heard: string; prompt: string; preview_text: string; changes: string };
 
+/** One verdict as revise reads it: the reviewer's own words apart from what a judge observed. */
+export type HistoryReview = { status: string; note: string; observations: Observation[]; players: PlayerNote[] };
+
+export type HistoryVersion = {
+  version: number;
+  prompt: string;
+  reviews: HistoryReview[];
+  /** The first later version marked good: this version's notes were satisfied by then. */
+  satisfiedBy: number | null;
+};
+
+/** The newest note on another flavor of the race. */
+export type SiblingNote = { slot: string; version: number; note: string };
+
 export type ReviseInput = {
   slot: string;
   version: number;
   /** "good", "needs-work", or "not reviewed yet". */
   status: string;
-  note: string;
-  /** The newest note on each other flavor of the same race, by slot. */
-  siblings: Record<string, string>;
-  players: PlayerNote[];
+  /** Every version of the slot, oldest first, the one revised last. */
+  history: HistoryVersion[];
+  siblings: SiblingNote[];
   archetype: string;
   prompt: string;
   previewText: string;
+  /** The sample line Gemini hears, as sent to the version. */
+  line: string;
+  /** Whether the live take of that line goes with it. */
+  hasLive: boolean;
+  /** evidenceTable's output; "" without the measuring helper. */
+  numbers: string;
 };
 
 /** The player's answer as Gemini reads it: prompt text, so English whatever the page's language. */
 const ANSWER: Record<Verdict, string> = { fits: "Fits", close: "Close", off: "Doesn't fit", skip: "Skipped" };
 
+const JUDGE_NAME: Record<Observation["by"], string> = { gemini: "Gemini", claude: "Claude" };
+
+/** How long an old version's prompt is shown: enough to see what it tried. */
+const OLD_PROMPT_CHARS = 200;
+
+function historyLines(entry: HistoryVersion, current: number): string[] {
+  const v = `v${entry.version}`;
+  const lines = [
+    entry.version === current
+      ? `${v} (the version being revised; its prompt is below)`
+      : `${v} prompt: "${entry.prompt.length > OLD_PROMPT_CHARS ? `${entry.prompt.slice(0, OLD_PROMPT_CHARS)}…` : entry.prompt}"`,
+  ];
+  const state = entry.satisfiedBy === null ? "open" : `satisfied: v${entry.satisfiedBy} was marked good`;
+  if (entry.reviews.length === 0) lines.push("  - not reviewed");
+  for (const review of entry.reviews) {
+    lines.push(`  - verdict ${review.status}. Reviewer's note: ${review.note ? `"${review.note}" [${state}]` : "(none)"}`);
+    for (const pick of review.players) lines.push(`    Player's note the reviewer chose to act on [${state}]: "${ANSWER[pick.verdict]}: ${pick.note}"`);
+    for (const seen of review.observations) {
+      lines.push(`    Observation by ${JUDGE_NAME[seen.by]}, ${v}'s take compared with the live take (how ${v} sounds, NOT a wish): "${seen.note}"`);
+      if (seen.fixes?.length) lines.push(`    ${JUDGE_NAME[seen.by]}'s suggested prompt changes for ${v}: ${JSON.stringify(seen.fixes)}`);
+    }
+  }
+  return lines;
+}
+
 /** What Gemini is asked when revising a version from its review. */
 export function buildRevisePrompt(input: ReviseInput): string {
+  const v = `v${input.version}`;
+  const siblings = input.siblings.length
+    ? input.siblings.map((sibling) => `- ${sibling.slot} v${sibling.version}: "${sibling.note}"`).join("\n")
+    : "(none)";
+  const recordings = input.hasLive
+    ? `First recording: the game reference (inspiration only, includes game post-processing). Second: the live take of the line below, what players hear now: the target, which the next version should sound like except where the notes ask otherwise. Third: the same line in ${v}.`
+    : `First recording: the game reference (inspiration only, includes game post-processing). Second: the line below in ${v}. This line has no live take.`;
   return `You are a casting director revising a designed voice for ${input.slot} (World of Warcraft NPCs; who uses it: ${input.archetype || "(unknown)"}).
-Reviewer verdict on v${input.version}: ${input.status}. Reviewer note: "${input.note || "(none)"}".${
-    input.players.length > 0
-      ? `\nPlayers' notes on v${input.version} the reviewer chose to act on, as much a part of the review as the reviewer's note; keep what they praise and fix what they criticise: ${JSON.stringify(input.players.map((pick) => `${ANSWER[pick.verdict]}: ${pick.note}`))}`
+${v}'s verdict: ${input.status}.
+
+History of ${input.slot}, oldest first: each version and its verdicts. Reviewer's notes and players' notes the reviewer picked say what the reviewer WANTS. Observations by Gemini or Claude describe how that version's take sounded next to the live take, the state it was in: never follow one as an instruction ("slower and breathier" observed means the voice was slower and breathier than the live take, which is usually what the reviewer wants fixed).
+${input.history.flatMap((entry) => historyLines(entry, input.version)).join("\n")}
+
+How to use the history:
+- Satisfy every open note, from every version, not only ${v}'s.
+- When notes conflict, the newer note wins.
+- Never reintroduce a problem an earlier note asked to fix, or one fixed by a version marked good. A note is also satisfied when a later note says so ("the accent is right now").
+- Keep what the notes praise and what nobody complained about.
+- An older reviewer's note that only describes how the voice sounds next to the live take ("lower energy than the live take") may be an observation pasted in as a note. Where it contradicts the reviewer's own wishes, the wishes win.
+
+Notes on the race's other flavors. Each is about its own slot: only race-wide points (the accent, what makes the race sound like itself) apply to ${input.slot}. Slot-specific points (pace, pitch, age, energy, attitude, "too slow") do not transfer.
+${siblings}
+
+The ${v} prompt was: "${input.prompt}"
+${v} preview text: "${input.previewText}"
+${recordings}
+The line, as sent to ${v} (square-bracketed words are performance directions, not speech): "${input.line}"${
+    input.numbers
+      ? `\nMeasurements of the three recordings (openSMILE eGeMAPS means; compare the columns rather than reading absolute values; game audio is processed). Lower F1/F2/F3 mean a bigger body and rounder vowels; high H1-H2 is breathy; low HNR is rough:\n${input.numbers}`
       : ""
   }
-Notes on sibling voices of the same race, which this voice must also follow where they speak for the whole race: ${JSON.stringify(input.siblings)}
-The v${input.version} prompt was: "${input.prompt}"
-v${input.version} preview text: "${input.previewText}"
-First recording: the game reference (inspiration only, includes game post-processing). Second: a line in the v${input.version} designed voice.
-Rewrite the ElevenLabs Voice Design prompt (text only, 350-600 characters) so the next version fixes the reviewer's and the chosen players' notes.
-- Keep what the reviewer did not complain about.
+Rewrite the ElevenLabs Voice Design prompt (text only, 350-600 characters) so the next version satisfies the open notes.
 - Put the accent early and make it explicit and strong when the race needs one ("with a thick Scottish accent").
 - State the gender explicitly ("unmistakably masculine/feminine"). For male voices asked to be nasal or higher, keep a clear masculine anchor (adult man, baritone or tenor chest voice).
 - Avoid modern inflections (upspeak, vocal fry, valley/Californian) unless the role demands them: this is a fantasy game.
 ${DRAFTING_RULES}
 Also return a preview_text (120-400 characters, in the character's normal register; keep the old one unless it fights the notes).
-Also return changes: the same fix said only as changes to the v${input.version} voice, for ElevenLabs Voice Remix, which keeps the voice and alters what you name (20-300 characters, e.g. "Add a thick Scottish accent. Keep the timbre, age and pace."). Name what to keep when the reviewer liked it.
-Return JSON only: {"heard": "one sentence: how the v${input.version} voice differs from the reference and the notes", "prompt": "...", "preview_text": "...", "changes": "..."}`;
+Also return changes: the same fix said only as changes to the ${v} voice, for ElevenLabs Voice Remix, which keeps the voice and alters what you name (20-300 characters, e.g. "Add a thick Scottish accent. Keep the timbre, age and pace."). Name what to keep when the reviewer liked it.
+Return JSON only: {"heard": "one sentence: how the ${v} voice departs from the live take, and which open notes it still misses", "prompt": "...", "preview_text": "...", "changes": "..."}`;
 }
 
-/** Revise a version: Gemini hears the game reference and the version's first sample line. */
+/** Revise a version: Gemini hears the game reference, the line's live take if any, and the line in the version. */
 export async function reviseVoice(
-  input: ReviseInput & { apiKey: string; reference: Buffer; sample: Buffer } & GeminiOptions,
+  input: Omit<ReviseInput, "hasLive"> & { apiKey: string; reference: Buffer; live: Buffer | null; sample: Buffer } & GeminiOptions,
 ): Promise<Revision> {
+  const audio = [input.reference, ...(input.live ? [input.live] : []), input.sample].map(audioPart);
   const answer = (await generateJson({
     ...input,
-    parts: [{ text: buildRevisePrompt(input) }, audioPart(input.reference), audioPart(input.sample)],
+    parts: [{ text: buildRevisePrompt({ ...input, hasLive: input.live !== null }) }, ...audio],
   })) as Partial<Revision> | null;
   if (typeof answer?.prompt !== "string" || typeof answer.preview_text !== "string") {
     throw new Error("Gemini returned no prompt or preview text");
@@ -240,39 +305,90 @@ export async function reviseVoice(
   };
 }
 
-/** How a designed voice differs from the live take of the same line, aspect by aspect. */
+/** How much an aspect's difference matters for directing the voice. */
+export type Weight = "high" | "medium" | "low";
+
+export const WEIGHTS: readonly Weight[] = ["high", "medium", "low"];
+
+export type Aspect = { aspect: string; live: string; new: string; reference?: string; matters?: Weight };
+
 export type Difference = {
   summary: string;
-  /** The difference that matters most, said as a reviewer's note on the new voice. */
+  /** The difference that matters most, as an observation of how the new voice sounds. */
   note: string;
-  aspects: { aspect: string; live: string; new: string }[];
+  /** The same point as what the next version should do: the reviewer edits it into the note. */
+  wish: string;
+  aspects: Aspect[];
 };
 
-export function buildDifferencePrompt(input: { slot: string; version: number; text: string }): string {
-  return `You are a voice director. You will hear two recordings of the same line for ${input.slot} (World of Warcraft NPCs).
-First recording: the live take players hear in the game now. Second: the same line in designed voice v${input.version}.
-The line, as sent to the second voice (square-bracketed words are performance directions, not speech): "${input.text}"
-Say how the second voice differs from the first, so a voice designer knows what to change. Compare: accent and its strength,
-gender and apparent age, pitch, timbre and texture, resonance and size, pace and rhythm, energy, attitude, articulation and
-pronunciation, and recording quality. Leave out aspects where they sound the same. Be concrete ("the Scottish accent fades
-after the first sentence", not "the accent differs").
-Also write note: the one difference that matters most, as a reviewer's note on v${input.version}, under 80 characters, lowercase, no full stop ("scottish accent fades after the first words", "sounds younger and thinner").
-Return JSON only: {"summary": "one or two sentences: the differences that matter most", "note": "...", "aspects": [{"aspect": "...", "live": "how the live take sounds", "new": "how v${input.version} sounds"}]}`;
+/**
+ * Told only "compare", a judge treats the game reference as the ideal and finds the live take
+ * lacking. The live take is what the team chose; the reference only says what kind of character it is.
+ */
+export const TARGET_RULE = `The live take is the target: it is how this character should sound, and the designed version should sound like it. Judge the designed version against it. Never criticise the live take or say it lacks anything. The game reference is the original actor, processed by the game: background only, for what kind of character this is. Where the reference and the live take differ, the live take wins: never ask the designed version for something the live take does not have.`;
+
+/**
+ * What a voice director listens for, named one by one: a listener asked only for "the differences"
+ * reports timbre and pitch and skips accent, cadence and delivery.
+ */
+export const DIRECTION_ASPECTS = [
+  "accent: which one, how strong, and whether it holds through the line or fades",
+  "pronunciation of names and fantasy words",
+  "cadence and phrasing: where the pauses fall and how long, drawl or clipped, run-on or measured",
+  "intonation: the pitch contour, phrase ends rising or falling, monotone or sing-song",
+  "emphasis: which words are stressed and how hard",
+  "emotional tone and subtext",
+  "persona: who this sounds like (authority, menace, warmth, age, status)",
+  "delivery style: acted or read, theatrical or natural, intimate or projected",
+  "gender and apparent age",
+  "pitch, timbre and texture (rasp, breath, nasality)",
+  "resonance and body size",
+  "pace and energy",
+  "recording quality",
+] as const;
+
+export function buildDifferencePrompt(input: { slot: string; version: number; text: string; hasReference: boolean }): string {
+  const v = `v${input.version}`;
+  const recordings = input.hasReference
+    ? `First recording: the original game voice for this kind of character (the reference: other lines, processed by the game). Second: the live take players hear in the game now. Third: the same line as the second, in designed voice ${v}.`
+    : `First recording: the live take players hear in the game now. Second: the same line in designed voice ${v}.`;
+  return `You are a voice director. You will hear recordings for ${input.slot} (World of Warcraft NPCs).
+${recordings}
+${TARGET_RULE}
+The line, as sent to ${v} (square-bracketed words are performance directions, not speech): "${input.text}"
+Say how ${v} departs from the live take, so a voice designer knows what to change to bring it closer. Go through each of these, as a director would:
+${DIRECTION_ASPECTS.map((aspect) => `- ${aspect}`).join("\n")}
+Leave out an aspect only where they sound the same. Be concrete ("the Scottish accent fades after the first sentence", not "the accent differs"; "every phrase ends rising, like a question", not "different intonation").
+For each aspect, say how much the difference matters for directing this character: high, medium or low. Order the aspects from the one that matters most.
+Also write note: the one difference that matters most, as an observation of how v${input.version} sounds next to the live take (not a wish), under 80 characters, lowercase, no full stop ("scottish accent fades after the first words", "sounds younger and thinner").
+And wish: the same point said as what the next version should do to come closer to the live take, under 80 characters, lowercase, no full stop ("keep the scottish accent strong throughout", "older and fuller").
+Return JSON only: {"summary": "one or two sentences: the differences that matter most", "note": "...", "wish": "...", "aspects": [{"aspect": "...", "reference": "${input.hasReference ? "how the reference sounds, only where it explains the live take; else empty" : ""}", "live": "how the live take sounds", "new": "how v${input.version} sounds", "matters": "high|medium|low"}]}`;
 }
 
-/** Gemini hears the live take, then the version's take, of one line. */
+const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+
+/** A judge's aspects, checked: ones missing a side are dropped, an empty reference or unknown weight left out. */
+export function parseAspects(value: unknown): Aspect[] {
+  return (Array.isArray(value) ? (value as Record<string, unknown>[]) : [])
+    .filter((a) => text(a?.aspect) && typeof a.live === "string" && typeof a.new === "string")
+    .map((a) => ({
+      aspect: text(a.aspect),
+      live: text(a.live),
+      new: text(a.new),
+      ...(text(a.reference) ? { reference: text(a.reference) } : {}),
+      ...(WEIGHTS.includes(a.matters as Weight) ? { matters: a.matters as Weight } : {}),
+    }));
+}
+
+/** Gemini hears the reference if there is one, the live take, then the version's take of one line. */
 export async function describeDifference(
-  input: { apiKey: string; slot: string; version: number; text: string; live: Buffer; sample: Buffer } & GeminiOptions,
+  input: { apiKey: string; slot: string; version: number; text: string; reference: Buffer | null; live: Buffer; sample: Buffer } & GeminiOptions,
 ): Promise<Difference> {
+  const audio = [...(input.reference ? [input.reference] : []), input.live, input.sample].map(audioPart);
   const answer = (await generateJson({
     ...input,
-    parts: [{ text: buildDifferencePrompt(input) }, audioPart(input.live), audioPart(input.sample)],
+    parts: [{ text: buildDifferencePrompt({ ...input, hasReference: input.reference !== null }) }, ...audio],
   })) as Partial<Difference> | null;
   if (typeof answer?.summary !== "string") throw new Error("Gemini returned no summary of the difference");
-  const aspects = Array.isArray(answer.aspects)
-    ? answer.aspects.filter(
-        (a): a is Difference["aspects"][number] => typeof a?.aspect === "string" && typeof a.live === "string" && typeof a.new === "string",
-      )
-    : [];
-  return { summary: answer.summary.trim(), note: typeof answer.note === "string" ? answer.note.trim() : "", aspects };
+  return { summary: answer.summary.trim(), note: text(answer.note), wish: text(answer.wish), aspects: parseAspects(answer.aspects) };
 }

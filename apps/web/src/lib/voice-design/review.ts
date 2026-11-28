@@ -1,9 +1,30 @@
 /** A verdict as the page sends it, checked before it is kept. */
 import { DesignError } from "./access";
 import type { NewReview } from "./store";
-import type { ClipMark, Design, PlayerNote } from "./types";
+import { JUDGES, type ClipMark, type Design, type Judge, type Observation, type PlayerNote } from "./types";
 
 export const MAX_NOTE = 2000;
+
+/** What's different's notes are under 80 characters; this leaves room and refuses a pasted essay. */
+const MAX_OBSERVATION = 500;
+const MAX_OBSERVATIONS = 12;
+const MAX_FIXES = 6;
+
+/** The What's different findings a reviewer added, checked; kept apart from the note so revise never reads them as wishes. */
+function parseObservations(value: unknown): Observation[] {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > MAX_OBSERVATIONS) throw new DesignError(`at most ${MAX_OBSERVATIONS} observations`, 400);
+  return value.map((item) => {
+    const { by, note, fixes } = (item ?? {}) as Record<string, unknown>;
+    if (!JUDGES.includes(by as Judge)) throw new DesignError("an observation is by gemini or claude", 400);
+    // Cut, not refused: the models ignore "under 80 characters" at times, and refusing would lose the verdict.
+    if (typeof note !== "string" || !note.trim()) throw new DesignError("an observation has a note", 400);
+    const kept = Array.isArray(fixes)
+      ? fixes.filter((fix): fix is string => typeof fix === "string" && fix.trim() !== "").slice(0, MAX_FIXES).map((fix) => fix.trim().slice(0, MAX_OBSERVATION))
+      : [];
+    return { by: by as Judge, note: note.trim().slice(0, MAX_OBSERVATION), ...(kept.length ? { fixes: kept } : {}) };
+  });
+}
 
 export function parseReview(body: unknown, design: Pick<Design, "previews" | "samples" | "showings">, userId: string): NewReview {
   const input = (body ?? {}) as Record<string, unknown>;
@@ -31,5 +52,6 @@ export function parseReview(body: unknown, design: Pick<Design, "previews" | "sa
     if (!found) continue;
     players.push({ verdict: found.verdict, note: found.note });
   }
-  return { status: input.status, note, bestPreview: (best as number | null | undefined) ?? null, clips, players, userId };
+  const observations = parseObservations(input.observations);
+  return { status: input.status, note, bestPreview: (best as number | null | undefined) ?? null, clips, players, observations, userId };
 }

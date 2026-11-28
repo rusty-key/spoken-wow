@@ -21,6 +21,7 @@ import type {
   FeedbackNote,
   GeminiResult,
   Measures,
+  Observation,
   PlayerNote,
   Review,
   Showing,
@@ -107,7 +108,7 @@ async function assemble(lang: Lang, rows: DesignRow[]): Promise<Design[]> {
     ),
     readAs<ReviewRow>(
       lang,
-      `select r."id", r."designId", r."status", r."note", r."bestPreview", r."clips", r."players", r."createdBy",
+      `select r."id", r."designId", r."status", r."note", r."bestPreview", r."clips", r."players", r."observations", r."createdBy",
               u."name" as "createdByName", r."createdAt"
          from "voice_design_review" r left join "user" u on u."id" = r."createdBy"
         where r."designId" = any($1::uuid[])
@@ -208,8 +209,8 @@ async function insertSamples(client: PoolClient, designId: string, samples: Desi
 
 async function insertReview(client: PoolClient, designId: string, review: NewReview): Promise<void> {
   await client.query(
-    `insert into "voice_design_review" ("designId", "status", "note", "bestPreview", "clips", "players", "createdBy", "createdAt")
-     values ($1, $2, $3, $4, $5, $6, $7, coalesce($8::timestamptz, now()))`,
+    `insert into "voice_design_review" ("designId", "status", "note", "bestPreview", "clips", "players", "observations", "createdBy", "createdAt")
+     values ($1, $2, $3, $4, $5, $6, $7, $8, coalesce($9::timestamptz, now()))`,
     [
       designId,
       review.status,
@@ -217,6 +218,7 @@ async function insertReview(client: PoolClient, designId: string, review: NewRev
       review.bestPreview,
       JSON.stringify(review.clips),
       JSON.stringify(review.players ?? []),
+      JSON.stringify(review.observations ?? []),
       review.userId,
       review.at ?? null,
     ],
@@ -397,6 +399,8 @@ export type NewReview = {
   clips: Record<string, ClipMark>;
   /** Players' notes picked to act on; an imported verdict has none. */
   players?: PlayerNote[];
+  /** What's different's findings the reviewer added; an imported verdict has none. */
+  observations?: Observation[];
   userId: string;
   /** The import's own date; now otherwise. */
   at?: string | null;

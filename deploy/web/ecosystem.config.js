@@ -130,7 +130,7 @@ module.exports = {
         SPOKEN_QUESTS_VOICE_DESIGNS: `${SHARED}/voice-designs`,
 
         // openSMILE for /voices/design: the script ships in the release; the interpreter with
-        // `opensmile` installed is the droplet's, set in shared/app.env as VOICE_ANALYSIS_PYTHON.
+        // `opensmile`, `librosa` and `matplotlib` is the droplet's, set in shared/app.env as VOICE_ANALYSIS_PYTHON.
         // Unset, the page shows no measurements.
         VOICE_ANALYSIS_SCRIPT: `${CURRENT}/apps/web/scripts/voice_measure.py`,
 

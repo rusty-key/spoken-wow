@@ -130,7 +130,7 @@ export default function Workbench({
   groups: GroupView[];
   live: Record<string, string>;
   viewer: WorkbenchState["viewer"];
-  keys: { elevenlabs: boolean; gemini: boolean };
+  keys: { elevenlabs: boolean; gemini: boolean; anthropic: boolean };
   rate: number;
   model: string;
   /** From the URL, so a reload or a shared link keeps what was being looked at. */

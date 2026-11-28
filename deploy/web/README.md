@@ -93,7 +93,7 @@ no longer lives in is one somebody sets on the wrong box.
 | `SPOKEN_QUESTS_VOICE_REFERENCES` | `shared/voice-references` | shared; **must be set**, or fish.audio references are cut into a release and lost on the next deploy |
 | `SPOKEN_QUESTS_VOICE_DESIGNS` | `shared/voice-designs` | shared; **must be set**, or the previews and samples of designed voices land in a release and are lost on the next deploy |
 | `VOICE_ANALYSIS_SCRIPT` | `current/apps/web/scripts/voice_measure.py` | per release |
-| `VOICE_ANALYSIS_PYTHON` | a Python with `opensmile` installed, set in `shared/app.env` | the droplet's; unset, `/voices/design` shows no measurements (docs/platform/VOICE-DESIGN.md) |
+| `VOICE_ANALYSIS_PYTHON` | a Python with `opensmile`, `librosa` and `matplotlib` installed, set in `shared/app.env` | the droplet's; unset, `/voices/design` shows no measurements and Claude has nothing to read (docs/platform/VOICE-DESIGN.md) |
 | `SPOKEN_QUESTS_SEED_CLIPS` | `shared/seed-clips` | shared; unset, it points inside a release, which has none, and **Seed from clips** finds nothing |
 | `SPOKEN_QUESTS_PREVIEWS` | `shared/audio-previews` | shared; **must be set**, or previews land inside `releases/`, where `prune.sh` counts them as a release and eventually deletes them |
 | `SPOKEN_PLACES_ROOT` | `current` | per release; the places pipeline resolves its own paths from it |

@@ -5,7 +5,8 @@ recordings are only inspiration. ElevenLabs never receives them, only a written 
 
 **Reference clips (recordings from the game) are for comparison and inspiration only.** Never clone one, remix one, or upload one to
 ElevenLabs (Voice Clone, Voice Remix or design-from-audio). The page says so wherever a reference clip
-appears; the only places they go are Gemini's blind comparison and openSMILE. Voice Remix is used only
+appears; the only places they go are Gemini (the blind comparison and Revise), openSMILE, and the
+picture Claude reads in What's different. Voice Remix is used only
 on our own designed voices, by their ID; no recording goes with it.
 
 All of it happens on `/voices/design` (Backstage, "Design new voices" on `/voices`). Anyone with
@@ -17,6 +18,8 @@ Every version belongs to the team, so the whole team sees, reviews and builds on
 - Add your **ElevenLabs** key on your profile. Designing, saving and sampling spend from it.
 - Add a **Gemini** key on your profile (Google AI Studio, API keys) to use the blind comparison.
   It costs a few cents a run.
+- Add an **Anthropic** key on your profile (Claude Console, API keys) for Claude's opinion in
+  **What's different?**. It is optional; a few cents a run.
 - The comparison listens to each slot's reference clip: its fish.audio reference window, else the first
   30 seconds of its first stored clip on `/voices`. A slot with neither is left out.
 
@@ -110,6 +113,36 @@ gossip line) the way regeneration would for you: your model and voice settings f
 and its accent tags. Play each **New** beside **Live**, what players hear now. Judge against that,
 not only against the reference clip. **Voice the lines again** replaces them. Samples are kept with the version and never become takes.
 
+**What's different?** beside a line asks two judges at once, each on your own key, and shows their
+answers side by side. Without a key, that judge is left out.
+
+Both judge the version against the **live take**, which is the target: what the character should
+sound like. The game reference only says what kind of character it is, and neither judge will call
+the live take lacking or ask the version for something the live take does not have.
+
+- **Gemini** hears the game reference, the live take and the version's take, and goes through what a
+  director listens for, one by one: accent (which, how strong, whether it holds), pronunciation of
+  names, cadence and phrasing, intonation, emphasis, emotional tone, persona, delivery style, then
+  gender, age, timbre, body, pace and recording quality. For each it says how the three sound and how
+  much the difference matters. A slot without a reference clip gets the two takes alone.
+- **Claude** cannot hear. The site draws a picture of the game reference (its first 7 seconds), the
+  live take and the version's take: a spectrogram with the pitch track for each, then their
+  long-term spectra. Claude reads it beside their measurements (pitch, pace, formants, breathiness,
+  roughness, brightness, s-level, room, level, the version's duration over the live take's, and for
+  cadence and intonation: pauses, pitch movement, whether phrases end rising or falling, and the
+  loudness swing of emphasis), the slot's users, the version's prompt and the reviewers' notes. It
+  says what differs by how much, and which prompt words to change. Accent, emotion, persona and
+  delivery need ears, so it leaves those to Gemini. In the first trial this was more precise than listening:
+  scourge-male-standard v2 was 136 Hz against the reference's 89, 10-15 dB louder at 1-4 kHz and far
+  less breathy, an articulate elf rather than an undead. Look at the picture under its answer.
+
+**Add to review** under an answer keeps it with your next verdict as an *observation*: how the
+version sounds next to the live take, labelled with who observed it. It is never your note. Its
+opposite goes into your note as a wish ("slower, breathier" observed puts "faster, less breathy" in
+the note); edit it before you give the verdict. Revise reads observations as the version's state,
+never as an instruction. Verdicts given before observations existed hold What's different's notes
+as plain notes; they were left as they were.
+
 ## 5. Review and iterate
 
 - Give the version a verdict: **Good**, or **Needs work** plus one sentence on what is wrong ("sounds
@@ -123,11 +156,16 @@ not only against the reference clip. **Voice the lines again** replaces them. Sa
   and change the preview text if it pulled the voice the wrong way. Then **New version from vN** under **⋯**.
   Old versions stay, folded under the newest. Usually 1–3 rounds per voice.
 - Or choose **Revise from review** under **⋯** (needs your Gemini key and the version's
-  sample lines). Gemini hears the reference clip and the sample line marked wrong (else the first), reads the verdict and its note, the notes on the
-  race's other flavors, and the old prompt and preview text, and fills in the next version's form
-  with what it heard and a rewritten prompt. Notes travel across a race: write "trolls need a
-  Jamaican accent" on one troll and every troll's revision reads it. It also works on a version
-  nobody has reviewed yet, from its siblings' notes. Edit the draft, then **Design 3 previews**.
+  sample lines). Gemini hears the reference clip, the live take of the sample line marked wrong (else
+  the first) and that line in the version, with their measurements when the site has the helper. It
+  reads the slot's whole history: every version's prompt and every verdict's note, picked players'
+  notes and observations, and which notes a later version marked good satisfied. It must satisfy
+  every open note; when notes conflict, the newer wins; and it must not bring back a problem an
+  earlier note fixed. It also reads the newest note on each of the race's other flavors, labelled
+  with its slot. Only race-wide points carry over: write "trolls need a Jamaican accent" on one troll
+  and every troll's revision reads it, but "too slow" on one stays with it. It also works on a version
+  nobody has reviewed yet, from its siblings' notes. It fills in the next version's form with what it
+  heard and a rewritten prompt. Edit the draft, then **Design 3 previews**.
 - **Remix from review** keeps the voice and changes only what the review asks for: Gemini writes the
   changes ("Add a thick Scottish accent. Keep the timbre and pace."), then ElevenLabs Voice Remix
   makes the next version from this version's voice. Gemini also rewrites the whole prompt, which the
@@ -184,6 +222,7 @@ own decision.
 - **Designing:** about the preview text's length in credits for each of the three previews.
 - **Sampling:** the three lines' characters at your model's rate; the page shows both before you press.
 - **Comparing and revising:** a few cents of Gemini each. Measuring is free.
+- **Claude in What's different:** a few cents of Anthropic each.
 - Everything spends through the site with the presser's own keys. Nothing in the repo spends credits.
 
 ## openSMILE on the droplet
@@ -191,9 +230,10 @@ own decision.
 Measurements come from `apps/web/scripts/voice_measure.py`, run by the site with the interpreter in
 `VOICE_ANALYSIS_PYTHON` (set in `shared/app.env`; the script path comes from `VOICE_ANALYSIS_SCRIPT`,
 which `deploy/web/ecosystem.config.js` points at the release). That Python needs `opensmile` for
-pitch, roughness and brightness, `librosa` and `numpy` for s-level, room and level, and ffmpeg on
-the path for mp3. Each part runs when its library is there; unset or failing, the page works
-without measurements. Test the helper with `python -m pytest apps/web/scripts/test_voice_measure.py`.
+pitch, roughness, brightness and formants, `librosa` and `numpy` for s-level, room, level,
+duration, pauses and intonation, `matplotlib` for the picture Claude reads, and ffmpeg on the path for mp3. Each part runs
+when its library is there; unset or failing, the page works without measurements, and Claude asks
+with whichever of the picture and the numbers it has, or not at all. Test the helper with `python -m pytest apps/web/scripts/test_voice_measure.py`.
 
 ## Designs made before this page
 

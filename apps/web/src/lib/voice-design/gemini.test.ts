@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { blindLabels, buildPrompt, buildRevisePrompt, compareBlind, GEMINI_MODEL, reviseVoice, verifyGeminiKey } from "./gemini";
+import { blindLabels, buildDifferencePrompt, buildPrompt, buildRevisePrompt, compareBlind, describeDifference, GEMINI_MODEL, reviseVoice, verifyGeminiKey } from "./gemini";
 import { PROMPT_ENDING } from "./limits";
 
 describe("verifyGeminiKey", () => {
@@ -125,36 +125,116 @@ describe("compareBlind", () => {
 });
 
 describe("reviseVoice", () => {
+  const history = [
+    { version: 1, prompt: "A troll. ".repeat(40), reviews: [{ status: "needs-work", note: "Sounds female", observations: [], players: [] }], satisfiedBy: 2 },
+    {
+      version: 2,
+      prompt: "A troll, unmistakably masculine.",
+      reviews: [
+        {
+          status: "needs-work",
+          note: "No accent at all",
+          observations: [],
+          players: [
+            { verdict: "off" as const, note: "sounds like a normal human" },
+            { verdict: "fits" as const, note: "perfect gruffness" },
+          ],
+        },
+      ],
+      satisfiedBy: null,
+    },
+  ];
   const input = {
     slot: "troll-male-dark",
-    version: 1,
+    version: 2,
     status: "needs-work",
-    note: "No accent at all",
-    siblings: { "troll-male-shaman": "Trolls need a Jamaican accent" },
-    players: [
-      { verdict: "off" as const, note: "sounds like a normal human" },
-      { verdict: "fits" as const, note: "perfect gruffness" },
-    ],
+    history,
+    siblings: [{ slot: "troll-male-shaman", version: 3, note: "Trolls need a Jamaican accent" }],
     archetype: "Shady witch doctor",
     prompt: "A troll. Perfect audio quality, dry close-mic studio recording, no reverb or effects.",
     previewText: "Hey mon.",
+    line: "Ya got business wit me?",
+    numbers: "",
   };
 
-  it("tells Gemini the note, the siblings' notes and the old prompt, with both recordings", async () => {
-    const text = buildRevisePrompt(input);
-    for (const part of ["No accent at all", "Doesn't fit: sounds like a normal human", "Fits: perfect gruffness", "Trolls need a Jamaican accent", "troll-male-shaman", "A troll.", "Hey mon.", PROMPT_ENDING]) {
+  it("tells Gemini every version's notes, the siblings' notes and the old prompt", () => {
+    const text = buildRevisePrompt({ ...input, hasLive: true });
+    for (const part of ["No accent at all", "Doesn't fit: sounds like a normal human", "Fits: perfect gruffness", "Trolls need a Jamaican accent", "troll-male-shaman v3", "A troll.", "Hey mon.", "Ya got business wit me?", PROMPT_ENDING]) {
       expect(text).toContain(part);
     }
-    // Praise is kept, not fixed.
-    expect(text).toMatch(/keep what they praise/i);
-    expect(buildRevisePrompt({ ...input, players: [] })).not.toContain("Players' notes");
+    // An old version's prompt is cut short; the one revised is given whole.
+    expect(text).toContain(`v1 prompt: "${"A troll. ".repeat(40).slice(0, 200)}…"`);
+    expect(text).toContain("Second: the live take of the line below, what players hear now: the target");
+    expect(buildRevisePrompt({ ...input, hasLive: false })).toContain("This line has no live take");
+  });
+
+  it("hears the reference, the live take and the version's take, in that order", async () => {
     const fetchImpl = vi.fn(async (_url: string, _init: RequestInit) =>
       Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify([{ heard: "No accent.", prompt: "A troll, thick Jamaican accent.", preview_text: "Hey mon, welcome." }]) }] } }] }),
     );
-    const revision = await reviseVoice({ ...input, apiKey: "k", reference: Buffer.from("ref"), sample: Buffer.from("smp"), fetchImpl: fetchImpl as never });
+    const heard = (call: number) =>
+      JSON.parse(String(fetchImpl.mock.calls[call][1].body))
+        .contents[0].parts.slice(1)
+        .map((p: { inline_data: { data: string } }) => Buffer.from(p.inline_data.data, "base64").toString());
+    const revision = await reviseVoice({ ...input, apiKey: "k", reference: Buffer.from("ref"), live: Buffer.from("live"), sample: Buffer.from("smp"), fetchImpl: fetchImpl as never });
     // An array answer is read as its first element, and the prompt gets the agreed ending.
     expect(revision).toEqual({ heard: "No accent.", prompt: `A troll, thick Jamaican accent. ${PROMPT_ENDING}`, preview_text: "Hey mon, welcome.", changes: "" });
-    const parts = JSON.parse(String(fetchImpl.mock.calls[0][1].body)).contents[0].parts;
-    expect(parts.slice(1).map((p: { inline_data: { data: string } }) => Buffer.from(p.inline_data.data, "base64").toString())).toEqual(["ref", "smp"]);
+    expect(heard(0)).toEqual(["ref", "live", "smp"]);
+
+    await reviseVoice({ ...input, apiKey: "k", reference: Buffer.from("ref"), live: null, sample: Buffer.from("smp"), fetchImpl: fetchImpl as never });
+    expect(heard(1)).toEqual(["ref", "smp"]);
+    expect(JSON.parse(String(fetchImpl.mock.calls[1][1].body)).contents[0].parts[0].text).toContain("This line has no live take");
+  });
+});
+
+describe("describeDifference", () => {
+  const reply = (answer: unknown) => vi.fn(async (_url: string, _init: RequestInit) => Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(answer) }] } }] }));
+  const heard = (fetchImpl: ReturnType<typeof reply>) =>
+    JSON.parse(String(fetchImpl.mock.calls[0][1].body))
+      .contents[0].parts.slice(1)
+      .map((p: { inline_data: { data: string } }) => Buffer.from(p.inline_data.data, "base64").toString());
+  const input = { apiKey: "k", slot: "bloodelf-female", version: 3, text: "t", live: Buffer.from("live"), sample: Buffer.from("new") };
+
+  it("reads the observation and its opposite as the wish, kept apart, and each aspect's weight", async () => {
+    const fetchImpl = reply({
+      summary: "Slower.",
+      note: "slower and breathier",
+      wish: "faster, less breathy",
+      aspects: [
+        { aspect: "Cadence", reference: "clipped, short pauses", live: "brisk", new: "long pauses after every phrase", matters: "high" },
+        { aspect: "Recording", reference: "", live: "clean", new: "clean", matters: "whatever" },
+        { aspect: "Broken" },
+      ],
+    });
+    const said = await describeDifference({ ...input, reference: Buffer.from("ref"), fetchImpl: fetchImpl as never });
+    expect(said).toEqual({
+      summary: "Slower.",
+      note: "slower and breathier",
+      wish: "faster, less breathy",
+      aspects: [
+        { aspect: "Cadence", reference: "clipped, short pauses", live: "brisk", new: "long pauses after every phrase", matters: "high" },
+        { aspect: "Recording", live: "clean", new: "clean" },
+      ],
+    });
+    expect(heard(fetchImpl)).toEqual(["ref", "live", "new"]);
+  });
+
+  it("compares the two takes alone when the slot has no reference clip", async () => {
+    const fetchImpl = reply({ summary: "s", note: "n", wish: "w", aspects: [] });
+    await describeDifference({ ...input, reference: null, fetchImpl: fetchImpl as never });
+    expect(heard(fetchImpl)).toEqual(["live", "new"]);
+    expect(JSON.parse(String(fetchImpl.mock.calls[0][1].body)).contents[0].parts[0].text).not.toContain("original game voice");
+  });
+
+  it("asks for the observation apart from the wish, and goes through what a director listens for", () => {
+    const text = buildDifferencePrompt({ slot: "bloodelf-female", version: 3, text: "t", hasReference: true });
+    expect(text).toMatch(/as an observation of how v3 sounds next to the live take \(not a wish\)/);
+    // The live take is the goal: the reference never makes it "lack" anything.
+    expect(text).toContain("The live take is the target");
+    expect(text).toContain("Never criticise the live take or say it lacks anything");
+    expect(text).toContain("never ask the designed version for something the live take does not have");
+    for (const part of ["accent: which one, how strong", "cadence and phrasing", "intonation", "emphasis", "emotional tone", "persona", "delivery style", "high, medium or low", "First recording: the original game voice"]) {
+      expect(text).toContain(part);
+    }
   });
 });

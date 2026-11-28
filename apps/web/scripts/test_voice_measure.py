@@ -79,3 +79,98 @@ def test_measures_s_level_room_and_level(tmp_path):
     result = run(soft, harsh)
     assert result[str(harsh)]["ess"] > result[str(soft)]["ess"] + 0.2
     assert -60 < result[str(soft)]["level"] < 0
+
+
+def test_measures_formants_and_duration(tmp_path):
+    pytest.importorskip("opensmile")
+    pytest.importorskip("librosa")
+    clip = tmp_path / "clip.wav"
+    tone(clip, 120, seconds=2.5, rate=44100)
+    result = run(clip)[str(clip)]
+    assert {"f1Hz", "f2Hz", "f3Hz"} <= set(result)
+    assert result["durationSec"] == pytest.approx(2.5, abs=0.05)
+
+
+def test_draws_the_view_as_a_png(tmp_path):
+    pytest.importorskip("matplotlib")
+    pytest.importorskip("librosa")
+    reference, live, new = (tmp_path / f"{name}.wav" for name in ("reference", "live", "new"))
+    tone(reference, 90, seconds=9, rate=22050)
+    tone(live, 110, rate=22050)
+    tone(new, 140, rate=22050)
+    out = tmp_path / "view.png"
+    done = subprocess.run(
+        [sys.executable, str(SCRIPT), "--view", str(out), str(reference), str(live), str(new), "v3"],
+        capture_output=True, text=True, check=True,
+    )
+    assert json.loads(done.stdout) == {"image": True}
+    assert out.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_says_why_the_view_failed(tmp_path):
+    pytest.importorskip("matplotlib")
+    bad = tmp_path / "bad.wav"
+    bad.write_bytes(b"not audio")
+    done = subprocess.run(
+        [sys.executable, str(SCRIPT), "--view", str(tmp_path / "view.png"), str(bad), str(bad), str(bad)],
+        capture_output=True, text=True, check=True,
+    )
+    assert "error" in json.loads(done.stdout)
+
+
+def phrases(path, hz_from, hz_to, gaps, rate=22050, seconds=1.0):
+    """Buzzed phrases of `seconds`, each gliding from hz_from to hz_to, with `gaps` seconds of silence between."""
+    parts = []
+    for gap in gaps + [0]:
+        t = np.arange(int(seconds * rate)) / rate
+        f = np.linspace(hz_from, hz_to, t.size)
+        phase = 2 * np.pi * np.cumsum(f) / rate
+        parts.append(sum(np.sin(phase * k) / k for k in range(1, 8)) * 0.5)
+        parts.append(np.zeros(int(gap * rate)))
+    signal = np.concatenate(parts)
+    samples = (signal / np.abs(signal).max() * 0.5 * 32767).astype("<i2")
+    with wave.open(str(path), "wb") as out:
+        out.setnchannels(1)
+        out.setsampwidth(2)
+        out.setframerate(rate)
+        out.writeframes(samples.tobytes())
+
+
+def test_measures_pauses_and_phrase_ends(tmp_path):
+    pytest.importorskip("librosa")
+    falling, rising, run_on = tmp_path / "falling.wav", tmp_path / "rising.wav", tmp_path / "run_on.wav"
+    phrases(falling, 160, 110, [0.6, 0.6, 0.6])
+    phrases(rising, 110, 160, [0.6, 0.6, 0.6])
+    phrases(run_on, 160, 110, [])
+    result = run(falling, rising, run_on)
+    assert result[str(falling)]["pauseRate"] == pytest.approx(0.75, abs=0.15)
+    assert result[str(falling)]["pauseMeanSec"] == pytest.approx(0.6, abs=0.1)
+    assert result[str(run_on)]["pauseRate"] == 0
+    assert result[str(falling)]["phraseEndSt"] < -1
+    assert result[str(rising)]["phraseEndSt"] > 1
+    assert result[str(falling)]["f0SdSt"] > 1
+
+
+def test_a_dip_between_words_does_not_end_a_phrase(tmp_path):
+    pytest.importorskip("librosa")
+    # One phrase falling 160 to 110 Hz overall, cut by 50 ms dips into words that each rise.
+    words = tmp_path / "words.wav"
+    rate = 22050
+    parts = []
+    for start in (160, 140, 120):
+        t = np.arange(int(0.6 * rate)) / rate
+        f = np.linspace(start, start + 15, t.size) if start != 120 else np.linspace(120, 105, t.size)
+        phase = 2 * np.pi * np.cumsum(f) / rate
+        parts.append(sum(np.sin(phase * k) / k for k in range(1, 8)) * 0.5)
+        parts.append(np.zeros(int(0.05 * rate)))
+    signal = np.concatenate(parts)
+    samples = (signal / np.abs(signal).max() * 0.5 * 32767).astype("<i2")
+    with wave.open(str(words), "wb") as out:
+        out.setnchannels(1)
+        out.setsampwidth(2)
+        out.setframerate(rate)
+        out.writeframes(samples.tobytes())
+    result = run(words)[str(words)]
+    assert result["pauseRate"] == 0
+    # Only the phrase's own end counts: it falls, though two of its three words rise.
+    assert result["phraseEndSt"] < -1

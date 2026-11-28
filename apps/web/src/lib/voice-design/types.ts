@@ -15,8 +15,17 @@ export type Measures = PreviewMetrics & {
   alphaRatioDb?: number;
   hammarbergDb?: number;
   h1h2Db?: number;
+  f1Hz?: number;
+  f2Hz?: number;
+  f3Hz?: number;
   loudness?: number;
   voicedPerSec?: number;
+  durationSec?: number;
+  pauseRate?: number;
+  pauseMeanSec?: number;
+  f0SdSt?: number;
+  phraseEndSt?: number;
+  loudnessSdDb?: number;
 };
 
 export type DesignPreview = { generatedVoiceId: string; sha256: string; measures: Measures | null };
@@ -67,6 +76,22 @@ export type ShownLine = { sha256: string; text: string | null; npcName: string |
 /** A player's note a reviewer picked to act on, as it read when picked. */
 export type PlayerNote = { verdict: Verdict; note: string };
 
+/** Who compared the takes in What's different: Gemini listens, Claude reads a picture and numbers. */
+export type Judge = "gemini" | "claude";
+
+export const JUDGES: readonly Judge[] = ["gemini", "claude"];
+
+/**
+ * A What's different finding added to a verdict: how the version's take sounds next to the live
+ * take. A description of the version, never a wish: "slower" here means the reviewer may want faster.
+ */
+export type Observation = {
+  by: Judge;
+  note: string;
+  /** Claude's suggested prompt changes, if it was Claude. */
+  fixes?: string[];
+};
+
 export type Review = {
   id: number;
   status: ReviewStatus;
@@ -75,6 +100,7 @@ export type Review = {
   /** `sample:<n>` or `preview:<n>`. */
   clips: Record<string, ClipMark>;
   players: PlayerNote[];
+  observations: Observation[];
   createdBy: string | null;
   createdByName: string | null;
   createdAt: string;
