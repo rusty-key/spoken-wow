@@ -8,6 +8,7 @@ import {
   BUILTIN,
   clientLang,
   cjkFace,
+  interfaceFace,
   elevenLabsCode,
   isClientLang,
   isLang,
@@ -87,6 +88,14 @@ describe("the language registry", () => {
     expect(cjkFace("zhHK")).toBe("TC");
     expect(cjkFace("enUS")).toBeNull();
     expect(cjkFace("ruRU")).toBeNull();
+  });
+
+  it("leaves a Chinese or Japanese page's own lines to the page's language", () => {
+    registerLanguages([japanese]);
+    expect(interfaceFace("deDE", "zhCN")).toBe("SC");
+    expect(interfaceFace("zhTW", "zhCN")).toBeNull();
+    expect(interfaceFace("zhCN", "jaJP")).toBeNull();
+    expect(interfaceFace("deDE", "enUS")).toBeNull();
   });
 
   it("never lets a registration overwrite a built-in", () => {

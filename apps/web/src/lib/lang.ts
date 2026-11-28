@@ -177,6 +177,14 @@ export function cjkFace(lang: Lang): "SC" | "TC" | "JP" | null {
 }
 
 /**
+ * The face Backstage loads for a reader's interface on a page. None on a Chinese or Japanese page:
+ * the face would draw the page's own lines too, and <html lang> already picks their shapes.
+ */
+export function interfaceFace(page: Lang, reading: Lang): "SC" | "TC" | "JP" | null {
+  return cjkFace(page) ? null : cjkFace(reading);
+}
+
+/**
  * A page's address in a language: the bare path for English, `/ptBR/...` for the rest.
  *
  * English keeps the addresses it has always had -- every link already out there, from the
