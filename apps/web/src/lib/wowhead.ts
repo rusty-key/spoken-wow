@@ -11,8 +11,13 @@
  * because creature 68 is a Stormwind City Guard and gameobject 68 is a Wanted Poster - a
  * wrong segment silently opens the wrong page rather than a missing one.
  *
+ * A page links in its own language, so a maintainer reads the quest the way their client shows it.
+ * English is the bare path, and a language Wowhead has no edition of falls back to it rather than
+ * to a 404. Both Spanish clients share Wowhead's one Spanish edition.
+ *
  * No node imports: the row renders in the browser.
  */
+import type { Lang } from "./lang";
 import type { NpcType } from "./line-fields";
 
 const SEGMENT: Record<NpcType, string> = {
@@ -21,10 +26,28 @@ const SEGMENT: Record<NpcType, string> = {
   item: "item",
 };
 
-export function wowheadQuestUrl(questId: number): string {
-  return `https://www.wowhead.com/forever/quest=${questId}`;
+const EDITION: Record<string, string> = {
+  deDE: "de",
+  esES: "es",
+  esMX: "es",
+  frFR: "fr",
+  itIT: "it",
+  ptBR: "pt",
+  ruRU: "ru",
+  koKR: "ko",
+  zhCN: "cn",
+  zhTW: "tw",
+};
+
+function base(lang: Lang): string {
+  const edition = EDITION[lang];
+  return edition ? `https://www.wowhead.com/forever/${edition}` : "https://www.wowhead.com/forever";
 }
 
-export function wowheadEntityUrl(npcType: NpcType, npcId: number): string {
-  return `https://www.wowhead.com/forever/${SEGMENT[npcType]}=${npcId}`;
+export function wowheadQuestUrl(lang: Lang, questId: number): string {
+  return `${base(lang)}/quest=${questId}`;
+}
+
+export function wowheadEntityUrl(lang: Lang, npcType: NpcType, npcId: number): string {
+  return `${base(lang)}/${SEGMENT[npcType]}=${npcId}`;
 }

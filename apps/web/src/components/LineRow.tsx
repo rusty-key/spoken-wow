@@ -23,7 +23,6 @@ import type { LineState } from "./Explorer";
 import type { ResultLine } from "@/lib/search";
 import WowheadLink from "@/components/WowheadLink";
 import { npcPageHref } from "@/lib/links";
-import { wowheadEntityUrl, wowheadQuestUrl } from "@/lib/wowhead";
 
 /**
  * Why a line has no audio, or null when it does.
@@ -188,7 +187,7 @@ export function SpeakerHeader({
         <span className="cat-group-meta">
           {[line.race, line.gender, line.flavor].filter(Boolean).join(" · ")}
           {" · "}
-          {line.npcType} {line.npcId} <WowheadLink href={wowheadEntityUrl(line.npcType, line.npcId)} />
+          {line.npcType} {line.npcId} <WowheadLink npcType={line.npcType} npcId={line.npcId} />
           {showNpcPage && (
             <>
               {" "}
@@ -399,7 +398,7 @@ export default function LineRow({
               <Untranslated missing={line.missing?.questTitle}>{line.questTitle ?? fill(t.questFallback, { id: line.questId })}</Untranslated>
             </FilterLink>
             <span className="cat-two-sub">
-              {t.sourceWords[line.source as keyof typeof t.sourceWords] ?? line.source} · {fill(t.questId, { id: line.questId })} <WowheadLink href={wowheadQuestUrl(line.questId)} />
+              {t.sourceWords[line.source as keyof typeof t.sourceWords] ?? line.source} · {fill(t.questId, { id: line.questId })} <WowheadLink questId={line.questId} />
             </span>
           </>
         ) : (

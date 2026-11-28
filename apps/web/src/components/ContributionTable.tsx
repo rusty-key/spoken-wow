@@ -1100,7 +1100,7 @@ const ReviewRow = memo(function ReviewRow({
                   {npc.npcName ?? "unnamed"}
                 </a>
                 <a
-                  href={wowheadEntityUrl(npc.npcKind ?? "creature", npc.npcId)}
+                  href={wowheadEntityUrl(lang, npc.npcKind ?? "creature", npc.npcId)}
                   target="_blank"
                   rel="noreferrer"
                   className="bs-who-sub shrink-0 text-xs hover:underline"
@@ -1263,12 +1263,13 @@ const ReviewRow = memo(function ReviewRow({
 
 /** Which quest and panel a quests row was read off, or that it is gossip. */
 function QuestLine({ row }: { row: ContributionRow }) {
+  const lang = useLang();
   if (row.quest === null) return null;
   if (row.quest === "gossip") return <span className="bs-who-sub">{STAGE_LABELS.gossip}</span>;
   return (
     <span className="bs-who-sub">
       {row.quest.title}{" "}
-      <a href={wowheadQuestUrl(row.quest.questId)} target="_blank" rel="noreferrer" className="hover:underline">
+      <a href={wowheadQuestUrl(lang, row.quest.questId)} target="_blank" rel="noreferrer" className="hover:underline">
         #{row.quest.questId}
       </a>
       {row.quest.stage ? ` · ${STAGE_LABELS[row.quest.stage]}` : null}
@@ -1412,6 +1413,7 @@ function MatchCell({
   onSave: (answer: MatchAnswer) => void;
 }) {
   const t = useUiText();
+  const lang = useLang();
   const [choice, setChoice] = useState("");
   const [pageNumber, setPageNumber] = useState(String(book.number ?? 1));
   const picked = books.get(choice.trim());
@@ -1451,7 +1453,7 @@ function MatchCell({
                 <span className="text-muted-foreground">#{candidate.bookId}</span>
                 {candidate.owner ? (
                   <a
-                    href={wowheadEntityUrl(candidate.owner.kind === "object" ? "gameobject" : "item", candidate.owner.id)}
+                    href={wowheadEntityUrl(lang, candidate.owner.kind === "object" ? "gameobject" : "item", candidate.owner.id)}
                     target="_blank"
                     rel="noreferrer"
                     className="text-muted-foreground hover:underline"

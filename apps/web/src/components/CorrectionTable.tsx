@@ -256,7 +256,7 @@ export default function CorrectionTable({
               {row.quest ? (
                 <span className="bs-who-sub">
                   {row.quest.title}{" "}
-                  <a href={wowheadQuestUrl(row.quest.questId)} target="_blank" rel="noreferrer" className="hover:underline">
+                  <a href={wowheadQuestUrl(lang, row.quest.questId)} target="_blank" rel="noreferrer" className="hover:underline">
                     #{row.quest.questId}
                   </a>
                   {row.quest.stage ? ` · ${STAGE_LABELS[row.quest.stage]}` : null}
