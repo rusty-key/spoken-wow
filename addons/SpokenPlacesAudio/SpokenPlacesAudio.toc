@@ -27,3 +27,7 @@
 # is declared in either direction: Spoken Zones reads its lore without narrating when
 # no pack is present, and a pack is inert without it.
 Data/Sounds.lua
+
+# Spoken's developer list, which the packager copies in, so a pack can tag a developer added since
+# Spoken's release. A checkout's folder has no copy and the client skips the line.
+Developers.lua

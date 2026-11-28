@@ -11,3 +11,7 @@
 ## X-License: Audio generated with ElevenLabs from book text extracted from the game.
 
 Data/Sounds.lua
+
+# Spoken's developer list, which the packager copies in, so a pack can tag a developer added since
+# Spoken's release. A checkout's folder has no copy and the client skips the line.
+Developers.lua

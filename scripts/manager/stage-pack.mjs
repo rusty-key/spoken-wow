@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import { basename, join } from "node:path";
 
 import { BASE_LOCALE } from "../../pipelines/lib/locales.mjs";
-import { englishFolder } from "../lib/packs.mjs";
+import { DEVELOPER_LIST, englishFolder, PACK_DEVELOPER_LIST } from "../lib/packs.mjs";
 
 // Whatever a section does differently: its English folder, its languages' badged icons, and the
 // .toc lines naming a pack's tier and language, which its Data/Sounds.lua reads back. Readables
@@ -95,6 +95,7 @@ export async function stagePack(section, lang, { root, plan, readme = null }) {
   await cp(source, target, { recursive: true, filter: fromSource });
   await cp(lookup, join(target, "Data/Sounds.lua"));
   await cp(sounds, join(target, "Sounds"), { recursive: true, filter: notHidden });
+  await cp(join(root, DEVELOPER_LIST), join(target, PACK_DEVELOPER_LIST));
   const badge = shape.icon && join(root, shape.icon(lang));
   // A page pack's missing badge stays an error: it would look like English's in the AddOns list.
   // A derived pack's title names its language.

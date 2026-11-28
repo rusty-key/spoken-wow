@@ -13,6 +13,15 @@ function tree(root, files) {
   }
 }
 
+const DEVELOPERS = "SpokenDeveloperCharacters = {}\n";
+
+// A checkout's root holding Spoken's developer list, which every pack carries.
+function stageRoot() {
+  const root = mkdtempSync(join(tmpdir(), "stage-"));
+  tree(root, { "addons/Spoken/Data/DeveloperList.lua": DEVELOPERS });
+  return root;
+}
+
 const TOC = [
   "## Interface: 11509",
   "## Title: Spoken Audio",
@@ -62,7 +71,7 @@ test("rewriteToc refuses a .toc missing a line it must set", () => {
 });
 
 test("a language's pack takes its clips, lookup, icon and name from its own", async () => {
-  const root = mkdtempSync(join(tmpdir(), "stage-"));
+  const root = stageRoot();
   tree(join(root, "addons/SpokenPlacesAudio"), source);
   tree(join(root, "build/places/frFR"), { "Sounds/1/zone.mp3": "french clip", "Sounds/.from-takes": "", "Data/Sounds.lua": "french lookup" });
   tree(root, { "pipelines/places/assets/spoken-zones-frFR.tga": "french icon" });
@@ -74,6 +83,7 @@ test("a language's pack takes its clips, lookup, icon and name from its own", as
   assert.equal(read("SpokenPlacesAudio_frFR/Data/Sounds.lua"), "french lookup");
   assert.equal(read("SpokenPlacesAudio_frFR/Textures/AddonIcon.tga"), "french icon");
   assert.equal(read("SpokenPlacesAudio_frFR/README.md"), "french readme");
+  assert.equal(read("SpokenPlacesAudio_frFR/Developers.lua"), DEVELOPERS);
   assert.match(read("SpokenPlacesAudio_frFR/SpokenPlacesAudio_frFR.toc"), /Language: frFR/);
   assert.equal(existsSync(join(root, "dist/SpokenPlacesAudio_frFR/SpokenPlacesAudio.toc")), false);
   assert.equal(existsSync(join(root, "dist/SpokenPlacesAudio_frFR/Sounds/.from-takes")), false);
@@ -81,7 +91,7 @@ test("a language's pack takes its clips, lookup, icon and name from its own", as
 });
 
 test("a bosses language pack wears its badged icon", async () => {
-  const root = mkdtempSync(join(tmpdir(), "stage-"));
+  const root = stageRoot();
   tree(join(root, "addons/SpokenBossesAudio"), {
     "SpokenBossesAudio.toc": TOC.replaceAll("X-SpokenPlaces", "X-SpokenBosses"),
     "Textures/AddonIcon.tga": "english icon",
@@ -96,7 +106,7 @@ test("a bosses language pack wears its badged icon", async () => {
 });
 
 test("English's version is its .toc's, and a rebuild leaves nothing of the last one", async () => {
-  const root = mkdtempSync(join(tmpdir(), "stage-"));
+  const root = stageRoot();
   tree(join(root, "addons/SpokenPlacesAudio"), source);
   tree(root, { "dist/SpokenPlacesAudio/Sounds/gone.mp3": "stale" });
   const plan = planOf({ folder: "SpokenPlacesAudio", title: "Spoken Audio: Places", version: null });
@@ -108,7 +118,7 @@ test("English's version is its .toc's, and a rebuild leaves nothing of the last 
 });
 
 test("no clips or no lookup stops the stage", async () => {
-  const root = mkdtempSync(join(tmpdir(), "stage-"));
+  const root = stageRoot();
   tree(join(root, "addons/SpokenPlacesAudio"), { "SpokenPlacesAudio.toc": TOC });
   const plan = planOf({ folder: "SpokenPlacesAudio", title: "n", version: null });
   await assert.rejects(stagePack("places", "enUS", { root, plan }), /Sounds/);
@@ -121,7 +131,7 @@ test("quests has no such build", async () => {
 });
 
 test("a second team's pack is its own folder, named for the team, with the language's badge", async () => {
-  const root = mkdtempSync(join(tmpdir(), "stage-"));
+  const root = stageRoot();
   tree(join(root, "addons/SpokenPlacesAudio"), source);
   tree(join(root, "build/places/deDE"), { "Sounds/1/zone.mp3": "german clip", "Data/Sounds.lua": "german lookup" });
   tree(root, { "pipelines/places/assets/spoken-zones-deDE.tga": "german icon" });
@@ -141,7 +151,7 @@ test("a second team's pack is its own folder, named for the team, with the langu
 });
 
 test("a new language's pack names its language and wears English's mark when it has no badge", async () => {
-  const root = mkdtempSync(join(tmpdir(), "stage-"));
+  const root = stageRoot();
   tree(join(root, "addons/SpokenReadablesAudio"), {
     "SpokenReadablesAudio.toc": "## Title: Spoken Audio: Readables\n## Version: 2.3.0\n## IconTexture: x\n## X-SpokenReadables-Language: enUS\n",
     "Textures/AddonIcon.tga": "english icon",
@@ -164,7 +174,7 @@ test("a new language's pack names its language and wears English's mark when it 
 // The readables packager (scripts/readables/package-audio.sh) sets it too: the addon files a pack
 // whose .toc says enUS under English, so a German page pack would read as English's.
 test("a language's readables page pack names its language, and English's keeps its .toc", async () => {
-  const root = mkdtempSync(join(tmpdir(), "stage-"));
+  const root = stageRoot();
   const committed = "## Title: Spoken Audio: Readables\n## Version: 2.3.0\n## IconTexture: x\n## X-SpokenReadables-Language: enUS\n";
   tree(join(root, "addons/SpokenReadablesAudio"), {
     "SpokenReadablesAudio.toc": committed,
@@ -181,10 +191,11 @@ test("a language's readables page pack names its language, and English's keeps i
   const english = planOf({ folder: "SpokenReadablesAudio", title: "Spoken Audio: Readables", version: null });
   await stagePack("readables", "enUS", { root, plan: english, readme: null });
   assert.equal(read("SpokenReadablesAudio/SpokenReadablesAudio.toc"), committed);
+  assert.equal(read("SpokenReadablesAudio/Developers.lua"), DEVELOPERS);
 });
 
 test("a page pack missing its badge is still an error", async () => {
-  const root = mkdtempSync(join(tmpdir(), "stage-"));
+  const root = stageRoot();
   tree(join(root, "addons/SpokenPlacesAudio"), source);
   tree(join(root, "build/places/frFR"), { "Sounds/1/zone.mp3": "french clip", "Data/Sounds.lua": "french lookup" });
   const plan = planOf({ folder: "SpokenPlacesAudio_frFR", title: "Spoken French Audio: Places", version: "2.0.0" });

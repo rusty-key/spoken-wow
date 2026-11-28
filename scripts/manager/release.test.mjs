@@ -7,7 +7,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 
 import { seedDatabase } from "../../pipelines/lib/test-db.mjs";
-import { englishFolder, loadPacks } from "../lib/packs.mjs";
+import { DEVELOPER_LIST, englishFolder, loadPacks } from "../lib/packs.mjs";
 import { buildArgs } from "./quests-pack.mjs";
 import { needsTeamReleases, releasePlan } from "./release-pack.mjs";
 import { stagePack } from "./stage-pack.mjs";
@@ -32,6 +32,7 @@ async function stagedToc(section, lang, plan) {
   const root = mkdtempSync(join(tmpdir(), "golden-"));
   const source = englishFolder(section);
   cpSync(join(REPO, "addons", source, `${source}.toc`), join(root, "addons", source, `${source}.toc`));
+  cpSync(join(REPO, DEVELOPER_LIST), join(root, DEVELOPER_LIST));
   const work = lang === "enUS" ? join(root, "addons", source) : join(root, "build", section, lang);
   mkdirSync(join(work, "Sounds"), { recursive: true });
   mkdirSync(join(work, "Data"), { recursive: true });

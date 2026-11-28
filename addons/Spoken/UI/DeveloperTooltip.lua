@@ -8,7 +8,7 @@ local function AddDeveloper(tooltip, guid)
         if type(unit) ~= "string" then return end
         guid = NotSecret(UnitGUID(unit))
     end
-    if not DeveloperCharacters[guid] then return end
+    if not SpokenDeveloperCharacters[guid] then return end
     tooltip:AddLine([[|TInterface\AddOns\Spoken\icon.tga:0|t ]] .. L.DEVELOPER_TOOLTIP, 0, 229 / 255, 1)
     tooltip.spokenDeveloperTag = true
 end

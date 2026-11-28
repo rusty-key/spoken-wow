@@ -21,3 +21,7 @@
 # Defines the SpokenBossesAudioPacks registry entry that Spoken Bosses reads. No dependency is
 # declared in either direction: Spoken Bosses shows text only when no pack is present.
 Data/Sounds.lua
+
+# Spoken's developer list, which the packager copies in, so a pack can tag a developer added since
+# Spoken's release. A checkout's folder has no copy and the client skips the line.
+Developers.lua

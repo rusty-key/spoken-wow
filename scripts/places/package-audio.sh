@@ -142,6 +142,7 @@ mkdir -p "$staging/$folder/Data"
 # -p, not a bare cp: a plain cp stamps the copy with "now" instead of preserving the source's
 # mtime, which is a zip entry that no longer matches master's byte for byte.
 cp -p "$LOOKUP" "$staging/$folder/Data/Sounds.lua"
+cp -p "$REPO/addons/Spoken/Data/DeveloperList.lua" "$staging/$folder/Developers.lua"
 # The .toc must be named after its folder, and mv onto itself is an error rather than a no-op.
 if [[ "$folder" != "$(basename "$SRC")" ]]; then
   mv "$staging/$folder/$(basename "$SRC").toc" "$staging/$folder/$folder.toc"

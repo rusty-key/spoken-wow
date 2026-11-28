@@ -34,6 +34,7 @@ cp "$REPO/pipelines/readables/assets/spoken-books-$LOCALE.tga" "$staging/$folder
 mv "$staging/$folder/SpokenReadablesAudio.toc" "$staging/$folder/$folder.toc"
 cp "$REPO/dist/descriptions/$slug.md" "$staging/$folder/README.md"
 cp "$WORK/Data/Sounds.lua" "$staging/$folder/Data/Sounds.lua"
+cp -p "$REPO/addons/Spoken/Data/DeveloperList.lua" "$staging/$folder/Developers.lua"
 rsync -a --exclude '.DS_Store' "$WORK/Sounds/" "$staging/$folder/Sounds/"
 sed -i.bak \
   -e "s~^## Title:.*~## Title: ${title/#Spoken/|cffb48cffSpoken|r}~" \

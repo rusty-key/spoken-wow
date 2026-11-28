@@ -121,6 +121,25 @@ for _, mode in ipairs({ "modern", "legacy" }) do
     end
 end
 
+-- A sound pack ships the list too, built from a newer master than the Spoken the player runs, and
+-- may load before Spoken or after it.
+local LIST = SPOKEN .. "Data/DeveloperList.lua"
+local function LoadPackCopy(guid)
+    local source = assert(io.open(LIST)):read("*a")
+    assert(loadstring((source:gsub("local developers = {", 'local developers = {\n    ["' .. guid .. '"] = true,', 1))))()
+end
+_G.SpokenDeveloperCharacters = nil
+LoadPackCopy("Player-1111-00000001")
+do
+    local _, Clear, Show = Boot("modern")
+    LoadPackCopy("Player-2222-00000002")
+    for _, guid in ipairs({ "Player-1111-00000001", "Player-2222-00000002", "Player-6921-001E5110" }) do
+        Clear()
+        Expect("a pack's copy of the list tags its developers: " .. guid, Show(guid), ICON .. "Spoken Developer")
+    end
+end
+_G.SpokenDeveloperCharacters = nil
+
 for _, mode in ipairs({ "modern", "legacy" }) do
     local _, Clear, Show = Boot(mode, "enUS", true)
     Clear()
