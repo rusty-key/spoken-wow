@@ -49,8 +49,8 @@ export default function DifferencePanel({
               <>
                 <p className="bs-text">{answer.difference.summary}</p>
                 <ul>
-                  {answer.difference.aspects.map((aspect) => (
-                    <li key={aspect.aspect}>
+                  {answer.difference.aspects.map((aspect, index) => (
+                    <li key={index}>
                       {aspect.matters ? (
                         <span className="vd-tag" data-matters={aspect.matters}>
                           {MATTERS[aspect.matters](t)}
@@ -65,8 +65,8 @@ export default function DifferencePanel({
                   <>
                     <p className="bs-label">{t.differenceFixes}</p>
                     <ul>
-                      {answer.difference.fixes.map((fix) => (
-                        <li key={fix}>{fix}</li>
+                      {answer.difference.fixes.map((fix, index) => (
+                        <li key={index}>{fix}</li>
                       ))}
                     </ul>
                   </>

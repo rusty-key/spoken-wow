@@ -53,10 +53,12 @@ describe("differenceFromLive", () => {
     expect(d.describeClaude).not.toHaveBeenCalled();
   });
 
-  it("still asks Gemini when the slot has no reference clip", async () => {
-    const d = deps({ reference: async () => null });
-    await differenceFromLive(input, d);
-    expect(vi.mocked(d.describe).mock.calls[0][0].reference).toBeNull();
+  it("still asks Gemini when the slot has no reference clip, or reading it fails", async () => {
+    for (const reference of [async () => null, async () => Promise.reject(new Error("ffmpeg failed"))]) {
+      const d = deps({ reference });
+      await differenceFromLive(input, d);
+      expect(vi.mocked(d.describe).mock.calls[0][0].reference).toBeNull();
+    }
   });
 
   it("gives Claude the picture, the numbers, who uses the voice, the prompt and the reviewers' own notes", async () => {

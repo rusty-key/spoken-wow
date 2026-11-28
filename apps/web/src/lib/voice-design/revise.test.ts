@@ -140,6 +140,13 @@ describe("history", () => {
     expect(history[0].reviews[0].note).toBe("Overall sounds female");
   });
 
+  it("leaves out versions after the one revised", async () => {
+    const v4 = shady[1];
+    const d = deps(v4, {}, shady);
+    await reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, d);
+    expect(sent(d).history.map((entry) => entry.version)).toEqual([1, 2, 3, 4]);
+  });
+
   it("sends every version's notes in order, marks the satisfied ones, and says the newer note wins", async () => {
     const d = deps(shady[0], {}, shady);
     await reviseDesign({ lang: "enUS", id: "x", apiKey: "k" }, d);

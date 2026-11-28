@@ -118,11 +118,11 @@ def test_says_why_the_view_failed(tmp_path):
     assert "error" in json.loads(done.stdout)
 
 
-def phrases(path, hz_from, hz_to, gaps, rate=22050):
-    """Buzzed phrases of 1 s, each gliding from hz_from to hz_to, with `gaps` seconds of silence between."""
+def phrases(path, hz_from, hz_to, gaps, rate=22050, seconds=1.0):
+    """Buzzed phrases of `seconds`, each gliding from hz_from to hz_to, with `gaps` seconds of silence between."""
     parts = []
     for gap in gaps + [0]:
-        t = np.arange(rate) / rate
+        t = np.arange(int(seconds * rate)) / rate
         f = np.linspace(hz_from, hz_to, t.size)
         phase = 2 * np.pi * np.cumsum(f) / rate
         parts.append(sum(np.sin(phase * k) / k for k in range(1, 8)) * 0.5)
@@ -149,3 +149,28 @@ def test_measures_pauses_and_phrase_ends(tmp_path):
     assert result[str(falling)]["phraseEndSt"] < -1
     assert result[str(rising)]["phraseEndSt"] > 1
     assert result[str(falling)]["f0SdSt"] > 1
+
+
+def test_a_dip_between_words_does_not_end_a_phrase(tmp_path):
+    pytest.importorskip("librosa")
+    # One phrase falling 160 to 110 Hz overall, cut by 50 ms dips into words that each rise.
+    words = tmp_path / "words.wav"
+    rate = 22050
+    parts = []
+    for start in (160, 140, 120):
+        t = np.arange(int(0.6 * rate)) / rate
+        f = np.linspace(start, start + 15, t.size) if start != 120 else np.linspace(120, 105, t.size)
+        phase = 2 * np.pi * np.cumsum(f) / rate
+        parts.append(sum(np.sin(phase * k) / k for k in range(1, 8)) * 0.5)
+        parts.append(np.zeros(int(0.05 * rate)))
+    signal = np.concatenate(parts)
+    samples = (signal / np.abs(signal).max() * 0.5 * 32767).astype("<i2")
+    with wave.open(str(words), "wb") as out:
+        out.setnchannels(1)
+        out.setsampwidth(2)
+        out.setframerate(rate)
+        out.writeframes(samples.tobytes())
+    result = run(words)[str(words)]
+    assert result["pauseRate"] == 0
+    # Only the phrase's own end counts: it falls, though two of its three words rise.
+    assert result["phraseEndSt"] < -1

@@ -305,7 +305,6 @@ export async function reviseVoice(
   };
 }
 
-/** How a designed voice differs from the live take of the same line, aspect by aspect. */
 /** How much an aspect's difference matters for directing the voice. */
 export type Weight = "high" | "medium" | "low";
 

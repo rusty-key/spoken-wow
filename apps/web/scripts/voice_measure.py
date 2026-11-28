@@ -123,7 +123,12 @@ def prosody(path):
         out["f0SdSt"] = round(float(np.nanstd(st)), 2)
     end = int(END_SEC / sec)
     ends = []
-    for a, b in runs(speech[: len(st)]):
+    # A dip shorter than a pause sits between words of one phrase, so it does not end one.
+    phrased = speech[: len(st)].copy()
+    for a, b in runs(~phrased):
+        if 0 < a and b < len(phrased) and (b - a) * sec < MIN_PAUSE_SEC:
+            phrased[a:b] = True
+    for a, b in runs(phrased):
         # A phrase often ends on a breath or an s: its last voiced frames are where the pitch lands.
         pitch = st[a:b][np.isfinite(st[a:b])]
         if len(pitch) >= 2 * end:

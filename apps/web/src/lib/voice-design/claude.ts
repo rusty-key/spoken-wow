@@ -13,11 +13,14 @@ export const CLAUDE_MODEL = "claude-opus-5-5";
 
 export type ClaudeOptions = { fetchImpl?: typeof globalThis.fetch; baseURL?: string; maxRetries?: number };
 
-/** Reading a picture at high effort takes a minute or two; nginx gives /api/voices/ five. */
-const CLAUDE_TIMEOUT_MS = 240_000;
+/**
+ * nginx and the route give /api/voices/ 300 s, and measuring and drawing take up to 120 s first.
+ * One attempt, no retry: a retried call past the request's end bills the key for an answer nobody sees.
+ */
+const CLAUDE_TIMEOUT_MS = 150_000;
 
 function client(apiKey: string, options: ClaudeOptions, timeout = CLAUDE_TIMEOUT_MS): Anthropic {
-  return new Anthropic({ apiKey, fetch: options.fetchImpl, baseURL: options.baseURL, maxRetries: options.maxRetries ?? 1, timeout });
+  return new Anthropic({ apiKey, fetch: options.fetchImpl, baseURL: options.baseURL, maxRetries: options.maxRetries ?? 0, timeout });
 }
 
 /** Listing the models is free, so a key is checked before it is stored. */

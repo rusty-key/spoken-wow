@@ -62,13 +62,14 @@ export async function differenceFromLive(
   if (!live) throw new DesignError(`${sample.lineId} has no live take to compare with`, 409);
   if (!audio) throw new DesignError(`v${design.version}'s take of ${sample.lineId} is missing from the archive`, 409);
 
-  const reference = await deps.reference(design.slot, input.lang);
   if (input.by === "gemini") {
     // Without the game clip Gemini still compares the two takes; accent and persona lose their anchor.
+    const reference = await deps.reference(design.slot, input.lang).catch(() => null);
     const said = await deps.describe({ apiKey: input.apiKey, slot: design.slot, version: design.version, text: sample.text, reference, live, sample: audio });
     return { ...said, by: "gemini" };
   }
 
+  const reference = await deps.reference(design.slot, input.lang);
   if (!reference) throw new DesignError(`${design.slot} has no reference clip on the site for Claude to compare with`, 409);
   const label = `v${design.version}`;
   const [measured, image, archetype] = await Promise.all([

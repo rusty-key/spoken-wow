@@ -17,13 +17,12 @@ function parseObservations(value: unknown): Observation[] {
   return value.map((item) => {
     const { by, note, fixes } = (item ?? {}) as Record<string, unknown>;
     if (!JUDGES.includes(by as Judge)) throw new DesignError("an observation is by gemini or claude", 400);
-    if (typeof note !== "string" || !note.trim() || note.length > MAX_OBSERVATION) {
-      throw new DesignError(`an observation is 1 to ${MAX_OBSERVATION} characters`, 400);
-    }
+    // Cut, not refused: the models ignore "under 80 characters" at times, and refusing would lose the verdict.
+    if (typeof note !== "string" || !note.trim()) throw new DesignError("an observation has a note", 400);
     const kept = Array.isArray(fixes)
       ? fixes.filter((fix): fix is string => typeof fix === "string" && fix.trim() !== "").slice(0, MAX_FIXES).map((fix) => fix.trim().slice(0, MAX_OBSERVATION))
       : [];
-    return { by: by as Judge, note: note.trim(), ...(kept.length ? { fixes: kept } : {}) };
+    return { by: by as Judge, note: note.trim().slice(0, MAX_OBSERVATION), ...(kept.length ? { fixes: kept } : {}) };
   });
 }
 

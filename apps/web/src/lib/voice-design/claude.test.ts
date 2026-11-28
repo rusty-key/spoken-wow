@@ -112,6 +112,13 @@ describe("describeDifferenceClaude", () => {
     expect(text.text).toContain("| F0 | 89 | 110 | 136 |");
   });
 
+  it("asks once: a retry past the request's end would bill for an answer nobody sees", async () => {
+    const overloaded = vi.fn(async () => Response.json({ type: "error", error: { type: "overloaded_error", message: "busy" } }, { status: 529 }));
+    const { maxRetries: _, ...asked } = input;
+    await expect(describeDifferenceClaude({ ...asked, fetchImpl: overloaded as never })).rejects.toThrow();
+    expect(overloaded).toHaveBeenCalledTimes(1);
+  });
+
   it("says so when Claude declines or is cut off", async () => {
     const refused = vi.fn(async () => message("", "refusal"));
     await expect(describeDifferenceClaude({ ...input, fetchImpl: refused as never })).rejects.toThrow(/declined/);

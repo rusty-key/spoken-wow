@@ -367,6 +367,27 @@ test("asks Gemini and Claude what differs, side by side, and adds a finding as a
   });
 });
 
+test("drops the observations added to a review when the lines are voiced again", async () => {
+  const fetchMock = vi.fn(async (_url: string, init: RequestInit) =>
+    JSON.parse(String(init.body)).by === "gemini"
+      ? Response.json({ difference: { by: "gemini", summary: "Faster.", note: "faster than the live take", wish: "slower", aspects: [] } })
+      : Response.json({ design: DESIGN }),
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  const view = (design: Design) => (
+    <WorkbenchContext.Provider value={{ ...context, live: { "q:1": "/live/1.mp3" } }}>
+      <VersionCard design={design} slot={{ name: DESIGN.slot, sampleChars: 0, reference: null, previewLines: {} } as unknown as SlotView} newest />
+    </WorkbenchContext.Provider>
+  );
+  const { rerender } = render(view(DESIGN));
+  await userEvent.click(screen.getByRole("button", { name: "What's different?" }));
+  await userEvent.click(await screen.findByRole("button", { name: "Add to review" }));
+  expect(screen.getByRole("list", { name: "Observations" })).toBeTruthy();
+
+  rerender(view({ ...DESIGN, samples: [sample(0, "d"), sample(1, "e"), sample(2, "f")] }));
+  expect(screen.queryByRole("list", { name: "Observations" })).toBeNull();
+});
+
 test("shows one judge's failure beside the other's answer, and asks only the judges the viewer has a key for", async () => {
   const fetchMock = vi.fn(async (_url: string, init: RequestInit) =>
     JSON.parse(String(init.body)).by === "claude"

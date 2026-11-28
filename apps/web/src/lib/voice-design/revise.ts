@@ -58,9 +58,12 @@ export function siblingNotes(designs: readonly Design[], slot: string): SiblingN
   return [...notes.values()];
 }
 
-/** The slot's versions oldest first, each with its verdicts and the first later version marked good. */
-export function slotHistory(designs: readonly Design[], slot: string): HistoryVersion[] {
-  const versions = designs.filter((design) => design.slot === slot).sort((a, b) => a.version - b.version);
+/**
+ * The slot's versions up to `upTo`, oldest first, each with its verdicts and the first later version
+ * marked good. Versions after the one revised are left out: their notes are about voices it never was.
+ */
+export function slotHistory(designs: readonly Design[], slot: string, upTo = Infinity): HistoryVersion[] {
+  const versions = designs.filter((design) => design.slot === slot && design.version <= upTo).sort((a, b) => a.version - b.version);
   return versions.map((design) => ({
     version: design.version,
     prompt: design.prompt,
@@ -116,7 +119,7 @@ export async function reviseDesign(
     slot: design.slot,
     version: design.version,
     status: last?.status ?? "not reviewed yet",
-    history: slotHistory(designs, design.slot),
+    history: slotHistory(designs, design.slot, design.version),
     siblings: siblingNotes(designs, design.slot),
     archetype,
     prompt: design.prompt,

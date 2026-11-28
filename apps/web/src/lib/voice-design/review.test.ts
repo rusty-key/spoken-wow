@@ -45,9 +45,15 @@ describe("parseReview", () => {
     ]);
   });
 
+  it("cuts an over-long observation rather than losing the verdict", () => {
+    const review = parseReview({ status: "good", observations: [{ by: "claude", note: "x".repeat(600) }] }, design, "u1");
+    expect(review.observations?.[0].note).toHaveLength(500);
+  });
+
   it.each([
     [{ status: "good", observations: [{ by: "gpt", note: "x" }] }, /gemini or claude/],
     [{ status: "good", observations: [{ by: "gemini", note: " " }] }, /observation/],
+    [{ status: "good", observations: [{ by: "gemini" }] }, /observation/],
     [{ status: "good", observations: "slower" }, /observations/],
     [{ status: "great" }, /verdict/],
     [{ status: "good", bestPreview: 5 }, /preview/],

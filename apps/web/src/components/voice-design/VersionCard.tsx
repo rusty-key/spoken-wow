@@ -149,7 +149,7 @@ function Observations({ items, version, onRemove }: { items: Observation[]; vers
   return (
     <ul className="vd-review-players vd-observations" aria-label={t.observationsLabel}>
       {items.map((seen, index) => (
-        <li key={`${seen.by}|${seen.note}`}>
+        <li key={index}>
           <span className="vd-tag">{fill(t.observedBy, { judge: JUDGE_NAME[seen.by], v: version })}</span> {seen.note}
           {onRemove ? (
             <button type="button" className="vd-mark vd-review-remove" title={t.removeObservation} onClick={() => onRemove(index)}>
@@ -186,6 +186,8 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
     setMarksFor(marksBasis);
     setClips(currentMarks(design));
     setDifferences({});
+    // Observations describe the takes that were compared; voiced again, those takes are gone.
+    setObservations([]);
   }
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
