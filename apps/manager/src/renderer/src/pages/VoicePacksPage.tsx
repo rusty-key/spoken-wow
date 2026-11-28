@@ -247,6 +247,7 @@ function VoiceRow({ product, gameId, writable }: { product: Product; gameId: str
   const present = s !== 'not-installed'
   const channel = isChannelRelease(latest)
   const size = latest ? formatBytes(status?.delta ? status.delta.bytes : latest.assetSize) : ''
+  const releaseDate = s === 'up-to-date' ? formatDate(latest?.publishedAt) : ''
   const maker = product.team?.official === false ? product.team.name : null
   return (
     <PackRow
@@ -261,6 +262,7 @@ function VoiceRow({ product, gameId, writable }: { product: Product; gameId: str
           {latest ? `${size} · ` : ''}
           {present && status?.installedVersion ? S.voices.installedVersion(status.installedVersion) : S.voices.notInstalled}
           {s === 'update-available' && latest ? ` → ${channel ? formatDate(latest.publishedAt) : latest.version}` : ''}
+          {releaseDate ? ` · ${releaseDate}` : ''}
         </>
       }
     />
