@@ -22,7 +22,7 @@ import { keepDesignAudio } from "./audio";
 import { designName, previewTextProblem, promptLengthProblem, REMIX_CHANGES_MAX, withEnding, type RemixSettings } from "./limits";
 import { withDesignLock } from "./lock";
 import { measureAudio } from "./measure";
-import { createDesign, isOwnAnalysis, listDesigns, markVoiceDeleted, readDesign, saveVoice, type NewDesign } from "./store";
+import { createDesign, isOwnAnalysis, listDesigns, markVoiceDeleted, readDesign, saveVoice, SHOWN_REFUSAL, type NewDesign } from "./store";
 import type { Design, Measures } from "./types";
 
 export type DesignDeps = {
@@ -194,14 +194,13 @@ export async function saveDesignVoice(
     const design = await found(deps.read, input.lang, input.id);
     const preview = design.previews[input.preview];
     if (!Number.isInteger(input.preview) || !preview) throw new DesignError(`v${design.version} has no preview ${input.preview + 1}`, 400);
-    // A voice already deleted from ElevenLabs leaves nothing to replace.
     const replacing = design.voiceId !== null && !design.voiceDeletedAt;
     if (replacing) {
-      if (design.holderId !== input.userId || design.chosenPreview === input.preview) {
+      if (holderRefusal(design, input.userId) || design.chosenPreview === input.preview) {
         throw new DesignError(`v${design.version} is already saved, in ${design.holderName ?? "someone"}'s account`);
       }
       // The store refuses a shown version only after the old voice would already be gone.
-      if (design.isPublic) throw new DesignError("Players hear this version. Show another version to players first.");
+      if (design.isPublic) throw new DesignError(SHOWN_REFUSAL);
       await freeAccountVoice(design, input.apiKey, deps);
     }
 

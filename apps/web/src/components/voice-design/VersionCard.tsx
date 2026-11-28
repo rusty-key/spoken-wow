@@ -356,10 +356,9 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
                     >
                       {fill(t.previewN, { n: index + 1 })}
                     </PlayButton>
-                    {can && !hasVoice ? (
+                    {!can ? null : !hasVoice ? (
                       saveButton(index, recommended === index, () => void save(index))
-                    ) : null}
-                    {can && hasVoice && holds && design.chosenPreview !== index ? (
+                    ) : holds && design.chosenPreview !== index ? (
                       <Confirm
                         question={fill(t.replaceConfirm, { n: index + 1 })}
                         label={t.replaceVoice}
