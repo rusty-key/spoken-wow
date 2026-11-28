@@ -98,6 +98,24 @@ describe('Voice Packs: every language, and who made each pack', () => {
   })
 })
 
+describe('Voice Packs: release changelog', () => {
+  it('shows localized release changes alongside the update action', () => {
+    setUiLanguage('esES')
+    const state = stateFor(LISTING, { voiceLanguage: 'deDE' })
+    const productId = 'places-audio-deDE'
+    state.catalog.releases[productId] = [{ ...release(productId), voicePackChanges: { added: 12, updated: 0, removed: 2, dataChanged: true } }]
+    state.statuses = { [GAME.id]: [{ gameId: GAME.id, productId, state: 'update-available', installedFolders: ['SpokenPlacesAudio_deDE'] }] }
+    const places = section(draw(state), 'Lugares')
+    expect(places).toContain('<details class="pack-changelog">')
+    expect(places).toContain('Líneas narradas nuevas (12)')
+    expect(places).toContain('Líneas narradas eliminadas (2)')
+    expect(places).toContain('Datos del paquete actualizados')
+    expect(places).not.toContain('Líneas narradas actualizadas')
+    expect(places).toContain('>Actualizar</button>')
+    expect(section(draw(state), 'Lecturas')).not.toContain('pack-changelog')
+  })
+})
+
 describe('Voice Packs: an installed pack the channel no longer lists', () => {
   const installed = (productId: string, folder: string): ProductStatus => ({ gameId: GAME.id, productId, state: 'unknown', installedVersion: '1.0.0', installedFolders: [folder] })
   /** The page as main sends it with the pack installed: its product rebuilt from the id, after the listed ones. */

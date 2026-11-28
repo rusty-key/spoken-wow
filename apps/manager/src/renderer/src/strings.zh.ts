@@ -15,6 +15,7 @@ function gameFolderExample(platform: Platform): string {
 }
 
 export const S_ZH: Dict = {
+  voicePackChangelog: { added: '新增配音台词', updated: '更新的配音台词', removed: '移除的配音台词', dataChanged: '语音包数据已更新' },
   appName: 'Spoken 管理器',
   tabs: { main: '主导航', home: '游戏', spoken: 'Spoken', voices: '语音包', community: '社区', release: '发布', settings: '设置' },
   refresh: {

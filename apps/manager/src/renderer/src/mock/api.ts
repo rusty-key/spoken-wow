@@ -44,7 +44,7 @@ const SPOKEN_335 = `- **Stop** now also clears what is waiting in the queue, not
 - The narrator window remembers where you left it, per character.
 - Fixed *Replay* playing the previous quest when two were accepted in a row.`
 
-type Row = [version: string, date: string, sizeMB: number, notes?: string]
+type Row = [version: string, date: string, sizeMB: number, notes?: string, voicePackChanges?: ReleaseInfo['voicePackChanges']]
 
 const TABLE: Record<string, Row[]> = {
   spoken: [
@@ -65,7 +65,7 @@ const TABLE: Record<string, Row[]> = {
   'readables-audio': [['1.2.0', '2026-09-30', 181]],
   'quests-audio-deDE': [['1.8.0', '2026-10-08', 982, '- 96 quests re-recorded.\n- New: gossip of the Durotar vendors.']],
   'places-audio-deDE': [
-    ['2.1.1', '2026-10-11', 450, 'Fixes a wrong line for Gadgetzan.'],
+    ['2.1.1', '2026-10-11', 450, '', { added: 12, updated: 4, removed: 1, dataChanged: true }],
     ['2.1.0', '2026-10-03', 447]
   ],
   'readables-audio-deDE': [['1.1.0', '2026-10-01', 143]],
@@ -77,7 +77,7 @@ const TABLE: Record<string, Row[]> = {
   'quests-audio-koKR': [['0.8.0-beta.1', '2026-10-13', 410, 'First beta of the Korean quest voices.']]
 }
 
-function release(productId: string, [version, date, sizeMB, notes]: Row): ReleaseInfo {
+function release(productId: string, [version, date, sizeMB, notes, voicePackChanges]: Row): ReleaseInfo {
   const p = productById(productId)
   const tag = `${productId}/v${version}`
   const base = productId === 'spoken' ? 'Spoken' : productId === 'quests-audio' ? 'SpokenQuestsAudioAll' : (p?.folders?.[0] ?? productId)
@@ -89,6 +89,7 @@ function release(productId: string, [version, date, sizeMB, notes]: Row): Releas
     prerelease: /-/.test(version),
     publishedAt: `${date}T16:20:00Z`,
     notes: notes ?? '',
+    ...(voicePackChanges ? { voicePackChanges } : {}),
     assetName: asset,
     assetSize: Math.round(sizeMB * MB),
     assetUrl: `https://github.com/rusty-key/spoken-wow/releases/download/${tag}/${asset}`,

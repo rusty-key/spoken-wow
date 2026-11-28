@@ -2,6 +2,10 @@
 
 Spoken Launcher until 0.1.2, when it became Spoken Manager.
 
+## Unreleased
+
+- **See what changed in a voice pack’s latest release** by opening its Changelog on the Voice Packs page. *([anon1231823](https://github.com/anon1231823))*
+
 ## 0.2.6 — 2026-11-27
 
 - **Share feedback on upcoming English voices** from the new line at the top of the Manager. Close

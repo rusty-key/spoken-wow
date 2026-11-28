@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { SECTIONS, type Product, type ProductStatus } from '@shared/types'
+import { SECTIONS, type Product, type ProductStatus, type ReleaseInfo } from '@shared/types'
 import { isChannelRelease } from '@shared/channel'
 import { BASE_LANGUAGE, LANGUAGES } from '@shared/products'
 import { jobBusy, latestOf, releasesFor, statusOf } from '../catalog'
@@ -7,6 +7,8 @@ import { RailTop } from '../components/Brand'
 import { NoGame } from '../components/EmptyGames'
 import { PackRow } from '../components/PackRow'
 import { formatBytes, formatDate } from '../format'
+import { localeTag } from '../locale'
+import { Markdown } from '../markdown'
 import { jobKey, useGame, useLanguageName, useStore } from '../store'
 import { S } from '../strings'
 import { ALL_AUTHORS, authorsOf, chosenAuthor, groupByAuthor, installAllHasWork, installAllPlan, type Author, type InstallAllPlan } from '../voices'
@@ -263,6 +265,33 @@ function VoiceRow({ product, gameId, writable }: { product: Product; gameId: str
           {s === 'update-available' && latest ? ` → ${channel ? formatDate(latest.publishedAt) : latest.version}` : ''}
         </>
       }
-    />
+    >
+      {latest && <VoicePackChangelog release={latest} />}
+    </PackRow>
+  )
+}
+
+function VoicePackChangelog({ release }: { release: ReleaseInfo }): ReactNode {
+  const labels = S.voicePackChangelog
+  const changes = release.voicePackChanges
+  const counts = changes ? (['added', 'updated', 'removed'] as const).filter((key) => changes[key] > 0) : []
+  const notes = release.notes.trim()
+  if (!notes && counts.length === 0 && !changes?.dataChanged) return null
+  const date = formatDate(release.publishedAt)
+  return (
+    <details className="pack-changelog">
+      <summary>
+        {S.spoken.tabChangelog}{date && ` · ${date}`}
+      </summary>
+      {notes && <Markdown text={notes} />}
+      {changes && (
+        <ul>
+          {counts.map((key) => (
+            <li key={key}>{labels[key]} ({changes[key].toLocaleString(localeTag())})</li>
+          ))}
+          {changes.dataChanged && <li>{labels.dataChanged}</li>}
+        </ul>
+      )}
+    </details>
   )
 }

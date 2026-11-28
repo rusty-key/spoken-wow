@@ -1410,6 +1410,23 @@ svg.is-spinning {
   width: 220px;
 }
 
+.pack-changelog {
+  margin-top: 4px;
+  color: var(--label);
+  font-size: var(--fs-small);
+}
+
+.pack-changelog summary {
+  width: fit-content;
+  color: var(--yellow);
+  cursor: pointer;
+}
+
+.pack-changelog ul {
+  margin: 6px 0 2px;
+  padding-inline-start: 20px;
+}
+
 .inline-confirm {
   display: inline-flex;
   align-items: center;

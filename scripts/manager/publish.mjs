@@ -20,7 +20,7 @@ import { join } from "node:path";
 import { readPointer } from "../lib/clip-pointer.mjs";
 import { archiveBase, fetchRetrying } from "../lib/download.mjs";
 import { describeFolder, LEGACY_PACK_ID, PACK_ID } from "../lib/packs.mjs";
-import { buildManifest, caseDuplicate, diffFiles, hashFolder, revOf } from "./manifest.mjs";
+import { buildManifest, caseDuplicate, diffFiles, hashFolder, packChanges, revOf } from "./manifest.mjs";
 import { bumpVersion, tocVersion, withTocVersion } from "./pack-version.mjs";
 import { openJson, publicKeyOf, sealJson, sha256Text } from "./sign.mjs";
 import { ConflictError } from "./store.mjs";
@@ -119,7 +119,7 @@ function legacyPacks(packs) {
   return Object.fromEntries(
     Object.entries(packs)
       .filter(([folder]) => LEGACY_PACK_ID.test(folder))
-      .map(([folder, entry]) => [folder, Object.fromEntries(Object.entries(entry).filter(([key]) => !V2_FIELDS.includes(key)))]),
+      .map(([folder, { changes, ...entry }]) => [folder, Object.fromEntries(Object.entries(entry).filter(([key]) => !V2_FIELDS.includes(key)))]),
   );
 }
 
@@ -257,7 +257,7 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
     if (!allowRemovals && diff.lost > MAX_REMOVED_FILES && diff.lost > before.length * MAX_REMOVED_SHARE) {
       throw new Error(`${folder} would lose ${diff.lost} of its ${before.length} files: check the build, or allow it with --allow-removals`);
     }
-    changes.push({ folder, files, requires });
+    changes.push({ folder, files, requires, summary: packChanges(before, files) });
   }
 
   const version = bump && changes.length > 0 ? nextVersion(liveVersions, stagedVersions, bump) : null;
@@ -320,6 +320,7 @@ export async function publish({ store, packs: allPacks, languages = [], distDir,
     entries[c.folder] = {
       rev, manifestSha256: sha256Text(sealed.signed), fileCount: manifest.fileCount, totalSize: manifest.totalSize, requires: c.requires,
       ...packFields(given.get(c.folder)),
+      changes: c.summary,
     };
   }
   if (stage) {

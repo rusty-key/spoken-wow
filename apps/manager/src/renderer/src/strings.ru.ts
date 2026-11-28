@@ -12,6 +12,7 @@ function gameFolderExample(platform: Platform): string {
 }
 
 export const S_RU: Dict = {
+  voicePackChangelog: { added: 'Новые озвученные реплики', updated: 'Обновлённые озвученные реплики', removed: 'Удалённые озвученные реплики', dataChanged: 'Данные пакета обновлены' },
   appName: 'Spoken Manager',
   tabs: { main: 'Главная', home: 'Игры', spoken: 'Spoken', voices: 'Голосовые пакеты', community: 'Сообщество', release: 'Публикация', settings: 'Настройки' },
   refresh: { idle: 'Проверить новые версии', last: (time: string) => `Последняя проверка: ${time}`, offline: 'Офлайн: показаны сохранённые данные', label: 'Обновить список релизов' },

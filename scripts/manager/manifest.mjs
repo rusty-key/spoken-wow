@@ -82,6 +82,35 @@ export function buildManifest({ packId, rev, requires, files }) {
 // A line's clip, whatever its format and whether whole or cut into sentence pieces (<stem>/01.ogg).
 const clipStem = (path) => path.replace(/\.(mp3|ogg)$/i, "").replace(/\/\d{2}$/, "");
 
+const isAudio = (file) => /\.(mp3|ogg)$/i.test(file.path);
+
+function audioLines(files) {
+  const lines = new Map();
+  for (const file of files.filter(isAudio)) {
+    const stem = clipStem(file.path);
+    const clips = lines.get(stem) ?? new Map();
+    clips.set(file.path, file.sha256);
+    lines.set(stem, clips);
+  }
+  return lines;
+}
+
+export function packChanges(before, after) {
+  const old = audioLines(before);
+  const next = audioLines(after);
+  const counts = { added: 0, updated: 0, removed: 0 };
+  for (const [stem, clips] of next) {
+    const previous = old.get(stem);
+    if (!previous) counts.added++;
+    else if (clips.size !== previous.size || [...clips].some(([path, sha]) => previous.get(path) !== sha)) counts.updated++;
+  }
+  for (const stem of old.keys()) {
+    if (!next.has(stem)) counts.removed++;
+  }
+  const packData = (file) => !isAudio(file) && !/\.toc$/i.test(file.path);
+  return { ...counts, dataChanged: !diffFiles(before.filter(packData), after.filter(packData)).same };
+}
+
 // `lost` leaves out lines that come back in another shape: a pack moving from MP3 to Ogg, or
 // to sentence pieces, removes those paths yet loses no line, and the removal guard would refuse it.
 export function diffFiles(before, after) {

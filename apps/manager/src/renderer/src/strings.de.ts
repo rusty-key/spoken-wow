@@ -16,6 +16,7 @@ function gameFolderExample(platform: Platform): string {
 }
 
 export const S_DE: Dict = {
+  voicePackChangelog: { added: 'Neue vertonte Zeilen', updated: 'Aktualisierte vertonte Zeilen', removed: 'Entfernte vertonte Zeilen', dataChanged: 'Paketdaten aktualisiert' },
   appName: 'Spoken Manager',
   tabs: { main: 'Übersicht', home: 'Spiele', spoken: 'Spoken', voices: 'Sprachpakete', community: 'Community', release: 'Veröffentlichen', settings: 'Einstellungen' },
   refresh: { idle: 'Nach neuen Versionen suchen', last: (time: string) => `Zuletzt geprüft: ${time}`, offline: 'Offline: Gespeichertes anzeigen', label: 'Veröffentlichungsliste aktualisieren' },

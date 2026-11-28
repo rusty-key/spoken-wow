@@ -41,6 +41,18 @@ describe('channelRelease', () => {
     expect(channelRelease(productById('places-audio-frFR')!, index, BASE)).toBeNull()
     expect(channelRelease(productById('spoken')!, index, BASE)).toBeNull()
   })
+  it('sums changes from the latest release of a bundle', () => {
+    const changes = { added: 2, updated: 1, removed: 0, dataChanged: true }
+    const packs = {
+      ...index.packs,
+      SpokenQuestsAudioAlliance: { ...entry('20261001T000000Z'), changes },
+      SpokenQuestsAudioShared: { ...entry('20261004T000000Z'), changes },
+      SpokenQuestsAudioGossip: { ...entry('20261004T000000Z'), changes: { added: 0, updated: 1, removed: 3, dataChanged: false } }
+    }
+    const r = channelRelease(productById('quests-audio')!, { ...index, packs }, BASE)
+    expect(r?.voicePackChanges).toEqual({ added: 2, updated: 2, removed: 3, dataChanged: true })
+    expect(channelRelease(productById('quests-audio')!, index, BASE)?.voicePackChanges).toBeUndefined()
+  })
   it('revToIso reads the rev', () => {
     expect(revToIso('20261018T142233Z')).toBe('2026-10-18T14:22:33Z')
   })

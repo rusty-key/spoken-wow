@@ -1,10 +1,11 @@
 // The real publisher (scripts/manager/publish.mjs) against the manager's own readers: what one
 // writes, the other must accept, or the channel looks empty to every player.
+import { rmSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { openEnvelope, parseIndex, parseIndexV2, parseManifest } from '../src/main/packs-remote'
 // @ts-expect-error plain JS without declarations
-import { publish } from '../../../scripts/manager/publish.mjs'
+import { promote, publish } from '../../../scripts/manager/publish.mjs'
 // @ts-expect-error plain JS without declarations
 import { generateKeys } from '../../../scripts/manager/sign.mjs'
 // @ts-expect-error plain JS without declarations
@@ -81,5 +82,37 @@ describe('publisher to manager', () => {
 
     const v1 = parseIndex(openEnvelope(store.objects.get('index.json')!.body.toString('utf8'), keys.publicKey))
     expect(Object.keys(v1.packs).sort()).toEqual([PACK, SIDE].sort())
+  })
+
+  it('carries a staged update’s line counts to the manager when it goes live', async () => {
+    const dist = tmpDir()
+    const folder = path.join(dist, PACK)
+    write(path.join(folder, `${PACK}.toc`), '## Version: 1.0.0\n')
+    write(path.join(folder, 'Sounds/1/01.ogg'), 'one')
+    write(path.join(folder, 'Sounds/1/02.ogg'), 'two')
+    write(path.join(folder, 'Sounds/2.ogg'), 'removed')
+    const { privateKey: signingKey, publicKey } = generateKeys()
+    const store = memoryStore()
+    const options = {
+      store, signingKey, packs: [{ folder: PACK, section: 'places', lang: 'deDE' }],
+      distDir: dist, minSpoken: { places: '3.0.0' }, latestSpoken: '3.0.0', cache: new Map(),
+      bump: 'patch', log: () => undefined
+    }
+    const readV2 = () => parseIndexV2(openEnvelope(store.objects.get('index-v2.json').body.toString(), publicKey))
+    const first = await publish({ ...options, now: new Date('2026-10-18T00:00:00Z') })
+    expect(readV2().packs[PACK]?.changes).toEqual({ added: 2, updated: 0, removed: 0, dataChanged: false })
+
+    rmSync(path.join(folder, 'Sounds/2.ogg'))
+    write(path.join(folder, 'Sounds/1/01.ogg'), 'new one')
+    write(path.join(folder, 'Sounds/1/02.ogg'), 'new two')
+    write(path.join(folder, 'Sounds/3.ogg'), 'added')
+    write(path.join(folder, 'Lookup.lua'), 'changed data')
+    const { staged } = await publish({ ...options, stage: true, now: new Date('2026-10-19T00:00:00Z') })
+    expect(readV2().packs[PACK]?.rev).toBe(first.rev)
+
+    await promote({ store, signingKey, staged, now: new Date('2026-10-20T00:00:00Z'), log: options.log })
+    expect(readV2().packs[PACK]?.changes).toEqual({ added: 1, updated: 1, removed: 1, dataChanged: true })
+    const v1 = JSON.parse(openEnvelope(store.objects.get('index.json').body.toString(), publicKey))
+    expect(v1.packs[PACK]).not.toHaveProperty('changes')
   })
 })

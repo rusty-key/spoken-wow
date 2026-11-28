@@ -1,10 +1,10 @@
 // Voice packs the manager channel carries, as the catalog and the statuses see them: each is one
 // "release" whose tag names the rev of each of its folders, so a status is a tag comparison.
 import { channelTag } from '../shared/channel'
-import type { Catalog, Product, ReleaseInfo } from '../shared/types'
+import type { Catalog, Product, ReleaseInfo, VoicePackChanges } from '../shared/types'
 import { compareReleases } from './catalog'
 import { REPO } from './github'
-import type { ChannelAddon, ChannelIndex } from './packs-remote'
+import type { ChannelAddon, ChannelIndex, ChannelPack } from './packs-remote'
 
 /** The newest of a set of revs; they sort as text. */
 export function newestRev(revs: string[]): string {
@@ -16,13 +16,27 @@ export function revToIso(rev: string): string {
   return `${rev.slice(0, 4)}-${rev.slice(4, 6)}-${rev.slice(6, 8)}T${rev.slice(9, 11)}:${rev.slice(11, 13)}:${rev.slice(13, 15)}Z`
 }
 
+function latestChanges(packs: ChannelPack[], rev: string): VoicePackChanges | undefined {
+  const totals: VoicePackChanges = { added: 0, updated: 0, removed: 0, dataChanged: false }
+  for (const { rev: packRev, changes } of packs) {
+    if (packRev !== rev) continue
+    if (!changes) return undefined
+    totals.added += changes.added
+    totals.updated += changes.updated
+    totals.removed += changes.removed
+    totals.dataChanged ||= changes.dataChanged
+  }
+  return totals
+}
+
 /** The product as one channel release, or null when the channel does not carry every one of its folders. */
 export function channelRelease(product: Product, index: ChannelIndex | null, baseUrl: string): ReleaseInfo | null {
   if (product.kind !== 'voices' || !index || !product.folders || product.folders.length === 0) return null
   const packs = product.folders.map((f) => index.packs[f])
-  if (packs.some((p) => !p)) return null
-  const revs = packs.map((p) => p!.rev)
+  if (!packs.every((p) => p !== undefined)) return null
+  const revs = packs.map((p) => p.rev)
   const newest = newestRev(revs)
+  const changes = latestChanges(packs, newest)
   return {
     productId: product.id,
     tag: channelTag(revs),
@@ -30,8 +44,9 @@ export function channelRelease(product: Product, index: ChannelIndex | null, bas
     prerelease: false,
     publishedAt: revToIso(newest),
     notes: '',
+    ...(changes ? { voicePackChanges: changes } : {}),
     assetName: '',
-    assetSize: packs.reduce((n, p) => n + p!.totalSize, 0),
+    assetSize: packs.reduce((n, p) => n + p.totalSize, 0),
     assetUrl: baseUrl,
     htmlUrl: ''
   }
