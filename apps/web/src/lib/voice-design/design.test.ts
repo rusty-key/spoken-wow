@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-const { deleteDesignVoice, designVersion, remixVersion, retireOlder, saveDesignVoice } = await import("./design");
+const { deleteDesignVoice, designAndRemixVersion, designVersion, remixVersion, retireOlder, saveDesignVoice } = await import("./design");
 const { designName, PROMPT_ENDING, withEnding } = await import("./limits");
 import type { DesignDeps } from "./design";
 import type { Design } from "./types";
@@ -283,5 +283,51 @@ describe("remixVersion", () => {
     const empty = deps(saved);
     await expect(remixVersion({ ...remix, changes: " " }, empty)).rejects.toThrow(/changes/);
     for (const d of [other, deleted, empty]) expect(d.remix).not.toHaveBeenCalled();
+  });
+});
+
+describe("designAndRemixVersion", () => {
+  const saved = { voiceId: "voice-9", voiceName: "design-orc-male-shady-v3", holderId: "u1", holderName: "Ann" };
+  const settings = { promptStrength: 0.3, guidanceScale: null, loudness: null, seed: null };
+  const both = { ...base, id: "d1", changes: "Colder.", prompt: "A cold orc, a back-alley dealer.", previewText: "x".repeat(120), settings };
+  const remixed = [0, 1, 2].map((n) => ({ generatedVoiceId: `r${n}`, audio: Buffer.from(`r${n}`) }));
+
+  it("keeps Voice Design's previews, then Voice Remix's, in one version", async () => {
+    const d = deps(saved, { remix: vi.fn(async () => remixed) });
+    await designAndRemixVersion(both, d);
+    expect(d.design).toHaveBeenCalledWith({ prompt: withEnding("A cold orc, a back-alley dealer."), text: "x".repeat(120) }, "k");
+    expect(d.remix).toHaveBeenCalledWith({ voiceId: "voice-9", changes: "Colder.", text: "x".repeat(120), ...settings }, "k");
+    const input = vi.mocked(d.create).mock.calls[0][0];
+    expect(input.previews.map((p) => p.generatedVoiceId)).toEqual(["g0", "g1", "g2", "r0", "r1", "r2"]);
+    expect(input.analysis).toEqual({ remix_of: 3, remix_changes: "Colder.", remix_settings: settings, remix_from: 3 });
+  });
+
+  it("keeps the previews one call paid for when the other fails, and says which failed", async () => {
+    const d = deps(saved, { remix: vi.fn(async () => Promise.reject(new Error("remix down"))) });
+    await designAndRemixVersion(both, d);
+    const input = vi.mocked(d.create).mock.calls[0][0];
+    expect(input.previews.map((p) => p.generatedVoiceId)).toEqual(["g0", "g1", "g2"]);
+    expect(input.analysis).toEqual({ made_problem: expect.stringMatching(/Voice Remix failed.*remix down/) });
+
+    const noDesign = deps(saved, { design: vi.fn(async () => Promise.reject(new Error("design down"))), remix: vi.fn(async () => remixed) });
+    await designAndRemixVersion(both, noDesign);
+    expect(vi.mocked(noDesign.create).mock.calls[0][0].analysis).toMatchObject({
+      remix_of: 3,
+      remix_from: 0,
+      made_problem: expect.stringMatching(/Voice Design failed.*design down/),
+    });
+  });
+
+  it("makes no version when both fail", async () => {
+    const d = deps(saved, { design: vi.fn(async () => Promise.reject(new Error("design down"))), remix: vi.fn(async () => Promise.reject(new Error("remix down"))) });
+    await expect(designAndRemixVersion(both, d)).rejects.toThrow("design down");
+    expect(d.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses anyone but the holder before anything is spent", async () => {
+    const d = deps({ ...saved, holderId: "u2" });
+    await expect(designAndRemixVersion(both, d)).rejects.toThrow(/Ann's ElevenLabs account/);
+    expect(d.design).not.toHaveBeenCalled();
+    expect(d.remix).not.toHaveBeenCalled();
   });
 });

@@ -17,7 +17,7 @@ import type { ClipMark, Design, Measures } from "@/lib/voice-design/types";
 import FeedbackResults, { pickKey, verdictLabels } from "./FeedbackResults";
 import PlayButton, { ReferenceClip } from "./PlayButton";
 import StatusBadge from "./StatusBadge";
-import { designAudioUrl, designFrom, remixFrom, requestRevision, send, useWorkbench, type Draft } from "./context";
+import { designAndRemixFrom, designAudioUrl, designFrom, remixFrom, requestRevision, send, useWorkbench, type Draft } from "./context";
 import RemixSettingsFields from "./RemixSettings";
 import type { SlotView } from "./Workbench";
 
@@ -262,6 +262,10 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
     });
   const generate = () => fromReview("generate", "Voice Design", (draft) => draft, (draft) => designFrom(lang, slot.name, draft));
   const remixFromReview = () => fromReview("remix", "Voice Remix", remixDraft, (draft) => remixFrom(lang, draft, remixSettings));
+  const bothFromReview = () => fromReview("both", "Voice Design and Voice Remix", remixDraft, (draft) => designAndRemixFrom(lang, draft, remixSettings));
+  const remixStart = typeof design.analysis?.remix_from === "number" ? design.analysis.remix_from : null;
+  const previewName = (index: number) =>
+    remixStart !== null && index >= remixStart ? fill(t.remixPreviewN, { n: index - remixStart + 1 }) : fill(t.previewN, { n: index + 1 });
 
   return (
     <section className="vd-version" aria-label={fill(t.versionLabel, { slot: slot.name, v: design.version })}>
@@ -313,6 +317,7 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
               {typeof design.analysis?.remix_of === "number" ? (
                 <Field label={fill(t.remixOf, { v: `v${design.analysis.remix_of}` })} value={design.analysis.remix_changes} />
               ) : null}
+              <Field label={t.madeProblemLabel} value={design.analysis?.made_problem} />
               <Field label={t.designNoteLabel} value={design.note} />
             </div>
 
@@ -336,9 +341,9 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
                 {design.previews.map((preview, index) => (
                   <li key={preview.sha256 + index} className="vd-clip">
                     <PlayButton
-                      clip={{ src: audio(preview.sha256), title: `${slot.name} ${tag}`, meta: fill(t.previewN, { n: index + 1 }), subtitle: design.previewText }}
+                      clip={{ src: audio(preview.sha256), title: `${slot.name} ${tag}`, meta: previewName(index), subtitle: design.previewText }}
                     >
-                      {fill(t.previewN, { n: index + 1 })}
+                      {previewName(index)}
                     </PlayButton>
                     {can && !hasVoice ? (
                       <button
@@ -540,7 +545,7 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
                   <StatusBadge doneness={review.status} />
                   <span className="vd-muted">
                     {fill(t.reviewedBy, { who: review.createdByName ?? t.someone, when: day(review.createdAt) })}
-                    {review.bestPreview !== null ? ` · ${fill(t.bestWas, { n: review.bestPreview + 1 })}` : ""}
+                    {review.bestPreview !== null ? ` · ${fill(t.bestWas, { name: previewName(review.bestPreview) })}` : ""}
                   </span>
                   {review.note ? <span className="vd-review-note">{review.note}</span> : null}
                   {review.players.length > 0 ? (
@@ -677,6 +682,25 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
                     </PopoverContent>
                   </Popover>
                 </span>
+              ) : null}
+              {newest && revisable && remixable ? (
+                <button
+                  type="button"
+                  className="bs-btn vd-btn-remix"
+                  title={t.bothCost}
+                  disabled={busy !== null || !keys.gemini || !keys.elevenlabs}
+                  onClick={() => void bothFromReview()}
+                >
+                  {busy === "both" ? (
+                    <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                  ) : (
+                    <>
+                      <Wand2 size={14} aria-hidden="true" />
+                      <Blend size={14} aria-hidden="true" />
+                    </>
+                  )}
+                  {busy === "both" ? t.bothWorking : t.both}
+                </button>
               ) : null}
               <Popover open={menuOpen} onOpenChange={setMenuOpen}>
                 <PopoverTrigger asChild>
