@@ -7,6 +7,7 @@ the corpus, and building a pack from audio/ once `make quests-sounds` has assemb
     extract       world DB -> Postgres                      maintainer, rare
     import-corpus corpus/corpus.json.gz -> Postgres         DANGEROUS: once, into an empty database
     import-npc-bodies  world DB -> Postgres npc_body         after init-db, or into production
+    import-npc-types   world DB -> Postgres npc, creatures it lacks   after init-db, or into production
     import-barks  npc-sounds.json + transcripts -> Postgres npc_bark   when the game's clips change
     export-corpus Postgres -> corpus/corpus.json.gz         before a build; its only writer
     export-locale-text  Postgres -> one language's gossip text and names   before its Gossip pack
@@ -57,6 +58,10 @@ subparsers.add_parser(
     "import-npc-bodies",
     help="The world DB's creatures drawn as two or more bodies -> Postgres npc_body, splitting each NPC "
          "by body. Needs MySQL and DATABASE_URL.")
+subparsers.add_parser(
+    "import-npc-types",
+    help="Every one-body world DB creature the npc table lacks -> npc, its type from its "
+         "displays. Needs MySQL and DATABASE_URL.")
 brk = subparsers.add_parser(
     "import-barks",
     help="The game's NPC voice sets and our text for their clips -> Postgres npc_bark_set and "
@@ -180,6 +185,11 @@ elif args.mode == "import-npc-bodies":
     from tts_cli.corpus_db import import_npc_bodies
     from tts_cli.sql_queries import query_creature_displays
     import_npc_bodies(query_creature_displays())
+
+elif args.mode == "import-npc-types":
+    from tts_cli.corpus_db import import_npc_types
+    from tts_cli.sql_queries import query_creature_displays
+    import_npc_types(query_creature_displays())
 
 elif args.mode == "import-barks":
     from tts_cli.corpus_db import import_barks

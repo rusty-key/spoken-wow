@@ -1302,3 +1302,35 @@ def import_barks(sounds_path, transcripts_path, verbose=True) -> dict:
         for what, n in counts.items():
             print(f"  {what:<16} {n:>5}")
     return counts
+
+
+def import_npc_types(display_rows, verbose=True) -> int:
+    """A `display` npc row for every one-body world-database creature the table lacks. An existing
+    row is never changed, whatever its provenance. Returns the rows added."""
+    import psycopg2.extras
+
+    from tts_cli.flavors import fallback_flavors
+    from tts_cli.npc_bodies import body_name
+    from tts_cli.npc_types import npc_types
+
+    conn = connect()
+    try:
+        with conn, conn.cursor() as cur:
+            cur.execute("""select "npcId", "race", "gender", "flavor" from "npc"
+                            where "npcKind" = 'creature'""")
+            npcs = cur.fetchall()
+            defaults = fallback_flavors([(body_name(race, gender), flavor)
+                                         for _, race, gender, flavor in npcs if race and gender])
+            rows = npc_types(display_rows, {npc_id for npc_id, *_ in npcs}, defaults)
+            # rowcount would count the last page only, or the select above when nothing is new.
+            added = len(psycopg2.extras.execute_values(
+                cur, """insert into "npc" ("npcKind", "npcId", "race", "gender", "flavor",
+                          "provenance", "sex") values %s
+                        on conflict ("npcKind", "npcId") do nothing returning 1""",
+                [("creature", row["npcId"], row["race"], row["gender"], row["flavor"], "display",
+                  row["sex"]) for row in rows], fetch=True)) if rows else 0
+    finally:
+        conn.close()
+    if verbose:
+        print(f"{added} creatures given a type from their displays")
+    return added

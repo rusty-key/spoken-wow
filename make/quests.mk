@@ -387,6 +387,11 @@ import-locale: ## vmangos *_locN -> quest_line + entity_name (LOCALE=deDE; needs
 import-npc-bodies: ## vmangos creature displays -> npc_body, splitting each NPC drawn as two or more bodies (needs MySQL and DATABASE_URL)
 	@$(QUESTS_CLI) import-npc-bodies
 
+# Straight into Postgres, like import-npc-bodies. The vendors, guards and trainers with no lines
+# greet the player too, and a pack voicing barks needs their type.
+import-npc-types: ## vmangos creature displays -> npc, a type for every creature it lacks (needs MySQL and DATABASE_URL)
+	@$(QUESTS_CLI) import-npc-types
+
 # The transcript is made locally from the game's audio and stays out of the repo; only its text
 # reaches the database.
 import-barks: ## The game's NPC voice sets and their clips' text -> npc_bark_set, npc_bark (TRANSCRIPTS=…; needs DATABASE_URL)
