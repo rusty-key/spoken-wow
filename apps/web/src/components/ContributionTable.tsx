@@ -812,12 +812,12 @@ export default function ContributionTable({
                           <ChevronDownIcon className="size-4" aria-hidden />
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent className="flex w-56 flex-col p-1">
+                      <PopoverContent className="bs-menu flex w-auto flex-col p-1">
                         {(["confident", "clean"] as const).map((mode) => (
                           <button
                             key={mode}
                             type="button"
-                            className="bs-btn bs-btn-text justify-start"
+                            className="bs-btn bs-btn-text"
                             onClick={() => {
                               setKeepMenu(false);
                               setKeepBy(mode);
