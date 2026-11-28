@@ -340,11 +340,11 @@ export default function VersionCard({ design, slot, newest, folded = false }: { 
                     >
                       {fill(t.previewN, { n: index + 1 })}
                     </PlayButton>
-                    {can && !hasVoice ? (
+                    {can && (!hasVoice || (holds && design.chosenPreview !== index)) ? (
                       <button
                         type="button"
-                        className={cn("bs-btn vd-tip", recommended === index && "bs-btn-primary")}
-                        data-tip={design.isPublic ? t.lockedTitle : fill(t.saveCost, { name: designName(design) })}
+                        className={cn("bs-btn vd-tip", !hasVoice && recommended === index && "bs-btn-primary")}
+                        data-tip={design.isPublic ? t.lockedTitle : fill(hasVoice ? t.replaceCost : t.saveCost, { name: designName(design) })}
                         disabled={busy !== null || !keys.elevenlabs || design.isPublic}
                         onClick={() => void act(`save-${index}`, `/api/voices/design/${design.id}/voice`, { body: { preview: index } })}
                       >

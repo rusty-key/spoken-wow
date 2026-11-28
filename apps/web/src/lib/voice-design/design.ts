@@ -182,22 +182,38 @@ export async function found(read: (lang: Lang, id: string) => Promise<Design | n
   return design;
 }
 
-/** The caller becomes the holder: the voice lives in their account. */
+/**
+ * The caller becomes the holder: the voice lives in their account. The holder may save another
+ * preview in its place, under the same name and in the same account slot.
+ */
 export async function saveDesignVoice(
   input: { lang: Lang; id: string; preview: number; userId: string; apiKey: string },
   deps: DesignDeps = LIVE,
 ): Promise<Design> {
   return deps.lock(input.id, async () => {
     const design = await found(deps.read, input.lang, input.id);
-    // Once its voice is deleted from ElevenLabs, a version may be saved again from another preview.
-    if (design.voiceId && !design.voiceDeletedAt) {
-      throw new DesignError(`v${design.version} is already saved, in ${design.holderName ?? "someone"}'s account`);
-    }
     const preview = design.previews[input.preview];
     if (!Number.isInteger(input.preview) || !preview) throw new DesignError(`v${design.version} has no preview ${input.preview + 1}`, 400);
+    // Once its voice is deleted from ElevenLabs, a version may be saved again from another preview.
+    const replacing = design.voiceId !== null && !design.voiceDeletedAt;
+    if (replacing) {
+      if (design.holderId !== input.userId || design.chosenPreview === input.preview) {
+        throw new DesignError(`v${design.version} is already saved, in ${design.holderName ?? "someone"}'s account`);
+      }
+      // The store refuses a shown version only after the old voice would already be gone.
+      if (design.isPublic) throw new DesignError("Players hear this version. Show another version to players first.");
+      await freeAccountVoice(design, input.apiKey, deps);
+    }
 
     const voiceName = designName(design);
-    const voiceId = await deps.createVoice({ name: voiceName, prompt: design.prompt, generatedVoiceId: preview.generatedVoiceId }, input.apiKey);
+    let voiceId: string;
+    try {
+      voiceId = await deps.createVoice({ name: voiceName, prompt: design.prompt, generatedVoiceId: preview.generatedVoiceId }, input.apiKey);
+    } catch (error) {
+      // The old voice is gone, so the version must not keep naming it.
+      if (replacing) await deps.markDeleted(input.lang, input.id);
+      throw error;
+    }
     await deps.save(input.lang, input.id, { chosenPreview: input.preview, voiceId, voiceName, holderId: input.userId });
     return (await deps.read(input.lang, input.id))!;
   });
@@ -225,14 +241,18 @@ export async function deleteDesignVoice(
     const refused = holderRefusal(design, input.userId);
     if (refused) throw new DesignError(refused, 403);
 
-    const inAccount = (await deps.accountVoices(input.apiKey)).find((voice) => voice.voiceId === design.voiceId);
-    if (inAccount && inAccount.name !== design.voiceName) {
-      throw new DesignError(`the voice is now named "${inAccount.name}" in the account, so it may be in use; delete it on ElevenLabs if it is not`);
-    }
-    if (inAccount) await deps.deleteVoice(design.voiceId!, input.apiKey);
+    await freeAccountVoice(design, input.apiKey, deps);
     await deps.markDeleted(input.lang, input.id);
     return (await deps.read(input.lang, input.id))!;
   });
+}
+
+async function freeAccountVoice(design: Design, apiKey: string, deps: DesignDeps): Promise<void> {
+  const inAccount = (await deps.accountVoices(apiKey)).find((voice) => voice.voiceId === design.voiceId);
+  if (inAccount && inAccount.name !== design.voiceName) {
+    throw new DesignError(`the voice is now named "${inAccount.name}" in the account, so it may be in use; delete it on ElevenLabs if it is not`);
+  }
+  if (inAccount) await deps.deleteVoice(design.voiceId!, apiKey);
 }
 
 /**

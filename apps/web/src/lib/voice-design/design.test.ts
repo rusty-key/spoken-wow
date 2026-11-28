@@ -143,6 +143,44 @@ describe("saveDesignVoice", () => {
     expect(d.createVoice).not.toHaveBeenCalled();
   });
 
+  it("lets the holder save another preview in place of the saved one", async () => {
+    const d = deps({ voiceId: "voice-9", voiceName: "design-orc-male-shady-v3", chosenPreview: 0, holderId: "u1", holderName: "Ann" });
+    await saveDesignVoice({ ...base, id: "d1", preview: 2 }, d);
+    expect(d.deleteVoice).toHaveBeenCalledWith("voice-9", "k");
+    expect(vi.mocked(d.deleteVoice).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(d.createVoice).mock.invocationCallOrder[0]);
+    expect(d.createVoice).toHaveBeenCalledWith({ name: "design-orc-male-shady-v3", prompt: DESIGN.prompt, generatedVoiceId: "g2" }, "k");
+    expect(d.save).toHaveBeenCalledWith("enUS", "d1", { chosenPreview: 2, voiceId: "voice-9", voiceName: "design-orc-male-shady-v3", holderId: "u1" });
+  });
+
+  it("keeps the saved voice when the same preview is saved again, or the version is shown to players", async () => {
+    const saved = { voiceId: "voice-9", voiceName: "design-orc-male-shady-v3", chosenPreview: 0, holderId: "u1", holderName: "Ann" };
+    const same = deps(saved);
+    await expect(saveDesignVoice({ ...base, id: "d1", preview: 0 }, same)).rejects.toThrow(/already/);
+    const shown = deps({ ...saved, isPublic: true });
+    await expect(saveDesignVoice({ ...base, id: "d1", preview: 1 }, shown)).rejects.toThrow(/Players hear/);
+    for (const d of [same, shown]) expect(d.deleteVoice).not.toHaveBeenCalled();
+  });
+
+  it("never replaces a voice that has been adopted into a slot", async () => {
+    const d = deps(
+      { voiceId: "voice-9", voiceName: "design-orc-male-shady-v3", chosenPreview: 0, holderId: "u1" },
+      { accountVoices: vi.fn(async () => [{ voiceId: "voice-9", name: "orc-male-shady", category: "generated" }]) },
+    );
+    await expect(saveDesignVoice({ ...base, id: "d1", preview: 1 }, d)).rejects.toThrow(/orc-male-shady/);
+    expect(d.deleteVoice).not.toHaveBeenCalled();
+    expect(d.createVoice).not.toHaveBeenCalled();
+  });
+
+  it("counts the old voice as deleted when its replacement fails", async () => {
+    const d = deps(
+      { voiceId: "voice-9", voiceName: "design-orc-male-shady-v3", chosenPreview: 0, holderId: "u1" },
+      { createVoice: vi.fn(async () => Promise.reject(new Error("quota"))) },
+    );
+    await expect(saveDesignVoice({ ...base, id: "d1", preview: 1 }, d)).rejects.toThrow(/quota/);
+    expect(d.markDeleted).toHaveBeenCalledWith("enUS", "d1");
+    expect(d.save).not.toHaveBeenCalled();
+  });
+
   it("saves again once the voice is deleted from ElevenLabs", async () => {
     const d = deps({ voiceId: "voice-1", holderId: "u2", voiceDeletedAt: "2026-11-26T00:00:00Z" });
     await saveDesignVoice({ ...base, id: "d1", preview: 2 }, d);

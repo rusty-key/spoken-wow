@@ -122,6 +122,26 @@ test("removes a verdict only after it is confirmed", async () => {
   expect(init.method).toBe("DELETE");
 });
 
+test("lets the holder save another preview in place of the saved one", async () => {
+  const fetchMock = vi.fn(async () => Response.json({ design: DESIGN }));
+  vi.stubGlobal("fetch", fetchMock);
+  const previews = [0, 1, 2].map((n) => ({ generatedVoiceId: `g${n}`, sha256: String(n).repeat(64), measures: null }));
+  render(card({ ...DESIGN, previews, chosenPreview: 2 }));
+  const saves = screen.getAllByRole("button", { name: "Save as voice" });
+  expect(saves).toHaveLength(2);
+
+  await userEvent.click(saves[1]);
+  const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+  expect(url).toContain(`/api/voices/design/${DESIGN.id}/voice`);
+  expect(JSON.parse(String(init.body))).toEqual({ preview: 1 });
+});
+
+test("offers no other preview to save while the voice is in someone else's account", () => {
+  const previews = [0, 1].map((n) => ({ generatedVoiceId: `g${n}`, sha256: String(n).repeat(64), measures: null }));
+  render(card({ ...DESIGN, previews, holderId: "u2", holderName: "Bo" }));
+  expect(screen.queryByRole("button", { name: "Save as voice" })).toBeNull();
+});
+
 test("offers to save another preview once the voice is deleted from ElevenLabs", () => {
   render(card({ ...DESIGN, voiceDeletedAt: "2026-11-26T00:00:00Z" }));
   expect(screen.getAllByRole("button", { name: "Save as voice" })).toHaveLength(DESIGN.previews.length);
