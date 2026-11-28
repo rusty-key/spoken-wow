@@ -797,7 +797,7 @@ export default function ContributionTable({
                     </button>
                   </>
                 ) : (
-                  <>
+                  <span className="bs-split">
                     <button type="button" className="bs-btn bs-btn-primary" disabled={bulk !== null} onClick={() => setConfirmAll(cleanToKeep)}>
                       {fill(t.contributions.keepAllCount, { n: cleanToKeep.length })}
                     </button>
@@ -805,7 +805,7 @@ export default function ContributionTable({
                       <PopoverTrigger asChild>
                         <button
                           type="button"
-                          className="bs-btn bs-btn-primary px-2"
+                          className="bs-btn bs-btn-primary"
                           disabled={bulk !== null}
                           aria-label={t.contributions.bulkKeep.more}
                         >
@@ -828,7 +828,7 @@ export default function ContributionTable({
                         ))}
                       </PopoverContent>
                     </Popover>
-                  </>
+                  </span>
                 )
               ) : group.verdict === "drop" && dropToReject.length > 1 ? (
                 dropConfirmed ? (

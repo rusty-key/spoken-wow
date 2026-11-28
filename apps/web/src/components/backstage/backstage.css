@@ -337,6 +337,21 @@ body:has(main.bs) {
   color: var(--foreground);
 }
 
+/* A button and the menu of its variants, read as one control. */
+.bs-split {
+  display: inline-flex;
+}
+.bs-split > .bs-btn:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.bs-split > .bs-btn:last-child {
+  padding: 0 8px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 1px solid rgba(0, 0, 0, 0.2);
+}
+
 /* ---------- Fields ---------- */
 
 .bs-search {
